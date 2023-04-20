@@ -7,8 +7,7 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box } from '@material-ui/core';
-import { useState } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { listReleases } from '../../api/releases';
 
 export default function ReleaseList() {
@@ -21,7 +20,7 @@ export default function ReleaseList() {
   }, []);
 
   return (
-    <SectionBox title="Releases" textAlign="center" paddingTop={2}>
+    <SectionBox title="Installed" textAlign="center" paddingTop={2}>
       <SimpleTable
         columns={[
           {

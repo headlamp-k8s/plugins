@@ -38,31 +38,31 @@ export function isElectron(): boolean {
 if (isElectron()) {
   registerSidebarEntry({
     name: 'Helm',
-    url: '/helm/releases',
+    url: '/apps/catalog',
     icon: 'simple-icons:helm',
     parent: '',
-    label: 'Helm',
-  });
-
-  registerSidebarEntry({
-    name: 'Releases',
-    url: '/helm/releases',
-    icon: '',
-    parent: 'Helm',
-    label: 'Releases',
+    label: 'Apps',
   });
 
   registerSidebarEntry({
     name: 'Charts',
-    url: '/helm/charts',
+    url: '/apps/catalog',
     icon: '',
     parent: 'Helm',
-    label: 'Charts',
+    label: 'Catalog',
+  });
+
+  registerSidebarEntry({
+    name: 'Releases',
+    url: '/apps/installed',
+    icon: '',
+    parent: 'Helm',
+    label: 'Installed',
   });
 
   // This component rendered at URL: /c/mycluster/feedback3
   registerRoute({
-    path: '/helm/releases',
+    path: '/apps/installed',
     sidebar: 'Releases',
     name: 'Releases',
     exact: true,
@@ -78,7 +78,7 @@ if (isElectron()) {
   });
 
   registerRoute({
-    path: '/helm/charts',
+    path: '/apps/catalog',
     sidebar: 'Charts',
     name: 'Charts',
     exact: true,

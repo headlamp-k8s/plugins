@@ -1,9 +1,8 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Dialog, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
-  Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
@@ -149,12 +148,14 @@ export function EditorDialog(props: {
       open={openEditor}
       maxWidth="lg"
       fullWidth
+      withFullScreen
       style={{
         overflow: 'hidden',
       }}
+      title={`App: ${chart.name}`}
     >
       <DialogTitle>
-        <Box display="flex" p={2}>
+        <Box display="flex">
           <Box mr={2}>
             <TextField
               id="release-name"
@@ -163,7 +164,6 @@ export function EditorDialog(props: {
               style={{
                 width: '20vw',
               }}
-              variant="filled"
               label="Release Name"
               value={releaseName}
               placeholder="Enter a name for the release"
@@ -192,7 +192,6 @@ export function EditorDialog(props: {
                 renderInput={params => (
                   <TextField
                     {...params}
-                    variant="outlined"
                     label="Namespaces"
                     placeholder="Select Namespace"
                   />
@@ -251,7 +250,7 @@ export function EditorDialog(props: {
             {installLoading || chartValuesLoading || !!chartValuesFetchError ? (
               <>
                 <Button disabled variant="contained">
-                  Install{installLoading && 'ing'}
+                  { installLoading ? "Installing" : "Install" }
                 </Button>
               </>
             ) : (

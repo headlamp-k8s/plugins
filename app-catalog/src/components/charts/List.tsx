@@ -1,7 +1,7 @@
 //import { Link as RouterLink,Loader,SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
-  Link as RouterLink,
   Loader,
+  Link as RouterLink,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
@@ -23,7 +23,7 @@ import { fetchChartsFromArtifact } from '../../api/charts';
 //import { createRelease } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
 
-export const PAGE_OFFSET_COUNT_FOR_CHARTS = 10;
+export const PAGE_OFFSET_COUNT_FOR_CHARTS = 9;
 
 export function ChartsList() {
   const helmChartCategoryList = [
@@ -132,7 +132,7 @@ export function ChartsList() {
         chart={selectedChartForInstall}
         handleEditor={(open: boolean) => setEditorOpen(open)}
       />
-      <SectionHeader title="Helm Charts" actions={[<Search />, <CategoryForCharts />]} />
+      <SectionHeader title="Applications" actions={[<Search />, <CategoryForCharts />]} />
       <Box display="flex" flexWrap="wrap" justifyContent="space-between" alignContent="start">
         {!charts ? (
           <Box
@@ -188,7 +188,7 @@ export function ChartsList() {
                       </Box>
                     </Box>
                     <Divider />
-                    <Box my={2}>
+                    <Box my={2} minHeight={100}>
                       <Typography>
                         {chart?.description?.slice(0, 110)}
                         <Tooltip title={chart?.description}>
@@ -196,7 +196,7 @@ export function ChartsList() {
                         </Tooltip>
                       </Typography>
                     </Box>
-                    <Box mt={2} ml={-1} display="flex" alignItems="center">
+                    <Box mt={2} display="flex" alignItems="center">
                       <Button
                         style={{
                           backgroundColor: '#000',
