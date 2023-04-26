@@ -13,7 +13,7 @@ import MonacoEditor from '@monaco-editor/react';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
-import { fetchChartValues } from '../../api/charts';
+import { fetchChartDetailFromArtifact, fetchChartValues } from '../../api/charts';
 import { createRelease, getActionStatus } from '../../api/releases';
 import { addRepository } from '../../api/repository';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
@@ -34,7 +34,8 @@ export function EditorDialog(props: {
   const [chartValuesFetchError, setChartValuesFetchError] = useState(null);
   const { enqueueSnackbar } = useSnackbar();
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
-
+  const [versions, setVersions] = useState<string[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState();
   const [selectedNamespace, setSelectedNamespace] = useState<{
     value: string;
     title: string;
@@ -52,7 +53,6 @@ export function EditorDialog(props: {
     setChartValuesLoading(true);
     fetchChartValues(packageID, packageVersion)
       .then((response: any) => {
-        console.log(response);
         setChartValuesLoading(false);
         setChartValues(response);
         setDefaultChartValues(yamlToJSON(response));
@@ -67,6 +67,13 @@ export function EditorDialog(props: {
   }
 
   useEffect(() => {
+    fetchChartDetailFromArtifact(chart.name, chart.repository.name).then(response => {
+      if (response.available_versions) {
+        setVersions(
+          response.available_versions.map(({ version }) => ({ title: version, value: version }))
+        );
+      }
+    });
     handleChartValueFetch(chart);
   }, [chart]);
 
@@ -99,8 +106,14 @@ export function EditorDialog(props: {
     chartValues: string
   ) {
     setIsFormSubmitting(true);
-    if (!validateFormFields()) {
-      enqueueSnackbar(`Release name is required`, {
+    if (!validateReleaseNameFormField()) {
+      enqueueSnackbar("Release name is required", {
+        variant: 'error',
+      });
+      return;
+    }
+    if (!validateVersionFormField()) {
+      enqueueSnackbar("Version is required", {
         variant: 'error',
       });
       return;
@@ -118,7 +131,8 @@ export function EditorDialog(props: {
         releaseName,
         releaseNamespace,
         btoa(unescape(encodeURIComponent(jsonToYAML(chartValuesDIFF)))),
-        `${repoName}/${chart.name}`
+        `${repoName}/${chart.name}`,
+        selectedVersion.value
       )
         .then(() => {
           checkInstallStatus(releaseName);
@@ -132,8 +146,15 @@ export function EditorDialog(props: {
     });
   }
 
-  function validateFormFields() {
+  function validateReleaseNameFormField() {
     if (releaseName === '') {
+      return false;
+    }
+    return true;
+  }
+
+  function validateVersionFormField() {
+    if (selectedVersion === '' || !selectedVersion) {
       return false;
     }
     return true;
@@ -171,9 +192,6 @@ export function EditorDialog(props: {
               value={releaseName}
               placeholder="Enter a name for the release"
               onChange={event => {
-                _.debounce(() => {
-                  setReleaseName(event.target.value);
-                }, 2000);
                 setReleaseName(event.target.value);
               }}
             />
@@ -197,6 +215,28 @@ export function EditorDialog(props: {
                 )}
               />
             )}
+          </Box>
+          <Box ml={2}>
+            <Autocomplete
+              style={{
+                width: '20vw',
+              }}
+              options={versions}
+              getOptionLabel={option => option.title}
+              value={selectedVersion}
+              // @ts-ignore
+              onChange={(event, newValue: { value: string; title: string }) => {
+                setSelectedVersion(newValue);
+              }}
+              renderInput={params => (
+                <TextField
+                  {...params}
+                  label="Versions"
+                  placeholder="Select Version"
+                  error={isFormSubmitting && !selectedVersion}
+                />
+              )}
+            />
           </Box>
         </Box>
       </DialogTitle>

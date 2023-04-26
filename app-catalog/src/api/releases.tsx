@@ -37,14 +37,21 @@ export function rollbackRelease(namespace: string, releaseName: string, version:
   });
 }
 
-export function createRelease(name: string, namespace: string, value: string, chart: string) {
+export function createRelease(
+  name: string,
+  namespace: string,
+  values: string,
+  chart: string,
+  version: string
+) {
   return request(`/helm/release/install?namespace=${namespace}`, {
     method: 'POST',
     body: JSON.stringify({
-      name: name,
-      namespace: namespace,
-      values: value,
-      chart: chart,
+      name,
+      namespace,
+      values,
+      chart,
+      version,
     }),
   });
 }
@@ -60,7 +67,8 @@ export function upgradeRelease(
   namespace: string,
   values: string,
   chart: string,
-  description: string
+  description: string,
+  version: string
 ) {
   return request(`/helm/releases/upgrade?name=${name}&namespace=${namespace}`, {
     method: 'PUT',
@@ -70,6 +78,13 @@ export function upgradeRelease(
       values,
       chart,
       description,
+      version,
     }),
+  });
+}
+
+export function fetchChart(name: string) {
+  return request(`/helm/charts?filter=${name}`, {
+    method: 'GET',
   });
 }

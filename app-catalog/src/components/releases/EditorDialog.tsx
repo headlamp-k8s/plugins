@@ -10,10 +10,11 @@ import {
   TextField,
 } from '@material-ui/core';
 import MonacoEditor from '@monaco-editor/react';
+import { Autocomplete } from '@material-ui/lab';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useRef, useState } from 'react';
-import { getActionStatus, upgradeRelease } from '../../api/releases';
+import { useRef, useState, useEffect } from 'react';
+import { fetchChart, getActionStatus, upgradeRelease } from '../../api/releases';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
 
 export function EditorDialog(props: {
@@ -40,17 +41,45 @@ export function EditorDialog(props: {
   const [valuesToShow, setValuesToShow] = useState(
     Object.assign({}, release.chart.values, release.config)
   );
-  const [values, setValues] = useState(release.chart.values);
-  const [userValues, setUserValues] = useState(() => {
-    const userVals = _.cloneDeep(release.config);
-    delete userVals['dev.headlamp.metadata'];
-    return userVals;
-  });
+  const [values, setValues] = useState(Object.assign({}, release.chart.values, release.config));
+  const [userValues, setUserValues] = useState(release.config);
   const [isUserValues, setIsUserValues] = useState(false);
   const [releaseUpdateDescription, setReleaseUpdateDescription] = useState('');
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const checkBoxRef = useRef(null);
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
+  const [versions, setVersions] = useState([]);
+  const [selectedVersion, setSelectedVersion] = useState();
+
+  useEffect(() => {
+    if (isUpdateRelease) {
+      fetchChart(release.chart.metadata.name).then(response => {
+        const charts = response.charts;
+        // sort by semantic versioning
+        const chartsCopy = _.cloneDeep(charts).sort((a: any, b: any) => {
+          const [aMajor, aMinor, aPatch] = a.version.split('.').map(Number);
+          const [bMajor, bMinor, bPatch] = b.version.split('.').map(Number);
+        
+          if (aMajor !== bMajor) {
+            return aMajor - bMajor;
+          }
+          if (aMinor !== bMinor) {
+            return aMinor - bMinor;
+          }
+          return aPatch - bPatch;
+        }).sort((a: any, b: any) => {
+          return a.name.localeCompare(b.name);
+        });
+        setVersions(
+          chartsCopy.map((chart: any) => ({
+            title: `${chart.name} v${chart.version}`,
+            value: chart.name,
+            version: chart.version,
+          }))
+        );
+      });
+    }
+  }, [isUpdateRelease]);
 
   function handleValueChange(event: any) {
     if (event.target.checked) {
@@ -100,7 +129,14 @@ export function EditorDialog(props: {
   function upgradeReleaseHandler() {
     setIsFormSubmitting(true);
     if (!releaseUpdateDescription) {
-      enqueueSnackbar(`Please add release description`, {
+      enqueueSnackbar("Please add release description", {
+        variant: 'error',
+        autoHideDuration: 5000,
+      });
+      return;
+    }
+    if (!selectedVersion) {
+      enqueueSnackbar("Please select a version", {
         variant: 'error',
         autoHideDuration: 5000,
       });
@@ -120,10 +156,14 @@ export function EditorDialog(props: {
     );
     const chartValuesDIFF = Object.assign({}, chartDefaultValuesDiff, chartUserValuesDiff);
     const chartYAML = btoa(unescape(encodeURIComponent(jsonToYAML(chartValuesDIFF))));
-    /* when we install a chart we add the metadata where we pass the chartName, below we access that 
-       metadata from release.config */
-    const chartName = release.config['dev.headlamp.metadata']['chartName'];
-    upgradeRelease(releaseName, releaseNamespace, chartYAML, chartName, releaseUpdateDescription)
+    upgradeRelease(
+      releaseName,
+      releaseNamespace,
+      chartYAML,
+      selectedVersion.value,
+      releaseUpdateDescription,
+      selectedVersion.version
+    )
       .then(() => {
         checkUpgradeStatus();
       })
@@ -162,9 +202,8 @@ export function EditorDialog(props: {
               id="release-name"
               disabled
               style={{
-                width: '20vw',
+                width: '15vw',
               }}
-              variant="filled"
               label="Release Name"
               value={releaseName}
             />
@@ -174,14 +213,13 @@ export function EditorDialog(props: {
               id="release-namespace"
               disabled
               style={{
-                width: '20vw',
+                width: '15vw',
               }}
-              variant="filled"
               label="Release Namespace"
               value={releaseNamespace}
             />
           </Box>
-          <Box ml={1}>
+          <Box ml={2}>
             {isUpdateRelease && (
               <TextField
                 id="release-description"
@@ -189,13 +227,36 @@ export function EditorDialog(props: {
                   width: '20vw',
                 }}
                 error={isFormSubmitting && !releaseUpdateDescription}
-                variant="outlined"
                 label="Release Description"
                 value={releaseUpdateDescription}
                 onChange={event => setReleaseUpdateDescription(event.target.value)}
               />
             )}
           </Box>
+          {isUpdateRelease && (
+            <Box ml={2}>
+              <Autocomplete
+                style={{
+                  width: '20vw',
+                }}
+                options={versions}
+                getOptionLabel={option => option.title}
+                value={selectedVersion}
+                // @ts-ignore
+                onChange={(event, newValue: { value: string; title: string }) => {
+                  setSelectedVersion(newValue);
+                }}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Versions"
+                    placeholder="Select Version"
+                    error={isFormSubmitting && !selectedVersion}
+                  />
+                )}
+              />
+            </Box>
+          )}
         </Box>
         <Box ml={2}>
           <FormControlLabel
