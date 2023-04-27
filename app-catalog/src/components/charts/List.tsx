@@ -202,12 +202,14 @@ export function ChartsList() {
                       </Box>
                     </Box>
                     <Divider />
-                    <Box my={2} minHeight={110} overflowY="hidden" height={110}>
+                    <Box mt={1} >
                       <Typography>
-                        {chart?.description?.slice(0, 110)}
-                        <Tooltip title={chart?.description}>
-                          <span>…</span>
-                        </Tooltip>
+                        {chart?.description?.slice(0, 100)}
+                        {chart?.description?.length > 100 &&
+                          <Tooltip title={chart?.description}>
+                            <span>…</span>
+                          </Tooltip>
+                        }
                       </Typography>
                     </Box>
                   </CardContent>
