@@ -153,6 +153,7 @@ export function EditorDialog(props: {
       style={{
         overflow: 'hidden',
       }}
+      onClose={() => handleEditor(false)}
     >
       <DialogTitle>
         <Box display="flex" p={2}>
