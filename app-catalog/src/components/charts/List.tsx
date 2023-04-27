@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   Card,
+  CardActions,
   CardContent,
   CardMedia,
   Divider,
@@ -164,7 +165,7 @@ export function ChartsList() {
                   <CardContent
                     style={{
                       margin: '1rem 0rem',
-                      height: '32vh',
+                      height: '25vh',
                       overflow: 'hidden',
                       paddingTop: 0,
                     }}
@@ -201,27 +202,30 @@ export function ChartsList() {
                         </Tooltip>
                       </Typography>
                     </Box>
-                    <Box mt={2} display="flex" alignItems="center" justifyContent="space-between">
-                      <Button
-                        style={{
-                          backgroundColor: '#000',
-                          color: 'white',
-                          textTransform: 'none',
-                        }}
-                        onClick={() => {
-                          setSelectedChartForInstall(chart);
-                          setEditorOpen(true);
-                        }}
-                      >
-                        Install
-                      </Button>
-                      <Box ml={4}>
-                        <Link href={chart?.repository?.url} target="_blank">
-                          Learn More
-                        </Link>
-                      </Box>
-                    </Box>
                   </CardContent>
+                  <CardActions
+                    style={{
+                      justifyContent: 'space-between',
+                      padding: '14px',
+                    }}
+                  >
+                    <Button
+                      style={{
+                        backgroundColor: '#000',
+                        color: 'white',
+                        textTransform: 'none',
+                      }}
+                      onClick={() => {
+                        setSelectedChartForInstall(chart);
+                        setEditorOpen(true);
+                      }}
+                    >
+                      Install
+                    </Button>
+                    <Link href={chart?.repository?.url} target="_blank">
+                      Learn More
+                    </Link>
+                  </CardActions>
                 </Card>
               </Box>
             );
