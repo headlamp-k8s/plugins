@@ -12,7 +12,7 @@ import {
 import MonacoEditor from '@monaco-editor/react';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useRef,useState } from 'react';
+import { useRef, useState } from 'react';
 import { getActionStatus, upgradeRelease } from '../../api/releases';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
 

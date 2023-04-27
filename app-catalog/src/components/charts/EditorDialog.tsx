@@ -193,11 +193,7 @@ export function EditorDialog(props: {
                   setSelectedNamespace(newValue);
                 }}
                 renderInput={params => (
-                  <TextField
-                    {...params}
-                    label="Namespaces"
-                    placeholder="Select Namespace"
-                  />
+                  <TextField {...params} label="Namespaces" placeholder="Select Namespace" />
                 )}
               />
             )}
@@ -253,7 +249,7 @@ export function EditorDialog(props: {
             {installLoading || chartValuesLoading || !!chartValuesFetchError ? (
               <>
                 <Button disabled variant="contained">
-                  { installLoading ? "Installing" : "Install" }
+                  {installLoading ? 'Installing' : 'Install'}
                 </Button>
               </>
             ) : (
