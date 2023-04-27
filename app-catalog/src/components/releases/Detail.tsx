@@ -2,6 +2,7 @@ import { Router } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   DateLabel,
+  Dialog,
   NameValueTable,
   SectionBox,
   SectionHeader,
@@ -10,18 +11,15 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Button,
-  Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
-  DialogTitle,
   InputLabel,
   MenuItem,
   Select,
 } from '@material-ui/core';
 import { useSnackbar } from 'notistack';
-import { useState } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router';
 import {
   deleteRelease,
@@ -92,8 +90,12 @@ export default function ReleaseDetail() {
         releaseNamespace={release?.namespace}
         handleUpdate={() => setUpdate(!update)}
       />
-      <Dialog open={openDeleteAlert} maxWidth="sm">
-        <DialogTitle>Uninstall Release</DialogTitle>
+      <Dialog
+        open={openDeleteAlert}
+        maxWidth="sm"
+        onClose={() => setOpenDeleteAlert(false)}
+        title="Uninstall App"
+      >
         <DialogContent>
           <DialogContentText>Are you sure you want to uninstall this release?</DialogContentText>
         </DialogContent>
@@ -114,7 +116,7 @@ export default function ReleaseDetail() {
       </Dialog>
       <Dialog
         open={rollbackPopup}
-        maxWidth="sm"
+        maxWidth="xs"
         onClose={() => setRollbackPopup(false)}
         title="Rollback"
       >
@@ -176,7 +178,7 @@ export default function ReleaseDetail() {
           backLink={createRouteURL('Releases')}
           title={
             <SectionHeader
-              title={release.name}
+              title={`App: ${release.name}`}
               actions={[
                 <ActionButton
                   description={'Values'}

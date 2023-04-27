@@ -1,11 +1,10 @@
+import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
   Checkbox,
-  Dialog,
   DialogActions,
   DialogContent,
-  DialogTitle,
   FormControlLabel,
   TextField,
 } from '@material-ui/core';
@@ -190,88 +189,66 @@ export function EditorDialog(props: {
       open={openEditor}
       maxWidth="lg"
       fullWidth
+      withFullScreen
       style={{
         overflow: 'hidden',
       }}
       onClose={() => handleEditor(false)}
+      title={`Release Name: ${releaseName} / Namespace: ${releaseNamespace}`}
     >
-      <DialogTitle>
-        <Box display="flex" p={2}>
-          <Box mr={2}>
-            <TextField
-              id="release-name"
-              disabled
-              style={{
-                width: '15vw',
-              }}
-              label="Release Name"
-              value={releaseName}
-            />
-          </Box>
-          <Box>
-            <TextField
-              id="release-namespace"
-              disabled
-              style={{
-                width: '15vw',
-              }}
-              label="Release Namespace"
-              value={releaseNamespace}
-            />
-          </Box>
-          <Box ml={2}>
-            {isUpdateRelease && (
-              <TextField
-                id="release-description"
-                style={{
-                  width: '20vw',
-                }}
-                error={isFormSubmitting && !releaseUpdateDescription}
-                label="Release Description"
-                value={releaseUpdateDescription}
-                onChange={event => setReleaseUpdateDescription(event.target.value)}
-              />
-            )}
-          </Box>
+      <Box display="flex" p={2} pt={0}>
+        <Box ml={2}>
           {isUpdateRelease && (
-            <Box ml={2}>
-              <Autocomplete
-                style={{
-                  width: '20vw',
-                }}
-                options={versions}
-                getOptionLabel={option => option.title}
-                value={selectedVersion}
-                // @ts-ignore
-                onChange={(event, newValue: { value: string; title: string }) => {
-                  setSelectedVersion(newValue);
-                }}
-                renderInput={params => (
-                  <TextField
-                    {...params}
-                    label="Versions"
-                    placeholder="Select Version"
-                    error={isFormSubmitting && !selectedVersion}
-                  />
-                )}
-              />
-            </Box>
+            <TextField
+              id="release-description"
+              style={{
+                width: '20vw',
+              }}
+              error={isFormSubmitting && !releaseUpdateDescription}
+              label="Release Description"
+              value={releaseUpdateDescription}
+              onChange={event => setReleaseUpdateDescription(event.target.value)}
+            />
           )}
         </Box>
-        <Box ml={2}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={isUserValues}
-                onChange={handleValueChange}
-                inputProps={{ 'aria-label': 'Switch between default and user defined values' }}
-                inputRef={checkBoxRef}
-              />
-            }
-            label="user defined values only"
-          />
-        </Box>
-      </DialogTitle>
+        {isUpdateRelease && (
+          <Box ml={2}>
+            <Autocomplete
+              style={{
+                width: '20vw',
+              }}
+              options={versions}
+              getOptionLabel={option => option.title}
+              value={selectedVersion}
+              // @ts-ignore
+              onChange={(event, newValue: { value: string; title: string }) => {
+                setSelectedVersion(newValue);
+              }}
+              renderInput={params => (
+                <TextField
+                  {...params}
+                  label="Versions"
+                  placeholder="Select Version"
+                  error={isFormSubmitting && !selectedVersion}
+                />
+              )}
+            />
+          </Box>
+        )}
+      </Box>
+      <Box ml={2}>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={isUserValues}
+              onChange={handleValueChange}
+              inputProps={{ 'aria-label': 'Switch between default and user defined values' }}
+              inputRef={checkBoxRef}
+            />
+          }
+          label="user defined values only"
+        />
+      </Box>
       <DialogContent>
         <Box pt={2} height="100%" my={1} p={1}>
           <MonacoEditor
