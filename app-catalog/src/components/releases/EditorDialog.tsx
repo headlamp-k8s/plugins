@@ -68,7 +68,7 @@ export function EditorDialog(props: {
           return aPatch - bPatch;
         }).sort((a: any, b: any) => {
           return a.name.localeCompare(b.name);
-        });
+        }).reverse();
         setVersions(
           chartsCopy.map((chart: any) => ({
             title: `${chart.name} v${chart.version}`,
