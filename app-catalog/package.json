@@ -34,6 +34,7 @@
     "@types/js-yaml": "^4.0.5",
     "js-yaml": "^4.1.0",
     "react-markdown": "^8.0.7",
-    "react-syntax-highlighter": "^15.5.0"
+    "react-syntax-highlighter": "^15.5.0",
+    "remark-gfm": "^3.0.1"
   }
 }
