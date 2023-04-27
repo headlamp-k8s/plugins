@@ -183,6 +183,15 @@ export function ChartsList() {
                     </Typography>
                     <Box display="flex" justifyContent="space-between" my={1}>
                       <Typography>v{chart.version}</Typography>
+                      <Box marginLeft={1} style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        <Tooltip title={chart?.repository?.name || ''}>
+                          <span>{chart?.repository?.name || ''}</span>
+                        </Tooltip>
+                      </Box>
                     </Box>
                     <Divider />
                     <Box my={2} minHeight={110} overflowY="hidden" height={110}>
