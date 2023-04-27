@@ -26,11 +26,10 @@ export default function ReleaseList() {
           {
             label: 'Name',
             getter: release => (
-              <Box display="flex">
+              <Box display="flex" alignItems="center">
                 <Box>
                   <img
-                    width={25}
-                    height={25}
+                    width={50}
                     src={release.chart.metadata.icon}
                     alt={release.chart.metadata.name}
                   />
