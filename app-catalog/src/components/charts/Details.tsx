@@ -133,7 +133,9 @@ export default function ChartDetails() {
             remarkPlugins={[remarkGfm, rehypeFilter]}
             children={chart.readme}
             components={{
-              a: Link,
+              a: ({ node, ...props }) => {
+                return <Link {...props} target="_blank" />
+              },
               table: ({ node, ...props }) => {
                 return (
                   <Table
