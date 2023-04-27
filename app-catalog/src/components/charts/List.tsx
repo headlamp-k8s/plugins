@@ -118,9 +118,7 @@ export function ChartsList() {
           // @ts-ignore
           setChartCategory(newValue);
         }}
-        renderInput={params => (
-          <TextField {...params} label="Categories" placeholder="Favorites" />
-        )}
+        renderInput={params => <TextField {...params} label="Categories" placeholder="Favorites" />}
       />
     );
   }
@@ -155,14 +153,14 @@ export function ChartsList() {
               <Box maxWidth="30%" width="400px" m={1}>
                 <Card>
                   <Box height="60px">
-                  <CardMedia
-                    image={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                    style={{
-                      width: '60px',
-                      margin: '1rem',
-                    }}
-                    component="img"
-                  />
+                    <CardMedia
+                      image={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                      style={{
+                        width: '60px',
+                        margin: '1rem',
+                      }}
+                      component="img"
+                    />
                   </Box>
                   <CardContent
                     style={{
@@ -225,11 +223,7 @@ export function ChartsList() {
         )}
       </Box>
       {charts && charts.length !== 0 && (
-        <Box
-          mt={2}
-          mx="auto"
-          maxWidth="max-content"
-        >
+        <Box mt={2} mx="auto" maxWidth="max-content">
           <Pagination
             size="large"
             shape="rounded"
@@ -243,7 +237,9 @@ export function ChartsList() {
         </Box>
       )}
       <Box textAlign="right">
-        <Link href="https://artifacthub.io/" target="_blank">Powered by ArtifactHub</Link>
+        <Link href="https://artifacthub.io/" target="_blank">
+          Powered by ArtifactHub
+        </Link>
       </Box>
     </>
   );
