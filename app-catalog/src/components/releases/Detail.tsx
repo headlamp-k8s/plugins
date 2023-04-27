@@ -243,43 +243,45 @@ export default function ReleaseDetail() {
         </SectionBox>
       )}
 
-      <SectionBox title="History">
-        <SimpleTable
-          data={releaseHistory === null ? null : releaseHistory.releases}
-          defaultSortingColumn={1}
-          columns={[
-            {
-              label: 'Revision',
-              getter: data => data.version,
-              sort: (n1, n2) => n2.version - n1.version,
-            },
-            {
-              label: 'Description',
-              getter: data => data.info.description,
-            },
-            {
-              label: 'Status',
-              getter: data => (
-                <StatusLabel status={release?.info.status === 'deployed' ? 'success' : 'error'}>
-                  {data.info.status}
-                </StatusLabel>
-              ),
-            },
-            {
-              label: 'Chart',
-              getter: data => data.chart.metadata.name,
-            },
-            {
-              label: 'App Version',
-              getter: data => data.chart.metadata.appVersion,
-            },
-            {
-              label: 'Updated',
-              getter: data => <DateLabel date={data.info.last_deployed} format="mini" />,
-            },
-          ]}
-        />
-      </SectionBox>
+      {releaseHistory && (
+        <SectionBox title="History">
+          <SimpleTable
+            data={releaseHistory === null ? null : releaseHistory.releases}
+            defaultSortingColumn={1}
+            columns={[
+              {
+                label: 'Revision',
+                getter: data => data.version,
+                sort: (n1, n2) => n2.version - n1.version,
+              },
+              {
+                label: 'Description',
+                getter: data => data.info.description,
+              },
+              {
+                label: 'Status',
+                getter: data => (
+                  <StatusLabel status={release?.info.status === 'deployed' ? 'success' : 'error'}>
+                    {data.info.status}
+                  </StatusLabel>
+                ),
+              },
+              {
+                label: 'Chart',
+                getter: data => data.chart.metadata.name,
+              },
+              {
+                label: 'App Version',
+                getter: data => data.chart.metadata.appVersion,
+              },
+              {
+                label: 'Updated',
+                getter: data => <DateLabel date={data.info.last_deployed} format="mini" />,
+              },
+            ]}
+          />
+        </SectionBox>
+      )}
     </>
   );
 }
