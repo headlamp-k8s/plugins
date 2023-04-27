@@ -183,9 +183,6 @@ export function ChartsList() {
                     </Typography>
                     <Box display="flex" justifyContent="space-between" my={1}>
                       <Typography>v{chart.version}</Typography>
-                      <Box>
-                        <Typography>{chart.name}</Typography>
-                      </Box>
                     </Box>
                     <Divider />
                     <Box my={2} minHeight={110} overflowY="hidden" height={110}>
