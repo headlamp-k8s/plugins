@@ -60,7 +60,6 @@ if (isElectron()) {
     label: 'Installed',
   });
 
-  // This component rendered at URL: /c/mycluster/feedback3
   registerRoute({
     path: '/apps/installed',
     sidebar: 'Releases',
