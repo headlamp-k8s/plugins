@@ -98,7 +98,7 @@ export default function ReleaseDetail() {
           <DialogContentText>Are you sure you want to uninstall this release?</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDeleteAlert(false)}>No</Button>
+          <Button onClick={() => setOpenDeleteAlert(false)}>{isDeleting ? 'Close' : 'No'}</Button>
           <Button
             disabled={isDeleting}
             onClick={() => {
