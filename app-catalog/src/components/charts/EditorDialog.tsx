@@ -153,6 +153,9 @@ export function EditorDialog(props: {
         overflow: 'hidden',
       }}
       title={`App: ${chart.name}`}
+      onClose={() => {
+        handleEditor(false);
+      }}
     >
       <DialogTitle>
         <Box display="flex">
