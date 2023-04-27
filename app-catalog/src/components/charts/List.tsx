@@ -154,14 +154,16 @@ export function ChartsList() {
             return (
               <Box maxWidth="30%" width="400px" m={1}>
                 <Card>
+                  <Box height="60px">
                   <CardMedia
                     image={`https://artifacthub.io/image/${chart.logo_image_id}`}
                     style={{
-                      width: 60,
-                      height: 60,
+                      width: '60px',
                       margin: '1rem',
                     }}
+                    component="img"
                   />
+                  </Box>
                   <CardContent
                     style={{
                       margin: '1rem 0rem',
