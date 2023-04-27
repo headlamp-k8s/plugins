@@ -170,17 +170,25 @@ export function ChartsList() {
                       paddingTop: 0,
                     }}
                   >
-                    <Typography component="h5" variant="h5">
-                      <RouterLink
-                        routeName="/helm/:repoName/charts/:chartName"
-                        params={{
-                          chartName: chart.name,
-                          repoName: chart.repository.name,
-                        }}
-                      >
-                        {chart.name}
-                      </RouterLink>
-                    </Typography>
+                    <Box style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      <Tooltip title={chart.name}>
+                        <Typography component="h5" variant="h5">
+                          <RouterLink
+                            routeName="/helm/:repoName/charts/:chartName"
+                            params={{
+                              chartName: chart.name,
+                              repoName: chart.repository.name,
+                            }}
+                          >
+                            {chart.name}
+                          </RouterLink>
+                        </Typography>
+                      </Tooltip>
+                    </Box>
                     <Box display="flex" justifyContent="space-between" my={1}>
                       <Typography>v{chart.version}</Typography>
                       <Box marginLeft={1} style={{
