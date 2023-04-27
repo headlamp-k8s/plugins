@@ -70,7 +70,7 @@ export default function ReleaseDetail() {
       } else {
         enqueueSnackbar(`Successfully deleted release ${name}`, { variant: 'success' });
         setOpenDeleteAlert(false);
-        history.replace(createRouteURL('/helm/releases'));
+        history.replace(createRouteURL('/apps/installed'));
         setIsDeleting(false);
       }
     });
