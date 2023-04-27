@@ -5,11 +5,13 @@ import {
   SectionBox,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Button, Link } from '@material-ui/core';
+import { Box, Button, Link, Table, TableCell, TableRow, TableHead } from '@material-ui/core';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useParams } from 'react-router';
+import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import rehypeFilter from 'react-markdown/lib/rehype-filter';
 import { fetchChartDetailFromArtifact } from '../../api/charts';
 import { EditorDialog } from './EditorDialog';
 
@@ -128,9 +130,25 @@ export default function ChartDetails() {
             style={{
               padding: '1rem',
             }}
+            remarkPlugins={[remarkGfm, rehypeFilter]}
             children={chart.readme}
             components={{
               a: Link,
+              table: ({ node, ...props }) => {
+                return <Table {...props} size="small" style={{
+                tableLayout: 'fixed',
+                }}/>;
+              },
+              thead: ({ node, ...props }) => {
+                console.log(node,props)
+                return <TableHead {...props} />;
+              },
+              tr: ({ node, ...props }) => {
+                return <TableRow {...props} />;
+              },
+              td: ({ node, ...props }) => {
+                return <TableCell {...props} style={{textAlign: 'center', overflow: 'hidden'}} />;
+              },
               // eslint-disable-next-line
               pre: ({ node, inline, className, children, ...props }) => {
                 return (
