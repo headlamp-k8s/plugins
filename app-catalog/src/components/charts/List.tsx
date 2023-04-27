@@ -152,7 +152,7 @@ export function ChartsList() {
             return (
               <Box maxWidth="30%" width="400px" m={1}>
                 <Card>
-                  <Box height="60px">
+                  <Box height="60px" display="flex" alignItems="center" marginTop="15px">
                     <CardMedia
                       image={`https://artifacthub.io/image/${chart.logo_image_id}`}
                       style={{
@@ -167,6 +167,7 @@ export function ChartsList() {
                       margin: '1rem 0rem',
                       height: '32vh',
                       overflow: 'hidden',
+                      paddingTop: 0,
                     }}
                   >
                     <Typography component="h5" variant="h5">
@@ -187,7 +188,7 @@ export function ChartsList() {
                       </Box>
                     </Box>
                     <Divider />
-                    <Box my={2} minHeight={100}>
+                    <Box my={2} minHeight={110} overflowY="hidden" height={110}>
                       <Typography>
                         {chart?.description?.slice(0, 110)}
                         <Tooltip title={chart?.description}>
