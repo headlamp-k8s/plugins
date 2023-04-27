@@ -189,7 +189,7 @@ export function ChartsList() {
                       <Typography>
                         {chart?.description?.slice(0, 110)}
                         <Tooltip title={chart?.description}>
-                          <span>...</span>
+                          <span>…</span>
                         </Tooltip>
                       </Typography>
                     </Box>
