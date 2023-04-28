@@ -11,10 +11,14 @@ import { useEffect, useState } from 'react';
 import { listReleases } from '../../api/releases';
 
 export default function ReleaseList() {
-  const [releases, setReleases] = useState([]);
+  const [releases, setReleases] = useState<Array<any> | null>(null);
 
   useEffect(() => {
     listReleases().then(response => {
+      if (!response.releases) {
+        setReleases([]);
+        return;
+      }
       setReleases(response.releases);
     });
   }, []);

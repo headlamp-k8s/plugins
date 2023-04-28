@@ -1,4 +1,3 @@
-//import { Link as RouterLink,Loader,SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Loader,
   Link as RouterLink,
@@ -8,6 +7,7 @@ import {
   Box,
   Button,
   Card,
+  CardActions,
   CardContent,
   CardMedia,
   Divider,
@@ -165,55 +165,77 @@ export function ChartsList() {
                   <CardContent
                     style={{
                       margin: '1rem 0rem',
-                      height: '32vh',
+                      height: '25vh',
                       overflow: 'hidden',
                       paddingTop: 0,
                     }}
                   >
-                    <Typography component="h5" variant="h5">
-                      <RouterLink
-                        routeName="/helm/:repoName/charts/:chartName"
-                        params={{
-                          chartName: chart.name,
-                          repoName: chart.repository.name,
-                        }}
-                      >
-                        {chart.name}
-                      </RouterLink>
-                    </Typography>
+                    <Box style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      <Tooltip title={chart.name}>
+                        <Typography component="h5" variant="h5">
+                          <RouterLink
+                            routeName="/helm/:repoName/charts/:chartName"
+                            params={{
+                              chartName: chart.name,
+                              repoName: chart.repository.name,
+                            }}
+                          >
+                            {chart.name}
+                          </RouterLink>
+                        </Typography>
+                      </Tooltip>
+                    </Box>
                     <Box display="flex" justifyContent="space-between" my={1}>
                       <Typography>v{chart.version}</Typography>
-                    </Box>
-                    <Divider />
-                    <Box my={2} minHeight={110} overflowY="hidden" height={110}>
-                      <Typography>
-                        {chart?.description?.slice(0, 110)}
-                        <Tooltip title={chart?.description}>
-                          <span>…</span>
+                      <Box marginLeft={1} style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        <Tooltip title={chart?.repository?.name || ''}>
+                          <span>{chart?.repository?.name || ''}</span>
                         </Tooltip>
-                      </Typography>
-                    </Box>
-                    <Box mt={2} display="flex" alignItems="center" justifyContent="space-between">
-                      <Button
-                        style={{
-                          backgroundColor: '#000',
-                          color: 'white',
-                          textTransform: 'none',
-                        }}
-                        onClick={() => {
-                          setSelectedChartForInstall(chart);
-                          setEditorOpen(true);
-                        }}
-                      >
-                        Install
-                      </Button>
-                      <Box ml={4}>
-                        <Link href={chart?.repository?.url} target="_blank">
-                          Learn More
-                        </Link>
                       </Box>
                     </Box>
+                    <Divider />
+                    <Box mt={1} >
+                      <Typography>
+                        {chart?.description?.slice(0, 100)}
+                        {chart?.description?.length > 100 &&
+                          <Tooltip title={chart?.description}>
+                            <span>…</span>
+                          </Tooltip>
+                        }
+                      </Typography>
+                    </Box>
                   </CardContent>
+                  <CardActions
+                    style={{
+                      justifyContent: 'space-between',
+                      padding: '14px',
+                    }}
+                  >
+                    <Button
+                      style={{
+                        backgroundColor: '#000',
+                        color: 'white',
+                        textTransform: 'none',
+                      }}
+                      onClick={() => {
+                        setSelectedChartForInstall(chart);
+                        setEditorOpen(true);
+                      }}
+                    >
+                      Install
+                    </Button>
+                    <Link href={chart?.repository?.url} target="_blank">
+                      Learn More
+                    </Link>
+                  </CardActions>
                 </Card>
               </Box>
             );

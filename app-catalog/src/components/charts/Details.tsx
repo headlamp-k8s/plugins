@@ -102,6 +102,10 @@ export default function ChartDetails() {
                 value: chart.app_version,
               },
               {
+                name: 'Repository',
+                value: repoName,
+              },
+              {
                 name: 'Maintainers',
                 value: chart?.maintainers?.map(maintainer => (
                   <Box display="flex" alignItems="center" mt={1}>
