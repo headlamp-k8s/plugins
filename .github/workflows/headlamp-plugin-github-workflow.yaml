@@ -1,0 +1,36 @@
+name: Headlamp plugin linting, type checking, and testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+
+env:
+  HEADLAMP_PLUGIN_VERSION: 0.6.0-alpha.24
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION format --check .
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION lint .
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test .
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION tsc .
+
