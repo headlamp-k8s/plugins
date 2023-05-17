@@ -29,13 +29,13 @@ export function EditorDialog(props: {
   const [installLoading, setInstallLoading] = useState(false);
   const [namespaces, error] = K8s.ResourceClasses.Namespace.useList();
   const [chartValues, setChartValues] = useState<string>('');
-  const [defaultChartValues, setDefaultChartValues] = useState<string>('');
+  const [defaultChartValues, setDefaultChartValues] = useState<{}>('');
   const [chartValuesLoading, setChartValuesLoading] = useState(false);
   const [chartValuesFetchError, setChartValuesFetchError] = useState(null);
   const { enqueueSnackbar } = useSnackbar();
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const [versions, setVersions] = useState<string[]>([]);
-  const [selectedVersion, setSelectedVersion] = useState();
+  const [selectedVersion, setSelectedVersion] = useState<{ value: string; title: string }>();
   const [selectedNamespace, setSelectedNamespace] = useState<{
     value: string;
     title: string;
@@ -154,7 +154,7 @@ export function EditorDialog(props: {
   }
 
   function validateVersionFormField() {
-    if (selectedVersion === '' || !selectedVersion) {
+    if (!selectedVersion || selectedVersion.value === '') {
       return false;
     }
     return true;

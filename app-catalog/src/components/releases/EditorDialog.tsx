@@ -48,7 +48,10 @@ export function EditorDialog(props: {
   const checkBoxRef = useRef(null);
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const [versions, setVersions] = useState([]);
-  const [selectedVersion, setSelectedVersion] = useState();
+  const [selectedVersion, setSelectedVersion] = useState<{
+    value: string;
+    title: string;
+  }>();
 
   useEffect(() => {
     if (isUpdateRelease) {
@@ -223,7 +226,6 @@ export function EditorDialog(props: {
               options={versions}
               getOptionLabel={option => option.title}
               value={selectedVersion}
-              // @ts-ignore
               onChange={(event, newValue: { value: string; title: string }) => {
                 setSelectedVersion(newValue);
               }}
