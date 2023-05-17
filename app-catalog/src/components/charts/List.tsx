@@ -1,6 +1,6 @@
 import {
-  Loader,
   Link as RouterLink,
+  Loader,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {

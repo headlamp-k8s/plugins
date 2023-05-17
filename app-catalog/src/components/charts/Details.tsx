@@ -5,13 +5,13 @@ import {
   SectionBox,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Button, Link, Table, TableCell, TableRow, TableHead } from '@material-ui/core';
+import { Box, Button, Link, Table, TableCell, TableHead,TableRow } from '@material-ui/core';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useParams } from 'react-router';
-import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import rehypeFilter from 'react-markdown/lib/rehype-filter';
+import { useParams } from 'react-router';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import remarkGfm from 'remark-gfm';
 import { fetchChartDetailFromArtifact } from '../../api/charts';
 import { EditorDialog } from './EditorDialog';
 
@@ -137,10 +137,10 @@ export default function ChartDetails() {
             remarkPlugins={[remarkGfm, rehypeFilter]}
             children={chart.readme}
             components={{
-              a: ({ node, ...props }) => {
+              a: (props) => {
                 return <Link {...props} target="_blank" />
               },
-              table: ({ node, ...props }) => {
+              table: (props) => {
                 return (
                   <Table
                     {...props}
@@ -155,14 +155,14 @@ export default function ChartDetails() {
                 console.log(node, props);
                 return <TableHead {...props} />;
               },
-              tr: ({ node, ...props }) => {
+              tr: (props) => {
                 return <TableRow {...props} />;
               },
-              td: ({ node, ...props }) => {
+              td: (props) => {
                 return <TableCell {...props} style={{ textAlign: 'center', overflow: 'hidden' }} />;
               },
               // eslint-disable-next-line
-              pre: ({ node, inline, className, children, ...props }) => {
+              pre: ({ inline, className, children, ...props }) => {
                 return (
                   !inline && (
                     <pre {...props} className={className}>

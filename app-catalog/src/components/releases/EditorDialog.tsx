@@ -8,11 +8,11 @@ import {
   FormControlLabel,
   TextField,
 } from '@material-ui/core';
-import MonacoEditor from '@monaco-editor/react';
 import { Autocomplete } from '@material-ui/lab';
+import MonacoEditor from '@monaco-editor/react';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useRef, useState, useEffect } from 'react';
+import { useEffect,useRef, useState } from 'react';
 import { fetchChart, getActionStatus, upgradeRelease } from '../../api/releases';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
 
