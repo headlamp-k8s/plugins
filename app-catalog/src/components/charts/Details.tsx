@@ -5,7 +5,7 @@ import {
   SectionBox,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Button, Link, Table, TableCell, TableHead,TableRow } from '@material-ui/core';
+import { Box, Button, Link, Table, TableCell, TableHead, TableRow } from '@material-ui/core';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeFilter from 'react-markdown/lib/rehype-filter';
@@ -137,10 +137,10 @@ export default function ChartDetails() {
             remarkPlugins={[remarkGfm, rehypeFilter]}
             children={chart.readme}
             components={{
-              a: (props) => {
-                return <Link {...props} target="_blank" />
+              a: props => {
+                return <Link {...props} target="_blank" />;
               },
-              table: (props) => {
+              table: props => {
                 return (
                   <Table
                     {...props}
@@ -155,10 +155,10 @@ export default function ChartDetails() {
                 console.log(node, props);
                 return <TableHead {...props} />;
               },
-              tr: (props) => {
+              tr: props => {
                 return <TableRow {...props} />;
               },
-              td: (props) => {
+              td: props => {
                 return <TableCell {...props} style={{ textAlign: 'center', overflow: 'hidden' }} />;
               },
               // eslint-disable-next-line

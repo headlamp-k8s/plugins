@@ -12,7 +12,7 @@ import { Autocomplete } from '@material-ui/lab';
 import MonacoEditor from '@monaco-editor/react';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useEffect,useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchChart, getActionStatus, upgradeRelease } from '../../api/releases';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
 
@@ -55,20 +55,23 @@ export function EditorDialog(props: {
       fetchChart(release.chart.metadata.name).then(response => {
         const charts = response.charts;
         // sort by semantic versioning
-        const chartsCopy = _.cloneDeep(charts).sort((a: any, b: any) => {
-          const [aMajor, aMinor, aPatch] = a.version.split('.').map(Number);
-          const [bMajor, bMinor, bPatch] = b.version.split('.').map(Number);
-        
-          if (aMajor !== bMajor) {
-            return aMajor - bMajor;
-          }
-          if (aMinor !== bMinor) {
-            return aMinor - bMinor;
-          }
-          return aPatch - bPatch;
-        }).sort((a: any, b: any) => {
-          return a.name.localeCompare(b.name);
-        }).reverse();
+        const chartsCopy = _.cloneDeep(charts)
+          .sort((a: any, b: any) => {
+            const [aMajor, aMinor, aPatch] = a.version.split('.').map(Number);
+            const [bMajor, bMinor, bPatch] = b.version.split('.').map(Number);
+
+            if (aMajor !== bMajor) {
+              return aMajor - bMajor;
+            }
+            if (aMinor !== bMinor) {
+              return aMinor - bMinor;
+            }
+            return aPatch - bPatch;
+          })
+          .sort((a: any, b: any) => {
+            return a.name.localeCompare(b.name);
+          })
+          .reverse();
         setVersions(
           chartsCopy.map((chart: any) => ({
             title: `${chart.name} v${chart.version}`,
@@ -128,14 +131,14 @@ export function EditorDialog(props: {
   function upgradeReleaseHandler() {
     setIsFormSubmitting(true);
     if (!releaseUpdateDescription) {
-      enqueueSnackbar("Please add release description", {
+      enqueueSnackbar('Please add release description', {
         variant: 'error',
         autoHideDuration: 5000,
       });
       return;
     }
     if (!selectedVersion) {
-      enqueueSnackbar("Please select a version", {
+      enqueueSnackbar('Please select a version', {
         variant: 'error',
         autoHideDuration: 5000,
       });

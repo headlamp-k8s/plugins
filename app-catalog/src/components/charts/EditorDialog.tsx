@@ -107,13 +107,13 @@ export function EditorDialog(props: {
   ) {
     setIsFormSubmitting(true);
     if (!validateReleaseNameFormField()) {
-      enqueueSnackbar("Release name is required", {
+      enqueueSnackbar('Release name is required', {
         variant: 'error',
       });
       return;
     }
     if (!validateVersionFormField()) {
-      enqueueSnackbar("Version is required", {
+      enqueueSnackbar('Version is required', {
         variant: 'error',
       });
       return;
