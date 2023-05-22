@@ -167,7 +167,7 @@ export function EditorDialog(props: {
       chartYAML,
       selectedVersion.value,
       releaseUpdateDescription,
-      selectedVersion.version
+      selectedVersion.value
     )
       .then(() => {
         checkUpgradeStatus();
