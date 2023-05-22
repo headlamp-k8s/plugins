@@ -8,7 +8,7 @@ on:
 
 
 env:
-  HEADLAMP_PLUGIN_VERSION: 0.6.0-alpha.24
+  HEADLAMP_PLUGIN_VERSION: 0.6.0-alpha.27
 
 jobs:
   build:
