@@ -31,6 +31,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION format --check .
       - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION lint .
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test .
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION build .
+      # TODO: re-enable when tests are added
+      # - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test .
       - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION tsc .
-
