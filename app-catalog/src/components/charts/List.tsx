@@ -1,6 +1,6 @@
 import {
-  Loader,
   Link as RouterLink,
+  Loader,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
@@ -170,11 +170,13 @@ export function ChartsList() {
                       paddingTop: 0,
                     }}
                   >
-                    <Box style={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
+                    <Box
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       <Tooltip title={chart.name}>
                         <Typography component="h5" variant="h5">
                           <RouterLink
@@ -191,25 +193,28 @@ export function ChartsList() {
                     </Box>
                     <Box display="flex" justifyContent="space-between" my={1}>
                       <Typography>v{chart.version}</Typography>
-                      <Box marginLeft={1} style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
+                      <Box
+                        marginLeft={1}
+                        style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         <Tooltip title={chart?.repository?.name || ''}>
                           <span>{chart?.repository?.name || ''}</span>
                         </Tooltip>
                       </Box>
                     </Box>
                     <Divider />
-                    <Box mt={1} >
+                    <Box mt={1}>
                       <Typography>
                         {chart?.description?.slice(0, 100)}
-                        {chart?.description?.length > 100 &&
+                        {chart?.description?.length > 100 && (
                           <Tooltip title={chart?.description}>
                             <span>…</span>
                           </Tooltip>
-                        }
+                        )}
                       </Typography>
                     </Box>
                   </CardContent>
