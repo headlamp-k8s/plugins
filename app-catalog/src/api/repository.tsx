@@ -1,4 +1,5 @@
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { getHeadlampAPIHeaders } from './releases';
 
 const request = ApiProxy.request;
 
@@ -9,5 +10,6 @@ export function addRepository(repoName: string, repoURL: string) {
       name: repoName,
       url: repoURL,
     }),
+    headers: { ...getHeadlampAPIHeaders() },
   });
 }
