@@ -51,6 +51,7 @@ export function EditorDialog(props: {
   const [selectedVersion, setSelectedVersion] = useState<{
     value: string;
     title: string;
+    version: string;
   }>();
 
   useEffect(() => {
@@ -167,7 +168,7 @@ export function EditorDialog(props: {
       chartYAML,
       selectedVersion.value,
       releaseUpdateDescription,
-      selectedVersion.value
+      selectedVersion.version
     )
       .then(() => {
         checkUpgradeStatus();
@@ -226,7 +227,7 @@ export function EditorDialog(props: {
               options={versions}
               getOptionLabel={option => option.title}
               value={selectedVersion}
-              onChange={(event, newValue: { value: string; title: string }) => {
+              onChange={(event, newValue: { value: string; title: string; version: string }) => {
                 setSelectedVersion(newValue);
               }}
               renderInput={params => (
