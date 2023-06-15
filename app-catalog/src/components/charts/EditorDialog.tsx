@@ -132,7 +132,8 @@ export function EditorDialog(props: {
         releaseNamespace,
         btoa(unescape(encodeURIComponent(jsonToYAML(chartValuesDIFF)))),
         `${repoName}/${chart.name}`,
-        selectedVersion.value
+        selectedVersion.value,
+        `Install ${chart.name} (${selectedVersion.value}) in ${releaseNamespace} namespace`
       )
         .then(() => {
           checkInstallStatus(releaseName);

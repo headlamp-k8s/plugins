@@ -50,7 +50,8 @@ export function createRelease(
   namespace: string,
   values: string,
   chart: string,
-  version: string
+  version: string,
+  description: string
 ) {
   return request(`/helm/release/install?namespace=${namespace}`, {
     method: 'POST',
@@ -61,6 +62,7 @@ export function createRelease(
       values,
       chart,
       version,
+      description,
     }),
   });
 }
