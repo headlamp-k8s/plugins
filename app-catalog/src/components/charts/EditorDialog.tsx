@@ -141,34 +141,36 @@ export function EditorDialog(props: {
     );
     setInstallLoading(true);
 
-    addRepository(repoName, repoURL).then(() => {
-      createRelease(
-        releaseName,
-        selectedNamespace.value,
-        btoa(unescape(encodeURIComponent(jsonToYAML(chartValuesDIFF)))),
-        `${repoName}/${chart.name}`,
-        selectedVersion.value,
-        chartInstallDescription
-      )
-        .then(() => {
-          enqueueSnackbar(`Installation request for ${releaseName} accepted`, {
-            variant: 'info'
+    addRepository(repoName, repoURL)
+      .then(() => {
+        createRelease(
+          releaseName,
+          selectedNamespace.value,
+          btoa(unescape(encodeURIComponent(jsonToYAML(chartValuesDIFF)))),
+          `${repoName}/${chart.name}`,
+          selectedVersion.value,
+          chartInstallDescription
+        )
+          .then(() => {
+            enqueueSnackbar(`Installation request for ${releaseName} accepted`, {
+              variant: 'info',
+            });
+            handleEditor(false);
+            checkInstallStatus(releaseName);
           })
-          handleEditor(false);
-          checkInstallStatus(releaseName);
-        })
-        .catch(error => {
-          handleEditor(false);
-          enqueueSnackbar(`Error creating release request ${error}`, {
-            variant: 'error',
+          .catch(error => {
+            handleEditor(false);
+            enqueueSnackbar(`Error creating release request ${error}`, {
+              variant: 'error',
+            });
           });
+      })
+      .catch(error => {
+        handleEditor(false);
+        enqueueSnackbar(`Error adding repository ${error}`, {
+          variant: 'error',
         });
-    }).catch(error => {
-      handleEditor(false);
-      enqueueSnackbar(`Error adding repository ${error}`, {
-        variant: 'error',
       });
-    });
   }
 
   function validateFormField(fieldValue: { value: string; title: string } | null | string) {

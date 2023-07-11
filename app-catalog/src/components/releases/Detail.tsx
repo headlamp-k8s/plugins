@@ -107,8 +107,8 @@ export default function ReleaseDetail() {
               deleteRelease(namespace, releaseName).then(() => {
                 setIsDeleting(true);
                 enqueueSnackbar(`Delete request for release ${releaseName} accepted`, {
-                  variant: 'info'
-                })
+                  variant: 'info',
+                });
                 setOpenDeleteAlert(false);
                 checkDeleteReleaseStatus(releaseName);
               });
