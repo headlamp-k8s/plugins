@@ -149,6 +149,10 @@ export function EditorDialog(props: {
         chartInstallDescription
       )
         .then(() => {
+          enqueueSnackbar(`Install release request for ${releaseName} created successfully`, {
+            variant: 'info',
+          })
+          handleEditor(false);
           checkInstallStatus(releaseName);
         })
         .catch(error => {
@@ -291,6 +295,7 @@ export function EditorDialog(props: {
                 setReleaseName('');
                 setSelectedVersion(null);
                 setSelectedNamespace(null);
+                setChartInstallDescription('');
               }}
               language="yaml"
               height="500px"
