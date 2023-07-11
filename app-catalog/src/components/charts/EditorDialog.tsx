@@ -112,14 +112,16 @@ export function EditorDialog(props: {
       });
       return;
     }
-    if (!validateFormField(selectedVersion)) {
-      enqueueSnackbar('Version is required', {
+
+    if (!validateFormField(selectedNamespace)) {
+      enqueueSnackbar('Namespace is required', {
         variant: 'error',
       });
       return;
     }
-    if (!validateFormField(selectedNamespace)) {
-      enqueueSnackbar('Namespace is required', {
+
+    if (!validateFormField(selectedVersion)) {
+      enqueueSnackbar('Version is required', {
         variant: 'error',
       });
       return;
@@ -149,8 +151,8 @@ export function EditorDialog(props: {
         chartInstallDescription
       )
         .then(() => {
-          enqueueSnackbar(`Install release request for ${releaseName} created successfully`, {
-            variant: 'info',
+          enqueueSnackbar(`Installation request for ${releaseName} accepted`, {
+            variant: 'info'
           })
           handleEditor(false);
           checkInstallStatus(releaseName);
@@ -161,6 +163,11 @@ export function EditorDialog(props: {
             variant: 'error',
           });
         });
+    }).catch(error => {
+      handleEditor(false);
+      enqueueSnackbar(`Error adding repository ${error}`, {
+        variant: 'error',
+      });
     });
   }
 
