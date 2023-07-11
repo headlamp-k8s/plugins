@@ -39,7 +39,7 @@ export function EditorDialog(props: {
   const [selectedNamespace, setSelectedNamespace] = useState<{
     value: string;
     title: string;
-  }>({ value: 'default', title: 'default' });
+  }>();
   const [releaseName, setReleaseName] = useState('');
   const namespaceNames = namespaces?.map(namespace => ({
     value: namespace.metadata.name,
@@ -118,6 +118,13 @@ export function EditorDialog(props: {
       });
       return;
     }
+    if (!validateNamespaceFormField()) {
+      enqueueSnackbar('Namespace is required', {
+        variant: 'error',
+      });
+      return;
+    }
+
     const repoName = chart.repository.name;
     const repoURL = chart.repository.url;
     const jsonChartValues = yamlToJSON(chartValues);
@@ -148,7 +155,7 @@ export function EditorDialog(props: {
   }
 
   function validateReleaseNameFormField() {
-    if (releaseName === '') {
+    if (!releaseName) {
       return false;
     }
     return true;
@@ -156,6 +163,13 @@ export function EditorDialog(props: {
 
   function validateVersionFormField() {
     if (!selectedVersion || selectedVersion.value === '') {
+      return false;
+    }
+    return true;
+  }
+
+  function validateNamespaceFormField() {
+    if (!selectedNamespace || selectedNamespace.value === '') {
       return false;
     }
     return true;
@@ -180,7 +194,9 @@ export function EditorDialog(props: {
       }}
     >
       <DialogTitle>
-        <Box display="flex">
+        {
+          chartValuesLoading ? null : (
+<Box display="flex">
           <Box mr={2}>
             <TextField
               id="release-name"
@@ -240,6 +256,9 @@ export function EditorDialog(props: {
             />
           </Box>
         </Box>
+          )
+        }
+        
       </DialogTitle>
       <DialogContent>
         <Box height="100%">
@@ -259,6 +278,8 @@ export function EditorDialog(props: {
                 setInstallLoading(false);
                 editor.focus();
                 setReleaseName('');
+                setSelectedVersion(null);
+                setSelectedNamespace(null);
               }}
               language="yaml"
               height="500px"
