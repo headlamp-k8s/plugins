@@ -35,6 +35,7 @@ export function EditorDialog(props: {
   const { enqueueSnackbar } = useSnackbar();
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const [versions, setVersions] = useState<string[]>([]);
+  const [chartInstallDescription, setChartInstallDescription] = useState('');
   const [selectedVersion, setSelectedVersion] = useState<{ value: string; title: string }>();
   const [selectedNamespace, setSelectedNamespace] = useState<{
     value: string;
@@ -46,6 +47,10 @@ export function EditorDialog(props: {
     title: namespace.metadata.name,
   }));
   const themeName = localStorage.getItem('headlampThemePreference');
+
+  useEffect(() => {
+    setIsFormSubmitting(false);
+  }, [openEditor]);
 
   function handleChartValueFetch(chart: any) {
     const packageID = chart.package_id;
@@ -99,32 +104,33 @@ export function EditorDialog(props: {
     }, 2000);
   }
 
-  function installAndCreateReleaseHandler(
-    chart: any,
-    releaseName: string,
-    releaseNamespace: string,
-    chartValues: string
-  ) {
+  function installAndCreateReleaseHandler() {
     setIsFormSubmitting(true);
-    if (!validateReleaseNameFormField()) {
+    if (!validateFormField(releaseName)) {
       enqueueSnackbar('Release name is required', {
         variant: 'error',
       });
       return;
     }
-    if (!validateVersionFormField()) {
+    if (!validateFormField(selectedVersion)) {
       enqueueSnackbar('Version is required', {
         variant: 'error',
       });
       return;
     }
-    if (!validateNamespaceFormField()) {
+    if (!validateFormField(selectedNamespace)) {
       enqueueSnackbar('Namespace is required', {
         variant: 'error',
       });
       return;
     }
 
+    if (!validateFormField(chartInstallDescription)) {
+      enqueueSnackbar('Description is required', {
+        variant: 'error',
+      });
+      return;
+    }
     const repoName = chart.repository.name;
     const repoURL = chart.repository.url;
     const jsonChartValues = yamlToJSON(chartValues);
@@ -136,11 +142,11 @@ export function EditorDialog(props: {
     addRepository(repoName, repoURL).then(() => {
       createRelease(
         releaseName,
-        releaseNamespace,
+        selectedNamespace.value,
         btoa(unescape(encodeURIComponent(jsonToYAML(chartValuesDIFF)))),
         `${repoName}/${chart.name}`,
         selectedVersion.value,
-        `Install ${chart.name} (${selectedVersion.value}) in ${releaseNamespace} namespace`
+        chartInstallDescription
       )
         .then(() => {
           checkInstallStatus(releaseName);
@@ -154,25 +160,18 @@ export function EditorDialog(props: {
     });
   }
 
-  function validateReleaseNameFormField() {
-    if (!releaseName) {
-      return false;
+  function validateFormField(fieldValue: { value: string; title: string } | null | string) {
+    if (typeof fieldValue === 'string') {
+      if (fieldValue === '') {
+        return false;
+      }
+      return true;
+    } else {
+      if (!fieldValue || fieldValue.value === '') {
+        return false;
+      }
+      return true;
     }
-    return true;
-  }
-
-  function validateVersionFormField() {
-    if (!selectedVersion || selectedVersion.value === '') {
-      return false;
-    }
-    return true;
-  }
-
-  function validateNamespaceFormField() {
-    if (!selectedNamespace || selectedNamespace.value === '') {
-      return false;
-    }
-    return true;
   }
 
   useEffect(() => {
@@ -194,71 +193,83 @@ export function EditorDialog(props: {
       }}
     >
       <DialogTitle>
-        {
-          chartValuesLoading ? null : (
-<Box display="flex">
-          <Box mr={2}>
-            <TextField
-              id="release-name"
-              error={isFormSubmitting && releaseName === ''}
-              helperText={releaseName === '' ? 'Release name is required' : ''}
-              style={{
-                width: '20vw',
-              }}
-              label="Release Name"
-              value={releaseName}
-              placeholder="Enter a name for the release"
-              onChange={event => {
-                setReleaseName(event.target.value);
-              }}
-            />
-          </Box>
-          <Box>
-            {!error && namespaceNames && (
-              <Autocomplete
+        {chartValuesLoading ? null : (
+          <Box display="flex" justifyContent="space-evenly">
+            <Box mr={2}>
+              <TextField
+                id="release-name"
+                error={isFormSubmitting && !validateFormField(releaseName)}
                 style={{
-                  width: '20vw',
+                  width: '15vw',
                 }}
-                options={namespaceNames}
-                getOptionLabel={option => option.title}
-                defaultValue={namespaceNames[0]}
-                value={selectedNamespace}
-                // @ts-ignore
-                onChange={(event, newValue: { value: string; title: string }) => {
-                  setSelectedNamespace(newValue);
+                label="Release Name *"
+                value={releaseName}
+                placeholder="Enter a name for the release"
+                onChange={event => {
+                  setReleaseName(event.target.value);
                 }}
-                renderInput={params => (
-                  <TextField {...params} label="Namespaces" placeholder="Select Namespace" />
-                )}
               />
-            )}
-          </Box>
-          <Box ml={2}>
-            <Autocomplete
-              style={{
-                width: '20vw',
-              }}
-              options={versions}
-              getOptionLabel={option => option.title}
-              value={selectedVersion}
-              // @ts-ignore
-              onChange={(event, newValue: { value: string; title: string }) => {
-                setSelectedVersion(newValue);
-              }}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  label="Versions"
-                  placeholder="Select Version"
-                  error={isFormSubmitting && !selectedVersion}
+            </Box>
+            <Box>
+              {!error && namespaceNames && (
+                <Autocomplete
+                  style={{
+                    width: '15vw',
+                  }}
+                  options={namespaceNames}
+                  getOptionLabel={option => option.title}
+                  value={selectedNamespace}
+                  // @ts-ignore
+                  onChange={(event, newValue: { value: string; title: string }) => {
+                    setSelectedNamespace(newValue);
+                  }}
+                  renderInput={params => (
+                    <TextField
+                      {...params}
+                      label="Namespaces *"
+                      placeholder="Select Namespace"
+                      error={isFormSubmitting && !validateFormField(selectedNamespace)}
+                    />
+                  )}
                 />
               )}
-            />
+            </Box>
+            <Box ml={2}>
+              <Autocomplete
+                style={{
+                  width: '15vw',
+                }}
+                options={versions}
+                getOptionLabel={option => option.title}
+                value={selectedVersion}
+                // @ts-ignore
+                onChange={(event, newValue: { value: string; title: string }) => {
+                  setSelectedVersion(newValue);
+                }}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Versions *"
+                    placeholder="Select Version"
+                    error={isFormSubmitting && !validateFormField(selectedVersion)}
+                  />
+                )}
+              />
+            </Box>
+            <Box ml={2}>
+              <TextField
+                id="release-description"
+                style={{
+                  width: '15vw',
+                }}
+                error={isFormSubmitting && !validateFormField(chartInstallDescription)}
+                label="Release Description *"
+                value={chartInstallDescription}
+                onChange={event => setChartInstallDescription(event.target.value)}
+              />
+            </Box>
           </Box>
-        </Box>
-          )
-        }
-        
+        )}
       </DialogTitle>
       <DialogContent>
         <Box height="100%">
@@ -316,14 +327,7 @@ export function EditorDialog(props: {
               </>
             ) : (
               <Button
-                onClick={() => {
-                  installAndCreateReleaseHandler(
-                    chart,
-                    releaseName,
-                    selectedNamespace.value,
-                    chartValues
-                  );
-                }}
+                onClick={installAndCreateReleaseHandler}
                 variant="contained"
                 style={{
                   backgroundColor: '#000',
