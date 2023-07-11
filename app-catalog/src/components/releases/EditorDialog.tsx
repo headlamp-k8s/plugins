@@ -171,6 +171,10 @@ export function EditorDialog(props: {
       selectedVersion.version
     )
       .then(() => {
+        enqueueSnackbar(`Upgrade request for release ${releaseName} sent successfully`, {
+          variant: 'info'
+        })
+        handleEditor(false);
         checkUpgradeStatus();
       })
       .catch(() => {
@@ -257,7 +261,7 @@ export function EditorDialog(props: {
       </Box>
       <DialogContent>
         <Box pt={2} height="100%" my={1} p={1}>
-          <MonacoEditor
+          {openEditor && <MonacoEditor
             value={jsonToYAML(valuesToShow)}
             language="yaml"
             height="400px"
@@ -277,6 +281,7 @@ export function EditorDialog(props: {
               }
             }}
           />
+          }
         </Box>
       </DialogContent>
       <DialogActions
