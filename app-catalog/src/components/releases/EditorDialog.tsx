@@ -171,6 +171,10 @@ export function EditorDialog(props: {
       selectedVersion.version
     )
       .then(() => {
+        enqueueSnackbar(`Upgrade request for release ${releaseName} sent successfully`, {
+          variant: 'info',
+        });
+        handleEditor(false);
         checkUpgradeStatus();
       })
       .catch(() => {
@@ -257,26 +261,28 @@ export function EditorDialog(props: {
       </Box>
       <DialogContent>
         <Box pt={2} height="100%" my={1} p={1}>
-          <MonacoEditor
-            value={jsonToYAML(valuesToShow)}
-            language="yaml"
-            height="400px"
-            options={{
-              selectOnLineNumbers: true,
-            }}
-            onChange={value => {
-              handleEditorChange(value);
-            }}
-            theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-            onMount={editor => {
-              setReleaseUpdateDescription('');
-              setIsUserValues(false);
-              setValuesToShow(Object.assign({}, release.chart.values, release.config));
-              if (!isUpdateRelease) {
-                editor.updateOptions({ readOnly: true });
-              }
-            }}
-          />
+          {openEditor && (
+            <MonacoEditor
+              value={jsonToYAML(valuesToShow)}
+              language="yaml"
+              height="400px"
+              options={{
+                selectOnLineNumbers: true,
+              }}
+              onChange={value => {
+                handleEditorChange(value);
+              }}
+              theme={themeName === 'dark' ? 'vs-dark' : 'light'}
+              onMount={editor => {
+                setReleaseUpdateDescription('');
+                setIsUserValues(false);
+                setValuesToShow(Object.assign({}, release.chart.values, release.config));
+                if (!isUpdateRelease) {
+                  editor.updateOptions({ readOnly: true });
+                }
+              }}
+            />
+          )}
         </Box>
       </DialogContent>
       <DialogActions
