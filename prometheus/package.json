@@ -31,5 +31,22 @@
   },
   "devDependencies": {
     "@kinvolk/headlamp-plugin": "^0.6.1"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.4.0",
+    "@fortawesome/free-solid-svg-icons": "^6.4.0",
+    "bootstrap": "^4.5.3",
+    "flot": "^4.2.3",
+    "jquery": "^3.7.0",
+    "jquery.flot.tooltip": "^0.9.0",
+    "moment": "^2.29.1",
+    "moment-timezone": "^0.5.33",
+    "react-bootstrap": "^1.6.0",
+    "react-icons": "^4.1.0",
+    "react-redux": "^7.2.4",
+    "react-resize-detector": "^6.7.2",
+    "redux": "^4.1.0",
+    "tempusdominus-bootstrap-4": "^5.39.0",
+    "tempusdominus-core": "^5.19.0"
   }
 }
