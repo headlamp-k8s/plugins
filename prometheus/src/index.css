@@ -109,12 +109,13 @@ code {
 
 @font-face {
   font-family: 'codicon';
-  src: local('codicon'), url(./fonts/codicon.ttf) format('truetype');
+  /* src: local('codicon'), url(./src/Promlens/fonts/codicon.ttf) format('truetype'); */
+  src: local('codicon'), url(./Promlens/fonts/codicon.ttf) format('truetype');
 }
 
 @font-face {
   font-family: 'DejaVu Sans Mono';
-  src: local('DejaVu Sans Mono'), url('./fonts/DejaVuSansMono-webfont.woff') format('woff');
+  src: local('DejaVu Sans Mono'), url('./Promlens/fonts/DejaVuSansMono-webfont.woff') format('woff');
   font-weight: normal;
   font-style: normal;
 }
