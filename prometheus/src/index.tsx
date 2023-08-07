@@ -1,3 +1,6 @@
+import './globals';
+import './index.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import { DetailsViewSectionProps, registerDetailsViewSection } from '@kinvolk/headlamp-plugin/lib';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import React, { useEffect, useState } from 'react';

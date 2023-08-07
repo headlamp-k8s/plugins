@@ -43,15 +43,21 @@ export class PromAPI {
       cache: 'no-store',
       ...init,
     };
+    if (this.serverSettings.customFetch) {
+      const customFetch = this.serverSettings.customFetch;
+      return customFetch(url,init)
+    }
     return fetch(url, init);
   };
 
   fetchAPI = async <T>(resource: string, init?: RequestInit): Promise<APIResult<T>> => {
     const res = await this.fetch(resource, init);
-    if (!res.ok && ![badRequest, unprocessableEntity, serviceUnavailable].includes(res.status)) {
-      throw new Error(res.statusText);
-    }
-    const apiRes = (await res.json()) as APIResult<T>;
+    // HEADLAMP_TODO: This is a hack to get around the fact that the API is not returning the correct status codes.
+    // if (!res.ok && ![badRequest, unprocessableEntity, serviceUnavailable].includes(res.status)) {
+    //   throw new Error(res.statusText);
+    // }
+    // const apiRes = (await res.json()) as APIResult<T>;
+    const apiRes = res as APIResult<T>;
     if (apiRes.status === 'error') {
       throw new Error(apiRes.error !== undefined ? apiRes.error : 'missing "error" field in response JSON');
     }

@@ -6,6 +6,7 @@ export interface ServerSettings {
   access: 'proxy' | 'direct';
   datasourceID: number | null;
   withCredentials: boolean;
+  customFetch (url: string, init?: RequestInit): Promise<Response> | null;
 }
 
 export type QueryID = number;
