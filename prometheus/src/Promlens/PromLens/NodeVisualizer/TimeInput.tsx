@@ -21,7 +21,7 @@ import moment from 'moment-timezone';
 
 import 'tempusdominus-core';
 import 'tempusdominus-bootstrap-4';
-import '../../../node_modules/tempusdominus-bootstrap-4/build/css/tempusdominus-bootstrap-4.min.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 import { FaChevronRight, FaChevronLeft, FaTimes } from 'react-icons/fa';
 import { dom, library } from '@fortawesome/fontawesome-svg-core';
