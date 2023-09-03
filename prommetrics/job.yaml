@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hello-world-loop
+spec:
+  template:
+    spec:
+      containers:
+      - name: hello-world-loop
+        image: busybox  # You can use any lightweight Linux image
+        command:
+        - "/bin/sh"
+        - "-c"
+        - >
+          while true; do
+            echo "Hello, World!"
+            sleep 10
+          done
+      restartPolicy: OnFailure  # Specifies what to do when the container exits (e.g., OnFailure, Never)
