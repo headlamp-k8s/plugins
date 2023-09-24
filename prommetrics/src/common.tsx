@@ -4,117 +4,117 @@ import { Box, FormControlLabel, Switch } from '@material-ui/core';
 import { Button, ButtonGroup } from '@material-ui/core';
 import { useState } from 'react';
 
+export function GenericMetricsChart(props: {
+  cpuQuery: string;
+  memoryQuery: string;
+  networkRxQuery: string;
+  networkTxQuery: string;
+  filesystemReadQuery: string;
+  filesystemWriteQuery: string;
+}) {
+  const [chartVariant, setChartVariant] = useState<string>('cpu');
+  const [refresh, setRefresh] = useState<boolean>(true);
 
+  const handleChartVariantChange = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setChartVariant(event.currentTarget.value);
+  };
 
-export function GenericMetricsChart(props: { 
-    cpuQuery: string;
-    memoryQuery: string;
-    networkRxQuery: string;
-    networkTxQuery: string;
-    filesystemReadQuery: string;
-    filesystemWriteQuery: string;
- }) {
-    const [chartVariant, setChartVariant] = useState<string>('cpu');
-    const [refresh, setRefresh] = useState<boolean>(true);
-  
-    const handleChartVariantChange = (event: React.MouseEvent<HTMLButtonElement>) => {
-      setChartVariant(event.currentTarget.value);
-    };
-  
-    return (
-      <SectionBox>
-        <SectionHeader
-          title="Metrics"
-          actions={[
-            <FormControlLabel
-              control={
-                <Switch
-                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                    setRefresh(event.target.checked);
-                  }}
-                  checked={refresh}
-                  name="Auto Refresh"
-                />
-              }
-              label="Auto Refresh"
-            />,
-            <ButtonGroup size="small" aria-label="small outlined button group">
-              <Button
-                value="cpu"
-                onClick={handleChartVariantChange}
-                variant={chartVariant === 'cpu' ? 'contained' : 'outlined'}
-              >
-                CPU
-              </Button>
-              <Button
-                value="memory"
-                onClick={handleChartVariantChange}
-                variant={chartVariant === 'memory' ? 'contained' : 'outlined'}
-              >
-                Memory
-              </Button>
-              <Button
-                value="network"
-                onClick={handleChartVariantChange}
-                variant={chartVariant === 'network' ? 'contained' : 'outlined'}
-              >
-                Network
-              </Button>
-              <Button
-                value="filesystem"
-                onClick={handleChartVariantChange}
-                variant={chartVariant === 'filesystem' ? 'contained' : 'outlined'}
-              >
-                Filesystem
-              </Button>
-            </ButtonGroup>,
-          ]}
-        />
-  
-        <Box style={{ justifyContent: 'center', display: 'flex' }}>
-          <Box container spacing={2} style={{ height: '40vh', width: '80%' }}>
-            {chartVariant === 'cpu' && (
-              <CPUChart
-                query={props.cpuQuery}
-                autoRefresh={refresh}
-                {...props}
+  return (
+    <SectionBox>
+      <SectionHeader
+        title="Metrics"
+        actions={[
+          <FormControlLabel
+            control={
+              <Switch
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                  setRefresh(event.target.checked);
+                }}
+                checked={refresh}
+                name="Auto Refresh"
               />
-            )}
-            {chartVariant === 'memory' && (
-              <MemoryChart
-                query={props.memoryQuery}
-                autoRefresh={refresh}
-                {...props}
-              />
-            )}
-            {chartVariant === 'network' && (
-              <NetworkChart
-                rxQuery={props.networkRxQuery}
-                txQuery={props.networkTxQuery}
-                autoRefresh={refresh}
-                {...props}
-              />
-            )}
-            {chartVariant === 'filesystem' && (
-              <FilesystemChart
-                readQuery={props.filesystemReadQuery}
-                writeQuery={props.filesystemWriteQuery}
-                autoRefresh={refresh}
-                {...props}
-              />
-            )}
-          </Box>
+            }
+            label="Auto Refresh"
+          />,
+          <ButtonGroup size="small" aria-label="small outlined button group">
+            <Button
+              value="cpu"
+              onClick={handleChartVariantChange}
+              variant={chartVariant === 'cpu' ? 'contained' : 'outlined'}
+            >
+              CPU
+            </Button>
+            <Button
+              value="memory"
+              onClick={handleChartVariantChange}
+              variant={chartVariant === 'memory' ? 'contained' : 'outlined'}
+            >
+              Memory
+            </Button>
+            <Button
+              value="network"
+              onClick={handleChartVariantChange}
+              variant={chartVariant === 'network' ? 'contained' : 'outlined'}
+            >
+              Network
+            </Button>
+            <Button
+              value="filesystem"
+              onClick={handleChartVariantChange}
+              variant={chartVariant === 'filesystem' ? 'contained' : 'outlined'}
+            >
+              Filesystem
+            </Button>
+          </ButtonGroup>,
+        ]}
+      />
+
+      <Box style={{ justifyContent: 'center', display: 'flex' }}>
+        <Box container spacing={2} style={{ height: '40vh', width: '80%' }}>
+          {chartVariant === 'cpu' && (
+            <CPUChart query={props.cpuQuery} autoRefresh={refresh} {...props} />
+          )}
+          {chartVariant === 'memory' && (
+            <MemoryChart query={props.memoryQuery} autoRefresh={refresh} {...props} />
+          )}
+          {chartVariant === 'network' && (
+            <NetworkChart
+              rxQuery={props.networkRxQuery}
+              txQuery={props.networkTxQuery}
+              autoRefresh={refresh}
+              {...props}
+            />
+          )}
+          {chartVariant === 'filesystem' && (
+            <FilesystemChart
+              readQuery={props.filesystemReadQuery}
+              writeQuery={props.filesystemWriteQuery}
+              autoRefresh={refresh}
+              {...props}
+            />
+          )}
         </Box>
-      </SectionBox>
-    );
-  }
-  
+      </Box>
+    </SectionBox>
+  );
+}
 
+function createTickTimestampFormatter() {
+  let prevRenderedTimestamp = null;
 
+  return function (timestamp) {
+    const date = new Date(timestamp * 1000);
+    const currentTimestamp = `${date.getHours()}:${date.getMinutes()}`;
 
-function tickTimestampFormatter(timestamp) {
-  const date = new Date(timestamp * 1000);
-  return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+    // Check if the current timestamp is different from the previously rendered one
+    const shouldRenderDate = currentTimestamp !== prevRenderedTimestamp;
+
+    console.log('debug:', currentTimestamp, prevRenderedTimestamp);
+    // Update the previous timestamp
+    prevRenderedTimestamp = currentTimestamp;
+
+    return shouldRenderDate ? `${date.getHours()}:${date.getMinutes()}` : '';
+  };
 }
 
 function dataProcessor(response: any): any[] {
@@ -170,9 +170,23 @@ function formatBytes(bytes) {
 }
 
 export function CPUChart(props: { query: string; prometheusPrefix: string; autoRefresh: boolean }) {
+  const xTickFormatter = createTickTimestampFormatter();
+
   const XTickProps = {
     dataKey: 'timestamp',
-    tickFormatter: tickTimestampFormatter,
+    tick: ({ x, y, payload }) => {
+      const value = xTickFormatter(x);
+
+      return (
+        value !== '' && (
+          <g transform={`translate(${x},${y})`}>
+            <text x={0} y={10} dy={0} textAnchor="middle" fill="#666">
+              {value}
+            </text>
+          </g>
+        )
+      );
+    },
   };
 
   const YTickProps = {
@@ -185,7 +199,8 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
         {
           query: props.query,
           name: 'cpu',
-          color: '#8884d8',
+          strokeColor: '#7160BB',
+          fillColor: '#C2B0FF',
           dataProcessor: dataProcessor,
         },
       ]}
@@ -202,9 +217,23 @@ export function MemoryChart(props: {
   prometheusPrefix: string;
   autoRefresh: boolean;
 }) {
+  const xTickFormatter = createTickTimestampFormatter();
+
   const XTickProps = {
     dataKey: 'timestamp',
-    tickFormatter: tickTimestampFormatter,
+    tick: ({ x, y, payload }) => {
+      const value = xTickFormatter(x);
+
+      return (
+        value !== '' && (
+          <g transform={`translate(${x},${y})`}>
+            <text x={0} y={10} dy={0} textAnchor="middle" fill="#666">
+              {value}
+            </text>
+          </g>
+        )
+      );
+    },
   };
 
   const YTickProps = {
@@ -224,7 +253,8 @@ export function MemoryChart(props: {
         {
           query: props.query,
           name: 'memory',
-          color: '#8884d8',
+          strokeColor: '#7160BB',
+          fillColor: '#C2B0FF',
           dataProcessor: dataProcessor,
         },
       ]}
@@ -242,25 +272,41 @@ export function NetworkChart(props: {
   prometheusPrefix: string;
   autoRefresh: boolean;
 }) {
+  const xTickFormatter = createTickTimestampFormatter();
+
   return (
     <Chart
       plots={[
         {
           query: props.rxQuery,
           name: 'recieve',
-          color: '#8884d8',
+          strokeColor: '#7160BB',
+          fillColor: '#C2B0FF',
           dataProcessor: dataProcessor,
         },
         {
           query: props.txQuery,
           name: 'transmit',
-          color: '#82ca9d',
+          strokeColor: '#0079D4',
+          fillColor: '#0079D4',
           dataProcessor: dataProcessor,
         },
       ]}
       XTickProps={{
         dataKey: 'timestamp',
-        tickFormatter: tickTimestampFormatter,
+        tick: ({ x, y, payload }) => {
+          const value = xTickFormatter(x);
+
+          return (
+            value !== '' && (
+              <g transform={`translate(${x},${y})`}>
+                <text x={0} y={10} dy={0} textAnchor="middle" fill="#666">
+                  {value}
+                </text>
+              </g>
+            )
+          );
+        },
       }}
       YTickProps={{
         domain: ['dataMin', 'auto'],
@@ -284,43 +330,42 @@ export function FilesystemChart(props: {
   prometheusPrefix: string;
   autoRefresh: boolean;
 }) {
+
+  const xTickFormatter = createTickTimestampFormatter();
+
   return (
     <Chart
       plots={[
         {
           query: props.readQuery,
           name: 'read',
-          color: '#8884d8',
-          dataProcessor: response => {
-            const data = [];
-            // convert the response to a JSON object
-            response['data']['result'][0]['values'].forEach(element => {
-              // convert value to a number
-
-              data.push({ timestamp: element[0], y: Number(element[1]) });
-            });
-            return data;
-          },
+          strokeColor: '#7160BB',
+          fillColor: '#C2B0FF',
+          dataProcessor: dataProcessor,
         },
         {
           query: props.writeQuery,
           name: 'write',
-          color: '#82ca9d',
-          dataProcessor: response => {
-            const data = [];
-            // convert the response to a JSON object
-            response['data']['result'][0]['values'].forEach(element => {
-              // convert value to a number
-
-              data.push({ timestamp: element[0], y: Number(element[1]) });
-            });
-            return data;
-          },
+          strokeColor: '#0079D4',
+          fillColor: '#0079D4',
+          dataProcessor: dataProcessor,
         },
       ]}
       XTickProps={{
         dataKey: 'timestamp',
-        tickFormatter: tickTimestampFormatter,
+        tick: ({ x, y, payload }) => {
+          const value = xTickFormatter(x);
+
+          return (
+            value !== '' && (
+              <g transform={`translate(${x},${y})`}>
+                <text x={0} y={10} dy={0} textAnchor="middle" fill="#666">
+                  {value}
+                </text>
+              </g>
+            )
+          );
+        },
       }}
       YTickProps={{
         domain: ['dataMin', 'auto'],

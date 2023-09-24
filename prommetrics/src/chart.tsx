@@ -1,13 +1,15 @@
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box,Typography } from '@material-ui/core';
 import { useEffect, useState } from 'react';
-import { Area, AreaChart, Legend,ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { fetchMetrics } from './request';
 
 export function Chart(props: {
   plots: Array<{
     query: string;
     name: string;
-    color: string;
+    fillColor: string;
+    strokeColor: string;
     dataProcessor: (data: any) => any[];
   }>;
   prometheusPrefix: string;
@@ -19,6 +21,7 @@ export function Chart(props: {
   //
   const [metrics, setMetrics] = useState<any>({});
   const [state, setState] = useState<any>(null);
+  const [error, setError] = useState<any>(null);
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
@@ -84,6 +87,7 @@ export function Chart(props: {
         setState('success');
       }
     } catch (e) {
+      setError(e);
       setState('error');
     }
   };
@@ -125,8 +129,8 @@ export function Chart(props: {
             stackId="1"
             type="monotone"
             dataKey={plot.name}
-            stroke={plot.color}
-            fill={plot.color}
+            stroke={plot.strokeColor}
+            fill={plot.fillColor}
             activeDot={{ r: 8 }}
             animationDuration={props.autoRefresh ? 0 : 400} // Disable animation when refreshing
           />
@@ -136,9 +140,35 @@ export function Chart(props: {
   } else if (state === 'loading') {
     chartContent = <Loader title="Fetching Data" />;
   } else if (state === 'error') {
-    chartContent = <div>Error</div>;
+    chartContent = (
+      <Box
+        width="100%"
+        height="100%"
+        p={2}
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+      >
+        <Box>
+          <Typography variant="h5">Error:{error}</Typography>
+          </Box>
+      </Box>
+    )
   } else {
-    chartContent = <div>No Data</div>;
+    chartContent = (
+      <Box
+        width="100%"
+        height="100%"
+        p={2}
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+      >
+        <Box>
+          <Typography variant="h5">No Data</Typography>
+          </Box>
+      </Box>
+    );
   }
 
   return (

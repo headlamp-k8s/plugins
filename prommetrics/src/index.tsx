@@ -68,15 +68,6 @@ function PrometheusMetrics(resource: DetailsViewSectionProps) {
       </MetricsEnabled>
     );
   }
-
-  //   if (resource.kind === 'Node') {
-  //     return (
-  //         <MetricsEnabled>
-  //             <NodeMetrics
-  //                 nodeName={resource.jsonData.status.addresses[0].address}
-  //             />
-  //         </MetricsEnabled>
-  //     )}
   return <div>not a pod</div>;
 }
 
