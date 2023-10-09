@@ -1,8 +1,9 @@
 import { Chart } from './chart';
-import { SectionBox, SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, FormControlLabel, Switch } from '@material-ui/core';
+import { SectionBox, SectionHeader, } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box,IconButton } from '@material-ui/core';
 import { Button, ButtonGroup } from '@material-ui/core';
 import { useState } from 'react';
+import { Icon } from '@iconify/react';
 
 export function GenericMetricsChart(props: {
   cpuQuery: string;
@@ -24,19 +25,12 @@ export function GenericMetricsChart(props: {
       <SectionHeader
         title="Metrics"
         actions={[
-          <FormControlLabel
-            control={
-              <Switch
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                  setRefresh(event.target.checked);
-                }}
-                checked={refresh}
-                name="Auto Refresh"
-              />
-            }
-            label="Auto Refresh"
-          />,
-          <ButtonGroup size="small" aria-label="small outlined button group">
+          <div style={{paddingRight:"1rem"}}>
+            <IconButton onClick={()=>{setRefresh(!refresh)}}>
+              {refresh?<Icon icon="tabler:refresh"/>:<Icon icon="tabler:refresh-off"/>}
+            </IconButton>
+          </div>,
+          <ButtonGroup disableElevation size="small" aria-label="small outlined button group">
             <Button
               value="cpu"
               onClick={handleChartVariantChange}
@@ -109,7 +103,6 @@ function createTickTimestampFormatter() {
     // Check if the current timestamp is different from the previously rendered one
     const shouldRenderDate = currentTimestamp !== prevRenderedTimestamp;
 
-    console.log('debug:', currentTimestamp, prevRenderedTimestamp);
     // Update the previous timestamp
     prevRenderedTimestamp = currentTimestamp;
 
