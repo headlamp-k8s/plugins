@@ -25,7 +25,7 @@ import { EditorDialog } from './EditorDialog';
 
 export const PAGE_OFFSET_COUNT_FOR_CHARTS = 9;
 
-export function ChartsList() {
+export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   const helmChartCategoryList = [
     { title: 'All', value: 0 },
     { title: 'AI / Machine learning', value: 1 },
@@ -47,7 +47,7 @@ export function ChartsList() {
 
   useEffect(() => {
     setCharts(null);
-    fetchChartsFromArtifact(search, chartCategory, page).then(response => {
+    fetchCharts(search, chartCategory, page).then(response => {
       setCharts(response.packages);
       const facets = response.facets;
       const categoryOptions = facets.find(
@@ -118,10 +118,26 @@ export function ChartsList() {
           // @ts-ignore
           setChartCategory(newValue);
         }}
-        renderInput={params => <TextField {...params} label="Categories" placeholder="Favorites" />}
+        renderInput={params => {
+          if (process.env.NODE_ENV === 'test') {
+            // To keep the ids stable under test.
+            params.id = params.id ? params.id.replace(/[0-9]/g, '') : params.id;
+            params.inputProps.id = params.inputProps.id
+              ? params.inputProps.id.replace(/[0-9]/g, '')
+              : params.inputProps.id;
+            params.InputLabelProps.id = params.InputLabelProps.id
+              ? params.InputLabelProps.id.replace(/[0-9]/g, '')
+              : params.InputLabelProps.id;
+            params.InputLabelProps.htmlFor = params.InputLabelProps.htmlFor
+              ? params.InputLabelProps.htmlFor.replace(/[0-9]/g, '')
+              : params.InputLabelProps.htmlFor;
+          }
+          return <TextField {...params} label="Categories" placeholder="Favorites" />;
+        }}
       />
     );
   }
+
   return (
     <>
       <EditorDialog
