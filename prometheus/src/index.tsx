@@ -1,14 +1,11 @@
 import {
   DefaultDetailsViewSection,
   DetailsViewSectionProps,
+  registerDetailsViewHeaderActionsProcessor,
   registerDetailsViewSectionsProcessor,
-  registerDetailsViewHeaderActionsProcessor
 } from '@kinvolk/headlamp-plugin/lib';
-import { GenericMetricsChart, usePluginSettings } from './common';
-import { Tooltip } from '@material-ui/core';
-import ToggleButton from '@material-ui/lab/ToggleButton';
-import { Icon } from '@iconify/react';
-import React from 'react';
+import { GenericMetricsChart } from './common';
+import VisibilityButton from './VisibilityButton';
 
 function PrometheusMetrics(resource: DetailsViewSectionProps) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
@@ -70,31 +67,6 @@ registerDetailsViewSectionsProcessor(function addSubheaderSection(resource, sect
   return sections;
 });
 
-function VisibilityButton() {
-  const pluginSettings = usePluginSettings();
-
-  const [description, icon] = React.useMemo(() => {
-    if (pluginSettings.isVisible) {
-      return ['Hide Prometheus metrics', 'mdi:chart-box-outline'];
-    }
-    return ['Show Prometheus metrics', 'mdi:chart-box'];
-  },
-  [pluginSettings]);
-
-  return (
-    <Tooltip title={description}>
-      <ToggleButton
-        aria-label={"description"}
-        onClick={() => pluginSettings.setIsVisible(visible => !visible)}
-        selected={pluginSettings.isVisible}
-        size="small"
-      >
-        <Icon icon={icon} width="24px" />
-      </ToggleButton>
-    </Tooltip>
-  );
-}
-
 registerDetailsViewHeaderActionsProcessor(function addPrometheusMetricsButton(resource, actions) {
   // Ignore if there is no resource.
   if (!resource) {
@@ -107,13 +79,10 @@ registerDetailsViewHeaderActionsProcessor(function addPrometheusMetricsButton(re
     return actions;
   }
 
-  actions.splice(0, 0,
-    {
-      id: prometheusAction,
-      action: (
-        <VisibilityButton />
-      ),
-    });
+  actions.splice(0, 0, {
+    id: prometheusAction,
+    action: <VisibilityButton />,
+  });
 
   return actions;
 });

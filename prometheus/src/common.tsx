@@ -1,37 +1,25 @@
 import { Icon } from '@iconify/react';
 import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { makeStyles, Box, IconButton, Paper, Button, Typography, Link, Grid } from '@material-ui/core';
+import {
+  Box,
+  Button,
+  Grid,
+  IconButton,
+  Link,
+  makeStyles,
+  Paper,
+  Typography,
+} from '@material-ui/core';
 import Alert from '@material-ui/lab/Alert';
 import ToggleButton from '@material-ui/lab/ToggleButton';
 import ToggleButtonGroup from '@material-ui/lab/ToggleButtonGroup';
 import React, { useEffect, useState } from 'react';
+import skeletonImg from '../assets/chart-skeleton.png';
 import { Chart } from './chart';
 import { isPrometheusInstalled } from './request';
-import skeletonImg from '../assets/chart-skeleton.png';
-import { useBetween } from 'use-between';
+import { usePluginSettings } from './util';
 
 const learnMoreLink = 'https://github.com/headlamp-k8s/plugins/tree/main/prometheus#readme';
-
-const _pluginSettings = {
-  visible: true,
-};
-
-const useSettings = () => {
-  const [isVisible, setIsVisible] = useState(_pluginSettings.visible);
-
-  useEffect(() => {
-    _pluginSettings.visible = isVisible;
-  }, [isVisible]);
-
-
-  return {
-    isVisible,
-    setIsVisible,
-  };
-};
-
-export const usePluginSettings = () => useBetween(useSettings);
-
 
 const useStyles = makeStyles(theme => ({
   skeletonBox: {
@@ -194,7 +182,11 @@ export function GenericMetricsChart(props: {
             <Typography variant="h5">Install Prometheus for accessing metrics charts</Typography>
           </Grid>
           <Grid item>
-            <Typography><Link href={learnMoreLink} target="_blank">Learn more about enabling advanced charts.</Link></Typography>
+            <Typography>
+              <Link href={learnMoreLink} target="_blank">
+                Learn more about enabling advanced charts.
+              </Link>
+            </Typography>
           </Grid>
           <Grid item>
             <Button
