@@ -2,8 +2,13 @@ import {
   DefaultDetailsViewSection,
   DetailsViewSectionProps,
   registerDetailsViewSectionsProcessor,
+  registerDetailsViewHeaderActionsProcessor
 } from '@kinvolk/headlamp-plugin/lib';
-import { GenericMetricsChart } from './common';
+import { GenericMetricsChart, usePluginSettings } from './common';
+import { Tooltip } from '@material-ui/core';
+import ToggleButton from '@material-ui/lab/ToggleButton';
+import { Icon } from '@iconify/react';
+import React from 'react';
 
 function PrometheusMetrics(resource: DetailsViewSectionProps) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
@@ -63,4 +68,52 @@ registerDetailsViewSectionsProcessor(function addSubheaderSection(resource, sect
   });
 
   return sections;
+});
+
+function VisibilityButton() {
+  const pluginSettings = usePluginSettings();
+
+  const [description, icon] = React.useMemo(() => {
+    if (pluginSettings.isVisible) {
+      return ['Hide Prometheus metrics', 'mdi:chart-box-outline'];
+    }
+    return ['Show Prometheus metrics', 'mdi:chart-box'];
+  },
+  [pluginSettings]);
+
+  return (
+    <Tooltip title={description}>
+      <ToggleButton
+        aria-label={"description"}
+        onClick={() => pluginSettings.setIsVisible(visible => !visible)}
+        selected={pluginSettings.isVisible}
+        size="small"
+      >
+        <Icon icon={icon} width="24px" />
+      </ToggleButton>
+    </Tooltip>
+  );
+}
+
+registerDetailsViewHeaderActionsProcessor(function addPrometheusMetricsButton(resource, actions) {
+  // Ignore if there is no resource.
+  if (!resource) {
+    return actions;
+  }
+
+  const prometheusAction = 'prom_metrics';
+  // If the action is already there, we do nothing.
+  if (actions.findIndex(action => action.id === prometheusAction) !== -1) {
+    return actions;
+  }
+
+  actions.splice(0, 0,
+    {
+      id: prometheusAction,
+      action: (
+        <VisibilityButton />
+      ),
+    });
+
+  return actions;
 });

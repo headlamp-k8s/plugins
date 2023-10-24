@@ -1,12 +1,54 @@
 import { Icon } from '@iconify/react';
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, IconButton, Paper } from '@material-ui/core';
+import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { makeStyles, Box, IconButton, Paper, Button, Typography, Link, Grid } from '@material-ui/core';
 import Alert from '@material-ui/lab/Alert';
 import ToggleButton from '@material-ui/lab/ToggleButton';
 import ToggleButtonGroup from '@material-ui/lab/ToggleButtonGroup';
 import React, { useEffect, useState } from 'react';
 import { Chart } from './chart';
 import { isPrometheusInstalled } from './request';
+import skeletonImg from '../assets/chart-skeleton.png';
+import { useBetween } from 'use-between';
+
+const learnMoreLink = 'https://github.com/headlamp-k8s/plugins/tree/main/prometheus#readme';
+
+const _pluginSettings = {
+  visible: true,
+};
+
+const useSettings = () => {
+  const [isVisible, setIsVisible] = useState(_pluginSettings.visible);
+
+  useEffect(() => {
+    _pluginSettings.visible = isVisible;
+  }, [isVisible]);
+
+
+  return {
+    isVisible,
+    setIsVisible,
+  };
+};
+
+export const usePluginSettings = () => useBetween(useSettings);
+
+
+const useStyles = makeStyles(theme => ({
+  skeletonBox: {
+    backgroundImage: `url(${skeletonImg})`,
+    backgroundSize: 'contain',
+    backgroundRepeat: 'no-repeat',
+    backgroundPositionX: 'center',
+    height: '450px',
+  },
+  dismissButton: {
+    backgroundColor: theme.palette.common.black,
+    color: theme.palette.primary.contrastText,
+    '&:hover': {
+      color: theme.palette.primary.text,
+    },
+  },
+}));
 
 export function GenericMetricsChart(props: {
   cpuQuery: string;
@@ -23,6 +65,8 @@ export function GenericMetricsChart(props: {
     INSTALLED,
   }
 
+  const classes = useStyles();
+  const pluginSettings = usePluginSettings();
   const [chartVariant, setChartVariant] = useState<string>('cpu');
   const [refresh, setRefresh] = useState<boolean>(true);
 
@@ -53,6 +97,10 @@ export function GenericMetricsChart(props: {
   const handleChartVariantChange = (event: React.MouseEvent<HTMLButtonElement>) => {
     setChartVariant(event.currentTarget.value);
   };
+
+  if (!pluginSettings.isVisible) {
+    return null;
+  }
 
   return (
     <SectionBox>
@@ -127,16 +175,38 @@ export function GenericMetricsChart(props: {
         </Box>
       ) : state === prometheusState.LOADING ? (
         <Box m={2}>
-          <Alert severity="info">Fetching Prometheus Info</Alert>
+          <Loader title="Loading Prometheus Info" />
         </Box>
       ) : state === prometheusState.ERROR ? (
         <Box m={2}>
           <Alert severity="warning">Error fetching prometheus Info</Alert>
         </Box>
       ) : (
-        <Box m={2}>
-          <Alert severity="error">Prometheus is not installed</Alert>
-        </Box>
+        <Grid
+          container
+          spacing={2}
+          direction="column"
+          justifyContent="center"
+          alignItems="center"
+          className={classes.skeletonBox}
+        >
+          <Grid item>
+            <Typography variant="h5">Install Prometheus for accessing metrics charts</Typography>
+          </Grid>
+          <Grid item>
+            <Typography><Link href={learnMoreLink} target="_blank">Learn more about enabling advanced charts.</Link></Typography>
+          </Grid>
+          <Grid item>
+            <Button
+              className={classes.dismissButton}
+              size="small"
+              variant="contained"
+              onClick={() => pluginSettings.setIsVisible(false)}
+            >
+              Dismiss
+            </Button>
+          </Grid>
+        </Grid>
       )}
     </SectionBox>
   );
