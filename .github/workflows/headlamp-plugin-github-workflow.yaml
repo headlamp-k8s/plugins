@@ -8,7 +8,7 @@ on:
 
 
 env:
-  HEADLAMP_PLUGIN_VERSION: 0.6.0-alpha.27
+  HEADLAMP_PLUGIN_VERSION: latest
 
 jobs:
   build:
@@ -32,6 +32,5 @@ jobs:
       - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION format --check .
       - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION lint .
       - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION build .
-      # TODO: re-enable when tests are added
-      # - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test .
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test .
       - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION tsc .
