@@ -10,11 +10,11 @@ import { Box } from '@material-ui/core';
 import { useEffect, useState } from 'react';
 import { listReleases } from '../../api/releases';
 
-export default function ReleaseList() {
+export default function ReleaseList({ fetchReleases = listReleases }) {
   const [releases, setReleases] = useState<Array<any> | null>(null);
 
   useEffect(() => {
-    listReleases().then(response => {
+    fetchReleases().then(response => {
       if (!response.releases) {
         setReleases([]);
         return;

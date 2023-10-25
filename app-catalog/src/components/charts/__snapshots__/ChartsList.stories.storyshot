@@ -1,0 +1,605 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Storyshots components/charts/List Empty Charts 1`] = `
+<div>
+  <div
+    class="MuiGrid-root makeStyles-sectionHeader makeStyles-sectionHeader MuiGrid-container MuiGrid-spacing-xs-2 MuiGrid-align-items-xs-center MuiGrid-justify-content-xs-space-between"
+  >
+    <div
+      class="MuiGrid-root MuiGrid-item"
+    >
+      <div
+        class="MuiBox-root MuiBox-root"
+      >
+        <h1
+          class="MuiTypography-root makeStyles-sectionTitle makeStyles-sectionTitle MuiTypography-h1 MuiTypography-noWrap"
+        >
+          Applications
+        </h1>
+        <div
+          class="MuiBox-root MuiBox-root"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item"
+    >
+      <div
+        class="MuiGrid-root MuiGrid-container MuiGrid-item MuiGrid-align-items-xs-center MuiGrid-justify-content-xs-flex-end"
+      >
+        <div
+          class="MuiGrid-root MuiGrid-item"
+        >
+          <div
+            class="MuiFormControl-root MuiTextField-root"
+            style="width: 20vw; margin: 0px 1rem;"
+          >
+            <label
+              class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiFormLabel-focused MuiInputLabel-focused"
+              data-shrink="true"
+              for="outlined-basic"
+              id="outlined-basic-label"
+            >
+              Search
+            </label>
+            <div
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-focused MuiInput-focused MuiInputBase-formControl MuiInput-formControl"
+            >
+              <input
+                aria-invalid="false"
+                class="MuiInputBase-input MuiInput-input"
+                id="outlined-basic"
+                type="text"
+                value=""
+              />
+            </div>
+          </div>
+        </div>
+        <div
+          class="MuiGrid-root MuiGrid-item"
+        >
+          <div
+            aria-expanded="false"
+            class="MuiAutocomplete-root MuiAutocomplete-hasClearIcon MuiAutocomplete-hasPopupIcon"
+            role="combobox"
+            style="width: 20vw;"
+          >
+            <div
+              class="MuiFormControl-root MuiTextField-root MuiFormControl-fullWidth"
+            >
+              <label
+                class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiFormLabel-filled"
+                data-shrink="true"
+                for="mui-"
+                id="mui--label"
+              >
+                Categories
+              </label>
+              <div
+                class="MuiInputBase-root MuiInput-root MuiInput-underline MuiAutocomplete-inputRoot MuiInputBase-fullWidth MuiInput-fullWidth MuiInputBase-formControl MuiInput-formControl MuiInputBase-adornedEnd"
+              >
+                <input
+                  aria-autocomplete="list"
+                  aria-invalid="false"
+                  autocapitalize="none"
+                  autocomplete="off"
+                  class="MuiInputBase-input MuiInput-input MuiAutocomplete-input MuiAutocomplete-inputFocused MuiInputBase-inputAdornedEnd"
+                  id="mui-"
+                  placeholder="Favorites"
+                  spellcheck="false"
+                  type="text"
+                  value="All"
+                />
+                <div
+                  class="MuiAutocomplete-endAdornment"
+                >
+                  <button
+                    aria-label="Clear"
+                    class="MuiButtonBase-root MuiIconButton-root MuiAutocomplete-clearIndicator MuiAutocomplete-clearIndicatorDirty"
+                    tabindex="-1"
+                    title="Clear"
+                    type="button"
+                  >
+                    <span
+                      class="MuiIconButton-label"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="MuiTouchRipple-root"
+                    />
+                  </button>
+                  <button
+                    aria-label="Open"
+                    class="MuiButtonBase-root MuiIconButton-root MuiAutocomplete-popupIndicator"
+                    tabindex="-1"
+                    title="Open"
+                    type="button"
+                  >
+                    <span
+                      class="MuiIconButton-label"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="MuiSvgIcon-root"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M7 10l5 5 5-5z"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="MuiTouchRipple-root"
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="MuiBox-root MuiBox-root"
+  >
+    <div
+      class="MuiBox-root MuiBox-root"
+      style=""
+    >
+      <h2
+        class="MuiTypography-root MuiTypography-h5"
+      >
+        No charts found for category: All
+      </h2>
+    </div>
+  </div>
+  <div
+    class="MuiBox-root MuiBox-root"
+  >
+    <a
+      class="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorPrimary"
+      href="https://artifacthub.io/"
+      target="_blank"
+    >
+      Powered by ArtifactHub
+    </a>
+  </div>
+</div>
+`;
+
+exports[`Storyshots components/charts/List Some Charts 1`] = `
+<div>
+  <div
+    class="MuiGrid-root makeStyles-sectionHeader makeStyles-sectionHeader MuiGrid-container MuiGrid-spacing-xs-2 MuiGrid-align-items-xs-center MuiGrid-justify-content-xs-space-between"
+  >
+    <div
+      class="MuiGrid-root MuiGrid-item"
+    >
+      <div
+        class="MuiBox-root MuiBox-root"
+      >
+        <h1
+          class="MuiTypography-root makeStyles-sectionTitle makeStyles-sectionTitle MuiTypography-h1 MuiTypography-noWrap"
+        >
+          Applications
+        </h1>
+        <div
+          class="MuiBox-root MuiBox-root"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item"
+    >
+      <div
+        class="MuiGrid-root MuiGrid-container MuiGrid-item MuiGrid-align-items-xs-center MuiGrid-justify-content-xs-flex-end"
+      >
+        <div
+          class="MuiGrid-root MuiGrid-item"
+        >
+          <div
+            class="MuiFormControl-root MuiTextField-root"
+            style="width: 20vw; margin: 0px 1rem;"
+          >
+            <label
+              class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiFormLabel-focused MuiInputLabel-focused"
+              data-shrink="true"
+              for="outlined-basic"
+              id="outlined-basic-label"
+            >
+              Search
+            </label>
+            <div
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-focused MuiInput-focused MuiInputBase-formControl MuiInput-formControl"
+            >
+              <input
+                aria-invalid="false"
+                class="MuiInputBase-input MuiInput-input"
+                id="outlined-basic"
+                type="text"
+                value=""
+              />
+            </div>
+          </div>
+        </div>
+        <div
+          class="MuiGrid-root MuiGrid-item"
+        >
+          <div
+            aria-expanded="false"
+            class="MuiAutocomplete-root MuiAutocomplete-hasClearIcon MuiAutocomplete-hasPopupIcon"
+            role="combobox"
+            style="width: 20vw;"
+          >
+            <div
+              class="MuiFormControl-root MuiTextField-root MuiFormControl-fullWidth"
+            >
+              <label
+                class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiFormLabel-filled"
+                data-shrink="true"
+                for="mui-"
+                id="mui--label"
+              >
+                Categories
+              </label>
+              <div
+                class="MuiInputBase-root MuiInput-root MuiInput-underline MuiAutocomplete-inputRoot MuiInputBase-fullWidth MuiInput-fullWidth MuiInputBase-formControl MuiInput-formControl MuiInputBase-adornedEnd"
+              >
+                <input
+                  aria-autocomplete="list"
+                  aria-invalid="false"
+                  autocapitalize="none"
+                  autocomplete="off"
+                  class="MuiInputBase-input MuiInput-input MuiAutocomplete-input MuiAutocomplete-inputFocused MuiInputBase-inputAdornedEnd"
+                  id="mui-"
+                  placeholder="Favorites"
+                  spellcheck="false"
+                  type="text"
+                  value="All"
+                />
+                <div
+                  class="MuiAutocomplete-endAdornment"
+                >
+                  <button
+                    aria-label="Clear"
+                    class="MuiButtonBase-root MuiIconButton-root MuiAutocomplete-clearIndicator MuiAutocomplete-clearIndicatorDirty"
+                    tabindex="-1"
+                    title="Clear"
+                    type="button"
+                  >
+                    <span
+                      class="MuiIconButton-label"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="MuiTouchRipple-root"
+                    />
+                  </button>
+                  <button
+                    aria-label="Open"
+                    class="MuiButtonBase-root MuiIconButton-root MuiAutocomplete-popupIndicator"
+                    tabindex="-1"
+                    title="Open"
+                    type="button"
+                  >
+                    <span
+                      class="MuiIconButton-label"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="MuiSvgIcon-root"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M7 10l5 5 5-5z"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="MuiTouchRipple-root"
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="MuiBox-root MuiBox-root"
+  >
+    <div
+      class="MuiBox-root MuiBox-root"
+      style=""
+    >
+      <div
+        class="MuiPaper-root MuiCard-root MuiPaper-elevation1 MuiPaper-rounded"
+      >
+        <div
+          class="MuiBox-root MuiBox-root"
+        >
+          <img
+            class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img"
+            src="https://artifacthub.io/image/0503add5-3fce-4b63-bbf3-b9f649512a86"
+            style="width: 60px; margin: 1rem;"
+          />
+        </div>
+        <div
+          class="MuiCardContent-root"
+          style="margin: 1rem 0rem; height: 25vh; overflow: hidden; padding-top: 0px;"
+        >
+          <div
+            class="MuiBox-root MuiBox-root"
+            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+          >
+            <h5
+              class="MuiTypography-root MuiTypography-h5"
+              title="MockChart1"
+            >
+              <a
+                class="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorPrimary"
+                href="/"
+              >
+                MockChart1
+              </a>
+            </h5>
+          </div>
+          <div
+            class="MuiBox-root MuiBox-root"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1"
+            >
+              v
+              1.0
+            </p>
+            <div
+              class="MuiBox-root MuiBox-root"
+              style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+            >
+              <span
+                class=""
+                title="MockRepo"
+              >
+                MockRepo
+              </span>
+            </div>
+          </div>
+          <hr
+            class="MuiDivider-root"
+          />
+          <div
+            class="MuiBox-root MuiBox-root"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1"
+            >
+              This is a mock chart description.
+            </p>
+          </div>
+        </div>
+        <div
+          class="MuiCardActions-root MuiCardActions-spacing"
+          style="justify-content: space-between; padding: 14px;"
+        >
+          <button
+            class="MuiButtonBase-root MuiButton-root MuiButton-text"
+            style="background-color: rgb(0, 0, 0); color: white; text-transform: none;"
+            tabindex="0"
+            type="button"
+          >
+            <span
+              class="MuiButton-label"
+            >
+              Install
+            </span>
+            <span
+              class="MuiTouchRipple-root"
+            />
+          </button>
+          <a
+            class="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorPrimary"
+            href="https://example.com"
+            target="_blank"
+          >
+            Learn More
+          </a>
+        </div>
+      </div>
+    </div>
+    <div
+      class="MuiBox-root MuiBox-root"
+    >
+      <div
+        class="MuiPaper-root MuiCard-root MuiPaper-elevation1 MuiPaper-rounded"
+      >
+        <div
+          class="MuiBox-root MuiBox-root"
+        >
+          <img
+            class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img"
+            src="https://artifacthub.io/image/c711f9f9-28b3-4ee8-98a2-30e00abf9f02"
+            style="width: 60px; margin: 1rem;"
+          />
+        </div>
+        <div
+          class="MuiCardContent-root"
+          style="margin: 1rem 0rem; height: 25vh; overflow: hidden; padding-top: 0px;"
+        >
+          <div
+            class="MuiBox-root MuiBox-root"
+            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+          >
+            <h5
+              class="MuiTypography-root MuiTypography-h5"
+              title="MockChart2"
+            >
+              <a
+                class="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorPrimary"
+                href="/"
+              >
+                MockChart2
+              </a>
+            </h5>
+          </div>
+          <div
+            class="MuiBox-root MuiBox-root"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1"
+            >
+              v
+              1.1
+            </p>
+            <div
+              class="MuiBox-root MuiBox-root"
+              style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+            >
+              <span
+                class=""
+                title="MockRepo2"
+              >
+                MockRepo2
+              </span>
+            </div>
+          </div>
+          <hr
+            class="MuiDivider-root"
+          />
+          <div
+            class="MuiBox-root MuiBox-root"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1"
+            >
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a diam lectus. Sed sit amet ipsum mau
+              <span
+                class=""
+                title="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a diam lectus. Sed sit amet ipsum mauris. Maecenas congue ligula ac quam viverra nec consectetur ante hendrerit. Donec et mollis dolor."
+              >
+                …
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          class="MuiCardActions-root MuiCardActions-spacing"
+          style="justify-content: space-between; padding: 14px;"
+        >
+          <button
+            class="MuiButtonBase-root MuiButton-root MuiButton-text"
+            style="background-color: rgb(0, 0, 0); color: white; text-transform: none;"
+            tabindex="0"
+            type="button"
+          >
+            <span
+              class="MuiButton-label"
+            >
+              Install
+            </span>
+            <span
+              class="MuiTouchRipple-root"
+            />
+          </button>
+          <a
+            class="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorPrimary"
+            href="https://example2.com"
+            target="_blank"
+          >
+            Learn More
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="MuiBox-root MuiBox-root"
+  >
+    <nav
+      aria-label="pagination navigation"
+      class="MuiPagination-root"
+    >
+      <ul
+        class="MuiPagination-ul"
+      >
+        <li>
+          <button
+            aria-label="Go to previous page"
+            class="MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-page MuiPaginationItem-rounded MuiPaginationItem-textPrimary MuiPaginationItem-disabled MuiPaginationItem-sizeLarge MuiButtonBase-disabled"
+            disabled=""
+            tabindex="-1"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiPaginationItem-icon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+              />
+            </svg>
+          </button>
+        </li>
+        <li>
+          <button
+            aria-label="Go to next page"
+            class="MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-page MuiPaginationItem-rounded MuiPaginationItem-textPrimary MuiPaginationItem-disabled MuiPaginationItem-sizeLarge MuiButtonBase-disabled"
+            disabled=""
+            tabindex="-1"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiPaginationItem-icon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
+              />
+            </svg>
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  <div
+    class="MuiBox-root MuiBox-root"
+  >
+    <a
+      class="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorPrimary"
+      href="https://artifacthub.io/"
+      target="_blank"
+    >
+      Powered by ArtifactHub
+    </a>
+  </div>
+</div>
+`;
