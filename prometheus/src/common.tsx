@@ -16,7 +16,7 @@ import ToggleButtonGroup from '@material-ui/lab/ToggleButtonGroup';
 import React, { useEffect, useState } from 'react';
 import skeletonImg from '../assets/chart-skeleton.png';
 import { Chart } from './chart';
-import { isPrometheusInstalled } from './request';
+import { fetchMetrics, isPrometheusInstalled } from './request';
 import { usePluginSettings } from './util';
 
 const learnMoreLink = 'https://github.com/headlamp-k8s/plugins/tree/main/prometheus#readme';
@@ -317,6 +317,7 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
       XTickProps={XTickProps}
       YTickProps={YTickProps}
       CustomTooltip={CustomTooltip}
+      fetchMetrics={fetchMetrics}
       {...props}
     />
   );
@@ -368,6 +369,7 @@ export function MemoryChart(props: {
           dataProcessor: dataProcessor,
         },
       ]}
+      fetchMetrics={fetchMetrics}
       XTickProps={XTickProps}
       YTickProps={YTickProps}
       CustomTooltip={CustomTooltipFormatBytes}
@@ -428,6 +430,7 @@ export function NetworkChart(props: {
           </g>
         ),
       }}
+      fetchMetrics={fetchMetrics}
       CustomTooltip={CustomTooltipFormatBytes}
       {...props}
     />
@@ -486,6 +489,7 @@ export function FilesystemChart(props: {
           </g>
         ),
       }}
+      fetchMetrics={fetchMetrics}
       CustomTooltip={CustomTooltipFormatBytes}
       {...props}
     />

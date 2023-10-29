@@ -2,9 +2,8 @@ import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonCompone
 import { Box } from '@material-ui/core';
 import { useEffect, useState } from 'react';
 import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { fetchMetrics } from './request';
 
-export function Chart(props: {
+export interface ChartProps {
   plots: Array<{
     query: string;
     name: string;
@@ -12,19 +11,22 @@ export function Chart(props: {
     strokeColor: string;
     dataProcessor: (data: any) => any[];
   }>;
+  fetchMetrics: (query: object) => Promise<any>;
   prometheusPrefix: string;
   autoRefresh: boolean;
   XTickProps: {} | null;
   YTickProps: {} | null;
   CustomTooltip?: ({ active, payload, label }) => JSX.Element | null;
-}) {
+}
+
+export function Chart(props: ChartProps) {
   enum ChartState {
     LOADING,
     ERROR,
     NO_DATA,
     SUCCESS,
   }
-
+  const { fetchMetrics } = props;
   const [metrics, setMetrics] = useState<object>({});
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
