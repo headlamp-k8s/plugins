@@ -2,9 +2,15 @@ import { Icon } from '@iconify/react';
 import { Tooltip } from '@material-ui/core';
 import ToggleButton from '@material-ui/lab/ToggleButton';
 import React from 'react';
-import { usePluginSettings } from './util';
+import { ChartEnabledKinds, usePluginSettings } from './util';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/K8s/cluster';
 
-export default function VisibilityButton() {
+export interface VisibilityButtonProps {
+  resource?: KubeObject
+}
+
+export default function VisibilityButton(props: VisibilityButtonProps) {
+  const {resource} = props;
   const pluginSettings = usePluginSettings();
 
   const [description, icon] = React.useMemo(() => {
@@ -13,6 +19,10 @@ export default function VisibilityButton() {
     }
     return ['Show Prometheus metrics', 'mdi:chart-box'];
   }, [pluginSettings]);
+
+  if (!ChartEnabledKinds.includes(resource?.jsonData?.kind)) {
+    return null;
+  }
 
   return (
     <Tooltip title={description}>

@@ -6,6 +6,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { GenericMetricsChart } from './common';
 import VisibilityButton from './VisibilityButton';
+import { ChartEnabledKinds } from './util';
 
 function PrometheusMetrics(resource: DetailsViewSectionProps) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
@@ -79,9 +80,14 @@ registerDetailsViewHeaderActionsProcessor(function addPrometheusMetricsButton(re
     return actions;
   }
 
+  // If the action is not supposed to be added, we do nothing.
+  if (!ChartEnabledKinds.includes(resource?.jsonData?.kind)) {
+    return actions;
+  }
+
   actions.splice(0, 0, {
     id: prometheusAction,
-    action: <VisibilityButton />,
+    action: <VisibilityButton resource={resource} />,
   });
 
   return actions;

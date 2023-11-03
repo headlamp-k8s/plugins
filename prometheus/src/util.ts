@@ -59,3 +59,13 @@ export const useSettings = () => {
 };
 
 export const usePluginSettings = () => useBetween(useSettings);
+
+export const ChartEnabledKinds = [
+  'Pod',
+  'Deployment',
+  'StatefulSet',
+  'DaemonSet',
+  'ReplicaSet',
+  'Job',
+  'CronJob',
+];
