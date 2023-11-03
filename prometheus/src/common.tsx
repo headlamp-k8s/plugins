@@ -309,8 +309,8 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
         {
           query: props.query,
           name: 'cpu (cores)',
-          strokeColor: '#7160BB',
-          fillColor: '#C2B0FF',
+          strokeColor: '#CDC300',
+          fillColor: '#FFF178',
           dataProcessor: dataProcessor,
         },
       ]}
@@ -364,8 +364,8 @@ export function MemoryChart(props: {
         {
           query: props.query,
           name: 'memory',
-          strokeColor: '#7160BB',
-          fillColor: '#C2B0FF',
+          strokeColor: '#CDC300',
+          fillColor: '#FFF178',
           dataProcessor: dataProcessor,
         },
       ]}
@@ -392,15 +392,15 @@ export function NetworkChart(props: {
         {
           query: props.rxQuery,
           name: 'recieve',
-          strokeColor: '#7160BB',
-          fillColor: '#C2B0FF',
+          strokeColor: '#CDC300',
+          fillColor: '#FFF178',
           dataProcessor: dataProcessor,
         },
         {
           query: props.txQuery,
           name: 'transmit',
-          strokeColor: '#0079D4',
-          fillColor: '#0079D4',
+          strokeColor: '#C2B0FF',
+          fillColor: '#7160BB',
           dataProcessor: dataProcessor,
         },
       ]}
@@ -451,15 +451,15 @@ export function FilesystemChart(props: {
         {
           query: props.readQuery,
           name: 'read',
-          strokeColor: '#7160BB',
-          fillColor: '#C2B0FF',
+          strokeColor: '#CDC300',
+          fillColor: '#FFF178',
           dataProcessor: dataProcessor,
         },
         {
           query: props.writeQuery,
           name: 'write',
-          strokeColor: '#0079D4',
-          fillColor: '#0079D4',
+          strokeColor: '#98F6DC',
+          fillColor: '#98F6DC',
           dataProcessor: dataProcessor,
         },
       ]}
