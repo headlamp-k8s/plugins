@@ -336,8 +336,8 @@ const Template: Story<ChartProps> = () => {
         },
       ]}
       autoRefresh={false}
-      XTickProps={XTickProps}
-      YTickProps={YTickProps}
+      xAxisProps={XTickProps}
+      yAxisProps={YTickProps}
       prometheusPrefix="/api/v1/namespaces/test/proxy"
       fetchMetrics={({}) => {
         return Promise.resolve(mockData);

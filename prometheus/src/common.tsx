@@ -314,8 +314,8 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
           dataProcessor: dataProcessor,
         },
       ]}
-      XTickProps={XTickProps}
-      YTickProps={YTickProps}
+      xAxisProps={XTickProps}
+      yAxisProps={YTickProps}
       CustomTooltip={CustomTooltip}
       fetchMetrics={fetchMetrics}
       {...props}
@@ -370,8 +370,8 @@ export function MemoryChart(props: {
         },
       ]}
       fetchMetrics={fetchMetrics}
-      XTickProps={XTickProps}
-      YTickProps={YTickProps}
+      xAxisProps={XTickProps}
+      yAxisProps={YTickProps}
       CustomTooltip={CustomTooltipFormatBytes}
       {...props}
     />
@@ -404,7 +404,7 @@ export function NetworkChart(props: {
           dataProcessor: dataProcessor,
         },
       ]}
-      XTickProps={{
+      xAxisProps={{
         dataKey: 'timestamp',
         tickLine: false,
         tick: props => {
@@ -420,7 +420,7 @@ export function NetworkChart(props: {
           );
         },
       }}
-      YTickProps={{
+      yAxisProps={{
         domain: ['dataMin', 'auto'],
         tick: ({ x, y, payload }) => (
           <g transform={`translate(${x},${y})`}>
@@ -463,7 +463,7 @@ export function FilesystemChart(props: {
           dataProcessor: dataProcessor,
         },
       ]}
-      XTickProps={{
+      xAxisProps={{
         dataKey: 'timestamp',
         tickLine: false,
         tick: props => {
@@ -479,7 +479,7 @@ export function FilesystemChart(props: {
           );
         },
       }}
-      YTickProps={{
+      yAxisProps={{
         domain: ['dataMin', 'auto'],
         tick: ({ x, y, payload }) => (
           <g transform={`translate(${x},${y})`}>
