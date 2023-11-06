@@ -1,5 +1,5 @@
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box } from '@material-ui/core';
+import { Box, useTheme } from '@material-ui/core';
 import { useEffect, useState } from 'react';
 import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -34,6 +34,7 @@ export function Chart(props: ChartProps) {
   const [metrics, setMetrics] = useState<object>({});
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const theme = useTheme();
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
@@ -130,8 +131,8 @@ export function Chart(props: ChartProps) {
   if (state === ChartState.SUCCESS) {
     chartContent = (
       <AreaChart data={metrics}>
-        <XAxis {...xAxisProps} />
-        <YAxis {...yAxisProps} />
+        <XAxis stroke={theme.palette.chartStyles.labelColor} {...xAxisProps} />
+        <YAxis stroke={theme.palette.chartStyles.labelColor} {...yAxisProps} />
         {props.CustomTooltip === undefined ? (
           <Tooltip />
         ) : (

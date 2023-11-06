@@ -9,6 +9,7 @@ import {
   makeStyles,
   Paper,
   Typography,
+  useTheme,
 } from '@material-ui/core';
 import Alert from '@material-ui/lab/Alert';
 import ToggleButton from '@material-ui/lab/ToggleButton';
@@ -281,6 +282,7 @@ function formatBytes(bytes: number) {
 
 export function CPUChart(props: { query: string; prometheusPrefix: string; autoRefresh: boolean }) {
   const xTickFormatter = createTickTimestampFormatter();
+  const theme = useTheme();
 
   const XTickProps = {
     dataKey: 'timestamp',
@@ -289,7 +291,7 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
       const value = xTickFormatter(props.payload.value);
       return (
         value !== '' && (
-          <g transform={`translate(${props.x},${props.y})`}>
+          <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
             <text x={0} y={10} dy={0} textAnchor="middle">
               {value}
             </text>
@@ -329,6 +331,7 @@ export function MemoryChart(props: {
   autoRefresh: boolean;
 }) {
   const xTickFormatter = createTickTimestampFormatter();
+  const theme = useTheme();
 
   const XTickProps = {
     dataKey: 'timestamp',
@@ -337,7 +340,7 @@ export function MemoryChart(props: {
       const value = xTickFormatter(props.payload.value);
       return (
         value !== '' && (
-          <g transform={`translate(${props.x},${props.y})`}>
+          <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
             <text x={0} y={10} dy={0} textAnchor="middle">
               {value}
             </text>
@@ -350,7 +353,7 @@ export function MemoryChart(props: {
   const YTickProps = {
     domain: ['dataMin', 'auto'],
     tick: ({ x, y, payload }) => (
-      <g transform={`translate(${x},${y})`}>
+      <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
         <text x={-25} y={0} dy={0} textAnchor="middle">
           {formatBytes(payload.value)}
         </text>
@@ -385,6 +388,7 @@ export function NetworkChart(props: {
   autoRefresh: boolean;
 }) {
   const xTickFormatter = createTickTimestampFormatter();
+  const theme = useTheme();
 
   return (
     <Chart
@@ -411,7 +415,7 @@ export function NetworkChart(props: {
           const value = xTickFormatter(props.payload.value);
           return (
             value !== '' && (
-              <g transform={`translate(${props.x},${props.y})`}>
+              <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
                 <text x={0} y={10} dy={0} textAnchor="middle">
                   {value}
                 </text>
@@ -423,7 +427,7 @@ export function NetworkChart(props: {
       yAxisProps={{
         domain: ['dataMin', 'auto'],
         tick: ({ x, y, payload }) => (
-          <g transform={`translate(${x},${y})`}>
+          <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
             <text x={-25} y={0} dy={0} textAnchor="middle">
               {formatBytes(payload.value)}
             </text>
@@ -444,6 +448,7 @@ export function FilesystemChart(props: {
   autoRefresh: boolean;
 }) {
   const xTickFormatter = createTickTimestampFormatter();
+  const theme = useTheme();
 
   return (
     <Chart
@@ -470,7 +475,7 @@ export function FilesystemChart(props: {
           const value = xTickFormatter(props.payload.value);
           return (
             value !== '' && (
-              <g transform={`translate(${props.x},${props.y})`}>
+              <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
                 <text x={0} y={10} dy={0} textAnchor="middle">
                   {value}
                 </text>
@@ -482,7 +487,7 @@ export function FilesystemChart(props: {
       yAxisProps={{
         domain: ['dataMin', 'auto'],
         tick: ({ x, y, payload }) => (
-          <g transform={`translate(${x},${y})`}>
+          <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
             <text x={-25} y={0} dy={0} textAnchor="middle">
               {formatBytes(payload.value)}
             </text>
