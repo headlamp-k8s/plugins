@@ -1,5 +1,5 @@
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box } from '@material-ui/core';
+import { Box, useTheme } from '@material-ui/core';
 import { useEffect, useState } from 'react';
 import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -14,8 +14,12 @@ export interface ChartProps {
   fetchMetrics: (query: object) => Promise<any>;
   prometheusPrefix: string;
   autoRefresh: boolean;
-  XTickProps: {} | null;
-  YTickProps: {} | null;
+  xAxisProps: {
+    [key: string]: any;
+  };
+  yAxisProps: {
+    [key: string]: any;
+  };
   CustomTooltip?: ({ active, payload, label }) => JSX.Element | null;
 }
 
@@ -26,10 +30,11 @@ export function Chart(props: ChartProps) {
     NO_DATA,
     SUCCESS,
   }
-  const { fetchMetrics } = props;
+  const { fetchMetrics, xAxisProps, yAxisProps } = props;
   const [metrics, setMetrics] = useState<object>({});
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const theme = useTheme();
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
@@ -126,8 +131,8 @@ export function Chart(props: ChartProps) {
   if (state === ChartState.SUCCESS) {
     chartContent = (
       <AreaChart data={metrics}>
-        {props.XTickProps === null ? <XAxis /> : <XAxis {...props.XTickProps} />}
-        {props.YTickProps === null ? <YAxis /> : <YAxis {...props.YTickProps} />}
+        <XAxis stroke={theme.palette.chartStyles.labelColor} {...xAxisProps} />
+        <YAxis stroke={theme.palette.chartStyles.labelColor} {...yAxisProps} />
         {props.CustomTooltip === undefined ? (
           <Tooltip />
         ) : (

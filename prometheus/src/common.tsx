@@ -9,6 +9,7 @@ import {
   makeStyles,
   Paper,
   Typography,
+  useTheme,
 } from '@material-ui/core';
 import Alert from '@material-ui/lab/Alert';
 import ToggleButton from '@material-ui/lab/ToggleButton';
@@ -281,6 +282,7 @@ function formatBytes(bytes: number) {
 
 export function CPUChart(props: { query: string; prometheusPrefix: string; autoRefresh: boolean }) {
   const xTickFormatter = createTickTimestampFormatter();
+  const theme = useTheme();
 
   const XTickProps = {
     dataKey: 'timestamp',
@@ -289,7 +291,7 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
       const value = xTickFormatter(props.payload.value);
       return (
         value !== '' && (
-          <g transform={`translate(${props.x},${props.y})`}>
+          <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
             <text x={0} y={10} dy={0} textAnchor="middle">
               {value}
             </text>
@@ -309,13 +311,13 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
         {
           query: props.query,
           name: 'cpu (cores)',
-          strokeColor: '#7160BB',
-          fillColor: '#C2B0FF',
+          strokeColor: '#CDC300',
+          fillColor: '#FFF178',
           dataProcessor: dataProcessor,
         },
       ]}
-      XTickProps={XTickProps}
-      YTickProps={YTickProps}
+      xAxisProps={XTickProps}
+      yAxisProps={YTickProps}
       CustomTooltip={CustomTooltip}
       fetchMetrics={fetchMetrics}
       {...props}
@@ -329,6 +331,7 @@ export function MemoryChart(props: {
   autoRefresh: boolean;
 }) {
   const xTickFormatter = createTickTimestampFormatter();
+  const theme = useTheme();
 
   const XTickProps = {
     dataKey: 'timestamp',
@@ -337,7 +340,7 @@ export function MemoryChart(props: {
       const value = xTickFormatter(props.payload.value);
       return (
         value !== '' && (
-          <g transform={`translate(${props.x},${props.y})`}>
+          <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
             <text x={0} y={10} dy={0} textAnchor="middle">
               {value}
             </text>
@@ -350,7 +353,7 @@ export function MemoryChart(props: {
   const YTickProps = {
     domain: ['dataMin', 'auto'],
     tick: ({ x, y, payload }) => (
-      <g transform={`translate(${x},${y})`}>
+      <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
         <text x={-25} y={0} dy={0} textAnchor="middle">
           {formatBytes(payload.value)}
         </text>
@@ -364,14 +367,14 @@ export function MemoryChart(props: {
         {
           query: props.query,
           name: 'memory',
-          strokeColor: '#7160BB',
-          fillColor: '#C2B0FF',
+          strokeColor: '#CDC300',
+          fillColor: '#FFF178',
           dataProcessor: dataProcessor,
         },
       ]}
       fetchMetrics={fetchMetrics}
-      XTickProps={XTickProps}
-      YTickProps={YTickProps}
+      xAxisProps={XTickProps}
+      yAxisProps={YTickProps}
       CustomTooltip={CustomTooltipFormatBytes}
       {...props}
     />
@@ -385,6 +388,7 @@ export function NetworkChart(props: {
   autoRefresh: boolean;
 }) {
   const xTickFormatter = createTickTimestampFormatter();
+  const theme = useTheme();
 
   return (
     <Chart
@@ -392,26 +396,26 @@ export function NetworkChart(props: {
         {
           query: props.rxQuery,
           name: 'recieve',
-          strokeColor: '#7160BB',
-          fillColor: '#C2B0FF',
+          strokeColor: '#CDC300',
+          fillColor: '#FFF178',
           dataProcessor: dataProcessor,
         },
         {
           query: props.txQuery,
           name: 'transmit',
-          strokeColor: '#0079D4',
-          fillColor: '#0079D4',
+          strokeColor: '#7160BB',
+          fillColor: '#C2B0FF',
           dataProcessor: dataProcessor,
         },
       ]}
-      XTickProps={{
+      xAxisProps={{
         dataKey: 'timestamp',
         tickLine: false,
         tick: props => {
           const value = xTickFormatter(props.payload.value);
           return (
             value !== '' && (
-              <g transform={`translate(${props.x},${props.y})`}>
+              <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
                 <text x={0} y={10} dy={0} textAnchor="middle">
                   {value}
                 </text>
@@ -420,10 +424,10 @@ export function NetworkChart(props: {
           );
         },
       }}
-      YTickProps={{
+      yAxisProps={{
         domain: ['dataMin', 'auto'],
         tick: ({ x, y, payload }) => (
-          <g transform={`translate(${x},${y})`}>
+          <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
             <text x={-25} y={0} dy={0} textAnchor="middle">
               {formatBytes(payload.value)}
             </text>
@@ -444,6 +448,7 @@ export function FilesystemChart(props: {
   autoRefresh: boolean;
 }) {
   const xTickFormatter = createTickTimestampFormatter();
+  const theme = useTheme();
 
   return (
     <Chart
@@ -451,26 +456,26 @@ export function FilesystemChart(props: {
         {
           query: props.readQuery,
           name: 'read',
-          strokeColor: '#7160BB',
-          fillColor: '#C2B0FF',
+          strokeColor: '#CDC300',
+          fillColor: '#FFF178',
           dataProcessor: dataProcessor,
         },
         {
           query: props.writeQuery,
           name: 'write',
-          strokeColor: '#0079D4',
-          fillColor: '#0079D4',
+          strokeColor: '#006B58',
+          fillColor: '#98F6DC',
           dataProcessor: dataProcessor,
         },
       ]}
-      XTickProps={{
+      xAxisProps={{
         dataKey: 'timestamp',
         tickLine: false,
         tick: props => {
           const value = xTickFormatter(props.payload.value);
           return (
             value !== '' && (
-              <g transform={`translate(${props.x},${props.y})`}>
+              <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
                 <text x={0} y={10} dy={0} textAnchor="middle">
                   {value}
                 </text>
@@ -479,10 +484,10 @@ export function FilesystemChart(props: {
           );
         },
       }}
-      YTickProps={{
+      yAxisProps={{
         domain: ['dataMin', 'auto'],
         tick: ({ x, y, payload }) => (
-          <g transform={`translate(${x},${y})`}>
+          <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
             <text x={-25} y={0} dy={0} textAnchor="middle">
               {formatBytes(payload.value)}
             </text>

@@ -1,15 +1,12 @@
 # Prometheus
 
-This is the default template README for [Headlamp Plugins](https://github.com/headlamp-k8s/headlamp).
+This plugin adds advanced charts to the details view of workload resources.
 
-- The description of your plugin should go here.
-- You should also edit the package.json file meta data (like name and description).
+## Enabling Charts
 
-## Developing Headlamp plugins
+For the charts to be shown, Prometheus must be installed in the cluster.
 
-For more information on developing Headlamp plugins, please refer to:
+### Installing Prometheus from Headlamp
 
-- [Getting Started](https://headlamp.dev/docs/latest/development/plugins/), How to create a new Headlamp plugin.
-- [API Reference](https://headlamp.dev/docs/latest/development/api/), API documentation for what you can do
-- [UI Component Storybook](https://headlamp.dev/docs/latest/development/frontend/#storybook), pre-existing components you can use when creating your plugin.
-- [Plugin Examples](https://github.com/headlamp-k8s/headlamp/tree/main/plugins/examples), Example plugins you can look at to see how it's done.
+You can install Prometheus from Headlamp (desktop version only) by selecting the Apps
+page from the sidebar, searching for "prometheus" and installing the app/chart from the "prometheus-community" repository.
