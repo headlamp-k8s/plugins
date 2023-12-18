@@ -1,15 +1,8 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Dialog, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import {
-  Box,
-  Button,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-} from '@material-ui/core';
-import { Autocomplete } from '@material-ui/lab';
 import MonacoEditor from '@monaco-editor/react';
+import { Box, Button, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
+import { Autocomplete } from '@mui/material';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
@@ -253,8 +246,8 @@ export function EditorDialog(props: {
                   width: '15vw',
                 }}
                 options={versions}
-                getOptionLabel={option => option.title}
-                value={selectedVersion}
+                getOptionLabel={(option: any) => option.title ?? option}
+                value={selectedVersion.value}
                 // @ts-ignore
                 onChange={(event, newValue: { value: string; title: string }) => {
                   setSelectedVersion(newValue);

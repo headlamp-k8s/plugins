@@ -12,7 +12,7 @@ export default {
 
 const mockReleases = [
   {
-    name: 'example-release-1',
+    name: 'example-release-11',
     namespace: 'default',
     chart: {
       metadata: {
@@ -53,6 +53,7 @@ const initialState = {
   },
 };
 
+// a mock store that is completely empty
 const mockStore = configureStore({
   reducer: (state = initialState) => state,
 });

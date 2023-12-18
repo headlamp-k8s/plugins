@@ -1,4 +1,5 @@
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import MonacoEditor from '@monaco-editor/react';
 import {
   Box,
   Button,
@@ -7,9 +8,8 @@ import {
   DialogContent,
   FormControlLabel,
   TextField,
-} from '@material-ui/core';
-import { Autocomplete } from '@material-ui/lab';
-import MonacoEditor from '@monaco-editor/react';
+} from '@mui/material';
+import { Autocomplete } from '@mui/material';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useEffect, useRef, useState } from 'react';

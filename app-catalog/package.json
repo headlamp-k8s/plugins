@@ -30,7 +30,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.7.4"
+    "@kinvolk/headlamp-plugin": "0.8.0-alpha.10"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.5.0",
