@@ -1,6 +1,6 @@
 import { Meta, Story } from '@storybook/react/types-6-0';
-import { Chart, ChartProps } from './chart';
 import { BrowserRouter } from 'react-router-dom';
+import { Chart, ChartProps } from './chart';
 
 const mockData = {
   status: 'success',

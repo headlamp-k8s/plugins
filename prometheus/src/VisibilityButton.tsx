@@ -1,16 +1,16 @@
 import { Icon } from '@iconify/react';
-import { Tooltip } from '@material-ui/core';
-import ToggleButton from '@material-ui/lab/ToggleButton';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/K8s/cluster';
+import { Tooltip } from '@mui/material';
+import ToggleButton from '@mui/material/ToggleButton';
 import React from 'react';
 import { ChartEnabledKinds, usePluginSettings } from './util';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/K8s/cluster';
 
 export interface VisibilityButtonProps {
-  resource?: KubeObject
+  resource?: KubeObject;
 }
 
 export default function VisibilityButton(props: VisibilityButtonProps) {
-  const {resource} = props;
+  const { resource } = props;
   const pluginSettings = usePluginSettings();
 
   const [description, icon] = React.useMemo(() => {

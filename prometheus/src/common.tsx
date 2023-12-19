@@ -1,19 +1,10 @@
 import { Icon } from '@iconify/react';
 import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import {
-  Box,
-  Button,
-  Grid,
-  IconButton,
-  Link,
-  makeStyles,
-  Paper,
-  Typography,
-  useTheme,
-} from '@material-ui/core';
-import Alert from '@material-ui/lab/Alert';
-import ToggleButton from '@material-ui/lab/ToggleButton';
-import ToggleButtonGroup from '@material-ui/lab/ToggleButtonGroup';
+import { Box, Button, Grid, IconButton, Link, Paper, Typography, useTheme } from '@mui/material';
+import Alert from '@mui/material/Alert';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import makeStyles from '@mui/styles/makeStyles';
 import React, { useEffect, useState } from 'react';
 import skeletonImg from '../assets/chart-skeleton.png';
 import { Chart } from './chart';
@@ -119,6 +110,7 @@ export function GenericMetricsChart(props: {
                   onClick={() => {
                     setRefresh(refresh => !refresh);
                   }}
+                  size="large"
                 >
                   {refresh ? <Icon icon="mdi:pause" /> : <Icon icon="mdi:play" />}
                 </IconButton>
@@ -291,7 +283,10 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
       const value = xTickFormatter(props.payload.value);
       return (
         value !== '' && (
-          <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
+          <g
+            transform={`translate(${props.x},${props.y})`}
+            fill={theme.palette.chartStyles.labelColor}
+          >
             <text x={0} y={10} dy={0} textAnchor="middle">
               {value}
             </text>
@@ -340,7 +335,10 @@ export function MemoryChart(props: {
       const value = xTickFormatter(props.payload.value);
       return (
         value !== '' && (
-          <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
+          <g
+            transform={`translate(${props.x},${props.y})`}
+            fill={theme.palette.chartStyles.labelColor}
+          >
             <text x={0} y={10} dy={0} textAnchor="middle">
               {value}
             </text>
@@ -415,7 +413,10 @@ export function NetworkChart(props: {
           const value = xTickFormatter(props.payload.value);
           return (
             value !== '' && (
-              <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
+              <g
+                transform={`translate(${props.x},${props.y})`}
+                fill={theme.palette.chartStyles.labelColor}
+              >
                 <text x={0} y={10} dy={0} textAnchor="middle">
                   {value}
                 </text>
@@ -475,7 +476,10 @@ export function FilesystemChart(props: {
           const value = xTickFormatter(props.payload.value);
           return (
             value !== '' && (
-              <g transform={`translate(${props.x},${props.y})`} fill={theme.palette.chartStyles.labelColor}>
+              <g
+                transform={`translate(${props.x},${props.y})`}
+                fill={theme.palette.chartStyles.labelColor}
+              >
                 <text x={0} y={10} dy={0} textAnchor="middle">
                   {value}
                 </text>

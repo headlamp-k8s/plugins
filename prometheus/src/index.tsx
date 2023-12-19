@@ -5,8 +5,8 @@ import {
   registerDetailsViewSectionsProcessor,
 } from '@kinvolk/headlamp-plugin/lib';
 import { GenericMetricsChart } from './common';
-import VisibilityButton from './VisibilityButton';
 import { ChartEnabledKinds } from './util';
+import VisibilityButton from './VisibilityButton';
 
 function PrometheusMetrics(resource: DetailsViewSectionProps) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
