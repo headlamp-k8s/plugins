@@ -30,8 +30,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.7.4",
-    "fetch-mock": "^9.11.0"
+    "@kinvolk/headlamp-plugin": "^0.8.0-alpha.13"
   },
   "dependencies": {
     "recharts": "^2.7.3",
