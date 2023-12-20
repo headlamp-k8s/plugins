@@ -15,8 +15,8 @@ import {
   TextField,
   Tooltip,
   Typography,
-} from '@material-ui/core';
-import { Autocomplete, Pagination } from '@material-ui/lab';
+} from '@mui/material';
+import { Autocomplete, Pagination } from '@mui/material';
 import { useEffect, useState } from 'react';
 //import { jsonToYAML, yamlToJSON } from '../../helpers';
 import { fetchChartsFromArtifact } from '../../api/charts';
@@ -128,9 +128,9 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             params.InputLabelProps.id = params.InputLabelProps.id
               ? params.InputLabelProps.id.replace(/[0-9]/g, '')
               : params.InputLabelProps.id;
-            params.InputLabelProps.htmlFor = params.InputLabelProps.htmlFor
-              ? params.InputLabelProps.htmlFor.replace(/[0-9]/g, '')
-              : params.InputLabelProps.htmlFor;
+            // params.InputLabelProps.htmlFor = params.InputLabelProps.htmlFor
+            //   ? params.InputLabelProps.htmlFor.replace(/[0-9]/g, '')
+            //   : params.InputLabelProps.htmlFor;
           }
           return <TextField {...params} label="Categories" placeholder="Favorites" />;
         }}

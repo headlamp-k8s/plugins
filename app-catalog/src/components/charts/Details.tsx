@@ -5,7 +5,7 @@ import {
   SectionBox,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Button, Link, Table, TableCell, TableHead, TableRow } from '@material-ui/core';
+import { Box, Button, Link, Table, TableCell, TableHead, TableRow } from '@mui/material';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeFilter from 'react-markdown/lib/rehype-filter';

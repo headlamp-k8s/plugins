@@ -17,7 +17,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
-} from '@material-ui/core';
+} from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router';

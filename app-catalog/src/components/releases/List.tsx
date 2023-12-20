@@ -6,7 +6,7 @@ import {
   SimpleTable,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box } from '@material-ui/core';
+import { Box } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { listReleases } from '../../api/releases';
 
