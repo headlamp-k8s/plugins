@@ -247,7 +247,7 @@ export function EditorDialog(props: {
                 }}
                 options={versions}
                 getOptionLabel={(option: any) => option.title ?? option}
-                value={selectedVersion.value}
+                value={selectedVersion?.value}
                 // @ts-ignore
                 onChange={(event, newValue: { value: string; title: string }) => {
                   setSelectedVersion(newValue);
