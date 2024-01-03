@@ -194,6 +194,127 @@ export function GenericMetricsChart(props: {
   );
 }
 
+export function DiskMetricsChart(props: {
+  usageQuery?: string;
+  capacityQuery?: string;
+}) {
+  enum prometheusState {
+    UNKNOWN,
+    LOADING,
+    ERROR,
+    INSTALLED,
+  }
+
+  const classes = useStyles();
+  const pluginSettings = usePluginSettings();
+  const [refresh, setRefresh] = useState<boolean>(true);
+
+  const [prometheusInfo, setPrometheusInfo] = useState<{
+    podName: string;
+    podNamespace: string;
+  } | null>(null);
+  const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [isInstalled, podName, namespace] = await isPrometheusInstalled();
+        if (isInstalled) {
+          setPrometheusInfo({ podName, podNamespace: namespace });
+          setState(prometheusState.INSTALLED);
+        } else {
+          setPrometheusInfo(null);
+          setState(prometheusState.UNKNOWN);
+        }
+      } catch (e) {
+        setState(prometheusState.ERROR);
+        return;
+      }
+    })();
+  }, []);
+
+  if (!pluginSettings.isVisible) {
+    return null;
+  }
+
+  return (
+    <SectionBox>
+      <Box
+        display="flex"
+        justifyContent="space-around"
+        alignItems="center"
+        style={{ marginBottom: '0.5rem', margin: '0 auto', width: '0%' }}
+
+      >
+        {state === prometheusState.INSTALLED
+          ? [
+            <Box>Disk</Box>,
+            <Box pl={2}>
+              <IconButton
+                onClick={() => {
+                  setRefresh(refresh => !refresh);
+                }}
+                size="Big"
+              >
+                {refresh ? <Icon icon="mdi:pause" /> : <Icon icon="mdi:play" />}
+              </IconButton>
+            </Box>,
+          ]
+          : []}
+      </Box>
+
+      {prometheusInfo ? (
+        <Box style={{ justifyContent: 'center', display: 'flex', height: '40vh', width: '80%', margin: '0 auto'}}>
+          <DiskChart
+            usageQuery={props.usageQuery}
+            capacityQuery={props.capacityQuery}
+            autoRefresh={refresh}
+            prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+          />
+        </Box>
+      ) : state === prometheusState.LOADING ? (
+        <Box m={2}>
+          <Loader title="Loading Prometheus Info" />
+        </Box>
+      ) : state === prometheusState.ERROR ? (
+        <Box m={2}>
+          <Alert severity="warning">Error fetching prometheus Info</Alert>
+        </Box>
+      ) : (
+        <Grid
+          container
+          spacing={2}
+          direction="column"
+          justifyContent="center"
+          alignItems="center"
+          className={classes.skeletonBox}
+        >
+          <Grid item>
+            <Typography variant="h5">Install Prometheus for accessing metrics charts</Typography>
+          </Grid>
+          <Grid item>
+            <Typography>
+              <Link href={learnMoreLink} target="_blank">
+                Learn more about enabling advanced charts.
+              </Link>
+            </Typography>
+          </Grid>
+          <Grid item>
+            <Button
+              className={classes.dismissButton}
+              size="small"
+              variant="contained"
+              onClick={() => pluginSettings.setIsVisible(false)}
+            >
+              Dismiss
+            </Button>
+          </Grid>
+        </Grid>
+      )}
+    </SectionBox>
+  );
+}
+
 function createTickTimestampFormatter() {
   let prevRenderedTimestamp = null;
 
@@ -402,6 +523,70 @@ export function NetworkChart(props: {
           name: 'transmit',
           strokeColor: '#7160BB',
           fillColor: '#C2B0FF',
+          dataProcessor: dataProcessor,
+        },
+      ]}
+      xAxisProps={{
+        dataKey: 'timestamp',
+        tickLine: false,
+        tick: props => {
+          const value = xTickFormatter(props.payload.value);
+          return (
+            value !== '' && (
+              <g
+                transform={`translate(${props.x},${props.y})`}
+                fill={theme.palette.chartStyles.labelColor}
+              >
+                <text x={0} y={10} dy={0} textAnchor="middle">
+                  {value}
+                </text>
+              </g>
+            )
+          );
+        },
+      }}
+      yAxisProps={{
+        domain: ['dataMin', 'auto'],
+        tick: ({ x, y, payload }) => (
+          <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
+            <text x={-35} y={0} dy={0} textAnchor="middle">
+              {formatBytes(payload.value)}
+            </text>
+          </g>
+        ),
+        width: 80,
+      }}
+      fetchMetrics={fetchMetrics}
+      CustomTooltip={CustomTooltipFormatBytes}
+      {...props}
+    />
+  );
+}
+
+export function DiskChart(props: {
+  usageQuery: string;
+  capacityQuery: string;
+  prometheusPrefix: string;
+  autoRefresh: boolean;
+}) {
+  const xTickFormatter = createTickTimestampFormatter();
+  const theme = useTheme();
+
+  return (
+    <Chart
+      plots={[
+        {
+          query: props.usageQuery,
+          name: 'usage',
+          strokeColor: '#CDC300',
+          fillColor: '#FFF178',
+          dataProcessor: dataProcessor,
+        },
+        {
+          query: props.capacityQuery,
+          name: 'capacity',
+          strokeColor: '#006B58',
+          fillColor: '#98F6DC',
           dataProcessor: dataProcessor,
         },
       ]}

@@ -4,7 +4,7 @@ import {
   registerDetailsViewHeaderActionsProcessor,
   registerDetailsViewSectionsProcessor,
 } from '@kinvolk/headlamp-plugin/lib';
-import { GenericMetricsChart } from './common';
+import { DiskMetricsChart, GenericMetricsChart } from './common';
 import { ChartEnabledKinds } from './util';
 import VisibilityButton from './VisibilityButton';
 
@@ -35,6 +35,15 @@ function PrometheusMetrics(resource: DetailsViewSectionProps) {
         networkTxQuery={`sum(rate(container_network_transmit_bytes_total{namespace='${resource.jsonData.metadata.namespace}',pod=~'${resource.jsonData.metadata.name}-.*'}[1m])) by (pod,namespace)`}
         filesystemReadQuery={`sum(rate(container_fs_reads_bytes_total{namespace='${resource.jsonData.metadata.namespace}',pod=~'${resource.jsonData.metadata.name}-.*'}[1m])) by (pod,namespace)`}
         filesystemWriteQuery={`sum(rate(container_fs_writes_bytes_total{namespace='${resource.jsonData.metadata.namespace}',pod=~'${resource.jsonData.metadata.name}-.*'}[1m])) by (pod,namespace)`}
+      />
+    );
+  }
+
+  if (resource.kind === 'PersistentVolumeClaim') {
+    return (
+      <DiskMetricsChart
+        usageQuery={`sum(kubelet_volume_stats_used_bytes{namespace='${resource.jsonData.metadata.namespace}',persistentvolumeclaim='${resource.jsonData.metadata.name}'}) by (persistentvolumeclaim, namespace)`}
+        capacityQuery={`sum(kubelet_volume_stats_capacity_bytes{namespace='${resource.jsonData.metadata.namespace}',persistentvolumeclaim='${resource.jsonData.metadata.name}'}) by (persistentvolumeclaim, namespace)`}
       />
     );
   }
