@@ -1,175 +1,237 @@
-import { registerDetailsViewHeaderAction, K8s } from '@kinvolk/headlamp-plugin/lib';
-import { FormControl, InputLabel, InputAdornment, OutlinedInput, Button, Box, Chip } from '@material-ui/core';
-import { config } from './config';
-import { ActionButton, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Icon } from '@iconify/react';
-
-// Below are some imports you may want to use.
-//   See README.md for links to plugin development documentation.
-// import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-// import { K8s } from '@kinvolk/headlamp-plugin/lib/K8s';
-// import { Typography } from '@material-ui/core';
-
-import { OpenAIClient, AzureKeyCredential } from  "@azure/openai";
-import { prompt } from './config/prompt';
+import { registerAppBarAction, registerHeadlampEventCallback } from '@kinvolk/headlamp-plugin/lib';
+import {
+  FormControl,
+  TextField,
+  Button,
+  Box,
+  Paper,
+  Popper,
+  Backdrop,
+  Tabs,
+  Tab,
+} from '@material-ui/core';
+import { useTheme } from '@material-ui/styles';
+import OpenAI from 'openai';
+import { ActionButton, TabPanel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import React from 'react';
-import TextStream from './textstream';
-import AIModal from './modal';
+import AIPrompt from './modal';
+import { useGlobalState } from './utils';
 
-const client = new OpenAIClient(
-  `https://${config.openApiName}.openai.azure.com/`, 
-  new AzureKeyCredential(config.openApiKey)
-);
 
-function DeploymentAIPrompt(props) {
-    const item = props.item;
-    const [openPopup, setOpenPopup] = React.useState(false);
-    const [textStream, setTextStream] = React.useState('');
-    const [promptVal, setPromptVal] = React.useState('');
-    const [loading, setLoading] = React.useState(false);
-    let availablePormpts = [];
-  
-    if(!item) {
-        return null
+function DeploymentAIPrompt() {
+  const [openPopup, setOpenPopup] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [openApiKey, setOpenApiKey] = React.useState('');
+  const [openApiName, setOpenApiName] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isAzureOpenAI, setIsAzureOpenAI] = React.useState(false);
+  const [error, setError] = React.useState(false);
+  const theme = useTheme();
+
+   React.useEffect(() => {
+    const apiKey = localStorage.getItem('openApiKey');
+    const apiName = localStorage.getItem('openApiName');
+    if (apiKey) {
+      setOpenApiKey(apiKey);
+    }
+    if (apiName) {
+      setOpenApiName(apiName);
     }
 
-    availablePormpts = [
-      "Explain",
-      "Look for issues",
-      "Analyze",
-      "Check",
-    ]
-    if (item && item.kind === "Deployment") {
-      availablePormpts.push("Scale if cpu usage goes up by 40%")
-    } 
-    function handleChange(event) {
-        setPromptVal(event.target.value);
+    if(!apiKey && !apiName) {
+      setIsSubmitting(false);
+    } else {
+      setIsSubmitting(true);
     }
+  }, [])
 
-    async function AnalyzeResourceBasedOnPrompt() {
-        setOpenPopup(true);
-        const events = client.listChatCompletions("gpt-35-turbo", [{ role: "user", content: `${prompt.deployment_metric} ${JSON.stringify(item.jsonData)}${promptVal}
-        ` }])
-        let stream = '';
-        try {
-        for await (const event of events) {
-            for (const choice of event.choices) {
-              const delta = choice.delta?.content;
-            //  console.log(delta) 
-              if (delta !== undefined) {
-                stream += delta;
-              }
-            }
-         
+  return !isSubmitting || error ? (
+      <>
+      <ActionButton
+        icon="mdi:brain"
+        description="AI Analysis"
+        onClick={(event) => {
+          setOpenPopup(true);
+          setAnchorEl(event.currentTarget)
+        }}
+      />
+      <Popper
+        placement="bottom"
+        anchorEl={anchorEl}
+        disablePortal={false}
+        open={openPopup}
+        popperOptions={{
+          style: {
+            zIndex: 2000,
+          },
+          }
         }
-    } finally {
-        setLoading(false);
-    }
-        setTextStream(stream);
-    }
-
-    return <>
-    <AIModal openPopup={openPopup} setOpenPopup={setOpenPopup} title="AI Analysis" backdropClickCallback={() => setTextStream('')}> 
-    {
-        <Box display="flex" mb={2} flexWrap="wrap" direction="column">
-          {
-        availablePormpts.map((prompt) => {
-            return <Box m={1}>
-              <Chip label={prompt.substring(0, 30)} onClick={() => {
-                setPromptVal(prompt);
-            }}
-            />
-            </Box>
-        })}
-        </Box>
-      }
-    <FormControl fullWidth variant="outlined">
-      
-          <InputLabel htmlFor="deployment-ai-prompt">Enter your prompt here</InputLabel>
-          <OutlinedInput
-            id="deployment-ai-prompt"
-            onChange={handleChange}
-            labelWidth={160}
-            value={promptVal}
-            endAdornment={
-              <InputAdornment position="end">
-                <ActionButton
-                  icon="mdi:close"
-                  description="Clear"
-                  onClick={() => {
-                    setPromptVal('');
-                  }}
+        style={{
+          zIndex: 2000,
+        }}
+      >
+        <Paper>
+        <Tabs value={Number(isAzureOpenAI)} onChange={(e, newValue) => {
+          setIsAzureOpenAI(Boolean(newValue));
+        }}>
+          <Tab label="Azure Open AI" />
+          {/* <Tab label="Open AI" /> */}
+        </Tabs>
+        <TabPanel tabIndex={Number(isAzureOpenAI)} index={0} id="Azure OpenAI" labeledBy='Azure OpenAI'>
+        <Box p={1}>
+            <Box m={2}>
+            <FormControl fullWidth variant="outlined">
+              <TextField
+                label="azure open ai api key here"
+                id="azure_open_ai_api_key"
+                value={openApiKey}
+                onChange={(event) => {
+                  setOpenApiKey(event.target.value);
+                }}
+                required
+                error={isSubmitting && !openApiKey}
                 />
-              </InputAdornment>
-            }
-          />
-          <Box mt={1}>
-          <Button variant="outlined" onClick={() => {
-            setLoading(true);
-            AnalyzeResourceBasedOnPrompt()
-          }}>Check</Button>
-          </Box>
-    </FormControl>
-
-     {
-        loading ? <Loader /> : textStream !== "" && <TextStream incomingText={textStream} callback={() => {
-            setOpenPopup(false);
-        }}/>
-     }
-    </AIModal>
-    <ActionButton icon="mdi:brain" description='AI Analysis' onClick={() => {
-        setOpenPopup(true);
-    }}/></>
-
-}
-
-function AnalyzePod(props) {
-    const item = props.item;
-    
-    if(!item) {
-        return null
-    }
-
-    if(item.kind !== "Pod") {
-        return null
-    }
-
-
-    const [textStream, setTextStream] = React.useState('');
-    const [openPopup, setOpenPopup] = React.useState(false);
-
-    async function analyzePod() {
-            setOpenPopup(true);
-            const events = client.listChatCompletions("gpt-35-turbo", [{ role: "user", content: `${prompt.pod_error}${JSON.stringify(item.jsonData)}
-            ` }])
-            let stream = ""
-            for await (const event of events) {
-                for (const choice of event.choices) {
-                  const delta = choice.delta?.content;
-                  console.log(delta)
-                  if (delta !== undefined) {
-                    //setTextStream(delta);
-                    stream += delta;
+            </FormControl>
+            </Box>
+            <Box m={2}>
+            <FormControl fullWidth variant="outlined">
+              <TextField
+                label="azure open ai api name here"
+                id="azure_open_ai_api_name"
+                value={openApiName}
+                onChange={(event) => {
+                  setOpenApiName(event.target.value);
+                }}
+                required
+                error={isSubmitting && !openApiName}
+                />
+            </FormControl>
+            </Box>
+            <Box mt={2} ml={2}>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => {
+                  if(openApiKey && openApiName) {
+                    localStorage.setItem('openApiKey', openApiKey);
+                    localStorage.setItem('openApiName', openApiName);
+                    setError(false)
+                  } else {
+                    setError(true)
                   }
-                }
-             
-            }
-            setTextStream(stream);
-    }
-
-    return item && <>
-     <AIModal openPopup={openPopup} setOpenPopup={setOpenPopup} title="Pod Error Analyzer"> {
-        textStream === "" ? <Loader /> : <TextStream incomingText={textStream} callback={() => {
-          setOpenPopup(false);
-        }}/>}</AIModal> 
-    {<ActionButton icon={"mdi:sine-wave"} description='Analyze' onClick={() => {
-        analyzePod()
-    }}/>
-    }
-     
-    </>;
+                  setIsSubmitting(true);
+                }}
+                disabled={loading}
+                style={{
+                  color: theme.palette.clusterChooser.button.color,
+                  backgroundColor: theme.palette.clusterChooser.button.background,
+                }}
+              >
+                Submit
+              </Button>
+            </Box>
+            </Box>
+            </TabPanel>
+            {/* <TabPanel tabIndex={Number(isAzureOpenAI)} index={1} id="OpenAI" labeledBy='OpenAI'>
+              <Box p={2}>
+            <Box m={2}>
+            <FormControl fullWidth variant="outlined">
+              <TextField
+                label="open ai api key here"
+                id="open_ai_api_key"
+                value={openApiKey}
+                onChange={(event) => {
+                  setOpenApiKey(event.target.value);
+                }}
+                required
+                error={isSubmitting && !openApiKey}
+                />
+            </FormControl>
+            </Box>
+            <Box  ml={2}>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => {
+                  if(openApiKey) {
+                    localStorage.setItem('openApiKey', openApiKey);
+                    setError(false)
+                  } else {
+                    setError(true)
+                  }
+                  setIsSubmitting(true);
+                  
+                }}
+                disabled={loading}
+                style={{
+                  color: theme.palette.clusterChooser.button.color,
+                  backgroundColor: theme.palette.clusterChooser.button.background,
+                }}
+              >
+                Submit
+              </Button>
+            </Box>
+            </Box>
+            
+            </TabPanel> */}
+          </Paper>
+        </Popper>
+        <Backdrop open={openPopup} onClick={() => {
+        setOpenPopup(false);
+      }}>
+        </Backdrop>
+    </>) : (
+       <>
+       <ActionButton
+       icon="mdi:brain"
+       description="AI Analysis"
+       color="secondary"
+       onClick={(event) => {
+         setOpenPopup((prev) => !prev);
+         setAnchorEl(event.currentTarget)
+       }}
+     />
+      <AIPrompt
+        openPopup={openPopup}
+        setOpenPopup={setOpenPopup}
+        isAzureOpenAI={openApiKey && openApiName}
+      />
+     </>
+    )
 }
 
-registerDetailsViewHeaderAction(AnalyzePod);
 
-registerDetailsViewHeaderAction(DeploymentAIPrompt)
+registerAppBarAction(DeploymentAIPrompt);
+
+
+
+registerAppBarAction(() => {
+  const _pluginState = useGlobalState();
+  registerHeadlampEventCallback((event) => {
+    if(event.type === "object-event") {
+      _pluginState.setEvent({
+        ..._pluginState.event,
+        objectEvent: event.data
+      })
+    }
+    if(event.type === "list-view-loaded") {
+      const slashCount = location.pathname.split('/').length - 1
+      if(slashCount <= 3) {
+        _pluginState.setEvent({
+          title: event.data.title || event.data.type,
+          items: event.data.items
+        })
+      }
+      
+    } else if(event.type === "details-view-loaded"){
+       _pluginState.setEvent({
+        title: event.data.title,
+        resource: event.data.resource,
+        objectEvent: _pluginState?.event?.objectEvent
+      })
+    }
+    return null
+  })
+  return null
+})
