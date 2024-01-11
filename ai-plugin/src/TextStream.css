@@ -2,39 +2,40 @@
 
 /* Style the container to resemble a chat box */
 .text-stream-container {
-    background-color: #f5f5f5;
-    border-radius: 10px;
-    padding: 10px;
-    margin: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  overflow: scroll;
+}
+
+.text-stream {
+  border-radius: 10px;
+  padding: 10px;
+  margin: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+}
+/* Style the text color to match the assistant's */
+.text-stream-message.user {
+  color: #007bff; /* Blue color for user messages */
+}
+
+/* Style the text color to match the assistant's */
+.text-stream-message.assistant {
+  color: #333; /* Dark gray color for assistant messages */
+}
+
+/* Style the blinking indicator */
+.blinking-indicator {
+  animation: blink 1s linear infinite;
+  margin-left: 5px;
+}
+
+@keyframes blink {
+  0% {
+    opacity: 0;
   }
-  
-  
-  /* Style the text color to match the assistant's */
-  .text-stream-message.user {
-    color: #007bff; /* Blue color for user messages */
+  50% {
+    opacity: 1;
   }
-  
-  /* Style the text color to match the assistant's */
-  .text-stream-message.assistant {
-    color: #333; /* Dark gray color for assistant messages */
+  100% {
+    opacity: 0;
   }
-  
-  /* Style the blinking indicator */
-  .blinking-indicator {
-    animation: blink 1s linear infinite;
-    margin-left: 5px;
-  }
-  
-  @keyframes blink {
-    0% {
-      opacity: 0;
-    }
-    50% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0;
-    }
-  }
-  
+}
