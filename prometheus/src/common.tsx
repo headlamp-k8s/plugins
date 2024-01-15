@@ -88,11 +88,10 @@ export function GenericMetricsChart(props: {
         display="flex"
         justifyContent="space-around"
         alignItems="center"
-        style={{ marginBottom: '1rem', maxWidth: '900px' }}
+        style={{ marginBottom: '1rem', margin: '0 auto', width: '0' }}
       >
         {state === prometheusState.INSTALLED
           ? [
-              <Box></Box>, // This Box is just for leveling the buttons alignment
               <ToggleButtonGroup
                 onChange={handleChartVariantChange}
                 size="small"
@@ -120,39 +119,37 @@ export function GenericMetricsChart(props: {
       </Box>
 
       {prometheusInfo ? (
-        <Box style={{ justifyContent: 'center', display: 'flex' }}>
-          <Box container spacing={2} style={{ height: '40vh', width: '80%' }}>
-            {chartVariant === 'cpu' && (
-              <CPUChart
-                query={props.cpuQuery}
-                autoRefresh={refresh}
-                prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
-              />
-            )}
-            {chartVariant === 'memory' && (
-              <MemoryChart
-                query={props.memoryQuery}
-                autoRefresh={refresh}
-                prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
-              />
-            )}
-            {chartVariant === 'network' && (
-              <NetworkChart
-                rxQuery={props.networkRxQuery}
-                txQuery={props.networkTxQuery}
-                autoRefresh={refresh}
-                prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
-              />
-            )}
-            {chartVariant === 'filesystem' && (
-              <FilesystemChart
-                readQuery={props.filesystemReadQuery}
-                writeQuery={props.filesystemWriteQuery}
-                autoRefresh={refresh}
-                prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
-              />
-            )}
-          </Box>
+        <Box style={{ justifyContent: 'center', display: 'flex', height: '40vh', width: '80%', margin: '0 auto' }}>
+          {chartVariant === 'cpu' && (
+            <CPUChart
+              query={props.cpuQuery}
+              autoRefresh={refresh}
+              prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+            />
+          )}
+          {chartVariant === 'memory' && (
+            <MemoryChart
+              query={props.memoryQuery}
+              autoRefresh={refresh}
+              prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+            />
+          )}
+          {chartVariant === 'network' && (
+            <NetworkChart
+              rxQuery={props.networkRxQuery}
+              txQuery={props.networkTxQuery}
+              autoRefresh={refresh}
+              prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+            />
+          )}
+          {chartVariant === 'filesystem' && (
+            <FilesystemChart
+              readQuery={props.filesystemReadQuery}
+              writeQuery={props.filesystemWriteQuery}
+              autoRefresh={refresh}
+              prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+            />
+          )}
         </Box>
       ) : state === prometheusState.LOADING ? (
         <Box m={2}>
@@ -298,6 +295,7 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
 
   const YTickProps = {
     domain: ['dataMin', 'auto'],
+    width: 80,
   };
 
   return (
@@ -352,11 +350,12 @@ export function MemoryChart(props: {
     domain: ['dataMin', 'auto'],
     tick: ({ x, y, payload }) => (
       <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
-        <text x={-25} y={0} dy={0} textAnchor="middle">
+        <text x={-35} y={0} dy={0} textAnchor="middle">
           {formatBytes(payload.value)}
         </text>
       </g>
     ),
+    width: 80,
   };
 
   return (
@@ -429,11 +428,12 @@ export function NetworkChart(props: {
         domain: ['dataMin', 'auto'],
         tick: ({ x, y, payload }) => (
           <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
-            <text x={-25} y={0} dy={0} textAnchor="middle">
+            <text x={-35} y={0} dy={0} textAnchor="middle">
               {formatBytes(payload.value)}
             </text>
           </g>
         ),
+        width: 80,
       }}
       fetchMetrics={fetchMetrics}
       CustomTooltip={CustomTooltipFormatBytes}
@@ -492,11 +492,12 @@ export function FilesystemChart(props: {
         domain: ['dataMin', 'auto'],
         tick: ({ x, y, payload }) => (
           <g transform={`translate(${x},${y})`} fill={theme.palette.chartStyles.labelColor}>
-            <text x={-25} y={0} dy={0} textAnchor="middle">
+            <text x={-35} y={0} dy={0} textAnchor="middle">
               {formatBytes(payload.value)}
             </text>
           </g>
         ),
+        width: 80,
       }}
       fetchMetrics={fetchMetrics}
       CustomTooltip={CustomTooltipFormatBytes}
