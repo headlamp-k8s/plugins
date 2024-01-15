@@ -30,6 +30,43 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
+function InstallPrometheusBanner() {
+  const classes = useStyles();
+  const pluginSettings = usePluginSettings();
+
+  return (
+    <Grid
+      container
+      spacing={2}
+      direction="column"
+      justifyContent="center"
+      alignItems="center"
+      className={classes.skeletonBox}
+    >
+    <Grid item>
+      <Typography variant="h5">Install Prometheus for accessing metrics charts</Typography>
+    </Grid>
+    <Grid item>
+      <Typography>
+        <Link href={learnMoreLink} target="_blank">
+          Learn more about enabling advanced charts.
+        </Link>
+      </Typography>
+    </Grid>
+    <Grid item>
+      <Button
+        className={classes.dismissButton}
+        size="small"
+        variant="contained"
+        onClick={() => pluginSettings.setIsVisible(false)}
+      >
+        Dismiss
+      </Button>
+      </Grid>
+    </Grid>
+  )
+}
+
 export function GenericMetricsChart(props: {
   cpuQuery: string;
   memoryQuery: string;
@@ -45,7 +82,6 @@ export function GenericMetricsChart(props: {
     INSTALLED,
   }
 
-  const classes = useStyles();
   const pluginSettings = usePluginSettings();
   const [chartVariant, setChartVariant] = useState<string>('cpu');
   const [refresh, setRefresh] = useState<boolean>(true);
@@ -160,35 +196,7 @@ export function GenericMetricsChart(props: {
           <Alert severity="warning">Error fetching prometheus Info</Alert>
         </Box>
       ) : (
-        <Grid
-          container
-          spacing={2}
-          direction="column"
-          justifyContent="center"
-          alignItems="center"
-          className={classes.skeletonBox}
-        >
-          <Grid item>
-            <Typography variant="h5">Install Prometheus for accessing metrics charts</Typography>
-          </Grid>
-          <Grid item>
-            <Typography>
-              <Link href={learnMoreLink} target="_blank">
-                Learn more about enabling advanced charts.
-              </Link>
-            </Typography>
-          </Grid>
-          <Grid item>
-            <Button
-              className={classes.dismissButton}
-              size="small"
-              variant="contained"
-              onClick={() => pluginSettings.setIsVisible(false)}
-            >
-              Dismiss
-            </Button>
-          </Grid>
-        </Grid>
+        <InstallPrometheusBanner />
       )}
     </SectionBox>
   );
@@ -205,7 +213,6 @@ export function DiskMetricsChart(props: {
     INSTALLED,
   }
 
-  const classes = useStyles();
   const pluginSettings = usePluginSettings();
   const [refresh, setRefresh] = useState<boolean>(true);
 
@@ -281,35 +288,7 @@ export function DiskMetricsChart(props: {
           <Alert severity="warning">Error fetching prometheus Info</Alert>
         </Box>
       ) : (
-        <Grid
-          container
-          spacing={2}
-          direction="column"
-          justifyContent="center"
-          alignItems="center"
-          className={classes.skeletonBox}
-        >
-          <Grid item>
-            <Typography variant="h5">Install Prometheus for accessing metrics charts</Typography>
-          </Grid>
-          <Grid item>
-            <Typography>
-              <Link href={learnMoreLink} target="_blank">
-                Learn more about enabling advanced charts.
-              </Link>
-            </Typography>
-          </Grid>
-          <Grid item>
-            <Button
-              className={classes.dismissButton}
-              size="small"
-              variant="contained"
-              onClick={() => pluginSettings.setIsVisible(false)}
-            >
-              Dismiss
-            </Button>
-          </Grid>
-        </Grid>
+        <InstallPrometheusBanner />
       )}
     </SectionBox>
   );
