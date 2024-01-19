@@ -11,8 +11,11 @@ export const prompt = {
 };
 
 export const promptHelpers = {
-   "details_view_loaded_with_resource": ["Explain the concept of {0} in Kubernetes",  "Explain {0} {1}",],
-   "list_view_loaded_with_resource": ["How to create {0}"],
-   "list_view_loaded_without_resource": ["Summarize this list of {0}"],
-   "Deployment": [ "Scale Deployment {0}", "Scale When CPU usage goes Up by <Percentage_Here>"],
-}
+  details_view_loaded_with_resource: [
+    'Explain the concept of {0} in Kubernetes',
+    'Explain {0} {1}',
+  ],
+  list_view_loaded_with_resource: ['How to create {0}'],
+  list_view_loaded_without_resource: ['Summarize this list of {0}'],
+  Deployment: ['Scale Deployment {0}', 'Scale When CPU usage goes Up by <Percentage_Here>'],
+};

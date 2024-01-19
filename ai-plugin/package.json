@@ -30,7 +30,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.7.4"
+    "@kinvolk/headlamp-plugin": "^0.9.0-alpha.2"
   },
   "dependencies": {
     "@azure/openai": "^1.0.0-beta.5",
