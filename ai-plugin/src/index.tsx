@@ -26,6 +26,7 @@ function DeploymentAIPrompt() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isAzureOpenAI, setIsAzureOpenAI] = React.useState(false);
   const [error, setError] = React.useState(false);
+  const [gptModel, setGptModel] = React.useState('');
   const theme = useTheme();
 
   React.useEffect(() => {
@@ -77,7 +78,7 @@ function DeploymentAIPrompt() {
             }}
           >
             <Tab label="Azure Open AI" />
-            {/* <Tab label="Open AI" /> */}
+            <Tab label="Open AI" />
           </Tabs>
           <TabPanel
             tabIndex={Number(isAzureOpenAI)}
@@ -114,14 +115,29 @@ function DeploymentAIPrompt() {
                   />
                 </FormControl>
               </Box>
+              <Box m={2}>
+                <FormControl fullWidth variant="outlined">
+                  <TextField
+                    label="gpt model here"
+                    id="gpt_model"
+                    value={gptModel}
+                    onChange={event => {
+                      setGptModel(event.target.value);
+                    }}
+                    required
+                    error={isSubmitting && !gptModel}
+                  />
+              </FormControl>
+              </Box>
               <Box mt={2} ml={2}>
                 <Button
                   variant="contained"
                   color="secondary"
                   onClick={() => {
-                    if (openApiKey && openApiName) {
+                    if (openApiKey && openApiName && gptModel) {
                       localStorage.setItem('openApiKey', openApiKey);
                       localStorage.setItem('openApiName', openApiName);
+                      localStorage.setItem('gptModel', gptModel);
                       setError(false);
                     } else {
                       setError(true);
@@ -139,7 +155,7 @@ function DeploymentAIPrompt() {
               </Box>
             </Box>
           </TabPanel>
-          {/* <TabPanel tabIndex={Number(isAzureOpenAI)} index={1} id="OpenAI" labeledBy='OpenAI'>
+          <TabPanel tabIndex={Number(isAzureOpenAI)} index={1} id="OpenAI" labeledBy='OpenAI'>
               <Box p={2}>
             <Box m={2}>
             <FormControl fullWidth variant="outlined">
@@ -155,13 +171,28 @@ function DeploymentAIPrompt() {
                 />
             </FormControl>
             </Box>
+            <Box m={2}>
+                <FormControl fullWidth variant="outlined">
+                  <TextField
+                    label="gpt model here"
+                    id="gpt_model"
+                    value={gptModel}
+                    onChange={event => {
+                      setGptModel(event.target.value);
+                    }}
+                    required
+                    error={isSubmitting && !gptModel}
+                  />
+               </FormControl>
+            </Box>
             <Box  ml={2}>
               <Button
                 variant="contained"
                 color="secondary"
                 onClick={() => {
-                  if(openApiKey) {
+                  if(openApiKey && gptModel) {
                     localStorage.setItem('openApiKey', openApiKey);
+                    localStorage.setItem('gptModel', gptModel);
                     setError(false)
                   } else {
                     setError(true)
@@ -180,7 +211,7 @@ function DeploymentAIPrompt() {
             </Box>
             </Box>
             
-            </TabPanel> */}
+            </TabPanel>
         </Paper>
       </Popper>
       <Backdrop

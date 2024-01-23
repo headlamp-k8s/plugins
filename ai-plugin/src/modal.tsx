@@ -1,14 +1,8 @@
-import { ActionButton, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Drawer,
   Box,
   Chip,
-  FormControl,
-  InputLabel,
-  OutlinedInput,
-  InputAdornment,
   Button,
-  Divider,
   TextField,
 } from '@mui/material';
 import { useTheme } from '@mui/styles';
@@ -28,6 +22,7 @@ export default function AIPrompt(props: {
   const { openPopup, setOpenPopup, isAzureOpenAI } = props;
   const openApiName = localStorage.getItem('openApiName');
   const openApiKey = localStorage.getItem('openApiKey');
+  const gptModel = localStorage.getItem('gptModel');
   const [promptError, setPromptError] = React.useState(false);
   const theme = useTheme();
   const rootRef = React.useRef(null);
@@ -35,6 +30,8 @@ export default function AIPrompt(props: {
   const [promptVal, setPromptVal] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [textStream, setTextStream] = React.useState();
+  const [apiError, setApiError] = React.useState(null);
+  const [textStreamHistoryClear, setTextStreamHistoryClear] = React.useState(false);
 
   let client;
 
@@ -88,7 +85,6 @@ export default function AIPrompt(props: {
         JSON.stringify(resource) +
         '\n'
       );
-      const objectEvents = event.objectEvents || [];
     }
 
     if (items[0].kind) {
@@ -167,15 +163,14 @@ export default function AIPrompt(props: {
     setLoading(true);
     let events;
     if (isAzureOpenAI) {
-      console.log(preparePrompt(_pluginSetting.event, promptVal));
-      events = client.listChatCompletions('gpt-35-turbo', [
+      events = await client.listChatCompletions(gptModel, [
         {
           role: 'user',
           content: `${preparePrompt(_pluginSetting.event, promptVal)}`,
         },
       ]);
     } else {
-      events = client.chat.completions
+      events = await client.chat.completions
         .create({
           messages: [
             {
@@ -183,26 +178,28 @@ export default function AIPrompt(props: {
               content: `${preparePrompt(_pluginSetting.event, promptVal)}}`,
             },
           ],
-          model: 'gpt-35-turbo',
+          model: gptModel,
         })
-        .withResponse();
-      console.log(events);
+        .withResponse().catch((error) => {
+          setApiError(error.message);
+        });
     }
     let stream = '';
     try {
       for await (const event of events) {
         for (const choice of event.choices) {
           const delta = choice.delta?.content;
-          //  console.log(delta)
           if (delta !== undefined) {
             stream += delta;
           }
         }
       }
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);  
     setTextStream(stream);
+    } catch (error) {
+      setLoading(false); 
+      throw new Error(error);
+    }
   }
 
   function handleChange(event) {
@@ -249,11 +246,15 @@ export default function AIPrompt(props: {
               error={promptError}
               helperText={promptError ? 'Please select from one of the provided prompts above' : ''}
             />
-            <Box mt={1}>
+            <Box display={"flex"}>
+            <Box mt={1} mr={1}>
               <Button
                 variant="outlined"
                 onClick={() => {
-                  AnalyzeResourceBasedOnPrompt();
+                  AnalyzeResourceBasedOnPrompt().catch((error) => {
+                    console.log(error)
+                    setApiError(error.message);
+                  });
                 }}
                 style={{
                   color: theme.palette.clusterChooser.button.color,
@@ -262,6 +263,21 @@ export default function AIPrompt(props: {
               >
                 Check
               </Button>
+            </Box>
+            <Box mt={1} mr={1}>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setTextStreamHistoryClear(true);
+                }}
+                style={{
+                  color: theme.palette.clusterChooser.button.color,
+                  backgroundColor: theme.palette.clusterChooser.button.background,
+                }}
+              >
+                Clear History
+              </Button>
+              </Box>
             </Box>
           </Box>
           {
@@ -281,6 +297,7 @@ export default function AIPrompt(props: {
             </Box>
           }
           <Box>
+
             <TextStreamContainer
               incomingText={textStream}
               callback={() => {
@@ -289,6 +306,8 @@ export default function AIPrompt(props: {
               loading={loading}
               context={context}
               resource={_pluginSetting.event?.resource}
+              apiError={apiError}
+              textStreamHistoryClear={textStreamHistoryClear}
             />
           </Box>
         </Box>

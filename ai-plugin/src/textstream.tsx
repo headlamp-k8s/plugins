@@ -8,8 +8,9 @@ import { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { apply } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { ConfirmDialog, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Divider from '@mui/material/Divider';
+import Alert from '@mui/material/Alert';
 
-const TextStreamContainer = ({ incomingText, callback, loading, context, resource }) => {
+const TextStreamContainer = ({ incomingText, callback, loading, context, resource, apiError, textStreamHistoryClear }) => {
   const [textStreamHistory, setTextStreamHistory] = useState<
     {
       incomingText: string;
@@ -47,9 +48,12 @@ const TextStreamContainer = ({ incomingText, callback, loading, context, resourc
     return <Loader title="" />;
   }
 
-  if (textStreamHistory.length === 0 && !loading) {
-    return null;
-  }
+
+  React.useEffect(() => {
+    if(textStreamHistoryClear) {
+      setTextStreamHistory([]);
+    }
+  }, [textStreamHistoryClear])
 
   return (
     <div style={{
@@ -69,6 +73,7 @@ const TextStreamContainer = ({ incomingText, callback, loading, context, resourc
           <Divider />
         </>
       ))}
+      {apiError && <Alert severity="error">{apiError}</Alert>}
       {loading && <Loader title="" />}
     </div>
   );
@@ -101,7 +106,6 @@ const TextStream = ({ incomingText, callback, resource }) => {
       <ReactMarkdown>{incomingText.replace(/```[^`]+```/g, '')}</ReactMarkdown>
       {yaml !== '' && (
         <>
-          {resource && <DiffEditor original={jsYaml.dump(resource)} modified={yaml} />}
           <MonacoEditor
             value={yaml}
             onChange={value => {
