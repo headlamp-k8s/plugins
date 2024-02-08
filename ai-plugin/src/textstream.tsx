@@ -20,6 +20,12 @@ const TextStreamContainer = ({ incomingText, callback, loading, context, resourc
   >([]);
 
   useEffect(() => {
+    if(textStreamHistoryClear) {
+      setTextStreamHistory([]);
+    }
+  }, [textStreamHistoryClear])
+
+  useEffect(() => {
     if (!incomingText) {
       return;
     }
@@ -49,12 +55,7 @@ const TextStreamContainer = ({ incomingText, callback, loading, context, resourc
   }
 
 
-  React.useEffect(() => {
-    if(textStreamHistoryClear) {
-      setTextStreamHistory([]);
-    }
-  }, [textStreamHistoryClear])
-
+ 
   return (
     <div style={{
       overflow: "scroll"

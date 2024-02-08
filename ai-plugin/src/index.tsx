@@ -246,21 +246,21 @@ registerAppBarAction(DeploymentAIPrompt);
 registerAppBarAction(() => {
   const _pluginState = useGlobalState();
   registerHeadlampEventCallback(event => {
-    if (event.type === 'object-event') {
+    if (event.type === 'headlamp.object-events') {
       _pluginState.setEvent({
         ..._pluginState.event,
         objectEvent: event.data,
       });
     }
-    if (event.type === 'list-view-loaded') {
+    if (event.type === 'headlamp.list-view') {
       const slashCount = location.pathname.split('/').length - 1;
       if (slashCount <= 3) {
         _pluginState.setEvent({
-          title: event.data.title || event.data.type,
-          items: event.data.items,
+          title: event.data.resourceKind || event.data.title,
+          items: event.data.resources,
         });
       }
-    } else if (event.type === 'details-view-loaded') {
+    } else if (event.type === 'headlamp.details-view') {
       _pluginState.setEvent({
         title: event.data.title,
         resource: event.data.resource,
