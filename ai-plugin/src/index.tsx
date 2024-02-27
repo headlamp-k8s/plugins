@@ -1,217 +1,63 @@
-import { registerAppBarAction, registerHeadlampEventCallback } from '@kinvolk/headlamp-plugin/lib';
+import { registerAppBarAction, registerHeadlampEventCallback, ConfigStore, registerPluginSettings } from '@kinvolk/headlamp-plugin/lib';
 import {
-  FormControl,
   TextField,
-  Button,
   Box,
-  Paper,
-  Popper,
   Backdrop,
-  Tabs,
-  Tab,
+  Select,
+  MenuItem,
+  Popper,
+  Paper
 } from '@mui/material';
-import { useTheme } from '@mui/styles';
-import OpenAI from 'openai';
-import { ActionButton, TabPanel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { ActionButton, Link, NameValueTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import React from 'react';
 import AIPrompt from './modal';
 import { useGlobalState } from './utils';
 
 function DeploymentAIPrompt() {
   const [openPopup, setOpenPopup] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
   const [anchorEl, setAnchorEl] = React.useState(null);
-  const [openApiKey, setOpenApiKey] = React.useState('');
-  const [openApiName, setOpenApiName] = React.useState('');
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isAzureOpenAI, setIsAzureOpenAI] = React.useState(false);
-  const [error, setError] = React.useState(false);
-  const [gptModel, setGptModel] = React.useState('');
-  const theme = useTheme();
+  const config = new ConfigStore<{ errorMessage?: string }>('@kinvolk/headlamp-ai');
+  const useConf = config.useConfig();
+  const conf = useConf();
+  const isAzureOpenAI = conf.API_TYPE === 'azure';
+  const apiName = conf.API_NAME;
+  const apiKey = conf.API_KEY;
+  const gptModel = conf.GPT_MODEL;
 
-  React.useEffect(() => {
-    const apiKey = localStorage.getItem('openApiKey');
-    const apiName = localStorage.getItem('openApiName');
-    if (apiKey) {
-      setOpenApiKey(apiKey);
-    }
-    if (apiName) {
-      setOpenApiName(apiName);
-    }
-
-    if (!apiKey && !apiName) {
-      setIsSubmitting(false);
-    } else {
-      setIsSubmitting(true);
-    }
-  }, []);
-
-  return !isSubmitting || error ? (
+  console.log(apiName, apiKey, gptModel, isAzureOpenAI)
+  const isAzureOpenAICredentialsAvailable = isAzureOpenAI && apiName && apiKey && gptModel;
+  const isOpenAICredentialsAvailable = !isAzureOpenAI  && apiKey && gptModel;
+  return !isAzureOpenAICredentialsAvailable && !isOpenAICredentialsAvailable ? (
     <>
       <ActionButton
         icon="mdi:brain"
         description="AI Analysis"
+        color="secondary"
         onClick={event => {
-          setOpenPopup(true);
+          setOpenPopup(prev => !prev);
           setAnchorEl(event.currentTarget);
         }}
       />
       <Popper
-        placement="bottom"
-        anchorEl={anchorEl}
-        disablePortal={false}
-        open={openPopup}
-        popperOptions={{
-          style: {
-            zIndex: 2000,
-          },
-        }}
-        style={{
-          zIndex: 2000,
-        }}
+         placement="bottom"
+         anchorEl={anchorEl}
+         disablePortal={false}
+         open={openPopup}
+         style={{
+           zIndex: 2000,
+         }}
       >
         <Paper>
-          <Tabs
-            value={Number(isAzureOpenAI)}
-            onChange={(e, newValue) => {
-              setIsAzureOpenAI(Boolean(newValue));
-            }}
-          >
-            <Tab label="Azure Open AI" />
-            <Tab label="Open AI" />
-          </Tabs>
-          <TabPanel
-            tabIndex={Number(isAzureOpenAI)}
-            index={0}
-            id="Azure OpenAI"
-            labeledBy="Azure OpenAI"
-          >
-            <Box p={1}>
-              <Box m={2}>
-                <FormControl fullWidth variant="outlined">
-                  <TextField
-                    label="azure open ai api key here"
-                    id="azure_open_ai_api_key"
-                    value={openApiKey}
-                    onChange={event => {
-                      setOpenApiKey(event.target.value);
-                    }}
-                    required
-                    error={isSubmitting && !openApiKey}
-                  />
-                </FormControl>
-              </Box>
-              <Box m={2}>
-                <FormControl fullWidth variant="outlined">
-                  <TextField
-                    label="azure open ai api name here"
-                    id="azure_open_ai_api_name"
-                    value={openApiName}
-                    onChange={event => {
-                      setOpenApiName(event.target.value);
-                    }}
-                    required
-                    error={isSubmitting && !openApiName}
-                  />
-                </FormControl>
-              </Box>
-              <Box m={2}>
-                <FormControl fullWidth variant="outlined">
-                  <TextField
-                    label="gpt model here"
-                    id="gpt_model"
-                    value={gptModel}
-                    onChange={event => {
-                      setGptModel(event.target.value);
-                    }}
-                    required
-                    error={isSubmitting && !gptModel}
-                  />
-              </FormControl>
-              </Box>
-              <Box mt={2} ml={2}>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={() => {
-                    if (openApiKey && openApiName && gptModel) {
-                      localStorage.setItem('openApiKey', openApiKey);
-                      localStorage.setItem('openApiName', openApiName);
-                      localStorage.setItem('gptModel', gptModel);
-                      setError(false);
-                    } else {
-                      setError(true);
-                    }
-                    setIsSubmitting(true);
-                  }}
-                  disabled={loading}
-                  style={{
-                    color: theme.palette.clusterChooser.button.color,
-                    backgroundColor: theme.palette.clusterChooser.button.background,
-                  }}
-                >
-                  Submit
-                </Button>
-              </Box>
-            </Box>
-          </TabPanel>
-          <TabPanel tabIndex={Number(isAzureOpenAI)} index={1} id="OpenAI" labeledBy='OpenAI'>
-              <Box p={2}>
-            <Box m={2}>
-            <FormControl fullWidth variant="outlined">
-              <TextField
-                label="open ai api key here"
-                id="open_ai_api_key"
-                value={openApiKey}
-                onChange={(event) => {
-                  setOpenApiKey(event.target.value);
-                }}
-                required
-                error={isSubmitting && !openApiKey}
-                />
-            </FormControl>
-            </Box>
-            <Box m={2}>
-                <FormControl fullWidth variant="outlined">
-                  <TextField
-                    label="gpt model here"
-                    id="gpt_model"
-                    value={gptModel}
-                    onChange={event => {
-                      setGptModel(event.target.value);
-                    }}
-                    required
-                    error={isSubmitting && !gptModel}
-                  />
-               </FormControl>
-            </Box>
-            <Box  ml={2}>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={() => {
-                  if(openApiKey && gptModel) {
-                    localStorage.setItem('openApiKey', openApiKey);
-                    localStorage.setItem('gptModel', gptModel);
-                    setError(false)
-                  } else {
-                    setError(true)
-                  }
-                  setIsSubmitting(true);
-                  
-                }}
-                disabled={loading}
-                style={{
-                  color: theme.palette.clusterChooser.button.color,
-                  backgroundColor: theme.palette.clusterChooser.button.background,
-                }}
-              >
-                Submit
-              </Button>
-            </Box>
-            </Box>
-            
-            </TabPanel>
+          <Box style={{
+            padding: '10px',
+            fontSize: '16px',
+          }}>
+        To set up credentials for AI Analysis tool to work, please go to the <Link routeName="pluginDetails" params={{
+          name: '@kinvolk/headlamp-ai',
+        }} onClick={() => {
+          setOpenPopup(false);
+        }}>Settings</Link> page.
+        </Box>
         </Paper>
       </Popper>
       <Backdrop
@@ -235,7 +81,10 @@ function DeploymentAIPrompt() {
       <AIPrompt
         openPopup={openPopup}
         setOpenPopup={setOpenPopup}
-        isAzureOpenAI={openApiKey && openApiName}
+        isAzureOpenAI={isAzureOpenAI}
+        openApiName={apiName}
+        openApiKey={apiKey}
+        gptModel={gptModel}
       />
     </>
   );
@@ -271,3 +120,91 @@ registerAppBarAction(() => {
   });
   return null;
 });
+
+/**
+ * A component for displaying and editing plugin settings, specifically for customizing error messages.
+ * It renders a text input field that allows users to specify a custom error message.
+ * This message is intended to be displayed when a specific error condition occurs (e.g., pod count cannot be retrieved).
+ *
+ * @param {PluginSettingsDetailsProps} props - Properties passed to the Settings component.
+ * @param {Object} props.data - The current configuration data for the plugin, including the current error message.
+ * @param {function(Object): void} props.onDataChange - Callback function to handle changes to the data, specifically the error message.
+ */
+function Settings(props) {
+  const { data, onDataChange } = props;
+  /**
+   * Handles changes to the error message input field by invoking the onDataChange callback
+   * with the new error message.
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} event - The change event from the input field.
+   */
+  const handleApiKeyChange = event => {
+    onDataChange({ ...data, API_KEY: event.target.value });
+  };
+
+  const handleApiNameChange = event => {
+    console.log("event.target.value",event.target.value)
+    onDataChange({ ...data, API_NAME: event.target.value });
+  }
+
+  const handleApiModelChange = event => {
+    onDataChange({ ...data, GPT_MODEL: event.target.value });
+  }
+
+  const handleApiTypeChange = event => {
+    onDataChange({ ...data, API_TYPE: event.target.value });
+  }
+
+  const settingsRows = [
+    {
+      name: 'API_KEY',
+      value: (
+       <TextField
+        onChange={handleApiKeyChange}
+        value={data?.API_KEY}
+        label="API_KEY"
+        fullWidth
+        defaultValue={data?.API_KEY}
+        />
+      ),
+    }, {
+      name: 'API_NAME',
+      value: (
+        <TextField
+        onChange={handleApiNameChange}
+        value={data?.API_NAME}
+        label="API_NAME"
+        fullWidth
+        defaultValue={data?.API_NAME}
+        />
+      )
+    },
+    {
+      name: 'GPT_MODEL',
+      value: (
+        <TextField
+        onChange={handleApiModelChange}
+        value={data?.GPT_MODEL}
+        label="GPT_MODEL"
+        fullWidth
+        defaultValue={data?.GPT_MODEL}
+        />
+      )
+    },
+    {
+      name: 'API_TYPE',
+      value: <Select label="API_TYPE" onChange={handleApiTypeChange} fullWidth defaultValue={data?.API_TYPE}>
+        <MenuItem value={'openai'}>OpenAI</MenuItem>
+        <MenuItem value={'azure'}>Azure</MenuItem>
+      </Select>
+    }
+  ];
+
+  return (
+    <Box width={'80%'}>
+      <NameValueTable rows={settingsRows} />
+    </Box>
+  );
+}
+
+registerPluginSettings('@kinvolk/headlamp-ai', Settings, true);

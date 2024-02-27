@@ -1,5 +1,5 @@
 {
-  "name": "ai_plugin",
+  "name": "@kinvolk/headlamp-ai",
   "version": "0.0.1",
   "description": "Your Headlamp plugin",
   "scripts": {

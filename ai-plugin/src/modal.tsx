@@ -18,11 +18,12 @@ export default function AIPrompt(props: {
   openPopup: boolean;
   setOpenPopup: (...args) => void;
   isAzureOpenAI: boolean;
+  openApiName: string;
+  openApiKey: string;
+  gptModel: string;
 }) {
-  const { openPopup, setOpenPopup, isAzureOpenAI } = props;
-  const openApiName = localStorage.getItem('openApiName');
-  const openApiKey = localStorage.getItem('openApiKey');
-  const gptModel = localStorage.getItem('gptModel');
+  const { openPopup, setOpenPopup, isAzureOpenAI, openApiName, openApiKey, gptModel } = props;
+
   const [promptError, setPromptError] = React.useState(false);
   const theme = useTheme();
   const rootRef = React.useRef(null);
