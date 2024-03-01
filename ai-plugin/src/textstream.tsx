@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Button } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import MonacoEditor, { DiffEditor } from '@monaco-editor/react';
 import * as jsYaml from 'js-yaml';
@@ -9,78 +9,56 @@ import { apply } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { ConfirmDialog, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
+import { Prompt } from './ai/manager';
 
-const TextStreamContainer = ({ incomingText, callback, loading, context, resource, apiError, textStreamHistoryClear }) => {
-  const [textStreamHistory, setTextStreamHistory] = useState<
-    {
-      incomingText: string;
-      resource?: KubeObjectInterface;
-      context: string;
-    }[]
-  >([]);
+interface TextStreamContainerProps {
+  history: Prompt[];
+  isLoading: boolean;
+  context: string;
+  apiError: string;
+  callback: () => void;
+}
 
-  useEffect(() => {
-    if(textStreamHistoryClear) {
-      setTextStreamHistory([]);
-    }
-  }, [textStreamHistoryClear])
+const TextStreamContainer = (props: TextStreamContainerProps) => {
+  const { history, callback, isLoading, context, apiError } = props;
 
-  useEffect(() => {
-    if (!incomingText) {
-      return;
-    }
-    if (resource) {
-      setTextStreamHistory([
-        ...textStreamHistory,
-        {
-          resource: resource,
-          incomingText: incomingText,
-          context,
-        },
-      ]);
-      return;
-    } else {
-      setTextStreamHistory([
-        ...textStreamHistory,
-        {
-          incomingText: incomingText,
-          context,
-        },
-      ]);
-    }
-  }, [incomingText]);
+  // if (history.length === 0 && isLoading) {
+  //   return <Loader title="" />;
+  // }
 
-  if (textStreamHistory.length === 0 && loading) {
-    return <Loader title="" />;
-  }
-
-
- 
   return (
-    <div style={{
-      overflow: "scroll"
-    }}>
-      {textStreamHistory.map(({ incomingText, resource, context }, index) => (
+    <Box
+      sx={{
+        overflow: 'auto',
+        height: '100%',
+      }}
+    >
+      {console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>HHHH', history)}
+      {history.map(({ content, role }) => (
         <>
-          <Box style={{
+          <Box sx={{
               borderRadius: "10px",
               padding: "10px",
               margin: "10px",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)"
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+              wordBreak: 'break-word',
+              marginRight: role === 'user' ? undefined : 4,
+              marginLeft: role !== 'user' ? undefined : 4,
           }}>
-            <span style={{ fontWeight: 'bold' }}>context: {context}</span>
-            <TextStream incomingText={incomingText} callback={callback} resource={resource} />
+            <Typography variant="body2" color="textPrimary" sx={{ fontWeight: 'bold' }}>{role === 'assistant' ? 'AI Assistant' : 'You'}</Typography>
+            <TextStream incomingText={content} callback={() => {}} />
           </Box>
           <Divider />
         </>
       ))}
       {apiError && <Alert severity="error">{apiError}</Alert>}
-      {loading && <Loader title="" />}
-    </div>
+      {isLoading && <Loader title="" />}
+    </Box>
   );
 };
 
-const TextStream = ({ incomingText, callback, resource }) => {
+const TextStream = (props) => {
+  const { incomingText, callback } = props;
   const messageContainerRef = useRef(null);
   const [yaml, setYaml] = useState('');
   const themeName = localStorage.getItem('headlampThemePreference');
@@ -103,7 +81,9 @@ const TextStream = ({ incomingText, callback, resource }) => {
   }, [incomingText]);
 
   return (
-    <Box className={`text-stream-message`}>
+    <Box
+      className={`text-stream-message`}
+    >
       <ReactMarkdown>{incomingText.replace(/```[^`]+```/g, '')}</ReactMarkdown>
       {yaml !== '' && (
         <>
