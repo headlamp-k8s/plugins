@@ -33,7 +33,7 @@ function DeploymentAIPrompt() {
     <>
       <ActionButton
         icon="mdi:brain"
-        description="AI Analysis"
+        description="AI Assistant"
         color="secondary"
         onClick={event => {
           setOpenPopup(prev => !prev);
@@ -55,7 +55,7 @@ function DeploymentAIPrompt() {
             fontSize: '16px',
           }}>
         To set up credentials for AI Analysis tool to work, please go to the <Link routeName="pluginDetails" params={{
-          name: '@kinvolk/headlamp-ai',
+          name: '@headlamp-k8s/headlamp-ai',
         }} onClick={() => {
           setOpenPopup(false);
         }}>Settings</Link> page.
@@ -72,7 +72,7 @@ function DeploymentAIPrompt() {
   ) : (
     <>
       <ActionButton
-        icon="mdi:brain"
+        icon="mdi:message-flash"
         description="AI Analysis"
         color="secondary"
         onClick={event => {

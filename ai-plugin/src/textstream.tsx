@@ -33,7 +33,6 @@ const TextStreamContainer = (props: TextStreamContainerProps) => {
         height: '100%',
       }}
     >
-      {console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>HHHH', history)}
       {history.map(({ content, role }) => (
         <>
           <Box sx={{
@@ -80,11 +79,33 @@ const TextStream = (props) => {
     }
   }, [incomingText]);
 
+  const renderers = {
+    code: ({language, value}) => {
+      // return <SyntaxHighlighter style={solarizedlight} language={language} children={value} />
+      return (
+        <MonacoEditor
+          value={value}
+          language={language}
+          height="500px"
+          options={{
+            selectOnLineNumbers: true,
+          }}
+          theme={themeName === 'dark' ? 'vs-dark' : 'light'}
+        />
+      );
+    }
+  }
+
   return (
     <Box
       className={`text-stream-message`}
     >
-      <ReactMarkdown>{incomingText.replace(/```[^`]+```/g, '')}</ReactMarkdown>
+      {/* <ReactMarkdown>{incomingText.replace(/```[^`]+```/g, '')}</ReactMarkdown> */}
+      <ReactMarkdown
+        components={renderers}
+      >
+        {incomingText}
+      </ReactMarkdown>
       {yaml !== '' && (
         <>
           <MonacoEditor

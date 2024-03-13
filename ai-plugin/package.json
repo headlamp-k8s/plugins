@@ -1,6 +1,6 @@
 {
-  "name": "@kinvolk/headlamp-ai",
-  "version": "0.0.1",
+  "name": "@headlamp-k8s/headlamp-ai",
+  "version": "0.0.1-beta",
   "description": "Your Headlamp plugin",
   "scripts": {
     "start": "headlamp-plugin start",
