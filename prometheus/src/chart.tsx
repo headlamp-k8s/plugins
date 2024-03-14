@@ -65,7 +65,8 @@ export function Chart(props: ChartProps) {
           step: 2,
         });
       } catch (e) {
-        setError(e);
+        fetchedMetrics[plot.name] = { data: [], state: ChartState.ERROR };
+        setError(e.message);
         setState(ChartState.ERROR);
         break;
       }
