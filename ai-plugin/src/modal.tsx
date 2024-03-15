@@ -19,6 +19,147 @@ import {
   ActionButton,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 
+const maxCharLimit = 3000;
+
+function summarizeKubeObject(obj) {
+  if (obj.kind === 'Event') {
+    return {
+      kind: obj.kind,
+      metadata: {
+        name: obj.metadata.name,
+        namespace: obj.metadata.namespace,
+      },
+      involvedObject: {
+        kind: obj.involvedObject.kind,
+        name: obj.involvedObject.name,
+        namespace: obj.involvedObject.namespace,
+      },
+      reason: obj.reason,
+    };
+  }
+
+  const summarizedObj = {
+    kind: obj.kind,
+    metadata: {
+      name: obj.metadata.name,
+      namespace: obj.metadata.namespace,
+    },
+  };
+
+  if (obj.metadata.namespace) {
+    summarizedObj.metadata['namespace'] = obj.metadata.namespace;
+  }
+
+  return summarizedObj;
+}
+
+function summarizeKubeObjectIfNeeded(obj) {
+  const objsData = {
+    object: obj,
+    summarized: false,
+  };
+  let objStr = JSON.stringify(obj);
+  // @todo: We should measure the number of tokens, but we count the chars for now which
+  // will "almost certainly" be less than the token count.
+  if (objStr.length < maxCharLimit) {
+    return objsData;
+  }
+
+  // Remove the annotations from this k8s object
+  let simplifiedObj = {
+    ...obj,
+  };
+  if (simplifiedObj.metadata?.annotations) {
+    delete simplifiedObj.metadata.annotations;
+  }
+  if (simplifiedObj.metadata?.managedFields) {
+    delete simplifiedObj.metadata.managedFields;
+  }
+
+  objStr = JSON.stringify(simplifiedObj);
+  if (objStr.length >= maxCharLimit) {
+    simplifiedObj = summarizeKubeObject(obj);
+    // If the very simplified object is under the limit, try including
+    // the spec (if it applies).
+    if (JSON.stringify(simplifiedObj).length < maxCharLimit) {
+      if (!!obj.spec) {
+        let simplifiedObjWithSpec = {...simplifiedObj};
+        simplifiedObjWithSpec.spec = obj.spec
+
+        if (JSON.stringify(simplifiedObjWithSpec).length < maxCharLimit) {
+          simplifiedObj = simplifiedObjWithSpec;
+        }
+      }
+    }
+  }
+
+  objsData.object = simplifiedObj;
+  objsData.summarized = true;
+  return objsData;
+}
+
+function summarizeKubeObjectListIfNeeded(objList) {
+  const objsListData = {
+    list: objList,
+    summarized: false,
+  };
+  const objListStr = JSON.stringify(objList);
+  // @todo: We should measure the number of tokens, but we count the chars for now which
+  // will "almost certainly" be less than the token count.
+  if (objListStr.length < maxCharLimit) {
+    return objsListData;
+  }
+
+  objsListData.list = objList.map(summarizeKubeObject);
+  objsListData.summarized = true;
+  return objsListData;
+}
+
+function getWarningsContext(events): [string, ReturnType<typeof summarizeKubeObjectListIfNeeded>] {
+  const warnings = events.filter(e => e.type === 'Warning').map(e => e.jsonData);
+
+  return ['clusterWarnings', summarizeKubeObjectListIfNeeded(warnings)];
+}
+
+function getPromptSuggestions(aiManager: AIManager) {
+  if (!aiManager) {
+    return [];
+  }
+  const context = aiManager.getContext() || {};
+  const ids = Object.keys(context);
+
+  if (ids.length === 0) {
+    return [];
+  }
+
+  let suggestions = [];
+  const lastContextId = ids[ids.length - 1];
+  if (lastContextId === 'resourceList') {
+    suggestions = [
+      'How many resources do I have here?',
+      'Explain this to me.',
+      'Give me an example of a deployment.',
+    ];
+  } else if (lastContextId === 'resourceDetails') {
+    suggestions = [
+      'Explain this to me.',
+      'Any problem with this resource?',
+    ];
+  } else if (lastContextId === 'clusterWarnings') {
+    suggestions = [];
+    const lastContext = context[lastContextId];
+    if (lastContext?.content?.list?.length > 0) {
+      suggestions.push('How can I fix the warnings in this cluster.');
+    }
+  } else {
+    suggestions = [
+      "How can I reach out to Headlamp's developers?",
+    ];
+  }
+
+  return suggestions;
+}
+
 export default function AIPrompt(props: {
   openPopup: boolean;
   setOpenPopup: (...args) => void;
@@ -32,13 +173,13 @@ export default function AIPrompt(props: {
   const [promptError, setPromptError] = React.useState(false);
   const theme = useTheme();
   const rootRef = React.useRef(null);
-  let availablePrompts: string[] = [];
   const [promptVal, setPromptVal] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [apiError, setApiError] = React.useState(null);
   const [aiManager, setAiManager] = React.useState<AIManager | null>(null);
   const _pluginSetting = useGlobalState();
   const [history, setHistory] = React.useState<Prompt[]>([]);
+  const [suggestions, setSuggestions] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     if (isAzureOpenAI && !aiManager) {
@@ -80,47 +221,35 @@ export default function AIPrompt(props: {
       const title = event?.title || event?.type;
 
       const events = event?.objectEvent?.events;
-      if (!!events && !event?.objectEvent?.resource) {
-        ctx['clusterEvents'] = JSON.stringify(events.map(e => e.jsonData));
+      if (!!events) {
+        const [contextId, warnings] = getWarningsContext(events);
+        aiManager.addContext(contextId, warnings);
       }
 
       if (!!items) {
-        const itemListName = !!title ? `${title} list` : 'resource list';
-        let itemsAreSummarized = false;
-        let itemList = items.map(i => i?.jsonData);
-        if (JSON.stringify(itemList).length > 1000) {
-          itemsAreSummarized = true;
-          itemList = itemList.map(summarizeResource);
-          if (JSON.stringify(itemList).length > 1000) {
-            itemList = [];
-          }
-        }
-
-        ctx[itemListName] = {
-          items: itemList,
-          listLength: items.length,
-          listIsSummarized: itemsAreSummarized,
-        };
+        const objList = summarizeKubeObjectListIfNeeded(items);
+        aiManager.addContext('resourceList', {
+          ...objList,
+          listKind: title,
+        });
       }
 
       if (!!resource) {
         const resourceName = !!title ? `${title} details` : 'resource details';
         ctx[resourceName] = resource;
-        if (JSON.stringify(resource).length > 1000) {
-          ctx[resourceName] = summarizeResource(resource);
-          ctx[resourceName + ' is summarized'] = true;
-        }
+        aiManager.addContext('resourceDetails', summarizeKubeObjectIfNeeded(resource));
       }
-      aiManager.context = JSON.stringify(ctx);
     }
+
+    setSuggestions(getPromptSuggestions(aiManager));
   },
   [_pluginSetting.event, aiManager]);
 
-  async function AnalyzeResourceBasedOnPrompt() {
+  async function AnalyzeResourceBasedOnPrompt(prompt: string) {
     setOpenPopup(true);
     setLoading(true);
     // @todo: Needs to be cancellable.
-    let promptResponse = await aiManager.userSend(promptVal)
+    let promptResponse = await aiManager.userSend(prompt);
 
     setLoading(false);
     if (promptResponse.error) {
@@ -130,10 +259,6 @@ export default function AIPrompt(props: {
     // This is a bit hacky but it does ensure that the TextStreamContainer is updated.
     setAiManager(aiManager);
     updateHistory();
-  }
-
-  function handleChange(event) {
-    setPromptVal(event.target.value);
   }
 
   const context = `${_pluginSetting.event?.title || _pluginSetting.event?.type || 'Loading...'}`;
@@ -190,16 +315,25 @@ export default function AIPrompt(props: {
               paddingY: 1,
             }}
           >
-            {
+            {!loading &&
               <Box>
-                {availablePrompts.map(prompt => {
+                {suggestions.map(prompt => {
                   return (
                     <Box m={1}>
                       <Chip
                         label={prompt}
+                        size="small"
+                        variant="outlined"
                         onClick={() => {
                           setPromptVal(prompt);
                         }}
+                        onDelete={() => {
+                          AnalyzeResourceBasedOnPrompt(prompt).catch((error) => {
+                            console.log(error)
+                            setApiError(error.message);
+                          });
+                        }}
+                        deleteIcon={<Icon icon="mdi:send" width="20px" />}
                       />
                     </Box>
                   );
@@ -218,9 +352,10 @@ export default function AIPrompt(props: {
                 onKeyDown={(e) => {
                   if(e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
+                    const prompt = promptVal;
                     setPromptVal('');
 
-                    AnalyzeResourceBasedOnPrompt().catch((error) => {
+                    AnalyzeResourceBasedOnPrompt(prompt).catch((error) => {
                       console.log(error)
                       setApiError(error.message);
                     });
@@ -256,7 +391,8 @@ export default function AIPrompt(props: {
                     onClick={() => {
                       updateHistory();
                       setPromptVal('');
-                      AnalyzeResourceBasedOnPrompt().catch((error) => {
+                      const prompt = promptVal;
+                      AnalyzeResourceBasedOnPrompt(prompt).catch((error) => {
                         console.log(error)
                         setApiError(error.message);
                       });

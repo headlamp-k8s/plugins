@@ -2,7 +2,8 @@ import { basePrompt } from "./prompts";
 
 export interface Prompt {
   content: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'context';
+  id?: string;
 }
 
 export interface PromptResponse {
@@ -12,11 +13,17 @@ export interface PromptResponse {
   [key: string]: any;
 }
 
+export interface ContextMap {
+  [id: string]: {
+    [key: string]: any;
+  }
+}
+
 abstract class AIManager<T = unknown> {
   private static _client: unknown;
   protected basePrompt: string;
   protected _history: Prompt[] = [];
-  protected _context: string;
+  protected _context: ContextMap = {};
   private _realHistoryStartIndex = 0;
 
   constructor() {
@@ -38,10 +45,6 @@ abstract class AIManager<T = unknown> {
 
   set client(client: T) {
     this._class._client = client;
-  }
-
-  get context() {
-    return this._context;
   }
 
   get history() {
@@ -68,27 +71,69 @@ abstract class AIManager<T = unknown> {
       content: this.basePrompt,
       role: 'system'
     });
+    this._context = {};
 
     // Makes it easier to update the user visible start index.
     this._realHistoryStartIndex = this._history.length;
   }
 
-  set context(context: string) {
-    this._context = context;
-    console.debug('>>>>>>>>>>>>>>>>>>>>>>>>>ctx', context)
-    this._history.push({
-      content: `C:${context}`,
-      role: 'system'
+  getContext(id: string = '') {
+    if (id === '') {
+      return this._context;
+    }
+
+    return this._context[id];
+  }
+
+  addContext(id: string, content: ContextMap[string]) {
+    if (id === '') {
+      throw new Error('Context ID cannot be empty');
+    }
+
+    this._context[id] = {content}
+
+    // Check whether to replace or to add the context
+    // Go from the end until the start of the history, if a context is found with the
+    // same ID, before any system message, replace it.
+    let shouldReplace = 0;
+    let indexToAdd = this._history.length;
+    for (let i = this._history.length - 1; i >= this._realHistoryStartIndex; i--) {
+      if (this._history[i].id === id) {
+        indexToAdd = i;
+        shouldReplace = 1;
+        break;
+      }
+      if (this._history[i].role === 'system') {
+        break;
+      }
+    }
+const prevHistory = [...this._history]
+console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>HISTORY_FROM_CONTEXT', {id}, indexToAdd, prevHistory, [...this._history])
+    this._history.splice(indexToAdd, shouldReplace, {
+      content: `C:${id}=${JSON.stringify(content)}`,
+      role: 'context',
+      id
     });
+
+    console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>HISTORY_FROM_CONTEXT1', {id}, indexToAdd, prevHistory, [...this._history])
   }
 
   async userSend(prompt: string) {
+    console.debug('>>>>>>>>>>>>>>>>>>>>>>>>>AI_HISTORY', [...this._history])
+
     this._history.push({
       content: `Q:${prompt}`,
       role: 'user'
     })
 
-    const promptResp = await this.send(this._history);
+    const promptResp = await this.send(
+      // Keep only the content + role from the history messages.
+      this._history.map((message) => ({
+        content: message.content,
+        role: message.role === 'context' ? 'system' : message.role
+      }))
+    );
+
     if (!promptResp.error) {
       this._history.push({
         content: promptResp.content,

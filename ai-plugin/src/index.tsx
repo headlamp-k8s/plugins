@@ -24,9 +24,9 @@ function DeploymentAIPrompt() {
   const apiKey = conf.API_KEY;
   const gptModel = conf.GPT_MODEL;
 
-  console.log('>>>>>>>>>>>>>>>>>>>>>>>>>CONF', conf)
+  // console.log('>>>>>>>>>>>>>>>>>>>>>>>>>CONF', conf)
 
-  console.log(apiName, apiKey, gptModel, isAzureOpenAI)
+  // console.log(apiName, apiKey, gptModel, isAzureOpenAI)
   const isAzureOpenAICredentialsAvailable = isAzureOpenAI && apiName && apiKey && gptModel;
   const isOpenAICredentialsAvailable = !isAzureOpenAI  && apiKey && gptModel;
   return !isAzureOpenAICredentialsAvailable && !isOpenAICredentialsAvailable ? (
