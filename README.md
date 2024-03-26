@@ -7,6 +7,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 Plugin                                                          | Description                                                                   | Obs.
 ------                                                          | -----------                                                                   | ----------
 [app-catalog](./app-catalog)                                    | Provides a new area where users can install Helm charts and manage releases.  | Desktop only.
+[prometheus](./prometheus)                                      | Provides a Prometheus powered chart in the details views of workloads.  | Needs Prometheus installed in the cluster for the chart to be shown.
 
 ## Development
 
