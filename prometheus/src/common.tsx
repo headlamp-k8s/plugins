@@ -20,10 +20,11 @@ const useStyles = makeStyles(theme => ({
     backgroundRepeat: 'no-repeat',
     backgroundPositionX: 'center',
     height: '450px',
+    color: theme.palette.common.black,
   },
   dismissButton: {
     backgroundColor: theme.palette.common.black,
-    color: theme.palette.primary.contrastText,
+    color: theme.palette.common.white,
     '&:hover': {
       color: theme.palette.primary.text,
     },
@@ -43,25 +44,25 @@ function InstallPrometheusBanner() {
       alignItems="center"
       className={classes.skeletonBox}
     >
-    <Grid item>
-      <Typography variant="h5">Install Prometheus for accessing metrics charts</Typography>
-    </Grid>
-    <Grid item>
-      <Typography>
-        <Link href={learnMoreLink} target="_blank">
-          Learn more about enabling advanced charts.
-        </Link>
-      </Typography>
-    </Grid>
-    <Grid item>
-      <Button
-        className={classes.dismissButton}
-        size="small"
-        variant="contained"
-        onClick={() => pluginSettings.setIsVisible(false)}
-      >
-        Dismiss
-      </Button>
+      <Grid item>
+        <Typography variant="h5">Install Prometheus for accessing metrics charts</Typography>
+      </Grid>
+      <Grid item>
+        <Typography>
+          <Link href={learnMoreLink} target="_blank">
+            Learn more about enabling advanced charts.
+          </Link>
+        </Typography>
+      </Grid>
+      <Grid item>
+        <Button
+          className={classes.dismissButton}
+          size="small"
+          variant="contained"
+          onClick={() => pluginSettings.setIsVisible(false)}
+        >
+          Dismiss
+        </Button>
       </Grid>
     </Grid>
   )
@@ -128,29 +129,29 @@ export function GenericMetricsChart(props: {
       >
         {state === prometheusState.INSTALLED
           ? [
-              <ToggleButtonGroup
-                onChange={handleChartVariantChange}
-                size="small"
-                aria-label="metric chooser"
-                value={chartVariant}
-                exclusive
+            <ToggleButtonGroup
+              onChange={handleChartVariantChange}
+              size="small"
+              aria-label="metric chooser"
+              value={chartVariant}
+              exclusive
+            >
+              <ToggleButton value="cpu">CPU</ToggleButton>
+              <ToggleButton value="memory">Memory</ToggleButton>
+              <ToggleButton value="network">Network</ToggleButton>
+              <ToggleButton value="filesystem">Filesystem</ToggleButton>
+            </ToggleButtonGroup>,
+            <Box pl={2}>
+              <IconButton
+                onClick={() => {
+                  setRefresh(refresh => !refresh);
+                }}
+                size="large"
               >
-                <ToggleButton value="cpu">CPU</ToggleButton>
-                <ToggleButton value="memory">Memory</ToggleButton>
-                <ToggleButton value="network">Network</ToggleButton>
-                <ToggleButton value="filesystem">Filesystem</ToggleButton>
-              </ToggleButtonGroup>,
-              <Box pl={2}>
-                <IconButton
-                  onClick={() => {
-                    setRefresh(refresh => !refresh);
-                  }}
-                  size="large"
-                >
-                  {refresh ? <Icon icon="mdi:pause" /> : <Icon icon="mdi:play" />}
-                </IconButton>
-              </Box>,
-            ]
+                {refresh ? <Icon icon="mdi:pause" /> : <Icon icon="mdi:play" />}
+              </IconButton>
+            </Box>,
+          ]
           : []}
       </Box>
 
@@ -271,7 +272,7 @@ export function DiskMetricsChart(props: {
       </Box>
 
       {prometheusInfo ? (
-        <Box style={{ justifyContent: 'center', display: 'flex', height: '40vh', width: '80%', margin: '0 auto'}}>
+        <Box style={{ justifyContent: 'center', display: 'flex', height: '40vh', width: '80%', margin: '0 auto' }}>
           <DiskChart
             usageQuery={props.usageQuery}
             capacityQuery={props.capacityQuery}
