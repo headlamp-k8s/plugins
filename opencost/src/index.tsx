@@ -22,12 +22,27 @@ function fetchOpencostData(window: string, resource: string, accumulate: boolean
     return data;
   });
 }
+   
+registerResourceTableColumnsProcessor(async function processor({ id, columns }) {
+  if (id === 'headlamp-pods') {
+    columns.push({
+      id: 'opencost',
+      label: 'Opencost',
+      getter: () => {
+        // console.log('pod', pod, data.data[0]);
+        return 'Loading.........';
+      },
+      show: true,
+    }); 
+  }
+  return columns;
+});
 
 registerResourceTableColumnsProcessor(async function processor({ id, columns }) {
   if (id === 'headlamp-pods') {
     console.log('open-cost plugin processor called', id, columns);
     const data = await fetchOpencostData('14d', 'pod', true);
-    console.log('data', data);
+    columns = [...columns.filter((col) => col.id !== 'opencost')]
     columns.push({
       id: 'opencost',
       label: 'Opencost',
@@ -36,7 +51,7 @@ registerResourceTableColumnsProcessor(async function processor({ id, columns }) 
         return 'test';
       },
       show: true,
-    });
+    }); 
   }
   return columns;
 });
