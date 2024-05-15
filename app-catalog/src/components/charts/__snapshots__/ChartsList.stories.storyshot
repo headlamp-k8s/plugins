@@ -329,13 +329,25 @@ exports[`Storyshots components/charts/List Some Charts 1`] = `
         class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-bhp9pd-MuiPaper-root-MuiCard-root"
       >
         <div
-          class="MuiBox-root css-1p40ryp"
+          class="MuiBox-root css-tf8c38"
         >
           <img
             class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img css-o69gx8-MuiCardMedia-root"
             src="https://artifacthub.io/image/0503add5-3fce-4b63-bbf3-b9f649512a86"
-            style="width: 60px; margin: 1rem;"
+            style="width: 60px; margin: 1rem; align-self: flex-start;"
           />
+          <div
+            class="MuiBox-root css-q5lf8z"
+          >
+            <cncf-icon-black.svg
+              aria-label="Non CNCF Project"
+              classname=""
+              data-mui-internal-clone-element="true"
+              style="width: 24px; height: 24px;"
+            />
+            <span />
+            <span />
+          </div>
         </div>
         <div
           class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
@@ -425,13 +437,25 @@ exports[`Storyshots components/charts/List Some Charts 1`] = `
         class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-bhp9pd-MuiPaper-root-MuiCard-root"
       >
         <div
-          class="MuiBox-root css-1p40ryp"
+          class="MuiBox-root css-tf8c38"
         >
           <img
             class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img css-o69gx8-MuiCardMedia-root"
             src="https://artifacthub.io/image/c711f9f9-28b3-4ee8-98a2-30e00abf9f02"
-            style="width: 60px; margin: 1rem;"
+            style="width: 60px; margin: 1rem; align-self: flex-start;"
           />
+          <div
+            class="MuiBox-root css-q5lf8z"
+          >
+            <cncf-icon-black.svg
+              aria-label="Non CNCF Project"
+              classname=""
+              data-mui-internal-clone-element="true"
+              style="width: 24px; height: 24px;"
+            />
+            <span />
+            <span />
+          </div>
         </div>
         <div
           class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
