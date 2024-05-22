@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Grid, IconButton, Link, Paper, Typography, useTheme } from '@mui/material';
+import { Tooltip } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -65,7 +66,7 @@ function InstallPrometheusBanner() {
         </Button>
       </Grid>
     </Grid>
-  )
+  );
 }
 
 export function GenericMetricsChart(props: {
@@ -129,34 +130,52 @@ export function GenericMetricsChart(props: {
       >
         {state === prometheusState.INSTALLED
           ? [
-            <ToggleButtonGroup
-              onChange={handleChartVariantChange}
-              size="small"
-              aria-label="metric chooser"
-              value={chartVariant}
-              exclusive
-            >
-              <ToggleButton value="cpu">CPU</ToggleButton>
-              <ToggleButton value="memory">Memory</ToggleButton>
-              <ToggleButton value="network">Network</ToggleButton>
-              <ToggleButton value="filesystem">Filesystem</ToggleButton>
-            </ToggleButtonGroup>,
-            <Box pl={2}>
-              <IconButton
-                onClick={() => {
-                  setRefresh(refresh => !refresh);
-                }}
-                size="large"
+              <ToggleButtonGroup
+                onChange={handleChartVariantChange}
+                size="small"
+                aria-label="metric chooser"
+                value={chartVariant}
+                exclusive
               >
-                {refresh ? <Icon icon="mdi:pause" /> : <Icon icon="mdi:play" />}
-              </IconButton>
-            </Box>,
-          ]
+                <ToggleButton value="cpu">CPU</ToggleButton>
+                <ToggleButton value="memory">Memory</ToggleButton>
+                <ToggleButton value="network">Network</ToggleButton>
+                <ToggleButton value="filesystem">Filesystem</ToggleButton>
+              </ToggleButtonGroup>,
+              <Box pl={2}>
+                <IconButton
+                  onClick={() => {
+                    setRefresh(refresh => !refresh);
+                  }}
+                  size="large"
+                >
+                  {refresh ? (
+                    <Tooltip title="Pause metrics">
+                      {' '}
+                      <Icon icon="mdi:pause" />{' '}
+                    </Tooltip>
+                  ) : (
+                    <Tooltip title="Resume metrics">
+                      {' '}
+                      <Icon icon="mdi:play" />{' '}
+                    </Tooltip>
+                  )}
+                </IconButton>
+              </Box>,
+            ]
           : []}
       </Box>
 
       {prometheusInfo ? (
-        <Box style={{ justifyContent: 'center', display: 'flex', height: '40vh', width: '80%', margin: '0 auto' }}>
+        <Box
+          style={{
+            justifyContent: 'center',
+            display: 'flex',
+            height: '40vh',
+            width: '80%',
+            margin: '0 auto',
+          }}
+        >
           {chartVariant === 'cpu' && (
             <CPUChart
               query={props.cpuQuery}
@@ -203,10 +222,7 @@ export function GenericMetricsChart(props: {
   );
 }
 
-export function DiskMetricsChart(props: {
-  usageQuery?: string;
-  capacityQuery?: string;
-}) {
+export function DiskMetricsChart(props: { usageQuery?: string; capacityQuery?: string }) {
   enum prometheusState {
     UNKNOWN,
     LOADING,
@@ -252,27 +268,34 @@ export function DiskMetricsChart(props: {
         justifyContent="space-around"
         alignItems="center"
         style={{ marginBottom: '0.5rem', margin: '0 auto', width: '0%' }}
-
       >
         {state === prometheusState.INSTALLED
           ? [
-            <Box>Disk</Box>,
-            <Box pl={2}>
-              <IconButton
-                onClick={() => {
-                  setRefresh(refresh => !refresh);
-                }}
-                size="Big"
-              >
-                {refresh ? <Icon icon="mdi:pause" /> : <Icon icon="mdi:play" />}
-              </IconButton>
-            </Box>,
-          ]
+              <Box>Disk</Box>,
+              <Box pl={2}>
+                <IconButton
+                  onClick={() => {
+                    setRefresh(refresh => !refresh);
+                  }}
+                  size="Big"
+                >
+                  {refresh ? <Icon icon="mdi:pause" /> : <Icon icon="mdi:play" />}
+                </IconButton>
+              </Box>,
+            ]
           : []}
       </Box>
 
       {prometheusInfo ? (
-        <Box style={{ justifyContent: 'center', display: 'flex', height: '40vh', width: '80%', margin: '0 auto' }}>
+        <Box
+          style={{
+            justifyContent: 'center',
+            display: 'flex',
+            height: '40vh',
+            width: '80%',
+            margin: '0 auto',
+          }}
+        >
           <DiskChart
             usageQuery={props.usageQuery}
             capacityQuery={props.capacityQuery}
