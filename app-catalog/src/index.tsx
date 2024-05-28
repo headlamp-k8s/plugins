@@ -1,8 +1,13 @@
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerPluginSettings,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
 import ChartDetails from './components/charts/Details';
 import { ChartsList } from './components/charts/List';
 import ReleaseDetail from './components/releases/Detail';
 import ReleaseList from './components/releases/List';
+import { AppCatalogSettings } from './settings';
 
 export function isElectron(): boolean {
   // Renderer process
@@ -91,4 +96,14 @@ if (isElectron()) {
     exact: true,
     component: () => <ChartDetails />,
   });
+
+  registerRoute({
+    path: '/settings/plugins/app-catalog',
+    sidebar: 'Charts',
+    name: 'App Catalog',
+    exact: true,
+    component: () => <AppCatalogSettings />,
+  });
 }
+
+registerPluginSettings('app-catalog', AppCatalogSettings, false);
