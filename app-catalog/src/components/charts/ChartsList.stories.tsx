@@ -32,6 +32,27 @@ const mockCharts = [
       url: 'https://example2.com',
     },
   },
+  {
+    name: 'MockChart3',
+    version: '1.0',
+    description: 'This is a mock chart description.',
+    logo_image_id: 'zzzzz-3fce-4b63-bbf3-b9f649512a86',
+    repository: {
+      name: 'MockRepoy',
+      url: 'https://exampley.com',
+    },
+  },
+  {
+    name: 'MockChart4',
+    version: '1.1',
+    description:
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a diam lectus. Sed sit amet ipsum mauris. Maecenas congue ligula ac quam viverra nec consectetur ante hendrerit. Donec et mollis dolor.',
+    logo_image_id: 'zzzzz-28b3-4ee8-98a2-30e00abf9f02',
+    repository: {
+      name: 'MockRepo2y',
+      url: 'https://example2y.com',
+    },
+  },
 ];
 
 const initialState = {
