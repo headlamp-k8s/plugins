@@ -1,3 +1,4 @@
+import { Icon } from '@iconify/react';
 import {
   Link as RouterLink,
   Loader,
@@ -20,6 +21,7 @@ import { Autocomplete, Pagination } from '@mui/material';
 import { useEffect, useState } from 'react';
 //import { jsonToYAML, yamlToJSON } from '../../helpers';
 import { fetchChartsFromArtifact } from '../../api/charts';
+import CNCFLight from './cncf-icon-color.svg';
 //import { createRelease } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
 
@@ -168,15 +170,62 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             return (
               <Box maxWidth="30%" width="400px" m={1}>
                 <Card>
-                  <Box height="60px" display="flex" alignItems="center" marginTop="15px">
+                  <Box
+                    height="60px"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    marginTop="15px"
+                  >
                     <CardMedia
                       image={`https://artifacthub.io/image/${chart.logo_image_id}`}
                       style={{
                         width: '60px',
                         margin: '1rem',
+                        alignSelf: 'flex-start',
                       }}
                       component="img"
                     />
+                    <Box
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="space-around"
+                      marginRight="10px"
+                    >
+                      {(chart.cncf || chart.repository.cncf) && (
+                        <Tooltip title="CNCF Project">
+                          <Icon
+                            icon="simple-icons:cncf"
+                            style={{
+                              marginLeft: '0.5em',
+                              fontSize: '20px',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                      {(chart.official || chart.repository.official) && (
+                        <Tooltip title="Official Chart">
+                          <Icon
+                            icon="mdi:star-circle"
+                            style={{
+                              marginLeft: '0.5em',
+                              fontSize: '22px',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                      {chart.repository.verified_publisher && (
+                        <Tooltip title="Verified Publisher">
+                          <Icon
+                            icon="mdi:check-decagram"
+                            style={{
+                              marginLeft: '0.5em',
+                              fontSize: '22px',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Box>
                   </Box>
                   <CardContent
                     style={{
