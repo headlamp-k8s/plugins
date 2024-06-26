@@ -16,12 +16,12 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { Autocomplete, Pagination } from '@mui/material';
 import { useEffect, useState } from 'react';
 //import { jsonToYAML, yamlToJSON } from '../../helpers';
 import { fetchChartsFromArtifact } from '../../api/charts';
-import CNCFLight from './cncf-icon-color.svg';
 //import { createRelease } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
 
@@ -47,44 +47,28 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   const [search, setSearch] = useState('');
   const [selectedChartForInstall, setSelectedChartForInstall] = useState<any | null>(null);
 
-  useEffect(() => {
-    setCharts(null);
-    fetchCharts(search, chartCategory, page).then(response => {
-      setCharts(response.packages);
-      const facets = response.facets;
-      const categoryOptions = facets.find(
-        (facet: {
-          title: string;
-          options: {
-            name: string;
-            total: number;
-          }[];
-        }) => facet.title === 'Category'
-      ).options;
-      if (chartCategory.title === 'All') {
-        const totalCount = categoryOptions.reduce(
-          (
-            acc: number,
-            option: {
-              name: string;
-              total: number;
-            }
-          ) => acc + option.total,
-          0
-        );
-        setChartsTotalCount(totalCount);
-        return;
-      }
-      const totalCount = categoryOptions.find(
-        (option: { name: string; total: number }) => option.name === chartCategory?.title
-      ).total;
-      setChartsTotalCount(totalCount);
-    });
-  }, [page, chartCategory, search]);
-
+  // note: This useEffect goes first to prevent error render when changing catagetory from the last page of any view
   useEffect(() => {
     setPage(1);
   }, [chartCategory, search]);
+
+  useEffect(() => {
+    setCharts(null);
+    const showVerified = JSON.parse(localStorage.getItem('showVerified') ?? 'true');
+    fetchCharts(search, showVerified, chartCategory, page)
+      .then(response => {
+        const packages = response.dataResponse.packages;
+        const total = parseInt(response.total);
+        setCharts(packages);
+        // note: the total number of charts is located by the helm chart category with the id of 0 within "kind" facet
+        setChartsTotalCount(total);
+        console.log('all charts', total)
+      })
+      .catch(err => {
+        console.error('Error fetching charts', err);
+        setCharts([]);
+      });
+  }, [page, chartCategory, search]);
 
   function Search() {
     return (
@@ -140,6 +124,33 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
     );
   }
 
+  function SettingsLink() {
+    const theme = useTheme();
+
+    return (
+      <RouterLink routeName="/settings/plugins/app-catalog" tooltip="App-Catalog Settings">
+        <Typography
+          sx={{
+            size: '1rem',
+            marginLeft: '3rem',
+            color: theme.palette.mode === 'dark' ? 'white' : 'black',
+          }}
+        >
+          Settings
+        </Typography>
+      </RouterLink>
+    );
+  }
+
+  function TitleOptions() {
+    return (
+      <Box display="flex" justifyContent="space-between" alignItems="center">
+        <Typography variant="h4">Applications</Typography>
+        <SettingsLink />
+      </Box>
+    );
+  }
+
   return (
     <>
       <EditorDialog
@@ -147,7 +158,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         chart={selectedChartForInstall}
         handleEditor={(open: boolean) => setEditorOpen(open)}
       />
-      <SectionHeader title="Applications" actions={[<Search />, <CategoryForCharts />]} />
+      <SectionHeader title={<TitleOptions />} actions={[<Search />, <CategoryForCharts />]} />
       <Box display="flex" flexWrap="wrap" justifyContent="space-between" alignContent="start">
         {!charts ? (
           <Box
@@ -160,9 +171,8 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         ) : charts.length === 0 ? (
           <Box mt={2} mx={2}>
             <Typography variant="h5" component="h2">
-              {`No charts found for ${
-                search ? `search term: ${search}` : `category: ${chartCategory.title}`
-              }`}
+              {`No charts found for ${search ? `search term: ${search}` : `category: ${chartCategory.title}`
+                }`}
             </Typography>
           </Box>
         ) : (
@@ -318,7 +328,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             size="large"
             shape="rounded"
             page={page}
-            count={Math.floor(chartsTotalCount / PAGE_OFFSET_COUNT_FOR_CHARTS)}
+            count={Math.ceil(chartsTotalCount / PAGE_OFFSET_COUNT_FOR_CHARTS)}
             color="primary"
             onChange={(e, page: number) => {
               setPage(page);
