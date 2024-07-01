@@ -2,17 +2,27 @@ name: Headlamp plugin linting, type checking, and testing
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
-
+    branches: [main]
 
 env:
   HEADLAMP_PLUGIN_VERSION: latest
 
 jobs:
-  build:
+  # Get list of folders containing headlamp plugins
+  # We need a separate step to be able to pass the list to the matrix of the build job
+  find_plugin_dirs:
+    runs-on: ubuntu-latest
+    outputs:
+      dirs: ${{ steps.dirs.outputs.dirs }}
+    steps:
+      - uses: actions/checkout@v2
+      - id: dirs
+        run: echo "dirs=$(grep -m1 -lR @kinvolk/headlamp-plugin ./*/package.json | xargs -n1 dirname | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')" >> ${GITHUB_OUTPUT}
 
+  build:
+    needs: find_plugin_dirs
     runs-on: ubuntu-latest
 
     defaults:
@@ -22,6 +32,7 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x]
+        dir: ${{ fromJson(needs.find_plugin_dirs.outputs.dirs) }}
 
     steps:
       - uses: actions/checkout@v3
@@ -29,8 +40,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION format --check .
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION lint .
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION build .
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test .
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION tsc .
+      - run: |
+          echo "Checking ${{ matrix.dir }} plugin"
+          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION format --check ${{ matrix.dir }}
+          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION lint ${{ matrix.dir }}
+          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION build ${{ matrix.dir }}
+          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test ${{ matrix.dir }}
+          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION tsc ${{ matrix.dir }}
