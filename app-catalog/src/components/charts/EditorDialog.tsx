@@ -1,6 +1,6 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Dialog, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import MonacoEditor from '@monaco-editor/react';
+import { Editor } from '@monaco-editor/react';
 import { Box, Button, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
 import { Autocomplete } from '@mui/material';
 import _ from 'lodash';
@@ -283,7 +283,7 @@ export function EditorDialog(props: {
           {chartValuesLoading ? (
             <Loader title="" />
           ) : (
-            <MonacoEditor
+            <Editor
               value={chartValues}
               onChange={value => {
                 if (!value) {
