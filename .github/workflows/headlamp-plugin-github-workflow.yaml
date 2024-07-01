@@ -2,17 +2,15 @@ name: Headlamp plugin linting, type checking, and testing
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
-
+    branches: [main]
 
 env:
   HEADLAMP_PLUGIN_VERSION: latest
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     defaults:
@@ -22,6 +20,7 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x]
+        plugin-name: [app-catalog, prometheus]
 
     steps:
       - uses: actions/checkout@v3
@@ -29,8 +28,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION format --check .
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION lint .
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION build .
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test .
-      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION tsc .
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION format --check ${{ matrix.plugin-name }}
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION lint ${{ matrix.plugin-name }}
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION build ${{ matrix.plugin-name }}
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test ${{ matrix.plugin-name }}
+      - run: npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION tsc ${{ matrix.plugin-name }}
