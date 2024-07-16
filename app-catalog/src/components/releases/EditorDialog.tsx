@@ -1,5 +1,5 @@
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import MonacoEditor from '@monaco-editor/react';
+import { Editor } from '@monaco-editor/react';
 import {
   Box,
   Button,
@@ -262,7 +262,7 @@ export function EditorDialog(props: {
       <DialogContent>
         <Box pt={2} height="100%" my={1} p={1}>
           {openEditor && (
-            <MonacoEditor
+            <Editor
               value={jsonToYAML(valuesToShow)}
               language="yaml"
               height="400px"
