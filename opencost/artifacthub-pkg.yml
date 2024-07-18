@@ -1,11 +1,11 @@
-version: 0.1.0-beta
+version: 0.1.1-beta
 name: headlamp_opencost
 displayName: OpenCost plugin for Headlamp
 createdAt: "2024-07-18T05:35:50Z"
 logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/opencost/logo.png"
 description: Adds information from OpenCost to resources' lists and details views.
 annotations:
-  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/opencost-0.1.0/headlamp-k8s-opencost-0.1.0.tgz"
-  headlamp/plugin/archive-checksum: "SHA256:3c2426fd5f076b4c3f9cb3142c6bb5066822652732f99c54abd5a00640e2cc26"
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/opencost-0.1.1/headlamp-k8s-opencost-0.1.1.tgz"
+  headlamp/plugin/archive-checksum: "SHA256:6ea0cba11d32331822b54651650c72f08b8fdf265c323c1bb30aaa97db31e607"
   headlamp/plugin/version-compat: ">=0.22"
   headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
