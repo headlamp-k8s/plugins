@@ -10,7 +10,7 @@ type Conf = {
 };
 
 export function getConfigStore(): ConfigStore<Conf> {
-  return new ConfigStore<Conf>('opencost');
+  return new ConfigStore<Conf>('@headlamp-k8s/opencost');
 }
 
 export async function getServiceDetails(): Promise<[string, string]> {
