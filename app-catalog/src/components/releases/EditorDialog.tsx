@@ -1,5 +1,5 @@
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Editor } from '@monaco-editor/react';
+import Editor from '@monaco-editor/react';
 import {
   Box,
   Button,
