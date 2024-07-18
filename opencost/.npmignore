@@ -10,7 +10,7 @@
 
 # production
 /build
-/dist
+/dist/main.js.LICENSE.txt
 
 # misc
 .DS_Store
