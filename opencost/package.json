@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/opencost",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OpenCost plugin for Headlamp",
   "scripts": {
     "start": "headlamp-plugin start",
