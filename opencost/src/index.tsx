@@ -27,7 +27,7 @@ function IconAction() {
 
 registerDetailsViewHeaderAction(IconAction);
 
-registerPluginSettings('opencost', Settings, true);
+registerPluginSettings('@headlamp-k8s/opencost', Settings, true);
 
 registerDetailsViewSectionsProcessor(function addSubheaderSection(resource, sections) {
   if (
