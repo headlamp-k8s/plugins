@@ -18,7 +18,7 @@ type conf = {
 
 const configStore = new ConfigStore<conf>('@headlamp-k8s/plugin-catalog');
 
-export interface Packages {
+export interface PluginPackage {
   package_id: string;
   name: string;
   normalized_name: string;
@@ -87,7 +87,7 @@ async function fetchPlugins(offset: number, org?: string) {
 }
 
 async function fetchAllPlugins() {
-  let allPlugins: Packages[] = [];
+  let allPlugins: PluginPackage[] = [];
   let offset = 0;
   let total = Infinity;
 
@@ -125,7 +125,7 @@ async function processPlugins() {
     new Map(mergedPlugins.map(plugin => [plugin.package_id, plugin])).values()
   );
 
-  const pluginsWithInstallStatus = uniquePlugins.map((pkg: Packages) => ({
+  const pluginsWithInstallStatus = uniquePlugins.map((pkg: PluginPackage) => ({
     ...pkg,
     isInstalled: installedPlugins.includes(pkg.name),
   }));
@@ -136,7 +136,7 @@ async function processPlugins() {
 }
 
 export interface PurePluginListProps {
-  plugins: Packages[] | null;
+  plugins: PluginPackage[] | null;
   totalPages: number;
   page: number;
   search: string;
@@ -206,7 +206,7 @@ export function PurePluginList({
 
 export function PluginList() {
   const [search, setSearch] = useState('');
-  const [allPlugins, setAllPlugins] = useState<Packages[] | null>(null);
+  const [allPlugins, setAllPlugins] = useState<PluginPackage[] | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
 

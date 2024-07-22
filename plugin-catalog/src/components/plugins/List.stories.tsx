@@ -3,7 +3,7 @@
 import { Meta, Story } from '@storybook/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { Packages, PurePluginList, PurePluginListProps } from './List';
+import { PluginPackage, PurePluginList, PurePluginListProps } from './List';
 
 export default {
   title: 'List',
@@ -21,7 +21,7 @@ export default {
 
 const Template: Story<PurePluginListProps> = args => <PurePluginList {...args} />;
 
-const samplePlugins: Packages[] = [
+const samplePlugins: PluginPackage[] = [
   {
     package_id: '1',
     name: 'sample-plugin-1',

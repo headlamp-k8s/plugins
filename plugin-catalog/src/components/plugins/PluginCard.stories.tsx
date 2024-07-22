@@ -3,7 +3,7 @@
 import { Meta, Story } from '@storybook/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { Packages } from './List';
+import { PluginPackage } from './List';
 import { PluginCard } from './PluginCard';
 
 export default {
@@ -29,7 +29,7 @@ export default {
   },
 } as Meta;
 
-const Template: Story<Packages> = args => <PluginCard plugin={args} />;
+const Template: Story<PluginPackage> = args => <PluginCard plugin={args} />;
 
 export const Default = Template.bind({});
 Default.args = {
