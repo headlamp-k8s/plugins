@@ -176,7 +176,7 @@ export function PurePluginList({
       >
         {plugins ? (
           plugins.length > 0 ? (
-            plugins.map(plugin => <PluginCard key={plugin.package_id} {...plugin} />)
+            plugins.map(plugin => <PluginCard key={plugin.package_id} plugin={plugin} />)
           ) : (
             <Box textAlign="center" paddingTop={2} sx={{ width: '100%' }}>
               <Typography align="center">No plugins found</Typography>
