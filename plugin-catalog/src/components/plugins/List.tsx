@@ -160,7 +160,7 @@ export function PurePluginList({
         actions={[
           <TextField
             key="search"
-            style={{ width: '20vw', margin: '0 1rem' }}
+            sx={{ width: '20vw', margin: '0 1rem' }}
             id="outlined-basic"
             label="Search"
             value={search}

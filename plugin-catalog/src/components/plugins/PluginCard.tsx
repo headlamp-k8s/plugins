@@ -34,7 +34,7 @@ export function PluginCard(props: PluginCardProps) {
           {plugin.logo_image_id ? (
             <CardMedia
               image={`https://artifacthub.io/image/${plugin.logo_image_id}`}
-              style={{
+              sx={{
                 width: '60px',
                 margin: '1rem',
                 alignSelf: 'flex-start',
@@ -77,7 +77,7 @@ export function PluginCard(props: PluginCardProps) {
           </Box>
         </Box>
         <CardContent
-          style={{
+          sx={{
             margin: '1rem 0rem',
             height: '15vh',
             overflow: 'hidden',
@@ -85,14 +85,21 @@ export function PluginCard(props: PluginCardProps) {
           }}
         >
           <Box
-            style={{
+            sx={{
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
             }}
           >
             <Tooltip title={plugin.display_name} />
-            <Typography component="h5" variant="h5">
+            <Typography
+              component="h5"
+              variant="h5"
+              sx={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
               <HeadlampRouterLink
                 routeName="/plugin-catalog/:repoName/:pluginName"
                 params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
@@ -105,7 +112,7 @@ export function PluginCard(props: PluginCardProps) {
             <Typography>v{plugin.version}</Typography>
             <Box
               marginLeft={1}
-              style={{
+              sx={{
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -122,14 +129,14 @@ export function PluginCard(props: PluginCardProps) {
               <Tooltip title={plugin?.description}>
                 {plugin?.description?.slice(0, 100)}
                 {plugin?.description?.length > 100 && (
-                  <Typography style={{ display: 'inline-block' }}>…</Typography>
+                  <Typography sx={{ display: 'inline-block' }}>…</Typography>
                 )}
               </Tooltip>
             </Typography>
           </Box>
         </CardContent>
         <CardActions
-          style={{
+          sx={{
             justifyContent: 'space-between',
             padding: '14px',
           }}
