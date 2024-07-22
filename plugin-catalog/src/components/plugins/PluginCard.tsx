@@ -118,9 +118,11 @@ export function PluginCard(props: PluginCardProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              <Tooltip title={plugin?.repository?.name || ''}>
-                <Typography>{plugin?.repository?.name || ''}</Typography>
-              </Tooltip>
+              {plugin?.repository && (
+                <Link href={plugin.repository.url} target="_blank">
+                  {plugin.repository.name}
+                </Link>
+              )}
             </Box>
           </Box>
           <Divider />
@@ -141,9 +143,7 @@ export function PluginCard(props: PluginCardProps) {
             padding: '14px',
           }}
         >
-          <Link href={plugin?.repository?.url} target="_blank">
-            Learn More
-          </Link>
+          <span></span>
           {plugin.isInstalled && <Typography>Installed</Typography>}
         </CardActions>
       </Card>
