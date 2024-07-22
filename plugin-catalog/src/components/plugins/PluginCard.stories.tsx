@@ -29,7 +29,7 @@ export default {
   },
 } as Meta;
 
-const Template: Story<Packages> = args => <PluginCard {...args} />;
+const Template: Story<Packages> = args => <PluginCard plugin={args} />;
 
 export const Default = Template.bind({});
 Default.args = {

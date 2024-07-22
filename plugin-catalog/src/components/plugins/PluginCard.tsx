@@ -14,7 +14,13 @@ import {
 import { Packages } from './List';
 import PluginIcon from './plugin-icon.svg';
 
-export function PluginCard(props: Packages) {
+export interface PluginCardProps {
+  plugin: Packages;
+}
+
+export function PluginCard(props: PluginCardProps) {
+  const {plugin} = props;
+
   return (
     <Box maxWidth="30%" width="400px" m={1}>
       <Card>
@@ -25,9 +31,9 @@ export function PluginCard(props: Packages) {
           marginTop="15px"
           justifyContent="space-between"
         >
-          {props.logo_image_id ? (
+          {plugin.logo_image_id ? (
             <CardMedia
-              image={`https://artifacthub.io/image/${props.logo_image_id}`}
+              image={`https://artifacthub.io/image/${plugin.logo_image_id}`}
               style={{
                 width: '60px',
                 margin: '1rem',
@@ -46,7 +52,7 @@ export function PluginCard(props: Packages) {
             />
           )}
           <Box display="flex" alignItems="center" justifyContent="space-around" marginRight="10px">
-            {(props.official || props.repository.official) && (
+            {(plugin.official || plugin.repository.official) && (
               <Tooltip title="Official Chart">
                 <Icon
                   icon="mdi:star-circle"
@@ -57,7 +63,7 @@ export function PluginCard(props: Packages) {
                 />
               </Tooltip>
             )}
-            {props.repository.verified_publisher && (
+            {plugin.repository.verified_publisher && (
               <Tooltip title="Verified Publisher">
                 <Icon
                   icon="mdi:check-decagram"
@@ -85,18 +91,18 @@ export function PluginCard(props: Packages) {
               whiteSpace: 'nowrap',
             }}
           >
-            <Tooltip title={props.display_name} />
+            <Tooltip title={plugin.display_name} />
             <Typography component="h5" variant="h5">
               <HeadlampRouterLink
                 routeName="/plugin-catalog/:repoName/:pluginName"
-                params={{ repoName: props.repository?.name, pluginName: props.name }}
+                params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
               >
-                {props.display_name}
+                {plugin.display_name}
               </HeadlampRouterLink>
             </Typography>
           </Box>
           <Box display="flex" justifyContent="space-between" my={1}>
-            <Typography>v{props.version}</Typography>
+            <Typography>v{plugin.version}</Typography>
             <Box
               marginLeft={1}
               style={{
@@ -105,17 +111,17 @@ export function PluginCard(props: Packages) {
                 whiteSpace: 'nowrap',
               }}
             >
-              <Tooltip title={props?.repository?.name || ''}>
-                <Typography>{props?.repository?.name || ''}</Typography>
+              <Tooltip title={plugin?.repository?.name || ''}>
+                <Typography>{plugin?.repository?.name || ''}</Typography>
               </Tooltip>
             </Box>
           </Box>
           <Divider />
           <Box mt={1}>
             <Typography>
-              <Tooltip title={props?.description}>
-                {props?.description?.slice(0, 100)}
-                {props?.description?.length > 100 && (
+              <Tooltip title={plugin?.description}>
+                {plugin?.description?.slice(0, 100)}
+                {plugin?.description?.length > 100 && (
                   <Typography style={{ display: 'inline-block' }}>…</Typography>
                 )}
               </Tooltip>
@@ -128,10 +134,10 @@ export function PluginCard(props: Packages) {
             padding: '14px',
           }}
         >
-          <Link href={props?.repository?.url} target="_blank">
+          <Link href={plugin?.repository?.url} target="_blank">
             Learn More
           </Link>
-          {props.isInstalled && <Typography>Installed</Typography>}
+          {plugin.isInstalled && <Typography>Installed</Typography>}
         </CardActions>
       </Card>
     </Box>
