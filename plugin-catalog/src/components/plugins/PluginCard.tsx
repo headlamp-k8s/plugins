@@ -11,11 +11,11 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Packages } from './List';
+import { PluginPackage } from './List';
 import PluginIcon from './plugin-icon.svg';
 
 export interface PluginCardProps {
-  plugin: Packages;
+  plugin: PluginPackage;
 }
 
 export function PluginCard(props: PluginCardProps) {
