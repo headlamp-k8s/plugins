@@ -43,6 +43,7 @@ export interface PluginPackage {
     repository_id: string;
     scanner_disabled: boolean;
     verified_publisher: boolean;
+    organization_name: string;
   };
   isInstalled: boolean;
 }
