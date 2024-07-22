@@ -120,7 +120,7 @@ export function PluginCard(props: PluginCardProps) {
             >
               {plugin?.repository && (
                 <Link href={plugin.repository.url} target="_blank">
-                  {plugin.repository.name}
+                  {plugin.repository.organization_name || plugin.repository.name}
                 </Link>
               )}
             </Box>
