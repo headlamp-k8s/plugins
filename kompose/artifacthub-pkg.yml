@@ -6,6 +6,6 @@ logoURL: "https://github.com/kubernetes/kompose/raw/main/docs/assets/images/logo
 description: A Headlamp plugin that allows to run the kompose tool in-cluster.
 annotations:
   headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/kompose-0.1.0-beta/headlamp-k8s-kompose-0.1.0-beta.tgz"
-  headlamp/plugin/archive-checksum: "SHA256:990f5a5cd10d6291fe218e02f581ad05e6954d7aed0802abb3bdadf500b53f21"
+  headlamp/plugin/archive-checksum: "SHA256:9efcf67c11972d32915e268866d9559c1479774b1837e11e8a8f1b103cdecd9e"
   headlamp/plugin/version-compat: ">=0.22"
   headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
