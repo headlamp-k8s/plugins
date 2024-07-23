@@ -6,7 +6,7 @@ import {
   SectionBox,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Button, Snackbar, Tooltip, Typography } from '@mui/material';
+import { Button, Link, Snackbar, Tooltip, Typography } from '@mui/material';
 import Markdown from 'markdown-to-jsx';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
@@ -77,6 +77,8 @@ export interface PluginDetailResp {
     official: boolean;
     scanner_disabled: boolean;
     user_alias: string;
+    organization_name: string;
+    organization_display_name: string;
   };
   stats: {
     subscriptions: number;
@@ -128,6 +130,19 @@ export function PurePluginDetail({
   onCancel,
   onAlertClose,
 }: PurePluginDetailProps) {
+  const [repoUrl, orgUrl] = React.useMemo(() => {
+    const artifactHubURLBase = 'https://artifacthub.io/packages/search?sort=relevance&page=1';
+    if (!pluginDetail) {
+      return ['', ''];
+    }
+
+    return [
+      `${artifactHubURLBase}&repo=${pluginDetail.repository.name}`,
+      `${artifactHubURLBase}&org=${pluginDetail.repository.organization_name}`,
+    ];
+  },
+  [pluginDetail]);
+
   return (
     <>
       <Snackbar
@@ -211,10 +226,35 @@ export function PurePluginDetail({
             rows={[
               { name: 'Name', value: pluginDetail.display_name },
               { name: 'Description', value: pluginDetail.description },
-              { name: 'App Version', value: pluginDetail.version },
-              { name: 'Repository', value: pluginDetail.repository.name },
-              { name: 'Current Version', value: pluginDetail.currentVersion },
-              { name: 'Author', value: pluginDetail.repository.user_alias },
+              {
+                name: 'Available Version',
+                value: pluginDetail.version,
+              },
+              {
+                name: 'Installed Version',
+                value: pluginDetail.currentVersion,
+                hide: !pluginDetail.isInstalled,
+              },
+              {
+                name: 'Repository',
+                value: (
+                  repoUrl && (
+                    <Link href={repoUrl} target="_blank">
+                      {pluginDetail.repository.display_name}
+                    </Link>
+                  )
+                )
+              },
+              {
+                name: 'Author',
+                value: (
+                  orgUrl && (
+                    <Link href={orgUrl} target="_blank">
+                      {pluginDetail.repository.organization_display_name}
+                    </Link>
+                  )
+                )
+              },
             ]}
           />
           <Markdown>{pluginDetail.readme}</Markdown>
