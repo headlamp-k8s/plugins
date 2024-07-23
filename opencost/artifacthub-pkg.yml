@@ -1,6 +1,6 @@
 version: 0.1.1-beta
 name: headlamp_opencost
-displayName: OpenCost plugin for Headlamp
+displayName: OpenCost
 createdAt: "2024-07-18T05:35:50Z"
 logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/opencost/logo.png"
 description: Adds information from OpenCost to resources' lists and details views.
