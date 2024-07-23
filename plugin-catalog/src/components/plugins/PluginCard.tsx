@@ -1,4 +1,4 @@
-import { Icon } from '@iconify/react';
+import { Icon, InlineIcon } from '@iconify/react';
 import { Link as HeadlampRouterLink } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
@@ -119,9 +119,12 @@ export function PluginCard(props: PluginCardProps) {
               }}
             >
               {plugin?.repository && (
-                <Link href={plugin.repository.url} target="_blank">
-                  {plugin.repository.organization_name || plugin.repository.name}
-                </Link>
+                <>
+                  <InlineIcon icon="mdi:building" />{' '}
+                  <Link href={plugin.repository.url} target="_blank">
+                    {plugin.repository.organization_name || plugin.repository.name}
+                  </Link>
+                </>
               )}
             </Box>
           </Box>
