@@ -6,7 +6,7 @@ import {
   SectionBox,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Button, Link, Snackbar, Tooltip, Typography } from '@mui/material';
+import { Button, CardMedia, Link, Snackbar, Tooltip, Typography } from '@mui/material';
 import Markdown from 'markdown-to-jsx';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
@@ -169,6 +169,19 @@ export function PurePluginDetail({
         title={
           <SectionHeader
             title={pluginDetail ? pluginDetail.display_name : ''}
+            titleSideActions={[
+              pluginDetail?.logo_image_id && (
+                <CardMedia
+                  image={`https://artifacthub.io/image/${pluginDetail.logo_image_id}`}
+                  sx={{
+                    width: '60px',
+                    margin: '1rem',
+                    alignSelf: 'flex-start',
+                  }}
+                  component="img"
+                />
+              )
+            ]}
             actions={[
               currentAction === null ? (
                 pluginDetail ? (
