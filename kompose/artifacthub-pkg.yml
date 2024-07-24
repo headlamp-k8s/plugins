@@ -1,7 +1,7 @@
-version: 0.1.0-beta
+version: 0.1.0-beta-1
 name: headlamp_kompose
 displayName: Kompose
-createdAt: "2024-07-18T05:35:50Z"
+createdAt: "2024-07-22T05:35:50Z"
 logoURL: "https://github.com/kubernetes/kompose/raw/main/docs/assets/images/logo.png"
 description: Allows to convert docker-compose to Kubernetes using a dedicated UI in Headlamp.
 annotations:
