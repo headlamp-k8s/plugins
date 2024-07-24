@@ -2,7 +2,6 @@ version: 0.0.1
 name: headlamp_example_change_logo
 displayName: Change Logo Example
 createdAt: "2024-07-18T05:35:50Z"
-logoURL: "https://github.com/kubernetes/kompose/raw/main/docs/assets/images/logo.png"
 description: Allows to change the Headlamp logo. This is an plugin from the official examples.
 annotations:
   headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/example-change-logo-0.0.1/change-logo-0.0.1.tar.gz"
