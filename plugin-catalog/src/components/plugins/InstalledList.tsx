@@ -72,7 +72,12 @@ export function PluginInstalledList() {
         const data = await PluginManager.list();
         setInstalledPlugins(data);
       } catch (error: any) {
-        setError(error.message);
+        // @todo: We should have a better way to determine if the error is an ENOENT
+        if (error.message.startsWith('ENOENT')) {
+          setInstalledPlugins([]);
+        } else {
+          setError(error.message);
+        }
       }
     }
 
