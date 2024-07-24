@@ -23,7 +23,11 @@ export function PluginCard(props: PluginCardProps) {
 
   return (
     <Box maxWidth="30%" width="400px" m={1}>
-      <Card>
+      <Card
+        sx={{
+          height: '100%',
+        }}
+      >
         <Box
           heigh="60px"
           display="flex"
