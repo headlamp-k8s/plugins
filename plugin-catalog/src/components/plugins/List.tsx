@@ -177,7 +177,7 @@ export function PurePluginList({
         display="flex"
         flexWrap="wrap"
         justifyContent="flex-start"
-        alignContent="start"
+        alignContent="stretch"
         sx={{ gap: 2 }}
       >
         {plugins ? (
