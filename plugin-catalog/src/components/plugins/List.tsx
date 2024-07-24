@@ -134,7 +134,9 @@ async function processPlugins() {
   const pluginsWithInstallStatus = uniquePlugins.map((pkg: PluginPackage) => ({
     ...pkg,
     isInstalled: installedPlugins.includes(pkg.name),
-  }));
+  }))
+  // Reorder so plugins with logos show first.
+  .sort((a, b) => (!!b.logo_image_id ? 1 : 0) - (!!a.logo_image_id ? 1 : 0));
 
   const totalPages = Math.ceil(pluginsWithInstallStatus.length / PAGE_SIZE);
 
