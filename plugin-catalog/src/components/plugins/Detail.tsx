@@ -5,6 +5,7 @@ import {
   NameValueTable,
   SectionBox,
   SectionHeader,
+  Link as HeadlampLink,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Button, CardMedia, Link, Snackbar, Tooltip, Typography } from '@mui/material';
 import Markdown from 'markdown-to-jsx';
@@ -187,6 +188,11 @@ export function PurePluginDetail({
                 pluginDetail ? (
                   pluginDetail.isInstalled ? (
                     <>
+                      <HeadlampLink
+                        routeName='plugins'
+                      >
+                        Settings
+                      </HeadlampLink>
                       {pluginDetail.updateAvailable && (
                         <ActionButton
                           description="Update"
