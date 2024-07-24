@@ -117,7 +117,12 @@ async function processPlugins() {
     fetchOrgPlugins(ORGANIZATION_NAME),
   ]);
 
-  const pluginData = await PluginManager.list();
+  let pluginData = [];
+  try {
+    pluginData = await PluginManager.list();
+  } catch(err) {
+    console.log('plugin-catalog: Failed to list plugins', err);
+  }
   const installedPlugins = pluginData.map((plugin: any) => plugin.folderName);
 
   // Merge all plugins and org-specific plugins, removing duplicates
