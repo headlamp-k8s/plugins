@@ -1,9 +1,9 @@
 version: 0.1.0-beta
 name: headlamp_kompose
-displayName: Kompose plugin for Headlamp
+displayName: Kompose
 createdAt: "2024-07-18T05:35:50Z"
 logoURL: "https://github.com/kubernetes/kompose/raw/main/docs/assets/images/logo.png"
-description: A Headlamp plugin that allows to run the kompose tool in-cluster.
+description: Allows to convert docker-compose to Kubernetes using a dedicated UI in Headlamp.
 annotations:
   headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/kompose-0.1.0-beta/headlamp-k8s-kompose-0.1.0-beta.tgz"
   headlamp/plugin/archive-checksum: "SHA256:9efcf67c11972d32915e268866d9559c1479774b1837e11e8a8f1b103cdecd9e"
