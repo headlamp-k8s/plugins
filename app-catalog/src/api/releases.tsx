@@ -1,9 +1,6 @@
-import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { ApiProxy, getHeadlampAPIHeaders } from '@kinvolk/headlamp-plugin/lib';
 
 const request = ApiProxy.request;
-export const getHeadlampAPIHeaders = () => ({
-  'X-HEADLAMP_BACKEND-TOKEN': new URLSearchParams(window.location.search).get('backendToken'),
-});
 
 export function listReleases() {
   return request('/helm/releases/list', {

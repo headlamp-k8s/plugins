@@ -1,5 +1,4 @@
-import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
-import { getHeadlampAPIHeaders } from './releases';
+import { ApiProxy, getHeadlampAPIHeaders } from '@kinvolk/headlamp-plugin/lib';
 
 const request = ApiProxy.request;
 
