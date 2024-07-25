@@ -1,0 +1,864 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Storyshots List Default 1`] = `
+<div>
+  <div
+    class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
+  >
+    <div
+      class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+    >
+      <div
+        class="MuiBox-root css-70qvj9"
+      >
+        <h1
+          class="MuiTypography-root MuiTypography-h1 MuiTypography-noWrap makeStyles-sectionTitle makeStyles-sectionTitle css-1f1i6v9-MuiTypography-root"
+        >
+          Plugins
+        </h1>
+        <div
+          class="MuiBox-root css-ldp2l3"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+    >
+      <div
+        class="MuiGrid-root MuiGrid-container MuiGrid-item css-43x3z6-MuiGrid-root"
+      >
+        <div
+          class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+        >
+          <div
+            class="MuiFormControl-root MuiTextField-root css-1u3bzj6-MuiFormControl-root-MuiTextField-root"
+            style="width: 20vw; margin: 0px 1rem;"
+          >
+            <label
+              class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-standard css-zh08sj-MuiFormLabel-root-MuiInputLabel-root"
+              data-shrink="false"
+              for="outlined-basic"
+              id="outlined-basic-label"
+            >
+              Search
+            </label>
+            <div
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-1d1jo89-MuiInputBase-root-MuiInput-root"
+            >
+              <input
+                aria-invalid="false"
+                class="MuiInputBase-input MuiInput-input css-1x51dt5-MuiInputBase-input-MuiInput-input"
+                id="outlined-basic"
+                type="text"
+                value=""
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="MuiBox-root css-1ezjdh"
+  >
+    <div
+      class="MuiBox-root css-z0sk23"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-bhp9pd-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1iuu6zq"
+          heigh="60px"
+        >
+          <img
+            class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img css-o69gx8-MuiCardMedia-root"
+            src="https://artifacthub.io/image/default_logo"
+            style="width: 60px; margin: 1rem; align-self: flex-start;"
+          />
+          <div
+            class="MuiBox-root css-q5lf8z"
+          >
+            <span />
+            <span />
+          </div>
+        </div>
+        <div
+          class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+          style="margin: 1rem 0rem; height: 15vh; overflow: hidden; padding-top: 0px;"
+        >
+          <div
+            class="MuiBox-root css-0"
+            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+          >
+            <span
+              aria-label="Sample Plugin 1"
+              class=""
+              data-mui-internal-clone-element="true"
+            />
+            <h5
+              class="MuiTypography-root MuiTypography-h5 css-xqgeko-MuiTypography-root"
+            >
+              <a
+                class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+                href="/"
+              >
+                Sample Plugin 1
+              </a>
+            </h5>
+          </div>
+          <div
+            class="MuiBox-root css-1pup0r6"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+            >
+              v
+              1.0.0
+            </p>
+            <div
+              class="MuiBox-root css-1isemmb"
+              style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+            >
+              <p
+                aria-label="sample-repo-1"
+                class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+                data-mui-internal-clone-element="true"
+              >
+                sample-repo-1
+              </p>
+            </div>
+          </div>
+          <hr
+            class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+          />
+          <div
+            class="MuiBox-root css-164r41r"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+            >
+              <span
+                aria-label="This is a sample plugin description that demonstrates the PluginCard component."
+                class=""
+                data-mui-internal-clone-element="true"
+              >
+                This is a sample plugin description that demonstrates the PluginCard component.
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          class="MuiCardActions-root MuiCardActions-spacing css-dnrpxu-MuiCardActions-root"
+          style="justify-content: space-between; padding: 14px;"
+        >
+          <a
+            class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+            href="https://example.com"
+            target="_blank"
+          >
+            Learn More
+          </a>
+        </div>
+      </div>
+    </div>
+    <div
+      class="MuiBox-root css-z0sk23"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-bhp9pd-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1iuu6zq"
+          heigh="60px"
+        >
+          <img
+            class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img css-o69gx8-MuiCardMedia-root"
+            src="https://artifacthub.io/image/default_logo"
+            style="width: 60px; margin: 1rem; align-self: flex-start;"
+          />
+          <div
+            class="MuiBox-root css-q5lf8z"
+          >
+            <span />
+            <span />
+          </div>
+        </div>
+        <div
+          class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+          style="margin: 1rem 0rem; height: 15vh; overflow: hidden; padding-top: 0px;"
+        >
+          <div
+            class="MuiBox-root css-0"
+            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+          >
+            <span
+              aria-label="Sample Plugin 2"
+              class=""
+              data-mui-internal-clone-element="true"
+            />
+            <h5
+              class="MuiTypography-root MuiTypography-h5 css-xqgeko-MuiTypography-root"
+            >
+              <a
+                class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+                href="/"
+              >
+                Sample Plugin 2
+              </a>
+            </h5>
+          </div>
+          <div
+            class="MuiBox-root css-1pup0r6"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+            >
+              v
+              1.0.1
+            </p>
+            <div
+              class="MuiBox-root css-1isemmb"
+              style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+            >
+              <p
+                aria-label="sample-repo-2"
+                class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+                data-mui-internal-clone-element="true"
+              >
+                sample-repo-2
+              </p>
+            </div>
+          </div>
+          <hr
+            class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+          />
+          <div
+            class="MuiBox-root css-164r41r"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+            >
+              <span
+                aria-label="This is another sample plugin description that demonstrates the PluginCard component."
+                class=""
+                data-mui-internal-clone-element="true"
+              >
+                This is another sample plugin description that demonstrates the PluginCard component.
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          class="MuiCardActions-root MuiCardActions-spacing css-dnrpxu-MuiCardActions-root"
+          style="justify-content: space-between; padding: 14px;"
+        >
+          <a
+            class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+            href="https://example.com"
+            target="_blank"
+          >
+            Learn More
+          </a>
+        </div>
+      </div>
+    </div>
+     
+  </div>
+  <div
+    class="MuiBox-root css-1qidsum"
+  >
+    <nav
+      aria-label="pagination navigation"
+      class="MuiPagination-root MuiPagination-text css-1oj2twp-MuiPagination-root"
+    >
+      <ul
+        class="MuiPagination-ul css-wjh20t-MuiPagination-ul"
+      >
+        <li>
+          <button
+            aria-label="Go to previous page"
+            class="MuiButtonBase-root Mui-disabled MuiPaginationItem-root MuiPaginationItem-sizeLarge MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-colorPrimary MuiPaginationItem-textPrimary Mui-disabled MuiPaginationItem-previousNext css-6tuda4-MuiButtonBase-root-MuiPaginationItem-root"
+            disabled=""
+            tabindex="-1"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiPaginationItem-icon css-n8417t-MuiSvgIcon-root-MuiPaginationItem-icon"
+              data-testid="NavigateBeforeIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+              />
+            </svg>
+          </button>
+        </li>
+        <li>
+          <button
+            aria-current="true"
+            aria-label="page 1"
+            class="MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-sizeLarge MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-colorPrimary MuiPaginationItem-textPrimary Mui-selected MuiPaginationItem-page css-6tuda4-MuiButtonBase-root-MuiPaginationItem-root"
+            tabindex="0"
+            type="button"
+          >
+            1
+            <span
+              class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+            />
+          </button>
+        </li>
+        <li>
+          <button
+            aria-label="Go to page 2"
+            class="MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-sizeLarge MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-colorPrimary MuiPaginationItem-textPrimary MuiPaginationItem-page css-6tuda4-MuiButtonBase-root-MuiPaginationItem-root"
+            tabindex="0"
+            type="button"
+          >
+            2
+            <span
+              class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+            />
+          </button>
+        </li>
+        <li>
+          <button
+            aria-label="Go to next page"
+            class="MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-sizeLarge MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-colorPrimary MuiPaginationItem-textPrimary MuiPaginationItem-previousNext css-6tuda4-MuiButtonBase-root-MuiPaginationItem-root"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiPaginationItem-icon css-n8417t-MuiSvgIcon-root-MuiPaginationItem-icon"
+              data-testid="NavigateNextIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
+              />
+            </svg>
+            <span
+              class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+            />
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+`;
+
+exports[`Storyshots List Empty 1`] = `
+<div>
+  <div
+    class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
+  >
+    <div
+      class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+    >
+      <div
+        class="MuiBox-root css-70qvj9"
+      >
+        <h1
+          class="MuiTypography-root MuiTypography-h1 MuiTypography-noWrap makeStyles-sectionTitle makeStyles-sectionTitle css-1f1i6v9-MuiTypography-root"
+        >
+          Plugins
+        </h1>
+        <div
+          class="MuiBox-root css-ldp2l3"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+    >
+      <div
+        class="MuiGrid-root MuiGrid-container MuiGrid-item css-43x3z6-MuiGrid-root"
+      >
+        <div
+          class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+        >
+          <div
+            class="MuiFormControl-root MuiTextField-root css-1u3bzj6-MuiFormControl-root-MuiTextField-root"
+            style="width: 20vw; margin: 0px 1rem;"
+          >
+            <label
+              class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-standard css-zh08sj-MuiFormLabel-root-MuiInputLabel-root"
+              data-shrink="false"
+              for="outlined-basic"
+              id="outlined-basic-label"
+            >
+              Search
+            </label>
+            <div
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-1d1jo89-MuiInputBase-root-MuiInput-root"
+            >
+              <input
+                aria-invalid="false"
+                class="MuiInputBase-input MuiInput-input css-1x51dt5-MuiInputBase-input-MuiInput-input"
+                id="outlined-basic"
+                type="text"
+                value=""
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="MuiBox-root css-1ezjdh"
+  >
+     
+  </div>
+</div>
+`;
+
+exports[`Storyshots List Loading 1`] = `
+<div>
+  <div
+    class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
+  >
+    <div
+      class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+    >
+      <div
+        class="MuiBox-root css-70qvj9"
+      >
+        <h1
+          class="MuiTypography-root MuiTypography-h1 MuiTypography-noWrap makeStyles-sectionTitle makeStyles-sectionTitle css-1f1i6v9-MuiTypography-root"
+        >
+          Plugins
+        </h1>
+        <div
+          class="MuiBox-root css-ldp2l3"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+    >
+      <div
+        class="MuiGrid-root MuiGrid-container MuiGrid-item css-43x3z6-MuiGrid-root"
+      >
+        <div
+          class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+        >
+          <div
+            class="MuiFormControl-root MuiTextField-root css-1u3bzj6-MuiFormControl-root-MuiTextField-root"
+            style="width: 20vw; margin: 0px 1rem;"
+          >
+            <label
+              class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-standard css-zh08sj-MuiFormLabel-root-MuiInputLabel-root"
+              data-shrink="false"
+              for="outlined-basic"
+              id="outlined-basic-label"
+            >
+              Search
+            </label>
+            <div
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-1d1jo89-MuiInputBase-root-MuiInput-root"
+            >
+              <input
+                aria-invalid="false"
+                class="MuiInputBase-input MuiInput-input css-1x51dt5-MuiInputBase-input-MuiInput-input"
+                id="outlined-basic"
+                type="text"
+                value=""
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="MuiBox-root css-1ezjdh"
+  >
+    <div
+      class="MuiBox-root css-1qidsum"
+    >
+      <div
+        class="makeStyles-loaderContainer MuiBox-root css-11ra0t9"
+      >
+        <span
+          class="MuiCircularProgress-root MuiCircularProgress-indeterminate MuiCircularProgress-colorPrimary css-wdedfu-MuiCircularProgress-root"
+          role="progressbar"
+          style="width: 40px; height: 40px;"
+        >
+          <svg
+            class="MuiCircularProgress-svg css-1idz92c-MuiCircularProgress-svg"
+            viewBox="22 22 44 44"
+          >
+            <circle
+              class="MuiCircularProgress-circle MuiCircularProgress-circleIndeterminate css-176wh8e-MuiCircularProgress-circle"
+              cx="44"
+              cy="44"
+              fill="none"
+              r="20.2"
+              stroke-width="3.6"
+            />
+          </svg>
+        </span>
+      </div>
+    </div>
+     
+  </div>
+</div>
+`;
+
+exports[`Storyshots List With Search Term 1`] = `
+<div>
+  <div
+    class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
+  >
+    <div
+      class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+    >
+      <div
+        class="MuiBox-root css-70qvj9"
+      >
+        <h1
+          class="MuiTypography-root MuiTypography-h1 MuiTypography-noWrap makeStyles-sectionTitle makeStyles-sectionTitle css-1f1i6v9-MuiTypography-root"
+        >
+          Plugins
+        </h1>
+        <div
+          class="MuiBox-root css-ldp2l3"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+    >
+      <div
+        class="MuiGrid-root MuiGrid-container MuiGrid-item css-43x3z6-MuiGrid-root"
+      >
+        <div
+          class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+        >
+          <div
+            class="MuiFormControl-root MuiTextField-root css-1u3bzj6-MuiFormControl-root-MuiTextField-root"
+            style="width: 20vw; margin: 0px 1rem;"
+          >
+            <label
+              class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard css-1n1vwza-MuiFormLabel-root-MuiInputLabel-root"
+              data-shrink="true"
+              for="outlined-basic"
+              id="outlined-basic-label"
+            >
+              Search
+            </label>
+            <div
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-1d1jo89-MuiInputBase-root-MuiInput-root"
+            >
+              <input
+                aria-invalid="false"
+                class="MuiInputBase-input MuiInput-input css-1x51dt5-MuiInputBase-input-MuiInput-input"
+                id="outlined-basic"
+                type="text"
+                value="sample"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="MuiBox-root css-1ezjdh"
+  >
+    <div
+      class="MuiBox-root css-z0sk23"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-bhp9pd-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1iuu6zq"
+          heigh="60px"
+        >
+          <img
+            class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img css-o69gx8-MuiCardMedia-root"
+            src="https://artifacthub.io/image/default_logo"
+            style="width: 60px; margin: 1rem; align-self: flex-start;"
+          />
+          <div
+            class="MuiBox-root css-q5lf8z"
+          >
+            <span />
+            <span />
+          </div>
+        </div>
+        <div
+          class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+          style="margin: 1rem 0rem; height: 15vh; overflow: hidden; padding-top: 0px;"
+        >
+          <div
+            class="MuiBox-root css-0"
+            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+          >
+            <span
+              aria-label="Sample Plugin 1"
+              class=""
+              data-mui-internal-clone-element="true"
+            />
+            <h5
+              class="MuiTypography-root MuiTypography-h5 css-xqgeko-MuiTypography-root"
+            >
+              <a
+                class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+                href="/"
+              >
+                Sample Plugin 1
+              </a>
+            </h5>
+          </div>
+          <div
+            class="MuiBox-root css-1pup0r6"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+            >
+              v
+              1.0.0
+            </p>
+            <div
+              class="MuiBox-root css-1isemmb"
+              style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+            >
+              <p
+                aria-label="sample-repo-1"
+                class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+                data-mui-internal-clone-element="true"
+              >
+                sample-repo-1
+              </p>
+            </div>
+          </div>
+          <hr
+            class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+          />
+          <div
+            class="MuiBox-root css-164r41r"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+            >
+              <span
+                aria-label="This is a sample plugin description that demonstrates the PluginCard component."
+                class=""
+                data-mui-internal-clone-element="true"
+              >
+                This is a sample plugin description that demonstrates the PluginCard component.
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          class="MuiCardActions-root MuiCardActions-spacing css-dnrpxu-MuiCardActions-root"
+          style="justify-content: space-between; padding: 14px;"
+        >
+          <a
+            class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+            href="https://example.com"
+            target="_blank"
+          >
+            Learn More
+          </a>
+        </div>
+      </div>
+    </div>
+    <div
+      class="MuiBox-root css-z0sk23"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-bhp9pd-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1iuu6zq"
+          heigh="60px"
+        >
+          <img
+            class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img css-o69gx8-MuiCardMedia-root"
+            src="https://artifacthub.io/image/default_logo"
+            style="width: 60px; margin: 1rem; align-self: flex-start;"
+          />
+          <div
+            class="MuiBox-root css-q5lf8z"
+          >
+            <span />
+            <span />
+          </div>
+        </div>
+        <div
+          class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+          style="margin: 1rem 0rem; height: 15vh; overflow: hidden; padding-top: 0px;"
+        >
+          <div
+            class="MuiBox-root css-0"
+            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+          >
+            <span
+              aria-label="Sample Plugin 2"
+              class=""
+              data-mui-internal-clone-element="true"
+            />
+            <h5
+              class="MuiTypography-root MuiTypography-h5 css-xqgeko-MuiTypography-root"
+            >
+              <a
+                class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+                href="/"
+              >
+                Sample Plugin 2
+              </a>
+            </h5>
+          </div>
+          <div
+            class="MuiBox-root css-1pup0r6"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+            >
+              v
+              1.0.1
+            </p>
+            <div
+              class="MuiBox-root css-1isemmb"
+              style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+            >
+              <p
+                aria-label="sample-repo-2"
+                class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+                data-mui-internal-clone-element="true"
+              >
+                sample-repo-2
+              </p>
+            </div>
+          </div>
+          <hr
+            class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+          />
+          <div
+            class="MuiBox-root css-164r41r"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+            >
+              <span
+                aria-label="This is another sample plugin description that demonstrates the PluginCard component."
+                class=""
+                data-mui-internal-clone-element="true"
+              >
+                This is another sample plugin description that demonstrates the PluginCard component.
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          class="MuiCardActions-root MuiCardActions-spacing css-dnrpxu-MuiCardActions-root"
+          style="justify-content: space-between; padding: 14px;"
+        >
+          <a
+            class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+            href="https://example.com"
+            target="_blank"
+          >
+            Learn More
+          </a>
+        </div>
+      </div>
+    </div>
+     
+  </div>
+  <div
+    class="MuiBox-root css-1qidsum"
+  >
+    <nav
+      aria-label="pagination navigation"
+      class="MuiPagination-root MuiPagination-text css-1oj2twp-MuiPagination-root"
+    >
+      <ul
+        class="MuiPagination-ul css-wjh20t-MuiPagination-ul"
+      >
+        <li>
+          <button
+            aria-label="Go to previous page"
+            class="MuiButtonBase-root Mui-disabled MuiPaginationItem-root MuiPaginationItem-sizeLarge MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-colorPrimary MuiPaginationItem-textPrimary Mui-disabled MuiPaginationItem-previousNext css-6tuda4-MuiButtonBase-root-MuiPaginationItem-root"
+            disabled=""
+            tabindex="-1"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiPaginationItem-icon css-n8417t-MuiSvgIcon-root-MuiPaginationItem-icon"
+              data-testid="NavigateBeforeIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+              />
+            </svg>
+          </button>
+        </li>
+        <li>
+          <button
+            aria-current="true"
+            aria-label="page 1"
+            class="MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-sizeLarge MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-colorPrimary MuiPaginationItem-textPrimary Mui-selected MuiPaginationItem-page css-6tuda4-MuiButtonBase-root-MuiPaginationItem-root"
+            tabindex="0"
+            type="button"
+          >
+            1
+            <span
+              class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+            />
+          </button>
+        </li>
+        <li>
+          <button
+            aria-label="Go to page 2"
+            class="MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-sizeLarge MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-colorPrimary MuiPaginationItem-textPrimary MuiPaginationItem-page css-6tuda4-MuiButtonBase-root-MuiPaginationItem-root"
+            tabindex="0"
+            type="button"
+          >
+            2
+            <span
+              class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+            />
+          </button>
+        </li>
+        <li>
+          <button
+            aria-label="Go to next page"
+            class="MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-sizeLarge MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-colorPrimary MuiPaginationItem-textPrimary MuiPaginationItem-previousNext css-6tuda4-MuiButtonBase-root-MuiPaginationItem-root"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiPaginationItem-icon css-n8417t-MuiSvgIcon-root-MuiPaginationItem-icon"
+              data-testid="NavigateNextIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
+              />
+            </svg>
+            <span
+              class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+            />
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+`;

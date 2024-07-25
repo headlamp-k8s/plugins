@@ -1,0 +1,107 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Storyshots LoadingButton Complete Progress 1`] = `
+<div>
+  <button
+    class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeMedium MuiButton-containedSizeMedium MuiButton-colorPrimary Mui-disabled MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeMedium MuiButton-containedSizeMedium MuiButton-colorPrimary css-fqrbe-MuiButtonBase-root-MuiButton-root"
+    disabled=""
+    tabindex="-1"
+    type="button"
+  >
+    <span
+      class="MuiCircularProgress-root MuiCircularProgress-indeterminate MuiCircularProgress-colorSecondary css-1bbmsbn-MuiCircularProgress-root"
+      role="progressbar"
+      style="width: 20px; height: 20px;"
+    >
+      <svg
+        class="MuiCircularProgress-svg css-1idz92c-MuiCircularProgress-svg"
+        viewBox="22 22 44 44"
+      >
+        <circle
+          class="MuiCircularProgress-circle MuiCircularProgress-circleIndeterminate css-176wh8e-MuiCircularProgress-circle"
+          cx="44"
+          cy="44"
+          fill="none"
+          r="20.2"
+          stroke-width="3.6"
+        />
+      </svg>
+    </span>
+  </button>
+</div>
+`;
+
+exports[`Storyshots LoadingButton Default 1`] = `
+<div>
+  <button
+    class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeMedium MuiButton-containedSizeMedium MuiButton-colorPrimary Mui-disabled MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeMedium MuiButton-containedSizeMedium MuiButton-colorPrimary css-fqrbe-MuiButtonBase-root-MuiButton-root"
+    disabled=""
+    tabindex="-1"
+    type="button"
+  >
+    <span
+      class="MuiCircularProgress-root MuiCircularProgress-indeterminate MuiCircularProgress-colorSecondary css-1bbmsbn-MuiCircularProgress-root"
+      role="progressbar"
+      style="width: 20px; height: 20px;"
+    >
+      <svg
+        class="MuiCircularProgress-svg css-1idz92c-MuiCircularProgress-svg"
+        viewBox="22 22 44 44"
+      >
+        <circle
+          class="MuiCircularProgress-circle MuiCircularProgress-circleIndeterminate css-176wh8e-MuiCircularProgress-circle"
+          cx="44"
+          cy="44"
+          fill="none"
+          r="20.2"
+          stroke-width="3.6"
+        />
+      </svg>
+    </span>
+  </button>
+</div>
+`;
+
+exports[`Storyshots LoadingButton With Progress 1`] = `
+<div>
+  <button
+    class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeMedium MuiButton-containedSizeMedium MuiButton-colorPrimary MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeMedium MuiButton-containedSizeMedium MuiButton-colorPrimary css-fqrbe-MuiButtonBase-root-MuiButton-root"
+    tabindex="0"
+    type="button"
+  >
+    <div
+      class="MuiBox-root css-rmz4vk"
+    >
+      <span
+        aria-valuenow="50"
+        class="MuiCircularProgress-root MuiCircularProgress-determinate MuiCircularProgress-colorInherit css-dwthmp-MuiCircularProgress-root"
+        role="progressbar"
+        style="width: 20px; height: 20px; transform: rotate(-90deg);"
+      >
+        <svg
+          class="MuiCircularProgress-svg css-1idz92c-MuiCircularProgress-svg"
+          viewBox="22 22 44 44"
+        >
+          <circle
+            class="MuiCircularProgress-circle MuiCircularProgress-circleDeterminate css-oxts8u-MuiCircularProgress-circle"
+            cx="44"
+            cy="44"
+            fill="none"
+            r="20.2"
+            stroke-width="3.6"
+            style="stroke-dasharray: 126.920; stroke-dashoffset: 63.460px;"
+          />
+        </svg>
+      </span>
+      <div
+        class="MuiBox-root css-1o8dslu"
+      >
+        <span />
+      </div>
+    </div>
+    <span
+      class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+    />
+  </button>
+</div>
+`;

@@ -1,0 +1,322 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Storyshots PluginCard Default 1`] = `
+<div>
+  <div
+    class="MuiBox-root css-z0sk23"
+  >
+    <div
+      class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-bhp9pd-MuiPaper-root-MuiCard-root"
+    >
+      <div
+        class="MuiBox-root css-1iuu6zq"
+        heigh="60px"
+      >
+        <img
+          class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img css-o69gx8-MuiCardMedia-root"
+          src="https://artifacthub.io/image/9efd017f-25e8-4c7f-a80f-e920dc1dd4ac"
+          style="width: 60px; margin: 1rem; align-self: flex-start;"
+        />
+        <div
+          class="MuiBox-root css-q5lf8z"
+        >
+          <span />
+          <span />
+        </div>
+      </div>
+      <div
+        class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+        style="margin: 1rem 0rem; height: 15vh; overflow: hidden; padding-top: 0px;"
+      >
+        <div
+          class="MuiBox-root css-0"
+          style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+        >
+          <span
+            aria-label="App catalog Headlamp Plugin Test"
+            class=""
+            data-mui-internal-clone-element="true"
+          />
+          <h5
+            class="MuiTypography-root MuiTypography-h5 css-xqgeko-MuiTypography-root"
+          >
+            <a
+              class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+              href="/"
+            >
+              App catalog Headlamp Plugin Test
+            </a>
+          </h5>
+        </div>
+        <div
+          class="MuiBox-root css-1pup0r6"
+        >
+          <p
+            class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+          >
+            v
+            0.0.3
+          </p>
+          <div
+            class="MuiBox-root css-1isemmb"
+            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+          >
+            <p
+              aria-label="test-123"
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+              data-mui-internal-clone-element="true"
+            >
+              test-123
+            </p>
+          </div>
+        </div>
+        <hr
+          class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+        />
+        <div
+          class="MuiBox-root css-164r41r"
+        >
+          <p
+            class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+          >
+            <span
+              aria-label="App catalog plugin for Headlamp"
+              class=""
+              data-mui-internal-clone-element="true"
+            >
+              App catalog plugin for Headlamp
+            </span>
+          </p>
+        </div>
+      </div>
+      <div
+        class="MuiCardActions-root MuiCardActions-spacing css-dnrpxu-MuiCardActions-root"
+        style="justify-content: space-between; padding: 14px;"
+      >
+        <a
+          class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+          href="https://github.com/yolossn/headlamp-plugins"
+          target="_blank"
+        >
+          Learn More
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Storyshots PluginCard Long Description 1`] = `
+<div>
+  <div
+    class="MuiBox-root css-z0sk23"
+  >
+    <div
+      class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-bhp9pd-MuiPaper-root-MuiCard-root"
+    >
+      <div
+        class="MuiBox-root css-1iuu6zq"
+        heigh="60px"
+      >
+        <img
+          class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img css-o69gx8-MuiCardMedia-root"
+          src="https://artifacthub.io/image/9efd017f-25e8-4c7f-a80f-e920dc1dd4ac"
+          style="width: 60px; margin: 1rem; align-self: flex-start;"
+        />
+        <div
+          class="MuiBox-root css-q5lf8z"
+        >
+          <span />
+          <span />
+        </div>
+      </div>
+      <div
+        class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+        style="margin: 1rem 0rem; height: 15vh; overflow: hidden; padding-top: 0px;"
+      >
+        <div
+          class="MuiBox-root css-0"
+          style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+        >
+          <span
+            aria-label="App catalog Headlamp Plugin Test"
+            class=""
+            data-mui-internal-clone-element="true"
+          />
+          <h5
+            class="MuiTypography-root MuiTypography-h5 css-xqgeko-MuiTypography-root"
+          >
+            <a
+              class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+              href="/"
+            >
+              App catalog Headlamp Plugin Test
+            </a>
+          </h5>
+        </div>
+        <div
+          class="MuiBox-root css-1pup0r6"
+        >
+          <p
+            class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+          >
+            v
+            0.0.3
+          </p>
+          <div
+            class="MuiBox-root css-1isemmb"
+            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+          >
+            <p
+              aria-label="test-123"
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+              data-mui-internal-clone-element="true"
+            >
+              test-123
+            </p>
+          </div>
+        </div>
+        <hr
+          class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+        />
+        <div
+          class="MuiBox-root css-164r41r"
+        >
+          <p
+            class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+          >
+            <span
+              aria-label="This is a sample plugin description that is intentionally long to demonstrate how the PluginCard component handles overflow text. The description continues with more details and information about the plugin to ensure that it exceeds the 100 character limit."
+              class=""
+              data-mui-internal-clone-element="true"
+            >
+              This is a sample plugin description that is intentionally long to demonstrate how the PluginCard com
+              <p
+                class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+                style="display: inline-block;"
+              >
+                …
+              </p>
+            </span>
+          </p>
+        </div>
+      </div>
+      <div
+        class="MuiCardActions-root MuiCardActions-spacing css-dnrpxu-MuiCardActions-root"
+        style="justify-content: space-between; padding: 14px;"
+      >
+        <a
+          class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+          href="https://github.com/yolossn/headlamp-plugins"
+          target="_blank"
+        >
+          Learn More
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Storyshots PluginCard No Official Or Verified 1`] = `
+<div>
+  <div
+    class="MuiBox-root css-z0sk23"
+  >
+    <div
+      class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-bhp9pd-MuiPaper-root-MuiCard-root"
+    >
+      <div
+        class="MuiBox-root css-1iuu6zq"
+        heigh="60px"
+      >
+        <img
+          class="MuiCardMedia-root MuiCardMedia-media MuiCardMedia-img css-o69gx8-MuiCardMedia-root"
+          src="https://artifacthub.io/image/9efd017f-25e8-4c7f-a80f-e920dc1dd4ac"
+          style="width: 60px; margin: 1rem; align-self: flex-start;"
+        />
+        <div
+          class="MuiBox-root css-q5lf8z"
+        />
+      </div>
+      <div
+        class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+        style="margin: 1rem 0rem; height: 15vh; overflow: hidden; padding-top: 0px;"
+      >
+        <div
+          class="MuiBox-root css-0"
+          style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+        >
+          <span
+            aria-label="App catalog Headlamp Plugin Test"
+            class=""
+            data-mui-internal-clone-element="true"
+          />
+          <h5
+            class="MuiTypography-root MuiTypography-h5 css-xqgeko-MuiTypography-root"
+          >
+            <a
+              class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+              href="/"
+            >
+              App catalog Headlamp Plugin Test
+            </a>
+          </h5>
+        </div>
+        <div
+          class="MuiBox-root css-1pup0r6"
+        >
+          <p
+            class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+          >
+            v
+            0.0.3
+          </p>
+          <div
+            class="MuiBox-root css-1isemmb"
+            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+          >
+            <p
+              aria-label="test-123"
+              class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+              data-mui-internal-clone-element="true"
+            >
+              test-123
+            </p>
+          </div>
+        </div>
+        <hr
+          class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+        />
+        <div
+          class="MuiBox-root css-164r41r"
+        >
+          <p
+            class="MuiTypography-root MuiTypography-body1 css-1ezega9-MuiTypography-root"
+          >
+            <span
+              aria-label="App catalog plugin for Headlamp"
+              class=""
+              data-mui-internal-clone-element="true"
+            >
+              App catalog plugin for Headlamp
+            </span>
+          </p>
+        </div>
+      </div>
+      <div
+        class="MuiCardActions-root MuiCardActions-spacing css-dnrpxu-MuiCardActions-root"
+        style="justify-content: space-between; padding: 14px;"
+      >
+        <a
+          class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+          href="https://github.com/yolossn/headlamp-plugins"
+          target="_blank"
+        >
+          Learn More
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+`;
