@@ -19,7 +19,7 @@ export interface PluginCardProps {
 }
 
 export function PluginCard(props: PluginCardProps) {
-  const {plugin} = props;
+  const { plugin } = props;
 
   return (
     <Box maxWidth="30%" width="400px" m={1}>

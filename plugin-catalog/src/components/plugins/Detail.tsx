@@ -1,11 +1,11 @@
 import { PluginManager, Router } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
+  Link as HeadlampLink,
   Loader,
   NameValueTable,
   SectionBox,
   SectionHeader,
-  Link as HeadlampLink,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Button, CardMedia, Link, Snackbar, Tooltip, Typography } from '@mui/material';
 import Markdown from 'markdown-to-jsx';
@@ -141,8 +141,7 @@ export function PurePluginDetail({
       `${artifactHubURLBase}&repo=${pluginDetail.repository.name}`,
       `${artifactHubURLBase}&org=${pluginDetail.repository.organization_name}`,
     ];
-  },
-  [pluginDetail]);
+  }, [pluginDetail]);
 
   return (
     <>
@@ -181,18 +180,14 @@ export function PurePluginDetail({
                   }}
                   component="img"
                 />
-              )
+              ),
             ]}
             actions={[
               currentAction === null ? (
                 pluginDetail ? (
                   pluginDetail.isInstalled ? (
                     <>
-                      <HeadlampLink
-                        routeName='plugins'
-                      >
-                        Settings
-                      </HeadlampLink>
+                      <HeadlampLink routeName="plugins">Settings</HeadlampLink>
                       {pluginDetail.updateAvailable && (
                         <ActionButton
                           description="Update"
@@ -256,23 +251,19 @@ export function PurePluginDetail({
               },
               {
                 name: 'Repository',
-                value: (
-                  repoUrl && (
-                    <Link href={repoUrl} target="_blank">
-                      {pluginDetail.repository.display_name}
-                    </Link>
-                  )
-                )
+                value: repoUrl && (
+                  <Link href={repoUrl} target="_blank">
+                    {pluginDetail.repository.display_name}
+                  </Link>
+                ),
               },
               {
                 name: 'Author',
-                value: (
-                  orgUrl && (
-                    <Link href={orgUrl} target="_blank">
-                      {pluginDetail.repository.organization_display_name}
-                    </Link>
-                  )
-                )
+                value: orgUrl && (
+                  <Link href={orgUrl} target="_blank">
+                    {pluginDetail.repository.organization_display_name}
+                  </Link>
+                ),
               },
             ]}
           />

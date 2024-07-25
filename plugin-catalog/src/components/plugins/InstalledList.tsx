@@ -54,7 +54,7 @@ export function PurePluginInstalledList({ installedPlugins, error }: PurePluginI
               getter: plugin => plugin.author,
             },
           ]}
-          emptyMessage='No plugins installed'
+          emptyMessage="No plugins installed"
           data={installedPlugins || []}
         />
       )}
