@@ -1,15 +1,15 @@
-# opencost
+# OpenCost
 
-This is the default template README for [Headlamp Plugins](https://github.com/headlamp-k8s/headlamp).
+This plugin uses the [OpenCost](https://www.opencost.io/) project to add information about a cluster's cost to [Headlamp](https://headlamp.dev).
+It will add a new column to tables listing Kubernetes resources, as well as charts, showing the cost of each resource over the selected time.
 
-- The description of your plugin should go here.
-- You should also edit the package.json file meta data (like name and description).
+## Requirements
 
-## Developing Headlamp plugins
+This plugins needs the following projects running in your cluster:
+- OpenCost ([instructions](https://www.opencost.io/docs/installation/helm))
+- Prometheus ([instructions](https://prometheus.io/docs/prometheus/latest/installation/))
 
-For more information on developing Headlamp plugins, please refer to:
+## Configuration
 
-- [Getting Started](https://headlamp.dev/docs/latest/development/plugins/), How to create a new Headlamp plugin.
-- [API Reference](https://headlamp.dev/docs/latest/development/api/), API documentation for what you can do
-- [UI Component Storybook](https://headlamp.dev/docs/latest/development/frontend/#storybook), pre-existing components you can use when creating your plugin.
-- [Plugin Examples](https://github.com/headlamp-k8s/headlamp/tree/main/plugins/examples), Example plugins you can look at to see how it's done.
+Once the plugin is installed, go to the plugin's settings page and configure the service's URL
+and any other desired customizations.
