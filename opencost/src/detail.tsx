@@ -271,7 +271,7 @@ export function OpencostDetailSectionPure(props: OpencostDetailSectionPureProps)
     <Grid spacing={2}>
       <SectionBox
         title={
-          <div id="cost">
+          <div id="opencost-plugin-cost-section">
             <SectionHeader
               title="Cost"
               actions={[

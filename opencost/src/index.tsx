@@ -16,9 +16,17 @@ import { Settings } from './settings';
 import { getConfigStore, getDisplayCurrency, getDisplayTimespan, getServiceDetails } from './utils';
 
 function IconAction() {
+  const handleClick = event => {
+    event.preventDefault();
+    const targetElement = document.getElementById('opencost-plugin-cost-section');
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'auto' });
+    }
+  };
+
   return (
     <Tooltip title={'Cost'}>
-      <IconButton href="#cost" aria-label={'Cost'} aria-haspopup="true">
+      <IconButton onClick={handleClick} aria-label={'Cost'} aria-haspopup="true">
         <Icon icon="mdi:cash-register" />
       </IconButton>
     </Tooltip>
