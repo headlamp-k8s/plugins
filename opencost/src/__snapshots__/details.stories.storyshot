@@ -9,7 +9,7 @@ exports[`Storyshots OpencostDetails Loading State 1`] = `
       class="MuiBox-root css-j1fy4m"
     >
       <div
-        id="cost"
+        id="opencost-plugin-cost-section"
       >
         <div
           class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
@@ -125,7 +125,7 @@ exports[`Storyshots OpencostDetails No Data 1`] = `
       class="MuiBox-root css-j1fy4m"
     >
       <div
-        id="cost"
+        id="opencost-plugin-cost-section"
       >
         <div
           class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
@@ -309,7 +309,7 @@ exports[`Storyshots OpencostDetails Not Installed 1`] = `
       class="MuiBox-root css-j1fy4m"
     >
       <div
-        id="cost"
+        id="opencost-plugin-cost-section"
       >
         <div
           class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
@@ -388,7 +388,7 @@ exports[`Storyshots OpencostDetails Week Data 1`] = `
       class="MuiBox-root css-j1fy4m"
     >
       <div
-        id="cost"
+        id="opencost-plugin-cost-section"
       >
         <div
           class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
