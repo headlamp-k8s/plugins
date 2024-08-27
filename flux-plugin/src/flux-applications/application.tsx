@@ -17,6 +17,9 @@ import {
   SyncWithoutSourceAction,
 } from '../actions/index';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import YAML from 'yaml';
+import { getSourceNameAndType } from '../helpers/index';
+import Editor from '@monaco-editor/react';
 
 const KUSTOMIZE_CRD = 'kustomizations.kustomize.toolkit.fluxcd.io';
 const HELMRELEASE_CRD = 'helmreleases.helm.toolkit.fluxcd.io';
@@ -136,43 +139,10 @@ function GetSource(props: {
   setSource: (...args) => void;
 }) {
   const { item, setSource } = props;
-  let name = '';
-  let type = '';
   const namespace = item.jsonData.metadata.namespace;
     
-  function getNameAndType() {
-    const itemKind = item.jsonData.kind;
-
-    if (itemKind === 'Kustomization') {
-      switch (item.jsonData.spec.sourceRef.kind) {
-        case 'GitRepository':
-          type = 'gitrepositories';
-          break;
-        case 'OCIRepository':
-          type = 'ocirepositories';
-          break;
-        case 'Bucket':
-          type = 'buckets';
-          break;
-        default:
-          type = 'sources';
-      }
-      name = item.jsonData.spec?.sourceRef?.name;
-    } else if (itemKind === 'HelmRelease') {
-      switch (item.jsonData.spec.chart.spec.sourceRef.kind) {
-        case 'HelmRepository':
-          type = 'helmrepositories';
-          break;
-        case 'HelmChart':
-          type = 'helmcharts';
-          break;
-        default:
-          type = 'sources';
-      }
-      name = item.jsonData?.spec?.chart?.spec?.sourceRef?.name;
-    }
-  }
-  getNameAndType();
+  
+  const { name, type } = getSourceNameAndType(item);
 
   const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     `${type.split(' ').join('').toLowerCase()}.source.toolkit.fluxcd.io`
@@ -243,12 +213,13 @@ function CustomResourceDetails(props) {
   resourceClass.useApiGet(setCr, name, namespace);
 
   function prepareExtraInfo(cr) {
+    const { name: sourceName, type: sourceType } = getSourceNameAndType(cr);
     let extraInfo = [];
-
+    console.log(sourceName, sourceType)
     if (cr?.jsonData.kind === 'HelmRelease') {
       extraInfo.push({
         name: 'Chart',
-        value: cr?.jsonData?.spec?.chart?.spec?.chart,
+        value: sourceName,
       });
 
       extraInfo.push({
@@ -256,21 +227,18 @@ function CustomResourceDetails(props) {
         value: cr?.jsonData?.spec.chart?.spec?.reconcileStrategy,
       });
 
-      extraInfo.push({
-        name: 'Source Ref',
-        value:
-          cr?.jsonData?.spec.chart?.spec?.sourceRef &&
-          JSON.stringify(cr?.jsonData?.spec.chart?.spec?.sourceRef),
-      });
-
-      const values = cr?.jsonData?.spec.values;
-      if (values) {
-        for (const [key, value] of Object.entries(values)) {
-          extraInfo.push({
-            name: key,
-            value: value,
-          });
-        }
+      if(cr?.jsonData?.spec?.chartRef) {
+        extraInfo.push({
+          name: 'Source Ref',
+          value: <Link routeName={`/flux/sources/:namespace/:type/:name`} params={{ namespace: cr.jsonData.metadata.namespace, type: sourceType, name: sourceName }}>{sourceName}</Link>,
+        });
+      }
+      
+      if(cr?.jsonData?.spec?.chart?.spec?.sourceRef) {
+        extraInfo.push({
+          name: 'Source Ref',
+          value: <Link routeName={`/flux/sources/:namespace/:type/:name`} params={{ namespace: cr.jsonData.metadata.namespace, type: sourceType, name: sourceName }}>{sourceName}</Link>,
+        });
       }
     } else {
       extraInfo = [
@@ -288,7 +256,7 @@ function CustomResourceDetails(props) {
         },
         {
           name: 'SourceRef',
-          value: cr?.jsonData.spec?.sourceRef && JSON.stringify(cr?.jsonData.spec?.sourceRef),
+          value: <Link routeName={`/flux/sources/:namespace/:type/:name`} params={{ namespace: cr.jsonData.metadata.namespace, type: sourceType, name: sourceName }}>{sourceName}</Link>,
         },
       ];
     }
@@ -358,6 +326,18 @@ function CustomResourceDetails(props) {
         extraInfo={prepareExtraInfo(cr)}
         actions={prepareActions()}
       />
+     }
+     {
+      cr && cr?.jsonData?.spec?.values && 
+      <SectionBox  title="Values">
+       <Editor
+       language='yaml'
+       value={
+        YAML.stringify(cr?.jsonData?.spec?.values)
+       }
+       height={200}
+       />
+      </SectionBox>
      }
       {cr && (
         <SectionBox title="Inventory">
