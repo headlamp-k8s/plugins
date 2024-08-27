@@ -2,6 +2,7 @@ import { DateLabel, Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { Alert } from '@mui/material';
+import { getSourceNameAndType } from '../helpers/index';
 
 export default function FluxCustomResource(props: {
   resourceClass: KubeObject;
@@ -89,40 +90,7 @@ export default function FluxCustomResource(props: {
           {
             header: 'Source',
             accessorFn: item => {
-              const itemKind = item.jsonData.kind;
-              let name = '';
-              let type = '';
-              if(itemKind === 'Kustomization') {
-                switch(item.jsonData?.spec?.sourceRef.kind) {
-                  case 'GitRepository':
-                    type = 'gitrepositories';
-                    break;
-                  case 'OCIRepository':
-                    type = 'ocirepositories';
-                    break;
-                  case 'Bucket':
-                    type = 'buckets';
-                    break;
-                  default:
-                    type = 'sources';
-                }
-                name = item.jsonData.spec?.sourceRef?.name;
-              } else if(itemKind === 'HelmRelease') {
-                switch(item.jsonData?.spec?.chart?.spec?.sourceRef.kind) {
-                  case 'HelmRepository':
-                    type = 'helmrepositories';
-                    break;
-                  case 'HelmChart':
-                    type = 'helmcharts';
-                    break;
-                  default:
-                    type = 'sources';
-                }
-                name = item.jsonData?.spec?.chart?.spec?.sourceRef?.name
-              }
-              if(!name) {
-                return '-';
-              }
+              const { name, type } = getSourceNameAndType(item);
               return (
                 <Link
                   routeName={`/flux/sources/:namespace/:type/:name`}
