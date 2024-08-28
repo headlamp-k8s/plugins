@@ -17,12 +17,12 @@ import {
   TextField,
   Tooltip,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { Autocomplete, Pagination } from '@mui/material';
 import { useEffect, useState } from 'react';
 //import { jsonToYAML, yamlToJSON } from '../../helpers';
 import { fetchChartsFromArtifact } from '../../api/charts';
+import { AppCatalogTitle } from './AppCatalogTitle';
 //import { createRelease } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
 
@@ -142,39 +142,6 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
           return <TextField {...params} label="Categories" placeholder="Favorites" />;
         }}
       />
-    );
-  }
-
-  function SettingsLink() {
-    const theme = useTheme();
-
-    return (
-      <RouterLink routeName="/settings/plugins/app-catalog" tooltip="App-Catalog Settings">
-        <Typography
-          sx={{
-            size: '1rem',
-            marginLeft: '3rem',
-            color: theme.palette.text.primary,
-          }}
-        >
-          Settings
-        </Typography>
-      </RouterLink>
-    );
-  }
-
-  function AppCatalogTitle() {
-    return (
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography
-          sx={{
-            fontSize: '2rem',
-          }}
-        >
-          Applications
-        </Typography>
-        <SettingsLink />
-      </Box>
     );
   }
 
