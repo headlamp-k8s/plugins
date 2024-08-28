@@ -40,6 +40,7 @@ const mockCharts = [
     repository: {
       name: 'MockRepoy',
       url: 'https://exampley.com',
+      verified_publisher: true,
     },
   },
   {
@@ -51,29 +52,42 @@ const mockCharts = [
     repository: {
       name: 'MockRepo2y',
       url: 'https://example2y.com',
+      verified_publisher: true,
     },
   },
 ];
 
-const initialState = {
+const initialStateTrue = {
   config: {
+    showOnlyVerified: true,
     settings: {
       tableRowsPerPageOptions: [15, 25, 50],
     },
   },
 };
 
-const mockStore = configureStore({
-  reducer: (state = initialState) => state,
-});
+const initialStateFalse = {
+  config: {
+    showOnlyVerified: false,
+    settings: {
+      tableRowsPerPageOptions: [15, 25, 50],
+    },
+  },
+};
 
-const Template: Story = args => (
-  <Provider store={mockStore}>
-    <BrowserRouter>
-      <ChartsList {...args} />
-    </BrowserRouter>
-  </Provider>
-);
+const Template: Story = ({ initialState, ...args }) => {
+  const mockStore = configureStore({
+    reducer: (state = initialState) => state,
+  });
+
+  return (
+    <Provider store={mockStore}>
+      <BrowserRouter>
+        <ChartsList {...args} />
+      </BrowserRouter>
+    </Provider>
+  );
+};
 
 export const EmptyCharts = Template.bind({});
 EmptyCharts.args = {
@@ -91,6 +105,36 @@ EmptyCharts.args = {
 
 export const SomeCharts = Template.bind({});
 SomeCharts.args = {
+  fetchCharts: () =>
+    Promise.resolve({
+      packages: mockCharts,
+      facets: [
+        {
+          title: 'Category',
+          options: [{ name: 'All', total: 0 }],
+        },
+      ],
+    }),
+};
+
+export const WithShowOnlyVerifiedTrue = Template.bind({});
+WithShowOnlyVerifiedTrue.args = {
+  initialState: initialStateTrue,
+  fetchCharts: () =>
+    Promise.resolve({
+      packages: mockCharts,
+      facets: [
+        {
+          title: 'Category',
+          options: [{ name: 'All', total: 0 }],
+        },
+      ],
+    }),
+};
+
+export const WithShowOnlyVerifiedFalse = Template.bind({});
+WithShowOnlyVerifiedFalse.args = {
+  initialState: initialStateFalse,
   fetchCharts: () =>
     Promise.resolve({
       packages: mockCharts,

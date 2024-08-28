@@ -75,6 +75,10 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
 
       store.set({ showOnlyVerified: showOnlyVerified });
 
+      if (props.showOnlyVerified!!) {
+        store.set({ showOnlyVerified: props.showOnlyVerified });
+      }
+
       async function fetchData() {
         try {
           const response: any = await fetchCharts(search, showOnlyVerified, chartCategory, page);
@@ -165,8 +169,9 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         ) : charts.length === 0 ? (
           <Box mt={2} mx={2}>
             <Typography variant="h5" component="h2">
-              {`No charts found for ${search ? `search term: ${search}` : `category: ${chartCategory.title}`
-                }`}
+              {`No charts found for ${
+                search ? `search term: ${search}` : `category: ${chartCategory.title}`
+              }`}
             </Typography>
           </Box>
         ) : (
