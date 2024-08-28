@@ -37,7 +37,7 @@ function GetResourcesFromInventory(props: {
     in the format '<namespace>_<name>_<group>_<kind>'.
     */
     const parsedID = id.split('_');
-    const namespace = parsedID[0];
+    const namespace = parsedID[0] === '' ? undefined : parsedID[0];
     const name = parsedID[1];
     const group = parsedID[2];
     const kind = parsedID[3];
@@ -49,26 +49,26 @@ function GetResourcesFromInventory(props: {
     const { namespace, name, group, kind } = parsedID;
     const resource = K8s.ResourceClasses[kind];
 
-
     if (!resource) {
       return;
     }
-    resource.useApiGet(
-      data => {
-        // if the resource already exist replace it with the new one which is data otherwise add it
-        // use uid as the filter
-        const index = resources.findIndex(it => it.metadata.uid === data.metadata.uid);
-        if (index !== -1) {
-          resources[index] = data;
-        } else {
-          resources.push(data);
-        }
-        setResources([...resources]);
-      },
-      name,
-      namespace
-    );
-  });
+
+      resource.useApiGet(
+        data => {
+          // if the resource already exist replace it with the new one which is data otherwise add it
+          // use uid as the filter
+          const index = resources.findIndex(it => it.metadata.uid === data.metadata.uid);
+          if (index !== -1) {
+            resources[index] = data;
+          } else {
+            resources.push(data);
+          }
+          setResources([...resources]);
+        },
+        name,
+        namespace
+      );
+    });
 
   return (
     <Table
@@ -85,10 +85,10 @@ function GetResourcesFromInventory(props: {
               <Link
                 routeName={`namespace`}
                 params={{
-                  name: item.metadata.namespace,
+                  name: item?.metadata?.namespace,
                 }}
               >
-                {item.metadata.namespace}
+                {item?.metadata?.namespace}
               </Link>
             ) : (
               ''
@@ -110,7 +110,7 @@ function GetResourcesFromInventory(props: {
         },
         {
           header: 'Age',
-          accessorFn: item => <DateLabel date={item.metadata.creationTimestamp} />,
+          accessorFn: item => <DateLabel date={item?.metadata?.creationTimestamp} />,
         },
       ]}
     />
@@ -215,7 +215,6 @@ function CustomResourceDetails(props) {
   function prepareExtraInfo(cr) {
     const { name: sourceName, type: sourceType } = getSourceNameAndType(cr);
     let extraInfo = [];
-    console.log(sourceName, sourceType)
     if (cr?.jsonData.kind === 'HelmRelease') {
       extraInfo.push({
         name: 'Chart',
