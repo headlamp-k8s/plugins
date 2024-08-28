@@ -11,7 +11,6 @@ export default function FluxCustomResource(props: {
 }) {
   const { resourceClass, title, type } = props;
   const [resource] = resourceClass.useList();
-  console.log('resource is ', resource);
 
   function prepareStatus(item: KubeCRD) {
 
