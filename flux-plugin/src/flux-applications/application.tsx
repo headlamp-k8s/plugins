@@ -174,7 +174,7 @@ export default function FluxApplicationDetailView(props) {
 
   return (
     <>
-      {resource && <CustomResourceDetails resource={resource} name={name} namespace={namespace} />}
+      {resource && <CustomResourceDetails resource={resource} name={name} namespace={namespace} type={type}/>}
       <SectionBox title="Events">
         <Table
           data={events}
@@ -203,7 +203,7 @@ export default function FluxApplicationDetailView(props) {
 }
 
 function CustomResourceDetails(props) {
-  const { name, namespace, resource } = props;
+  const { name, namespace, resource, type } = props;
   const [cr, setCr] = React.useState(null);
   const [source, setSource] = React.useState(null);
   const resourceClass = React.useMemo(() => {
@@ -270,45 +270,6 @@ function CustomResourceDetails(props) {
     return extraInfo;
   }
 
-  const inventories = cr?.jsonData?.status?.inventory?.entries;
-
-  function findDeployment() {
-    const deployment = inventories?.find(inventory =>
-      inventory.id.toLowerCase().includes('deployment')
-    );
-    const parsedDeployment = deployment?.id.split('_');
-    const namespace = parsedDeployment?.[0];
-    const name = parsedDeployment?.[1];
-    return name;
-  }
-  findDeployment();
-  const mapsource = React.useMemo(() => {
-    const temp: GraphSource = {
-      id: 'applications',
-      label: 'Applications',
-      nodes: () =>
-        cr
-          ? [
-              {
-                id: cr?.jsonData.metadata.uid,
-                type: 'kubeObject',
-                data: {
-                  resource: cr,
-                },
-              },
-            ]
-          : [],
-      edges: ({ resources }) => {
-        const deployment = resources.deployments.find(it => it.metadata.name === findDeployment());
-
-        return deployment
-          ? [{ id: 'myid', source: cr.metadata.uid, target: deployment.metadata.uid }]
-          : [];
-      },
-    };
-    return temp;
-  }, [cr]);
-
   function prepareActions() {
     const actions = [];
     actions.push(<SyncWithSourceAction resource={cr} source={source}/>);
@@ -317,6 +278,7 @@ function CustomResourceDetails(props) {
     actions.push(<ResumeAction resource={cr} />);
     return actions;
   }
+  console.log("namespace is ",namespace);
   return (
     <>
      { cr && <GetSource item={cr} setSource={setSource}/> }
@@ -349,16 +311,24 @@ function CustomResourceDetails(props) {
           columns={[
             {
               header: 'Name',
-              accessorFn: item => item.name,
-            },
-            {
-              header: 'Kind',
-              accessorFn: item => item.kind,
-            },
+              accessorFn: item => {
+              console.log("name is ", item.name, item.namespace, type)
+              return <Link routeName={`/flux/applications/:namespace/:type/:name`}
+              params={{
+                name: item.name,
+                namespace: item.namespace || namespace,
+                type
+              }}
+              >{ item.name }</Link>
+            }}, {
+              header: 'Namespace',
+              accessorFn: item => <Link routeName={`namespace`} params={{ name: item.namespace || namespace }}>{ item.namespace || namespace }</Link>
+            }
+            
           ]}
         />
       </SectionBox>
-      <SectionBox title="Graph">
+      {/* <SectionBox title="Graph">
         <GraphView
           hideHeader
           height="400px"
@@ -366,7 +336,7 @@ function CustomResourceDetails(props) {
           defaultSources={[mapsource, WorkloadsSource]}
           defaultFilters={[{ type: 'related', id: cr?.metadata?.uid }]}
         />
-      </SectionBox>
+      </SectionBox> */}
       <SectionBox title="Conditions">
         <ConditionsTable resource={cr?.jsonData} />
       </SectionBox>
