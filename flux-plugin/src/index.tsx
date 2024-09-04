@@ -7,6 +7,7 @@ import Notifications from './flux-notifications/notifications';
 import FluxRunTime from './flux-runtime/runtime';
 import ImageAutomation from './flux-image-automation/image-automations';
 import { FluxImageAutomationDetailView } from './flux-image-automation/image-automation';
+import  Notification  from './flux-notifications/notification';
 
 registerSidebarEntry({
   parent: null,
@@ -107,7 +108,16 @@ registerRoute({
   parent: 'flux',
   sidebar: 'notifications',
   component: () => <Notifications />,
+  exact: true
 });
+
+registerRoute({
+  path: '/flux/notifications/:namespace/:type/:name',
+  parent: 'flux',
+  sidebar: 'notifications',
+  component: () => <Notification />,
+  exact: true
+})
 
 registerSidebarEntry({
   parent: 'flux',

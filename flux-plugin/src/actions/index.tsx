@@ -6,7 +6,6 @@ import React from 'react';
 import { DialogContent, Button } from '@mui/material';
 import { DialogActions } from '@mui/material';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 
 function SuspendAction(props) {
   //const dispatch = useDispatch();
@@ -21,7 +20,7 @@ function SuspendAction(props) {
         icon={'mdi:pause'}
         iconButtonProps={{
          style: {
-            display: resource?.jsonData.spec.hasOwnProperty('suspend') ? resource.jsonData.spec.suspend ? 'none' : 'inline-flex' : 'none',
+            display: resource?.jsonData.spec.hasOwnProperty('suspend') ? resource.jsonData.spec.suspend ? 'none' : 'inline-flex' : 'inline-flex',
           }
         }}
         onClick={() => {
@@ -70,7 +69,7 @@ function ResumeAction(props) {
     <ActionButton
       iconButtonProps={{
         style: {
-          display: resource?.jsonData.spec.hasOwnProperty('suspend') ? resource.jsonData.spec.suspend ? 'inline-flex' : 'none' : 'inline-flex',
+          display: resource?.jsonData.spec.hasOwnProperty('suspend') ? resource.jsonData.spec.suspend ? 'inline-flex' : 'none' : 'none',
         }
       }}
       description="Resume"
@@ -96,24 +95,7 @@ function ResumeAction(props) {
 }
 
 function syncRequest(resource: KubeObject, enqueueSnackbar, date) {
-  const clusterName = getCluster() || '';
-  const name = resource.jsonData.metadata.name;
-  // if (resource.jsonData.annotations) {
-  //   resource.jsonData.metadata.annotations['reconcile.fluxcd.io/requestedAt'] =
-  //     new Date().toISOString();
-  // } else {
-  //   resource.jsonData.metadata.annotations = {
-  //     'reconcile.fluxcd.io/requestedAt': new Date().toISOString(),
-  //   };
-  // }
-  // apply(resource.jsonData, clusterName)
-  //   .then(() => {
-  //     enqueueSnackbar(`Successfully synced ${name}`, { variant: 'success' });
-  //   })
-  //   .catch(err => {
-  //     console.log('Failed to sync', err);
-  //     enqueueSnackbar(`Failed to sync ${name}`, { variant: 'error' });
-  //   });
+    const name = resource.jsonData.metadata.name;
     
     const patch = resource.constructor.apiEndpoint.patch;
     return patch({
