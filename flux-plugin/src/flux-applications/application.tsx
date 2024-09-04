@@ -24,6 +24,49 @@ import Editor from '@monaco-editor/react';
 const KUSTOMIZE_CRD = 'kustomizations.kustomize.toolkit.fluxcd.io';
 const HELMRELEASE_CRD = 'helmreleases.helm.toolkit.fluxcd.io';
 
+
+// function getSourceOrAppCRD_API_VERSION(kind: string) {
+//   switch (kind) {
+//     case 'Kustomization':
+//       return KUSTOMIZATION_API_VERSION;
+//     case 'HelmRelease':
+//       return HELM_API_VERSION;
+//     case 'HelmRepository':
+//       return 'source.toolkit.fluxcd.io';
+//     case 'HelmChart':
+//       return 'source.toolkit.fluxcd.io';
+//     case 'GitRepository':
+//       return 'source.toolkit.fluxcd.io';
+//     case 'OCIRepository':
+//       return 'source.toolkit.fluxcd.io';
+//     case 'Bucket':
+//       return 'source.toolkit.fluxcd.io';
+//     default:
+//       return '';
+//   }
+// }
+
+// function getSourceOrAppCRD(kind: string) {
+//   switch(kind) {
+//     case 'Kustomization':
+//       return KUSTOMIZE_CRD;
+//     case 'HelmRelease':
+//       return HELMRELEASE_CRD;
+//     case 'HelmRepository':
+//       return 'helmrepositories.source.toolkit.fluxcd.io';
+//     case 'HelmChart':
+//       return 'helmcharts.source.toolkit.fluxcd.io';
+//     case 'GitRepository':
+//       return 'gitrepositories.source.toolkit.fluxcd.io';
+//     case 'OCIRepository':
+//       return 'ocirepositories.source.toolkit.fluxcd.io';
+//     case 'Bucket':
+//       return 'buckets.source.toolkit.fluxcd.io';
+//     default:
+//       return '';
+//   }
+// }
+
 function GetResourcesFromInventory(props: {
   inventory: {
     id: string;
