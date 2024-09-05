@@ -1,4 +1,4 @@
-import { DateLabel, Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { DateLabel, Link, SectionBox, StatusLabel, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { Alert } from '@mui/material';
@@ -13,35 +13,11 @@ export default function FluxCustomResource(props: {
   const [resource] = resourceClass.useList();
 
   function prepareStatus(item: KubeCRD) {
-
-    if(item.spec.suspend) {
-      return <Alert style={{
-        padding: '0px'
-      }} p={0} severity="info">Suspended</Alert>;
-    }
-
-    // know if the flux kustomization is ready, not ready or suspendend or error
-    const conditions = item.status.conditions;
-    if (conditions) {
-      const ready = conditions.find(c => c.type === 'Ready');
-      if (ready) {
-        if (ready.status === 'True') {
-          return <Alert style={{
-            padding: '0px'
-          }} p={0} ml={-1} severity="success">Ready</Alert>;
-        } else {
-          return <Alert style={{
-            padding: '0px'
-          }} p={0} severity="error">Not Ready</Alert>;
-        }
-      }
-    }
-
-    
-
-    return <Alert style={{
-      padding: '0px'
-    }} severity="warning" ml={-1}>Unknown</Alert>;
+    console.log("preparing status ",item);
+    const ready  = item.status?.conditions?.find(c => c.type === 'Ready');
+    return <StatusLabel status={item.spec.suspend ? 'warning' : ready ? 'success':'error'} >
+      {item.spec.suspend ? 'Suspended' : ready ? 'Ready' : 'Not Ready'}
+    </StatusLabel>;
   }
 
   return (
