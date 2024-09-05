@@ -8,9 +8,9 @@ import {
   NameValueTable,
   SectionBox,
   Table,
+  Link
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Link } from '@mui/material';
-
+import { Link as MuiLink } from '@mui/material';
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import { SuspendAction, ResumeAction, SyncAction } from '../actions/index';
 
@@ -41,6 +41,52 @@ function CustomResourceDetailView(props) {
 
   resourceClass.useApiGet(setCr, name, namespace);
 
+  function prepareExtraInfo() {
+    const extraInfo = [];
+    extraInfo.push({
+      name: 'Interval',
+      value: cr?.jsonData.spec?.interval,
+    })
+    extraInfo.push({
+      name: 'Ref',
+      value: cr?.jsonData.spec?.ref && JSON.stringify(cr?.jsonData.spec?.ref),
+    })
+    extraInfo.push({
+      name: 'Timeout',
+      value: cr?.jsonData.spec?.timeout,
+    })
+    extraInfo.push({
+      name: 'URL',
+      value: cr?.jsonData.spec?.url && <MuiLink href={cr?.jsonData.spec?.url}>{cr?.jsonData.spec?.url}</MuiLink>,
+      hide: !cr?.jsonData.spec?.url,
+    })
+
+    if(cr?.jsonData.spec?.chart) {
+      extraInfo.push({
+        name: 'Chart',
+        value: cr?.jsonData.spec?.chart,
+      })
+    }
+    extraInfo.push({
+      name: 'Source Ref',
+      value: cr?.jsonData.spec?.sourceRef && <Link routeName={`/flux/sources/:namespace/:type/:name`} params={{ namespace: cr.jsonData.metadata.namespace, type: cr.jsonData.spec.sourceRef.kind, name: cr.jsonData.spec.sourceRef.name }}>{cr.jsonData.spec.sourceRef.name}</Link>,
+    })
+
+    extraInfo.push({
+      name: 'Version',
+      value: cr?.jsonData.spec?.version,
+    })
+
+    extraInfo.push({
+      name: 'Suspend',
+      value: cr?.jsonData.spec?.suspend ? 'True' : 'False',
+    })
+
+
+    return extraInfo;
+
+  }
+
   return (
     <>
       <MainInfoSection
@@ -50,46 +96,7 @@ function CustomResourceDetailView(props) {
           <SuspendAction resource={cr} />,
           <ResumeAction resource={cr} />,
         ]}
-        extraInfo={[
-          {
-            name: 'Interval',
-            value: cr?.jsonData.spec?.interval,
-          },
-          {
-            name: 'Ref',
-            value: cr?.jsonData.spec?.ref && JSON.stringify(cr?.jsonData.spec?.ref),
-          },
-          {
-            name: 'Timeout',
-            value: cr?.jsonData.spec?.timeout,
-          },
-          {
-            name: 'URL',
-            value: cr?.jsonData.spec?.url && (
-              <Link href={cr?.jsonData.spec?.url}>{cr?.jsonData.spec?.url}</Link>
-            ),
-            hide: !cr?.jsonData.spec?.url,
-          },
-          {
-            name: 'Chart',
-            hide: !cr?.jsonData.spec?.chart,
-            value: cr?.jsonData.spec?.chart,
-          },
-          {
-            name: 'Source Ref',
-            hide: !cr?.jsonData.spec?.sourceRef,
-            value: cr?.jsonData.spec?.sourceRef && JSON.stringify(cr?.jsonData.spec?.sourceRef),
-          },
-          {
-            name: 'Version',
-            value: cr?.jsonData.spec?.version,
-            hide: !cr?.jsonData.spec?.version,
-          },
-          {
-            name: 'Suspend',
-            value: cr?.jsonData.spec?.suspend ? 'True' : 'False',
-          },
-        ]}
+        extraInfo={prepareExtraInfo()}
       />
       {cr && <Events namespace={namespace} name={name} cr={cr} />}
       {cr && (
@@ -129,7 +136,11 @@ function Events(props) {
             accessorFn: item => item.message,
           },
           {
-            header: 'Last Updated Time',
+            header: 'From',
+            accessorFn: item => item.jsonData.reportingComponent || '-',
+          },
+          {
+            header: 'Age',
             accessorFn: item => <DateLabel date={item.jsonData.lastTimestamp} />,
           },
         ]}
