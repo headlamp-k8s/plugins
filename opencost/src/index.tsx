@@ -133,8 +133,7 @@ function getCost(value): number {
 
 registerResourceTableColumnsProcessor(function processor({ id, columns }) {
   const configStore = getConfigStore();
-  const config = configStore.useConfig();
-  const conf = config();
+  const conf = configStore.get();
   if ((conf?.isEnabledInListView ?? true) && acceptedList.includes(id)) {
     const filteredColumns = columns.filter(col => col.id !== 'opencost');
     const column = {
