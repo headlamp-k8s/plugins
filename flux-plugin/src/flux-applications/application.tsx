@@ -24,7 +24,18 @@ import Editor from '@monaco-editor/react';
 const KUSTOMIZE_CRD = 'kustomizations.kustomize.toolkit.fluxcd.io';
 const HELMRELEASE_CRD = 'helmreleases.helm.toolkit.fluxcd.io';
 
-
+function parseID(id: string) {
+  /* ID is the string representation of the Kubernetes resource object's
+  metadata,
+  in the format '<namespace>_<name>_<group>_<kind>'.
+  */
+  const parsedID = id.split('_');
+  const namespace = parsedID[0] === '' ? undefined : parsedID[0];
+  const name = parsedID[1];
+  const group = parsedID[2];
+  const kind = parsedID[3];
+  return { namespace, name, group, kind };
+}
 // function getSourceOrAppCRD_API_VERSION(kind: string) {
 //   switch (kind) {
 //     case 'Kustomization':
@@ -46,118 +57,25 @@ const HELMRELEASE_CRD = 'helmreleases.helm.toolkit.fluxcd.io';
 //   }
 // }
 
-// function getSourceOrAppCRD(kind: string) {
-//   switch(kind) {
-//     case 'Kustomization':
-//       return KUSTOMIZE_CRD;
-//     case 'HelmRelease':
-//       return HELMRELEASE_CRD;
-//     case 'HelmRepository':
-//       return 'helmrepositories.source.toolkit.fluxcd.io';
-//     case 'HelmChart':
-//       return 'helmcharts.source.toolkit.fluxcd.io';
-//     case 'GitRepository':
-//       return 'gitrepositories.source.toolkit.fluxcd.io';
-//     case 'OCIRepository':
-//       return 'ocirepositories.source.toolkit.fluxcd.io';
-//     case 'Bucket':
-//       return 'buckets.source.toolkit.fluxcd.io';
-//     default:
-//       return '';
-//   }
-// }
-
-function GetResourcesFromInventory(props: {
-  inventory: {
-    id: string;
-    v: string;
-  }[];
-}) {
-  const [resources, setResources] = React.useState([]);
-  function parseID(id: string) {
-    /* ID is the string representation of the Kubernetes resource object's
-    metadata,
-    in the format '<namespace>_<name>_<group>_<kind>'.
-    */
-    const parsedID = id.split('_');
-    const namespace = parsedID[0] === '' ? undefined : parsedID[0];
-    const name = parsedID[1];
-    const group = parsedID[2];
-    const kind = parsedID[3];
-    return { namespace, name, group, kind };
+function getSourceOrAppCRD(kind: string) {
+  switch(kind) {
+    case 'Kustomization':
+      return KUSTOMIZE_CRD;
+    case 'HelmRelease':
+      return HELMRELEASE_CRD;
+    case 'HelmRepository':
+      return 'helmrepositories.source.toolkit.fluxcd.io';
+    case 'HelmChart':
+      return 'helmcharts.source.toolkit.fluxcd.io';
+    case 'GitRepository':
+      return 'gitrepositories.source.toolkit.fluxcd.io';
+    case 'OCIRepository':
+      return 'ocirepositories.source.toolkit.fluxcd.io';
+    case 'Bucket':
+      return 'buckets.source.toolkit.fluxcd.io';
+    default:
+      return '';
   }
-
-  props.inventory?.map(item => {
-    const parsedID = parseID(item.id);
-    const { namespace, name, group, kind } = parsedID;
-    const resource = K8s.ResourceClasses[kind];
-
-    if (!resource) {
-      return;
-    }
-
-      resource.useApiGet(
-        data => {
-          // if the resource already exist replace it with the new one which is data otherwise add it
-          // use uid as the filter
-          const index = resources.findIndex(it => it.metadata.uid === data.metadata.uid);
-          if (index !== -1) {
-            resources[index] = data;
-          } else {
-            resources.push(data);
-          }
-          setResources([...resources]);
-        },
-        name,
-        namespace
-      );
-    });
-
-  return (
-    <Table
-      data={resources}
-      columns={[
-        {
-          header: 'Name',
-          accessorFn: item => <Link kubeObject={item}>{item.metadata.name}</Link>,
-        },
-        {
-          header: 'Namespace',
-          accessorFn: item =>
-            item.metadata.namespace ? (
-              <Link
-                routeName={`namespace`}
-                params={{
-                  name: item?.metadata?.namespace,
-                }}
-              >
-                {item?.metadata?.namespace}
-              </Link>
-            ) : (
-              ''
-            ),
-        },
-        {
-          header: 'Kind',
-          accessorFn: item => item.kind,
-        },
-        {
-          header: 'Ready',
-          accessorFn: item => {
-            const ready =
-              item.jsonData.status?.conditions?.findIndex(c => c.type === 'Ready') !== -1
-                ? 'True'
-                : 'False';
-            return ready;
-          },
-        },
-        {
-          header: 'Age',
-          accessorFn: item => <DateLabel date={item?.metadata?.creationTimestamp} />,
-        },
-      ]}
-    />
-  );
 }
 
 function GetSourceCR(props: {
@@ -321,7 +239,6 @@ function CustomResourceDetails(props) {
     actions.push(<ResumeAction resource={cr} />);
     return actions;
   }
-  console.log("namespace is ",namespace);
   return (
     <>
      { cr && <GetSource item={cr} setSource={setSource}/> }
@@ -355,7 +272,7 @@ function CustomResourceDetails(props) {
             {
               header: 'Name',
               accessorFn: item => {
-              console.log("name is ", item.name, item.namespace, type)
+
               return <Link routeName={`/flux/applications/:namespace/:type/:name`}
               params={{
                 name: item.name,
@@ -385,4 +302,161 @@ function CustomResourceDetails(props) {
       </SectionBox>
     </>
   );
+}
+
+
+
+function GetResourcesFromInventory(props: {
+  inventory: {
+    id: string;
+    v: string;
+  }[];
+}) {
+  const [resources, setResources] = React.useState([]);
+  const [unkownKindResources, setUnknownKindResources] = React.useState([]);
+
+  const fluxCRs = props.inventory?.filter(item => {
+    const parsedID = parseID(item.id);
+    const {  kind } = parsedID;
+    const resource = K8s.ResourceClasses[kind];
+
+    if (!resource) {
+      if(kind === 'GitRepository' || kind === 'OCIRepository' || kind === 'HelmRepository' || kind === 'Bucket' || kind === 'HelmChart' || kind === 'Kustomization' || kind === 'HelmRelease') {
+        return item;
+      }
+      return false;
+    }
+
+    return false;
+  })
+
+  props.inventory?.map(item => {
+    const parsedID = parseID(item.id);
+    const { namespace, name, kind } = parsedID;
+    const resource = K8s.ResourceClasses[kind];
+      if(!resource) {
+        return;
+      }
+      resource.useApiGet(
+        data => {
+          // if the resource already exist replace it with the new one which is data otherwise add it
+          // use uid as the filter
+          const index = resources.findIndex(it => it.metadata.uid === data.metadata.uid);
+          if (index !== -1) {
+            resources[index] = data;
+          } else {
+            resources.push(data);
+          }
+          setResources([...resources]);
+        },
+        name,
+        namespace
+      );
+    });
+
+  return (
+    <>
+    <Table
+      data={resources.concat(unkownKindResources)}
+      columns={[
+        {
+          header: 'Name',
+          accessorFn: item => <Link kubeObject={item}>{item.metadata.name}</Link>,
+        },
+        {
+          header: 'Namespace',
+          accessorFn: item =>
+            item.metadata.namespace ? (
+              <Link
+                routeName={`namespace`}
+                params={{
+                  name: item?.metadata?.namespace,
+                }}
+              >
+                {item?.metadata?.namespace}
+              </Link>
+            ) : (
+              ''
+            ),
+        },
+        {
+          header: 'Kind',
+          accessorFn: item => item.kind,
+        },
+        {
+          header: 'Ready',
+          accessorFn: item => {
+            const ready =
+              item.jsonData.status?.conditions?.findIndex(c => c.type === 'Ready') !== -1
+                ? 'True'
+                : 'False';
+            return ready;
+          },
+        },
+        {
+          header: 'Age',
+          accessorFn: item => <DateLabel date={item?.metadata?.creationTimestamp} />,
+        },
+      ]}
+    />
+    <GetCustomResourceCRD fluxCRs={fluxCRs} setResources={setUnknownKindResources}/>
+    </>
+  );
+}
+
+function GetCustomResourceCRDWrapper(props: {
+  fluxCR: any;
+  setResources: (...args) => void;
+}) {
+  const { fluxCR, setResources } = props;
+  const item = parseID(fluxCR.id)
+  const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(getSourceOrAppCRD(item.kind));
+  if(!resource) {
+    return null;
+  }
+  return resource && <GetCustomResourceCR resource={resource} item={item} setResources={setResources} />;
+}
+
+function GetCustomResourceCRD(props: {
+  fluxCRs: any;
+  setResources: (...args) => void;
+}) {
+  const { fluxCRs, setResources } = props;
+  if(!fluxCRs) {
+    return null;
+  }
+  return fluxCRs?.map((item) => {
+    return <GetCustomResourceCRDWrapper fluxCR={item} setResources={setResources} />
+  })
+}
+
+function GetCustomResourceCR(props: {
+  resource : KubeObject;
+  item: {
+    name: string;
+    namespace: string;
+    kind: string;
+    group: string;
+  };
+  setResources: (...args) => void;
+}
+) {
+  const { resource, item, setResources } = props;
+  const resourceClass = React.useMemo(() => {
+    return resource.makeCRClass();
+  }, [resource]);
+  
+  resourceClass?.useApiGet((data) => {
+    setResources((resources) => {
+      const index = resources.findIndex(it => it.metadata.uid === data.metadata.uid);
+          if (index !== -1) {
+            resources[index] = data;
+          } else {
+            resources.push(data.jsonData);
+          }
+      return [...resources];
+    });
+  }, item.name, item.namespace);
+ 
+  return null;
 }
