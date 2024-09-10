@@ -11,12 +11,18 @@ export default function FluxCustomResource(props: {
 }) {
   const { resourceClass, title, type } = props;
   const [resource] = resourceClass.useList();
-
+  console.log(`Resource:`, resource);
   function prepareStatus(item: KubeCRD) {
-    console.log("preparing status ",item);
     const ready  = item.status?.conditions?.find(c => c.type === 'Ready');
-    return <StatusLabel status={item.spec.suspend ? 'warning' : ready ? 'success':'error'} >
-      {item.spec.suspend ? 'Suspended' : ready ? 'Ready' : 'Not Ready'}
+    if(ready.status === 'Unknown') {
+      return <StatusLabel status='warning' >
+        Reconciling
+      </StatusLabel>;
+    }
+    return <StatusLabel status={ready.status === 'True' ?  'success':'error'} >
+      {
+        ready.status === 'True' ? 'Ready' : 'Failed'
+      }
     </StatusLabel>;
   }
 
