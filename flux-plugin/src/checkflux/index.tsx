@@ -1,10 +1,12 @@
-import { Box } from '@mui/material';
+import { Box, Link } from '@mui/material';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useTheme } from '@mui/material';
 
 export default function CheckIfFluxInstalled() {
+  const theme = useTheme();
   const [pods, error] = K8s.ResourceClasses.Pod.useList();
-  console.log(pods);
+
   const helmController =
     pods?.filter(pod => pod.metadata.labels['app'] === 'helm-controller') || [];
   const kustomizeController = pods?.filter(
@@ -38,18 +40,17 @@ export default function CheckIfFluxInstalled() {
           alignItems: 'center',
           margin: '2rem auto',
           height: '20vh',
-          width: '40%',
-          backgroundColor: 'white',
-          boxShadow: '0 0 10px 0 rgba(0, 0, 0, 0.1)',
+          width: '50%',
+          backgroundColor: theme.palette.background.paper,
         }}
       >
         <h1>Flux is not installed</h1>
         <p>
           Follow the{' '}
-          <a target="_blank" href="https://fluxcd.io/docs/installation/">
+          <Link target="_blank" href="https://fluxcd.io/docs/installation/">
             installation guide
-          </a>{' '}
-          to install flux
+          </Link>{' '}
+          to install flux on your cluster
         </p>
       </Box>
     );
