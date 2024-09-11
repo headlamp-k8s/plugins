@@ -1,7 +1,6 @@
 import { DateLabel, Link, SectionBox, StatusLabel, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
-import { Alert } from '@mui/material';
 import { getSourceNameAndType } from '../helpers/index';
 
 export default function FluxCustomResource(props: {
@@ -11,7 +10,7 @@ export default function FluxCustomResource(props: {
 }) {
   const { resourceClass, title, type } = props;
   const [resource] = resourceClass.useList();
-  console.log(`Resource:`, resource);
+
   function prepareStatus(item: KubeCRD) {
     const ready  = item.status?.conditions?.find(c => c.type === 'Ready');
     if(ready.status === 'Unknown') {
@@ -27,7 +26,7 @@ export default function FluxCustomResource(props: {
   }
 
   return (
-    <SectionBox title={title}>
+    <SectionBox title={title} >
       <Table
         data={resource}
         columns={[
@@ -94,7 +93,7 @@ export default function FluxCustomResource(props: {
           {
             header: 'Revision',
             accessorFn: item => {
-              const reference = item.jsonData.status?.lastAppliedRevision;
+              const reference = item.jsonData.status?.lastAttemptedRevision;
               return reference || '-';
             },
           },
