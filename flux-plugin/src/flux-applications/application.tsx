@@ -262,7 +262,7 @@ function CustomResourceDetails(props) {
      }
       {cr && (
         <SectionBox title="Inventory">
-          <GetResourcesFromInventory inventory={cr?.jsonData.status?.inventory?.entries} />
+          <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
         </SectionBox>
       )}
       <SectionBox title="Dependencies">
@@ -387,7 +387,7 @@ function GetResourcesFromInventory(props: {
           header: 'Ready',
           accessorFn: item => {
             const ready =
-              item.jsonData.status?.conditions?.findIndex(c => c.type === 'Ready') !== -1
+              item.jsonData?.status?.conditions?.findIndex(c => c.type === 'Ready') !== -1
                 ? 'True'
                 : 'False';
             return ready;
