@@ -174,9 +174,12 @@ function CustomResourceDetails(props) {
   resourceClass.useApiGet(setCr, name, namespace);
 
   function prepareExtraInfo(cr) {
+    if(!cr) {
+      return [];
+    }
     const { name: sourceName, type: sourceType } = getSourceNameAndType(cr);
     let extraInfo = [];
-    if (cr?.jsonData.kind === 'HelmRelease') {
+    if (cr?.jsonData?.kind === 'HelmRelease') {
       extraInfo.push({
         name: 'Chart',
         value: sourceName,
@@ -267,7 +270,7 @@ function CustomResourceDetails(props) {
       )}
       <SectionBox title="Dependencies">
         <Table
-          data={cr?.jsonData.spec?.dependsOn}
+          data={cr?.jsonData?.spec?.dependsOn}
           columns={[
             {
               header: 'Name',
