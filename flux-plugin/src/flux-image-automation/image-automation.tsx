@@ -97,7 +97,6 @@ function CustomResourceDetails(props) {
   }, [resource]);
 
   resourceClass.useApiGet(setCr, name, namespace);
-  console.log('cr is', cr);
 
   function prepareExtraInfo() {
     const extraInfo = [];

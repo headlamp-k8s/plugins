@@ -17,7 +17,6 @@ export default function ImageAutomation() {
   const imageRepositoryClass = React.useMemo(() => {
     return imageRepository?.makeCRClass();
   }, [imageRepository]);
-  console.log(imageRepository);
 
   const [imagePolicy] = CRD.useGet('imagepolicies.image.toolkit.fluxcd.io');
   const imagePolicyClass = React.useMemo(() => {
@@ -44,7 +43,6 @@ export default function ImageAutomation() {
 function ImageUpdateAutomationList(props: { resourceClass: KubeObject }) {
   const { resourceClass } = props;
   const [imageUpdateAutomations] = resourceClass?.useList();
-  console.log(imageUpdateAutomations);
 
   return (
     <>
@@ -116,7 +114,6 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObject }) {
 function ImagePolicyList(props: { resourceClass: KubeObject }) {
   const { resourceClass } = props;
   const [imagePolicies] = resourceClass?.useList();
-  console.log(imagePolicies);
 
   return (
     <SectionBox title="Image Policies">
@@ -179,7 +176,6 @@ function ImagePolicyList(props: { resourceClass: KubeObject }) {
 function ImageRepositoryList(props: { resourceClass: KubeObject }) {
   const { resourceClass } = props;
   const [imageRepositories] = resourceClass?.useList();
-  console.log(imageRepositories);
 
   return (
     <SectionBox title="Image Repositories">

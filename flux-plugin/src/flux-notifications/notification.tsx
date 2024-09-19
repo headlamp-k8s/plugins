@@ -21,8 +21,6 @@ export default function Notification() {
     // The last segment is the name
     const name = segments[segments.length - 1];
 
-    console.log(`Namespace: ${namespace}, Name: ${name}`);
-    console.log(`Type: ${type}`);
 
     function getType() {
         if (type === 'alerts') {
@@ -101,7 +99,6 @@ function CustomResourceDetails(props) {
     }, [resource]);
   
     resourceClass.useApiGet(setCr, name, namespace);
-    console.log('cr is', cr);
     
     function prepareExtraInfo() {
         const extraInfo = [];

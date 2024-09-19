@@ -69,11 +69,9 @@ export default function FluxSourceCustomResource(props: {
 
     return columns;
   }
-  console.log("resource is ",resource);
   const isHelmChart = resource?.[0]?.jsonData?.kind === 'HelmChart';
   const columns = prepareColumns();
   if(isHelmChart) {
-    console.log("resource is HelmChart");
     // add chart column to second index
     columns.splice(2, 0, {
       header: 'Chart',
@@ -123,7 +121,6 @@ export default function FluxSourceCustomResource(props: {
       },
     })
   }
-  console.log("columns is ",columns);
   return (
     <SectionBox title={title}>
       <Table

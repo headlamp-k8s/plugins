@@ -29,7 +29,6 @@ export default function Notifications() {
     return receivers?.makeCRClass();
   }, [receivers]);
 
-  console.log(alertsClass);
   return (
     <>
       <CheckIfFluxInstalled />
@@ -43,7 +42,6 @@ export default function Notifications() {
 function Alerts(props) {
   const { resourceClass } = props;
   const [alerts] = resourceClass?.useList();
-  console.log(alerts);
   return (
     <SectionBox title="Alerts">
       <Table

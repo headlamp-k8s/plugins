@@ -16,7 +16,6 @@ import { Link as MuiLink } from '@mui/material';
 export default function FluxRunTime(props) {
   const [pods, error] = K8s.ResourceClasses.Pod.useList();
   const [crds] = K8s.ResourceClasses.CustomResourceDefinition.useList();
-  console.log(crds);
   const helmController = pods?.filter(pod => pod.metadata.labels['app'] === 'helm-controller');
   const kustomizeController = pods?.filter(
     pod => pod.metadata.labels['app'] === 'kustomize-controller'
@@ -39,7 +38,7 @@ export default function FluxRunTime(props) {
     imageReflectorController,
     imageAutomationController
   );
-  console.log(controllers);
+
   return (
     <>
       <SectionBox title="Controllers">
