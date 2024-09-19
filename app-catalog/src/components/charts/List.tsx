@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as RouterLink,
   Loader,
@@ -21,9 +22,19 @@ import { Autocomplete, Pagination } from '@mui/material';
 import { useEffect, useState } from 'react';
 //import { jsonToYAML, yamlToJSON } from '../../helpers';
 import { fetchChartsFromArtifact } from '../../api/charts';
-import CNCFLight from './cncf-icon-color.svg';
+import { AppCatalogTitle } from './AppCatalogTitle';
 //import { createRelease } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
+
+interface AppCatalogConfig {
+  /**
+   * Show only verified packages. If set to false shows all the packages
+   */
+  showOnlyVerified: boolean;
+}
+
+export const store = new ConfigStore<AppCatalogConfig>('app-catalog');
+const useStoreConfig = store.useConfig();
 
 export const PAGE_OFFSET_COUNT_FOR_CHARTS = 9;
 
@@ -39,7 +50,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
     { title: 'Storage', value: 7 },
     { title: 'Streaming and messaging', value: 8 },
   ];
-  const [charts, setCharts] = useState<any[] | null>(null);
+  const [charts, setCharts] = useState<any | null>(null);
   const [openEditor, setEditorOpen] = useState<boolean>(false);
   const [page, setPage] = useState(1);
   const [chartsTotalCount, setChartsTotalCount] = useState(0);
@@ -47,44 +58,42 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   const [search, setSearch] = useState('');
   const [selectedChartForInstall, setSelectedChartForInstall] = useState<any | null>(null);
 
-  useEffect(() => {
-    setCharts(null);
-    fetchCharts(search, chartCategory, page).then(response => {
-      setCharts(response.packages);
-      const facets = response.facets;
-      const categoryOptions = facets.find(
-        (facet: {
-          title: string;
-          options: {
-            name: string;
-            total: number;
-          }[];
-        }) => facet.title === 'Category'
-      ).options;
-      if (chartCategory.title === 'All') {
-        const totalCount = categoryOptions.reduce(
-          (
-            acc: number,
-            option: {
-              name: string;
-              total: number;
-            }
-          ) => acc + option.total,
-          0
-        );
-        setChartsTotalCount(totalCount);
-        return;
-      }
-      const totalCount = categoryOptions.find(
-        (option: { name: string; total: number }) => option.name === chartCategory?.title
-      ).total;
-      setChartsTotalCount(totalCount);
-    });
-  }, [page, chartCategory, search]);
+  // note: since we default to true for showOnlyVerified and the settings page is not accessible from anywhere else but the list comp
+  // we must have the default value here and have it imported for use in the settings tab
+  const config = useStoreConfig();
+  const showOnlyVerified = config?.showOnlyVerified ?? true;
 
+  // note: When the users changes the chartCategory or search, then we always go back to the first page
   useEffect(() => {
     setPage(1);
   }, [chartCategory, search]);
+
+  // note: When the page changes, we fetch the charts, this will run as a reaction to the previous useEffect
+  useEffect(
+    function fetchChartsOnPageChange() {
+      setCharts(null);
+
+      store.set({ showOnlyVerified: showOnlyVerified });
+
+      if (props.showOnlyVerified!!) {
+        store.set({ showOnlyVerified: props.showOnlyVerified });
+      }
+
+      async function fetchData() {
+        try {
+          const response: any = await fetchCharts(search, showOnlyVerified, chartCategory, page);
+          setCharts(response.dataResponse.packages);
+          setChartsTotalCount(parseInt(response.total));
+        } catch (err) {
+          console.error('Error fetching charts', err);
+          setCharts([]);
+        }
+      }
+
+      fetchData();
+    },
+    [page, chartCategory, search, showOnlyVerified]
+  );
 
   function Search() {
     return (
@@ -147,7 +156,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         chart={selectedChartForInstall}
         handleEditor={(open: boolean) => setEditorOpen(open)}
       />
-      <SectionHeader title="Applications" actions={[<Search />, <CategoryForCharts />]} />
+      <SectionHeader title={<AppCatalogTitle />} actions={[<Search />, <CategoryForCharts />]} />
       <Box display="flex" flexWrap="wrap" justifyContent="space-between" alignContent="start">
         {!charts ? (
           <Box
@@ -166,150 +175,178 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             </Typography>
           </Box>
         ) : (
-          charts.map(chart => {
-            return (
-              <Box maxWidth="30%" width="400px" m={1}>
-                <Card>
-                  <Box
-                    height="60px"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="space-between"
-                    marginTop="15px"
-                  >
-                    <CardMedia
-                      image={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                      style={{
-                        width: '60px',
-                        margin: '1rem',
-                        alignSelf: 'flex-start',
-                      }}
-                      component="img"
-                    />
+          <Box
+            display="flex"
+            m={1}
+            justifyContent="center"
+            flexWrap="wrap"
+            sx={{
+              flexDirection: {
+                xs: 'column',
+                sm: 'row',
+              },
+            }}
+          >
+            {charts.map(chart => {
+              return (
+                <Box
+                  m={1}
+                  sx={{
+                    width: {
+                      xs: '100%',
+                      sm: '100%',
+                      md: '30%',
+                    },
+                    maxWidth: {
+                      xs: '100%',
+                      sm: '100%',
+                      md: '30%',
+                    },
+                  }}
+                >
+                  <Card>
                     <Box
+                      height="60px"
                       display="flex"
                       alignItems="center"
-                      justifyContent="space-around"
-                      marginRight="10px"
+                      justifyContent="space-between"
+                      marginTop="15px"
                     >
-                      {(chart.cncf || chart.repository.cncf) && (
-                        <Tooltip title="CNCF Project">
-                          <Icon
-                            icon="simple-icons:cncf"
-                            style={{
-                              marginLeft: '0.5em',
-                              fontSize: '20px',
-                            }}
-                          />
-                        </Tooltip>
-                      )}
-                      {(chart.official || chart.repository.official) && (
-                        <Tooltip title="Official Chart">
-                          <Icon
-                            icon="mdi:star-circle"
-                            style={{
-                              marginLeft: '0.5em',
-                              fontSize: '22px',
-                            }}
-                          />
-                        </Tooltip>
-                      )}
-                      {chart.repository.verified_publisher && (
-                        <Tooltip title="Verified Publisher">
-                          <Icon
-                            icon="mdi:check-decagram"
-                            style={{
-                              marginLeft: '0.5em',
-                              fontSize: '22px',
-                            }}
-                          />
-                        </Tooltip>
-                      )}
+                      <CardMedia
+                        image={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                        alt={`${chart.name} logo`}
+                        style={{
+                          width: '60px',
+                          margin: '1rem',
+                          alignSelf: 'flex-start',
+                        }}
+                        component="img"
+                      />
+                      <Box
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="space-around"
+                        marginRight="10px"
+                      >
+                        {(chart.cncf || chart.repository.cncf) && (
+                          <Tooltip title="CNCF Project">
+                            <Icon
+                              icon="simple-icons:cncf"
+                              style={{
+                                marginLeft: '0.5em',
+                                fontSize: '20px',
+                              }}
+                            />
+                          </Tooltip>
+                        )}
+                        {(chart.official || chart.repository.official) && (
+                          <Tooltip title="Official Chart">
+                            <Icon
+                              icon="mdi:star-circle"
+                              style={{
+                                marginLeft: '0.5em',
+                                fontSize: '22px',
+                              }}
+                            />
+                          </Tooltip>
+                        )}
+                        {chart.repository.verified_publisher && (
+                          <Tooltip title="Verified Publisher">
+                            <Icon
+                              icon="mdi:check-decagram"
+                              style={{
+                                marginLeft: '0.5em',
+                                fontSize: '22px',
+                              }}
+                            />
+                          </Tooltip>
+                        )}
+                      </Box>
                     </Box>
-                  </Box>
-                  <CardContent
-                    style={{
-                      margin: '1rem 0rem',
-                      height: '25vh',
-                      overflow: 'hidden',
-                      paddingTop: 0,
-                    }}
-                  >
-                    <Box
+                    <CardContent
                       style={{
+                        margin: '1rem 0rem',
+                        height: '25vh',
                         overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        paddingTop: 0,
                       }}
                     >
-                      <Tooltip title={chart.name}>
-                        <Typography component="h5" variant="h5">
-                          <RouterLink
-                            routeName="/helm/:repoName/charts/:chartName"
-                            params={{
-                              chartName: chart.name,
-                              repoName: chart.repository.name,
-                            }}
-                          >
-                            {chart.name}
-                          </RouterLink>
-                        </Typography>
-                      </Tooltip>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between" my={1}>
-                      <Typography>v{chart.version}</Typography>
                       <Box
-                        marginLeft={1}
                         style={{
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        <Tooltip title={chart?.repository?.name || ''}>
-                          <span>{chart?.repository?.name || ''}</span>
+                        <Tooltip title={chart.name}>
+                          <Typography component="h2" variant="h5">
+                            <RouterLink
+                              routeName="/helm/:repoName/charts/:chartName"
+                              params={{
+                                chartName: chart.name,
+                                repoName: chart.repository.name,
+                              }}
+                            >
+                              {chart.name}
+                            </RouterLink>
+                          </Typography>
                         </Tooltip>
                       </Box>
-                    </Box>
-                    <Divider />
-                    <Box mt={1}>
-                      <Typography>
-                        {chart?.description?.slice(0, 100)}
-                        {chart?.description?.length > 100 && (
-                          <Tooltip title={chart?.description}>
-                            <span>…</span>
+                      <Box display="flex" justifyContent="space-between" my={1}>
+                        <Typography>v{chart.version}</Typography>
+                        <Box
+                          marginLeft={1}
+                          style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <Tooltip title={chart?.repository?.name || ''}>
+                            <Typography>{chart?.repository?.name || ''}</Typography>
                           </Tooltip>
-                        )}
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                  <CardActions
-                    style={{
-                      justifyContent: 'space-between',
-                      padding: '14px',
-                    }}
-                  >
-                    <Button
+                        </Box>
+                      </Box>
+                      <Divider />
+                      <Box mt={1}>
+                        <Typography>
+                          {chart?.description?.slice(0, 100)}
+                          {chart?.description?.length > 100 && (
+                            <Tooltip title={chart?.description}>
+                              <span>…</span>
+                            </Tooltip>
+                          )}
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                    <CardActions
                       style={{
-                        backgroundColor: '#000',
-                        color: 'white',
-                        textTransform: 'none',
-                      }}
-                      onClick={() => {
-                        setSelectedChartForInstall(chart);
-                        setEditorOpen(true);
+                        justifyContent: 'space-between',
+                        padding: '14px',
                       }}
                     >
-                      Install
-                    </Button>
-                    <Link href={chart?.repository?.url} target="_blank">
-                      Learn More
-                    </Link>
-                  </CardActions>
-                </Card>
-              </Box>
-            );
-          })
+                      <Button
+                        style={{
+                          backgroundColor: '#000',
+                          color: 'white',
+                          textTransform: 'none',
+                        }}
+                        onClick={() => {
+                          setSelectedChartForInstall(chart);
+                          setEditorOpen(true);
+                        }}
+                      >
+                        Install
+                      </Button>
+                      <Link href={chart?.repository?.url} target="_blank">
+                        Learn More
+                      </Link>
+                    </CardActions>
+                  </Card>
+                </Box>
+              );
+            })}
+          </Box>
         )}
       </Box>
       {charts && charts.length !== 0 && (
@@ -318,7 +355,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             size="large"
             shape="rounded"
             page={page}
-            count={Math.floor(chartsTotalCount / PAGE_OFFSET_COUNT_FOR_CHARTS)}
+            count={Math.ceil(chartsTotalCount / PAGE_OFFSET_COUNT_FOR_CHARTS)}
             color="primary"
             onChange={(e, page: number) => {
               setPage(page);

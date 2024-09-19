@@ -1,0 +1,22 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Storyshots Components/SettingsLink Title 1`] = `
+<div>
+  <span
+    aria-label="App-Catalog Settings"
+    class=""
+    data-mui-internal-clone-element="true"
+  >
+    <a
+      class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-srrjpp-MuiTypography-root-MuiLink-root"
+      href="/"
+    >
+      <p
+        class="MuiTypography-root MuiTypography-body1 css-12i17fz-MuiTypography-root"
+      >
+        Settings
+      </p>
+    </a>
+  </span>
+</div>
+`;
