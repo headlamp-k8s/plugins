@@ -318,7 +318,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             size="large"
             shape="rounded"
             page={page}
-            count={Math.floor(chartsTotalCount / PAGE_OFFSET_COUNT_FOR_CHARTS)}
+            count={Math.ceil(chartsTotalCount / PAGE_OFFSET_COUNT_FOR_CHARTS)}
             color="primary"
             onChange={(e, page: number) => {
               setPage(page);
