@@ -4,7 +4,6 @@ export function getSourceNameAndType(item: KubeObject) {
     const itemKind = item.jsonData.kind;
     let type = '';
     let name = '';
-    console.log(item);
     if(itemKind === 'Kustomization') {
       switch(item.jsonData.spec.sourceRef.kind) {
         case 'GitRepository':
@@ -19,7 +18,6 @@ export function getSourceNameAndType(item: KubeObject) {
       }
       name = item.jsonData.spec?.sourceRef?.name;
     } else if(itemKind === 'HelmRelease') {
-        console.log(item?.jsonData?.spec?.chartRef?.kind);
       switch(item?.jsonData?.spec?.chartRef?.kind) {
         case 'GitRepository':
           type = 'gitrepositories';
@@ -46,6 +44,5 @@ export function getSourceNameAndType(item: KubeObject) {
         name = item?.jsonData?.spec?.chart?.spec?.sourceRef?.name
       }
     }
-    console.log('type is ', type);
     return { name, type };
   }

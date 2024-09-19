@@ -36,26 +36,7 @@ function parseID(id: string) {
   const kind = parsedID[3];
   return { namespace, name, group, kind };
 }
-// function getSourceOrAppCRD_API_VERSION(kind: string) {
-//   switch (kind) {
-//     case 'Kustomization':
-//       return KUSTOMIZATION_API_VERSION;
-//     case 'HelmRelease':
-//       return HELM_API_VERSION;
-//     case 'HelmRepository':
-//       return 'source.toolkit.fluxcd.io';
-//     case 'HelmChart':
-//       return 'source.toolkit.fluxcd.io';
-//     case 'GitRepository':
-//       return 'source.toolkit.fluxcd.io';
-//     case 'OCIRepository':
-//       return 'source.toolkit.fluxcd.io';
-//     case 'Bucket':
-//       return 'source.toolkit.fluxcd.io';
-//     default:
-//       return '';
-//   }
-// }
+
 
 function getSourceOrAppCRD(kind: string) {
   switch(kind) {
@@ -128,7 +109,6 @@ export default function FluxApplicationDetailView(props) {
     kind: type === 'helmreleases' ? 'HelmRelease' : 'Kustomization',
     name: name,
   });
-
   const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     type === 'helmreleases' ? HELMRELEASE_CRD : KUSTOMIZE_CRD
   );
