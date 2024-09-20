@@ -8,7 +8,7 @@ import {
   NameValueTable,
   SectionBox,
   Table,
-  Link
+  Link,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Link as MuiLink } from '@mui/material';
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
@@ -46,45 +46,56 @@ function CustomResourceDetailView(props) {
     extraInfo.push({
       name: 'Interval',
       value: cr?.jsonData.spec?.interval,
-    })
+    });
     extraInfo.push({
       name: 'Ref',
       value: cr?.jsonData.spec?.ref && JSON.stringify(cr?.jsonData.spec?.ref),
-    })
+    });
     extraInfo.push({
       name: 'Timeout',
       value: cr?.jsonData.spec?.timeout,
-    })
+    });
     extraInfo.push({
       name: 'URL',
-      value: cr?.jsonData.spec?.url && <MuiLink href={cr?.jsonData.spec?.url}>{cr?.jsonData.spec?.url}</MuiLink>,
+      value: cr?.jsonData.spec?.url && (
+        <MuiLink href={cr?.jsonData.spec?.url}>{cr?.jsonData.spec?.url}</MuiLink>
+      ),
       hide: !cr?.jsonData.spec?.url,
-    })
+    });
 
-    if(cr?.jsonData.spec?.chart) {
+    if (cr?.jsonData.spec?.chart) {
       extraInfo.push({
         name: 'Chart',
         value: cr?.jsonData.spec?.chart,
-      })
+      });
     }
     extraInfo.push({
       name: 'Source Ref',
-      value: cr?.jsonData.spec?.sourceRef && <Link routeName={`/flux/sources/:namespace/:type/:name`} params={{ namespace: cr.jsonData.metadata.namespace, type: cr.jsonData.spec.sourceRef.kind, name: cr.jsonData.spec.sourceRef.name }}>{cr.jsonData.spec.sourceRef.name}</Link>,
-    })
+      value: cr?.jsonData.spec?.sourceRef && (
+        <Link
+          routeName={`/flux/sources/:namespace/:type/:name`}
+          params={{
+            namespace: cr.jsonData.metadata.namespace,
+            type: cr.jsonData.spec.sourceRef.kind,
+            name: cr.jsonData.spec.sourceRef.name,
+          }}
+        >
+          {cr.jsonData.spec.sourceRef.name}
+        </Link>
+      ),
+    });
 
     extraInfo.push({
       name: 'Version',
       value: cr?.jsonData.spec?.version,
-    })
+    });
 
     extraInfo.push({
       name: 'Suspend',
       value: cr?.jsonData.spec?.suspend ? 'True' : 'False',
-    })
-
+    });
 
     return extraInfo;
-
   }
 
   return (

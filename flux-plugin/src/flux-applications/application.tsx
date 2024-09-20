@@ -4,6 +4,7 @@ import {
   Link,
   MainInfoSection,
   SectionBox,
+  ShowHideLabel,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useLocation } from 'react-router';
@@ -39,7 +40,7 @@ function parseID(id: string) {
 
 
 function getSourceOrAppCRD(kind: string) {
-  switch(kind) {
+  switch (kind) {
     case 'Kustomization':
       return KUSTOMIZE_CRD;
     case 'HelmRelease':
@@ -76,22 +77,21 @@ function GetSourceCR(props: {
   return null;
 }
 
-function GetSource(props: {
-  item: KubeObject | null;
-  setSource: (...args) => void;
-}) {
+function GetSource(props: { item: KubeObject | null; setSource: (...args) => void }) {
   const { item, setSource } = props;
   const namespace = item.jsonData.metadata.namespace;
-    
-  
+
   const { name, type } = getSourceNameAndType(item);
 
   const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     `${type.split(' ').join('').toLowerCase()}.source.toolkit.fluxcd.io`
   );
-  return resource && <GetSourceCR name={name} namespace={namespace} resource={resource} setSource={setSource}/>
+  return (
+    resource && (
+      <GetSourceCR name={name} namespace={namespace} resource={resource} setSource={setSource} />
+    )
+  );
 }
-
 
 export default function FluxApplicationDetailView(props) {
   const location = useLocation();
@@ -115,7 +115,9 @@ export default function FluxApplicationDetailView(props) {
 
   return (
     <>
-      {resource && <CustomResourceDetails resource={resource} name={name} namespace={namespace} type={type}/>}
+      {resource && (
+        <CustomResourceDetails resource={resource} name={name} namespace={namespace} type={type} />
+      )}
       <SectionBox title="Events">
         <Table
           data={events}
@@ -126,7 +128,11 @@ export default function FluxApplicationDetailView(props) {
             },
             {
               header: 'Message',
-              accessorFn: item => item.message,
+              accessorFn: item => (
+                <ShowHideLabel labelId={item?.metadata?.uid || ''}>
+                  {item.message || ''}
+                </ShowHideLabel>
+              ),
             },
             {
               header: 'From',
@@ -154,7 +160,7 @@ function CustomResourceDetails(props) {
   resourceClass.useApiGet(setCr, name, namespace);
 
   function prepareExtraInfo(cr) {
-    if(!cr) {
+    if (!cr) {
       return [];
     }
     const { name: sourceName, type: sourceType } = getSourceNameAndType(cr);
@@ -170,17 +176,39 @@ function CustomResourceDetails(props) {
         value: cr?.jsonData?.spec.chart?.spec?.reconcileStrategy,
       });
 
-      if(cr?.jsonData?.spec?.chartRef) {
+      if (cr?.jsonData?.spec?.chartRef) {
         extraInfo.push({
           name: 'Source Ref',
-          value: <Link routeName={`/flux/sources/:namespace/:type/:name`} params={{ namespace: cr.jsonData.metadata.namespace, type: sourceType, name: sourceName }}>{sourceName}</Link>,
+          value: (
+            <Link
+              routeName={`/flux/sources/:namespace/:type/:name`}
+              params={{
+                namespace: cr.jsonData.metadata.namespace,
+                type: sourceType,
+                name: sourceName,
+              }}
+            >
+              {sourceName}
+            </Link>
+          ),
         });
       }
-      
-      if(cr?.jsonData?.spec?.chart?.spec?.sourceRef) {
+
+      if (cr?.jsonData?.spec?.chart?.spec?.sourceRef) {
         extraInfo.push({
           name: 'Source Ref',
-          value: <Link routeName={`/flux/sources/:namespace/:type/:name`} params={{ namespace: cr.jsonData.metadata.namespace, type: sourceType, name: sourceName }}>{sourceName}</Link>,
+          value: (
+            <Link
+              routeName={`/flux/sources/:namespace/:type/:name`}
+              params={{
+                namespace: cr.jsonData.metadata.namespace,
+                type: sourceType,
+                name: sourceName,
+              }}
+            >
+              {sourceName}
+            </Link>
+          ),
         });
       }
     } else {
@@ -199,7 +227,18 @@ function CustomResourceDetails(props) {
         },
         {
           name: 'SourceRef',
-          value: <Link routeName={`/flux/sources/:namespace/:type/:name`} params={{ namespace: cr.jsonData.metadata.namespace, type: sourceType, name: sourceName }}>{sourceName}</Link>,
+          value: (
+            <Link
+              routeName={`/flux/sources/:namespace/:type/:name`}
+              params={{
+                namespace: cr.jsonData.metadata.namespace,
+                type: sourceType,
+                name: sourceName,
+              }}
+            >
+              {sourceName}
+            </Link>
+          ),
         },
       ];
     }
@@ -216,7 +255,7 @@ function CustomResourceDetails(props) {
 
   function prepareActions() {
     const actions = [];
-    actions.push(<SyncWithSourceAction resource={cr} source={source}/>);
+    actions.push(<SyncWithSourceAction resource={cr} source={source} />);
     actions.push(<SyncWithoutSourceAction resource={cr} />);
     actions.push(<SuspendAction resource={cr} />);
     actions.push(<ResumeAction resource={cr} />);
@@ -224,25 +263,19 @@ function CustomResourceDetails(props) {
   }
   return (
     <>
-     { cr && <GetSource item={cr} setSource={setSource}/> }
-     { cr && <MainInfoSection
-        resource={cr}
-        extraInfo={prepareExtraInfo(cr)}
-        actions={prepareActions()}
-      />
-     }
-     {
-      cr && cr?.jsonData?.spec?.values && 
-      <SectionBox  title="Values">
-       <Editor
-       language='yaml'
-       value={
-        YAML.stringify(cr?.jsonData?.spec?.values)
-       }
-       height={200}
-       />
-      </SectionBox>
-     }
+      {cr && <GetSource item={cr} setSource={setSource} />}
+      {cr && (
+        <MainInfoSection
+          resource={cr}
+          extraInfo={prepareExtraInfo(cr)}
+          actions={prepareActions()}
+        />
+      )}
+      {cr && cr?.jsonData?.spec?.values && (
+        <SectionBox title="Values">
+          <Editor language="yaml" value={YAML.stringify(cr?.jsonData?.spec?.values)} height={200} />
+        </SectionBox>
+      )}
       {cr && (
         <SectionBox title="Inventory">
           <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
@@ -255,19 +288,28 @@ function CustomResourceDetails(props) {
             {
               header: 'Name',
               accessorFn: item => {
-
-              return <Link routeName={`/flux/applications/:namespace/:type/:name`}
-              params={{
-                name: item.name,
-                namespace: item.namespace || namespace,
-                type
-              }}
-              >{ item.name }</Link>
-            }}, {
+                return (
+                  <Link
+                    routeName={`/flux/applications/:namespace/:type/:name`}
+                    params={{
+                      name: item.name,
+                      namespace: item.namespace || namespace,
+                      type,
+                    }}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              },
+            },
+            {
               header: 'Namespace',
-              accessorFn: item => <Link routeName={`namespace`} params={{ name: item.namespace || namespace }}>{ item.namespace || namespace }</Link>
-            }
-            
+              accessorFn: item => (
+                <Link routeName={`namespace`} params={{ name: item.namespace || namespace }}>
+                  {item.namespace || namespace}
+                </Link>
+              ),
+            },
           ]}
         />
       </SectionBox>
@@ -287,8 +329,6 @@ function CustomResourceDetails(props) {
   );
 }
 
-
-
 function GetResourcesFromInventory(props: {
   inventory: {
     id: string;
@@ -300,121 +340,127 @@ function GetResourcesFromInventory(props: {
 
   const fluxCRs = props.inventory?.filter(item => {
     const parsedID = parseID(item.id);
-    const {  kind } = parsedID;
+    const { kind } = parsedID;
     const resource = K8s.ResourceClasses[kind];
 
     if (!resource) {
-      if(kind === 'GitRepository' || kind === 'OCIRepository' || kind === 'HelmRepository' || kind === 'Bucket' || kind === 'HelmChart' || kind === 'Kustomization' || kind === 'HelmRelease') {
+      if (
+        kind === 'GitRepository' ||
+        kind === 'OCIRepository' ||
+        kind === 'HelmRepository' ||
+        kind === 'Bucket' ||
+        kind === 'HelmChart' ||
+        kind === 'Kustomization' ||
+        kind === 'HelmRelease'
+      ) {
         return item;
       }
       return false;
     }
 
     return false;
-  })
+  });
 
   props.inventory?.map(item => {
     const parsedID = parseID(item.id);
     const { namespace, name, kind } = parsedID;
     const resource = K8s.ResourceClasses[kind];
-      if(!resource) {
-        return;
-      }
-      resource.useApiGet(
-        data => {
-          // if the resource already exist replace it with the new one which is data otherwise add it
-          // use uid as the filter
-          const index = resources.findIndex(it => it.metadata.uid === data.metadata.uid);
-          if (index !== -1) {
-            resources[index] = data;
-          } else {
-            resources.push(data);
-          }
-          setResources([...resources]);
-        },
-        name,
-        namespace
-      );
-    });
+    if (!resource) {
+      return;
+    }
+    resource.useApiGet(
+      data => {
+        // if the resource already exist replace it with the new one which is data otherwise add it
+        // use uid as the filter
+        const index = resources.findIndex(it => it.metadata.uid === data.metadata.uid);
+        if (index !== -1) {
+          resources[index] = data;
+        } else {
+          resources.push(data);
+        }
+        setResources([...resources]);
+      },
+      name,
+      namespace
+    );
+  });
 
   return (
     <>
-    <Table
-      data={resources.concat(unkownKindResources)}
-      columns={[
-        {
-          header: 'Name',
-          accessorFn: item => <Link kubeObject={item}>{item.metadata.name}</Link>,
-        },
-        {
-          header: 'Namespace',
-          accessorFn: item =>
-            item.metadata.namespace ? (
-              <Link
-                routeName={`namespace`}
-                params={{
-                  name: item?.metadata?.namespace,
-                }}
-              >
-                {item?.metadata?.namespace}
-              </Link>
-            ) : (
-              ''
-            ),
-        },
-        {
-          header: 'Kind',
-          accessorFn: item => item.kind,
-        },
-        {
-          header: 'Ready',
-          accessorFn: item => {
-            const ready =
-              item.jsonData?.status?.conditions?.findIndex(c => c.type === 'Ready') !== -1
-                ? 'True'
-                : 'False';
-            return ready;
+      <Table
+        data={resources.concat(unkownKindResources)}
+        columns={[
+          {
+            header: 'Name',
+            accessorFn: item => <Link kubeObject={item}>{item.metadata.name}</Link>,
           },
-        },
-        {
-          header: 'Age',
-          accessorFn: item => <DateLabel date={item?.metadata?.creationTimestamp} />,
-        },
-      ]}
-    />
-    <GetCustomResourceCRD fluxCRs={fluxCRs} setResources={setUnknownKindResources}/>
+          {
+            header: 'Namespace',
+            accessorFn: item =>
+              item.metadata.namespace ? (
+                <Link
+                  routeName={`namespace`}
+                  params={{
+                    name: item?.metadata?.namespace,
+                  }}
+                >
+                  {item?.metadata?.namespace}
+                </Link>
+              ) : (
+                ''
+              ),
+          },
+          {
+            header: 'Kind',
+            accessorFn: item => item.kind,
+          },
+          {
+            header: 'Ready',
+            accessorFn: item => {
+              const ready =
+                item.jsonData?.status?.conditions?.findIndex(c => c.type === 'Ready') !== -1
+                  ? 'True'
+                  : 'False';
+              return ready;
+            },
+          },
+          {
+            header: 'Age',
+            accessorFn: item => <DateLabel date={item?.metadata?.creationTimestamp} />,
+          },
+        ]}
+      />
+      <GetCustomResourceCRD fluxCRs={fluxCRs} setResources={setUnknownKindResources} />
     </>
   );
 }
 
-function GetCustomResourceCRDWrapper(props: {
-  fluxCR: any;
-  setResources: (...args) => void;
-}) {
+function GetCustomResourceCRDWrapper(props: { fluxCR: any; setResources: (...args) => void }) {
   const { fluxCR, setResources } = props;
-  const item = parseID(fluxCR.id)
-  const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(getSourceOrAppCRD(item.kind));
-  if(!resource) {
+  const item = parseID(fluxCR.id);
+  const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
+    getSourceOrAppCRD(item.kind)
+  );
+  if (!resource) {
     return null;
   }
-  return resource && <GetCustomResourceCR resource={resource} item={item} setResources={setResources} />;
+  return (
+    resource && <GetCustomResourceCR resource={resource} item={item} setResources={setResources} />
+  );
 }
 
-function GetCustomResourceCRD(props: {
-  fluxCRs: any;
-  setResources: (...args) => void;
-}) {
+function GetCustomResourceCRD(props: { fluxCRs: any; setResources: (...args) => void }) {
   const { fluxCRs, setResources } = props;
-  if(!fluxCRs) {
+  if (!fluxCRs) {
     return null;
   }
-  return fluxCRs?.map((item) => {
-    return <GetCustomResourceCRDWrapper fluxCR={item} setResources={setResources} />
-  })
+  return fluxCRs?.map(item => {
+    return <GetCustomResourceCRDWrapper fluxCR={item} setResources={setResources} />;
+  });
 }
 
 function GetCustomResourceCR(props: {
-  resource : KubeObject;
+  resource: KubeObject;
   item: {
     name: string;
     namespace: string;
@@ -422,24 +468,27 @@ function GetCustomResourceCR(props: {
     group: string;
   };
   setResources: (...args) => void;
-}
-) {
+}) {
   const { resource, item, setResources } = props;
   const resourceClass = React.useMemo(() => {
     return resource.makeCRClass();
   }, [resource]);
-  
-  resourceClass?.useApiGet((data) => {
-    setResources((resources) => {
-      const index = resources.findIndex(it => it.metadata.uid === data.metadata.uid);
-          if (index !== -1) {
-            resources[index] = data;
-          } else {
-            resources.push(data.jsonData);
-          }
-      return [...resources];
-    });
-  }, item.name, item.namespace);
- 
+
+  resourceClass?.useApiGet(
+    data => {
+      setResources(resources => {
+        const index = resources.findIndex(it => it.metadata.uid === data.metadata.uid);
+        if (index !== -1) {
+          resources[index] = data;
+        } else {
+          resources.push(data.jsonData);
+        }
+        return [...resources];
+      });
+    },
+    item.name,
+    item.namespace
+  );
+
   return null;
 }

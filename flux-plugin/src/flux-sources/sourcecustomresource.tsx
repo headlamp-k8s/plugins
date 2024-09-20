@@ -1,5 +1,13 @@
-import { DateLabel, Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  DateLabel,
+  Link,
+  SectionBox,
+  ShowHideLabel,
+  StatusLabel,
+  Table,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { Link as MuiLink } from '@mui/material';
 import React from 'react';
 
@@ -10,6 +18,26 @@ export default function FluxSourceCustomResource(props: {
 }) {
   const { resourceClass, title, type } = props;
   const [resource] = resourceClass.useList();
+
+  function prepareLastUpdated(item: KubeCRD) {
+    const condition = item?.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
+    return condition?.lastTransitionTime;
+  }
+
+  function prepareStatus(item: KubeCRD) {
+    const ready = item?.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
+    if (!ready) {
+      return '-';
+    }
+    if (ready.status === 'Unknown') {
+      return <StatusLabel status="warning">Reconciling</StatusLabel>;
+    }
+    return (
+      <StatusLabel status={ready.status === 'True' ? 'success' : 'error'}>
+        {ready.status === 'True' ? 'Ready' : 'Failed'}
+      </StatusLabel>
+    );
+  }
 
   function prepareColumns() {
     const columns = [
@@ -44,26 +72,23 @@ export default function FluxSourceCustomResource(props: {
           </Link>
         ),
       },
-
-      {
-        header: 'Age',
-        accessorFn: item => <DateLabel date={item.metadata.creationTimestamp} />,
-      },
-      {
-        header: 'Ready',
-        accessorFn: item => {
-          const ready = item.jsonData.status?.conditions?.find(c => c.type === 'Ready')?.status;
-          return ready || '-';
-        },
-      },
       {
         header: 'Status',
         accessorFn: item => {
-          const message = item.jsonData.status?.conditions?.find(
-            c => c.type === 'Ready'
-          )?.message;
-          return message || '-';
+          return prepareStatus(item);
         },
+      },
+      {
+        header: 'Message',
+        accessorFn: item => {
+          const message = item.jsonData.status?.conditions?.find(c => c.type === 'Ready')?.message;
+          return <ShowHideLabel labelId={item?.metadata.id}>{message || '-'}</ShowHideLabel>;
+        },
+      },
+
+      {
+        header: 'Last Updated',
+        accessorFn: item => <DateLabel date={prepareLastUpdated(item)} />,
       },
     ];
 
@@ -71,9 +96,9 @@ export default function FluxSourceCustomResource(props: {
   }
   const isHelmChart = resource?.[0]?.jsonData?.kind === 'HelmChart';
   const columns = prepareColumns();
-  if(isHelmChart) {
+  if (isHelmChart) {
     // add chart column to second index
-    columns.splice(2, 0, {
+    columns.splice(3, 0, {
       header: 'Chart',
       accessorFn: item => {
         const chart = item?.jsonData?.spec?.chart;
@@ -82,7 +107,7 @@ export default function FluxSourceCustomResource(props: {
     });
 
     // add Version  column to third index
-    columns.splice(3, 0, {
+    columns.splice(4, 0, {
       header: 'Version',
       accessorFn: item => {
         const version = item?.jsonData?.spec?.version;
@@ -92,7 +117,7 @@ export default function FluxSourceCustomResource(props: {
 
     // add source kind column to fourth index
 
-    columns.splice(4, 0, {
+    columns.splice(5, 0, {
       header: 'Source Kind',
       accessorFn: item => {
         const sourceKind = item?.jsonData?.spec?.sourceRef.kind;
@@ -102,31 +127,41 @@ export default function FluxSourceCustomResource(props: {
 
     // add source name column to fifth index
 
-    columns.splice(5, 0, {
+    columns.splice(6, 0, {
       header: 'Source Name',
       accessorFn: item => {
         const sourceName = item?.jsonData?.spec?.sourceRef.name;
-        if(sourceName) {
-          return <Link routeName={`/flux/sources/:namespace/:type/:name`} params={{ namespace: item.jsonData.metadata.namespace, type: item.jsonData.spec.sourceRef.kind, name: sourceName }}>{sourceName}</Link>;
+        if (sourceName) {
+          return (
+            <Link
+              routeName={`/flux/sources/:namespace/:type/:name`}
+              params={{
+                namespace: item.jsonData.metadata.namespace,
+                type: item.jsonData.spec.sourceRef.kind,
+                name: sourceName,
+              }}
+            >
+              {sourceName}
+            </Link>
+          );
         }
         return '-';
       },
     });
   } else {
-    columns.splice(2, 0, {
+    columns.splice(3, 0, {
       header: 'URL',
       accessorFn: item => {
+        console.log(item);
         const url = item?.jsonData?.spec?.url;
-        return url || '-';
+        return url ? <MuiLink href={url}>{url}</MuiLink> : '-';
       },
-    })
+    });
   }
+
   return (
     <SectionBox title={title}>
-      <Table
-        data={resource}
-        columns={columns}
-      />
+      <Table data={resource} columns={columns} defaultSortingColumn={3} />
     </SectionBox>
   );
 }
