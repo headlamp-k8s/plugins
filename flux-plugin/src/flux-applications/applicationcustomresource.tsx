@@ -1,4 +1,11 @@
-import { DateLabel, Link, SectionBox, StatusLabel, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  DateLabel,
+  Link,
+  SectionBox,
+  ShowHideLabel,
+  StatusLabel,
+  Table,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { getSourceNameAndType } from '../helpers/index';
@@ -12,28 +19,27 @@ export default function FluxCustomResource(props: {
   const [resource] = resourceClass.useList();
 
   function prepareStatus(item: KubeCRD) {
-    const ready  = item.status?.conditions?.find(c => c.type === 'Ready');
-    if(ready.status === 'Unknown') {
-      return <StatusLabel status='warning' >
-        Reconciling
-      </StatusLabel>;
+    const ready = item.status?.conditions?.find(c => c.type === 'Ready');
+    if (ready.status === 'Unknown') {
+      return <StatusLabel status="warning">Reconciling</StatusLabel>;
     }
-    return <StatusLabel status={ready.status === 'True' ?  'success':'error'} >
-      {
-        ready.status === 'True' ? 'Ready' : 'Failed'
-      }
-    </StatusLabel>;
+    return (
+      <StatusLabel status={ready.status === 'True' ? 'success' : 'error'}>
+        {ready.status === 'True' ? 'Ready' : 'Failed'}
+      </StatusLabel>
+    );
   }
 
   function prepareLastUpdated(item: KubeCRD) {
-    const condition  = item?.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
+    const condition = item?.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
     return condition?.lastTransitionTime;
   }
 
   return (
-    <SectionBox title={title} >
+    <SectionBox title={title}>
       <Table
         data={resource}
+        defaultSortingColumn={2}
         columns={[
           {
             header: 'Name',
@@ -70,7 +76,7 @@ export default function FluxCustomResource(props: {
             header: 'Status',
             accessorFn: item => {
               return prepareStatus(item.jsonData);
-            }
+            },
           },
           {
             header: 'Source',
@@ -87,19 +93,21 @@ export default function FluxCustomResource(props: {
             },
           },
           {
+            header: 'Revision',
+            accessorFn: item => {
+              const reference = item.jsonData.status?.lastAttemptedRevision;
+              return reference || '-';
+            },
+          },
+          {
             header: 'Message',
             accessorFn: item => {
               const message = item.jsonData.status?.conditions?.find(
                 c => c.type === 'Ready'
               )?.message;
-              return message || '-';
-            },
-          },
-          {
-            header: 'Revision',
-            accessorFn: item => {
-              const reference = item.jsonData.status?.lastAttemptedRevision;
-              return reference || '-';
+              return (
+                <ShowHideLabel labelId={item?.metadata?.uid || ''}>{message || ''}</ShowHideLabel>
+              );
             },
           },
           {

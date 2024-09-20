@@ -8,9 +8,12 @@ import {
   DateLabel,
   MainInfoSection,
   SectionBox,
+  ShowHideLabel,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { SuspendAction, ResumeAction, SyncAction } from '../actions/index';
+import YAML from 'yaml';
+import Editor from '@monaco-editor/react';
 
 const fluxImageInfo = {
   imagerepositories: {
@@ -80,7 +83,11 @@ export function FluxImageAutomationDetailView() {
             },
             {
               header: 'Message',
-              accessorFn: item => item.message,
+              accessorFn: item => (
+                <ShowHideLabel labelId={item?.metadata?.uid || ''}>
+                  {item.message || ''}
+                </ShowHideLabel>
+              ),
             },
           ]}
         />
@@ -129,21 +136,24 @@ function CustomResourceDetails(props) {
     }
     if (cr?.jsonData.kind === 'ImagePolicy') {
       extraInfo.push({
-        name: 'Policy',
-        value: cr?.jsonData.spec?.policy && JSON.stringify(cr?.jsonData.spec?.policy),
-      });
-      extraInfo.push({
         name: 'Image Repository Ref',
         value:
           cr?.jsonData.spec?.imageRepositoryRef &&
           JSON.stringify(cr?.jsonData.spec?.imageRepositoryRef),
       });
-    }
-
-    if (cr?.jsonData.kind === 'ImageUpdateAutomation') {
       extraInfo.push({
-        name: 'Git',
-        value: cr?.jsonData.spec?.git && JSON.stringify(cr?.jsonData.spec.git),
+        name: 'Policy',
+        value: cr?.jsonData.spec?.policy && (
+          <Editor
+            language="yaml"
+            value={YAML.stringify(cr?.jsonData.spec?.policy)}
+            height={150}
+            options={{
+              // no lines
+              lineNumbers: 'off',
+            }}
+          />
+        ),
       });
     }
 
@@ -155,6 +165,23 @@ function CustomResourceDetails(props) {
       extraInfo.push({
         name: 'Interval',
         value: cr.jsonData.spec.interval,
+      });
+    }
+
+    if (cr?.jsonData.kind === 'ImageUpdateAutomation') {
+      extraInfo.push({
+        name: 'Git',
+        value: cr?.jsonData.spec?.git && (
+          <Editor
+            language="yaml"
+            value={YAML.stringify(cr?.jsonData.spec?.git)}
+            height={200}
+            options={{
+              // no lines
+              lineNumbers: 'off',
+            }}
+          />
+        ),
       });
     }
     return extraInfo;

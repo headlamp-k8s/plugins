@@ -49,13 +49,18 @@ function Alerts(props) {
         columns={[
           {
             header: 'Name',
-            accessorFn: item => <Link routeName={`/flux/notifications/:namespace/:type/:name`}
-              params={{
-                name: item.metadata.name,
-                namespace: item.metadata.namespace,
-                type: 'alerts',
-              }}
-            >{ item?.jsonData?.metadata.name }</Link>,
+            accessorFn: item => (
+              <Link
+                routeName={`/flux/notifications/:namespace/:type/:name`}
+                params={{
+                  name: item.metadata.name,
+                  namespace: item.metadata.namespace,
+                  type: 'alerts',
+                }}
+              >
+                {item?.jsonData?.metadata.name}
+              </Link>
+            ),
           },
           {
             header: 'Namespace',
@@ -77,13 +82,18 @@ function Alerts(props) {
           {
             header: 'Provider Ref',
             accessorFn: item =>
-              item?.jsonData.spec.providerRef && <Link routeName={`/flux/notifications/:namespace/:type/:name`} params={{
-                name: item?.jsonData?.spec?.providerRef?.name,
-                namespace: item?.metadata.namespace,
-                type: 'providers',
-              }}>
-                {item?.jsonData?.spec?.providerRef?.name}
-              </Link>,
+              item?.jsonData.spec.providerRef && (
+                <Link
+                  routeName={`/flux/notifications/:namespace/:type/:name`}
+                  params={{
+                    name: item?.jsonData?.spec?.providerRef?.name,
+                    namespace: item?.metadata.namespace,
+                    type: 'providers',
+                  }}
+                >
+                  {item?.jsonData?.spec?.providerRef?.name}
+                </Link>
+              ),
           },
           {
             header: 'Event Sources',
@@ -112,11 +122,18 @@ function Providers(props) {
         columns={[
           {
             header: 'Name',
-            accessorFn: item => <Link routeName={`/flux/notifications/:namespace/:type/:name`} params={{
-              name: item.metadata.name,
-              namespace: item.metadata.namespace,
-              type: 'providers',
-            }}>{ item.jsonData.metadata.name }</Link>,
+            accessorFn: item => (
+              <Link
+                routeName={`/flux/notifications/:namespace/:type/:name`}
+                params={{
+                  name: item.metadata.name,
+                  namespace: item.metadata.namespace,
+                  type: 'providers',
+                }}
+              >
+                {item.jsonData.metadata.name}
+              </Link>
+            ),
           },
           {
             header: 'Namespace',
@@ -183,11 +200,18 @@ function Receivers(props) {
         columns={[
           {
             header: 'Name',
-            accessorFn: item => <Link routeName={`/flux/notifications/:namespace/:type/:name`} params={{
-              name: item.metadata.name,
-              namespace: item.metadata.namespace,
-              type: 'receivers',
-            }}>{ item.jsonData.metadata.name }</Link>,
+            accessorFn: item => (
+              <Link
+                routeName={`/flux/notifications/:namespace/:type/:name`}
+                params={{
+                  name: item.metadata.name,
+                  namespace: item.metadata.namespace,
+                  type: 'receivers',
+                }}
+              >
+                {item.jsonData.metadata.name}
+              </Link>
+            ),
           },
           {
             header: 'Namespace',

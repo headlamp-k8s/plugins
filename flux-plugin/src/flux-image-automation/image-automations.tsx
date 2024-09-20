@@ -1,4 +1,10 @@
-import { DateLabel, Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  DateLabel,
+  Link,
+  SectionBox,
+  ShowHideLabel,
+  Table,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { apiFactory } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import React from 'react';
@@ -90,7 +96,12 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObject }) {
             },
             {
               header: 'Git',
-              accessorFn: item => item.jsonData.spec.git && JSON.stringify(item.jsonData.spec.git),
+              accessorFn: item =>
+                item.jsonData.spec.git && (
+                  <ShowHideLabel labelId={item?.metadata.uid}>
+                    {JSON.stringify(item.jsonData.spec.git)}
+                  </ShowHideLabel>
+                ),
             },
             {
               header: 'Interval',
