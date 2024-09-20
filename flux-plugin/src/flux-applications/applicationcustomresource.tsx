@@ -25,6 +25,11 @@ export default function FluxCustomResource(props: {
     </StatusLabel>;
   }
 
+  function prepareLastUpdated(item: KubeCRD) {
+    const condition  = item?.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
+    return condition?.lastTransitionTime;
+  }
+
   return (
     <SectionBox title={title} >
       <Table
@@ -99,7 +104,7 @@ export default function FluxCustomResource(props: {
           },
           {
             header: 'Last Updated',
-            accessorFn: item => <DateLabel date={item.metadata.creationTimestamp} />,
+            accessorFn: item => <DateLabel date={prepareLastUpdated(item)} />,
           },
         ]}
       />
