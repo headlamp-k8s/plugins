@@ -1,17 +1,13 @@
-import { ActionButton, Dialog } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { apply, patch } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
-import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { ActionButton, ConfirmDialog, Dialog } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useSnackbar } from 'notistack';
 import React from 'react';
-import { DialogContent, Button } from '@mui/material';
-import { DialogActions } from '@mui/material';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 
 function SuspendAction(props) {
   //const dispatch = useDispatch();
   const { enqueueSnackbar } = useSnackbar();
   const { resource } = props;
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = React.useState<boolean>(false);
 
   return (
     <>
@@ -27,36 +23,31 @@ function SuspendAction(props) {
           setOpen(true);
         }}
       />
-      <Dialog open={open} onClose={() => setOpen(false)} title="Suspend">
-        <DialogContent>
-          Are you sure you want to suspend reconciliation for {resource?.jsonData.metadata.name}?
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setOpen(false);
-              resource.jsonData.spec['suspend'] = true;
-              const patch = resource.constructor.apiEndpoint.patch;
-              patch({
-                spec: {
-                  suspend: true,
-                }
-              }, resource.jsonData.metadata.namespace, resource.jsonData.metadata.name).then((response) => {
-                if(response.spec.suspend) {
-                  enqueueSnackbar(`Successfully suspended reconciliation for ${resource.metadata.name}`, { variant: 'success' });
-                } else {
-                  enqueueSnackbar(`Failed to suspend reconciliation for ${resource.metadata.name}`, { variant: 'error' });
-                }
-              }).catch((error) => {
-                enqueueSnackbar(`Failed to suspend reconciliation for ${resource.metadata.name} error ${error}`, { variant: 'error' });
-              })
-            }}
-          >
-            Yes
-          </Button>
-          <Button onClick={() => setOpen(false)}>No</Button>
-        </DialogActions>
-      </Dialog>
+        <ConfirmDialog
+        // @ts-ignore
+        open={open}
+         handleClose={() => setOpen(false)}
+        onConfirm={() => {
+            setOpen(false);
+            resource.jsonData.spec['suspend'] = true;
+            const patch = resource.constructor.apiEndpoint.patch;
+            patch({
+              spec: {
+                suspend: true,
+              }
+            }, resource.jsonData.metadata.namespace, resource.jsonData.metadata.name).then((response) => {
+              if(response.spec.suspend) {
+                enqueueSnackbar(`Successfully suspended reconciliation for ${resource.metadata.name}`, { variant: 'success' });
+              } else {
+                enqueueSnackbar(`Failed to suspend reconciliation for ${resource.metadata.name}`, { variant: 'error' });
+              }
+            }).catch((error) => {
+              enqueueSnackbar(`Failed to suspend reconciliation for ${resource.metadata.name} error ${error}`, { variant: 'error' });
+            })
+          }}
+        title={'Suspend Reconciliation'}
+        description={`Are you sure you want to suspend reconciliation for ${resource?.jsonData.metadata.name}?`}
+      />
     </>
   );
 }
