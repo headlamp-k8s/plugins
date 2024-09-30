@@ -1,4 +1,14 @@
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { KubeEvent } from '@kinvolk/headlamp-plugin/lib/k8s/event';
+import {
+  HoverInfoLabel,
+  Link,
+  SectionBox,
+  ShowHideLabel,
+  SimpleTable,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
 
 export function getSourceNameAndType(item: KubeObject) {
   const itemKind = item.jsonData.kind;
@@ -45,4 +55,102 @@ export function getSourceNameAndType(item: KubeObject) {
     }
   }
   return { name, type };
+}
+
+export function ObjectEvents(props: { events: any }) {
+  const { events } = props;
+  if (!events) {
+    return null;
+  }
+  return (
+    <SectionBox title={'Events'}>
+      <SimpleTable
+        defaultSortingColumn={4}
+        columns={[
+          {
+            label: 'type',
+            getter: item => {
+              return item.type;
+            },
+          },
+          {
+            label: 'Reason',
+            getter: item => {
+              return item.reason;
+            },
+          },
+          {
+            label: 'From',
+            getter: item => {
+              return item.source.component;
+            },
+          },
+          {
+            label: 'Message',
+            getter: item => {
+              return (
+                item && (
+                  <ShowHideLabel labelId={item?.metadata?.uid || ''}>
+                    {item.message || ''}
+                  </ShowHideLabel>
+                )
+              );
+            },
+          },
+          {
+            label: 'Age',
+            getter: item => {
+              if (item.count > 1) {
+                return `${timeAgo(item.lastOccurrence)} (${item.count} times over ${timeAgo(
+                  item.firstOccurrence
+                )})`;
+              }
+              const eventDate = timeAgo(item.lastOccurrence, { format: 'mini' });
+              let label: string;
+              if (item.count > 1) {
+                label = `${eventDate} ${item.count} times since ${timeAgo(item.firstOccurrence)}`;
+              } else {
+                label = eventDate;
+              }
+
+              return (
+                <HoverInfoLabel
+                  label={label}
+                  hoverInfo={localeDate(item.lastOccurrence)}
+                  icon="mdi:calendar"
+                />
+              );
+            },
+            sort: (n1: KubeEvent, n2: KubeEvent) => {
+              return new Date(n2.lastTimestamp).getTime() - new Date(n1.lastTimestamp).getTime();
+            },
+          },
+        ]}
+        data={events}
+      />
+    </SectionBox>
+  );
+}
+
+export function prepareNameLink(item) {
+  const kind = item.kind;
+  const resourceKind = K8s.ResourceClasses[kind];
+  if (
+    kind === 'GitRepository' ||
+    kind === 'OCIRepository' ||
+    kind === 'HelmRepository' ||
+    kind === 'Bucket' ||
+    kind === 'HelmChart' ||
+    kind === 'Kustomization' ||
+    kind === 'HelmRelease' 
+  ) {
+    // prepare link
+    return item.metadata.name
+  }
+  if(resourceKind) {
+    console.log('resourceKind', new resourceKind(item));
+    return <Link kubeObject={new resourceKind(item)}>{item.metadata.name}</Link>;
+  }
+    
+    return item.metadata.name;
 }

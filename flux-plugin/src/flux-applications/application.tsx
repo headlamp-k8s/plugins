@@ -4,11 +4,10 @@ import {
   Link,
   MainInfoSection,
   SectionBox,
-  ShowHideLabel,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useLocation } from 'react-router';
-import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
+import Event, { KubeEvent } from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import React from 'react';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
@@ -19,7 +18,7 @@ import {
 } from '../actions/index';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import YAML from 'yaml';
-import { getSourceNameAndType } from '../helpers/index';
+import { getSourceNameAndType, ObjectEvents, prepareNameLink } from '../helpers/index';
 import Editor from '@monaco-editor/react';
 
 const KUSTOMIZE_CRD = 'kustomizations.kustomize.toolkit.fluxcd.io';
@@ -37,7 +36,6 @@ function parseID(id: string) {
   const kind = parsedID[3];
   return { namespace, name, group, kind };
 }
-
 
 function getSourceOrAppCRD(kind: string) {
   switch (kind) {
@@ -96,18 +94,13 @@ function GetSource(props: { item: KubeObject | null; setSource: (...args) => voi
 export default function FluxApplicationDetailView(props) {
   const location = useLocation();
   const segments = location.pathname.split('/');
-  // The fourth last segment is the kind
-  const namespace = segments[segments.length - 3];
-  // The second last segment is the type
-  const type = segments[segments.length - 2];
-  // The last segment is the name
-  const name = segments[segments.length - 1];
-
-
-  const [events, error] = Event?.default.objectEvents({
-    namespace: namespace,
-    kind: type === 'helmreleases' ? 'HelmRelease' : 'Kustomization',
-    name: name,
+  const [namespace, type, name] = segments.slice(-3)
+  
+  const [events, error] = Event?.default.useList({
+    namespace,
+    fieldSelector: `involvedObject.name=${name},involvedObject.kind=${
+      type === 'helmreleases' ? 'HelmRelease' : 'Kustomization'
+    }`,
   });
   const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     type === 'helmreleases' ? HELMRELEASE_CRD : KUSTOMIZE_CRD
@@ -118,33 +111,7 @@ export default function FluxApplicationDetailView(props) {
       {resource && (
         <CustomResourceDetails resource={resource} name={name} namespace={namespace} type={type} />
       )}
-      <SectionBox title="Events">
-        <Table
-          data={events}
-          columns={[
-            {
-              header: 'Reason',
-              accessorFn: item => item.reason,
-            },
-            {
-              header: 'Message',
-              accessorFn: item => (
-                <ShowHideLabel labelId={item?.metadata?.uid || ''}>
-                  {item.message || ''}
-                </ShowHideLabel>
-              ),
-            },
-            {
-              header: 'From',
-              accessorFn: item => item.source.component,
-            },
-            {
-              header: 'Last Updated',
-              accessorFn: item => <DateLabel date={item.jsonData.lastTimestamp} />,
-            },
-          ]}
-        />
-      </SectionBox>
+      <ObjectEvents events={events?.map((event: KubeEvent) => new Event.default(event))} />
     </>
   );
 }
@@ -313,15 +280,6 @@ function CustomResourceDetails(props) {
           ]}
         />
       </SectionBox>
-      {/* <SectionBox title="Graph">
-        <GraphView
-          hideHeader
-          height="400px"
-          groupingOptions={{ disable: true }}
-          defaultSources={[mapsource, WorkloadsSource]}
-          defaultFilters={[{ type: 'related', id: cr?.metadata?.uid }]}
-        />
-      </SectionBox> */}
       <SectionBox title="Conditions">
         <ConditionsTable resource={cr?.jsonData} />
       </SectionBox>
@@ -338,6 +296,7 @@ function GetResourcesFromInventory(props: {
   const [resources, setResources] = React.useState([]);
   const [unkownKindResources, setUnknownKindResources] = React.useState([]);
 
+ 
   const fluxCRs = props.inventory?.filter(item => {
     const parsedID = parseID(item.id);
     const { kind } = parsedID;
@@ -388,11 +347,13 @@ function GetResourcesFromInventory(props: {
   return (
     <>
       <Table
-        data={resources.concat(unkownKindResources)}
+        data={resources.concat(unkownKindResources).map((item: KubeObject) => {
+          return item
+        })}
         columns={[
           {
             header: 'Name',
-            accessorFn: item => <Link kubeObject={item}>{item.metadata.name}</Link>,
+            accessorFn: item => prepareNameLink(item),
           },
           {
             header: 'Namespace',
