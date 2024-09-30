@@ -11,6 +11,7 @@ import { Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import React from 'react';
 import Event from '@kinvolk/headlamp-plugin/lib/k8s/event';
 import { SyncAction, SuspendAction, ResumeAction } from '../actions/index';
+import { ObjectEvents } from '../helpers/index';
 
 const ALERT = 'alerts.notification.toolkit.fluxcd.io';
 const PROVIDER = 'providers.notification.toolkit.fluxcd.io';
@@ -19,12 +20,7 @@ const RECEIVER = 'receivers.notification.toolkit.fluxcd.io';
 export default function Notification() {
   const location = useLocation();
   const segments = location.pathname.split('/');
-  // The fourth last segment is the kind
-  const namespace = segments[segments.length - 3];
-  // The second last segment is the type
-  const type = segments[segments.length - 2];
-  // The last segment is the name
-  const name = segments[segments.length - 1];
+  const [namespace, type, name] = segments.slice(-3)
 
   function getType() {
     if (type === 'alerts') {
@@ -54,7 +50,7 @@ export default function Notification() {
   );
 
   const [events, error] = Event?.default.useList({
-    namespace: namespace,
+    namespace,
     fieldSelector: `involvedObject.name=${name},involvedObject.kind=${getKind()}`,
   });
 
@@ -63,33 +59,7 @@ export default function Notification() {
     <>
       {resource && <CustomResourceDetails resource={resource} name={name} namespace={namespace} />}
       <SectionBox title="Events">
-        <Table
-          data={events}
-          columns={[
-            {
-              header: 'Type',
-              accessorFn: item => item.type,
-            },
-            {
-              header: 'Reason',
-              accessorFn: item => item.reason,
-            },
-            {
-              header: 'Age',
-              accessorFn: item => (
-                <DateLabel date={new Date(item.jsonData.lastTimestamp).getTime()} />
-              ),
-            },
-            {
-              header: 'From',
-              accessorFn: item => item.jsonData.reportingComponent || '-',
-            },
-            {
-              header: 'Message',
-              accessorFn: item => item.message,
-            },
-          ]}
-        />
+        <ObjectEvents events={events} />
       </SectionBox>
     </>
   );

@@ -5,35 +5,33 @@ import React from 'react';
 import { useLocation } from 'react-router';
 import {
   ConditionsTable,
-  DateLabel,
   MainInfoSection,
   SectionBox,
-  ShowHideLabel,
-  Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { SuspendAction, ResumeAction, SyncAction } from '../actions/index';
 import YAML from 'yaml';
 import Editor from '@monaco-editor/react';
+import { ObjectEvents } from '../helpers/index';
 
 const fluxImageInfo = {
   imagerepositories: {
     kind: 'ImageRepository',
-    type: 'imagerepositories.image.toolkit.fluxcd.io'
+    type: 'imagerepositories.image.toolkit.fluxcd.io',
   },
   imagepolicies: {
     kind: 'ImagePolicy',
-    type: 'imagepolicies.image.toolkit.fluxcd.io'
+    type: 'imagepolicies.image.toolkit.fluxcd.io',
   },
   imageupdateautomations: {
     kind: 'ImageUpdateAutomation',
-    type: 'imageupdateautomations.image.toolkit.fluxcd.io'
-  }
-}
+    type: 'imageupdateautomations.image.toolkit.fluxcd.io',
+  },
+};
 
 export function FluxImageAutomationDetailView() {
   const location = useLocation();
   const segments = location.pathname.split('/');
-  const [namespace, type, name] = segments.slice(-3)
+  const [namespace, type, name] = segments.slice(-3);
 
   function getType() {
     return fluxImageInfo[type].type;
@@ -49,49 +47,17 @@ export function FluxImageAutomationDetailView() {
     ['apiextensions.k8s.io', 'v1beta1', 'customresourcedefinitions'],
     ['apiextensions.k8s.io', 'v1beta2', 'customresourcedefinitions']
   );
-  const [events, error] = Event?.default.objectEvents({
-    namespace: namespace,
-    name: name,
-    kind: getKind(),
+  const [resource] = CRD.useGet(getType());
+
+  const [events, error] = Event?.default.useList({
+    namespace,
+    fieldSelector: `involvedObject.name=${name},involvedObject.kind=${getKind()}`,
   });
 
-  const [resource] = CRD.useGet(getType());
   return (
     <>
       {resource && <CustomResourceDetails resource={resource} name={name} namespace={namespace} />}
-      <SectionBox title="Events">
-        <Table
-          data={events}
-          columns={[
-            {
-              header: 'Type',
-              accessorFn: item => item.type,
-            },
-            {
-              header: 'Reason',
-              accessorFn: item => item.reason,
-            },
-            {
-              header: 'Age',
-              accessorFn: item => (
-                <DateLabel date={new Date(item.jsonData.lastTimestamp).getTime()} />
-              ),
-            },
-            {
-              header: 'From',
-              accessorFn: item => item.jsonData.reportingComponent || '-',
-            },
-            {
-              header: 'Message',
-              accessorFn: item => (
-                <ShowHideLabel labelId={item?.metadata?.uid || ''}>
-                  {item.message || ''}
-                </ShowHideLabel>
-              ),
-            },
-          ]}
-        />
-      </SectionBox>
+      <ObjectEvents events={events} />
     </>
   );
 }
