@@ -1,13 +1,10 @@
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
-import { KubeEvent } from '@kinvolk/headlamp-plugin/lib/k8s/event';
 import {
   HoverInfoLabel,
-  Link,
   SectionBox,
   ShowHideLabel,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
 
 export function getSourceNameAndType(item: KubeObject) {
@@ -145,7 +142,7 @@ export function ObjectEvents(props: { events: any }) {
 
 export function prepareNameLink(item) {
   const kind = item.kind;
-  const resourceKind = K8s.ResourceClasses[kind];
+  //const resourceKind = K8s.ResourceClasses[kind];
   if (
     kind === 'GitRepository' ||
     kind === 'OCIRepository' ||
@@ -158,10 +155,7 @@ export function prepareNameLink(item) {
     // prepare link
     return item.metadata.name;
   }
-  if (resourceKind) {
-    console.log('resourceKind', new resourceKind(item));
-    return <Link kubeObject={new resourceKind(item)}>{item.metadata.name}</Link>;
-  }
+  
 
   return item.metadata.name;
 }

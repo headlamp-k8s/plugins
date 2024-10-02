@@ -1,6 +1,5 @@
 import {
   DateLabel,
-  Link,
   SectionBox,
   ShowHideLabel,
   StatusLabel,
@@ -45,34 +44,24 @@ export default function FluxCustomResource(props: {
             header: 'Name',
             accessorKey: 'metadata.name',
             Cell: ({ row: { original: item } }) => {
+              if (!item.metadata.name) {
+                return '-';
+              }
               return (
-                <Link
-                  routeName={`/flux/${type}/:namespace/:type/:name`}
-                  params={{
-                    name: item.metadata.name,
-                    namespace: item.metadata.namespace,
-                    type: title.split(' ').join('').toLowerCase(),
-                  }}
-                >
-                  {' '}
-                  {item.metadata.name}{' '}
-                </Link>
+               item.metadata.name
               );
             },
           },
           {
             header: 'Namespace',
             accessorKey: 'metadata.namespace',
-            Cell: ({ row: { original: item } }) => (
-              <Link
-                routeName="namespace"
-                params={{
-                  name: item.metadata.namespace,
-                }}
-              >
-                {item.metadata.namespace}
-              </Link>
-            ),
+            Cell: ({ row: { original: item } }) => {
+              if(!item.metadata.namespace) {
+                return '-';
+              }
+              return (
+                item.metadata.namespace
+            )},
           },
           {
             header: 'Status',
@@ -85,12 +74,7 @@ export default function FluxCustomResource(props: {
             accessorFn: item => {
               const { name, type } = getSourceNameAndType(item);
               return (
-                <Link
-                  routeName={`/flux/sources/:namespace/:type/:name`}
-                  params={{ namespace: item.jsonData.metadata.namespace, type, name }}
-                >
-                  {name}
-                </Link>
+                  `${name}_${type}`
               );
             },
           },

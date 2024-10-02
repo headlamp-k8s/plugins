@@ -1,7 +1,6 @@
 import {
   ConditionsTable,
   DateLabel,
-  Link,
   MainInfoSection,
   SectionBox,
   Table,
@@ -147,16 +146,7 @@ function CustomResourceDetails(props) {
         extraInfo.push({
           name: 'Source Ref',
           value: (
-            <Link
-              routeName={`/flux/sources/:namespace/:type/:name`}
-              params={{
-                namespace: cr.jsonData.metadata.namespace,
-                type: sourceType,
-                name: sourceName,
-              }}
-            >
-              {sourceName}
-            </Link>
+            sourceName || '-'
           ),
         });
       }
@@ -165,16 +155,7 @@ function CustomResourceDetails(props) {
         extraInfo.push({
           name: 'Source Ref',
           value: (
-            <Link
-              routeName={`/flux/sources/:namespace/:type/:name`}
-              params={{
-                namespace: cr.jsonData.metadata.namespace,
-                type: sourceType,
-                name: sourceName,
-              }}
-            >
-              {sourceName}
-            </Link>
+            sourceName || '-'
           ),
         });
       }
@@ -195,16 +176,7 @@ function CustomResourceDetails(props) {
         {
           name: 'SourceRef',
           value: (
-            <Link
-              routeName={`/flux/sources/:namespace/:type/:name`}
-              params={{
-                namespace: cr.jsonData.metadata.namespace,
-                type: sourceType,
-                name: sourceName,
-              }}
-            >
-              {sourceName}
-            </Link>
+            sourceName || '-'
           ),
         },
       ];
@@ -256,26 +228,17 @@ function CustomResourceDetails(props) {
               header: 'Name',
               accessorFn: item => {
                 return (
-                  <Link
-                    routeName={`/flux/applications/:namespace/:type/:name`}
-                    params={{
-                      name: item.name,
-                      namespace: item.namespace || namespace,
-                      type,
-                    }}
-                  >
-                    {item.name}
-                  </Link>
+                  item.name
                 );
               },
             },
             {
               header: 'Namespace',
-              accessorFn: item => (
-                <Link routeName={`namespace`} params={{ name: item.namespace || namespace }}>
-                  {item.namespace || namespace}
-                </Link>
-              ),
+              accessorFn: item => {
+                return (
+                  item.namespace
+                );
+              },
             },
           ]}
         />
@@ -359,17 +322,10 @@ function GetResourcesFromInventory(props: {
             header: 'Namespace',
             accessorKey: 'metadata.namespace',
             Cell: ({ row: { original: item } }) =>
-              item.metadata.namespace ? (
-                <Link
-                  routeName={`namespace`}
-                  params={{
-                    name: item?.metadata?.namespace,
-                  }}
-                >
-                  {item?.metadata?.namespace}
-                </Link>
+              item?.jsonData?.metadata.namespace ? (
+                item?.jsonData?.metadata.namespace
               ) : (
-                ''
+                '-'
               ),
           },
           {
