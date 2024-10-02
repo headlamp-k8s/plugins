@@ -43,7 +43,8 @@ export default function FluxSourceCustomResource(props: {
     const columns = [
       {
         header: 'Name',
-        accessorFn: item => {
+        accessorKey: 'metadata.name',
+        Cell: ({ row: { original: item } }) => {
           return (
             <Link
               routeName={`/flux/${type}/:namespace/:type/:name`}
@@ -61,7 +62,8 @@ export default function FluxSourceCustomResource(props: {
       },
       {
         header: 'Namespace',
-        accessorFn: item => (
+        accessorKey: 'metadata.namespace',
+        Cell: ({ row: { original: item } }) => (
           <Link
             routeName="namespace"
             params={{

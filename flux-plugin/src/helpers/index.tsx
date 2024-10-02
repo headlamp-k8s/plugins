@@ -5,7 +5,7 @@ import {
   Link,
   SectionBox,
   ShowHideLabel,
-  SimpleTable,
+  Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
@@ -64,30 +64,30 @@ export function ObjectEvents(props: { events: any }) {
   }
   return (
     <SectionBox title={'Events'}>
-      <SimpleTable
+      <Table
         defaultSortingColumn={4}
         columns={[
           {
-            label: 'type',
-            getter: item => {
+            header: 'Type',
+            accessorFn: item => {
               return item.type;
             },
           },
           {
-            label: 'Reason',
-            getter: item => {
+            header: 'Reason',
+            accessorFn: item => {
               return item.reason;
             },
           },
           {
-            label: 'From',
-            getter: item => {
+            header: 'From',
+            accessorFn: item => {
               return item.source.component;
             },
           },
           {
-            label: 'Message',
-            getter: item => {
+            header: 'Message',
+            accessorFn: item => {
               return (
                 item && (
                   <ShowHideLabel labelId={item?.metadata?.uid || ''}>
@@ -98,8 +98,9 @@ export function ObjectEvents(props: { events: any }) {
             },
           },
           {
-            label: 'Age',
-            getter: item => {
+            id: 'Age',
+            header: 'Age',
+            accessorFn: item => {
               if (item.count > 1) {
                 return `${timeAgo(item.lastOccurrence)} (${item.count} times over ${timeAgo(
                   item.firstOccurrence
@@ -121,12 +122,22 @@ export function ObjectEvents(props: { events: any }) {
                 />
               );
             },
-            sort: (n1: KubeEvent, n2: KubeEvent) => {
-              return new Date(n2.lastTimestamp).getTime() - new Date(n1.lastTimestamp).getTime();
+            sortingFn: (rowA, rowB) => {
+              return (
+                new Date(rowB.lastTimestamp).getTime() - new Date(rowA.lastTimestamp).getTime()
+              );
             },
           },
         ]}
         data={events}
+        initialState={{
+          sorting: [
+            {
+              id: 'Age',
+              desc: false,
+            },
+          ],
+        }}
       />
     </SectionBox>
   );
@@ -142,15 +153,15 @@ export function prepareNameLink(item) {
     kind === 'Bucket' ||
     kind === 'HelmChart' ||
     kind === 'Kustomization' ||
-    kind === 'HelmRelease' 
+    kind === 'HelmRelease'
   ) {
     // prepare link
-    return item.metadata.name
+    return item.metadata.name;
   }
-  if(resourceKind) {
+  if (resourceKind) {
     console.log('resourceKind', new resourceKind(item));
     return <Link kubeObject={new resourceKind(item)}>{item.metadata.name}</Link>;
   }
-    
-    return item.metadata.name;
+
+  return item.metadata.name;
 }

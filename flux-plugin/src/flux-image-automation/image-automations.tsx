@@ -58,7 +58,8 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObject }) {
           columns={[
             {
               header: 'Name',
-              accessorFn: item => (
+              accessorKey: 'metadata.name',
+              Cell: ({ row: { original: item } }) => (
                 <Link
                   routeName={`/flux/image-automations/:namespace/:type/:name`}
                   params={{
@@ -73,7 +74,8 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObject }) {
             },
             {
               header: 'Namespace',
-              accessorFn: item => (
+              accessorKey: 'metadata.namespace',
+              Cell: ({ row: { original: item } }) => (
                 <Link
                   routeName="namespace"
                   params={{

@@ -94,8 +94,8 @@ function GetSource(props: { item: KubeObject | null; setSource: (...args) => voi
 export default function FluxApplicationDetailView(props) {
   const location = useLocation();
   const segments = location.pathname.split('/');
-  const [namespace, type, name] = segments.slice(-3)
-  
+  const [namespace, type, name] = segments.slice(-3);
+
   const [events, error] = Event?.default.useList({
     namespace,
     fieldSelector: `involvedObject.name=${name},involvedObject.kind=${
@@ -296,7 +296,6 @@ function GetResourcesFromInventory(props: {
   const [resources, setResources] = React.useState([]);
   const [unkownKindResources, setUnknownKindResources] = React.useState([]);
 
- 
   const fluxCRs = props.inventory?.filter(item => {
     const parsedID = parseID(item.id);
     const { kind } = parsedID;
@@ -348,16 +347,18 @@ function GetResourcesFromInventory(props: {
     <>
       <Table
         data={resources.concat(unkownKindResources).map((item: KubeObject) => {
-          return item
+          return item;
         })}
         columns={[
           {
             header: 'Name',
-            accessorFn: item => prepareNameLink(item),
+            accessorKey: 'metadata.name',
+            Cell: ({ row: { original: item } }) => prepareNameLink(item),
           },
           {
             header: 'Namespace',
-            accessorFn: item =>
+            accessorKey: 'metadata.namespace',
+            Cell: ({ row: { original: item } }) =>
               item.metadata.namespace ? (
                 <Link
                   routeName={`namespace`}

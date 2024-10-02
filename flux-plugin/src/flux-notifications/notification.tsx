@@ -20,7 +20,7 @@ const RECEIVER = 'receivers.notification.toolkit.fluxcd.io';
 export default function Notification() {
   const location = useLocation();
   const segments = location.pathname.split('/');
-  const [namespace, type, name] = segments.slice(-3)
+  const [namespace, type, name] = segments.slice(-3);
 
   function getType() {
     if (type === 'alerts') {
