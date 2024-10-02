@@ -47,7 +47,8 @@ export default function FluxRunTime(props) {
           columns={[
             {
               header: 'Name',
-              accessorFn: item => (
+              accessorKey: 'metadata.name',
+              Cell: ({ row: { original: item } }) => (
                 <Link
                   routeName="pod"
                   params={{ name: item.metadata.name, namespace: item.metadata.namespace }}
@@ -58,7 +59,8 @@ export default function FluxRunTime(props) {
             },
             {
               header: 'Namespace',
-              accessorFn: item => (
+              accessorKey: 'metadata.namespace',
+              Cell: ({ row: { original: item } }) => (
                 <Link routeName="namespace" params={{ name: item.metadata.namespace }}>
                   {item.metadata.namespace}
                 </Link>
@@ -85,7 +87,8 @@ export default function FluxRunTime(props) {
           columns={[
             {
               header: 'Name',
-              accessorFn: item => (
+              accessorKey: 'metadata.name',
+              Cell: ({ row: { original: item } }) => (
                 <Link
                   routeName="crd"
                   params={{

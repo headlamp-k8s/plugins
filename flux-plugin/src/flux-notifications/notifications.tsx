@@ -200,7 +200,8 @@ function Receivers(props) {
         columns={[
           {
             header: 'Name',
-            accessorFn: item => (
+            accessorKey: 'metadata.name',
+            Cell: ({ row: { original: item } }) => (
               <Link
                 routeName={`/flux/notifications/:namespace/:type/:name`}
                 params={{
@@ -215,7 +216,8 @@ function Receivers(props) {
           },
           {
             header: 'Namespace',
-            accessorFn: item => (
+            accessorKey: 'metadata.namespace',
+            Cell: ({ row: { original: item } }) => (
               <Link
                 routeName="namespace"
                 params={{

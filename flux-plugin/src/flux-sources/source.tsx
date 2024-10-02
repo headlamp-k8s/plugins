@@ -18,7 +18,7 @@ export default function FluxSourceDetailView(props) {
   const location = useLocation();
   const segments = location.pathname.split('/');
   const [namespace, type, name] = segments.slice(-3);
-  
+
   const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     `${type.split(' ').join('').toLowerCase()}.source.toolkit.fluxcd.io`
   );
