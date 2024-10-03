@@ -335,6 +335,7 @@ const Template: Story<ChartProps> = () => {
           dataProcessor: dataProcessor,
         },
       ]}
+      interval="10m"
       autoRefresh={false}
       xAxisProps={XTickProps}
       yAxisProps={YTickProps}

@@ -3,6 +3,49 @@ import { Box, useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
+/**
+ * Calculates the time range based on the given interval.
+ * @param {string} interval - The time interval (e.g., '10m', '1h', '24h', 'week').
+ * @returns {Object} An object containing the 'from' timestamp, 'to' timestamp, and 'step' in seconds.
+ */
+export function getTimeRange(interval: string): { from: number; to: number; step: number } {
+  const now = Math.floor(Date.now() / 1000);
+  const day = 86400; // seconds in a day
+
+  switch (interval) {
+    case '10m':
+      return { from: now - 600, to: now, step: 15 }; // 15 seconds step
+    case '30m':
+      return { from: now - 1800, to: now, step: 30 }; // 30 seconds step
+    case '1h':
+      return { from: now - 3600, to: now, step: 60 }; // 1 minute step
+    case '3h':
+      return { from: now - 10800, to: now, step: 180 }; // 3 minutes step
+    case '6h':
+      return { from: now - 21600, to: now, step: 360 }; // 6 minutes step
+    case '12h':
+      return { from: now - 43200, to: now, step: 720 }; // 12 minutes step
+    case '24h':
+      return { from: now - day, to: now, step: 300 }; // 5 minutes step
+    case '48h':
+      return { from: now - 2 * day, to: now, step: 600 }; // 10 minutes step
+    case 'today':
+      return { from: now - (now % day), to: now, step: 300 }; // 5 minutes step
+    case 'yesterday':
+      return { from: now - (now % day) - day, to: now - (now % day), step: 300 }; // 5 minutes step
+    case 'week':
+      return { from: now - 7 * day, to: now, step: 3600 }; // 1 hour step
+    case 'lastweek':
+      return { from: now - 14 * day, to: now - 7 * day, step: 3600 }; // 1 hour step
+    case '7d':
+      return { from: now - 7 * day, to: now, step: 3600 }; // 1 hour step
+    case '14d':
+      return { from: now - 14 * day, to: now, step: 7200 }; // 2 hours step
+    default:
+      return { from: now - 600, to: now, step: 15 }; // Default to 10 minutes with 15 seconds step
+  }
+}
+
 export interface ChartProps {
   plots: Array<{
     query: string;
@@ -12,6 +55,7 @@ export interface ChartProps {
     dataProcessor: (data: any) => any[];
   }>;
   fetchMetrics: (query: object) => Promise<any>;
+  interval: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
   xAxisProps: {
@@ -40,9 +84,7 @@ export function Chart(props: ChartProps) {
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
     firstLoad: boolean = false
   ) => {
-    const currentTime = Date.now() / 1000;
-
-    const tenMinutesBefore = currentTime - 10 * 60;
+    const { from, to, step } = getTimeRange(props.interval);
 
     const fetchedMetrics: {
       [key: string]: {
@@ -60,9 +102,9 @@ export function Chart(props: ChartProps) {
         response = await fetchMetrics({
           prefix: props.prometheusPrefix,
           query: plot.query,
-          from: tenMinutesBefore,
-          to: currentTime,
-          step: 2,
+          from: from,
+          to: to,
+          step: step,
         });
       } catch (e) {
         fetchedMetrics[plot.name] = { data: [], state: ChartState.ERROR };
