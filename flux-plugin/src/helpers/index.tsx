@@ -43,6 +43,15 @@ export function getSourceNameAndType(item: KubeObject) {
       name = item?.jsonData?.spec?.chartRef?.name;
     }
     switch (item?.jsonData?.spec?.chart?.spec?.sourceRef?.kind) {
+      case 'GitRepository':
+        type = 'gitrepositories';
+        break;
+      case 'OCIRepository':
+        type = 'ocirepositories';
+        break;
+      case 'Bucket':
+        type = 'buckets';
+        break;
       case 'HelmRepository':
         type = 'helmrepositories';
         break;
