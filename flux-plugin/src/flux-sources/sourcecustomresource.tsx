@@ -4,11 +4,11 @@ import {
   SectionBox,
   ShowHideLabel,
   StatusLabel,
-  Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { Link as MuiLink } from '@mui/material';
+import Table, { TableProps } from '../common/Table';
 import React from 'react';
 
 export default function FluxSourceCustomResource(props: {
@@ -19,88 +19,23 @@ export default function FluxSourceCustomResource(props: {
   const { resourceClass, title, type } = props;
   const [resource] = resourceClass.useList();
 
-  function prepareLastUpdated(item: KubeCRD) {
-    const condition = item?.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
-    return condition?.lastTransitionTime;
-  }
-
-  function prepareStatus(item: KubeCRD) {
-    const ready = item?.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
-    if (!ready) {
-      return '-';
-    }
-    if (ready.status === 'Unknown') {
-      return <StatusLabel status="warning">Reconciling</StatusLabel>;
-    }
-    return (
-      <StatusLabel status={ready.status === 'True' ? 'success' : 'error'}>
-        {ready.status === 'True' ? 'Ready' : 'Failed'}
-      </StatusLabel>
-    );
-  }
-
   function prepareColumns() {
-    const columns = [
-      {
-        header: 'Name',
-        accessorKey: 'metadata.name',
-        Cell: ({ row: { original: item } }) => {
-          return (
-            <Link
-              routeName={`/flux/${type}/:namespace/:type/:name`}
-              params={{
-                name: item.metadata.name,
-                namespace: item.metadata.namespace,
-                type: title.split(' ').join('').toLowerCase(),
-              }}
-            >
-              {' '}
-              {item.metadata.name}{' '}
-            </Link>
-          );
-        },
-      },
-      {
-        header: 'Namespace',
-        accessorKey: 'metadata.namespace',
-        Cell: ({ row: { original: item } }) => (
-          <Link
-            routeName="namespace"
-            params={{
-              name: item.metadata.namespace,
-            }}
-          >
-            {item.metadata.namespace}
-          </Link>
-        ),
-      },
-      {
-        header: 'Status',
-        accessorFn: item => {
-          return prepareStatus(item);
-        },
-      },
-      {
-        header: 'Message',
-        accessorFn: item => {
-          const message = item.jsonData.status?.conditions?.find(c => c.type === 'Ready')?.message;
-          return <ShowHideLabel labelId={item?.metadata.id}>{message || '-'}</ShowHideLabel>;
-        },
-      },
-
-      {
-        header: 'Last Updated',
-        accessorFn: item => <DateLabel date={prepareLastUpdated(item)} />,
-      },
+    const columns: TableProps['columns'] = [
+      'name',
+      'namespace',
+      'status',
+      'message',
+      'lastUpdated',
     ];
 
     return columns;
   }
   const isHelmChart = resource?.[0]?.jsonData?.kind === 'HelmChart';
   const columns = prepareColumns();
+  let colIndexToInsert = columns.length - 2;
   if (isHelmChart) {
     // add chart column to second index
-    columns.splice(3, 0, {
+    columns.splice(colIndexToInsert++, 0, {
       header: 'Chart',
       accessorFn: item => {
         const chart = item?.jsonData?.spec?.chart;
@@ -109,7 +44,7 @@ export default function FluxSourceCustomResource(props: {
     });
 
     // add Version  column to third index
-    columns.splice(4, 0, {
+    columns.splice(colIndexToInsert++, 0, {
       header: 'Version',
       accessorFn: item => {
         const version = item?.jsonData?.spec?.version;
@@ -119,7 +54,7 @@ export default function FluxSourceCustomResource(props: {
 
     // add source kind column to fourth index
 
-    columns.splice(5, 0, {
+    columns.splice(colIndexToInsert++, 0, {
       header: 'Source Kind',
       accessorFn: item => {
         const sourceKind = item?.jsonData?.spec?.sourceRef.kind;
@@ -129,7 +64,7 @@ export default function FluxSourceCustomResource(props: {
 
     // add source name column to fifth index
 
-    columns.splice(6, 0, {
+    columns.splice(colIndexToInsert++, 0, {
       header: 'Source Name',
       accessorFn: item => {
         const sourceName = item?.jsonData?.spec?.sourceRef.name;
@@ -151,7 +86,7 @@ export default function FluxSourceCustomResource(props: {
       },
     });
   } else {
-    columns.splice(3, 0, {
+    columns.splice(colIndexToInsert++, 0, {
       header: 'URL',
       accessorFn: item => {
         console.log(item);

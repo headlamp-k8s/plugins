@@ -5,10 +5,10 @@ import {
   Link,
   SectionBox,
   ShowHideLabel,
-  Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import React from 'react';
+import Table from '../common/Table';
 import CheckIfFluxInstalled from '../checkflux';
 
 const IMAGE_AUTOMATION_BETA_VERSION = 'v1beta2';
@@ -84,20 +84,7 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObject }) {
                 </Link>
               ),
             },
-            {
-              header: 'Namespace',
-              accessorKey: 'metadata.namespace',
-              Cell: ({ row: { original: item } }) => (
-                <Link
-                  routeName="namespace"
-                  params={{
-                    name: item.metadata.namespace,
-                  }}
-                >
-                  {item.metadata.namespace}
-                </Link>
-              ),
-            },
+            'namespace',
             {
               header: 'Ready',
               accessorFn: item => {
@@ -126,10 +113,7 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObject }) {
               accessorFn: item =>
                 item.jsonData.spec.update && JSON.stringify(item.jsonData.spec.update),
             },
-            {
-              header: 'Age',
-              accessorFn: item => <DateLabel date={item.metadata.creationTimestamp} />,
-            },
+            'age',
           ]}
         />
       </SectionBox>
@@ -160,19 +144,7 @@ function ImagePolicyList(props: { resourceClass: KubeObject }) {
               </Link>
             ),
           },
-          {
-            header: 'Namespace',
-            accessorFn: item => (
-              <Link
-                routeName="namespace"
-                params={{
-                  name: item.metadata.namespace,
-                }}
-              >
-                {item.metadata.namespace}
-              </Link>
-            ),
-          },
+          'namespace',
           {
             header: 'Ready',
             accessorFn: item => {
@@ -188,10 +160,7 @@ function ImagePolicyList(props: { resourceClass: KubeObject }) {
             accessorFn: item =>
               item.jsonData.spec.policy && JSON.stringify(item.jsonData.spec.policy),
           },
-          {
-            header: 'Age',
-            accessorFn: item => <DateLabel date={item.metadata.creationTimestamp} />,
-          },
+          'age',
         ]}
       />
     </SectionBox>
@@ -222,19 +191,7 @@ function ImageRepositoryList(props: { resourceClass: KubeObject }) {
               </Link>
             ),
           },
-          {
-            header: 'Namespace',
-            accessorFn: item => (
-              <Link
-                routeName="namespace"
-                params={{
-                  name: item.metadata.namespace,
-                }}
-              >
-                {item.metadata.namespace}
-              </Link>
-            ),
-          },
+          'namespace',
           {
             header: 'Ready',
             accessorFn: item => {
@@ -273,10 +230,7 @@ function ImageRepositoryList(props: { resourceClass: KubeObject }) {
             header: 'Timeout',
             accessorFn: item => item.jsonData.spec.timeout,
           },
-          {
-            header: 'Age',
-            accessorFn: item => <DateLabel date={item.metadata.creationTimestamp} />,
-          },
+          'age',
         ]}
       />
     </SectionBox>

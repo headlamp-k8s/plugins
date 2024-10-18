@@ -1,8 +1,9 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box } from '@mui/material';
 import React from 'react';
 import CheckIfFluxInstalled from '../checkflux';
+import Table from '../common/Table';
 
 export default function Notifications() {
   const [alerts] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
@@ -47,34 +48,8 @@ function Alerts(props) {
       <Table
         data={alerts}
         columns={[
-          {
-            header: 'Name',
-            accessorFn: item => (
-              <Link
-                routeName={`/flux/notifications/:namespace/:type/:name`}
-                params={{
-                  name: item.metadata.name,
-                  namespace: item.metadata.namespace,
-                  type: 'alerts',
-                }}
-              >
-                {item?.jsonData?.metadata.name}
-              </Link>
-            ),
-          },
-          {
-            header: 'Namespace',
-            accessorFn: item => (
-              <Link
-                routeName="namespace"
-                params={{
-                  name: item.metadata.namespace,
-                }}
-              >
-                {item.metadata.namespace}
-              </Link>
-            ),
-          },
+          'name',
+          'namespace',
           {
             header: 'Severity',
             accessorFn: item => item?.jsonData?.spec.eventSeverity,
