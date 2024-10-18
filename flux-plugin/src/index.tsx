@@ -17,7 +17,7 @@ registerSidebarEntry({
   parent: null,
   name: 'flux',
   label: 'Flux',
-  icon: 'mdi:source-branch',
+  icon: 'simple-icons:flux',
   url: '/flux/kustomizations',
 });
 
