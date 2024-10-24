@@ -1,64 +1,111 @@
-import React from 'react';
-import { useBetween } from 'use-between';
+import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
+import { isPrometheusInstalled } from './request';
 
-export interface PluginSettings {
-  isVisible: boolean;
+/**
+ * ClusterData type represents the configuration data for a cluster.
+ * @property {boolean} autoDetect - Whether to auto-detect Prometheus metrics.
+ * @property {boolean} isMetricsEnabled - Whether metrics are enabled for the cluster.
+ * @property {string} address - The address of the Prometheus service.
+ * @property {string} defaultTimespan - The default timespan for metrics.
+ */
+type ClusterData = {
+  autoDetect?: boolean;
+  isMetricsEnabled?: boolean;
+  address?: string;
+  defaultTimespan?: string;
+};
+
+/**
+ * Conf type represents the configuration data for the prometheus plugin.
+ * @property {[cluster: string]: ClusterData} - The configuration data for each cluster.
+ */
+type Conf = {
+  [cluster: string]: ClusterData;
+};
+
+/**
+ * getConfigStore returns the config store for the prometheus plugin.
+ * @returns {ConfigStore<Conf>} The config store.
+ */
+export function getConfigStore(): ConfigStore<Conf> {
+  return new ConfigStore<Conf>('@headlamp-k8s/prometheus');
 }
 
-const SETTINGS_KEY = 'plugins.settings.prom_metrics';
-const STORAGE_DELAY = 500; // ms
-
-// Stores the settings in the local storage
-export function storeSettings(settings: PluginSettings) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-}
-
-export function loadSettings(): PluginSettings {
-  const settings = localStorage.getItem(SETTINGS_KEY);
-  if (settings) {
-    return JSON.parse(settings);
+/**
+ * getClusterConfig returns the configuration for a specific cluster.
+ * @param {string} cluster - The name of the cluster.
+ * @returns {ClusterData | null} The configuration for the cluster, or null if not found.
+ */
+export function getClusterConfig(cluster: string): ClusterData | null {
+  const configStore = getConfigStore();
+  const conf = configStore.get();
+  if (!cluster || !conf) {
+    return null;
   }
-  return { isVisible: true };
+  return conf[cluster] || null;
 }
 
-const _pluginSettings: PluginSettings = {
-  isVisible: true,
-};
+/**
+ * enableMetrics enables metrics for a specific cluster.
+ * @param {string} cluster - The name of the cluster.
+ */
+export function enableMetrics(cluster: string) {
+  const store = getConfigStore();
+  store.update({ [cluster]: { isMetricsEnabled: true } });
+}
 
-export const useSettings = () => {
-  const [isVisible, setIsVisible] = React.useState(!!loadSettings().isVisible);
-  const timeoutRef = React.useRef<NodeJS.Timeout>();
+/**
+ * disableMetrics disables metrics for a specific cluster.
+ * @param {string} cluster - The name of the cluster.
+ */
+export function disableMetrics(cluster: string) {
+  const store = getConfigStore();
+  store.update({ [cluster]: { isMetricsEnabled: false } });
+}
 
-  React.useEffect(() => {
-    let isAlive = true;
-    _pluginSettings.isVisible = isVisible;
+/**
+ * isMetricsEnabled checks if metrics are enabled for a specific cluster.
+ * @param {string} cluster - The name of the cluster.
+ * @returns {boolean} True if metrics are enabled, false otherwise.
+ */
+export function isMetricsEnabled(cluster: string): boolean {
+  const clusterData = getClusterConfig(cluster);
+  return clusterData?.isMetricsEnabled ?? false;
+}
 
-    if (!!timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
+/**
+ * getPrometheusPrefix returns the prefix for the Prometheus metrics.
+ * @param {string} cluster - The name of the cluster.
+ * @returns {Promise<string | null>} The prefix for the Prometheus metrics, or null if not found.
+ */
+export async function getPrometheusPrefix(cluster: string): Promise<string | null> {
+  // check if cluster has autoDetect enabled
+  // if so return the prometheus pod address
+  const clusterData = getClusterConfig(cluster);
+  if (clusterData?.autoDetect) {
+    const [isInstalled, prometheusPodName, prometheusPodNamespace] = await isPrometheusInstalled();
+    if (isInstalled) {
+      return `${prometheusPodNamespace}/pods/${prometheusPodName}`;
+    } else {
+      return null;
     }
+  }
+  if (clusterData?.address) {
+    const [namespace, service] = clusterData?.address.split('/');
+    return `${namespace}/services/${service}`;
+  }
+  return null;
+}
 
-    // We use a timeout to avoid storing the settings on every change
-    timeoutRef.current = setTimeout(() => {
-      if (isAlive) {
-        storeSettings({ isVisible });
-      }
-    }, STORAGE_DELAY);
-
-    return () => {
-      if (!!timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      isAlive = false;
-    };
-  }, [isVisible]);
-
-  return {
-    isVisible,
-    setIsVisible,
-  };
-};
-
-export const usePluginSettings = () => useBetween(useSettings);
+/**
+ * getPrometheusInterval returns the default timespan for the Prometheus metrics.
+ * @param {string} cluster - The name of the cluster.
+ * @returns {string} The default timespan for the Prometheus metrics.
+ */
+export function getPrometheusInterval(cluster: string): string {
+  const clusterData = getClusterConfig(cluster);
+  return clusterData?.defaultTimespan ?? '24h';
+}
 
 export const ChartEnabledKinds = [
   'Pod',

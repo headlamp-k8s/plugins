@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { Box, Button, Grid, IconButton, Link, Paper, Typography, useTheme } from '@mui/material';
 import { Tooltip } from '@mui/material';
 import Alert from '@mui/material/Alert';
@@ -9,8 +10,8 @@ import makeStyles from '@mui/styles/makeStyles';
 import React, { useEffect, useState } from 'react';
 import skeletonImg from '../assets/chart-skeleton.png';
 import { Chart } from './chart';
-import { fetchMetrics, isPrometheusInstalled } from './request';
-import { usePluginSettings } from './util';
+import { fetchMetrics } from './request';
+import { disableMetrics, getConfigStore, getPrometheusInterval, getPrometheusPrefix } from './util';
 
 const learnMoreLink = 'https://github.com/headlamp-k8s/plugins/tree/main/prometheus#readme';
 
@@ -34,7 +35,7 @@ const useStyles = makeStyles(theme => ({
 
 function InstallPrometheusBanner() {
   const classes = useStyles();
-  const pluginSettings = usePluginSettings();
+  const cluster = useCluster();
 
   return (
     <Grid
@@ -60,7 +61,7 @@ function InstallPrometheusBanner() {
           className={classes.dismissButton}
           size="small"
           variant="contained"
-          onClick={() => pluginSettings.setIsVisible(false)}
+          onClick={() => disableMetrics(cluster)}
         >
           Dismiss
         </Button>
@@ -84,41 +85,51 @@ export function GenericMetricsChart(props: {
     INSTALLED,
   }
 
-  const pluginSettings = usePluginSettings();
   const [chartVariant, setChartVariant] = useState<string>('cpu');
   const [refresh, setRefresh] = useState<boolean>(true);
-
-  const [prometheusInfo, setPrometheusInfo] = useState<{
-    podName: string;
-    podNamespace: string;
-  } | null>(null);
   const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
+  const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+  const cluster = useCluster();
+  const configStore = getConfigStore();
+  const useClusterConfig = configStore.useConfig();
+  const clusterConfig = useClusterConfig();
 
   useEffect(() => {
+    const isEnabled = clusterConfig?.[cluster]?.isMetricsEnabled || false;
+    setIsVisible(isEnabled);
+
+    if (!isEnabled) {
+      setState(prometheusState.UNKNOWN);
+      setPrometheusPrefix(null);
+      return;
+    }
+
+    setState(prometheusState.LOADING);
     (async () => {
       try {
-        const [isInstalled, podName, namespace] = await isPrometheusInstalled();
-        if (isInstalled) {
-          setPrometheusInfo({ podName, podNamespace: namespace });
+        const prefix = await getPrometheusPrefix(cluster);
+        if (prefix) {
+          setPrometheusPrefix(prefix);
           setState(prometheusState.INSTALLED);
         } else {
-          setPrometheusInfo(null);
           setState(prometheusState.UNKNOWN);
         }
       } catch (e) {
         setState(prometheusState.ERROR);
-        return;
       }
     })();
-  }, []);
+  }, [clusterConfig, cluster]);
 
   const handleChartVariantChange = (event: React.MouseEvent<HTMLButtonElement>) => {
     setChartVariant(event.currentTarget.value);
   };
 
-  if (!pluginSettings.isVisible) {
+  if (!isVisible) {
     return null;
   }
+
+  const interval = getPrometheusInterval(cluster);
 
   return (
     <SectionBox>
@@ -166,7 +177,7 @@ export function GenericMetricsChart(props: {
           : []}
       </Box>
 
-      {prometheusInfo ? (
+      {state === prometheusState.INSTALLED ? (
         <Box
           style={{
             justifyContent: 'center',
@@ -180,14 +191,16 @@ export function GenericMetricsChart(props: {
             <CPUChart
               query={props.cpuQuery}
               autoRefresh={refresh}
-              prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+              prometheusPrefix={prometheusPrefix}
+              interval={interval}
             />
           )}
           {chartVariant === 'memory' && (
             <MemoryChart
               query={props.memoryQuery}
               autoRefresh={refresh}
-              prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+              prometheusPrefix={prometheusPrefix}
+              interval={interval}
             />
           )}
           {chartVariant === 'network' && (
@@ -195,7 +208,8 @@ export function GenericMetricsChart(props: {
               rxQuery={props.networkRxQuery}
               txQuery={props.networkTxQuery}
               autoRefresh={refresh}
-              prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+              interval={interval}
+              prometheusPrefix={prometheusPrefix}
             />
           )}
           {chartVariant === 'filesystem' && (
@@ -203,7 +217,8 @@ export function GenericMetricsChart(props: {
               readQuery={props.filesystemReadQuery}
               writeQuery={props.filesystemWriteQuery}
               autoRefresh={refresh}
-              prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+              interval={interval}
+              prometheusPrefix={prometheusPrefix}
             />
           )}
         </Box>
@@ -230,37 +245,47 @@ export function DiskMetricsChart(props: { usageQuery?: string; capacityQuery?: s
     INSTALLED,
   }
 
-  const pluginSettings = usePluginSettings();
-  const [refresh, setRefresh] = useState<boolean>(true);
+  const cluster = useCluster();
+  const configStore = getConfigStore();
+  const clusterConfig = configStore.useConfig();
 
-  const [prometheusInfo, setPrometheusInfo] = useState<{
-    podName: string;
-    podNamespace: string;
-  } | null>(null);
+  const [refresh, setRefresh] = useState<boolean>(true);
+  const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
   const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
+  const [isVisible, setIsVisible] = useState<boolean>(false);
 
   useEffect(() => {
+    const isEnabled = clusterConfig?.clusters?.[cluster]?.enableMetrics || false;
+    setIsVisible(isEnabled);
+
+    if (!isEnabled) {
+      setState(prometheusState.UNKNOWN);
+      setPrometheusPrefix(null);
+      return;
+    }
+
+    setState(prometheusState.LOADING);
     (async () => {
       try {
-        const [isInstalled, podName, namespace] = await isPrometheusInstalled();
-        if (isInstalled) {
-          setPrometheusInfo({ podName, podNamespace: namespace });
+        const prefix = await getPrometheusPrefix(cluster);
+        if (prefix) {
+          setPrometheusPrefix(prefix);
           setState(prometheusState.INSTALLED);
         } else {
-          setPrometheusInfo(null);
           setState(prometheusState.UNKNOWN);
         }
       } catch (e) {
+        console.error('Error checking Prometheus installation:', e);
         setState(prometheusState.ERROR);
-        return;
       }
     })();
-  }, []);
+  }, [clusterConfig, cluster]);
 
-  if (!pluginSettings.isVisible) {
+  if (!isVisible) {
     return null;
   }
 
+  const interval = getPrometheusInterval(cluster);
   return (
     <SectionBox>
       <Box
@@ -286,7 +311,7 @@ export function DiskMetricsChart(props: { usageQuery?: string; capacityQuery?: s
           : []}
       </Box>
 
-      {prometheusInfo ? (
+      {state === prometheusState.INSTALLED ? (
         <Box
           style={{
             justifyContent: 'center',
@@ -299,8 +324,9 @@ export function DiskMetricsChart(props: { usageQuery?: string; capacityQuery?: s
           <DiskChart
             usageQuery={props.usageQuery}
             capacityQuery={props.capacityQuery}
+            interval={interval}
             autoRefresh={refresh}
-            prometheusPrefix={`${prometheusInfo.podNamespace}/pods/${prometheusInfo.podName}`}
+            prometheusPrefix={prometheusPrefix}
           />
         </Box>
       ) : state === prometheusState.LOADING ? (
@@ -318,20 +344,46 @@ export function DiskMetricsChart(props: { usageQuery?: string; capacityQuery?: s
   );
 }
 
-function createTickTimestampFormatter() {
+function createTickTimestampFormatter(interval: string) {
   let prevRenderedTimestamp = null;
 
   return function (timestamp) {
     const date = new Date(timestamp * 1000);
-    const currentTimestamp = `${date.getHours()}:${date.getMinutes()}`;
+    let format: string;
+
+    // Determine format based on interval
+    switch (interval) {
+      case '10m':
+      case '30m':
+      case '1h':
+      case '3h':
+      case '6h':
+      case '12h':
+      case '24h':
+      case '48h':
+        format = `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+        break;
+      case 'today':
+      case 'yesterday':
+        format = `${date.getHours()}:00`;
+        break;
+      case 'week':
+      case 'lastweek':
+      case '7d':
+      case '14d':
+        format = `${date.getMonth() + 1}/${date.getDate()}`;
+        break;
+      default:
+        format = `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
 
     // Check if the current timestamp is different from the previously rendered one
-    const shouldRenderDate = currentTimestamp !== prevRenderedTimestamp;
+    const shouldRenderDate = format !== prevRenderedTimestamp;
 
     // Update the previous timestamp
-    prevRenderedTimestamp = currentTimestamp;
+    prevRenderedTimestamp = format;
 
-    return shouldRenderDate ? `${date.getHours()}:${date.getMinutes()}` : '';
+    return shouldRenderDate ? format : '';
   };
 }
 
@@ -393,8 +445,13 @@ function formatBytes(bytes: number) {
   return (bytes / Math.pow(1024, i)).toFixed(2) + units[i];
 }
 
-export function CPUChart(props: { query: string; prometheusPrefix: string; autoRefresh: boolean }) {
-  const xTickFormatter = createTickTimestampFormatter();
+export function CPUChart(props: {
+  query: string;
+  prometheusPrefix: string;
+  interval: string;
+  autoRefresh: boolean;
+}) {
+  const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
   const XTickProps = {
@@ -445,9 +502,10 @@ export function CPUChart(props: { query: string; prometheusPrefix: string; autoR
 export function MemoryChart(props: {
   query: string;
   prometheusPrefix: string;
+  interval: string;
   autoRefresh: boolean;
 }) {
-  const xTickFormatter = createTickTimestampFormatter();
+  const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
   const XTickProps = {
@@ -505,10 +563,11 @@ export function MemoryChart(props: {
 export function NetworkChart(props: {
   rxQuery: string;
   txQuery: string;
+  interval: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
 }) {
-  const xTickFormatter = createTickTimestampFormatter();
+  const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
   return (
@@ -569,10 +628,11 @@ export function NetworkChart(props: {
 export function DiskChart(props: {
   usageQuery: string;
   capacityQuery: string;
+  interval: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
 }) {
-  const xTickFormatter = createTickTimestampFormatter();
+  const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
   return (
@@ -633,10 +693,11 @@ export function DiskChart(props: {
 export function FilesystemChart(props: {
   readQuery: string;
   writeQuery: string;
+  interval: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
 }) {
-  const xTickFormatter = createTickTimestampFormatter();
+  const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
   return (

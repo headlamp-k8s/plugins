@@ -3,8 +3,10 @@ import {
   DetailsViewSectionProps,
   registerDetailsViewHeaderActionsProcessor,
   registerDetailsViewSectionsProcessor,
+  registerPluginSettings,
 } from '@kinvolk/headlamp-plugin/lib';
 import { DiskMetricsChart, GenericMetricsChart } from './common';
+import { Settings } from './settings';
 import { ChartEnabledKinds } from './util';
 import VisibilityButton from './VisibilityButton';
 
@@ -48,6 +50,8 @@ function PrometheusMetrics(resource: DetailsViewSectionProps) {
     );
   }
 }
+
+registerPluginSettings('@headlamp-k8s/prometheus', Settings, true);
 
 registerDetailsViewSectionsProcessor(function addSubheaderSection(resource, sections) {
   // Ignore if there is no resource.
