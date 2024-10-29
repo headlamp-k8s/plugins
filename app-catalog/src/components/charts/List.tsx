@@ -75,10 +75,6 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
 
       store.set({ showOnlyVerified: showOnlyVerified });
 
-      if (props.showOnlyVerified!!) {
-        store.set({ showOnlyVerified: props.showOnlyVerified });
-      }
-
       async function fetchData() {
         try {
           const response: any = await fetchCharts(search, showOnlyVerified, chartCategory, page);
