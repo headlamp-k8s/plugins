@@ -126,7 +126,7 @@ const pluginSnackbarAction = (closeCallback: () => void) => {
           window.location.reload();
         }}
       >
-        Activate Now
+        Reload Now
       </Button>
       <Button onClick={closeCallback}>Close</Button>
     </>
