@@ -5,10 +5,11 @@ import {
   registerDetailsViewSectionsProcessor,
   registerPluginSettings,
 } from '@kinvolk/headlamp-plugin/lib';
-import { DiskMetricsChart, GenericMetricsChart } from './common';
-import { Settings } from './settings';
+import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
+import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
+import { Settings } from './components/Settings/Settings';
+import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import { ChartEnabledKinds } from './util';
-import VisibilityButton from './VisibilityButton';
 
 function PrometheusMetrics(resource: DetailsViewSectionProps) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {

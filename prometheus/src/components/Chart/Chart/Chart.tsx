@@ -2,50 +2,25 @@ import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonCompone
 import { Box, useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { getTimeRange } from '../../../util';
 
 /**
- * Calculates the time range based on the given interval.
- * @param {string} interval - The time interval (e.g., '10m', '1h', '24h', 'week').
- * @returns {Object} An object containing the 'from' timestamp, 'to' timestamp, and 'step' in seconds.
+ * Props for the Chart component.
+ * @interface ChartProps
+ * @property {Array<Object>} plots - Array of plot configurations.
+ * @property {string} plots[].query - The Prometheus query string.
+ * @property {string} plots[].name - Display name for the plot.
+ * @property {string} plots[].fillColor - Fill color for the plot area.
+ * @property {string} plots[].strokeColor - Stroke color for the plot line.
+ * @property {Function} plots[].dataProcessor - Function to process the raw metrics data.
+ * @property {Function} fetchMetrics - Function to fetch metrics data from Prometheus.
+ * @property {string} interval - Time interval for the chart (e.g. '10m', '1h', '24h').
+ * @property {string} prometheusPrefix - URL prefix for Prometheus API calls.
+ * @property {boolean} autoRefresh - Whether to automatically refresh the chart data.
+ * @property {Object} xAxisProps - Props to pass to the X axis component.
+ * @property {Object} yAxisProps - Props to pass to the Y axis component.
+ * @property {Function} [CustomTooltip] - Optional custom tooltip component.
  */
-export function getTimeRange(interval: string): { from: number; to: number; step: number } {
-  const now = Math.floor(Date.now() / 1000);
-  const day = 86400; // seconds in a day
-
-  switch (interval) {
-    case '10m':
-      return { from: now - 600, to: now, step: 15 }; // 15 seconds step
-    case '30m':
-      return { from: now - 1800, to: now, step: 30 }; // 30 seconds step
-    case '1h':
-      return { from: now - 3600, to: now, step: 60 }; // 1 minute step
-    case '3h':
-      return { from: now - 10800, to: now, step: 180 }; // 3 minutes step
-    case '6h':
-      return { from: now - 21600, to: now, step: 360 }; // 6 minutes step
-    case '12h':
-      return { from: now - 43200, to: now, step: 720 }; // 12 minutes step
-    case '24h':
-      return { from: now - day, to: now, step: 300 }; // 5 minutes step
-    case '48h':
-      return { from: now - 2 * day, to: now, step: 600 }; // 10 minutes step
-    case 'today':
-      return { from: now - (now % day), to: now, step: 300 }; // 5 minutes step
-    case 'yesterday':
-      return { from: now - (now % day) - day, to: now - (now % day), step: 300 }; // 5 minutes step
-    case 'week':
-      return { from: now - 7 * day, to: now, step: 3600 }; // 1 hour step
-    case 'lastweek':
-      return { from: now - 14 * day, to: now - 7 * day, step: 3600 }; // 1 hour step
-    case '7d':
-      return { from: now - 7 * day, to: now, step: 3600 }; // 1 hour step
-    case '14d':
-      return { from: now - 14 * day, to: now, step: 7200 }; // 2 hours step
-    default:
-      return { from: now - 600, to: now, step: 15 }; // Default to 10 minutes with 15 seconds step
-  }
-}
-
 export interface ChartProps {
   plots: Array<{
     query: string;
@@ -67,7 +42,7 @@ export interface ChartProps {
   CustomTooltip?: ({ active, payload, label }) => JSX.Element | null;
 }
 
-export function Chart(props: ChartProps) {
+export default function Chart(props: ChartProps) {
   enum ChartState {
     LOADING,
     ERROR,

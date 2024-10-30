@@ -21,13 +21,28 @@ function isValidAddress(address: string): boolean {
 }
 
 /**
- * Settings component for configuring Prometheus metrics.
- * @param {Object} props - The properties passed to the component.
- * @param {Object} props.data - The current configuration data.
- * @param {Function} props.onDataChange - The function to call when the data changes.
- * @returns {JSX.Element} The Settings component.
+ * Props for the Settings component.
+ * @interface SettingsProps
+ * @property {Object.<string, {isMetricsEnabled?: boolean, autoDetect?: boolean, address?: string, defaultTimespan?: string}>} data - Configuration data for each cluster
+ * @property {Function} onDataChange - Callback function when data changes
  */
-export function Settings(props) {
+interface SettingsProps {
+  data: Record<
+    string,
+    {
+      isMetricsEnabled?: boolean;
+      autoDetect?: boolean;
+      address?: string;
+      defaultTimespan?: string;
+    }
+  >;
+  onDataChange: (newData: SettingsProps['data']) => void;
+}
+
+/**
+ * Settings component for configuring Prometheus metrics.
+ */
+export function Settings(props: SettingsProps) {
   const { data, onDataChange } = props;
   const [selectedCluster, setSelectedCluster] = useState('');
   const [addressError, setAddressError] = useState(false);
@@ -39,6 +54,19 @@ export function Settings(props) {
       setSelectedCluster(Object.keys(clusters)[0]);
     }
   }, [clusters, selectedCluster]);
+
+  useEffect(() => {
+    if (selectedCluster && !data?.[selectedCluster]) {
+      onDataChange({
+        ...data,
+        [selectedCluster]: {
+          isMetricsEnabled: true,
+          autoDetect: true,
+          defaultTimespan: '24h',
+        },
+      });
+    }
+  }, [selectedCluster, data, onDataChange]);
 
   const selectedClusterData = data?.[selectedCluster] || {};
   const isMetricsEnabled = selectedClusterData.isMetricsEnabled ?? true;

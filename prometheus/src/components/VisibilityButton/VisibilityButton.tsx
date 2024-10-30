@@ -4,14 +4,14 @@ import { KubeObject } from '@kinvolk/headlamp-plugin/lib/K8s/cluster';
 import { Tooltip } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
 import React, { useEffect, useState } from 'react';
-import { ChartEnabledKinds } from './util';
-import { getConfigStore, disableMetrics, enableMetrics } from './util';
+import { ChartEnabledKinds } from '../../util';
+import { disableMetrics, enableMetrics, getConfigStore } from '../../util';
 
 export interface VisibilityButtonProps {
   resource?: KubeObject;
 }
 
-export default function VisibilityButton(props: VisibilityButtonProps) {
+export function VisibilityButton(props: VisibilityButtonProps) {
   const { resource } = props;
   const cluster = useCluster();
   const [isEnabled, setIsEnabled] = useState(false);
@@ -47,6 +47,7 @@ export default function VisibilityButton(props: VisibilityButtonProps) {
   return (
     <Tooltip title={description}>
       <ToggleButton
+        value="toggle-metrics"
         aria-label={description}
         onClick={handleToggle}
         selected={isEnabled}
