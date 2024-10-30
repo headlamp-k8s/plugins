@@ -1,6 +1,7 @@
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { Box, Button, Grid, Link, Paper, Typography } from '@mui/material';
 import makeStyles from '@mui/styles/makeStyles';
+import { useHistory } from 'react-router-dom';
 import skeletonImg from '../../../assets/chart-skeleton.png';
 import { disableMetrics } from '../../util';
 import { formatBytes } from '../../util';
@@ -25,9 +26,14 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-export function InstallPrometheusBanner() {
+/**
+ * Component to display when Prometheus is not found in the cluster
+ * @returns {JSX.Element}
+ */
+export function PrometheusNotFoundBanner() {
   const classes = useStyles();
   const cluster = useCluster();
+  const history = useHistory();
 
   return (
     <Grid
@@ -39,7 +45,17 @@ export function InstallPrometheusBanner() {
       className={classes.skeletonBox}
     >
       <Grid item>
-        <Typography variant="h5">Install Prometheus for accessing metrics charts</Typography>
+        <Typography variant="h5">
+          Couldn't detect Prometheus in your cluster, Either configure prometheus plugin or install
+          prometheus in your cluster.
+        </Typography>
+      </Grid>
+      <Grid item>
+        <Typography>
+          <Link onClick={() => history.push('/settings/plugins/@headlamp-k8s%2Fprometheus')}>
+            Configure Prometheus plugin.
+          </Link>
+        </Typography>
       </Grid>
       <Grid item>
         <Typography>

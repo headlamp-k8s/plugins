@@ -6,7 +6,7 @@ import { Box, IconButton, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/
 import Alert from '@mui/material/Alert';
 import { useEffect, useState } from 'react';
 import { getConfigStore, getPrometheusInterval, getPrometheusPrefix } from '../../../util';
-import { InstallPrometheusBanner } from '../common';
+import { PrometheusNotFoundBanner } from '../common';
 import { CPUChart } from '../CPUChart/CPUChart';
 import { FilesystemChart } from '../FilesystemChart/FilesystemChart';
 import { MemoryChart } from '../MemoryChart/MemoryChart';
@@ -188,7 +188,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
           <Alert severity="warning">Error fetching prometheus Info</Alert>
         </Box>
       ) : (
-        <InstallPrometheusBanner />
+        <PrometheusNotFoundBanner />
       )}
     </SectionBox>
   );

@@ -5,7 +5,7 @@ import { Box, Icon, IconButton } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import { useEffect, useState } from 'react';
 import { getConfigStore, getPrometheusInterval, getPrometheusPrefix } from '../../../util';
-import { InstallPrometheusBanner } from '../common';
+import { PrometheusNotFoundBanner } from '../common';
 import { DiskChart } from '../DiskChart/DiskChart';
 
 /**
@@ -123,7 +123,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
           <Alert severity="warning">Error fetching prometheus Info</Alert>
         </Box>
       ) : (
-        <InstallPrometheusBanner />
+        <PrometheusNotFoundBanner />
       )}
     </SectionBox>
   );
