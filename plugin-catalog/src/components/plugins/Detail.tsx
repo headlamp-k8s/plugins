@@ -118,6 +118,21 @@ export interface PurePluginDetailProps {
   onAlertClose: () => void;
 }
 
+const pluginSnackbarAction = (closeCallback: () => void) => {
+  return (
+    <>
+      <Button
+        onClick={() => {
+          window.location.reload();
+        }}
+      >
+        Activate Now
+      </Button>
+      <Button onClick={closeCallback}>Close</Button>
+    </>
+  );
+};
+
 export function PurePluginDetail({
   pluginDetail,
   currentAction,
@@ -153,7 +168,6 @@ export function PurePluginDetail({
           },
         }}
         open={!!alertMessage}
-        autoHideDuration={6000}
         onClose={onAlertClose}
         message={
           <Tooltip title={alertMessage || ''} arrow>
@@ -163,7 +177,7 @@ export function PurePluginDetail({
           </Tooltip>
         }
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        action={<Button onClick={onAlertClose}>Close</Button>}
+        action={pluginSnackbarAction(onAlertClose)}
       />
       <SectionBox
         title={
