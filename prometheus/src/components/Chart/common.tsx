@@ -46,7 +46,10 @@ export function PrometheusNotFoundBanner() {
     >
       <Grid item>
         <Typography variant="h5">
-          Couldn't detect Prometheus in your cluster, Either configure prometheus plugin or install
+          Couldn't detect Prometheus in your cluster.
+        </Typography>
+        <Typography variant="h6">
+          Either configure prometheus plugin or install
           prometheus in your cluster.
         </Typography>
       </Grid>
