@@ -50,6 +50,12 @@ export function BackstageButtonPure({
     }
   };
 
+  // If we are not running in Backstage + the Backstage URL is not set up, then we
+  // do not display the button at all.
+  if (!isInIframe && !backstageUrl) {
+    return null;
+  }
+
   return (
     <Tooltip title="Backstage">
       <IconButton onClick={handleClick} aria-label="Backstage" aria-haspopup="true" size="large">
