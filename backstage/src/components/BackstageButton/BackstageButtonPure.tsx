@@ -59,7 +59,7 @@ export function BackstageButtonPure({
   return (
     <Tooltip title="View in Backstage">
       <IconButton onClick={handleClick} aria-label="View in Backstage" aria-haspopup="true" size="large">
-        <Icon icon="mdi:alpha-b-circle" />
+        <Icon icon="simple-icons:backstage" width="20"/>
       </IconButton>
     </Tooltip>
   );
