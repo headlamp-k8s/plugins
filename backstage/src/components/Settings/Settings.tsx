@@ -38,13 +38,22 @@ export const Settings: React.FC<SettingsProps> = ({ data, onDataChange }) => {
 
   const handleUrlChange = useCallback(
     (newURL: string) => {
-      onDataChange({
+      const newData = {
         ...data,
         [selectedCluster]: {
           ...data?.[selectedCluster],
           backstageUrl: newURL,
         },
-      });
+      };
+
+      // Remove the config if the URLs are empty
+      for (const [clusterName, clusterData] of Object.entries(newData)) {
+        if (!clusterData.backstageUrl) {
+          delete newData[clusterName];
+        }
+      }
+
+      onDataChange(newData);
       setValidUrl(validateUrl(newURL));
     },
     [data, onDataChange, selectedCluster]
