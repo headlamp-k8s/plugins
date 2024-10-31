@@ -1,5 +1,8 @@
-import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, MenuItem, Select, Typography } from '@mui/material';
+import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { MenuItem, Select } from '@mui/material';
+import FormControl from '@mui/material/FormControl';
+import FormHelperText from '@mui/material/FormHelperText';
+import InputLabel from '@mui/material/InputLabel';
 import TextField from '@mui/material/TextField';
 import React from 'react';
 
@@ -42,18 +45,25 @@ export const SettingsPure: React.FC<SettingsPureProps> = ({
   ];
 
   return (
-    <Box width="80%">
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-        <Typography variant="h6">Select Cluster</Typography>
-        <Select value={selectedCluster} onChange={e => onClusterChange(e.target.value as string)}>
+    <SectionBox title="Settings">
+      <FormControl sx={{ minWidth: 120 }}>
+        <InputLabel id="backstage-cluster-selector">Cluster</InputLabel>
+        <Select
+          labelId="backstage-cluster-selector"
+          id="backstage-cluster-selector-select"
+          value={selectedCluster}
+          onChange={e => onClusterChange(e.target.value as string)}
+          renderValue={value => value}
+        >
           {Object.keys(clusters).map(clusterName => (
             <MenuItem key={clusterName} value={clusterName}>
-              {clusterName}
+              {data?.[clusterName] ? `✓ ${clusterName}` : clusterName}
             </MenuItem>
           ))}
         </Select>
-      </Box>
+        <FormHelperText>Clusters marked with "✓" have assigned Backstage URLs.</FormHelperText>
+      </FormControl>
       <NameValueTable rows={settingsRows} />
-    </Box>
+    </SectionBox>
   );
 };
