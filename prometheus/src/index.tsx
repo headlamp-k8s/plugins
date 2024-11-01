@@ -3,10 +3,13 @@ import {
   DetailsViewSectionProps,
   registerDetailsViewHeaderActionsProcessor,
   registerDetailsViewSectionsProcessor,
+  registerPluginSettings,
 } from '@kinvolk/headlamp-plugin/lib';
-import { DiskMetricsChart, GenericMetricsChart } from './common';
+import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
+import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
+import { Settings } from './components/Settings/Settings';
+import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import { ChartEnabledKinds } from './util';
-import VisibilityButton from './VisibilityButton';
 
 function PrometheusMetrics(resource: DetailsViewSectionProps) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
@@ -48,6 +51,8 @@ function PrometheusMetrics(resource: DetailsViewSectionProps) {
     );
   }
 }
+
+registerPluginSettings('@headlamp-k8s/prometheus', Settings, true);
 
 registerDetailsViewSectionsProcessor(function addSubheaderSection(resource, sections) {
   // Ignore if there is no resource.

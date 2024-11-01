@@ -1,6 +1,6 @@
-import { Meta, Story } from '@storybook/react/types-6-0';
+import { Meta, Story } from '@storybook/react';
 import { BrowserRouter } from 'react-router-dom';
-import { Chart, ChartProps } from './chart';
+import Chart, { ChartProps } from './Chart';
 
 const mockData = {
   status: 'success',
@@ -335,6 +335,7 @@ const Template: Story<ChartProps> = () => {
           dataProcessor: dataProcessor,
         },
       ]}
+      interval="10m"
       autoRefresh={false}
       xAxisProps={XTickProps}
       yAxisProps={YTickProps}

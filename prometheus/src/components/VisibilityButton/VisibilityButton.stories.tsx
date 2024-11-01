@@ -1,5 +1,5 @@
-import { Meta, Story } from '@storybook/react/types-6-0';
-import VisibilityButton from './VisibilityButton';
+import { Meta, Story } from '@storybook/react';
+import { VisibilityButton } from './VisibilityButton';
 
 export default {
   title: 'VisibilityButton',

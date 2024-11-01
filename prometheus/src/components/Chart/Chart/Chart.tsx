@@ -2,7 +2,25 @@ import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonCompone
 import { Box, useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { getTimeRange } from '../../../util';
 
+/**
+ * Props for the Chart component.
+ * @interface ChartProps
+ * @property {Array<Object>} plots - Array of plot configurations.
+ * @property {string} plots[].query - The Prometheus query string.
+ * @property {string} plots[].name - Display name for the plot.
+ * @property {string} plots[].fillColor - Fill color for the plot area.
+ * @property {string} plots[].strokeColor - Stroke color for the plot line.
+ * @property {Function} plots[].dataProcessor - Function to process the raw metrics data.
+ * @property {Function} fetchMetrics - Function to fetch metrics data from Prometheus.
+ * @property {string} interval - Time interval for the chart (e.g. '10m', '1h', '24h').
+ * @property {string} prometheusPrefix - URL prefix for Prometheus API calls.
+ * @property {boolean} autoRefresh - Whether to automatically refresh the chart data.
+ * @property {Object} xAxisProps - Props to pass to the X axis component.
+ * @property {Object} yAxisProps - Props to pass to the Y axis component.
+ * @property {Function} [CustomTooltip] - Optional custom tooltip component.
+ */
 export interface ChartProps {
   plots: Array<{
     query: string;
@@ -12,6 +30,7 @@ export interface ChartProps {
     dataProcessor: (data: any) => any[];
   }>;
   fetchMetrics: (query: object) => Promise<any>;
+  interval: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
   xAxisProps: {
@@ -23,7 +42,7 @@ export interface ChartProps {
   CustomTooltip?: ({ active, payload, label }) => JSX.Element | null;
 }
 
-export function Chart(props: ChartProps) {
+export default function Chart(props: ChartProps) {
   enum ChartState {
     LOADING,
     ERROR,
@@ -40,9 +59,7 @@ export function Chart(props: ChartProps) {
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
     firstLoad: boolean = false
   ) => {
-    const currentTime = Date.now() / 1000;
-
-    const tenMinutesBefore = currentTime - 10 * 60;
+    const { from, to, step } = getTimeRange(props.interval);
 
     const fetchedMetrics: {
       [key: string]: {
@@ -60,9 +77,9 @@ export function Chart(props: ChartProps) {
         response = await fetchMetrics({
           prefix: props.prometheusPrefix,
           query: plot.query,
-          from: tenMinutesBefore,
-          to: currentTime,
-          step: 2,
+          from: from,
+          to: to,
+          step: step,
         });
       } catch (e) {
         fetchedMetrics[plot.name] = { data: [], state: ChartState.ERROR };
