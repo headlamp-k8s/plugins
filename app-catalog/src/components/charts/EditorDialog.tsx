@@ -11,6 +11,11 @@ import { createRelease, getActionStatus } from '../../api/releases';
 import { addRepository } from '../../api/repository';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
 
+type FieldType = {
+  value: string;
+  title: string;
+};
+
 export function EditorDialog(props: {
   openEditor: boolean;
   chart: any;
@@ -27,13 +32,10 @@ export function EditorDialog(props: {
   const [chartValuesFetchError, setChartValuesFetchError] = useState(null);
   const { enqueueSnackbar } = useSnackbar();
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
-  const [versions, setVersions] = useState<string[]>([]);
+  const [versions, setVersions] = useState<FieldType[]>([]);
   const [chartInstallDescription, setChartInstallDescription] = useState('');
-  const [selectedVersion, setSelectedVersion] = useState<{ value: string; title: string }>();
-  const [selectedNamespace, setSelectedNamespace] = useState<{
-    value: string;
-    title: string;
-  }>();
+  const [selectedVersion, setSelectedVersion] = useState<FieldType>();
+  const [selectedNamespace, setSelectedNamespace] = useState<FieldType>();
   const [releaseName, setReleaseName] = useState('');
   const namespaceNames = namespaces?.map(namespace => ({
     value: namespace.metadata.name,
@@ -44,6 +46,12 @@ export function EditorDialog(props: {
   useEffect(() => {
     setIsFormSubmitting(false);
   }, [openEditor]);
+
+  useEffect(() => {
+    if (!selectedNamespace && !!namespaceNames) {
+      setSelectedNamespace(namespaceNames[0])
+    }
+  }, [selectedNamespace, namespaceNames]);
 
   function handleChartValueFetch(chart: any) {
     const packageID = chart.package_id;
@@ -65,11 +73,13 @@ export function EditorDialog(props: {
   }
 
   useEffect(() => {
+    setChartInstallDescription(`${chart.name} deployment`);
     fetchChartDetailFromArtifact(chart.name, chart.repository.name).then(response => {
       if (response.available_versions) {
         setVersions(
           response.available_versions.map(({ version }) => ({ title: version, value: version }))
         );
+        setSelectedVersion(response.available_versions[0].version);
       }
     });
     handleChartValueFetch(chart);
@@ -166,7 +176,7 @@ export function EditorDialog(props: {
       });
   }
 
-  function validateFormField(fieldValue: { value: string; title: string } | null | string) {
+  function validateFormField(fieldValue: FieldType | null | string) {
     if (typeof fieldValue === 'string') {
       if (fieldValue === '') {
         return false;
@@ -179,10 +189,6 @@ export function EditorDialog(props: {
       return true;
     }
   }
-
-  useEffect(() => {
-    setReleaseName('');
-  }, []);
 
   return (
     <Dialog
@@ -226,7 +232,7 @@ export function EditorDialog(props: {
                   getOptionLabel={option => option.title}
                   value={selectedNamespace}
                   // @ts-ignore
-                  onChange={(event, newValue: { value: string; title: string }) => {
+                  onChange={(event, newValue: FieldType) => {
                     setSelectedNamespace(newValue);
                   }}
                   renderInput={params => (
@@ -247,9 +253,9 @@ export function EditorDialog(props: {
                 }}
                 options={versions}
                 getOptionLabel={(option: any) => option.title ?? option}
-                value={selectedVersion?.value}
+                value={selectedVersion}
                 // @ts-ignore
-                onChange={(event, newValue: { value: string; title: string }) => {
+                onChange={(event, newValue: FieldType) => {
                   setSelectedVersion(newValue);
                 }}
                 renderInput={params => (
@@ -295,9 +301,6 @@ export function EditorDialog(props: {
                 setInstallLoading(false);
                 editor.focus();
                 setReleaseName('');
-                setSelectedVersion(null);
-                setSelectedNamespace(null);
-                setChartInstallDescription('');
               }}
               language="yaml"
               height="500px"
