@@ -1,0 +1,37 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Storyshots Components/BackstageButtonPure Default 1`] = `
+<div>
+  <button
+    aria-haspopup="true"
+    aria-label="View in Backstage"
+    class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeLarge css-bc0omg-MuiButtonBase-root-MuiIconButton-root"
+    data-mui-internal-clone-element="true"
+    tabindex="0"
+    type="button"
+  >
+    <span />
+    <span
+      class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+    />
+  </button>
+</div>
+`;
+
+exports[`Storyshots Components/BackstageButtonPure In Iframe 1`] = `
+<div>
+  <button
+    aria-haspopup="true"
+    aria-label="View in Backstage"
+    class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeLarge css-bc0omg-MuiButtonBase-root-MuiIconButton-root"
+    data-mui-internal-clone-element="true"
+    tabindex="0"
+    type="button"
+  >
+    <span />
+    <span
+      class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+    />
+  </button>
+</div>
+`;
