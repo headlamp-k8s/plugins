@@ -55,7 +55,7 @@ export function EditorDialog(props: {
 
   function handleChartValueFetch(chart: any) {
     const packageID = chart.package_id;
-    const packageVersion = selectedVersion.value;
+    const packageVersion = selectedVersion?.value ?? chart.version;
     setChartValuesLoading(true);
     fetchChartValues(packageID, packageVersion)
       .then((response: any) => {
