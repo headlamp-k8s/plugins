@@ -55,7 +55,7 @@ export function EditorDialog(props: {
 
   function handleChartValueFetch(chart: any) {
     const packageID = chart.package_id;
-    const packageVersion = chart.version;
+    const packageVersion = selectedVersion.value;
     setChartValuesLoading(true);
     fetchChartValues(packageID, packageVersion)
       .then((response: any) => {
@@ -84,6 +84,12 @@ export function EditorDialog(props: {
     });
     handleChartValueFetch(chart);
   }, [chart]);
+
+  useEffect(() => {
+    if (selectedVersion) {
+      handleChartValueFetch(chart);
+    }
+  }, [selectedVersion]);
 
   function checkInstallStatus(releaseName: string) {
     setTimeout(() => {
