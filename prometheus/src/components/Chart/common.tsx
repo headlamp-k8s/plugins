@@ -4,7 +4,7 @@ import makeStyles from '@mui/styles/makeStyles';
 import { useHistory } from 'react-router-dom';
 import skeletonImg from '../../../assets/chart-skeleton.png';
 import { disableMetrics } from '../../util';
-import { formatBytes } from '../../util';
+import { formatBytes, PLUGIN_NAME } from '../../util';
 
 const learnMoreLink = 'https://github.com/headlamp-k8s/plugins/tree/main/prometheus#readme';
 
@@ -45,17 +45,16 @@ export function PrometheusNotFoundBanner() {
       className={classes.skeletonBox}
     >
       <Grid item>
-        <Typography variant="h5">
-          Couldn't detect Prometheus in your cluster.
-        </Typography>
+        <Typography variant="h5">Couldn't detect Prometheus in your cluster.</Typography>
         <Typography variant="h6">
-          Either configure prometheus plugin or install
-          prometheus in your cluster.
+          Either configure prometheus plugin or install prometheus in your cluster.
         </Typography>
       </Grid>
       <Grid item>
         <Typography>
-          <Link onClick={() => history.push('/settings/plugins/@headlamp-k8s%2Fprometheus')}>
+          <Link
+            onClick={() => history.push(`/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`)}
+          >
             Configure Prometheus plugin.
           </Link>
         </Typography>
