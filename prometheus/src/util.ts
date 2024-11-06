@@ -1,6 +1,8 @@
 import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
 import { isPrometheusInstalled } from './request';
 
+export const PLUGIN_NAME = 'prometheus';
+
 /**
  * ClusterData type represents the configuration data for a cluster.
  * @property {boolean} autoDetect - Whether to auto-detect Prometheus metrics.
@@ -28,7 +30,7 @@ type Conf = {
  * @returns {ConfigStore<Conf>} The config store.
  */
 export function getConfigStore(): ConfigStore<Conf> {
-  return new ConfigStore<Conf>('@headlamp-k8s/prometheus');
+  return new ConfigStore<Conf>(PLUGIN_NAME);
 }
 
 /**
