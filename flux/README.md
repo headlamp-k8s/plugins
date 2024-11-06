@@ -1,6 +1,9 @@
-# flux
+# Flux
 
-Flux plugin that provides views for flux installation on your cluster. Flux is a tool for keeping Kubernetes clusters in sync with sources of configuration (like Git repositories), and automating updates to configuration when there is new code to deploy. 
+The Flux plugin provides a way to visualize Flux (should be installed in your cluster) in Headlamp. Flux is a tool for implementing GitOps and synchronizing Kubernetes clusters with sources of configuration (like Git repositories). It also automates updates to configuration when there is new code to deploy.
 
-## Installation
-checkout the installation guide [here](https://fluxcd.io/flux/installation/)
+This plugin adds a new item (Flux) to the sidebar to give the user an overview of the Flux installation on the cluster.
+
+## Flux Installation
+
+Please refer to the [official installation guide](https://fluxcd.io/flux/installation/) for Flux to learn to install it.
