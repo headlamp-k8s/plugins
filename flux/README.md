@@ -68,7 +68,7 @@ spec:
           - /bin/sh
           - -c
           - mkdir -p /build/plugins && cp -r /plugins/* /build/plugins/
-        image: ghcr.io/headlamp-k8s/flux-plugin:0.1.1-beta-1
+        image: ghcr.io/headlamp-k8s/headlamp-plugin-flux:latest
         imagePullPolicy: Always
         name: headlamp-plugins
         volumeMounts:
