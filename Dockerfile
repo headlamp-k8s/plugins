@@ -39,5 +39,8 @@ FROM alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367eff
 # Copy the built plugin files from the builder stage to the /plugins directory in the final image
 COPY --from=builder /headlamp-plugins/build/ /plugins/
 
+LABEL org.opencontainers.image.source=https://github.com/headlamp-k8s/plugins
+LABEL org.opencontainers.image.licenses=MIT
+
 # Set the default command to list the installed plugins
 CMD ["sh", "-c", "echo Plugins installed at /plugins/:; ls /plugins/"]
