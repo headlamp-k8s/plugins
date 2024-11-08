@@ -1,0 +1,237 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Storyshots Components/SettingsPure Default 1`] = `
+<div>
+  <div
+    class="MuiBox-root css-j1fy4m"
+  >
+    <div
+      class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
+    >
+      <div
+        class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+      >
+        <div
+          class="MuiBox-root css-70qvj9"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 MuiTypography-noWrap makeStyles-sectionTitle makeStyles-sectionTitle css-1c4rm8p-MuiTypography-root"
+          >
+            Settings
+          </h2>
+          <div
+            class="MuiBox-root css-ldp2l3"
+          />
+        </div>
+      </div>
+    </div>
+    <div
+      class="makeStyles-box MuiBox-root css-0"
+    >
+      <div
+        class="MuiFormControl-root css-pe0pe4-MuiFormControl-root"
+      >
+        <label
+          class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard css-1n1vwza-MuiFormLabel-root-MuiInputLabel-root"
+          data-shrink="true"
+          id="backstage-cluster-selector"
+        >
+          Cluster
+        </label>
+        <div
+          class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-16kq2pe-MuiInputBase-root-MuiInput-root-MuiSelect-root"
+        >
+          <div
+            aria-controls="mui-3"
+            aria-expanded="false"
+            aria-haspopup="listbox"
+            aria-labelledby="backstage-cluster-selector backstage-cluster-selector-select"
+            class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input css-1rxz5jq-MuiSelect-select-MuiInputBase-input-MuiInput-input"
+            id="backstage-cluster-selector-select"
+            role="combobox"
+            tabindex="0"
+          >
+            cluster1
+          </div>
+          <input
+            aria-hidden="true"
+            aria-invalid="false"
+            class="MuiSelect-nativeInput css-yf8vq0-MuiSelect-nativeInput"
+            tabindex="-1"
+            value="cluster1"
+          />
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-pqjvzy-MuiSvgIcon-root-MuiSelect-icon"
+            data-testid="ArrowDropDownIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M7 10l5 5 5-5z"
+            />
+          </svg>
+        </div>
+        <p
+          class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-filled css-nnd8o8-MuiFormHelperText-root"
+        >
+          Clusters marked with "✓" have assigned Backstage URLs.
+        </p>
+      </div>
+      <dl
+        class="MuiGrid-root MuiGrid-container makeStyles-table css-11lq3yg-MuiGrid-root"
+      >
+        <dt
+          class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-4 makeStyles-metadataLast makeStyles-metadataNameCell css-1r6indk-MuiGrid-root"
+        >
+          Backstage URL
+        </dt>
+        <dd
+          class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-8 makeStyles-metadataLast makeStyles-metadataCell css-r0umuq-MuiGrid-root"
+        >
+          <div
+            class="MuiFormControl-root MuiTextField-root css-1u3bzj6-MuiFormControl-root-MuiTextField-root"
+          >
+            <div
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-1d1jo89-MuiInputBase-root-MuiInput-root"
+            >
+              <input
+                aria-describedby="mui-4-helper-text"
+                aria-invalid="false"
+                class="MuiInputBase-input MuiInput-input css-1x51dt5-MuiInputBase-input-MuiInput-input"
+                id="mui-4"
+                type="text"
+                value="https://backstage.example.com"
+              />
+            </div>
+            <p
+              class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-filled css-nnd8o8-MuiFormHelperText-root"
+              id="mui-4-helper-text"
+            >
+              Enter Backstage URL
+            </p>
+          </div>
+        </dd>
+      </dl>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Storyshots Components/SettingsPure Invalid Url 1`] = `
+<div>
+  <div
+    class="MuiBox-root css-j1fy4m"
+  >
+    <div
+      class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 makeStyles-sectionHeader makeStyles-sectionHeader css-6ejd34-MuiGrid-root"
+    >
+      <div
+        class="MuiGrid-root MuiGrid-item css-13i4rnv-MuiGrid-root"
+      >
+        <div
+          class="MuiBox-root css-70qvj9"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 MuiTypography-noWrap makeStyles-sectionTitle makeStyles-sectionTitle css-1c4rm8p-MuiTypography-root"
+          >
+            Settings
+          </h2>
+          <div
+            class="MuiBox-root css-ldp2l3"
+          />
+        </div>
+      </div>
+    </div>
+    <div
+      class="makeStyles-box MuiBox-root css-0"
+    >
+      <div
+        class="MuiFormControl-root css-pe0pe4-MuiFormControl-root"
+      >
+        <label
+          class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard css-1n1vwza-MuiFormLabel-root-MuiInputLabel-root"
+          data-shrink="true"
+          id="backstage-cluster-selector"
+        >
+          Cluster
+        </label>
+        <div
+          class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-16kq2pe-MuiInputBase-root-MuiInput-root-MuiSelect-root"
+        >
+          <div
+            aria-controls="mui-5"
+            aria-expanded="false"
+            aria-haspopup="listbox"
+            aria-labelledby="backstage-cluster-selector backstage-cluster-selector-select"
+            class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input css-1rxz5jq-MuiSelect-select-MuiInputBase-input-MuiInput-input"
+            id="backstage-cluster-selector-select"
+            role="combobox"
+            tabindex="0"
+          >
+            cluster1
+          </div>
+          <input
+            aria-hidden="true"
+            aria-invalid="false"
+            class="MuiSelect-nativeInput css-yf8vq0-MuiSelect-nativeInput"
+            tabindex="-1"
+            value="cluster1"
+          />
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-pqjvzy-MuiSvgIcon-root-MuiSelect-icon"
+            data-testid="ArrowDropDownIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M7 10l5 5 5-5z"
+            />
+          </svg>
+        </div>
+        <p
+          class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-filled css-nnd8o8-MuiFormHelperText-root"
+        >
+          Clusters marked with "✓" have assigned Backstage URLs.
+        </p>
+      </div>
+      <dl
+        class="MuiGrid-root MuiGrid-container makeStyles-table css-11lq3yg-MuiGrid-root"
+      >
+        <dt
+          class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-4 makeStyles-metadataLast makeStyles-metadataNameCell css-1r6indk-MuiGrid-root"
+        >
+          Backstage URL
+        </dt>
+        <dd
+          class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-8 makeStyles-metadataLast makeStyles-metadataCell css-r0umuq-MuiGrid-root"
+        >
+          <div
+            class="MuiFormControl-root MuiTextField-root css-1u3bzj6-MuiFormControl-root-MuiTextField-root"
+          >
+            <div
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary Mui-error MuiInputBase-formControl css-1d1jo89-MuiInputBase-root-MuiInput-root"
+            >
+              <input
+                aria-describedby="mui-6-helper-text"
+                aria-invalid="true"
+                class="MuiInputBase-input MuiInput-input css-1x51dt5-MuiInputBase-input-MuiInput-input"
+                id="mui-6"
+                type="text"
+                value="invalid-url"
+              />
+            </div>
+            <p
+              class="MuiFormHelperText-root Mui-error MuiFormHelperText-sizeMedium MuiFormHelperText-filled css-nnd8o8-MuiFormHelperText-root"
+              id="mui-6-helper-text"
+            >
+              Invalid URL
+            </p>
+          </div>
+        </dd>
+      </dl>
+    </div>
+  </div>
+</div>
+`;
