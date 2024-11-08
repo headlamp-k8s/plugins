@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/backstage",
-  "version": "0.0.1",
+  "version": "0.1.0-beta-1",
   "description": "Backstage plugin for Headlamp",
   "scripts": {
     "start": "headlamp-plugin start",
