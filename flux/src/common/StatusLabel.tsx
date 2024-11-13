@@ -1,6 +1,4 @@
-import {
-  StatusLabel as HLStatusLabel,
-} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { StatusLabel as HLStatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 
 interface StatusLabelProps {
@@ -15,6 +13,9 @@ export default function StatusLabel(props: StatusLabelProps) {
     return <span>-</span>;
   }
 
+  if (item?.jsonData?.spec?.suspend) {
+    return <HLStatusLabel status="warning">Suspended</HLStatusLabel>;
+  }
   if (ready.status === 'Unknown') {
     return <HLStatusLabel status="warning">Reconciling…</HLStatusLabel>;
   }
