@@ -1,5 +1,10 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  Loader,
+  SectionBox,
+  SectionFilterHeader,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import MuiLink from '@mui/material/Link';
 import React from 'react';
 import CheckIfFluxInstalled, { useFluxControllerAvailableCheck } from '../checkflux';
@@ -55,10 +60,11 @@ function KustomizationList({ resourceClass }) {
   const [resource] = resourceClass.useList();
 
   return (
-    <SectionBox title={'Kustomizations'}>
+    <SectionBox title={<SectionFilterHeader title="Kustomizations" />}>
       <Table
         data={resource}
         defaultSortingColumn={2}
+        filterFunction={useFilterFunc()}
         columns={['name', 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
       />
     </SectionBox>
