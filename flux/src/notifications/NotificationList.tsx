@@ -1,5 +1,11 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { Link, Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  Link,
+  Loader,
+  SectionBox,
+  SectionFilterHeader,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Link as MuiLink } from '@mui/material';
 import React from 'react';
 import CheckIfFluxInstalled, { useFluxControllerAvailableCheck } from '../checkflux';
@@ -70,7 +76,7 @@ function Alerts(props) {
   const { resourceClass } = props;
   const [alerts] = resourceClass?.useList();
   return (
-    <SectionBox title="Alerts">
+    <SectionBox title={<SectionFilterHeader title="Alerts" />}>
       <Table
         data={alerts}
         columns={[
@@ -123,6 +129,7 @@ function Alerts(props) {
             accessorFn: item => item?.jsonData?.spec.summary,
           },
         ]}
+        filterFunction={useFilterFunc()}
       />
     </SectionBox>
   );
@@ -201,6 +208,7 @@ function Providers(props) {
             accessorFn: item => item.jsonData.spec.proxy || '-',
           },
         ]}
+        filterFunction={useFilterFunc()}
       />
     </SectionBox>
   );
@@ -278,6 +286,7 @@ function Receivers(props) {
               ),
           },
         ]}
+        filterFunction={useFilterFunc()}
       />
     </SectionBox>
   );
