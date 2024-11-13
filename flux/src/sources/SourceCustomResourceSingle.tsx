@@ -1,13 +1,14 @@
 import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
+import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
 import SourceLink from '../common/Link';
 import Table, { TableProps } from '../common/Table';
 
 interface FluxSourceCustomResourceProps {
   crd: KubeCRD;
-  title?: string;
+  title?: string | JSX.Element;
 }
 
 export default function FluxSourceCustomResource(props: FluxSourceCustomResourceProps) {
@@ -31,7 +32,7 @@ export default function FluxSourceCustomResource(props: FluxSourceCustomResource
 
 interface FluxSourceCustomResourceRendererProps {
   resourceClass: KubeObject;
-  title: string;
+  title: string | JSX.Element;
   type: string;
 }
 
@@ -130,9 +131,15 @@ function FluxSourceCustomResourceRenderer(props: FluxSourceCustomResourceRendere
     });
   }
 
+  console.log(title);
   return (
     <SectionBox title={title}>
-      <Table data={resource} columns={columns} defaultSortingColumn={3} />
+      <Table
+        data={resource}
+        columns={columns}
+        defaultSortingColumn={3}
+        filterFunction={useFilterFunc()}
+      />
     </SectionBox>
   );
 }
