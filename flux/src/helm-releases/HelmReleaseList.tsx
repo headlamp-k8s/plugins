@@ -1,5 +1,10 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  Loader,
+  SectionBox,
+  SectionFilterHeader,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Link as MuiLink } from '@mui/material';
 import React from 'react';
 import CheckIfFluxInstalled, { useFluxControllerAvailableCheck } from '../checkflux';
@@ -52,10 +57,11 @@ function HelmReleasesList({ resourceClass }) {
   const [resource] = resourceClass.useList();
 
   return (
-    <SectionBox title={'Helm Releases'}>
+    <SectionBox title={<SectionFilterHeader title="Helm Releases" />}>
       <Table
         data={resource}
         defaultSortingColumn={2}
+        filterFunction={useFilterFunc()}
         columns={['name', 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
       />
     </SectionBox>

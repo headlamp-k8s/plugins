@@ -1,4 +1,5 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import CheckIfFluxInstalled from '../checkflux';
 import FluxSourceCustomResource from './SourceCustomResourceSingle';
 
@@ -21,7 +22,7 @@ export default function FluxSources() {
 
   const sourceTables = [
     {
-      title: 'Git Repositories',
+      title: <SectionFilterHeader title={'Git Repositories'} />,
       crd: gitRepoCRD,
     },
     {

@@ -4,9 +4,11 @@ import {
   Link,
   Loader,
   SectionBox,
+  SectionFilterHeader,
   ShowHideLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Link as MuiLink } from '@mui/material';
 import React from 'react';
 import CheckIfFluxInstalled, { useFluxControllerAvailableCheck } from '../checkflux';
@@ -135,6 +137,7 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObject }) {
             },
             'age',
           ]}
+          filterFunction={useFilterFunc()}
         />
       </SectionBox>
     </>
@@ -173,6 +176,7 @@ function ImagePolicyList(props: { resourceClass: KubeObject }) {
           },
           'age',
         ]}
+        filterFunction={useFilterFunc()}
       />
     </SectionBox>
   );
@@ -183,7 +187,7 @@ function ImageRepositoryList(props: { resourceClass: KubeObject }) {
   const [imageRepositories] = resourceClass?.useList();
 
   return (
-    <SectionBox title="Image Repositories">
+    <SectionBox title={<SectionFilterHeader title="Image Repositories" />}>
       <Table
         data={imageRepositories}
         columns={[
@@ -234,6 +238,7 @@ function ImageRepositoryList(props: { resourceClass: KubeObject }) {
           },
           'age',
         ]}
+        filterFunction={useFilterFunc()}
       />
     </SectionBox>
   );
