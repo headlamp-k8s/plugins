@@ -17,46 +17,116 @@ interface Plugin {
 
 export interface PurePluginInstalledListProps {
   installedPlugins: Plugin[] | null;
+  otherInstalledPlugins: any[] | null;
   error: string | null;
 }
 
-export function PurePluginInstalledList({ installedPlugins, error }: PurePluginInstalledListProps) {
+export function PurePluginInstalledList({
+  installedPlugins,
+  otherInstalledPlugins,
+  error,
+}: PurePluginInstalledListProps) {
   return (
     <SectionBox title="Installed" textAlign="center" paddingTop={2}>
       {error ? (
         <Typography>{`Error loading Installed plugins: ${error}`}</Typography>
       ) : (
-        <SimpleTable
-          columns={[
-            {
-              label: 'Name',
-              getter: plugin => (
-                <Box>
-                  <Link
-                    routeName="/plugin-catalog/:repoName/:pluginName"
-                    params={{ repoName: plugin.repoName, pluginName: plugin.folderName }}
-                  >
-                    {plugin.pluginTitle}
-                  </Link>
-                </Box>
-              ),
-            },
-            {
-              label: 'Version',
-              getter: plugin => plugin.pluginVersion,
-            },
-            {
-              label: 'Repo',
-              getter: plugin => plugin.repoName,
-            },
-            {
-              label: 'Author',
-              getter: plugin => plugin.author,
-            },
-          ]}
-          emptyMessage="No plugins installed"
-          data={installedPlugins || []}
-        />
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              alignItems: 'start',
+            }}
+          >
+            <Typography variant="h6" components="h2">
+              Installed from the Plugin Catalog
+            </Typography>
+            <SimpleTable
+              columns={[
+                {
+                  label: 'Name',
+                  getter: plugin => (
+                    <Box>
+                      <Link
+                        routeName="/plugin-catalog/:repoName/:pluginName"
+                        params={{ repoName: plugin.repoName, pluginName: plugin.folderName }}
+                      >
+                        {plugin.pluginTitle}
+                      </Link>
+                    </Box>
+                  ),
+                },
+                {
+                  label: 'Version',
+                  getter: plugin => plugin.pluginVersion,
+                },
+                {
+                  label: 'Repo',
+                  getter: plugin => plugin.repoName,
+                },
+                {
+                  label: 'Author',
+                  getter: plugin => plugin.author,
+                },
+              ]}
+              emptyMessage="No plugins installed"
+              data={installedPlugins || []}
+            />
+          </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              alignItems: 'start',
+            }}
+          >
+            <Typography variant="h6" components="h2">
+              Other Installed Plugins
+            </Typography>
+
+            <SimpleTable
+              columns={[
+                {
+                  label: 'Name',
+                  getter: otherInstalledPlugins => (
+                    <Box>
+                      <Link
+                        routeName={`pluginDetails`}
+                        params={{ name: otherInstalledPlugins.name }}
+                      >
+                        {otherInstalledPlugins.name}
+                      </Link>
+                    </Box>
+                  ),
+                },
+                {
+                  label: 'Version',
+                  getter: otherInstalledPlugins => otherInstalledPlugins.version,
+                },
+                {
+                  label: 'Repo',
+                  getter: plugin => plugin.repoName,
+                },
+                {
+                  label: 'Author',
+                  getter: plugin => plugin.author,
+                },
+              ]}
+              emptyMessage="No plugins installed"
+              data={otherInstalledPlugins || []}
+            />
+          </Box>
+        </Box>
       )}
     </SectionBox>
   );
@@ -64,6 +134,7 @@ export function PurePluginInstalledList({ installedPlugins, error }: PurePluginI
 
 export function PluginInstalledList() {
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[] | null>(null);
+  const [otherInstalledPlugins, setOtherInstalledPlugins] = useState<Plugin[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -81,8 +152,25 @@ export function PluginInstalledList() {
       }
     }
 
+    function fetchOtherInstalledPlugins() {
+      const storedPlugins = localStorage.getItem('headlampPluginSettings');
+      if (storedPlugins) {
+        const parsedPlugins = JSON.parse(storedPlugins);
+        setOtherInstalledPlugins(parsedPlugins);
+      } else {
+        setOtherInstalledPlugins([]);
+      }
+    }
+
     fetchInstalledPlugins();
+    fetchOtherInstalledPlugins();
   }, []);
 
-  return <PurePluginInstalledList installedPlugins={installedPlugins} error={error} />;
+  return (
+    <PurePluginInstalledList
+      installedPlugins={installedPlugins}
+      otherInstalledPlugins={otherInstalledPlugins}
+      error={error}
+    />
+  );
 }
