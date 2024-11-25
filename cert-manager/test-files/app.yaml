@@ -1,0 +1,77 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo-nginx-ingress-cluster
+  annotations:
+    cert-manager.io/cluster-issuer: 'demo-letsencrypt-staging-cluster'
+spec:
+  tls:
+    - hosts:
+        - demo.headlamp.com
+      secretName: demo-nginx-tls-cluster
+  rules:
+    - host: demo.headlamp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: demo-nginx
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo-nginx-ingress-issuer
+  annotations:
+    cert-manager.io/issuer: 'demo-letsencrypt-staging'
+spec:
+  tls:
+    - hosts:
+        - demo2.headlamp.com
+      secretName: demo-nginx-tls-issuer
+  rules:
+    - host: demo2.headlamp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: demo-nginx
+                port:
+                  number: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-nginx
+  template:
+    metadata:
+      labels:
+        app: demo-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.19
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-nginx
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: demo-nginx
