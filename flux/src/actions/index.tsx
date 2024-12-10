@@ -3,6 +3,123 @@ import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useSnackbar } from 'notistack';
 import React from 'react';
 
+function EnableForceReconciliation(props) {
+  const { enqueueSnackbar } = useSnackbar();
+  const [open, setOpen] = React.useState<boolean>(false);
+  const { resource } = props;
+  
+  if(resource.jsonData.spec.force) {
+    return null;
+  }
+  return (
+    <>
+      <ActionButton
+        description="Enable force reconciliation"
+        icon={'mdi:stopwatch-cancel-outline'}
+        onClick={() => {
+          setOpen(true);
+        }}
+      />
+      <ConfirmDialog
+        open={open}
+        handleClose={() => setOpen(false)}
+        onConfirm={() => {
+          setOpen(false);
+          resource.jsonData.spec['force'] = true;
+          const patch = resource.constructor.apiEndpoint.patch;
+          patch(
+            {
+              spec: {
+                force: true,
+              },
+            },
+            resource.jsonData.metadata.namespace,
+            resource.jsonData.metadata.name
+          )
+            .then(response => {
+              if (response.spec.force) {
+                enqueueSnackbar(
+                  `Successfully enable force reconciliation for ${resource.metadata.name}`,
+                  { variant: 'success' }
+                );
+              } else {
+                enqueueSnackbar(`Failed to enable force reconciliation for ${resource.metadata.name}`, {
+                  variant: 'error',
+                });
+              }
+            })
+            .catch(error => {
+              enqueueSnackbar(
+                `Failed to enable force reconciliation for ${resource.metadata.name} error ${error}`,
+                { variant: 'error' }
+              );
+            });
+        }}
+        title={'Enable Force Reconciliation'}
+        description={`Are you sure you want to enable force reconciliation?`}
+      />
+    </>
+  );
+}
+
+function DisableForceReconciliation(props) {
+  const { enqueueSnackbar } = useSnackbar();
+  const [open, setOpen] = React.useState<boolean>(false);
+  const { resource } = props;
+  if(!resource.jsonData.spec.force) {
+    return null;
+  }
+  return (
+    <>
+      <ActionButton
+        description="Disable force reconciliation"
+        icon={'mdi:stopwatch-check'}
+        onClick={() => {
+          setOpen(true);
+        }}
+      />
+      <ConfirmDialog
+        open={open}
+        handleClose={() => setOpen(false)}
+        onConfirm={() => {
+          setOpen(false);
+          resource.jsonData.spec['force'] = false;
+          const patch = resource.constructor.apiEndpoint.patch;
+          patch(
+            {
+              spec: {
+                force: false,
+              },
+            },
+            resource.jsonData.metadata.namespace,
+            resource.jsonData.metadata.name
+          )
+            .then(response => {
+              if (!response.spec.force) {
+                enqueueSnackbar(
+                  `Successfully disable force reconciliation for ${resource.metadata.name}`,
+                  { variant: 'success' }
+                );
+              } else {
+                enqueueSnackbar(`Failed to disable force reconciliation for ${resource.metadata.name}`, {
+                  variant: 'error',
+                });
+              }
+            })
+            .catch(error => {
+              enqueueSnackbar(
+                `Failed to disable force reconciliation for ${resource.metadata.name} error ${error}`,
+                { variant: 'error' }
+              );
+            });
+        }}
+        title={'Disable Force Reconciliation'}
+        description={`Are you sure you want to disable force reconciliation?`}
+      />
+    </>
+  );
+}
+
 function SuspendAction(props) {
   const { enqueueSnackbar } = useSnackbar();
   const { resource } = props;
@@ -248,4 +365,4 @@ function SyncWithoutSourceAction(props) {
   );
 }
 
-export { SuspendAction, ResumeAction, SyncAction, SyncWithSourceAction, SyncWithoutSourceAction };
+export { SuspendAction, ResumeAction, SyncAction, SyncWithSourceAction, SyncWithoutSourceAction, EnableForceReconciliation, DisableForceReconciliation };

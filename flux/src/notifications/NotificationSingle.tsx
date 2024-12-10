@@ -8,7 +8,7 @@ import {
 import Event from '@kinvolk/headlamp-plugin/lib/k8s/event';
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { ResumeAction, SuspendAction, SyncAction } from '../actions/index';
+import { DisableForceReconciliation, EnableForceReconciliation, ResumeAction, SuspendAction, SyncAction } from '../actions/index';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import { ObjectEvents } from '../helpers/index';
 
@@ -103,6 +103,8 @@ function CustomResourceDetails(props) {
           <SyncAction resource={cr} />,
           <SuspendAction resource={cr} />,
           <ResumeAction resource={cr} />,
+          <EnableForceReconciliation resource={cr} />,
+          <DisableForceReconciliation resource={cr} />
         ]}
       />
       <SectionBox title="Conditions">
