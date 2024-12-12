@@ -105,7 +105,7 @@ export async function getPrometheusPrefix(cluster: string): Promise<string | nul
     if (prometheusEndpoint.type === KubernetesType.none) {
       return null;
     }
-    const prometheusPortStr = prometheusEndpoint.port ? (':' + prometheusEndpoint.port) : '';
+    const prometheusPortStr = prometheusEndpoint.port ? `:${prometheusEndpoint.port}` : '';
     return `${prometheusEndpoint.namespace}/${prometheusEndpoint.type}/${prometheusEndpoint.name}${prometheusPortStr}`;
   }
 
