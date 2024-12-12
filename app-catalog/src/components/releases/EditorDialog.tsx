@@ -1,4 +1,4 @@
-import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Dialog, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Editor from '@monaco-editor/react';
 import {
   Box,
@@ -13,6 +13,7 @@ import { Autocomplete } from '@mui/material';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useEffect, useRef, useState } from 'react';
+import semver from 'semver';
 import { fetchChart, getActionStatus, upgradeRelease } from '../../api/releases';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
 
@@ -53,29 +54,45 @@ export function EditorDialog(props: {
     title: string;
     version: string;
   }>();
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (isUpdateRelease) {
-      fetchChart(release.chart.metadata.name).then(response => {
+      async function fetchChartVersions() {
+        let response;
+        let error: Error | null = null;
+        try {
+          response = await fetchChart(release.chart.metadata.name)
+        } catch (err) {
+          error = err;
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (!!error) {
+          enqueueSnackbar(`Error fetching chart versions: ${error}`, {
+            variant: 'error',
+            autoHideDuration: 5000,
+          });
+          return;
+        }
+
+        setIsLoading(false);
         const charts = response.charts;
         // sort by semantic versioning
         const chartsCopy = _.cloneDeep(charts)
           .sort((a: any, b: any) => {
-            const [aMajor, aMinor, aPatch] = a.version.split('.').map(Number);
-            const [bMajor, bMinor, bPatch] = b.version.split('.').map(Number);
-
-            if (aMajor !== bMajor) {
-              return aMajor - bMajor;
+            let compareValue = semver.compare(semver.coerce(a.version), semver.coerce(b.version));
+            if (compareValue === 0) {
+              compareValue = a.version.localeCompare(b.version);
             }
-            if (aMinor !== bMinor) {
-              return aMinor - bMinor;
-            }
-            return aPatch - bPatch;
-          })
-          .sort((a: any, b: any) => {
-            return a.name.localeCompare(b.name);
-          })
-          .reverse();
+            // Return the negative value for descending order without another pass
+            return -compareValue;
+          });
         setVersions(
           chartsCopy.map((chart: any) => ({
             title: `${chart.name} v${chart.version}`,
@@ -83,7 +100,14 @@ export function EditorDialog(props: {
             version: chart.version,
           }))
         );
-      });
+      }
+
+      setIsLoading(true);
+      fetchChartVersions();
+    }
+
+    return () => {
+      isMounted = false;
     }
   }, [isUpdateRelease]);
 
@@ -207,84 +231,89 @@ export function EditorDialog(props: {
       onClose={() => handleEditor(false)}
       title={`Release Name: ${releaseName} / Namespace: ${releaseNamespace}`}
     >
-      <Box display="flex" p={2} pt={0}>
-        <Box ml={2}>
-          {isUpdateRelease && (
-            <TextField
-              id="release-description"
-              style={{
-                width: '20vw',
-              }}
-              error={isFormSubmitting && !releaseUpdateDescription}
-              label="Release Description"
-              value={releaseUpdateDescription}
-              onChange={event => setReleaseUpdateDescription(event.target.value)}
-            />
-          )}
-        </Box>
-        {isUpdateRelease && (
+      { isLoading ?
+        <Loader title="Loading Chart Versions" />
+      :
+      <>
+        <Box display="flex" p={2} pt={0}>
           <Box ml={2}>
-            <Autocomplete
-              style={{
-                width: '20vw',
-              }}
-              options={versions}
-              getOptionLabel={option => option.title}
-              value={selectedVersion}
-              onChange={(event, newValue: { value: string; title: string; version: string }) => {
-                setSelectedVersion(newValue);
-              }}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  label="Versions"
-                  placeholder="Select Version"
-                  error={isFormSubmitting && !selectedVersion}
-                />
-              )}
-            />
+            {isUpdateRelease && (
+              <TextField
+                id="release-description"
+                style={{
+                  width: '20vw',
+                }}
+                error={isFormSubmitting && !releaseUpdateDescription}
+                label="Release Description"
+                value={releaseUpdateDescription}
+                onChange={event => setReleaseUpdateDescription(event.target.value)}
+              />
+            )}
           </Box>
-        )}
-      </Box>
-      <Box ml={2}>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={isUserValues}
-              onChange={handleValueChange}
-              inputProps={{ 'aria-label': 'Switch between default and user defined values' }}
-              inputRef={checkBoxRef}
-            />
-          }
-          label="user defined values only"
-        />
-      </Box>
-      <DialogContent>
-        <Box pt={2} height="100%" my={1} p={1}>
-          {openEditor && (
-            <Editor
-              value={jsonToYAML(valuesToShow)}
-              language="yaml"
-              height="400px"
-              options={{
-                selectOnLineNumbers: true,
-              }}
-              onChange={value => {
-                handleEditorChange(value);
-              }}
-              theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-              onMount={editor => {
-                setReleaseUpdateDescription('');
-                setIsUserValues(false);
-                setValuesToShow(Object.assign({}, release.chart.values, release.config));
-                if (!isUpdateRelease) {
-                  editor.updateOptions({ readOnly: true });
-                }
-              }}
-            />
+          {isUpdateRelease && (
+            <Box ml={2}>
+              <Autocomplete
+                style={{
+                  width: '20vw',
+                }}
+                options={versions}
+                getOptionLabel={option => option.version}
+                value={selectedVersion}
+                onChange={(event, newValue: { value: string; title: string; version: string }) => {
+                  setSelectedVersion(newValue);
+                }}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Versions"
+                    placeholder="Select Version"
+                    error={isFormSubmitting && !selectedVersion}
+                  />
+                )}
+              />
+            </Box>
           )}
         </Box>
-      </DialogContent>
+        <Box ml={2}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isUserValues}
+                onChange={handleValueChange}
+                inputProps={{ 'aria-label': 'Switch between default and user defined values' }}
+                inputRef={checkBoxRef}
+              />
+            }
+            label="user defined values only"
+          />
+        </Box>
+        <DialogContent>
+          <Box pt={2} height="100%" my={1} p={1}>
+            {openEditor && (
+              <Editor
+                value={jsonToYAML(valuesToShow)}
+                language="yaml"
+                height="400px"
+                options={{
+                  selectOnLineNumbers: true,
+                }}
+                onChange={value => {
+                  handleEditorChange(value);
+                }}
+                theme={themeName === 'dark' ? 'vs-dark' : 'light'}
+                onMount={editor => {
+                  setIsUserValues(false);
+                  setValuesToShow(Object.assign({}, release.chart.values, release.config));
+                  if (!isUpdateRelease) {
+                    editor.updateOptions({ readOnly: true });
+                  }
+                }}
+              />
+            )}
+          </Box>
+        </DialogContent>
+      </>
+      }
       <DialogActions
         style={{
           padding: 0,
@@ -292,11 +321,6 @@ export function EditorDialog(props: {
         }}
       >
         <Button
-          style={{
-            backgroundColor: '#000',
-            color: 'white',
-            textTransform: 'none',
-          }}
           onClick={() => handleEditor(false)}
         >
           Close
@@ -306,13 +330,8 @@ export function EditorDialog(props: {
             <Button disabled={upgradeLoading}>{upgradeLoading ? 'Upgrading' : 'Upgrade'}</Button>
           ) : (
             <Button
-              style={{
-                backgroundColor: '#000',
-                color: 'white',
-                textTransform: 'none',
-              }}
               onClick={() => upgradeReleaseHandler()}
-              disabled={upgradeLoading}
+              disabled={upgradeLoading || isLoading}
             >
               Upgrade
             </Button>
