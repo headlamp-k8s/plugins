@@ -305,7 +305,6 @@ export function EditorDialog(props: {
               onMount={editor => {
                 setInstallLoading(false);
                 editor.focus();
-                setReleaseName('');
               }}
               language="yaml"
               height="500px"
