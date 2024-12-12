@@ -1,11 +1,14 @@
 import { PluginManager } from '@kinvolk/headlamp-plugin/lib';
 import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
-import { SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { ConfirmDialog, SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Pagination, TextField } from '@mui/material';
 import { Typography } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { PluginCard } from './PluginCard';
+import { Switch } from '@mui/material';
+import { FormControlLabel } from '@mui/material';
+import { isEqual } from 'lodash';
 
 const PAGE_SIZE = 60; // Maximum allowed by the API
 const ARTIFACTHUB_HEADLAMP_PLUGIN_KIND = '21';
@@ -151,6 +154,50 @@ export interface PurePluginListProps {
   search: string;
   onSearchChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onPageChange: (event: React.ChangeEvent<unknown>, page: number) => void;
+  isOfficialSwitchChecked: boolean;
+  onOfficialSwitchChange: (isChecked: boolean) => void;
+}
+
+interface OfficialSwitchProps {
+  isChecked: boolean;
+  onChange: (isChecked: boolean) => void;
+}
+
+function OfficialSwitch(props: OfficialSwitchProps) {
+  const { onChange : onOfficialSwitchChange, isChecked} = props;
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  return (
+    <>
+      <FormControlLabel
+        control={
+          <Switch defaultChecked size="small" />
+        }
+        label={
+          <Typography>
+            Only Official
+          </Typography>
+        }
+        checked={isChecked}
+        onChange={() => {
+          if (isChecked) {
+            setIsConfirmOpen(true);
+          } else {
+            onOfficialSwitchChange(false);
+          }
+        }}
+      />
+      <ConfirmDialog
+        // @ts-ignore
+        open={isConfirmOpen}
+        title="Do you want to show non-official plugins?"
+        description="Important: Non-official plugins may not be published by the actual projects they are related to, nor by Headlamp's maintainers. Are you sure you want to show them?"
+        handleClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          onOfficialSwitchChange(true);
+        }}
+      />
+    </>
+  );
 }
 
 export function PurePluginList({
@@ -160,11 +207,21 @@ export function PurePluginList({
   search,
   onSearchChange,
   onPageChange,
+  isOfficialSwitchChecked,
+  onOfficialSwitchChange,
 }: PurePluginListProps) {
   return (
     <>
       <SectionHeader
         title="Plugins"
+        titleSideActions={[
+          <Box pl={2}>
+            <OfficialSwitch
+              isChecked={isOfficialSwitchChecked}
+              onChange={onOfficialSwitchChange}
+            />
+          </Box>
+        ]}
         actions={[
           <TextField
             key="search"
@@ -218,6 +275,11 @@ export function PluginList() {
   const [allPlugins, setAllPlugins] = useState<PluginPackage[] | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const conf = configStore.useConfig()();
+  const [fetchSettings, setFetchSettings] = useState<conf | null>({
+    displayOnlyOfficialPlugins: true,
+    displayOnlyVerifiedPlugins: true,
+  });
 
   useEffect(() => {
     const fetchAndProcessPlugins = async () => {
@@ -226,9 +288,28 @@ export function PluginList() {
       setTotalPages(totalPages);
       console.log(plugins, totalPages);
     };
-
     fetchAndProcessPlugins();
-  }, []);
+  }, [fetchSettings]);
+
+  useEffect(() => {
+    if (!conf) {
+      return;
+    }
+
+    setFetchSettings(oldSettings => {
+      const newSettings = {
+        ...oldSettings,
+        ...conf,
+      };
+
+      if (!isEqual(oldSettings, newSettings)) {
+        return newSettings;
+      }
+
+      return oldSettings;
+    });
+  },
+  [conf]);
 
   const filteredPlugins = useMemo(() => {
     if (!allPlugins) return null;
@@ -262,6 +343,10 @@ export function PluginList() {
       search={search}
       onSearchChange={handleSearchChange}
       onPageChange={handlePageChange}
+      isOfficialSwitchChecked={conf?.displayOnlyOfficialPlugins ?? true}
+      onOfficialSwitchChange={() => {
+        configStore.update({ displayOnlyOfficialPlugins: !conf?.displayOnlyOfficialPlugins });
+      }}
     />
   );
 }
