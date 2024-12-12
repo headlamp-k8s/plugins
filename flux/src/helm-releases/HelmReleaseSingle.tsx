@@ -13,6 +13,8 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import YAML from 'yaml';
 import {
+  DisableForceReconciliation,
+  EnableForceReconciliation,
   ResumeAction,
   SuspendAction,
   SyncWithoutSourceAction,
@@ -163,6 +165,8 @@ function CustomResourceDetails(props) {
     actions.push(<SyncWithoutSourceAction resource={cr} />);
     actions.push(<SuspendAction resource={cr} />);
     actions.push(<ResumeAction resource={cr} />);
+    actions.push(<EnableForceReconciliation resource={cr} />);
+    actions.push(<DisableForceReconciliation resource={cr} />);
     return actions;
   }
 
