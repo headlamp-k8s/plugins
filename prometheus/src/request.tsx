@@ -71,7 +71,7 @@ export type PrometheusEndpoint = {
 };
 
 /**
- * Factory to create a new instance of PrometheusEndpoint.
+ * Helper to create a new instance of PrometheusEndpoint.
  * @param {KubernetesType} type - The type of Kubernetes resource.
  * @param {string} name - The name of the Kubernetes resource.
  * @param {string} namespace - The namespace of the Kubernetes resource.
@@ -97,13 +97,13 @@ export function createPrometheusEndpoint(
  * @returns {Promise<PrometheusEndpoint>} - A promise that resolves to the first reachable Prometheus pod/service or none if none are reachable.
  */
 export async function isPrometheusInstalled(): Promise<PrometheusEndpoint> {
-  // Search by a specific label for a pod
+  // Search by a custom label for a pod
   const podSearchSpecificResponse = await searchKubernetesByLabel(KubernetesType.pods, CUSTOM_HEADLAMP_LABEL);
   if (podSearchSpecificResponse.type !== KubernetesType.none) {
     return podSearchSpecificResponse;
   }
 
-  // Search by a specific label for a service
+  // Search by a custom label for a service
   const serviceSearchSpecificResponse = await searchKubernetesByLabel(KubernetesType.services, CUSTOM_HEADLAMP_LABEL);
   if (serviceSearchSpecificResponse.type !== KubernetesType.none) {
     return serviceSearchSpecificResponse;
@@ -125,6 +125,12 @@ export async function isPrometheusInstalled(): Promise<PrometheusEndpoint> {
   return createPrometheusEndpoint();
 }
 
+/**
+ * Searches for a Kubernetes resource by label and tests if Prometheus is reachable.
+ * @param {KubernetesType} kubernetesType - The type of Kubernetes resource.
+ * @param {string} labelSelector - The label selector to search for.
+ * @returns {Promise<PrometheusEndpoint>} - A promise that resolves to the Prometheus endpoint or none if none are reachable.
+ */
 async function searchKubernetesByLabel(
   kubernetesType: KubernetesType,
   labelSelector: string
@@ -215,21 +221,22 @@ function getPrometheusPortsFromResponse(response: KubernetesSearchResponse): str
 
 /**
  * Tests if prometheus will respond to a query.
- * @param {string} prometheusPodName - The name of the Prometheus pod.
- * @param {string} prometheusPodNamespace - The namespace of the Prometheus pod.
- * @param {string} prometheusPodPort - The port of the Prometheus pod.
+ * @param {KubernetesType} kubernetesType - The type of Kubernetes resource.
+ * @param {string} prometheusName - The name of the Prometheus pod or service.
+ * @param {string} prometheusNamespace - The namespace of the Prometheus pod or service.
+ * @param {string} prometheusPort - The port of the Prometheus pod or service.
  */
 async function testPrometheusQuery(
   kubernetesType: KubernetesType,
-  prometheusPodName: string,
-  prometheusPodNamespace: string,
-  prometheusPodPort: string
+  prometheusName: string,
+  prometheusNamespace: string,
+  prometheusPort: string
 ): Promise<boolean> {
   const queryParams = new URLSearchParams();
   queryParams.append('query', 'up');
   const start = Math.floor(Date.now() / 1000);
   const testSuccess = await fetchMetrics({
-    prefix: `${prometheusPodNamespace}/${kubernetesType}/${prometheusPodName}${prometheusPodPort ? `:${prometheusPodPort}` : ''}`,
+    prefix: `${prometheusNamespace}/${kubernetesType}/${prometheusName}${prometheusPort ? `:${prometheusPort}` : ''}`,
     query: 'up',
     from: start - 86400,
     to: start,
