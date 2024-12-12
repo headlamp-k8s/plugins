@@ -22,41 +22,55 @@ export interface PurePluginInstalledListProps {
 
 export function PurePluginInstalledList({ installedPlugins, error }: PurePluginInstalledListProps) {
   return (
-    <SectionBox title="Installed" textAlign="center" paddingTop={2}>
+    <SectionBox
+      title="Installed"
+      paddingTop={2}
+      headerProps={{
+        noPadding: false, headerStyle: 'subsection' ,
+        actions: [
+          <Link routeName="plugins">Go to all installed plugins</Link>,
+        ]
+      }}
+    >
       {error ? (
         <Typography>{`Error loading Installed plugins: ${error}`}</Typography>
       ) : (
-        <SimpleTable
-          columns={[
-            {
-              label: 'Name',
-              getter: plugin => (
-                <Box>
-                  <Link
-                    routeName="/plugin-catalog/:repoName/:pluginName"
-                    params={{ repoName: plugin.repoName, pluginName: plugin.folderName }}
-                  >
-                    {plugin.pluginTitle}
-                  </Link>
-                </Box>
-              ),
-            },
-            {
-              label: 'Version',
-              getter: plugin => plugin.pluginVersion,
-            },
-            {
-              label: 'Repo',
-              getter: plugin => plugin.repoName,
-            },
-            {
-              label: 'Author',
-              getter: plugin => plugin.author,
-            },
-          ]}
-          emptyMessage="No plugins installed"
-          data={installedPlugins || []}
-        />
+        <>
+          <Typography component="h2">
+            Plugins installed from the Plugin Catalog.
+          </Typography>
+          <SimpleTable
+            columns={[
+              {
+                label: 'Name',
+                getter: plugin => (
+                  <Box>
+                    <Link
+                      routeName="/plugin-catalog/:repoName/:pluginName"
+                      params={{ repoName: plugin.repoName, pluginName: plugin.folderName }}
+                    >
+                      {plugin.pluginTitle}
+                    </Link>
+                  </Box>
+                ),
+              },
+              {
+                label: 'Version',
+                getter: plugin => plugin.pluginVersion,
+              },
+              {
+                label: 'Repo',
+                getter: plugin => plugin.repoName,
+              },
+              {
+                label: 'Author',
+                getter: plugin => plugin.author,
+              },
+            ]}
+            emptyMessage="No plugins installed"
+            data={installedPlugins || []}
+          />
+        </>
       )}
     </SectionBox>
   );
