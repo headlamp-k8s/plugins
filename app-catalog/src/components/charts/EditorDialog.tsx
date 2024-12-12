@@ -76,10 +76,9 @@ export function EditorDialog(props: {
     setChartInstallDescription(`${chart.name} deployment`);
     fetchChartDetailFromArtifact(chart.name, chart.repository.name).then(response => {
       if (response.available_versions) {
-        setVersions(
-          response.available_versions.map(({ version }) => ({ title: version, value: version }))
-        );
-        setSelectedVersion(response.available_versions[0].version);
+        const availableVersions = response.available_versions.map(({ version }) => ({ title: version, value: version }));
+        setVersions(availableVersions);
+        setSelectedVersion(availableVersions[0]);
       }
     });
     handleChartValueFetch(chart);
@@ -259,7 +258,7 @@ export function EditorDialog(props: {
                 }}
                 options={versions}
                 getOptionLabel={(option: any) => option.title ?? option}
-                value={selectedVersion}
+                value={selectedVersion ?? versions[0]}
                 // @ts-ignore
                 onChange={(event, newValue: FieldType) => {
                   setSelectedVersion(newValue);
