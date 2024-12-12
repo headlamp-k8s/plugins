@@ -1,5 +1,5 @@
 import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
-import { isPrometheusInstalled } from './request';
+import { isPrometheusInstalled, KubernetesType } from './request';
 
 export const PLUGIN_NAME = 'prometheus';
 
@@ -101,13 +101,14 @@ export async function getPrometheusPrefix(cluster: string): Promise<string | nul
   // if so return the prometheus pod address
   const clusterData = getClusterConfig(cluster);
   if (clusterData?.autoDetect) {
-    const [isInstalled, prometheusPodName, prometheusPodNamespace] = await isPrometheusInstalled();
-    if (isInstalled) {
-      return `${prometheusPodNamespace}/pods/${prometheusPodName}`;
-    } else {
+    const prometheusEndpoint = await isPrometheusInstalled();
+    if (prometheusEndpoint.type === KubernetesType.none) {
       return null;
     }
+    const prometheusPortStr = prometheusEndpoint.port ? `:${prometheusEndpoint.port}` : '';
+    return `${prometheusEndpoint.namespace}/${prometheusEndpoint.type}/${prometheusEndpoint.name}${prometheusPortStr}`;
   }
+
   if (clusterData?.address) {
     const [namespace, service] = clusterData?.address.split('/');
     return `${namespace}/services/${service}`;
