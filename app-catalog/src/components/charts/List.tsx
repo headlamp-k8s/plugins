@@ -118,12 +118,17 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
           width: '20vw',
         }}
         options={helmChartCategoryList}
-        getOptionLabel={option => option.title}
+        getOptionLabel={option => option?.title ?? helmChartCategoryList[0].title}
         defaultValue={helmChartCategoryList[0]}
         value={chartCategory}
         onChange={(event, newValue) => {
           // @ts-ignore
-          setChartCategory(newValue);
+          setChartCategory((oldValue) => {
+            if ((newValue?.value ?? helmChartCategoryList[0].value) === oldValue.value) {
+              return oldValue;
+            }
+            return newValue ?? helmChartCategoryList[0];
+          });
         }}
         renderInput={params => {
           if (process.env.NODE_ENV === 'test') {
