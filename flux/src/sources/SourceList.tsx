@@ -1,9 +1,11 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
-import CheckIfFluxInstalled from '../checkflux';
+import { Loader, SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
+import  { useFluxInstallCheck } from '../checkflux';
 import FluxSourceCustomResource from './SourceCustomResourceSingle';
+import Flux404 from '../checkflux';
 
 export default function FluxSources() {
+  const isFluxInstalled = useFluxInstallCheck();
   const [gitRepoCRD] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     'gitrepositories.source.toolkit.fluxcd.io'
   );
@@ -43,9 +45,16 @@ export default function FluxSources() {
     },
   ];
 
+  if(isFluxInstalled === null) {
+    return <Loader />;
+  }
+
+  if(!isFluxInstalled) {
+    return <Flux404 />
+  }
+
   return (
     <div>
-      <CheckIfFluxInstalled />
       {sourceTables.map(
         ({ title, crd }) => crd && <FluxSourceCustomResource crd={crd} title={title} />
       )}

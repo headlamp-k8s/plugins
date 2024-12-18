@@ -7,21 +7,27 @@ import {
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import MuiLink from '@mui/material/Link';
 import React from 'react';
-import CheckIfFluxInstalled, { useFluxControllerAvailableCheck } from '../checkflux';
+import { useTheme } from '@mui/material/styles';
+import  { useFluxControllerAvailableCheck, useFluxInstallCheck } from '../checkflux';
 import Table from '../common/Table';
+import Flux404 from '../checkflux';
 
 export function Kustomizations() {
   const isKustomizationControllerAvailable = useFluxControllerAvailableCheck({
     name: 'kustomize-controller',
   });
-
   if (isKustomizationControllerAvailable === null) {
     return <Loader />;
   }
 
   if (!isKustomizationControllerAvailable) {
     return (
-      <SectionBox>
+      <SectionBox sx={{
+        padding: '1rem',
+        alignItems: 'center',
+        margin: '2rem auto',
+        maxWidth: '600px',
+      }}>
         <h1>Kustomize Controller is not installed</h1>
         <p>
           Follow the{' '}
@@ -38,6 +44,7 @@ export function Kustomizations() {
 }
 
 export function KustomizationListWrapper() {
+  const isFluxInstalled = useFluxInstallCheck();
   const [kustomizations] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     'kustomizations.kustomize.toolkit.fluxcd.io'
   );
@@ -46,9 +53,16 @@ export function KustomizationListWrapper() {
     return kustomizations?.makeCRClass();
   }, [kustomizations]);
 
+  if(isFluxInstalled === null) {
+    return <Loader />;
+  }
+
+  if(!isFluxInstalled) {
+    return <Flux404 />;
+  }
+
   return (
     <div>
-      <CheckIfFluxInstalled />
       {kustomizationResourceClass && (
         <KustomizationList resourceClass={kustomizationResourceClass} />
       )}
