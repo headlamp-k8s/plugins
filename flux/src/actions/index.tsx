@@ -8,20 +8,14 @@ function SuspendAction(props) {
   const { resource } = props;
   const [open, setOpen] = React.useState<boolean>(false);
 
+  if(resource?.jsonData?.spec?.suspend) {
+    return null;
+  }
   return (
     <>
       <ActionButton
         description="Suspend"
         icon={'mdi:pause'}
-        iconButtonProps={{
-          style: {
-            display: resource?.jsonData.spec.hasOwnProperty('suspend')
-              ? resource.jsonData.spec.suspend
-                ? 'none'
-                : 'inline-flex'
-              : 'inline-flex',
-          },
-        }}
         onClick={() => {
           setOpen(true);
         }}
@@ -32,7 +26,6 @@ function SuspendAction(props) {
         handleClose={() => setOpen(false)}
         onConfirm={() => {
           setOpen(false);
-          resource.jsonData.spec['suspend'] = true;
           const patch = resource.constructor.apiEndpoint.patch;
           patch(
             {
@@ -72,17 +65,11 @@ function SuspendAction(props) {
 function ResumeAction(props) {
   const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
+  if(!resource.jsonData.spec.suspend) {
+    return null;
+  }
   return (
     <ActionButton
-      iconButtonProps={{
-        style: {
-          display: resource?.jsonData.spec.hasOwnProperty('suspend')
-            ? resource.jsonData.spec.suspend
-              ? 'inline-flex'
-              : 'none'
-            : 'none',
-        },
-      }}
       description="Resume"
       icon={'mdi:play'}
       onClick={() => {
