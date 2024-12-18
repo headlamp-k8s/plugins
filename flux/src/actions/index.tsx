@@ -3,6 +3,55 @@ import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useSnackbar } from 'notistack';
 import React from 'react';
 
+function ForceReconciliationAction(props) {
+  const { enqueueSnackbar } = useSnackbar();
+  const [open, setOpen] = React.useState<boolean>(false);
+  const { resource } = props;
+
+  return (
+    <>
+      <ActionButton
+        description={resource.jsonData.spec.force ? `Disable force reconciliation for ${resource.metadata.name}` : `Enable force reconciliation for ${resource.metadata.name}` }
+        icon={resource.jsonData.spec.force ? 'mdi:invoice-text-remove' : 'mdi:invoice-text-new'}
+        onClick={() => {
+          setOpen(true);
+        }}
+      />
+      <ConfirmDialog
+        open={open}
+        handleClose={() => setOpen(false)}
+        onConfirm={() => {
+          setOpen(false);
+          const patch = resource.constructor.apiEndpoint.patch;
+          patch(
+            {
+              spec: {
+                force: !resource.jsonData.spec.force,
+              },
+            },
+            resource.jsonData.metadata.namespace,
+            resource.jsonData.metadata.name
+          )
+            .then(response => {
+                enqueueSnackbar(
+                  response.spec.force ? `Successfully Disabled force reconciliation for ${resource.metadata.name}` : `Successfully Enabled force reconciliation for ${resource.metadata.name}`,
+                  { variant: 'success' }
+                );
+            })
+            .catch(error => {
+              enqueueSnackbar(
+                `error ${error}`,
+                { variant: 'error' }
+              );
+            });
+        }}
+        title={resource.jsonData.force ? 'Enable Force Reconciliation' : 'Disable Force Reconciliation' }
+        description={`${resource.jsonData.force ? 'Are you sure you want to enable force reconciliation for ' : 'Are you sure you want to disable force reconciliation for '}${resource?.jsonData.metadata.name}?`}
+      />
+    </>
+  );
+}
+
 function SuspendAction(props) {
   const { enqueueSnackbar } = useSnackbar();
   const { resource } = props;
@@ -248,4 +297,4 @@ function SyncWithoutSourceAction(props) {
   );
 }
 
-export { SuspendAction, ResumeAction, SyncAction, SyncWithSourceAction, SyncWithoutSourceAction };
+export { SuspendAction, ResumeAction, SyncAction, SyncWithSourceAction, SyncWithoutSourceAction, ForceReconciliationAction };

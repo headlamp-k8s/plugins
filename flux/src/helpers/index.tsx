@@ -133,7 +133,6 @@ export function ObjectEvents(props: { events: any }) {
 
 export function prepareNameLink(item) {
   const kind = item.kind;
-  console.log('item', item);
   if (kind === 'Kustomization' || kind === 'HelmRelease' || kind in kindToSourceType) {
     const { name, type } = getSourceNameAndType(item);
     if (!!name && !!type) {
