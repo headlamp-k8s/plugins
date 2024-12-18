@@ -1,25 +1,10 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Link } from '@mui/material';
 import { useTheme } from '@mui/material';
 
-export default function CheckIfFluxInstalled() {
+export default function Flux404() {
   const theme = useTheme();
-  const [deployments] = K8s.ResourceClasses.Deployment.useList({
-    labelSelector: 'app.kubernetes.io/part-of=flux',
-  });
 
-  if (deployments === null) {
-    return <Loader />;
-  }
-  if (
-    deployments?.find(
-      deployment =>
-        deployment.jsonData.metadata?.labels['app.kubernetes.io/component'] === 'source-controller'
-    )
-  ) {
-    return null;
-  } else {
     // return a box with a message that flux is not installed and a link to the flux installation guide
     return (
       <Box
@@ -43,7 +28,21 @@ export default function CheckIfFluxInstalled() {
         </p>
       </Box>
     );
+}
+
+export function useFluxInstallCheck() {
+  const [deployments] = K8s.ResourceClasses.Deployment.useList({
+    labelSelector: 'app.kubernetes.io/part-of=flux',
+  });
+
+  if (deployments === null) {
+    return null;
   }
+
+  return deployments?.find(
+    deployment =>
+      deployment.jsonData.metadata?.labels['app.kubernetes.io/component'] === 'source-controller'
+  );
 }
 
 export function useFluxControllerAvailableCheck(props: { name: string }) {
@@ -54,15 +53,6 @@ export function useFluxControllerAvailableCheck(props: { name: string }) {
 
   if (deployments === null) {
     return null;
-  }
-
-  const isFluxAvailable = deployments?.find(
-    deployment =>
-      deployment.jsonData.metadata?.labels['app.kubernetes.io/component'] === 'source-controller'
-  );
-
-  if (!isFluxAvailable) {
-    return true;
   }
 
   return deployments?.find(

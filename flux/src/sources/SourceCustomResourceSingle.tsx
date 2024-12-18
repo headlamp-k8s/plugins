@@ -124,14 +124,12 @@ function FluxSourceCustomResourceRenderer(props: FluxSourceCustomResourceRendere
     columns.splice(colIndexToInsert++, 0, {
       header: 'URL',
       accessorFn: item => {
-        console.log(item);
         const url = item?.jsonData?.spec?.url;
         return url ? <SourceLink url={url} wrap /> : '-';
       },
     });
   }
 
-  console.log(title);
   return (
     <SectionBox title={title}>
       <Table
