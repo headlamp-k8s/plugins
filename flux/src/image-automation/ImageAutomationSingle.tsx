@@ -10,7 +10,7 @@ import Editor from '@monaco-editor/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import YAML from 'yaml';
-import { ResumeAction, SuspendAction, SyncAction } from '../actions/index';
+import { ForceReconciliationAction, ResumeAction, SuspendAction, SyncAction } from '../actions/index';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
@@ -191,6 +191,7 @@ function CustomResourceDetails(props) {
           <SyncAction resource={cr} />,
           <SuspendAction resource={cr} />,
           <ResumeAction resource={cr} />,
+          <ForceReconciliationAction resource={cr} />,
         ]}
       />
       <SectionBox title="Conditions">

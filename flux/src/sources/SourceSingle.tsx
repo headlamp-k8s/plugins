@@ -9,7 +9,7 @@ import {
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { ResumeAction, SuspendAction, SyncAction } from '../actions/index';
+import { ForceReconciliationAction, ResumeAction, SuspendAction, SyncAction } from '../actions/index';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
@@ -99,6 +99,7 @@ function CustomResourceDetailView(props) {
           <SyncAction resource={cr} />,
           <SuspendAction resource={cr} />,
           <ResumeAction resource={cr} />,
+          <ForceReconciliationAction resource={cr} />,
         ]}
         extraInfo={prepareExtraInfo()}
       />
