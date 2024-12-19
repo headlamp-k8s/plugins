@@ -8,10 +8,13 @@ import {
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Link as MuiLink } from '@mui/material';
 import React from 'react';
-import CheckIfFluxInstalled, { useFluxControllerAvailableCheck } from '../checkflux';
+import { useTheme } from '@mui/material/styles';
+import  { useFluxControllerAvailableCheck, useFluxInstallCheck } from '../checkflux';
 import Table from '../common/Table';
+import Flux404 from '../checkflux';
 
 export default function NotificationsWrapper() {
+  const theme = useTheme();
   const isNotifcationControllerAvailable = useFluxControllerAvailableCheck({
     name: 'notification-controller',
   });
@@ -22,7 +25,14 @@ export default function NotificationsWrapper() {
 
   if (!isNotifcationControllerAvailable) {
     return (
-      <SectionBox>
+      <SectionBox  style={{
+        padding: '1rem',
+        alignItems: 'center',
+        margin: '2rem auto',
+        height: '20vh',
+        width: '50%',
+        backgroundColor: theme.palette.background.paper,
+      }}>
         <h1>Notification Controller is not installed</h1>
         <p>
           Follow the{' '}
@@ -38,6 +48,7 @@ export default function NotificationsWrapper() {
 }
 
 export function Notifications() {
+  const isFluxInstalled = useFluxInstallCheck()
   const [alerts] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     'alerts.notification.toolkit.fluxcd.io'
   );
@@ -62,9 +73,16 @@ export function Notifications() {
     return receivers?.makeCRClass();
   }, [receivers]);
 
+  if(isFluxInstalled === null) {
+    return <Loader />;
+  }
+  
+  if(!isFluxInstalled) {
+    return <Flux404 />;
+  }
+
   return (
     <>
-      <CheckIfFluxInstalled />
       {alerts && <Alerts resourceClass={alertsClass} />}
       {providers && <Providers resourceClass={providersClass} />}
       {receivers && <Receivers resourceClass={receiversClass} />}
