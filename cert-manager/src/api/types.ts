@@ -1,5 +1,7 @@
-import { makeKubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster.js';
+// import { makeKubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { makeKubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster.js';
 
 export interface CertManagerCertificate extends KubeObjectInterface {
   spec: {
@@ -36,3 +38,10 @@ export class Certificate extends makeKubeObject<CertManagerCertificate>('Certifi
     return this.jsonData.spec;
   }
 }
+
+// export class CertificateKube extends KubeObject {
+//   static kind = 'Certificate';
+//   static apiName = 'certificates';
+//   static apiVersion = ['cert-manager.io/v1'];
+//   static isNamespaced = true;
+// }
