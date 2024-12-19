@@ -57,8 +57,9 @@ function GetSource(props: { item: KubeObject | null; setSource: (...args) => voi
   );
 }
 
-export default function FluxKustomizationDetailView() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export default function FluxKustomizationDetailView(props: { name?: string; namespace?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const { name = params.name, namespace = params.namespace } = props;
 
   const [events] = Event?.default.useList({
     namespace,
@@ -158,11 +159,7 @@ function CustomResourceDetails(props) {
   return (
     <>
       {cr && <GetSource item={cr} setSource={setSource} />}
-        <MainInfoSection
-          resource={cr}
-          extraInfo={prepareExtraInfo(cr)}
-          actions={prepareActions()}
-        />
+      <MainInfoSection resource={cr} extraInfo={prepareExtraInfo(cr)} actions={prepareActions()} />
       {cr?.jsonData?.spec?.values && (
         <SectionBox title="Values">
           <Editor
@@ -173,7 +170,7 @@ function CustomResourceDetails(props) {
           />
         </SectionBox>
       )}
-      {cr &&
+      {cr && (
         <>
           <SectionBox title="Inventory">
             <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
@@ -213,7 +210,7 @@ function CustomResourceDetails(props) {
             <ConditionsTable resource={cr?.jsonData} />
           </SectionBox>
         </>
-      }
+      )}
     </>
   );
 }
