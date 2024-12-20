@@ -1,11 +1,11 @@
-version: 0.1.0-beta-1
+version: 0.1.0-beta-2
 name: headlamp_flux
 displayName: Flux
 createdAt: "2024-11-07T15:34:00Z"
 logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/flux/logo.png"
 description: A UI for viewing and managing Flux.
 annotations:
-  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/flux-0.1.0-beta-1/flux-0.1.0-beta-1.tar.gz"
-  headlamp/plugin/archive-checksum: "SHA256:293cbbacded2672071828064387ef1e76b82033ac90eac4bbf58386ae409e4cb"
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/flux-0.1.0-beta-2/flux-0.1.0-beta-2.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:83ffafbb4881c1125b743be6cb5dcf296c0b1bb1fd3256f551e31d6165591777"
   headlamp/plugin/version-compat: ">=0.22"
   headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
