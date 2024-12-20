@@ -7,8 +7,10 @@ import {
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Link as MuiLink } from '@mui/material';
 import React from 'react';
-import CheckIfFluxInstalled, { useFluxControllerAvailableCheck } from '../checkflux';
+import { useTheme } from '@mui/material/styles';
+import  { useFluxControllerAvailableCheck, useFluxInstallCheck } from '../checkflux';
 import Table from '../common/Table';
+import Flux404 from '../checkflux';
 
 export function HelmReleases() {
   const isHelmReleasesControllerAvailable = useFluxControllerAvailableCheck({
@@ -21,7 +23,12 @@ export function HelmReleases() {
 
   if (!isHelmReleasesControllerAvailable) {
     return (
-      <SectionBox>
+      <SectionBox sx={{
+        padding: '1rem',
+        alignItems: 'center',
+        margin: '2rem auto',
+        maxWidth: '600px',
+      }}>
         <h1>Helm Controller is not installed</h1>
         <p>
           Follow the{' '}
@@ -45,9 +52,18 @@ function HelmReleasesListWrapper() {
     return helmReleases?.makeCRClass();
   }, [helmReleases]);
 
+  const isFluxInstalled = useFluxInstallCheck();
+  
+  if(isFluxInstalled === null) {
+    return <Loader />;
+  }
+  
+  if(!isFluxInstalled) {
+    return <Flux404 />;
+  }
+
   return (
     <div>
-      <CheckIfFluxInstalled />
       {helmReleaseResourceClass && <HelmReleasesList resourceClass={helmReleaseResourceClass} />}
     </div>
   );

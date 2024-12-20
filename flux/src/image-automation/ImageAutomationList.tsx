@@ -11,14 +11,17 @@ import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Link as MuiLink } from '@mui/material';
 import React from 'react';
-import CheckIfFluxInstalled, { useFluxControllerAvailableCheck } from '../checkflux';
+import { useTheme } from '@mui/material/styles';
+import  { useFluxControllerAvailableCheck, useFluxInstallCheck } from '../checkflux';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
+import Flux404 from '../checkflux';
 
 const IMAGE_AUTOMATION_BETA_VERSION = 'v1beta2';
 
 function ImageAutomation() {
   const CRD = K8s.ResourceClasses.CustomResourceDefinition;
+  const isFluxInstalled = useFluxInstallCheck();
   const isVersionAvailable = CRD.apiEndpoint.apiInfo.find(
     apiInfo => apiInfo.version === IMAGE_AUTOMATION_BETA_VERSION
   );
@@ -50,9 +53,16 @@ function ImageAutomation() {
     return imageUpdateAutomation?.makeCRClass();
   }, [imageUpdateAutomation]);
 
+  if(isFluxInstalled === null){
+    return <Loader />;
+  }
+
+  if(!isFluxInstalled){
+    return <Flux404 />;
+  }
+
   return (
     <>
-      <CheckIfFluxInstalled />
       {imageRepository && <ImageRepositoryList resourceClass={imageRepositoryClass} />}
       {imagePolicy && <ImagePolicyList resourceClass={imagePolicyClass} />}
       {imageUpdateAutomation && (
@@ -73,7 +83,12 @@ export default function ImageAutomationWrapper() {
 
   if (!isImageAutomationControllerAvailable) {
     return (
-      <SectionBox>
+      <SectionBox sx={{
+        padding: '1rem',
+        alignItems: 'center',
+        margin: '2rem auto',
+        maxWidth: '600px',
+      }}>
         <h1>Image Automation Controller is not installed</h1>
         <p>
           Follow the{' '}
