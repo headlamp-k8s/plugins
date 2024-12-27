@@ -9,6 +9,7 @@ import { PluginCard } from './PluginCard';
 import { Switch } from '@mui/material';
 import { FormControlLabel } from '@mui/material';
 import { isEqual } from 'lodash';
+import semver from 'semver';
 
 const PAGE_SIZE = 60; // Maximum allowed by the API
 const ARTIFACTHUB_HEADLAMP_PLUGIN_KIND = '21';
@@ -49,6 +50,7 @@ export interface PluginPackage {
     organization_name: string;
   };
   isInstalled: boolean;
+  isUpdateAvailable: boolean;
 }
 
 async function fetchPlugins(offset: number, org?: string) {
@@ -126,7 +128,15 @@ async function processPlugins() {
   } catch (err) {
     console.log('plugin-catalog: Failed to list plugins', err);
   }
-  const installedPlugins = pluginData.map((plugin: any) => plugin.folderName);
+  const installedVersions: Record<string, string> = pluginData.reduce(
+    (acc, plugin: any) => {
+      if (plugin.folderName && plugin.artifacthubVersion) {
+        acc[plugin.folderName] = plugin.artifacthubVersion;
+      }
+      return acc;
+    },
+    {}
+  );
 
   // Merge all plugins and org-specific plugins, removing duplicates
   const mergedPlugins = [...allPlugins, ...orgPlugins];
@@ -135,10 +145,24 @@ async function processPlugins() {
   );
 
   const pluginsWithInstallStatus = uniquePlugins
-    .map((pkg: PluginPackage) => ({
-      ...pkg,
-      isInstalled: installedPlugins.includes(pkg.name),
-    }))
+    .map((pkg: PluginPackage) => {
+      const installedVersion = installedVersions[pkg.name];
+      let isInstalled = false;
+      let isUpdateAvailable = false;
+
+      if (installedVersion) {
+        isInstalled = true;
+        if (semver.valid(pkg.version) && semver.valid(installedVersion)) {
+          isUpdateAvailable = semver.gt(pkg.version, installedVersion);
+        }
+      }
+
+      return {
+        ...pkg,
+        isInstalled,
+        isUpdateAvailable,
+      };
+    })
     // Reorder so plugins with logos show first.
     .sort((a, b) => (!!b.logo_image_id ? 1 : 0) - (!!a.logo_image_id ? 1 : 0));
 

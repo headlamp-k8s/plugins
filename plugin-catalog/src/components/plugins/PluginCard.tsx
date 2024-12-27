@@ -151,7 +151,9 @@ export function PluginCard(props: PluginCardProps) {
           }}
         >
           <span></span>
-          {plugin.isInstalled && <Typography>Installed</Typography>}
+          {plugin.isInstalled && (
+            <Typography>{plugin.isUpdateAvailable ? 'Update available' : 'Installed'}</Typography>
+          )}
         </CardActions>
       </Card>
     </Box>
