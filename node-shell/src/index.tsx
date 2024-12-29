@@ -1,4 +1,7 @@
-import { registerDetailsViewHeaderActionsProcessor, registerPluginSettings} from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerDetailsViewHeaderActionsProcessor,
+  registerPluginSettings,
+} from '@kinvolk/headlamp-plugin/lib';
 import { NodeShellAction } from './components/NodeShellAction';
 import { Settings } from './components/Settings';
 
@@ -10,8 +13,8 @@ registerDetailsViewHeaderActionsProcessor((resource, actions) => {
     return actions;
   }
 
-  if (resource.kind !== "Node") {
-    return actions
+  if (resource.kind !== 'Node') {
+    return actions;
   }
 
   actions.splice(0, 0, {

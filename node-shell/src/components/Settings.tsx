@@ -3,16 +3,18 @@ import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
 import Box from '@mui/material/Box';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
+import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
 
-export const DEFAULT_NODE_SHELL_LINUX_IMAGE = 'docker.io/library/alpine:latest'
+export const DEFAULT_NODE_SHELL_LINUX_IMAGE = 'docker.io/library/alpine:latest';
+export const DEFAULT_NODE_SHELL_NAMESPACE = 'kube-system';
 
 /**
  * Props for the Settings component.
  * @interface SettingsProps
- * @property {Object.<string, {isMetricsEnabled?: boolean, autoDetect?: boolean, address?: string, defaultTimespan?: string}>} data - Configuration data for each cluster
+ * @property {Object.<string, {isEnabled?: boolean, namespace?: string, image?: string}>} data - Configuration data for each cluster
  * @property {Function} onDataChange - Callback function when data changes
  */
 interface SettingsProps {
@@ -20,13 +22,15 @@ interface SettingsProps {
     string,
     {
       image?: string;
+      namespace?: string;
+      isEnabled?: boolean;
     }
   >;
   onDataChange: (newData: SettingsProps['data']) => void;
 }
 
 /**
- * Settings component for configuring Prometheus metrics.
+ * Settings component for configuring Node-Shell Action.
  */
 export function Settings(props: SettingsProps) {
   const { data, onDataChange } = props;
@@ -44,14 +48,33 @@ export function Settings(props: SettingsProps) {
     if (selectedCluster && !data?.[selectedCluster]) {
       onDataChange({
         ...data,
-        [selectedCluster]: { image: DEFAULT_NODE_SHELL_LINUX_IMAGE},
+        [selectedCluster]: { image: DEFAULT_NODE_SHELL_LINUX_IMAGE },
       });
     }
   }, [selectedCluster, data, onDataChange]);
 
   const selectedClusterData = data?.[selectedCluster] || {};
+  const isEnabled = selectedClusterData.isEnabled ?? true;
 
   const settingsRows = [
+    {
+      name: 'Enable Node Shell',
+      value: (
+        <Switch
+          checked={isEnabled}
+          onChange={e => {
+            const newEnabled = e.target.checked;
+            onDataChange({
+              ...(data || {}),
+              [selectedCluster]: {
+                ...((data || {})[selectedCluster] || {}),
+                isEnabled: newEnabled,
+              },
+            });
+          }}
+        />
+      ),
+    },
     {
       name: 'Node Shell Linux Image',
       value: (
@@ -68,7 +91,29 @@ export function Settings(props: SettingsProps) {
             });
           }}
           placeholder={DEFAULT_NODE_SHELL_LINUX_IMAGE}
-          helperText={'The default image is used for dropping a shell into a node (when not specified directly).'}
+          helperText={
+            'The default image is used for dropping a shell into a node (when not specified directly).'
+          }
+        />
+      ),
+    },
+    {
+      name: 'Namespace',
+      value: (
+        <TextField
+          value={selectedClusterData.namespace || ''}
+          onChange={e => {
+            const newNamespace = e.target.value;
+            onDataChange({
+              ...(data || {}),
+              [selectedCluster]: {
+                ...((data || {})[selectedCluster] || {}),
+                namespace: newNamespace,
+              },
+            });
+          }}
+          placeholder={DEFAULT_NODE_SHELL_NAMESPACE}
+          helperText={'The default namespace is kube-system.'}
         />
       ),
     },

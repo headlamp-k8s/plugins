@@ -4,17 +4,18 @@ export const PLUGIN_NAME = 'node-shell';
 
 /**
  * ClusterData type represents the configuration data for a cluster.
- * @property {boolean} autoDetect - Whether to auto-detect Prometheus metrics.
- * @property {boolean} isMetricsEnabled - Whether metrics are enabled for the cluster.
- * @property {string} address - The address of the Prometheus service.
- * @property {string} defaultTimespan - The default timespan for metrics.
+ * @property {boolean} isEnabled - Whether node-shell is enabled for the cluster.
+ * @property {string} image - Image to create the node shell.
+ * @property {string} namespace - The namespace to spawn the pod to create a node shell.
  */
 type ClusterData = {
   image?: string;
+  namespace?: string;
+  isEnabled?: boolean;
 };
 
 /**
- * Conf type represents the configuration data for the prometheus plugin.
+ * Conf type represents the configuration data for the node-shell plugin.
  * @property {[cluster: string]: ClusterData} - The configuration data for each cluster.
  */
 type Conf = {
@@ -22,7 +23,17 @@ type Conf = {
 };
 
 /**
- * getConfigStore returns the config store for the prometheus plugin.
+ * isEnabled checks if node-shell is enabled for a specific cluster.
+ * @param {string} cluster - The name of the cluster.
+ * @returns {boolean} True or null if node-shell is enabled, false otherwise.
+ */
+export function isEnabled(cluster: string): boolean {
+  const clusterData = getClusterConfig(cluster);
+  return clusterData?.isEnabled ?? true;
+}
+
+/**
+ * getConfigStore returns the config store for the node-shell plugin.
  * @returns {ConfigStore<Conf>} The config store.
  */
 export function getConfigStore(): ConfigStore<Conf> {

@@ -1,16 +1,16 @@
-
-import { Dialog, DialogProps } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import DialogContent from '@mui/material/DialogContent';
-import { Box } from '@mui/material';
-import { Node } from '@kinvolk/headlamp-plugin/lib';
-import { useEffect, useRef, useState } from 'react';
-import { Terminal as XTerminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import Pod, { KubePod } from '@kinvolk/headlamp-plugin/lib/lib/k8s/pod';
 import { apply, stream, StreamResultsCb } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
-import { DEFAULT_NODE_SHELL_LINUX_IMAGE } from './Settings';
-import { getClusterConfig } from '../util';
+import { Dialog, DialogProps } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import Node from '@kinvolk/headlamp-plugin/lib/K8s/node';
+import Pod, { KubePod } from '@kinvolk/headlamp-plugin/lib/K8s/pod';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { Box } from '@mui/material';
+import DialogContent from '@mui/material/DialogContent';
+import { FitAddon } from '@xterm/addon-fit';
+import { Terminal as XTerminal } from '@xterm/xterm';
+import _ from 'lodash';
+import { useEffect, useRef, useState } from 'react';
+import { getClusterConfig } from '../util';
+import { DEFAULT_NODE_SHELL_LINUX_IMAGE, DEFAULT_NODE_SHELL_NAMESPACE } from './Settings';
 
 const decoder = new TextDecoder('utf-8');
 const encoder = new TextEncoder();
@@ -26,7 +26,7 @@ enum Channel {
 interface NodeShellTerminalProps extends DialogProps {
   item: Node;
   title: string;
-  open: boolean
+  open: boolean;
   onClose?: () => void;
 }
 
@@ -37,14 +37,13 @@ interface XTerminalConnected {
   onClose?: () => void;
 }
 
-
-const shellPod = (name: string, nodeName: string, nodeShellImage: string) => {
+const shellPod = (name: string, namespace: string, nodeName: string, nodeShellImage: string) => {
   return {
     kind: 'Pod',
     apiVersion: 'v1',
     metadata: {
       name,
-      namespace: 'kube-system',
+      namespace,
     },
     spec: {
       nodeName,
@@ -87,13 +86,17 @@ async function shell(item: Node, onExec: StreamResultsCb) {
   }
 
   //const clusterSettings = helpers.loadClusterSettings(cluster);
-  const config = getClusterConfig(cluster)
+  const config = getClusterConfig(cluster);
   let image = config?.image || '';
+  let namespace = config?.namespace || '';
   const podName = `node-shell-${item.getName()}-${uniqueString()}`;
   if (image === '') {
     image = DEFAULT_NODE_SHELL_LINUX_IMAGE;
   }
-  const kubePod = shellPod(podName, item.getName(), image!!);
+  if (namespace === '') {
+    namespace = DEFAULT_NODE_SHELL_NAMESPACE;
+  }
+  const kubePod = shellPod(podName, namespace, item.getName(), image!!);
   try {
     await apply(kubePod);
   } catch (e) {
@@ -110,8 +113,9 @@ async function shell(item: Node, onExec: StreamResultsCb) {
   const stdout = true;
   const stderr = true;
   const commandStr = command.map(item => '&command=' + encodeURIComponent(item)).join('');
-  const url = `/api/v1/namespaces/kube-system/pods/${podName}/exec?container=shell${commandStr}&stdin=${stdin ? 1 : 0
-    }&stderr=${stderr ? 1 : 0}&stdout=${stdout ? 1 : 0}&tty=${tty ? 1 : 0}`;
+  const url = `/api/v1/namespaces/kube-system/pods/${podName}/exec?container=shell${commandStr}&stdin=${
+    stdin ? 1 : 0
+  }&stderr=${stderr ? 1 : 0}&stdout=${stdout ? 1 : 0}&tty=${tty ? 1 : 0}`;
   const additionalProtocols = [
     'v4.channel.k8s.io',
     'v3.channel.k8s.io',
@@ -135,7 +139,6 @@ export function NodeShellTerminal(props: NodeShellTerminalProps) {
   const fitAddonRef = useRef<FitAddon | null>(null);
   const streamRef = useRef<any | null>(null);
 
-
   const wrappedOnClose = () => {
     if (!!onClose) {
       onClose();
@@ -145,7 +148,6 @@ export function NodeShellTerminal(props: NodeShellTerminalProps) {
       xtermRef.current?.onClose();
     }
   };
-
 
   // @todo: Give the real exec type when we have it.
   function setupTerminal(containerRef: HTMLElement, xterm: XTerminal, fitAddon: FitAddon) {
@@ -198,7 +200,6 @@ export function NodeShellTerminal(props: NodeShellTerminalProps) {
     socket.send(buffer);
   }
 
-
   function onData(xtermc: XTerminalConnected, bytes: ArrayBuffer) {
     const xterm = xtermc.xterm;
     // Only show data from stdout, stderr and server error channel.
@@ -210,7 +211,7 @@ export function NodeShellTerminal(props: NodeShellTerminalProps) {
     // The first byte is discarded because it just identifies whether
     // this data is from stderr, stdout, or stdin.
     const data = bytes.slice(1);
-    let text = decoder.decode(data);
+    const text = decoder.decode(data);
 
     // Send resize command to server once connection is establised.
     if (!xtermc.connected) {
@@ -250,7 +251,7 @@ export function NodeShellTerminal(props: NodeShellTerminalProps) {
         if (_.isEmpty(error.metadata) && error.status === 'Success') {
           return true;
         }
-      } catch { }
+      } catch {}
     }
     return false;
   }
@@ -263,7 +264,7 @@ export function NodeShellTerminal(props: NodeShellTerminalProps) {
         if (error.code === 500 && error.status === 'Failure' && error.reason === 'InternalError') {
           return true;
         }
-      } catch { }
+      } catch {}
     }
     // Windows container Error
     if (channel === 1) {
@@ -273,7 +274,6 @@ export function NodeShellTerminal(props: NodeShellTerminalProps) {
     }
     return false;
   }
-
 
   function shellConnectFailed(xtermc: XTerminalConnected) {
     const xterm = xtermc.xterm;
@@ -354,7 +354,6 @@ export function NodeShellTerminal(props: NodeShellTerminalProps) {
       title={title}
       {...other}
     >
-
       <DialogContent
         sx={theme => ({
           height: '100%',
@@ -393,5 +392,5 @@ export function NodeShellTerminal(props: NodeShellTerminalProps) {
         </Box>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
