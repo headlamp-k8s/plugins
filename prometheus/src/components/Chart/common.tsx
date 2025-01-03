@@ -1,5 +1,5 @@
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
-import { Box, Button, Grid, Link, Paper, Typography } from '@mui/material';
+import { Button, Grid, Link, Paper, Typography } from '@mui/material';
 import makeStyles from '@mui/styles/makeStyles';
 import { useHistory } from 'react-router-dom';
 import skeletonImg from '../../../assets/chart-skeleton.png';
@@ -85,16 +85,12 @@ export function CustomTooltip({ active, payload, label }) {
     const timestamp = new Date(label * 1000); // Convert epoch to milliseconds
 
     return (
-      <div className="custom-tooltip">
-        <Paper>
-          <Box p={2}>
-            <p>{`Date: ${timestamp.toLocaleString()}`}</p>
-            {payload.map(data => (
-              <p>{`${data.name}: ${data.value}`}</p>
-            ))}
-          </Box>
-        </Paper>
-      </div>
+      <Paper variant="outlined" sx={{ p: 0.5, opacity: 0.8 }}>
+        <b>{`Date: ${timestamp.toLocaleString()}`}</b>
+        {payload.map(data => (
+          <div>{`${data.name}: ${data.value}`}</div>
+        ))}
+      </Paper>
     );
   }
 
@@ -106,16 +102,12 @@ export function CustomTooltipFormatBytes({ active, payload, label }) {
     const timestamp = new Date(label * 1000); // Convert epoch to milliseconds
 
     return (
-      <div className="custom-tooltip">
-        <Paper>
-          <Box p={2}>
-            <p>{`Date: ${timestamp.toLocaleString()}`}</p>
-            {payload.map(data => (
-              <p>{`${data.name}: ${formatBytes(data.value)}`}</p>
-            ))}
-          </Box>
-        </Paper>
-      </div>
+      <Paper variant="outlined" sx={{ p: 0.5, opacity: 0.8 }}>
+        <b>{`Date: ${timestamp.toLocaleString()}`}</b>
+        {payload.map(data => (
+          <div>{`${data.name}: ${formatBytes(data.value)}`}</div>
+        ))}
+      </Paper>
     );
   }
 
