@@ -164,6 +164,7 @@ export default function Chart(props: ChartProps) {
           <Tooltip content={props.CustomTooltip} />
         )}
         <Legend />
+        <CartesianGrid strokeDasharray="2 4" stroke={theme.palette.divider} vertical={false} />
         {props.plots.map(plot => (
           <Area
             stackId="1"
