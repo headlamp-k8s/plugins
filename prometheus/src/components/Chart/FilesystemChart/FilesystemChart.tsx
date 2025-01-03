@@ -1,4 +1,5 @@
-import { useTheme } from '@mui/material';
+import { alpha, useTheme } from '@mui/material';
+import { orange, purple } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import { formatBytes } from '../../../util';
@@ -32,15 +33,15 @@ export function FilesystemChart(props: FilesystemChartProps) {
         {
           query: props.readQuery,
           name: 'read',
-          strokeColor: '#CDC300',
-          fillColor: '#FFF178',
+          strokeColor: alpha(orange[400], 0.8),
+          fillColor: alpha(orange[400], 0.1),
           dataProcessor: dataProcessor,
         },
         {
           query: props.writeQuery,
           name: 'write',
-          strokeColor: '#006B58',
-          fillColor: '#98F6DC',
+          strokeColor: alpha(purple[400], 0.8),
+          fillColor: alpha(purple[400], 0.1),
           dataProcessor: dataProcessor,
         },
       ]}
