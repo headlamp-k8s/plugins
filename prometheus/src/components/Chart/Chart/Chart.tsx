@@ -168,11 +168,12 @@ export default function Chart(props: ChartProps) {
         {props.plots.map(plot => (
           <Area
             stackId="1"
-            type="monotone"
+            type="step"
             dataKey={plot.name}
             stroke={plot.strokeColor}
+            strokeWidth={2}
             fill={plot.fillColor}
-            activeDot={{ r: 8 }}
+            activeDot={{ r: 2 }}
             animationDuration={props.autoRefresh ? 0 : 400} // Disable animation when refreshing
           />
         ))}
