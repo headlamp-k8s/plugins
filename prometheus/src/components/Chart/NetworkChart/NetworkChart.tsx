@@ -1,4 +1,5 @@
-import { useTheme } from '@mui/material';
+import { alpha, useTheme } from '@mui/material';
+import { orange, purple } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import { formatBytes } from '../../../util';
@@ -32,15 +33,15 @@ export function NetworkChart(props: NetworkChartProps) {
         {
           query: props.rxQuery,
           name: 'recieve',
-          strokeColor: '#CDC300',
-          fillColor: '#FFF178',
+          strokeColor: alpha(orange[400], 0.8),
+          fillColor: alpha(orange[400], 0.1),
           dataProcessor: dataProcessor,
         },
         {
           query: props.txQuery,
           name: 'transmit',
-          strokeColor: '#7160BB',
-          fillColor: '#C2B0FF',
+          strokeColor: alpha(purple[400], 0.8),
+          fillColor: alpha(purple[400], 0.1),
           dataProcessor: dataProcessor,
         },
       ]}
