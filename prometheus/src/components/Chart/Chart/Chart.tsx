@@ -148,9 +148,16 @@ export default function Chart(props: ChartProps) {
 
   if (state === ChartState.SUCCESS) {
     chartContent = (
-      <AreaChart data={metrics}>
-        <XAxis stroke={theme.palette.chartStyles.labelColor} {...xAxisProps} />
-        <YAxis stroke={theme.palette.chartStyles.labelColor} {...yAxisProps} />
+      <AreaChart data={metrics} style={{ fontSize: 14 }}>
+        <XAxis
+          stroke={theme.palette.chartStyles.labelColor}
+          fontSize={12}
+          {...xAxisProps}
+          type="number"
+          domain={[timeRange.from, timeRange.to]}
+          allowDataOverflow
+        />
+        <YAxis fontSize={14} stroke={theme.palette.chartStyles.labelColor} {...yAxisProps} />
         {props.CustomTooltip === undefined ? (
           <Tooltip />
         ) : (
