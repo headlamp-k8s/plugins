@@ -45,7 +45,7 @@ export function CPUChart(props: CPUChartProps) {
 
   const YTickProps = {
     domain: ['dataMin', 'auto'],
-    width: 80,
+    width: 60,
   };
 
   return (
