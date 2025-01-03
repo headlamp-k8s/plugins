@@ -1,7 +1,16 @@
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { getTimeRange } from '../../../util';
 
 /**
@@ -54,6 +63,7 @@ export default function Chart(props: ChartProps) {
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
+  const timeRange = getTimeRange(props.interval);
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
@@ -142,7 +152,7 @@ export default function Chart(props: ChartProps) {
         clearInterval(refreshInterval);
       };
     }
-  }, [props.autoRefresh, props.plots]);
+  }, [props.autoRefresh, props.plots, props.interval]);
 
   let chartContent;
 
