@@ -50,7 +50,7 @@ export default function Chart(props: ChartProps) {
     SUCCESS,
   }
   const { fetchMetrics, xAxisProps, yAxisProps } = props;
-  const [metrics, setMetrics] = useState<object>({});
+  const [metrics, setMetrics] = useState<Array<any>>([]);
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
