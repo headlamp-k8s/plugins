@@ -1,7 +1,7 @@
 import { alpha, useTheme } from '@mui/material';
 import { blue } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
-import { createTickTimestampFormatter, dataProcessor } from '../../../util';
+import { createTickTimestampFormatter, dataProcessor, PrometheusEndpoint } from '../../../util';
 import { formatBytes } from '../../../util';
 import Chart from '../Chart/Chart';
 import { CustomTooltipFormatBytes } from '../common';
@@ -16,7 +16,7 @@ import { CustomTooltipFormatBytes } from '../common';
  */
 interface MemoryChartProps {
   query: string;
-  prometheusPrefix: string;
+  prometheusEndpoint: PrometheusEndpoint;
   interval: string;
   autoRefresh: boolean;
 }

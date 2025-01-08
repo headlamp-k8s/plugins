@@ -1,4 +1,5 @@
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { BasicAuthCredentials, ClusterData, PrometheusEndpoint } from './util';
 
 const request = ApiProxy.request;
 
@@ -63,7 +64,7 @@ export enum KubernetesType {
   services = 'services',
 };
 
-export type PrometheusEndpoint = {
+export type PrometheusLocationService = {
   type: KubernetesType;
   name: string | undefined;
   namespace: string | undefined;
@@ -76,14 +77,14 @@ export type PrometheusEndpoint = {
  * @param {string} name - The name of the Kubernetes resource.
  * @param {string} namespace - The namespace of the Kubernetes resource.
  * @param {string} port - The port of the Kubernetes resource.
- * @returns {PrometheusEndpoint} - A new instance of PrometheusEndpoint.
+ * @returns {PrometheusLocationService} - A new instance of PrometheusEndpoint.
  */
 export function createPrometheusEndpoint(
   type: KubernetesType = KubernetesType.none,
   name: string | undefined = undefined,
   namespace: string | undefined = undefined,
-  port: string | undefined = undefined
-): PrometheusEndpoint {
+  port: string | undefined = undefined,
+): PrometheusLocationService {
   return {
     type,
     name,
@@ -94,9 +95,9 @@ export function createPrometheusEndpoint(
 
 /**
  * Returns the first Prometheus pod or service that fits our search and is reachable.
- * @returns {Promise<PrometheusEndpoint>} - A promise that resolves to the first reachable Prometheus pod/service or none if none are reachable.
+ * @returns {Promise<PrometheusLocationService>} - A promise that resolves to the first reachable Prometheus pod/service or none if none are reachable.
  */
-export async function isPrometheusInstalled(): Promise<PrometheusEndpoint> {
+export async function isPrometheusInstalled(): Promise<PrometheusLocationService> {
   // Search by a custom label for a pod
   const podSearchSpecificResponse = await searchKubernetesByLabel(KubernetesType.pods, CUSTOM_HEADLAMP_LABEL);
   if (podSearchSpecificResponse.type !== KubernetesType.none) {
@@ -129,12 +130,12 @@ export async function isPrometheusInstalled(): Promise<PrometheusEndpoint> {
  * Searches for a Kubernetes resource by label and tests if Prometheus is reachable.
  * @param {KubernetesType} kubernetesType - The type of Kubernetes resource.
  * @param {string} labelSelector - The label selector to search for.
- * @returns {Promise<PrometheusEndpoint>} - A promise that resolves to the Prometheus endpoint or none if none are reachable.
+ * @returns {Promise<PrometheusLocationService>} - A promise that resolves to the Prometheus endpoint or none if none are reachable.
  */
 async function searchKubernetesByLabel(
   kubernetesType: KubernetesType,
   labelSelector: string
-): Promise<PrometheusEndpoint> {
+): Promise<PrometheusLocationService> {
   if (kubernetesType === KubernetesType.none) {
     return createPrometheusEndpoint();
   }
@@ -236,7 +237,9 @@ async function testPrometheusQuery(
   queryParams.append('query', 'up');
   const start = Math.floor(Date.now() / 1000);
   const testSuccess = await fetchMetrics({
-    prefix: `${prometheusNamespace}/${kubernetesType}/${prometheusName}${prometheusPort ? `:${prometheusPort}` : ''}`,
+    endpoint: {
+      prefix: `${prometheusNamespace}/${kubernetesType}/${prometheusName}${prometheusPort ? `:${prometheusPort}` : ''}`
+    },
     query: 'up',
     from: start - 86400,
     to: start,
@@ -250,7 +253,6 @@ async function testPrometheusQuery(
   return testSuccess;
 }
 
-
 /**
  * Fetches metrics data from Prometheus using the provided parameters.
  * @param {object} data - The parameters for fetching metrics.
@@ -259,11 +261,14 @@ async function testPrometheusQuery(
  * @param {number} data.from - The start time for the query (Unix timestamp).
  * @param {number} data.to - The end time for the query (Unix timestamp).
  * @param {number} data.step - The step size for the query (in seconds).
+ * @param {object} auth - The basic authentication credentials (optional).
+ * @param {string} auth.username - The username for basic authentication.
+ * @param {string} auth.password - The password for basic authentication.
  * @returns {Promise<object>} - A promise that resolves to the fetched metrics data.
  * @throws {Error} - Throws an error if the request fails.
  */
 export async function fetchMetrics(data: {
-  prefix: string;
+  endpoint: PrometheusEndpoint;
   query: string;
   from: number;
   to: number;
@@ -283,13 +288,24 @@ export async function fetchMetrics(data: {
     params.append('query', data.query);
   }
 
+  // Add Basic Auth credentials to the request headers if provided
+  const headers: HeadersInit = {};
+  const auth = data.endpoint.auth;
+  if (auth?.username && auth?.password) {
+    const credentials = btoa(`${auth.username}:${auth.password}`);
+    headers['Authorization'] = `Basic ${credentials}`;
+  }
+  console.log(headers);
+
   const response = await request(
-    `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`,
+    `/api/v1/namespaces/${data.endpoint.prefix}/proxy/api/v1/query_range?${params.toString()}`,
     {
       method: 'GET',
+      headers,
       isJSON: false,
     }
   );
+
   if (response.status === 200) {
     return response.json();
   } else {

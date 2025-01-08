@@ -4,7 +4,7 @@ import { useCluster } from '@kinvolk/headlamp-plugin/lib/lib/k8s';
 import { Box, Icon, IconButton } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import { useEffect, useState } from 'react';
-import { getConfigStore, getPrometheusInterval, getPrometheusPrefix } from '../../../util';
+import { getConfigStore, getPrometheusInterval, getPrometheusEndpoint, PrometheusEndpoint } from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
 import { DiskChart } from '../DiskChart/DiskChart';
 
@@ -32,7 +32,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
   const clusterConfig = configStore.useConfig();
 
   const [refresh, setRefresh] = useState<boolean>(true);
-  const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
+  const [prometheusEndpoint, setPrometheusEndpoint] = useState<PrometheusEndpoint | null>(null);
   const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
   const [isVisible, setIsVisible] = useState<boolean>(false);
 
@@ -45,16 +45,16 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
 
     if (!isEnabled) {
       setState(prometheusState.UNKNOWN);
-      setPrometheusPrefix(null);
+      setPrometheusEndpoint(null);
       return;
     }
 
     setState(prometheusState.LOADING);
     (async () => {
       try {
-        const prefix = await getPrometheusPrefix(cluster);
-        if (prefix) {
-          setPrometheusPrefix(prefix);
+        const endpoint = await getPrometheusEndpoint(cluster);
+        if (endpoint) {
+          setPrometheusEndpoint(endpoint);
           setState(prometheusState.INSTALLED);
         } else {
           setState(prometheusState.UNKNOWN);
@@ -111,7 +111,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
             capacityQuery={props.capacityQuery}
             interval={interval}
             autoRefresh={refresh}
-            prometheusPrefix={prometheusPrefix}
+            prometheusEndpoint={prometheusEndpoint}
           />
         </Box>
       ) : state === prometheusState.LOADING ? (
