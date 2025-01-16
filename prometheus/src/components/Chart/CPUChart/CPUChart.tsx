@@ -1,4 +1,5 @@
-import { useTheme } from '@mui/material';
+import { alpha, useTheme } from '@mui/material';
+import { blue } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import Chart from '../Chart/Chart';
@@ -45,7 +46,7 @@ export function CPUChart(props: CPUChartProps) {
 
   const YTickProps = {
     domain: ['dataMin', 'auto'],
-    width: 80,
+    width: 60,
   };
 
   return (
@@ -54,8 +55,8 @@ export function CPUChart(props: CPUChartProps) {
         {
           query: props.query,
           name: 'cpu (cores)',
-          strokeColor: '#CDC300',
-          fillColor: '#FFF178',
+          strokeColor: alpha(blue[400], 0.8),
+          fillColor: alpha(blue[400], 0.1),
           dataProcessor: dataProcessor,
         },
       ]}

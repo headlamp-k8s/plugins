@@ -2,7 +2,15 @@ import { Icon } from '@iconify/react';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
-import { Box, IconButton, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
+import {
+  Box,
+  Button,
+  MenuItem,
+  Paper,
+  Select,
+  ToggleButton,
+  ToggleButtonGroup,
+} from '@mui/material';
 import Alert from '@mui/material/Alert';
 import { useEffect, useState } from 'react';
 import { getConfigStore, getPrometheusInterval, getPrometheusPrefix } from '../../../util';
@@ -82,114 +90,142 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
     setChartVariant(event.currentTarget.value);
   };
 
+  const interval = getPrometheusInterval(cluster);
+
+  const [timespan, setTimespan] = useState(interval ?? '1h');
+
   if (!isVisible) {
     return null;
   }
 
-  const interval = getPrometheusInterval(cluster);
-
   return (
     <SectionBox>
-      <Box
-        display="flex"
-        justifyContent="space-around"
-        alignItems="center"
-        style={{ marginBottom: '1rem', margin: '0 auto', width: '0' }}
-      >
-        {state === prometheusState.INSTALLED
-          ? [
-              <ToggleButtonGroup
-                onChange={handleChartVariantChange}
+      <Paper variant="outlined" sx={{ p: 1 }}>
+        {state === prometheusState.INSTALLED && (
+          <Box display="flex" gap={1} justifyContent="flex-end" mb={2}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setRefresh(refresh => !refresh);
+              }}
+              startIcon={<Icon icon={refresh ? 'mdi:pause' : 'mdi:play'} />}
+              sx={{ filter: 'grayscale(1.0)' }}
+            >
+              {refresh ? 'Pause' : 'Resume'}
+            </Button>
+            <ToggleButtonGroup
+              onChange={handleChartVariantChange}
+              size="small"
+              aria-label="metric chooser"
+              value={chartVariant}
+              exclusive
+            >
+              <CustomToggleButton label="CPU" value="cpu" icon="mdi:chip" />
+              <CustomToggleButton label="Memory" value="memory" icon="mdi:memory" />
+              <CustomToggleButton
+                label="Network"
+                value="network"
+                icon="mdi:folder-network-outline"
+              />
+              <CustomToggleButton label="Filesystem" value="filesystem" icon="mdi:database" />
+            </ToggleButtonGroup>
+            <Box>
+              <Select
+                variant="outlined"
                 size="small"
-                aria-label="metric chooser"
-                value={chartVariant}
-                exclusive
+                name="Time"
+                value={timespan}
+                onChange={e => setTimespan(e.target.value)}
               >
-                <ToggleButton value="cpu">CPU</ToggleButton>
-                <ToggleButton value="memory">Memory</ToggleButton>
-                <ToggleButton value="network">Network</ToggleButton>
-                <ToggleButton value="filesystem">Filesystem</ToggleButton>
-              </ToggleButtonGroup>,
-              <Box pl={2}>
-                <IconButton
-                  onClick={() => {
-                    setRefresh(refresh => !refresh);
-                  }}
-                  size="large"
-                >
-                  {refresh ? (
-                    <Tooltip title="Pause metrics">
-                      {' '}
-                      <Icon icon="mdi:pause" />{' '}
-                    </Tooltip>
-                  ) : (
-                    <Tooltip title="Resume metrics">
-                      {' '}
-                      <Icon icon="mdi:play" />{' '}
-                    </Tooltip>
-                  )}
-                </IconButton>
-              </Box>,
-            ]
-          : []}
-      </Box>
-
-      {state === prometheusState.INSTALLED ? (
-        <Box
-          style={{
-            justifyContent: 'center',
-            display: 'flex',
-            height: '40vh',
-            width: '80%',
-            margin: '0 auto',
-          }}
-        >
-          {chartVariant === 'cpu' && (
-            <CPUChart
-              query={props.cpuQuery}
-              autoRefresh={refresh}
-              prometheusPrefix={prometheusPrefix}
-              interval={interval}
-            />
-          )}
-          {chartVariant === 'memory' && (
-            <MemoryChart
-              query={props.memoryQuery}
-              autoRefresh={refresh}
-              prometheusPrefix={prometheusPrefix}
-              interval={interval}
-            />
-          )}
-          {chartVariant === 'network' && (
-            <NetworkChart
-              rxQuery={props.networkRxQuery}
-              txQuery={props.networkTxQuery}
-              autoRefresh={refresh}
-              interval={interval}
-              prometheusPrefix={prometheusPrefix}
-            />
-          )}
-          {chartVariant === 'filesystem' && (
-            <FilesystemChart
-              readQuery={props.filesystemReadQuery}
-              writeQuery={props.filesystemWriteQuery}
-              autoRefresh={refresh}
-              interval={interval}
-              prometheusPrefix={prometheusPrefix}
-            />
-          )}
-        </Box>
-      ) : state === prometheusState.LOADING ? (
-        <Box m={2}>
-          <Loader title="Loading Prometheus Info" />
-        </Box>
-      ) : state === prometheusState.ERROR ? (
-        <Box m={2}>
-          <Alert severity="warning">Error fetching prometheus Info</Alert>
-        </Box>
-      ) : (
-        <PrometheusNotFoundBanner />
-      )}
+                <MenuItem value={'10m'}>10 minutes</MenuItem>
+                <MenuItem value={'30m'}>30 minutes</MenuItem>
+                <MenuItem value={'1h'}>1 hour</MenuItem>
+                <MenuItem value={'3h'}>3 hours</MenuItem>
+                <MenuItem value={'6h'}>6 hours</MenuItem>
+                <MenuItem value={'12h'}>12 hours</MenuItem>
+                <MenuItem value={'24h'}>24 hours</MenuItem>
+                <MenuItem value={'48h'}>48 hours</MenuItem>
+                <MenuItem value={'today'}>Today</MenuItem>
+                <MenuItem value={'yesterday'}>Yesterday</MenuItem>
+                <MenuItem value={'week'}>Week</MenuItem>
+                <MenuItem value={'lastweek'}>Last week</MenuItem>
+                <MenuItem value={'7d'}>7 days</MenuItem>
+                <MenuItem value={'14d'}>14 days</MenuItem>
+              </Select>
+            </Box>
+          </Box>
+        )}
+        {state === prometheusState.INSTALLED ? (
+          <Box
+            style={{
+              height: '400px',
+            }}
+          >
+            {chartVariant === 'cpu' && (
+              <CPUChart
+                query={props.cpuQuery}
+                autoRefresh={refresh}
+                prometheusPrefix={prometheusPrefix}
+                interval={timespan}
+              />
+            )}
+            {chartVariant === 'memory' && (
+              <MemoryChart
+                query={props.memoryQuery}
+                autoRefresh={refresh}
+                prometheusPrefix={prometheusPrefix}
+                interval={timespan}
+              />
+            )}
+            {chartVariant === 'network' && (
+              <NetworkChart
+                rxQuery={props.networkRxQuery}
+                txQuery={props.networkTxQuery}
+                autoRefresh={refresh}
+                interval={timespan}
+                prometheusPrefix={prometheusPrefix}
+              />
+            )}
+            {chartVariant === 'filesystem' && (
+              <FilesystemChart
+                readQuery={props.filesystemReadQuery}
+                writeQuery={props.filesystemWriteQuery}
+                autoRefresh={refresh}
+                interval={timespan}
+                prometheusPrefix={prometheusPrefix}
+              />
+            )}
+          </Box>
+        ) : state === prometheusState.LOADING ? (
+          <Box m={2}>
+            <Loader title="Loading Prometheus Info" />
+          </Box>
+        ) : state === prometheusState.ERROR ? (
+          <Box m={2}>
+            <Alert severity="warning">Error fetching prometheus Info</Alert>
+          </Box>
+        ) : (
+          <PrometheusNotFoundBanner />
+        )}
+      </Paper>
     </SectionBox>
+  );
+}
+
+function CustomToggleButton({
+  label,
+  icon,
+  value,
+}: {
+  label: string;
+  icon: string;
+  value: string;
+}) {
+  return (
+    <ToggleButton size="small" value={value} sx={{ textTransform: 'none', gap: 0.5, fontSize: 14 }}>
+      <Icon icon={icon} width="18px" />
+      {label}
+    </ToggleButton>
   );
 }

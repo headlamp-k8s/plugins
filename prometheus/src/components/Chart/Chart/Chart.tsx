@@ -1,7 +1,16 @@
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { getTimeRange } from '../../../util';
 
 /**
@@ -50,10 +59,11 @@ export default function Chart(props: ChartProps) {
     SUCCESS,
   }
   const { fetchMetrics, xAxisProps, yAxisProps } = props;
-  const [metrics, setMetrics] = useState<object>({});
+  const [metrics, setMetrics] = useState<Array<any>>([]);
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
+  const timeRange = getTimeRange(props.interval);
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
@@ -142,29 +152,38 @@ export default function Chart(props: ChartProps) {
         clearInterval(refreshInterval);
       };
     }
-  }, [props.autoRefresh, props.plots]);
+  }, [props.autoRefresh, props.plots, props.interval]);
 
   let chartContent;
 
   if (state === ChartState.SUCCESS) {
     chartContent = (
-      <AreaChart data={metrics}>
-        <XAxis stroke={theme.palette.chartStyles.labelColor} {...xAxisProps} />
-        <YAxis stroke={theme.palette.chartStyles.labelColor} {...yAxisProps} />
+      <AreaChart data={metrics} style={{ fontSize: 14 }}>
+        <XAxis
+          stroke={theme.palette.chartStyles.labelColor}
+          fontSize={12}
+          {...xAxisProps}
+          type="number"
+          domain={[timeRange.from, timeRange.to]}
+          allowDataOverflow
+        />
+        <YAxis fontSize={14} stroke={theme.palette.chartStyles.labelColor} {...yAxisProps} />
         {props.CustomTooltip === undefined ? (
           <Tooltip />
         ) : (
           <Tooltip content={props.CustomTooltip} />
         )}
         <Legend />
+        <CartesianGrid strokeDasharray="2 4" stroke={theme.palette.divider} vertical={false} />
         {props.plots.map(plot => (
           <Area
             stackId="1"
-            type="monotone"
+            type="step"
             dataKey={plot.name}
             stroke={plot.strokeColor}
+            strokeWidth={2}
             fill={plot.fillColor}
-            activeDot={{ r: 8 }}
+            activeDot={{ r: 2 }}
             animationDuration={props.autoRefresh ? 0 : 400} // Disable animation when refreshing
           />
         ))}

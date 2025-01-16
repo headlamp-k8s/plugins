@@ -1,4 +1,5 @@
-import { useTheme } from '@mui/material';
+import { alpha, useTheme } from '@mui/material';
+import { blue } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import { formatBytes } from '../../../util';
@@ -62,8 +63,8 @@ export function MemoryChart(props: MemoryChartProps) {
         {
           query: props.query,
           name: 'memory',
-          strokeColor: '#CDC300',
-          fillColor: '#FFF178',
+          strokeColor: alpha(blue[400], 0.8),
+          fillColor: alpha(blue[400], 0.1),
           dataProcessor: dataProcessor,
         },
       ]}
