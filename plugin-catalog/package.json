@@ -30,7 +30,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "0.10.0-alpha.1"
+    "@kinvolk/headlamp-plugin": "0.10.0"
   },
   "dependencies": {
     "@mui/icons-material": "^5.15.17",
