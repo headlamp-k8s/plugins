@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import { useEffect, useState } from 'react';
-import { getConfigStore, getPrometheusInterval, getPrometheusPrefix } from '../../../util';
+import { getConfigStore, getPrometheusInterval, getPrometheusEndpoint as getPrometheusEndpoint, PrometheusEndpoint } from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
 import { CPUChart } from '../CPUChart/CPUChart';
 import { FilesystemChart } from '../FilesystemChart/FilesystemChart';
@@ -50,7 +50,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
   const [chartVariant, setChartVariant] = useState<string>('cpu');
   const [refresh, setRefresh] = useState<boolean>(true);
   const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
-  const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
+  const [prometheusEndpoint, setPrometheusEndpoint] = useState<PrometheusEndpoint | null>(null);
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const cluster = useCluster();
   const configStore = getConfigStore();
@@ -66,16 +66,16 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
 
     if (!isEnabled) {
       setState(prometheusState.UNKNOWN);
-      setPrometheusPrefix(null);
+      setPrometheusEndpoint(null);
       return;
     }
 
     setState(prometheusState.LOADING);
     (async () => {
       try {
-        const prefix = await getPrometheusPrefix(cluster);
-        if (prefix) {
-          setPrometheusPrefix(prefix);
+        const endpoint = await getPrometheusEndpoint(cluster);
+        if (endpoint) {
+          setPrometheusEndpoint(endpoint);
           setState(prometheusState.INSTALLED);
         } else {
           setState(prometheusState.UNKNOWN);
@@ -166,16 +166,16 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
               <CPUChart
                 query={props.cpuQuery}
                 autoRefresh={refresh}
-                prometheusPrefix={prometheusPrefix}
                 interval={timespan}
+                prometheusEndpoint={prometheusEndpoint}
               />
             )}
             {chartVariant === 'memory' && (
               <MemoryChart
                 query={props.memoryQuery}
                 autoRefresh={refresh}
-                prometheusPrefix={prometheusPrefix}
                 interval={timespan}
+                prometheusEndpoint={prometheusEndpoint}
               />
             )}
             {chartVariant === 'network' && (
@@ -184,7 +184,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 txQuery={props.networkTxQuery}
                 autoRefresh={refresh}
                 interval={timespan}
-                prometheusPrefix={prometheusPrefix}
+                prometheusEndpoint={prometheusEndpoint}
               />
             )}
             {chartVariant === 'filesystem' && (
@@ -193,7 +193,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 writeQuery={props.filesystemWriteQuery}
                 autoRefresh={refresh}
                 interval={timespan}
-                prometheusPrefix={prometheusPrefix}
+                prometheusEndpoint={prometheusEndpoint}
               />
             )}
           </Box>

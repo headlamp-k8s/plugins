@@ -1,7 +1,7 @@
 import { alpha, useTheme } from '@mui/material';
 import { blue } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
-import { createTickTimestampFormatter, dataProcessor } from '../../../util';
+import { createTickTimestampFormatter, dataProcessor, PrometheusEndpoint } from '../../../util';
 import Chart from '../Chart/Chart';
 import { CustomTooltip } from '../common';
 
@@ -15,7 +15,7 @@ import { CustomTooltip } from '../common';
  */
 interface CPUChartProps {
   query: string;
-  prometheusPrefix: string;
+  prometheusEndpoint: PrometheusEndpoint;
   interval: string;
   autoRefresh: boolean;
 }

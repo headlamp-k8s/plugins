@@ -1,21 +1,51 @@
 import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
 import { isPrometheusInstalled, KubernetesType } from './request';
+import { Cluster } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 
 export const PLUGIN_NAME = 'prometheus';
 
 /**
  * ClusterData type represents the configuration data for a cluster.
- * @property {boolean} autoDetect - Whether to auto-detect Prometheus metrics.
- * @property {boolean} isMetricsEnabled - Whether metrics are enabled for the cluster.
- * @property {string} address - The address of the Prometheus service.
- * @property {string} defaultTimespan - The default timespan for metrics.
+ *
+ * @property {boolean} [autoDetect] - Specifies whether Prometheus metrics endpoint be auto-detected.
+ * @property {boolean} [isMetricsEnabled] - Indicates whether metrics are enabled for the cluster.
+ * @property {string} [address] - The address of the Prometheus service in the format `namespace/service-name:port`.
+ * @property {string} [defaultTimespan] - The default timespan for displaying metrics (e.g., '24h', '7d').
+ * @property {boolean} [isBasicAuthEnabled] - Indicates whether basic authentication is enabled for Prometheus.
+ * @property {object} [basicAuth] - Configuration for basic authentication credentials.
+ * @property {object} [basicAuth.secret] - The Kubernetes secret used to store basic authentication credentials.
+ * @property {string} [basicAuth.secret.name] - The name of the Kubernetes secret.
+ * @property {string} [basicAuth.secret.namespace] - The namespace where the secret is located.
+ * @property {object} [basicAuth.secret.keys] - The keys mapping in the secret for username and password.
+ * @property {string} [basicAuth.secret.keys.username] - The key in the secret that maps to the username.
+ * @property {string} [basicAuth.secret.keys.password] - The key in the secret that maps to the password.
+ * @property {object} [basicAuth.credentials] - Basic authentication credentials (used if not loaded from a secret).
+ * @property {string} [basicAuth.credentials.username] - The username for basic authentication.
+ * @property {string} [basicAuth.credentials.password] - The password for basic authentication.
  */
-type ClusterData = {
+export type ClusterData = {
   autoDetect?: boolean;
   isMetricsEnabled?: boolean;
   address?: string;
   defaultTimespan?: string;
+  isBasicAuthEnabled?: boolean;
+  basicAuth?: {
+    secret?: {
+      name?: string;
+      namespace?: string;
+      keys?: {
+        username?: string;
+        password?: string;
+      };
+    };
+    credentials?: BasicAuthCredentials;
+  }
 };
+
+export type BasicAuthCredentials = {
+  username?: string;
+  password?: string;
+}
 
 /**
  * Conf type represents the configuration data for the prometheus plugin.
@@ -91,27 +121,39 @@ export function isMetricsEnabled(cluster: string): boolean {
   return clusterData?.isMetricsEnabled ?? false;
 }
 
+export type PrometheusEndpoint = {
+  prefix: string;
+  auth?: BasicAuthCredentials;
+}
+
 /**
- * getPrometheusPrefix returns the prefix for the Prometheus metrics.
+ * getPrometheusEndpoint returns the prefix and auth for the Prometheus metrics.
  * @param {string} cluster - The name of the cluster.
- * @returns {Promise<string | null>} The prefix for the Prometheus metrics, or null if not found.
+ * @returns {Promise<PrometheusEndpoint | null>} The prefix  and auth for the Prometheus metrics, or null if not found.
  */
-export async function getPrometheusPrefix(cluster: string): Promise<string | null> {
+export async function getPrometheusEndpoint(cluster: string): Promise<PrometheusEndpoint | null> {
   // check if cluster has autoDetect enabled
   // if so return the prometheus pod address
   const clusterData = getClusterConfig(cluster);
+
   if (clusterData?.autoDetect) {
     const prometheusEndpoint = await isPrometheusInstalled();
     if (prometheusEndpoint.type === KubernetesType.none) {
       return null;
     }
     const prometheusPortStr = prometheusEndpoint.port ? `:${prometheusEndpoint.port}` : '';
-    return `${prometheusEndpoint.namespace}/${prometheusEndpoint.type}/${prometheusEndpoint.name}${prometheusPortStr}`;
+    return {
+      prefix: `${prometheusEndpoint.namespace}/${prometheusEndpoint.type}/${prometheusEndpoint.name}${prometheusPortStr}`,
+      auth: clusterData?.basicAuth?.credentials,
+    };
   }
 
   if (clusterData?.address) {
     const [namespace, service] = clusterData?.address.split('/');
-    return `${namespace}/services/${service}`;
+    return {
+      prefix: `${namespace}/services/${service}`,
+      auth: clusterData?.basicAuth?.credentials,
+    };
   }
   return null;
 }

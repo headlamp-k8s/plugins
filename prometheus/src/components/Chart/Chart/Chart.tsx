@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getTimeRange } from '../../../util';
+import { getTimeRange, PrometheusEndpoint } from '../../../util';
 
 /**
  * Props for the Chart component.
@@ -40,7 +40,7 @@ export interface ChartProps {
   }>;
   fetchMetrics: (query: object) => Promise<any>;
   interval: string;
-  prometheusPrefix: string;
+  prometheusEndpoint: PrometheusEndpoint;
   autoRefresh: boolean;
   xAxisProps: {
     [key: string]: any;
@@ -85,7 +85,7 @@ export default function Chart(props: ChartProps) {
       var response;
       try {
         response = await fetchMetrics({
-          prefix: props.prometheusPrefix,
+          endpoint: props.prometheusEndpoint,
           query: plot.query,
           from: from,
           to: to,
