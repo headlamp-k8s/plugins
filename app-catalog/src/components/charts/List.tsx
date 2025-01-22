@@ -94,7 +94,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   function Search() {
     return (
       <TextField
-        style={{
+        sx={{
           width: '20vw',
           margin: '0 1rem',
         }}
@@ -114,7 +114,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   function CategoryForCharts() {
     return (
       <Autocomplete
-        style={{
+        sx={{
           width: '20vw',
         }}
         options={helmChartCategoryList}
@@ -158,10 +158,10 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         handleEditor={(open: boolean) => setEditorOpen(open)}
       />
       <SectionHeader title={<AppCatalogTitle />} actions={[<Search />, <CategoryForCharts />]} />
-      <Box display="flex" flexWrap="wrap" justifyContent="space-between" alignContent="start">
+      <Box>
         {!charts ? (
           <Box
-            style={{
+            sx={{
               margin: '0 auto',
             }}
           >
@@ -170,181 +170,170 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         ) : charts.length === 0 ? (
           <Box mt={2} mx={2}>
             <Typography variant="h5" component="h2">
-              {`No charts found for ${
-                search ? `search term: ${search}` : `category: ${chartCategory.title}`
-              }`}
+              {`No charts found for ${search ? `search term: ${search}` : `category: ${chartCategory.title}`
+                }`}
             </Typography>
           </Box>
         ) : (
           <Box
             display="flex"
             m={1}
-            justifyContent="center"
-            flexWrap="wrap"
             sx={{
-              flexDirection: {
-                xs: 'column',
-                sm: 'row',
-              },
+              flexWrap: 'wrap',
+              flexDirection: { sm: 'column', md: 'row' },
             }}
           >
             {charts.map(chart => {
               return (
-                <Box
-                  m={1}
-                  sx={{
-                    width: {
-                      xs: '100%',
-                      sm: '100%',
-                      md: '30%',
-                    },
-                    maxWidth: {
-                      xs: '100%',
-                      sm: '100%',
-                      md: '30%',
-                    },
-                  }}
-                >
-                  <Card>
+                <Card sx={{
+                  margin: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: '100%',
+                  boxShadow: '0px 0px 5px 0px rgba(0,0,0,0.5)',
+                  width: {
+                    md: '40%',
+                    lg: '30%',
+                  },
+                }}>
+                  <Box
+                    height="60px"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    marginTop="15px"
+                  >
+                    <CardMedia
+                      image={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                      alt={`${chart.name} logo`}
+                      sx={{
+                        width: '60px',
+                        margin: '1rem',
+                        alignSelf: 'flex-start',
+                      }}
+                      component="img"
+                    />
                     <Box
-                      height="60px"
                       display="flex"
                       alignItems="center"
-                      justifyContent="space-between"
-                      marginTop="15px"
+                      justifyContent="space-around"
+                      marginRight="10px"
                     >
-                      <CardMedia
-                        image={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                        alt={`${chart.name} logo`}
-                        style={{
-                          width: '60px',
-                          margin: '1rem',
-                          alignSelf: 'flex-start',
-                        }}
-                        component="img"
-                      />
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="space-around"
-                        marginRight="10px"
-                      >
-                        {(chart.cncf || chart.repository.cncf) && (
-                          <Tooltip title="CNCF Project">
-                            <Icon
-                              icon="simple-icons:cncf"
-                              style={{
-                                marginLeft: '0.5em',
-                                fontSize: '20px',
-                              }}
-                            />
-                          </Tooltip>
-                        )}
-                        {(chart.official || chart.repository.official) && (
-                          <Tooltip title="Official Chart">
-                            <Icon
-                              icon="mdi:star-circle"
-                              style={{
-                                marginLeft: '0.5em',
-                                fontSize: '22px',
-                              }}
-                            />
-                          </Tooltip>
-                        )}
-                        {chart.repository.verified_publisher && (
-                          <Tooltip title="Verified Publisher">
-                            <Icon
-                              icon="mdi:check-decagram"
-                              style={{
-                                marginLeft: '0.5em',
-                                fontSize: '22px',
-                              }}
-                            />
-                          </Tooltip>
-                        )}
-                      </Box>
+                      {(chart.cncf || chart.repository.cncf) && (
+                        <Tooltip title="CNCF Project">
+                          <Icon
+                            icon="simple-icons:cncf"
+                            style={{
+                              marginLeft: '0.5em',
+                              fontSize: '20px',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                      {(chart.official || chart.repository.official) && (
+                        <Tooltip title="Official Chart">
+                          <Icon
+                            icon="mdi:star-circle"
+                            style={{
+                              marginLeft: '0.5em',
+                              fontSize: '22px',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                      {chart.repository.verified_publisher && (
+                        <Tooltip title="Verified Publisher">
+                          <Icon
+                            icon="mdi:check-decagram"
+                            style={{
+                              marginLeft: '0.5em',
+                              fontSize: '22px',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
                     </Box>
-                    <CardContent
-                      style={{
-                        margin: '1rem 0rem',
-                        height: '25vh',
+                  </Box>
+                  <CardContent
+                    sx={{
+                      margin: '1rem 0rem',
+                      height: '25vh',
+                      overflow: 'hidden',
+                      paddingTop: 0,
+                    }}
+                  >
+                    <Box
+                      sx={{
                         overflow: 'hidden',
-                        paddingTop: 0,
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                       }}
                     >
+                      <Tooltip title={chart.name}>
+                        <Typography component="h2" variant="h5">
+                          <RouterLink
+                            routeName="/helm/:repoName/charts/:chartName"
+                            params={{
+                              chartName: chart.name,
+                              repoName: chart.repository.name,
+                            }}
+                          >
+                            {chart.name}
+                          </RouterLink>
+                        </Typography>
+                      </Tooltip>
+                    </Box>
+                    <Box display="flex" justifyContent="space-between" my={1}>
+                      <Typography>v{chart.version}</Typography>
                       <Box
-                        style={{
+                        marginLeft={1}
+                        sx={{
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        <Tooltip title={chart.name}>
-                          <Typography component="h2" variant="h5">
-                            <RouterLink
-                              routeName="/helm/:repoName/charts/:chartName"
-                              params={{
-                                chartName: chart.name,
-                                repoName: chart.repository.name,
-                              }}
-                            >
-                              {chart.name}
-                            </RouterLink>
-                          </Typography>
+                        <Tooltip title={chart?.repository?.name || ''}>
+                          <Typography>{chart?.repository?.name || ''}</Typography>
                         </Tooltip>
                       </Box>
-                      <Box display="flex" justifyContent="space-between" my={1}>
-                        <Typography>v{chart.version}</Typography>
-                        <Box
-                          marginLeft={1}
-                          style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          <Tooltip title={chart?.repository?.name || ''}>
-                            <Typography>{chart?.repository?.name || ''}</Typography>
+                    </Box>
+                    <Divider />
+                    <Box mt={1}>
+                      <Typography>
+                        {chart?.description?.slice(0, 100)}
+                        {chart?.description?.length > 100 && (
+                          <Tooltip title={chart?.description}>
+                            <span>…</span>
                           </Tooltip>
-                        </Box>
-                      </Box>
-                      <Divider />
-                      <Box mt={1}>
-                        <Typography>
-                          {chart?.description?.slice(0, 100)}
-                          {chart?.description?.length > 100 && (
-                            <Tooltip title={chart?.description}>
-                              <span>…</span>
-                            </Tooltip>
-                          )}
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                    <CardActions
-                      style={{
-                        justifyContent: 'space-between',
-                        padding: '14px',
+                        )}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                  <CardActions
+                    sx={{
+                      justifyContent: 'space-between',
+                      padding: '14px',
+                    }}
+                  >
+                    <Button
+                      sx={{
+                        backgroundColor: '#000',
+                        color: 'white',
+                        textTransform: 'none',
+                      }}
+                      onClick={() => {
+                        setSelectedChartForInstall(chart);
+                        setEditorOpen(true);
                       }}
                     >
-                      <Button
-                        style={{
-                          backgroundColor: '#000',
-                          color: 'white',
-                          textTransform: 'none',
-                        }}
-                        onClick={() => {
-                          setSelectedChartForInstall(chart);
-                          setEditorOpen(true);
-                        }}
-                      >
-                        Install
-                      </Button>
-                      <Link href={chart?.repository?.url} target="_blank">
-                        Learn More
-                      </Link>
-                    </CardActions>
-                  </Card>
-                </Box>
+                      Install
+                    </Button>
+                    <Link href={chart?.repository?.url} target="_blank">
+                      Learn More
+                    </Link>
+                  </CardActions>
+                </Card>
               );
             })}
           </Box>
