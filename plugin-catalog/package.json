@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/plugin-catalog",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A catalog for Headlamp plugins",
   "scripts": {
     "start": "headlamp-plugin start",
@@ -30,7 +30,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "0.10.0-alpha.1"
+    "@kinvolk/headlamp-plugin": "0.10.0"
   },
   "dependencies": {
     "@mui/icons-material": "^5.15.17",
