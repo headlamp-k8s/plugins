@@ -327,6 +327,9 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                         backgroundColor: '#000',
                         color: 'white',
                         textTransform: 'none',
+                        '&:hover': {
+                          background: '#605e5c',
+                        },
                       }}
                       onClick={() => {
                         setSelectedChartForInstall(chart);
