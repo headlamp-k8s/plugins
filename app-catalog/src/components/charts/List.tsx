@@ -212,8 +212,10 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                       alt={`${chart.name} logo`}
                       sx={{
                         width: '60px',
+                        height: '60px',
                         margin: '1rem',
                         alignSelf: 'flex-start',
+                        objectFit: 'contain',
                       }}
                       component="img"
                     />
