@@ -1,6 +1,6 @@
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { Button, Grid, Link, Paper, Typography } from '@mui/material';
-import makeStyles from '@mui/styles/makeStyles';
+import { styled } from '@mui/material/styles';
 import { useHistory } from 'react-router-dom';
 import skeletonImg from '../../../assets/chart-skeleton.png';
 import { disableMetrics } from '../../util';
@@ -8,21 +8,20 @@ import { formatBytes, PLUGIN_NAME } from '../../util';
 
 const learnMoreLink = 'https://github.com/headlamp-k8s/plugins/tree/main/prometheus#readme';
 
-const useStyles = makeStyles(theme => ({
-  skeletonBox: {
-    backgroundImage: `url(${skeletonImg})`,
-    backgroundSize: 'contain',
-    backgroundRepeat: 'no-repeat',
-    backgroundPositionX: 'center',
-    height: '450px',
-    color: theme.palette.common.black,
-  },
-  dismissButton: {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white,
-    '&:hover': {
-      color: theme.palette.primary.text,
-    },
+const StyledGrid = styled(Grid)(({ theme }) => ({
+  backgroundImage: `url(${skeletonImg})`,
+  backgroundSize: 'contain',
+  backgroundRepeat: 'no-repeat',
+  backgroundPositionX: 'center',
+  height: '450px',
+  color: theme.palette.common.black,
+}));
+
+const DismissButton = styled(Button)(({ theme }) => ({
+  backgroundColor: theme.palette.common.black,
+  color: theme.palette.common.white,
+  '&:hover': {
+    color: theme.palette.primary.text,
   },
 }));
 
@@ -31,18 +30,16 @@ const useStyles = makeStyles(theme => ({
  * @returns {JSX.Element}
  */
 export function PrometheusNotFoundBanner() {
-  const classes = useStyles();
   const cluster = useCluster();
   const history = useHistory();
 
   return (
-    <Grid
+    <StyledGrid
       container
       spacing={2}
       direction="column"
       justifyContent="center"
       alignItems="center"
-      className={classes.skeletonBox}
     >
       <Grid item>
         <Typography variant="h5">Couldn't detect Prometheus in your cluster.</Typography>
@@ -67,16 +64,11 @@ export function PrometheusNotFoundBanner() {
         </Typography>
       </Grid>
       <Grid item>
-        <Button
-          className={classes.dismissButton}
-          size="small"
-          variant="contained"
-          onClick={() => disableMetrics(cluster)}
-        >
+        <DismissButton size="small" variant="contained" onClick={() => disableMetrics(cluster)}>
           Dismiss
-        </Button>
+        </DismissButton>
       </Grid>
-    </Grid>
+    </StyledGrid>
   );
 }
 
