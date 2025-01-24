@@ -52,10 +52,13 @@ export default function ChartDetails() {
             title={chartName}
             actions={[
               <Button
-                style={{
+                sx={{
                   backgroundColor: '#000',
                   color: 'white',
                   textTransform: 'none',
+                  '&:hover': {
+                    background: '#605e5c',
+                  },
                 }}
                 onClick={() => {
                   setOpenEditor(true);
