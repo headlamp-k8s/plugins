@@ -148,8 +148,6 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   // note: When the page changes, we fetch the charts, this will run as a reaction to the previous useEffect
   useEffect(
     function fetchChartsOnPageChange() {
-      setCharts(null);
-
       store.set({ showOnlyVerified: showOnlyVerified });
 
       async function fetchData() {
