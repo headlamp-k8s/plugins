@@ -38,6 +38,83 @@ const useStoreConfig = store.useConfig();
 
 export const PAGE_OFFSET_COUNT_FOR_CHARTS = 9;
 
+interface SearchProps {
+  search: string;
+  setSearch: React.Dispatch<React.SetStateAction<string>>;
+}
+
+function Search({
+  search, 
+  setSearch 
+}: SearchProps) {
+  return (
+    <TextField
+      sx={{
+        width: '20vw',
+        margin: '0 1rem',
+      }}
+      id="outlined-basic"
+      label="Search"
+      value={search}
+      // @todo: Find a better way to handle search autofocus
+      // eslint-disable-next-line jsx-a11y/no-autofocus
+      autoFocus
+      onChange={event => {
+        setSearch(event.target.value);
+      }}
+    />
+  );
+}
+
+interface CategoryForChartsProps {
+  helmChartCategoryList: { title: string; value: number }[];
+  chartCategory: { title: string; value: number };
+  setChartCategory: React.Dispatch<React.SetStateAction<{ title: string; value: number }>>;
+}
+
+function CategoryForCharts({ 
+  helmChartCategoryList,
+  chartCategory,
+  setChartCategory
+}: CategoryForChartsProps) {
+  return (
+    <Autocomplete
+      sx={{
+        width: '20vw',
+      }}
+      options={helmChartCategoryList}
+      getOptionLabel={option => option?.title ?? helmChartCategoryList[0].title}
+      defaultValue={helmChartCategoryList[0]}
+      value={chartCategory}
+      onChange={(event, newValue) => {
+        // @ts-ignore
+        setChartCategory((oldValue) => {
+          if ((newValue?.value ?? helmChartCategoryList[0].value) === oldValue.value) {
+            return oldValue;
+          }
+          return newValue ?? helmChartCategoryList[0];
+        });
+      }}
+      renderInput={params => {
+        if (process.env.NODE_ENV === 'test') {
+          // To keep the ids stable under test.
+          params.id = params.id ? params.id.replace(/[0-9]/g, '') : params.id;
+          params.inputProps.id = params.inputProps.id
+            ? params.inputProps.id.replace(/[0-9]/g, '')
+            : params.inputProps.id;
+          params.InputLabelProps.id = params.InputLabelProps.id
+            ? params.InputLabelProps.id.replace(/[0-9]/g, '')
+            : params.InputLabelProps.id;
+          // params.InputLabelProps.htmlFor = params.InputLabelProps.htmlFor
+          //   ? params.InputLabelProps.htmlFor.replace(/[0-9]/g, '')
+          //   : params.InputLabelProps.htmlFor;
+        }
+        return <TextField {...params} label="Categories" placeholder="Favorites" />;
+      }}
+    />
+  );
+}
+
 export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   const helmChartCategoryList = [
     { title: 'All', value: 0 },
@@ -90,65 +167,6 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
     },
     [page, chartCategory, search, showOnlyVerified]
   );
-
-  function Search() {
-    return (
-      <TextField
-        sx={{
-          width: '20vw',
-          margin: '0 1rem',
-        }}
-        id="outlined-basic"
-        label="Search"
-        value={search}
-        // @todo: Find a better way to handle search autofocus
-        // eslint-disable-next-line jsx-a11y/no-autofocus
-        autoFocus
-        onChange={event => {
-          setSearch(event.target.value);
-        }}
-      />
-    );
-  }
-
-  function CategoryForCharts() {
-    return (
-      <Autocomplete
-        sx={{
-          width: '20vw',
-        }}
-        options={helmChartCategoryList}
-        getOptionLabel={option => option?.title ?? helmChartCategoryList[0].title}
-        defaultValue={helmChartCategoryList[0]}
-        value={chartCategory}
-        onChange={(event, newValue) => {
-          // @ts-ignore
-          setChartCategory((oldValue) => {
-            if ((newValue?.value ?? helmChartCategoryList[0].value) === oldValue.value) {
-              return oldValue;
-            }
-            return newValue ?? helmChartCategoryList[0];
-          });
-        }}
-        renderInput={params => {
-          if (process.env.NODE_ENV === 'test') {
-            // To keep the ids stable under test.
-            params.id = params.id ? params.id.replace(/[0-9]/g, '') : params.id;
-            params.inputProps.id = params.inputProps.id
-              ? params.inputProps.id.replace(/[0-9]/g, '')
-              : params.inputProps.id;
-            params.InputLabelProps.id = params.InputLabelProps.id
-              ? params.InputLabelProps.id.replace(/[0-9]/g, '')
-              : params.InputLabelProps.id;
-            // params.InputLabelProps.htmlFor = params.InputLabelProps.htmlFor
-            //   ? params.InputLabelProps.htmlFor.replace(/[0-9]/g, '')
-            //   : params.InputLabelProps.htmlFor;
-          }
-          return <TextField {...params} label="Categories" placeholder="Favorites" />;
-        }}
-      />
-    );
-  }
 
   return (
     <>
