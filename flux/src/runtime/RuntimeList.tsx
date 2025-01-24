@@ -17,19 +17,19 @@ import Table from '../common/Table';
 export default function FluxRunTime() {
   const [pods] = K8s.ResourceClasses.Pod.useList();
   const [crds] = K8s.ResourceClasses.CustomResourceDefinition.useList();
-  const helmController = pods?.filter(pod => pod.metadata.labels['app'] === 'helm-controller');
+  const helmController = pods?.filter(pod => pod.metadata.labels?.['app'] === 'helm-controller');
   const kustomizeController = pods?.filter(
-    pod => pod.metadata.labels['app'] === 'kustomize-controller'
+    pod => pod.metadata.labels?.['app'] === 'kustomize-controller'
   );
   const notificationController = pods?.filter(
-    pod => pod.metadata.labels['app'] === 'notification-controller'
+    pod => pod.metadata.labels?.['app'] === 'notification-controller'
   );
-  const sourceController = pods?.filter(pod => pod.metadata.labels['app'] === 'source-controller');
+  const sourceController = pods?.filter(pod => pod.metadata.labels?.['app'] === 'source-controller');
   const imageReflectorController = pods?.filter(
-    pod => pod.metadata.labels['app'] === 'image-reflector-controller'
+    pod => pod.metadata.labels?.['app'] === 'image-reflector-controller'
   );
   const imageAutomationController = pods?.filter(
-    pod => pod.metadata.labels['app'] === 'image-automation-controller'
+    pod => pod.metadata.labels?.['app'] === 'image-automation-controller'
   );
 
   const controllers = helmController?.concat(
