@@ -56,9 +56,6 @@ function Search({
       id="outlined-basic"
       label="Search"
       value={search}
-      // @todo: Find a better way to handle search autofocus
-      // eslint-disable-next-line jsx-a11y/no-autofocus
-      autoFocus
       onChange={event => {
         setSearch(event.target.value);
       }}
