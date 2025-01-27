@@ -220,22 +220,24 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                     justifyContent="space-between"
                     marginTop="15px"
                   >
-                    <CardMedia
-                      image={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                      alt={`${chart.name} logo`}
-                      sx={{
-                        width: '60px',
-                        height: '60px',
-                        margin: '1rem',
-                        alignSelf: 'flex-start',
-                        objectFit: 'contain',
-                      }}
-                      component="img"
-                    />
+                    {chart.logo_image_id && (
+                      <CardMedia
+                        image={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                        alt={`${chart.name} logo`}
+                        sx={{
+                          width: '60px',
+                          height: '60px',
+                          margin: '1rem',
+                          alignSelf: 'flex-start',
+                          objectFit: 'contain',
+                        }}
+                        component="img"
+                      />
+                    )}
                     <Box
                       display="flex"
                       alignItems="center"
-                      justifyContent="space-around"
+                      marginLeft="auto"
                       marginRight="10px"
                     >
                       {(chart.cncf || chart.repository.cncf) && (
