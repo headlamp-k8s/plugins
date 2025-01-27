@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Autocomplete, Pagination } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 //import { jsonToYAML, yamlToJSON } from '../../helpers';
 import { fetchChartsFromArtifact } from '../../api/charts';
 //import { createRelease } from '../../api/releases';
@@ -47,6 +47,25 @@ function Search({
   search, 
   setSearch 
 }: SearchProps) {
+  const [inputValue, setInputValue] = useState(search);
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      setSearch(inputValue);
+    }, 300);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [inputValue, setSearch]);
+
   return (
     <TextField
       sx={{
@@ -55,9 +74,9 @@ function Search({
       }}
       id="outlined-basic"
       label="Search"
-      value={search}
+      value={inputValue}
       onChange={event => {
-        setSearch(event.target.value);
+        setInputValue(event.target.value);
       }}
     />
   );
