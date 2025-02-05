@@ -22,9 +22,9 @@ import { Autocomplete, Pagination } from '@mui/material';
 import { useEffect, useState } from 'react';
 //import { jsonToYAML, yamlToJSON } from '../../helpers';
 import { fetchChartsFromArtifact } from '../../api/charts';
-import { AppCatalogTitle } from './AppCatalogTitle';
 //import { createRelease } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
+import { SettingsLink } from './SettingsLink';
 
 interface AppCatalogConfig {
   /**
@@ -157,7 +157,11 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         chart={selectedChartForInstall}
         handleEditor={(open: boolean) => setEditorOpen(open)}
       />
-      <SectionHeader title={<AppCatalogTitle />} actions={[<Search />, <CategoryForCharts />]} />
+      <SectionHeader 
+        title="Applications"
+        titleSideActions={[<SettingsLink />]}
+        actions={[<Search />, <CategoryForCharts />]}
+      />
       <Box>
         {!charts ? (
           <Box
