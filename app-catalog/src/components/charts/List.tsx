@@ -192,7 +192,14 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
       <SectionHeader 
         title="Applications"
         titleSideActions={[<SettingsLink />]}
-        actions={[<Search />, <CategoryForCharts />]}
+        actions={[
+          <Search search={search} setSearch={setSearch} />, 
+          <CategoryForCharts
+            helmChartCategoryList={helmChartCategoryList}
+            chartCategory={chartCategory}
+            setChartCategory={setChartCategory}
+          />,
+        ]}
       />
       <Box>
         {!charts ? (
