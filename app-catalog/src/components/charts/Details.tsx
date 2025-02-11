@@ -52,10 +52,13 @@ export default function ChartDetails() {
             title={chartName}
             actions={[
               <Button
-                style={{
+                sx={{
                   backgroundColor: '#000',
                   color: 'white',
                   textTransform: 'none',
+                  '&:hover': {
+                    background: '#605e5c',
+                  },
                 }}
                 onClick={() => {
                   setOpenEditor(true);
@@ -77,14 +80,16 @@ export default function ChartDetails() {
                 name: 'Name',
                 value: (
                   <Box display="flex" alignItems="center">
-                    <Box mr={1}>
-                      <img
-                        src={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                        width="25"
-                        height="25"
-                        alt={chart.name}
-                      />
-                    </Box>
+                    {chart.logo_image_id && (
+                      <Box mr={1}>
+                        <img
+                          src={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                          width="25"
+                          height="25"
+                          alt={chart.name}
+                        />
+                      </Box>
+                    )}
                     <Box>{chart.name}</Box>
                   </Box>
                 ),

@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Autocomplete, Pagination } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 //import { jsonToYAML, yamlToJSON } from '../../helpers';
 import { fetchChartsFromArtifact } from '../../api/charts';
 //import { createRelease } from '../../api/releases';
@@ -37,6 +37,99 @@ export const store = new ConfigStore<AppCatalogConfig>('app-catalog');
 const useStoreConfig = store.useConfig();
 
 export const PAGE_OFFSET_COUNT_FOR_CHARTS = 9;
+
+interface SearchProps {
+  search: string;
+  setSearch: React.Dispatch<React.SetStateAction<string>>;
+}
+
+function Search({
+  search, 
+  setSearch 
+}: SearchProps) {
+  const [inputValue, setInputValue] = useState(search);
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      setSearch(inputValue);
+    }, 300);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [inputValue, setSearch]);
+
+  return (
+    <TextField
+      sx={{
+        width: '20vw',
+        margin: '0 1rem',
+      }}
+      id="outlined-basic"
+      label="Search"
+      value={inputValue}
+      onChange={event => {
+        setInputValue(event.target.value);
+      }}
+    />
+  );
+}
+
+interface CategoryForChartsProps {
+  helmChartCategoryList: { title: string; value: number }[];
+  chartCategory: { title: string; value: number };
+  setChartCategory: React.Dispatch<React.SetStateAction<{ title: string; value: number }>>;
+}
+
+function CategoryForCharts({ 
+  helmChartCategoryList,
+  chartCategory,
+  setChartCategory
+}: CategoryForChartsProps) {
+  return (
+    <Autocomplete
+      sx={{
+        width: '20vw',
+      }}
+      options={helmChartCategoryList}
+      getOptionLabel={option => option?.title ?? helmChartCategoryList[0].title}
+      defaultValue={helmChartCategoryList[0]}
+      value={chartCategory}
+      onChange={(event, newValue) => {
+        // @ts-ignore
+        setChartCategory((oldValue) => {
+          if ((newValue?.value ?? helmChartCategoryList[0].value) === oldValue.value) {
+            return oldValue;
+          }
+          return newValue ?? helmChartCategoryList[0];
+        });
+      }}
+      renderInput={params => {
+        if (process.env.NODE_ENV === 'test') {
+          // To keep the ids stable under test.
+          params.id = params.id ? params.id.replace(/[0-9]/g, '') : params.id;
+          params.inputProps.id = params.inputProps.id
+            ? params.inputProps.id.replace(/[0-9]/g, '')
+            : params.inputProps.id;
+          params.InputLabelProps.id = params.InputLabelProps.id
+            ? params.InputLabelProps.id.replace(/[0-9]/g, '')
+            : params.InputLabelProps.id;
+          // params.InputLabelProps.htmlFor = params.InputLabelProps.htmlFor
+          //   ? params.InputLabelProps.htmlFor.replace(/[0-9]/g, '')
+          //   : params.InputLabelProps.htmlFor;
+        }
+        return <TextField {...params} label="Categories" placeholder="Favorites" />;
+      }}
+    />
+  );
+}
 
 export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   const helmChartCategoryList = [
@@ -71,8 +164,6 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   // note: When the page changes, we fetch the charts, this will run as a reaction to the previous useEffect
   useEffect(
     function fetchChartsOnPageChange() {
-      setCharts(null);
-
       store.set({ showOnlyVerified: showOnlyVerified });
 
       async function fetchData() {
@@ -91,65 +182,6 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
     [page, chartCategory, search, showOnlyVerified]
   );
 
-  function Search() {
-    return (
-      <TextField
-        sx={{
-          width: '20vw',
-          margin: '0 1rem',
-        }}
-        id="outlined-basic"
-        label="Search"
-        value={search}
-        // @todo: Find a better way to handle search autofocus
-        // eslint-disable-next-line jsx-a11y/no-autofocus
-        autoFocus
-        onChange={event => {
-          setSearch(event.target.value);
-        }}
-      />
-    );
-  }
-
-  function CategoryForCharts() {
-    return (
-      <Autocomplete
-        sx={{
-          width: '20vw',
-        }}
-        options={helmChartCategoryList}
-        getOptionLabel={option => option?.title ?? helmChartCategoryList[0].title}
-        defaultValue={helmChartCategoryList[0]}
-        value={chartCategory}
-        onChange={(event, newValue) => {
-          // @ts-ignore
-          setChartCategory((oldValue) => {
-            if ((newValue?.value ?? helmChartCategoryList[0].value) === oldValue.value) {
-              return oldValue;
-            }
-            return newValue ?? helmChartCategoryList[0];
-          });
-        }}
-        renderInput={params => {
-          if (process.env.NODE_ENV === 'test') {
-            // To keep the ids stable under test.
-            params.id = params.id ? params.id.replace(/[0-9]/g, '') : params.id;
-            params.inputProps.id = params.inputProps.id
-              ? params.inputProps.id.replace(/[0-9]/g, '')
-              : params.inputProps.id;
-            params.InputLabelProps.id = params.InputLabelProps.id
-              ? params.InputLabelProps.id.replace(/[0-9]/g, '')
-              : params.InputLabelProps.id;
-            // params.InputLabelProps.htmlFor = params.InputLabelProps.htmlFor
-            //   ? params.InputLabelProps.htmlFor.replace(/[0-9]/g, '')
-            //   : params.InputLabelProps.htmlFor;
-          }
-          return <TextField {...params} label="Categories" placeholder="Favorites" />;
-        }}
-      />
-    );
-  }
-
   return (
     <>
       <EditorDialog
@@ -160,7 +192,14 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
       <SectionHeader 
         title="Applications"
         titleSideActions={[<SettingsLink />]}
-        actions={[<Search />, <CategoryForCharts />]}
+        actions={[
+          <Search search={search} setSearch={setSearch} />, 
+          <CategoryForCharts
+            helmChartCategoryList={helmChartCategoryList}
+            chartCategory={chartCategory}
+            setChartCategory={setChartCategory}
+          />,
+        ]}
       />
       <Box>
         {!charts ? (
@@ -207,20 +246,24 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                     justifyContent="space-between"
                     marginTop="15px"
                   >
-                    <CardMedia
-                      image={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                      alt={`${chart.name} logo`}
-                      sx={{
-                        width: '60px',
-                        margin: '1rem',
-                        alignSelf: 'flex-start',
-                      }}
-                      component="img"
-                    />
+                    {chart.logo_image_id && (
+                      <CardMedia
+                        image={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                        alt={`${chart.name} logo`}
+                        sx={{
+                          width: '60px',
+                          height: '60px',
+                          margin: '1rem',
+                          alignSelf: 'flex-start',
+                          objectFit: 'contain',
+                        }}
+                        component="img"
+                      />
+                    )}
                     <Box
                       display="flex"
                       alignItems="center"
-                      justifyContent="space-around"
+                      marginLeft="auto"
                       marginRight="10px"
                     >
                       {(chart.cncf || chart.repository.cncf) && (
@@ -325,6 +368,9 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                         backgroundColor: '#000',
                         color: 'white',
                         textTransform: 'none',
+                        '&:hover': {
+                          background: '#605e5c',
+                        },
                       }}
                       onClick={() => {
                         setSelectedChartForInstall(chart);
