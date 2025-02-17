@@ -94,7 +94,8 @@ export function Table(props: TableProps) {
           case 'lastUpdated':
             return {
               header: 'Last Updated',
-              accessorFn: item => <DateLabel format="mini" date={prepareLastUpdated(item)} />,
+              accessorFn: item => prepareLastUpdated(item),
+              Cell: ({ cell }: any) => <DateLabel format="mini" date={cell.getValue()} />,
             };
           case 'age':
             return {
@@ -116,6 +117,10 @@ export function Table(props: TableProps) {
             return {
               header: 'Source',
               accessorFn: item => {
+                const { name } = getSourceNameAndType(item);
+                return name;
+              },
+              Cell: ({ row: {original: item}}: any) => {
                 const { name, type } = getSourceNameAndType(item);
                 return (
                   <Link
