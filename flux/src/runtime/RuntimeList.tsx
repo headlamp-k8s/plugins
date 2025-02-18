@@ -14,7 +14,7 @@ import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
 
-export default function FluxRunTime() {
+export function FluxRunTime() {
   const [pods] = K8s.ResourceClasses.Pod.useList();
   const [crds] = K8s.ResourceClasses.CustomResourceDefinition.useList();
   const helmController = pods?.filter(pod => pod.metadata.labels?.['app'] === 'helm-controller');
@@ -24,7 +24,9 @@ export default function FluxRunTime() {
   const notificationController = pods?.filter(
     pod => pod.metadata.labels?.['app'] === 'notification-controller'
   );
-  const sourceController = pods?.filter(pod => pod.metadata.labels?.['app'] === 'source-controller');
+  const sourceController = pods?.filter(
+    pod => pod.metadata.labels?.['app'] === 'source-controller'
+  );
   const imageReflectorController = pods?.filter(
     pod => pod.metadata.labels?.['app'] === 'image-reflector-controller'
   );

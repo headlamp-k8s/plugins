@@ -1,85 +1,42 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import {
-  Loader,
-  SectionBox,
-  SectionFilterHeader,
-} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { SectionBox, SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
-import MuiLink from '@mui/material/Link';
-import React from 'react';
-import { useTheme } from '@mui/material/styles';
-import  { useFluxControllerAvailableCheck, useFluxInstallCheck } from '../checkflux';
+import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
-import Flux404 from '../checkflux';
 
 export function Kustomizations() {
-  const isKustomizationControllerAvailable = useFluxControllerAvailableCheck({
-    name: 'kustomize-controller',
-  });
-  if (isKustomizationControllerAvailable === null) {
-    return <Loader />;
-  }
-
-  if (!isKustomizationControllerAvailable) {
-    return (
-      <SectionBox sx={{
-        padding: '1rem',
-        alignItems: 'center',
-        margin: '2rem auto',
-        maxWidth: '600px',
-      }}>
-        <h1>Kustomize Controller is not installed</h1>
-        <p>
-          Follow the{' '}
-          <MuiLink target="_blank" href="https://fluxcd.io/docs/components/kustomize/">
-            installation guide
-          </MuiLink>{' '}
-          to install Kustomize Controller on your cluster
-        </p>
-      </SectionBox>
-    );
-  }
-
-  return <KustomizationListWrapper />;
-}
-
-export function KustomizationListWrapper() {
-  const isFluxInstalled = useFluxInstallCheck();
-  const [kustomizations] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'kustomizations.kustomize.toolkit.fluxcd.io'
-  );
-
-  const kustomizationResourceClass = React.useMemo(() => {
-    return kustomizations?.makeCRClass();
-  }, [kustomizations]);
-
-  if(isFluxInstalled === null) {
-    return <Loader />;
-  }
-
-  if(!isFluxInstalled) {
-    return <Flux404 />;
-  }
-
   return (
     <div>
-      {kustomizationResourceClass && (
-        <KustomizationList resourceClass={kustomizationResourceClass} />
-      )}
+      <KustomizationList />
     </div>
   );
 }
 
-function KustomizationList({ resourceClass }) {
-  const [resource] = resourceClass.useList();
+export function kustomizationClass() {
+  const kustomizationGroup = 'kustomize.toolkit.fluxcd.io';
+  const kustomizationVersion = 'v1';
+
+  return makeCustomResourceClass({
+    apiInfo: [{ group: kustomizationGroup, version: kustomizationVersion }],
+    isNamespaced: true,
+    singularName: 'kustomization',
+    pluralName: 'kustomizations',
+  });
+}
+
+function KustomizationList() {
+  const filterFunction = useFilterFunc();
+
+  const [kustomizations, error] = kustomizationClass().useList();
 
   return (
     <SectionBox title={<SectionFilterHeader title="Kustomizations" />}>
+      {error?.status === 404 && <NotSupported typeName="Kustomizations" />}
       <Table
-        data={resource}
+        data={kustomizations}
         defaultSortingColumn={2}
-        filterFunction={useFilterFunc()}
         columns={['name', 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
+        filterFunction={filterFunction}
       />
     </SectionBox>
   );
