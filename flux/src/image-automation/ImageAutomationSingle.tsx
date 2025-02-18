@@ -1,5 +1,3 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { apiFactory } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import {
   ConditionsTable,
   MainInfoSection,
@@ -10,130 +8,107 @@ import Editor from '@monaco-editor/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import YAML from 'yaml';
-import { ForceReconciliationAction, ResumeAction, SuspendAction, SyncAction } from '../actions/index';
+import {
+  ForceReconciliationAction,
+  ResumeAction,
+  SuspendAction,
+  SyncAction,
+} from '../actions/index';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { ObjectEvents } from '../helpers/index';
+import {
+  imagePolicyClass,
+  imageRepositoriesClass,
+  imageUpdateAutomationClass,
+} from './ImageAutomationList';
 
-const fluxImageInfo = {
-  imagerepositories: {
-    kind: 'ImageRepository',
-    type: 'imagerepositories.image.toolkit.fluxcd.io',
-  },
-  imagepolicies: {
-    kind: 'ImagePolicy',
-    type: 'imagepolicies.image.toolkit.fluxcd.io',
-  },
-  imageupdateautomations: {
-    kind: 'ImageUpdateAutomation',
-    type: 'imageupdateautomations.image.toolkit.fluxcd.io',
-  },
-};
-
-const IMAGE_AUTOMATION_BETA_VERSION = 'v1beta2';
 export function FluxImageAutomationDetailView() {
   const { namespace, type, name } = useParams<{ namespace: string; type: string; name: string }>();
 
-  function getType() {
-    return fluxImageInfo[type].type;
-  }
-
-  function getKind() {
-    return fluxImageInfo[type].kind;
-  }
-
-  const CRD = K8s.ResourceClasses.CustomResourceDefinition;
-  const isVersionAvailable = CRD.apiEndpoint.apiInfo.find(
-    apiInfo => apiInfo.version === IMAGE_AUTOMATION_BETA_VERSION
-  );
-  if (!isVersionAvailable) {
-    CRD.apiEndpoint = apiFactory(
-      ...CRD.apiEndpoint.apiInfo.map(apiInfo => {
-        const params = [];
-        params.push(apiInfo.group);
-        params.push(apiInfo.version);
-        params.push(apiInfo.resource);
-        return params;
-      }),
-      ['apiextensions.k8s.io', IMAGE_AUTOMATION_BETA_VERSION, 'customresourcedefinitions']
-    );
-  }
-
-  const [resource] = CRD.useGet(getType());
+  const resourceClass = (() => {
+    switch (type) {
+      case 'imagerepositories':
+        return imageRepositoriesClass();
+      case 'imagepolicies':
+        return imagePolicyClass();
+      case 'imageupdateautomations':
+        return imageUpdateAutomationClass();
+      default:
+        return null;
+    }
+  })();
 
   const [events] = Event?.default.useList({
     namespace,
-    fieldSelector: `involvedObject.name=${name},involvedObject.kind=${getKind()}`,
+    fieldSelector: `involvedObject.name=${name},involvedObject.kind=${resourceClass.kind}`,
   });
 
   return (
     <>
-      {resource && <CustomResourceDetails resource={resource} name={name} namespace={namespace} />}
+      <CustomResourceDetails resourceClass={resourceClass} name={name} namespace={namespace} />
       <ObjectEvents events={events} />
     </>
   );
 }
 
 function CustomResourceDetails(props) {
-  const { name, namespace, resource } = props;
-  const [cr, setCr] = React.useState(null);
-  const resourceClass = React.useMemo(() => {
-    return resource.makeCRClass();
-  }, [resource]);
+  const { name, namespace, resourceClass } = props;
+  const [resource, setResource] = React.useState(null);
 
   const themeName = localStorage.getItem('headlampThemePreference');
 
-  resourceClass.useApiGet(setCr, name, namespace);
+  resourceClass.useApiGet(setResource, name, namespace);
 
   function prepareExtraInfo() {
     const extraInfo = [
       {
         name: 'Status',
-        value: <StatusLabel item={cr} />,
+        value: <StatusLabel item={resource} />,
       },
     ];
 
-    if (cr?.jsonData.kind === 'ImageRepository') {
+    if (resource?.jsonData.kind === 'ImageRepository') {
       extraInfo.push({
         name: 'Image',
-        value: <Link url={cr?.jsonData.spec?.image} />,
+        value: <Link url={resource?.jsonData.spec?.image} />,
       });
       extraInfo.push({
         name: 'Provider',
-        value: cr?.jsonData.spec?.provider || 'None',
+        value: resource?.jsonData.spec?.provider || 'None',
       });
       extraInfo.push({
         name: 'Exclusion List',
-        value: cr?.jsonData.spec?.exclusionList
-          ? cr?.jsonData.spec?.exclusionList.join(', ')
+        value: resource?.jsonData.spec?.exclusionList
+          ? resource?.jsonData.spec?.exclusionList.join(', ')
           : 'None',
       });
       extraInfo.push({
         name: 'Canonical Image Name',
-        value: cr?.jsonData?.status?.canonicalImageName || '-',
+        value: resource?.jsonData?.status?.canonicalImageName || '-',
       });
       extraInfo.push({
         name: 'Last Scan Result',
         value:
-          cr?.jsonData?.status?.lastScanResult &&
-          JSON.stringify(cr?.jsonData.status?.lastScanResult),
+          resource?.jsonData?.status?.lastScanResult &&
+          JSON.stringify(resource?.jsonData.status?.lastScanResult),
       });
     }
-    if (cr?.jsonData.kind === 'ImagePolicy') {
+    if (resource?.jsonData.kind === 'ImagePolicy') {
       extraInfo.push({
         name: 'Image Repository Ref',
         value:
-          cr?.jsonData.spec?.imageRepositoryRef &&
-          JSON.stringify(cr?.jsonData.spec?.imageRepositoryRef),
+          resource?.jsonData.spec?.imageRepositoryRef &&
+          JSON.stringify(resource?.jsonData.spec?.imageRepositoryRef),
       });
       extraInfo.push({
         name: 'Policy',
-        value: cr?.jsonData.spec?.policy && (
+        value: resource?.jsonData.spec?.policy && (
           <Editor
             theme={themeName === 'dark' ? 'vs-dark' : 'light'}
             language="yaml"
-            value={YAML.stringify(cr?.jsonData.spec?.policy)}
+            value={YAML.stringify(resource?.jsonData.spec?.policy)}
             height={150}
             options={{
               // no lines
@@ -146,23 +121,23 @@ function CustomResourceDetails(props) {
 
     extraInfo.push({
       name: 'Suspend',
-      value: cr?.jsonData.spec?.suspend ? 'True' : 'False',
+      value: resource?.jsonData.spec?.suspend ? 'True' : 'False',
     });
-    if (cr?.jsonData?.spec?.interval) {
+    if (resource?.jsonData?.spec?.interval) {
       extraInfo.push({
         name: 'Interval',
-        value: cr.jsonData.spec.interval,
+        value: resource.jsonData.spec.interval,
       });
     }
 
-    if (cr?.jsonData.kind === 'ImageUpdateAutomation') {
+    if (resource?.jsonData.kind === 'ImageUpdateAutomation') {
       extraInfo.push({
         name: 'Git',
-        value: cr?.jsonData.spec?.git && (
+        value: resource?.jsonData.spec?.git && (
           <Editor
             theme={themeName === 'dark' ? 'vs-dark' : 'light'}
             language="yaml"
-            value={YAML.stringify(cr?.jsonData.spec?.git)}
+            value={YAML.stringify(resource?.jsonData.spec?.git)}
             height={200}
             options={{
               // no lines
@@ -173,10 +148,10 @@ function CustomResourceDetails(props) {
       });
     }
 
-    if (!cr?.jsonData.spec?.suspend) {
+    if (!resource?.jsonData.spec?.suspend) {
       extraInfo.push({
         name: 'Next Reconciliation',
-        value: <RemainingTimeDisplay item={cr} />,
+        value: <RemainingTimeDisplay item={resource} />,
       });
     }
     return extraInfo;
@@ -185,17 +160,17 @@ function CustomResourceDetails(props) {
   return (
     <>
       <MainInfoSection
-        resource={cr}
+        resource={resource}
         extraInfo={prepareExtraInfo()}
         actions={[
-          <SyncAction resource={cr} />,
-          <SuspendAction resource={cr} />,
-          <ResumeAction resource={cr} />,
-          <ForceReconciliationAction resource={cr} />,
+          <SyncAction resource={resource} />,
+          <SuspendAction resource={resource} />,
+          <ResumeAction resource={resource} />,
+          <ForceReconciliationAction resource={resource} />,
         ]}
       />
       <SectionBox title="Conditions">
-        <ConditionsTable resource={cr?.jsonData} />
+        <ConditionsTable resource={resource?.jsonData} />
       </SectionBox>
     </>
   );

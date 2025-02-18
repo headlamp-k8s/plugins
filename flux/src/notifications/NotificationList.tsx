@@ -1,99 +1,70 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
-  Loader,
   SectionBox,
   SectionFilterHeader,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
-import { Box, Link as MuiLink } from '@mui/material';
-import React from 'react';
-import { useTheme } from '@mui/material/styles';
-import  { useFluxControllerAvailableCheck, useFluxInstallCheck } from '../checkflux';
+import { Box } from '@mui/material';
+import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
-import Flux404 from '../checkflux';
+import React from 'react';
 
-export default function NotificationsWrapper() {
-  const isNotifcationControllerAvailable = useFluxControllerAvailableCheck({
-    name: 'notification-controller',
+const notificationGroup = 'notification.toolkit.fluxcd.io';
+const notificationVersion = 'v1beta3';
+
+export function alertNotificationClass() {
+  return makeCustomResourceClass({
+    apiInfo: [{ group: notificationGroup, version: notificationVersion }],
+    isNamespaced: true,
+    singularName: 'alert',
+    pluralName: 'alerts',
   });
+}
 
-  if (isNotifcationControllerAvailable === null) {
-    return <Loader />;
-  }
+export function providerNotificationClass() {
+  return makeCustomResourceClass({
+    apiInfo: [{ group: notificationGroup, version: notificationVersion }],
+    isNamespaced: true,
+    singularName: 'provider',
+    pluralName: 'providers',
+  });
+}
 
-  if (!isNotifcationControllerAvailable) {
-    return (
-      <SectionBox sx={{
-        padding: '1rem',
-        alignItems: 'center',
-        margin: '2rem auto',
-        maxWidth: '600px',
-      }}>
-        <h1>Notification Controller is not installed</h1>
-        <p>
-          Follow the{' '}
-          <MuiLink target="_blank" href="https://fluxcd.io/docs/components/notification/">
-            installation guide
-          </MuiLink>{' '}
-          to install Notification Controller on your cluster
-        </p>
-      </SectionBox>
-    );
-  }
-  return <Notifications />;
+export function receiverNotificationClass() {
+  return makeCustomResourceClass({
+    apiInfo: [{ group: notificationGroup, version: 'v1' }],
+    isNamespaced: true,
+    singularName: 'receiver',
+    pluralName: 'receivers',
+  });
 }
 
 export function Notifications() {
-  const isFluxInstalled = useFluxInstallCheck()
-  const [alerts] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'alerts.notification.toolkit.fluxcd.io'
-  );
-
-  const [providers] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'providers.notification.toolkit.fluxcd.io'
-  );
-
-  const [receivers] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'receivers.notification.toolkit.fluxcd.io'
-  );
-
-  const alertsClass = React.useMemo(() => {
-    return alerts?.makeCRClass();
-  }, [alerts]);
-
-  const providersClass = React.useMemo(() => {
-    return providers?.makeCRClass();
-  }, [providers]);
-
-  const receiversClass = React.useMemo(() => {
-    return receivers?.makeCRClass();
-  }, [receivers]);
-
-  if(isFluxInstalled === null) {
-    return <Loader />;
-  }
-  
-  if(!isFluxInstalled) {
-    return <Flux404 />;
-  }
-
   return (
     <>
-      {alerts && <Alerts resourceClass={alertsClass} />}
-      {providers && <Providers resourceClass={providersClass} />}
-      {receivers && <Receivers resourceClass={receiversClass} />}
+      <Alerts />
+      <Providers />
+      <Receivers />
     </>
   );
 }
 
-function Alerts(props) {
-  const { resourceClass } = props;
-  const [alerts] = resourceClass?.useList();
+function Alerts() {
+  const filterFunction = useFilterFunc();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  alertNotificationClass().useApiList(setResources, setError);
+
+  if (error?.status === 404) {
+    return <NotSupported typeName="Alerts" />
+  }
+
   return (
     <SectionBox title={<SectionFilterHeader title="Alerts" />}>
       <Table
-        data={alerts}
+        data={resources}
         columns={[
           {
             header: 'Name',
@@ -144,19 +115,27 @@ function Alerts(props) {
             accessorFn: item => item?.jsonData?.spec.summary,
           },
         ]}
-        filterFunction={useFilterFunc()}
+        filterFunction={filterFunction}
       />
     </SectionBox>
   );
 }
 
-function Providers(props) {
-  const { resourceClass } = props;
-  const [providers] = resourceClass?.useList();
+function Providers() {
+  const filterFunction = useFilterFunc();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  providerNotificationClass().useApiList(setResources, setError);
+
+  if (error?.status === 404) {
+    return <NotSupported typeName="Providers" />
+  }
+
   return (
     <SectionBox title="Providers">
       <Table
-        data={providers}
+        data={resources}
         columns={[
           {
             header: 'Name',
@@ -223,20 +202,27 @@ function Providers(props) {
             accessorFn: item => item.jsonData.spec.proxy || '-',
           },
         ]}
-        filterFunction={useFilterFunc()}
+        filterFunction={filterFunction}
       />
     </SectionBox>
   );
 }
 
-function Receivers(props) {
-  const { resourceClass } = props;
-  const [receivers] = resourceClass?.useList();
+function Receivers() {
+  const filterFunction = useFilterFunc();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  receiverNotificationClass().useApiList(setResources, setError);
+
+  if (error?.status === 404) {
+    return <NotSupported typeName="Receivers" />
+  }
 
   return (
     <SectionBox title="Receivers">
       <Table
-        data={receivers}
+        data={resources}
         columns={[
           {
             header: 'Name',
@@ -301,7 +287,7 @@ function Receivers(props) {
               ),
           },
         ]}
-        filterFunction={useFilterFunc()}
+        filterFunction={filterFunction}
       />
     </SectionBox>
   );
