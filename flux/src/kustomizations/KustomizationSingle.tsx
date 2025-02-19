@@ -1,4 +1,3 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link,
@@ -21,7 +20,7 @@ import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import Table from '../common/Table';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
-import { GetResourcesFromInventory, KUSTOMIZE_CRD } from '../inventory';
+import { GetResourcesFromInventory } from '../inventory';
 import { kustomizationClass } from './KustomizationList';
 
 export function FluxKustomizationDetailView() {
