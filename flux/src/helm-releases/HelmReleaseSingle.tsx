@@ -20,7 +20,6 @@ import {
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
-import { GetResourcesFromInventory } from '../inventory';
 import { helmReleaseClass } from './HelmReleaseList';
 
 export function FluxHelmReleaseDetailView() {
@@ -149,11 +148,6 @@ function CustomResourceDetails(props) {
             height={200}
             theme={themeName === 'dark' ? 'vs-dark' : 'light'}
           />
-        </SectionBox>
-      )}
-      {cr && (
-        <SectionBox title="Inventory">
-          <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
         </SectionBox>
       )}
       <SectionBox title="Dependencies">

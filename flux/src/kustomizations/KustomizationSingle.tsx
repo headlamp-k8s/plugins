@@ -20,7 +20,7 @@ import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import Table from '../common/Table';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
-import { GetResourcesFromInventory } from '../inventory';
+import { GetResourcesFromInventory } from './Inventory';
 import { kustomizationClass } from './KustomizationList';
 
 export function FluxKustomizationDetailView() {
