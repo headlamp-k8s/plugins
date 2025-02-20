@@ -1,8 +1,12 @@
-import { SectionBox, SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  SectionBox,
+  SectionFilterHeader,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
+import { NameLink } from '../helpers';
 
 export function HelmReleases() {
   return <HelmReleasesList />;
@@ -31,7 +35,15 @@ function HelmReleasesList() {
       <Table
         data={helmReleases}
         defaultSortingColumn={2}
-        columns={['name', 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
+        columns={[
+          NameLink(helmReleaseClass()),
+          'namespace',
+          'status',
+          'source',
+          'revision',
+          'message',
+          'lastUpdated',
+        ]}
         filterFunction={filterFunction}
       />
     </SectionBox>

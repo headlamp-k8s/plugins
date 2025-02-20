@@ -20,6 +20,7 @@ import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import Table from '../common/Table';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
+import { PluralName } from '../helpers/pluralName';
 import { GetResourcesFromInventory } from './Inventory';
 import { kustomizationClass } from './KustomizationList';
 
@@ -71,10 +72,10 @@ function KustomizationDetails(props) {
         name: 'SourceRef',
         value: (
           <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
+            routeName="source"
             params={{
               namespace: cr?.jsonData?.metadata?.namespace,
-              type: sourceType,
+              pluralName: PluralName(sourceType),
               name: sourceName,
             }}
           >
@@ -143,7 +144,7 @@ function KustomizationDetails(props) {
                   accessorFn: item => {
                     return (
                       <Link
-                        routeName={`/flux/kustomizations/:namespace/:name`}
+                        routeName="kustomize"
                         params={{
                           name: item.name,
                           namespace: item.namespace || namespace,
@@ -157,7 +158,7 @@ function KustomizationDetails(props) {
                 {
                   header: 'Namespace',
                   accessorFn: item => (
-                    <Link routeName={`namespace`} params={{ name: item.namespace || namespace }}>
+                    <Link routeName="namespace" params={{ name: item.namespace || namespace }}>
                       {item.namespace || namespace}
                     </Link>
                   ),

@@ -1,10 +1,10 @@
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import React from 'react';
 import Table from '../common/Table';
-import { prepareNameLink } from '../helpers/index';
-import { PluralName } from './pluralName';
+import { PluralName } from '../helpers/pluralName';
 
 function parseID(id: string) {
   /* ID is the string representation of the Kubernetes resource object's
@@ -66,7 +66,7 @@ export function GetResourcesFromInventory(
         {
           header: 'Name',
           accessorKey: 'metadata.name',
-          Cell: ({ row: { original: item } }) => prepareNameLink(item),
+          Cell: ({ row: { original: item } }) => inventoryNameLink(item),
         },
         {
           header: 'Namespace',
@@ -74,7 +74,7 @@ export function GetResourcesFromInventory(
           Cell: ({ row: { original: item } }) =>
             item.metadata.namespace ? (
               <Link
-                routeName={`namespace`}
+                routeName="namespace"
                 params={{
                   name: item?.metadata?.namespace,
                 }}
@@ -105,5 +105,55 @@ export function GetResourcesFromInventory(
         },
       ]}
     />
+  );
+}
+
+function inventoryNameLink(item) {
+  const kind = item.kind;
+
+  // remove version from apiVersion to get the groupName
+  const apiVersion = item.jsonData.apiVersion;
+  const slashIndex = apiVersion.lastIndexOf('/');
+  const groupName = slashIndex > 0 ? apiVersion.substring(0, slashIndex) : apiVersion;
+  const pluralName = PluralName(kind);
+
+  // Flux types
+  if (groupName.endsWith('toolkit.fluxcd.io')) {
+    return (
+      <Link
+        routeName={groupName.substr(0, groupName.indexOf('.'))}
+        params={{
+          pluralName: pluralName,
+          name: item.metadata.name,
+          namespace: item.metadata.namespace,
+        }}
+      >
+        {item.metadata.name}
+      </Link>
+    );
+  }
+
+  // standard k8s types
+  const resourceKind = K8s.ResourceClasses[kind];
+  if (resourceKind) {
+    const resource = new resourceKind(item);
+    if (resource?.getDetailsLink && resource.getDetailsLink()) {
+      return <Link kubeObject={resource}>{item.metadata.name}</Link>;
+    }
+    return item.metadata.name;
+  }
+
+  // Custom resources
+  return (
+    <Link
+      routeName="customresource"
+      params={{
+        crName: item.metadata.name,
+        crd: `${pluralName}.${groupName}`,
+        namespace: item.metadata.namespace || '-',
+      }}
+    >
+      {item.metadata.name}
+    </Link>
   );
 }

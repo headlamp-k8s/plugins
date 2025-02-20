@@ -14,6 +14,7 @@ import {
   SuspendAction,
   SyncAction,
 } from '../actions/index';
+import Flux404 from '../checkflux';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
@@ -25,10 +26,14 @@ import {
 } from './ImageAutomationList';
 
 export function FluxImageAutomationDetailView() {
-  const { namespace, type, name } = useParams<{ namespace: string; type: string; name: string }>();
+  const { pluralName, namespace, name } = useParams<{
+    pluralName: string;
+    namespace: string;
+    name: string;
+  }>();
 
   const resourceClass = (() => {
-    switch (type) {
+    switch (pluralName) {
       case 'imagerepositories':
         return imageRepositoriesClass();
       case 'imagepolicies':
@@ -39,6 +44,10 @@ export function FluxImageAutomationDetailView() {
         return null;
     }
   })();
+
+  if (!resourceClass) {
+    return <Flux404 message="Unknown type {type}" />;
+  }
 
   const [events] = Event?.default.useList({
     namespace,

@@ -1,5 +1,4 @@
 import {
-  Link,
   SectionBox,
   SectionFilterHeader,
   ShowHideLabel,
@@ -10,6 +9,7 @@ import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
+import { NameLink } from '../helpers';
 
 const imageGroup = 'image.toolkit.fluxcd.io';
 const imageVersion = 'v1beta2';
@@ -61,22 +61,7 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObjectIface<KubeO
       <Table
         data={imageUpdateAutomations}
         columns={[
-          {
-            header: 'Name',
-            accessorKey: 'metadata.name',
-            Cell: ({ row: { original: item } }) => (
-              <Link
-                routeName={`/flux/image-automations/:type/:namespace/:name`}
-                params={{
-                  name: item.metadata.name,
-                  namespace: item.metadata.namespace,
-                  type: 'imageupdateautomations',
-                }}
-              >
-                {item?.jsonData?.metadata.name}
-              </Link>
-            ),
-          },
+          NameLink(resourceClass),
           'namespace',
           'status',
           {
@@ -115,21 +100,7 @@ function ImagePolicyList(props: { resourceClass: KubeObjectIface<KubeObjectInter
       <Table
         data={imagePolicies}
         columns={[
-          {
-            header: 'Name',
-            accessorFn: item => (
-              <Link
-                routeName={`/flux/image-automations/:type/:namespace/:name`}
-                params={{
-                  name: item.metadata.name,
-                  namespace: item.metadata.namespace,
-                  type: 'imagepolicies',
-                }}
-              >
-                {item?.jsonData?.metadata.name}
-              </Link>
-            ),
-          },
+          NameLink(resourceClass),
           'namespace',
           'status',
           {
@@ -155,21 +126,7 @@ function ImageRepositoryList(props: { resourceClass: KubeObjectIface<KubeObjectI
       <Table
         data={imageRepositories}
         columns={[
-          {
-            header: 'Name',
-            accessorFn: item => (
-              <Link
-                routeName={`/flux/image-automations/:type/:namespace/:name`}
-                params={{
-                  name: item.metadata.name,
-                  namespace: item.metadata.namespace,
-                  type: 'imagerepositories',
-                }}
-              >
-                {item?.jsonData?.metadata.name}
-              </Link>
-            ),
-          },
+          NameLink(resourceClass),
           'namespace',
           'status',
           {

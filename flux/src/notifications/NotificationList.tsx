@@ -8,6 +8,7 @@ import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box } from '@mui/material';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
+import { NameLink } from '../helpers';
 
 const notificationGroup = 'notification.toolkit.fluxcd.io';
 const notificationVersion = 'v1beta3';
@@ -57,24 +58,10 @@ function Alerts() {
     <SectionBox title={<SectionFilterHeader title="Alerts" />}>
       {alertsError?.status === 404 && <NotSupported typeName="Alerts" />}
       <Table
+        detailRoute="notification"
         data={alerts}
         columns={[
-          {
-            header: 'Name',
-            accessorKey: 'metadata.name',
-            Cell: ({ row: { original: item } }) => (
-              <Link
-                routeName={`/flux/notifications/:type/:namespace/:name`}
-                params={{
-                  name: item.metadata.name,
-                  namespace: item.metadata.namespace,
-                  type: 'alerts',
-                }}
-              >
-                {item?.jsonData?.metadata.name}
-              </Link>
-            ),
-          },
+          NameLink(alertNotificationClass()),
           'namespace',
           {
             header: 'Severity',
@@ -85,11 +72,11 @@ function Alerts() {
             accessorFn: item =>
               item?.jsonData.spec.providerRef && (
                 <Link
-                  routeName={`/flux/notifications/:type/:namespace/:name`}
+                  routeName="notification"
                   params={{
                     name: item?.jsonData?.spec?.providerRef?.name,
                     namespace: item?.metadata.namespace,
-                    type: 'providers',
+                    pluralName: 'providers',
                   }}
                 >
                   {item?.jsonData?.spec?.providerRef?.name}
@@ -129,11 +116,11 @@ function Providers() {
             accessorKey: 'metadata.name',
             Cell: ({ row: { original: item } }) => (
               <Link
-                routeName={`/flux/notifications/:type/:namespace/:name`}
+                routeName="notification"
                 params={{
                   name: item.metadata.name,
                   namespace: item.metadata.namespace,
-                  type: 'providers',
+                  pluralName: 'providers',
                 }}
               >
                 {item?.jsonData?.metadata.name}
@@ -210,11 +197,11 @@ function Receivers() {
             accessorKey: 'metadata.name',
             Cell: ({ row: { original: item } }) => (
               <Link
-                routeName={`/flux/notifications/:type/:namespace/:name`}
+                routeName="notification"
                 params={{
                   name: item.metadata.name,
                   namespace: item.metadata.namespace,
-                  type: 'receivers',
+                  pluralName: 'receivers',
                 }}
               >
                 {item.jsonData.metadata.name}

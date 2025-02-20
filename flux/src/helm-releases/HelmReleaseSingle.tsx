@@ -20,6 +20,7 @@ import {
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
+import { PluralName } from '../helpers/pluralName';
 import { helmReleaseClass } from './HelmReleaseList';
 
 export function FluxHelmReleaseDetailView() {
@@ -69,11 +70,11 @@ function CustomResourceDetails(props) {
         name: 'Source Ref',
         value: (
           <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
+            routeName="source"
             params={{
               namespace: cr?.jsonData?.metadata.namespace,
               name: sourceName,
-              type: sourceType,
+              pluralName: PluralName(sourceType),
             }}
           >
             {sourceName}
@@ -87,11 +88,11 @@ function CustomResourceDetails(props) {
         name: 'Source Ref',
         value: (
           <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
+            routeName="source"
             params={{
-              namespace: cr?.jsonData?.metadata?.namespace,
-              type: sourceType,
               name: sourceName,
+              namespace: cr?.jsonData?.metadata?.namespace,
+              pluralName: PluralName(sourceType),
             }}
           >
             {sourceName}
@@ -156,24 +157,22 @@ function CustomResourceDetails(props) {
           columns={[
             {
               header: 'Name',
-              accessorFn: item => {
-                return (
-                  <Link
-                    routeName={`/flux/helmreleases/:namespace/:name`}
-                    params={{
-                      name: item.name,
-                      namespace: item.namespace || namespace,
-                    }}
-                  >
-                    {item.name}
-                  </Link>
-                );
-              },
+              accessorFn: item => (
+                <Link
+                  routeName="helm"
+                  params={{
+                    name: item.name,
+                    namespace: item.namespace || namespace,
+                  }}
+                >
+                  {item.name}
+                </Link>
+              ),
             },
             {
               header: 'Namespace',
               accessorFn: item => (
-                <Link routeName={`namespace`} params={{ name: item.namespace || namespace }}>
+                <Link routeName="namespace" params={{ name: item.namespace || namespace }}>
                   {item.namespace || namespace}
                 </Link>
               ),

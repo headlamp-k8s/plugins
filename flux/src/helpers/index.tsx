@@ -1,4 +1,3 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   HoverInfoLabel,
   Link,
@@ -6,8 +5,10 @@ import {
   ShowHideLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { KubeObjectIface, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
 import Table from '../common/Table';
+import { PluralName } from './pluralName';
 
 const kindToSourceType = {
   GitRepository: 'gitrepositories',
@@ -131,38 +132,6 @@ export function ObjectEvents(props: { events: any }) {
   );
 }
 
-export function prepareNameLink(item) {
-  const kind = item.kind;
-  if (kind === 'Kustomization' || kind === 'HelmRelease' || kind in kindToSourceType) {
-    const { name, type } = getSourceNameAndType(item);
-    if (!!name && !!type) {
-      return (
-        <Link
-          routeName={`/flux/sources/:type/:namespace/:name`}
-          params={{
-            name: item.metadata.name,
-            namespace: item.metadata.namespace,
-            type,
-          }}
-        >
-          {name}
-        </Link>
-      );
-    }
-  }
-
-  const resourceKind = K8s.ResourceClasses[kind];
-  if (resourceKind) {
-    const resource = new resourceKind(item);
-    if (resource?.getDetailsLink && resource.getDetailsLink()) {
-      return <Link kubeObject={resource}>{item.metadata.name}</Link>;
-    }
-    return item.metadata.name;
-  }
-
-  return item.metadata.name;
-}
-
 export function parseDuration(duration) {
   const regex = /(\d+)([hms])/g; // Match numbers followed by h, m, or s
   let totalMilliseconds = 0;
@@ -186,4 +155,28 @@ export function parseDuration(duration) {
   }
 
   return totalMilliseconds;
+}
+
+export function NameLink(resourceClass: KubeObjectIface<KubeObjectInterface>) {
+  const apiVersion = new String(resourceClass.apiVersion); // explicit String cast is needed for string methods
+  const slashIndex = apiVersion.lastIndexOf('/');
+  const groupName = slashIndex > 0 ? apiVersion.substring(0, slashIndex) : apiVersion;
+  const pluralName = PluralName(resourceClass.kind);
+
+  return {
+    header: 'Name',
+    accessorKey: 'metadata.name',
+    Cell: ({ cell, row }) => (
+      <Link
+        routeName={groupName.substring(0, groupName.indexOf('.'))}
+        params={{
+          name: row.original.jsonData.metadata.name,
+          namespace: row.original.jsonData.metadata.namespace,
+          pluralName: pluralName,
+        }}
+      >
+        {cell.getValue()}
+      </Link>
+    ),
+  };
 }

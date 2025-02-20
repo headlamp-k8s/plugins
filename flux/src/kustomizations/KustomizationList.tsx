@@ -3,6 +3,7 @@ import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cr
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
+import { NameLink } from '../helpers';
 
 export function Kustomizations() {
   return (
@@ -26,16 +27,26 @@ export function kustomizationClass() {
 
 function KustomizationList() {
   const filterFunction = useFilterFunc();
+  const resourceClass = kustomizationClass();
 
-  const [kustomizations, error] = kustomizationClass().useList();
+  const [kustomizations, error] = resourceClass.useList();
 
   return (
     <SectionBox title={<SectionFilterHeader title="Kustomizations" />}>
       {error?.status === 404 && <NotSupported typeName="Kustomizations" />}
       <Table
+        detailRoute="kustomize"
         data={kustomizations}
         defaultSortingColumn={2}
-        columns={['name', 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
+        columns={[
+          NameLink(resourceClass),
+          'namespace',
+          'status',
+          'source',
+          'revision',
+          'message',
+          'lastUpdated',
+        ]}
         filterFunction={filterFunction}
       />
     </SectionBox>

@@ -28,10 +28,14 @@ import {
 } from './SourceList';
 
 export function FluxSourceDetailView() {
-  const { namespace, type, name } = useParams<{ namespace: string; type: string; name: string }>();
+  const { pluralName, namespace, name } = useParams<{
+    pluralName: string;
+    namespace: string;
+    name: string;
+  }>();
 
   const resourceClass = (() => {
-    switch (type) {
+    switch (pluralName) {
       case 'gitrepositories':
         return gitRepositoryClass();
       case 'ocirepositories':

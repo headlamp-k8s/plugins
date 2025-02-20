@@ -5,6 +5,8 @@ import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Link as MUILink } from '@mui/material';
 import SourceLink from '../common/Link';
 import Table, { TableProps } from '../common/Table';
+import { NameLink } from '../helpers';
+import { PluralName } from '../helpers/pluralName';
 
 const sourceGroup = 'source.toolkit.fluxcd.io';
 
@@ -56,23 +58,11 @@ export function helmChartClass() {
 export function FluxSources() {
   return (
     <>
-      <FluxSource
-        resourceClass={gitRepositoryClass()}
-        pluralName="gitrepositories"
-        title={'Git Repositories'}
-      />
-      <FluxSource
-        resourceClass={ociRepositoryClass()}
-        pluralName="ocirepositories"
-        title={'OCI Repositories'}
-      />
-      <FluxSource resourceClass={bucketRepositoryClass()} pluralName="buckets" title={'Buckets'} />
-      <FluxSource
-        resourceClass={helmRepositoryClass()}
-        pluralName="helmrepositories"
-        title={'Helm Repositories'}
-      />
-      <FluxSource resourceClass={helmChartClass()} pluralName="helmcharts" title={'Helm Charts'} />
+      <FluxSource resourceClass={gitRepositoryClass()} title={'Git Repositories'} />
+      <FluxSource resourceClass={ociRepositoryClass()} title={'OCI Repositories'} />
+      <FluxSource resourceClass={bucketRepositoryClass()} title={'Buckets'} />
+      <FluxSource resourceClass={helmRepositoryClass()} title={'Helm Repositories'} />
+      <FluxSource resourceClass={helmChartClass()} title={'Helm Charts'} />
     </>
   );
 }
@@ -80,31 +70,16 @@ export function FluxSources() {
 interface FluxSourceCustomResourceRendererProps {
   resourceClass: KubeObjectIface<KubeObjectInterface>;
   title: string;
-  pluralName: string;
 }
 
 function FluxSource(props: FluxSourceCustomResourceRendererProps) {
   const filterFunction = useFilterFunc();
-  const { resourceClass, title, pluralName } = props;
+  const { resourceClass, title } = props;
   const [resource, error] = resourceClass.useList();
 
   function prepareColumns() {
     const columns: TableProps['columns'] = [
-      {
-        extends: 'name',
-        Cell: ({ row: { original: item } }) => (
-          <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
-            params={{
-              name: item.metadata.name,
-              namespace: item.metadata.namespace,
-              type: pluralName,
-            }}
-          >
-            {item.metadata.name}
-          </Link>
-        ),
-      },
+      NameLink(resourceClass),
       'namespace',
       'status',
       'message',
@@ -154,11 +129,11 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
         if (sourceName) {
           return (
             <Link
-              routeName={`/flux/sources/:type/:namespace/:name`}
+              routeName="source"
               params={{
                 namespace: item.jsonData.metadata.namespace,
-                type: item.jsonData.spec.sourceRef.kind,
                 name: sourceName,
+                pluralName: PluralName(item.jsonData.spec.sourceRef.kind),
               }}
             >
               {sourceName}
@@ -193,6 +168,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
         </>
       )}
       <Table
+        detailRoute="source"
         data={resource}
         columns={columns}
         defaultSortingColumn={3}
