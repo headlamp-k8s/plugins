@@ -2,7 +2,8 @@ import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common
 import { KubeObjectIface, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
-import { Link as MUILink } from '@mui/material';
+import React from 'react';
+import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import Table, { TableProps } from '../common/Table';
 
@@ -86,7 +87,10 @@ interface FluxSourceCustomResourceRendererProps {
 function FluxSource(props: FluxSourceCustomResourceRendererProps) {
   const filterFunction = useFilterFunc();
   const { resourceClass, title, pluralName } = props;
-  const [resource, error] = resourceClass.useList();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  resourceClass.useApiList(setResources, setError);
 
   function prepareColumns() {
     const columns: TableProps['columns'] = [
@@ -113,7 +117,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
 
     return columns;
   }
-  const isHelmChart = resource?.[0]?.jsonData?.kind === 'HelmChart';
+  const isHelmChart = resources?.[0]?.jsonData?.kind === 'HelmChart';
   const columns = prepareColumns();
   let colIndexToInsert = columns.length - 2;
   if (isHelmChart) {
@@ -180,20 +184,9 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
 
   return (
     <SectionBox title={title}>
-      {error?.status === 404 && (
-        <>
-          <p>Flux installation has no support for {title}.</p>
-          <p>
-            Follow the{' '}
-            <MUILink target="_blank" href="https://fluxcd.io/docs/installation/">
-              installation guide
-            </MUILink>{' '}
-            to support {title} on your cluster
-          </p>
-        </>
-      )}
+      {error?.status === 404 && <NotSupported typeName={pluralName} />}
       <Table
-        data={resource}
+        data={resources}
         columns={columns}
         defaultSortingColumn={3}
         filterFunction={filterFunction}

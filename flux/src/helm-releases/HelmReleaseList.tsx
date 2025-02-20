@@ -3,6 +3,7 @@ import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cr
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
+import React from 'react';
 
 export function HelmReleases() {
   return <HelmReleasesList />;
@@ -22,14 +23,16 @@ export function helmReleaseClass() {
 
 function HelmReleasesList() {
   const filterFunction = useFilterFunc();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
 
-  const [helmReleases, error] = helmReleaseClass().useList();
+  helmReleaseClass().useApiList(setResources, setError);
 
   return (
     <SectionBox title={<SectionFilterHeader title="Helm Releases" />}>
       {error?.status === 404 && <NotSupported typeName="Helm Releases" />}
       <Table
-        data={helmReleases}
+        data={resources}
         defaultSortingColumn={2}
         columns={['name', 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
         filterFunction={filterFunction}

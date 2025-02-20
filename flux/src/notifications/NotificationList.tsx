@@ -8,6 +8,7 @@ import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box } from '@mui/material';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
+import React from 'react';
 
 const notificationGroup = 'notification.toolkit.fluxcd.io';
 const notificationVersion = 'v1beta3';
@@ -51,13 +52,16 @@ export function Notifications() {
 
 function Alerts() {
   const filterFunction = useFilterFunc();
-  const [alerts, alertsError] = alertNotificationClass().useList();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  alertNotificationClass().useApiList(setResources, setError);
 
   return (
     <SectionBox title={<SectionFilterHeader title="Alerts" />}>
-      {alertsError?.status === 404 && <NotSupported typeName="Alerts" />}
+      {error?.status === 404 && <NotSupported typeName="Alerts" />}
       <Table
-        data={alerts}
+        data={resources}
         columns={[
           {
             header: 'Name',
@@ -116,13 +120,16 @@ function Alerts() {
 
 function Providers() {
   const filterFunction = useFilterFunc();
-  const [providers, providerError] = providerNotificationClass().useList();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  providerNotificationClass().useApiList(setResources, setError);
 
   return (
     <SectionBox title="Providers">
-      {providerError?.status === 404 && <NotSupported typeName="Providers" />}
+      {error?.status === 404 && <NotSupported typeName="Providers" />}
       <Table
-        data={providers}
+        data={resources}
         columns={[
           {
             header: 'Name',
@@ -197,13 +204,16 @@ function Providers() {
 
 function Receivers() {
   const filterFunction = useFilterFunc();
-  const [receivers, receiverError] = receiverNotificationClass().useList();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  receiverNotificationClass().useApiList(setResources, setError);
 
   return (
     <SectionBox title="Receivers">
-      {receiverError?.status === 404 && <NotSupported typeName="Receivers" />}
+      {error?.status === 404 && <NotSupported typeName="Receivers" />}
       <Table
-        data={receivers}
+        data={resources}
         columns={[
           {
             header: 'Name',
