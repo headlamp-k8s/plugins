@@ -1,7 +1,7 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
-import React from 'react';
+import React, { cloneElement } from 'react';
 import Table from '../common/Table';
 import { prepareNameLink } from '../helpers/index';
 
@@ -99,7 +99,8 @@ export function GetResourcesFromInventory(props: {
           },
           {
             header: 'Age',
-            accessorFn: item => <DateLabel date={item?.metadata?.creationTimestamp} />,
+            accessorKey: 'metadata.creationTimestamp',
+            Cell: ({ cell }: any) => <DateLabel date={cell.getValue()} />,
           },
         ]}
       />
