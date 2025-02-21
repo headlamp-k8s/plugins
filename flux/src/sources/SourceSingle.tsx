@@ -15,8 +15,13 @@ import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { ObjectEvents } from '../helpers/index';
 
-export default function FluxSourceDetailView() {
-  const { namespace, type, name } = useParams<{ namespace: string; type: string; name: string }>();
+export default function FluxSourceDetailView(props: {
+  name?: string;
+  namespace?: string;
+  type?: string;
+}) {
+  const params = useParams<{ namespace: string; type: string; name: string }>();
+  const { name = params.name, namespace = params.namespace, type = params.type } = props;
 
   const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     `${type.split(' ').join('').toLowerCase()}.source.toolkit.fluxcd.io`
