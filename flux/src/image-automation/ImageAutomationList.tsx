@@ -6,6 +6,7 @@ import {
 import { KubeObjectIface, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
+import React from 'react';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
@@ -53,13 +54,16 @@ export function ImageAutomation() {
 
 function ImageUpdateAutomationList(props: { resourceClass: KubeObjectIface<KubeObjectInterface> }) {
   const { resourceClass } = props;
-  const [imageUpdateAutomations, error] = resourceClass.useList();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  resourceClass.useApiList(setResources, setError);
 
   return (
     <SectionBox title="Image Update Automations">
       {error?.status === 404 && <NotSupported typeName="Image Update Automations" />}
       <Table
-        data={imageUpdateAutomations}
+        data={resources}
         columns={[
           NameLink(resourceClass),
           'namespace',
@@ -92,13 +96,16 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObjectIface<KubeO
 
 function ImagePolicyList(props: { resourceClass: KubeObjectIface<KubeObjectInterface> }) {
   const { resourceClass } = props;
-  const [imagePolicies, error] = resourceClass.useList();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  resourceClass.useApiList(setResources, setError);
 
   return (
     <SectionBox title="Image Policies">
       {error?.status === 404 && <NotSupported typeName="Image Policies" />}
       <Table
-        data={imagePolicies}
+        data={resources}
         columns={[
           NameLink(resourceClass),
           'namespace',
@@ -118,13 +125,16 @@ function ImagePolicyList(props: { resourceClass: KubeObjectIface<KubeObjectInter
 
 function ImageRepositoryList(props: { resourceClass: KubeObjectIface<KubeObjectInterface> }) {
   const { resourceClass } = props;
-  const [imageRepositories, error] = resourceClass.useList();
+  const [resources, setResources] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  resourceClass.useApiList(setResources, setError);
 
   return (
     <SectionBox title={<SectionFilterHeader title="Image Repositories" />}>
       {error?.status === 404 && <NotSupported typeName="Image Repositories" />}
       <Table
-        data={imageRepositories}
+        data={resources}
         columns={[
           NameLink(resourceClass),
           'namespace',
