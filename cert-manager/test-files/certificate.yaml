@@ -1,0 +1,35 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo-nginx-cert-cluster
+spec:
+  secretName: demo-nginx-tls-cluster
+  duration: 2160h
+  renewBefore: 360h
+  subject:
+    organizations:
+      - Demo Organization
+  commonName: demo.headlamp.com
+  dnsNames:
+    - demo.headlamp.com
+  issuerRef:
+    name: demo-letsencrypt-staging
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo-nginx-cert-issuer
+spec:
+  secretName: demo-nginx-tls-issuer
+  duration: 2160h
+  renewBefore: 360h
+  subject:
+    organizations:
+      - Demo Organization
+  commonName: demo2.headlamp.com
+  dnsNames:
+    - demo2.headlamp.com
+  issuerRef:
+    name: demo-letsencrypt-staging
+    kind: Issuer
