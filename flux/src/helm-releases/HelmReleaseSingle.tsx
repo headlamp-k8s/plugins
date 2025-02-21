@@ -1,4 +1,3 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link,
@@ -7,7 +6,6 @@ import {
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Event, { KubeEvent } from '@kinvolk/headlamp-plugin/lib/K8s/event';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import Editor from '@monaco-editor/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
@@ -22,66 +20,30 @@ import {
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
-import { GetResourcesFromInventory,HELMRELEASE_CRD } from '../inventory';
+import { PluralName } from '../helpers/pluralName';
+import { helmReleaseClass } from './HelmReleaseList';
 
-function GetSourceCR(props: {
-  name: string;
-  namespace: string;
-  resource: KubeObject | null;
-  setSource: (...args) => void;
-}) {
-  const { name, namespace, resource, setSource } = props;
-  const resourceClass = React.useMemo(() => {
-    return resource.makeCRClass();
-  }, [resource]);
-
-  resourceClass.useApiGet(setSource, name, namespace);
-
-  return null;
-}
-
-function GetSource(props: { item: KubeObject | null; setSource: (...args) => void }) {
-  const { item, setSource } = props;
-  const namespace = item.jsonData.metadata.namespace;
-
-  const { name, type } = getSourceNameAndType(item);
-
-  const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    `${type.split(' ').join('').toLowerCase()}.source.toolkit.fluxcd.io`
-  );
-  return (
-    resource && (
-      <GetSourceCR name={name} namespace={namespace} resource={resource} setSource={setSource} />
-    )
-  );
-}
-
-export default function FluxHelmReleaseDetailView() {
+export function FluxHelmReleaseDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
 
   const [events] = Event?.default.useList({
     namespace,
     fieldSelector: `involvedObject.name=${name},involvedObject.kind=${'HelmRelease'}`,
   });
-  const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(HELMRELEASE_CRD);
 
   return (
     <>
-      {resource && <CustomResourceDetails resource={resource} name={name} namespace={namespace} />}
+      <CustomResourceDetails name={name} namespace={namespace} />
       <ObjectEvents events={events?.map((event: KubeEvent) => new Event.default(event))} />
     </>
   );
 }
 
 function CustomResourceDetails(props) {
-  const { name, namespace, resource } = props;
+  const { name, namespace } = props;
   const [cr, setCr] = React.useState(null);
-  const [source, setSource] = React.useState(null);
-  const resourceClass = React.useMemo(() => {
-    return resource.makeCRClass();
-  }, [resource]);
 
-  resourceClass.useApiGet(setCr, name, namespace);
+  helmReleaseClass().useApiGet(setCr, name, namespace);
 
   function prepareExtraInfo(cr) {
     if (!cr) {
@@ -100,7 +62,7 @@ function CustomResourceDetails(props) {
       {
         name: 'Reconcile Strategy',
         value: cr?.jsonData?.spec.chart?.spec?.reconcileStrategy,
-      }
+      },
     ];
 
     if (cr?.jsonData?.spec?.chartRef) {
@@ -108,11 +70,11 @@ function CustomResourceDetails(props) {
         name: 'Source Ref',
         value: (
           <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
+            routeName="source"
             params={{
               namespace: cr?.jsonData?.metadata.namespace,
               name: sourceName,
-              type: sourceType,
+              pluralName: PluralName(sourceType),
             }}
           >
             {sourceName}
@@ -126,11 +88,11 @@ function CustomResourceDetails(props) {
         name: 'Source Ref',
         value: (
           <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
+            routeName="source"
             params={{
-              namespace: cr?.jsonData?.metadata?.namespace,
-              type: sourceType,
               name: sourceName,
+              namespace: cr?.jsonData?.metadata?.namespace,
+              pluralName: PluralName(sourceType),
             }}
           >
             {sourceName}
@@ -172,7 +134,6 @@ function CustomResourceDetails(props) {
 
   return (
     <>
-      {cr && <GetSource item={cr} setSource={setSource} />}
       {cr && (
         <MainInfoSection
           resource={cr}
@@ -190,35 +151,28 @@ function CustomResourceDetails(props) {
           />
         </SectionBox>
       )}
-      {cr && (
-        <SectionBox title="Inventory">
-          <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
-        </SectionBox>
-      )}
       <SectionBox title="Dependencies">
         <Table
           data={cr?.jsonData?.spec?.dependsOn}
           columns={[
             {
               header: 'Name',
-              accessorFn: item => {
-                return (
-                  <Link
-                    routeName={`/flux/helmreleases/:namespace/:name`}
-                    params={{
-                      name: item.name,
-                      namespace: item.namespace || namespace,
-                    }}
-                  >
-                    {item.name}
-                  </Link>
-                );
-              },
+              accessorFn: item => (
+                <Link
+                  routeName="helm"
+                  params={{
+                    name: item.name,
+                    namespace: item.namespace || namespace,
+                  }}
+                >
+                  {item.name}
+                </Link>
+              ),
             },
             {
               header: 'Namespace',
               accessorFn: item => (
-                <Link routeName={`namespace`} params={{ name: item.namespace || namespace }}>
+                <Link routeName="namespace" params={{ name: item.namespace || namespace }}>
                   {item.namespace || namespace}
                 </Link>
               ),
