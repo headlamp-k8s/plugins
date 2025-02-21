@@ -1,4 +1,3 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   DateLabel,
@@ -9,39 +8,64 @@ import {
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { ForceReconciliationAction, ResumeAction, SuspendAction, SyncAction } from '../actions/index';
+import {
+  ForceReconciliationAction,
+  ResumeAction,
+  SuspendAction,
+  SyncAction,
+} from '../actions/index';
+import Flux404 from '../checkflux';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { ObjectEvents } from '../helpers/index';
+import {
+  bucketRepositoryClass,
+  gitRepositoryClass,
+  helmChartClass,
+  helmRepositoryClass,
+  ociRepositoryClass,
+} from './SourceList';
 
-export default function FluxSourceDetailView() {
+export function FluxSourceDetailView() {
   const { namespace, type, name } = useParams<{ namespace: string; type: string; name: string }>();
 
-  const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    `${type.split(' ').join('').toLowerCase()}.source.toolkit.fluxcd.io`
-  );
+  const resourceClass = (() => {
+    switch (type) {
+      case 'gitrepositories':
+        return gitRepositoryClass();
+      case 'ocirepositories':
+        return ociRepositoryClass();
+      case 'buckets':
+        return bucketRepositoryClass();
+      case 'helmrepositories':
+        return helmRepositoryClass();
+      case 'helmcharts':
+        return helmChartClass();
+      default:
+        return null;
+    }
+  })();
 
-  return (
-    resource && <CustomResourceDetailView name={name} namespace={namespace} resource={resource} />
-  );
+  if (!resourceClass) {
+    return <Flux404 message="Unknown type {type}" />;
+  }
+
+  return <SourceDetailView name={name} namespace={namespace} resourceClass={resourceClass} />;
 }
 
-function CustomResourceDetailView(props) {
-  const { name, namespace, resource } = props;
-  const [cr, setCr] = React.useState(null);
-  const resourceClass = React.useMemo(() => {
-    return resource.makeCRClass();
-  }, [resource]);
+function SourceDetailView(props) {
+  const { name, namespace, resourceClass } = props;
+  const [resource, setResource] = React.useState(null);
 
-  resourceClass.useApiGet(setCr, name, namespace);
+  resourceClass.useApiGet(setResource, name, namespace);
 
   function prepareExtraInfo() {
-    const interval = cr?.jsonData.spec?.interval;
+    const interval = resource?.jsonData.spec?.interval;
     const extraInfo = [
       {
         name: 'Status',
-        value: <StatusLabel item={cr} />,
+        value: <StatusLabel item={resource} />,
       },
       {
         name: 'Interval',
@@ -49,42 +73,43 @@ function CustomResourceDetailView(props) {
       },
       {
         name: 'Ref',
-        value: cr?.jsonData.spec?.ref && JSON.stringify(cr?.jsonData.spec?.ref),
+        value: resource?.jsonData.spec?.ref && JSON.stringify(resource?.jsonData.spec?.ref),
       },
       {
         name: 'Timeout',
-        value: cr?.jsonData.spec?.timeout,
+        value: resource?.jsonData.spec?.timeout,
       },
       {
         name: 'URL',
-        value: <Link url={cr?.jsonData.spec?.url} />,
-        hide: !cr?.jsonData.spec?.url,
+        value: <Link url={resource?.jsonData.spec?.url} />,
+        hide: !resource?.jsonData.spec?.url,
       },
       {
         name: 'Chart',
-        hide: !cr?.jsonData.spec?.chart,
-        value: cr?.jsonData.spec?.chart,
+        hide: !resource?.jsonData.spec?.chart,
+        value: resource?.jsonData.spec?.chart,
       },
       {
         name: 'Source Ref',
-        hide: !cr?.jsonData.spec?.sourceRef,
-        value: cr?.jsonData.spec?.sourceRef && JSON.stringify(cr?.jsonData.spec?.sourceRef),
+        hide: !resource?.jsonData.spec?.sourceRef,
+        value:
+          resource?.jsonData.spec?.sourceRef && JSON.stringify(resource?.jsonData.spec?.sourceRef),
       },
       {
         name: 'Version',
-        value: cr?.jsonData.spec?.version,
-        hide: !cr?.jsonData.spec?.version,
+        value: resource?.jsonData.spec?.version,
+        hide: !resource?.jsonData.spec?.version,
       },
       {
         name: 'Suspend',
-        value: cr?.jsonData.spec?.suspend ? 'True' : 'False',
+        value: resource?.jsonData.spec?.suspend ? 'True' : 'False',
       },
     ];
 
-    if (!cr?.jsonData.spec?.suspend) {
+    if (!resource?.jsonData.spec?.suspend) {
       extraInfo.push({
         name: 'Next Reconciliation',
-        value: <RemainingTimeDisplay item={cr} />,
+        value: <RemainingTimeDisplay item={resource} />,
       });
     }
 
@@ -94,23 +119,23 @@ function CustomResourceDetailView(props) {
   return (
     <>
       <MainInfoSection
-        resource={cr}
+        resource={resource}
         actions={[
-          <SyncAction resource={cr} />,
-          <SuspendAction resource={cr} />,
-          <ResumeAction resource={cr} />,
-          <ForceReconciliationAction resource={cr} />,
+          <SyncAction resource={resource} />,
+          <SuspendAction resource={resource} />,
+          <ResumeAction resource={resource} />,
+          <ForceReconciliationAction resource={resource} />,
         ]}
         extraInfo={prepareExtraInfo()}
       />
-      {cr && <Events namespace={namespace} name={name} cr={cr} />}
-      {cr && (
+      {resource && <Events namespace={namespace} name={name} cr={resource} />}
+      {resource && (
         <SectionBox title="Conditions">
-          <ConditionsTable resource={cr?.jsonData} showLastUpdate={false} />
+          <ConditionsTable resource={resource?.jsonData} showLastUpdate={false} />
         </SectionBox>
       )}
 
-      {cr && <ArtifactTable artifact={cr?.jsonData?.status?.artifact} />}
+      {resource && <ArtifactTable artifact={resource?.jsonData?.status?.artifact} />}
     </>
   );
 }
@@ -124,6 +149,7 @@ function Events(props) {
 
   return <ObjectEvents events={events} />;
 }
+
 function ArtifactTable(props) {
   const { artifact } = props;
   if (!artifact) {

@@ -7,7 +7,6 @@ import {
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Event, { KubeEvent } from '@kinvolk/headlamp-plugin/lib/K8s/event';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import Editor from '@monaco-editor/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
@@ -22,66 +21,32 @@ import {
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
-import { GetResourcesFromInventory,HELMRELEASE_CRD } from '../inventory';
+import { GetResourcesFromInventory } from '../inventory';
+import { helmReleaseClass } from './HelmReleaseList';
+import { GetSource } from '../sources/Source';
 
-function GetSourceCR(props: {
-  name: string;
-  namespace: string;
-  resource: KubeObject | null;
-  setSource: (...args) => void;
-}) {
-  const { name, namespace, resource, setSource } = props;
-  const resourceClass = React.useMemo(() => {
-    return resource.makeCRClass();
-  }, [resource]);
-
-  resourceClass.useApiGet(setSource, name, namespace);
-
-  return null;
-}
-
-function GetSource(props: { item: KubeObject | null; setSource: (...args) => void }) {
-  const { item, setSource } = props;
-  const namespace = item.jsonData.metadata.namespace;
-
-  const { name, type } = getSourceNameAndType(item);
-
-  const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    `${type.split(' ').join('').toLowerCase()}.source.toolkit.fluxcd.io`
-  );
-  return (
-    resource && (
-      <GetSourceCR name={name} namespace={namespace} resource={resource} setSource={setSource} />
-    )
-  );
-}
-
-export default function FluxHelmReleaseDetailView() {
+export function FluxHelmReleaseDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
 
   const [events] = Event?.default.useList({
     namespace,
     fieldSelector: `involvedObject.name=${name},involvedObject.kind=${'HelmRelease'}`,
   });
-  const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(HELMRELEASE_CRD);
 
   return (
     <>
-      {resource && <CustomResourceDetails resource={resource} name={name} namespace={namespace} />}
+      <CustomResourceDetails name={name} namespace={namespace} />
       <ObjectEvents events={events?.map((event: KubeEvent) => new Event.default(event))} />
     </>
   );
 }
 
 function CustomResourceDetails(props) {
-  const { name, namespace, resource } = props;
+  const { name, namespace } = props;
   const [cr, setCr] = React.useState(null);
   const [source, setSource] = React.useState(null);
-  const resourceClass = React.useMemo(() => {
-    return resource.makeCRClass();
-  }, [resource]);
 
-  resourceClass.useApiGet(setCr, name, namespace);
+  helmReleaseClass().useApiGet(setCr, name, namespace);
 
   function prepareExtraInfo(cr) {
     if (!cr) {
@@ -100,7 +65,7 @@ function CustomResourceDetails(props) {
       {
         name: 'Reconcile Strategy',
         value: cr?.jsonData?.spec.chart?.spec?.reconcileStrategy,
-      }
+      },
     ];
 
     if (cr?.jsonData?.spec?.chartRef) {
