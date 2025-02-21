@@ -23,7 +23,7 @@ import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
 import { GetResourcesFromInventory } from '../inventory';
 import { helmReleaseClass } from './HelmReleaseList';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
+import { GetSource } from '../sources/Source';
 
 export function FluxHelmReleaseDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
@@ -38,38 +38,6 @@ export function FluxHelmReleaseDetailView() {
       <CustomResourceDetails name={name} namespace={namespace} />
       <ObjectEvents events={events?.map((event: KubeEvent) => new Event.default(event))} />
     </>
-  );
-}
-
-function GetSourceCR(props: {
-  name: string;
-  namespace: string;
-  resource: KubeObject | null;
-  setSource: (...args) => void;
-}) {
-  const { name, namespace, resource, setSource } = props;
-  const resourceClass = React.useMemo(() => {
-    return resource.makeCRClass();
-  }, [resource]);
-
-  resourceClass.useApiGet(setSource, name, namespace);
-
-  return null;
-}
-
-function GetSource(props: { item: KubeObject | null; setSource: (...args) => void }) {
-  const { item, setSource } = props;
-  const namespace = item.jsonData.metadata.namespace;
-
-  const { name, type } = getSourceNameAndType(item);
-
-  const [resource] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    `${type.split(' ').join('').toLowerCase()}.source.toolkit.fluxcd.io`
-  );
-  return (
-    resource && (
-      <GetSourceCR name={name} namespace={namespace} resource={resource} setSource={setSource} />
-    )
   );
 }
 
