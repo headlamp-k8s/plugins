@@ -110,18 +110,13 @@ export function ObjectEvents(props: { events: any }) {
             muiTableBodyCellProps: {
               align: 'right',
             },
-            sortingFn: (rowA, rowB) => {
-              return (
-                new Date(rowB.lastTimestamp).getTime() - new Date(rowA.lastTimestamp).getTime()
-              );
-            },
           },
         ]}
         data={events}
         initialState={{
           sorting: [
             {
-              id: 'Age',
+              id: 'age',
               desc: false,
             },
           ],
