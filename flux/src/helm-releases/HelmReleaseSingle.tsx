@@ -22,7 +22,7 @@ import {
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
-import { GetResourcesFromInventory,HELMRELEASE_CRD } from '../inventory';
+import { GetResourcesFromInventory, HELMRELEASE_CRD } from '../inventory';
 
 function GetSourceCR(props: {
   name: string;
@@ -56,8 +56,9 @@ function GetSource(props: { item: KubeObject | null; setSource: (...args) => voi
   );
 }
 
-export default function FluxHelmReleaseDetailView() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export default function FluxHelmReleaseDetailView(props: { name?: string; namespace?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const { name = params.name, namespace = params.namespace } = props;
 
   const [events] = Event?.default.useList({
     namespace,
@@ -100,7 +101,7 @@ function CustomResourceDetails(props) {
       {
         name: 'Reconcile Strategy',
         value: cr?.jsonData?.spec.chart?.spec?.reconcileStrategy,
-      }
+      },
     ];
 
     if (cr?.jsonData?.spec?.chartRef) {
