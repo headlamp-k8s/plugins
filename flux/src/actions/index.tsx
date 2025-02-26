@@ -284,4 +284,43 @@ function SyncWithoutSourceAction(props) {
   );
 }
 
-export { SuspendAction, ResumeAction, SyncAction, SyncWithSourceAction, SyncWithoutSourceAction, ForceReconciliationAction };
+function RollbackCanary(props) {
+  const { resource } = props;
+  const { enqueueSnackbar } = useSnackbar();
+  return (
+    <ActionButton
+      description="Rollback Canary"
+      icon={'mdi:arrow-u-up-left'}
+      onClick={() => {
+        const patch = resource.constructor.apiEndpoint.patch;
+       
+        patch(
+          {
+            spec: { rollback: { enable: true } } 
+          },
+          resource.jsonData.metadata.namespace,
+          resource.jsonData.metadata.name
+        )
+          .then(response => {
+            console.log("response is ", response);
+            if (response.spec.promote) {
+              enqueueSnackbar(`Successfully rolled back ${response.metadata.name}`, {
+                variant: 'success',
+              });
+            } else {
+              enqueueSnackbar(`Failed to rollback ${response.metadata.name}`, {
+                variant: 'error',
+              });
+            }
+          })
+          .catch(error => {
+            enqueueSnackbar(`Failed to rollback ${resource.metadata.name} error ${error}`, {
+              variant: 'error',
+            });
+          });
+      }}
+    />
+  );
+}
+
+export { SuspendAction, ResumeAction, SyncAction, SyncWithSourceAction, SyncWithoutSourceAction, ForceReconciliationAction, RollbackCanary };
