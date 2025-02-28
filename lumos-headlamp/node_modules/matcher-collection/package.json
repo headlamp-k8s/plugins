@@ -1,0 +1,37 @@
+{
+  "name": "matcher-collection",
+  "version": "2.0.1",
+  "main": "index.js",
+  "dependencies": {
+    "minimatch": "^3.0.2",
+    "@types/minimatch": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^11.11.0",
+    "tap": "^12.6.0",
+    "typescript": "~3.3.3333"
+  },
+  "engines": {
+    "node": "6.* || 8.* || >= 10.*"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "prepare": "tsc -b .",
+    "test": "tap --timeout 2 test.js",
+    "test:debug": "tap --debug-brk --timeout 9999 test.js"
+  },
+  "author": "Stefan Penner",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stefanpenner/matcher-collection.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stefanpenner/matcher-collection/issues"
+  },
+  "homepage": "https://github.com/stefanpenner/matcher-collection#readme",
+  "description": ""
+}

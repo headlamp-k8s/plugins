@@ -1,0 +1,11 @@
+import 'jest-specific-snapshot';
+import type { StoryshotsTestMethod, TestMethodOptions, StoryshotsOptions } from './api/StoryshotsOptions';
+type SnapshotsWithOptionsArgType = Pick<StoryshotsOptions, 'renderer' | 'serializer'> | Function;
+type SnapshotsWithOptionsReturnType = (options: Pick<TestMethodOptions, 'story' | 'context' | 'renderTree' | 'snapshotFileName'>) => any;
+export declare function snapshotWithOptions(options?: SnapshotsWithOptionsArgType): SnapshotsWithOptionsReturnType;
+export declare function multiSnapshotWithOptions(options?: SnapshotsWithOptionsArgType): StoryshotsTestMethod;
+export declare const shallowSnapshot: StoryshotsTestMethod;
+export declare function renderWithOptions(options?: {}): StoryshotsTestMethod;
+export declare const renderOnly: StoryshotsTestMethod;
+export declare const snapshot: SnapshotsWithOptionsReturnType;
+export {};

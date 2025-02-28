@@ -1,0 +1,25 @@
+{
+    "name": "@types/symlink-or-copy",
+    "version": "1.2.2",
+    "description": "TypeScript definitions for symlink-or-copy",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/symlink-or-copy",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "BendingBender",
+            "githubUsername": "BendingBender",
+            "url": "https://github.com/BendingBender"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/symlink-or-copy"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "481286decb7bcccd63c81f750351b3ad25522047459f5be53f8a95d88bab0c27",
+    "typeScriptVersion": "4.5"
+}

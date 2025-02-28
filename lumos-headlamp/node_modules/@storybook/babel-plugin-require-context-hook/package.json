@@ -1,0 +1,40 @@
+{
+  "name": "@storybook/babel-plugin-require-context-hook",
+  "version": "1.0.1",
+  "description": "Babel plugin to replicate Webpack require.context",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test/run.js",
+    "release": "auto shipit"
+  },
+  "keywords": [
+    "babel",
+    "webpack"
+  ],
+  "author": "Greg Smith <smr.kyu@gmail.com>",
+  "homepage": "https://github.com/storybookjs/babel-plugin-require-context-hook#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storybookjs/babel-plugin-require-context-hook"
+  },
+  "bugs": {
+    "url": "https://github.com/storybookjs/babel-plugin-require-context-hook/issues"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@auto-it/released": "^10.32.2",
+    "auto": "^10.32.2",
+    "babel-core": "^6.26.3",
+    "babel-register": "^6.26.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "auto": {
+    "plugins": [
+      "npm",
+      "released"
+    ],
+    "onlyPublishWithReleaseLabel": true
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "fs-merger",
+  "version": "3.2.1",
+  "description": "Reads files from a real location",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "author": "Sparshith NR",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "lint": "npm-run-all lint:*",
+    "lint:tsc": "tsc --noEmit",
+    "lint:js": "eslint . --cache",
+    "prepublishOnly": "tsc",
+    "test": "npm-run-all lint clean build test:unit",
+    "test:unit": "mocha tests/unit-test.js -r ts-node/register",
+    "test:debugger": "mocha --inspect-brk tests/unit-test.js -r ts-node/register"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SparshithNR/fs-merger.git"
+  },
+  "devDependencies": {
+    "@types/node": "^12.11.5",
+    "@typescript-eslint/eslint-plugin": "^4.22.0",
+    "@typescript-eslint/parser": "^4.22.0",
+    "broccoli-source": "^3.0.0",
+    "chai": "^4.2.0",
+    "eslint": "^7.25.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "fixturify": "^1.2.0",
+    "mocha": "^6.1.4",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.2.1",
+    "rimraf": "^2.6.3",
+    "ts-node": "^8.4.1",
+    "typescript": "^3.6.2"
+  },
+  "dependencies": {
+    "broccoli-node-api": "^1.7.0",
+    "broccoli-node-info": "^2.1.0",
+    "fs-extra": "^8.0.1",
+    "fs-tree-diff": "^2.0.1",
+    "walk-sync": "^2.2.0"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "broccoli-output-wrapper",
+  "version": "3.2.5",
+  "description": "Output wrapper is a library to write output file to outputpath.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "sparshithNR <nairbali@usc.edu>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "yarn clean && yarn build && mocha -r ts-node/register",
+    "test:debug": "yarn build && mocha --inspect-brk -r ts-node/register"
+  },
+  "dependencies": {
+    "fs-extra": "^8.1.0",
+    "heimdalljs-logger": "^0.1.10",
+    "symlink-or-copy": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^8.0.1",
+    "@types/node": "^12.11.1",
+    "chai": "^4.2.0",
+    "mocha": "^6.2.1",
+    "tmp": "^0.1.0",
+    "ts-node": "^8.4.1",
+    "typescript": "^3.6.4"
+  },
+  "engines": {
+    "node": "10.* || >= 12.*"
+  },
+  "volta": {
+    "node": "10.12.0"
+  }
+}
