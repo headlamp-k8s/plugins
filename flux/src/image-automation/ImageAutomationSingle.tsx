@@ -14,6 +14,7 @@ import {
   SuspendAction,
   SyncAction,
 } from '../actions/index';
+import Flux404 from '../checkflux';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
@@ -23,7 +24,6 @@ import {
   imageRepositoriesClass,
   imageUpdateAutomationClass,
 } from './ImageAutomationList';
-import Flux404 from '../checkflux';
 
 export function FluxImageAutomationDetailView() {
   const { pluralName, namespace, name } = useParams<{

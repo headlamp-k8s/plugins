@@ -7,10 +7,10 @@ import {
 import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
+import React from 'react';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
-import React from 'react';
 import { NameLink } from '../helpers';
 
 const imageGroup = 'image.toolkit.fluxcd.io';

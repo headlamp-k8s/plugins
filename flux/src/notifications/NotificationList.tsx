@@ -6,10 +6,10 @@ import {
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box } from '@mui/material';
+import React from 'react';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
 import { NameLink } from '../helpers';
-import React from 'react';
 
 const notificationGroup = 'notification.toolkit.fluxcd.io';
 const notificationVersion = 'v1beta3';

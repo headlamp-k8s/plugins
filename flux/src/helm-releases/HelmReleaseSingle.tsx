@@ -20,8 +20,8 @@ import {
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
-import { helmReleaseClass } from './HelmReleaseList';
 import { GetSource } from '../sources/Source';
+import { helmReleaseClass } from './HelmReleaseList';
 
 export function FluxHelmReleaseDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();

@@ -1,9 +1,9 @@
 import { SectionBox, SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
+import React from 'react';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
-import React from 'react';
 import { NameLink } from '../helpers';
 
 export function HelmReleases() {
