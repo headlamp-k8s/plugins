@@ -4,6 +4,7 @@ import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
 import React from 'react';
+import { NameLink } from '../helpers';
 
 export function Kustomizations() {
   return (
@@ -41,7 +42,7 @@ function KustomizationList() {
       <Table
         data={resources}
         defaultSortingColumn={2}
-        columns={['name', 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
+        columns={[NameLink(kustomizationClass()), 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
         filterFunction={filterFunction}
       />
     </SectionBox>

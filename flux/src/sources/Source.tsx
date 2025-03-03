@@ -6,11 +6,11 @@ import {
   helmRepositoryClass,
   ociRepositoryClass,
 } from './SourceList';
-import { getSourceNameAndType } from '../helpers';
+import { getSourceNameAndPluralKind } from '../helpers';
 
-export function GetSourceClass(pluralKind: string) {
+export function GetSourceClass(pluralName: string) {
   return (() => {
-    switch (pluralKind) {
+    switch (pluralName) {
       case 'gitrepositories':
         return gitRepositoryClass();
       case 'ocirepositories':
@@ -31,9 +31,9 @@ export function GetSource(props: { item: KubeObject | null; setSource: (...args)
   const { item, setSource } = props;
   const namespace = item.jsonData.metadata.namespace;
 
-  const { name, type } = getSourceNameAndType(item);
+  const { name, pluralKind } = getSourceNameAndPluralKind(item);
 
-  const resourceClass = GetSourceClass(type);
+  const resourceClass = GetSourceClass(pluralKind);
   resourceClass.useApiGet(setSource, name, namespace);
 
   return <></>;
