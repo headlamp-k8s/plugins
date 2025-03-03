@@ -28,10 +28,10 @@ import {
 } from './SourceList';
 
 export function FluxSourceDetailView() {
-  const { namespace, type, name } = useParams<{ namespace: string; type: string; name: string }>();
+  const { namespace, pluralName, name } = useParams<{ namespace: string; pluralName: string; name: string }>();
 
   const resourceClass = (() => {
-    switch (type) {
+    switch (pluralName) {
       case 'gitrepositories':
         return gitRepositoryClass();
       case 'ocirepositories':
@@ -48,7 +48,7 @@ export function FluxSourceDetailView() {
   })();
 
   if (!resourceClass) {
-    return <Flux404 message="Unknown type {type}" />;
+    return <Flux404 message={`Unknown type ${pluralName}`} />;
   }
 
   return <SourceDetailView name={name} namespace={namespace} resourceClass={resourceClass} />;

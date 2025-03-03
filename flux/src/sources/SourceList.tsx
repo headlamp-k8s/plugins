@@ -1,5 +1,5 @@
 import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObjectIface, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
@@ -79,7 +79,7 @@ export function FluxSources() {
 }
 
 interface FluxSourceCustomResourceRendererProps {
-  resourceClass: KubeObjectIface<KubeObjectInterface>;
+  resourceClass: KubeObjectClass;
   title: string;
   pluralName: string;
 }
@@ -98,11 +98,11 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
         extends: 'name',
         Cell: ({ row: { original: item } }) => (
           <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
+            routeName={'source'}
             params={{
               name: item.metadata.name,
               namespace: item.metadata.namespace,
-              type: pluralName,
+              pluralName: pluralName,
             }}
           >
             {item.metadata.name}
@@ -158,10 +158,10 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
         if (sourceName) {
           return (
             <Link
-              routeName={`/flux/sources/:type/:namespace/:name`}
+              routeName={'source'}
               params={{
                 namespace: item.jsonData.metadata.namespace,
-                type: item.jsonData.spec.sourceRef.kind,
+                pluralName: item.jsonData.spec.sourceRef.kind,
                 name: sourceName,
               }}
             >
@@ -181,6 +181,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
       },
     });
   }
+  
 
   if (error?.status === 404) {
       return <NotSupported typeName={title} />
