@@ -1,0 +1,85 @@
+{
+  "name": "i18next-parser",
+  "description": "Command Line tool for i18next",
+  "version": "9.3.0",
+  "type": "module",
+  "license": "MIT",
+  "author": "Karel Ledru",
+  "exports": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "i18next": "./bin/cli.js"
+  },
+  "engines": {
+    "node": "^18.0.0 || ^20.0.0 || ^22.0.0",
+    "npm": ">=6",
+    "yarn": ">=1"
+  },
+  "scripts": {
+    "coverage": "c8 --all --include='src/**/*[.js|.jsx|.ts|.tsx]' --reporter=lcov --reporter=text yarn test",
+    "test": "mocha -r @babel/register -r @babel/polyfill --recursive test/*.test.js test/**/*.test.js",
+    "test:cli": "yarn -s build && node ./bin/cli.js '**/*.html' -o test/manual/$LOCALE/$NAMESPACE.json && node ./bin/cli.js -c test/cli/i18next-parser.config.js && node ./bin/cli.js -c test/cli/i18next-parser.config.mjs && node ./bin/cli.js -c test/cli/i18next-parser.config.ts && node ./bin/cli.js -c test/cli/i18next-parser.config.yaml",
+    "test:watch": "mocha -r @babel/register -r @babel/polyfill --watch --parallel --recursive",
+    "watch": "babel src -d dist -w",
+    "prettify": "prettier --write --list-different .",
+    "build": "babel src -d dist && cp index.d.ts dist",
+    "prepare": "husky",
+    "prepublishOnly": "yarn -s prettify && yarn -s build"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.25.0",
+    "broccoli-plugin": "^4.0.7",
+    "cheerio": "^1.0.0",
+    "colors": "^1.4.0",
+    "commander": "^12.1.0",
+    "eol": "^0.9.1",
+    "esbuild": "^0.25.0",
+    "fs-extra": "^11.2.0",
+    "gulp-sort": "^2.0.0",
+    "i18next": "^23.5.1 || ^24.2.0",
+    "js-yaml": "^4.1.0",
+    "lilconfig": "^3.1.3",
+    "rsvp": "^4.8.5",
+    "sort-keys": "^5.0.0",
+    "typescript": "^5.0.4",
+    "vinyl": "^3.0.0",
+    "vinyl-fs": "^4.0.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.24.8",
+    "@babel/core": "^7.26.8",
+    "@babel/plugin-proposal-object-rest-spread": "^7.20.7",
+    "@babel/plugin-transform-runtime": "^7.24.7",
+    "@babel/polyfill": "^7.12.1",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/register": "^7.24.6",
+    "broccoli": "^3.5.2",
+    "broccoli-cli": "^1.0.0",
+    "broccoli-funnel": "^3.0.8",
+    "c8": "^10.1.2",
+    "chai": "^5.1.1",
+    "execa": "^9.5.2",
+    "gulp": "^5.0.0",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.9",
+    "mocha": "^11.1.0",
+    "p-event": "^6.0.1",
+    "prettier": "^3.3.3",
+    "sinon": "^19.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/i18next/i18next-parser"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "i18next-parser.config.js"
+  ],
+  "keywords": [
+    "gulpplugin",
+    "i18next",
+    "parser",
+    "commandline"
+  ]
+}

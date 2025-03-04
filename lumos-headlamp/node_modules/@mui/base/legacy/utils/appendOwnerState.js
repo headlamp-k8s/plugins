@@ -1,0 +1,1 @@
+export { default as appendOwnerState } from '@mui/utils/appendOwnerState';

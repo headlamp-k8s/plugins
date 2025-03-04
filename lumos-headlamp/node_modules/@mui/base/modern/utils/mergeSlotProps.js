@@ -1,0 +1,1 @@
+export { default as mergeSlotProps } from '@mui/utils/mergeSlotProps';

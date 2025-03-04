@@ -1,0 +1,13 @@
+{
+  "name": "broccoli-node-api",
+  "version": "1.7.0",
+  "description": "Broccoli Plugin API Types",
+  "repository": "github:broccolijs/broccoli-node-api",
+  "license": "MIT",
+  "author": "Jo Liss <joliss42@gmail.com>",
+  "main": "",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
