@@ -27,23 +27,38 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./
+        working-directory: ./${{ matrix.dir }}
 
     strategy:
+      fail-fast: false
       matrix:
         node-version: [18.x]
         dir: ${{ fromJson(needs.find_plugin_dirs.outputs.dirs) }}
 
     steps:
       - uses: actions/checkout@v3
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: |
-          echo "Checking ${{ matrix.dir }} plugin"
-          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION format --check ${{ matrix.dir }}
-          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION lint ${{ matrix.dir }}
-          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION build ${{ matrix.dir }}
-          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION test ${{ matrix.dir }}
-          npx @kinvolk/headlamp-plugin@$HEADLAMP_PLUGIN_VERSION tsc ${{ matrix.dir }}
+          cache: "npm"
+          cache-dependency-path: ${{ matrix.dir }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build ${{ matrix.dir }}
+        run: npm run build
+
+      - name: Typecheck ${{ matrix.dir }}
+        run: npm run tsc
+
+      - name: Lint ${{ matrix.dir }}
+        run: npm run lint
+
+      - name: Check formatting ${{ matrix.dir }}
+        run: npm run format -- --check
+
+      - name: Test ${{ matrix.dir }}
+        run: npm run test
