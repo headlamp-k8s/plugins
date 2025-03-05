@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "react-syntax-highlighter": "^15.5.0",
-    "remark-gfm": "^3.0.1",
+    "remark-gfm": "^4.0.1",
     "semver": "^6.3.1"
   }
 }
