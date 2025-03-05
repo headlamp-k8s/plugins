@@ -1,7 +1,8 @@
 import { Icon } from '@iconify/react';
 import { ApiError, apply } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/K8s';
+import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { KubeJob } from '@kinvolk/headlamp-plugin/lib/lib/k8s/job';
 import Pod from '@kinvolk/headlamp-plugin/lib/lib/k8s/pod';
 import MonacoEditor from '@monaco-editor/react';
 import { useTheme } from '@mui/material';
