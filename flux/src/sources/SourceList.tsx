@@ -1,5 +1,5 @@
 import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObjectIface, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
@@ -79,7 +79,7 @@ export function FluxSources() {
 }
 
 interface FluxSourceCustomResourceRendererProps {
-  resourceClass: KubeObjectIface<KubeObjectInterface>;
+  resourceClass: KubeObjectClass;
   title: string;
   pluralName: string;
 }
@@ -183,7 +183,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
   }
 
   if (error?.status === 404) {
-      return <NotSupported typeName={title} />
+    return <NotSupported typeName={title} />;
   }
 
   return (
@@ -191,6 +191,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
       <Table
         data={resources}
         columns={columns}
+        // @ts-ignore -- TODO Update the sorting column param
         defaultSortingColumn={3}
         filterFunction={filterFunction}
       />

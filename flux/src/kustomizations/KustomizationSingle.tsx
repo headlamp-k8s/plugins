@@ -1,4 +1,3 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link,
@@ -22,13 +21,13 @@ import StatusLabel from '../common/StatusLabel';
 import Table from '../common/Table';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
 import { GetResourcesFromInventory } from '../inventory';
-import { kustomizationClass } from './KustomizationList';
 import { GetSource } from '../sources/Source';
+import { kustomizationClass } from './KustomizationList';
 
 export function FluxKustomizationDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
 
-  const [events] = Event?.default.useList({
+  const [events] = Event.useList({
     namespace,
     fieldSelector: `involvedObject.name=${name},involvedObject.kind=${'Kustomization'}`,
   });
@@ -36,7 +35,7 @@ export function FluxKustomizationDetailView() {
   return (
     <>
       <KustomizationDetails name={name} namespace={namespace} />
-      <ObjectEvents events={events?.map((event: KubeEvent) => new Event.default(event))} />
+      <ObjectEvents events={events?.map((event: KubeEvent) => new Event(event))} />
     </>
   );
 }

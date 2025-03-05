@@ -5,7 +5,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Event from '@kinvolk/headlamp-plugin/lib/k8s/event';
 import Editor from '@monaco-editor/react';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import YAML from 'yaml';
 import {
@@ -40,7 +40,7 @@ export function FluxImageAutomationDetailView() {
     }
   })();
 
-  const [events] = Event?.default.useList({
+  const [events] = Event.useList({
     namespace,
     fieldSelector: `involvedObject.name=${name},involvedObject.kind=${resourceClass.kind}`,
   });
@@ -62,7 +62,7 @@ function CustomResourceDetails(props) {
   resourceClass.useApiGet(setResource, name, namespace);
 
   function prepareExtraInfo() {
-    const extraInfo = [
+    const extraInfo: Array<{ name: string; value: ReactNode }> = [
       {
         name: 'Status',
         value: <StatusLabel item={resource} />,

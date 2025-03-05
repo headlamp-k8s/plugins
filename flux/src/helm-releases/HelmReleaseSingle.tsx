@@ -1,4 +1,3 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link,
@@ -22,13 +21,13 @@ import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
 import { GetResourcesFromInventory } from '../inventory';
-import { helmReleaseClass } from './HelmReleaseList';
 import { GetSource } from '../sources/Source';
+import { helmReleaseClass } from './HelmReleaseList';
 
 export function FluxHelmReleaseDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
 
-  const [events] = Event?.default.useList({
+  const [events] = Event.useList({
     namespace,
     fieldSelector: `involvedObject.name=${name},involvedObject.kind=${'HelmRelease'}`,
   });
@@ -36,7 +35,7 @@ export function FluxHelmReleaseDetailView() {
   return (
     <>
       <CustomResourceDetails name={name} namespace={namespace} />
-      <ObjectEvents events={events?.map((event: KubeEvent) => new Event.default(event))} />
+      <ObjectEvents events={events?.map((event: KubeEvent) => new Event(event))} />
     </>
   );
 }

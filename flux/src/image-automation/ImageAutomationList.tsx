@@ -4,13 +4,13 @@ import {
   SectionFilterHeader,
   ShowHideLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObjectIface, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
+import React from 'react';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
-import React from 'react';
 
 const imageGroup = 'image.toolkit.fluxcd.io';
 const imageVersion = 'v1beta2';
@@ -52,7 +52,7 @@ export function ImageAutomation() {
   );
 }
 
-function ImageUpdateAutomationList(props: { resourceClass: KubeObjectIface<KubeObjectInterface> }) {
+function ImageUpdateAutomationList(props: { resourceClass: KubeObjectClass }) {
   const { resourceClass } = props;
   const filterFunction = useFilterFunc();
   const [resources, setResources] = React.useState(null);
@@ -61,7 +61,7 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObjectIface<KubeO
   resourceClass.useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Image Update Automations" />
+    return <NotSupported typeName="Image Update Automations" />;
   }
 
   return (
@@ -113,7 +113,7 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObjectIface<KubeO
   );
 }
 
-function ImagePolicyList(props: { resourceClass: KubeObjectIface<KubeObjectInterface> }) {
+function ImagePolicyList(props: { resourceClass: KubeObjectClass }) {
   const { resourceClass } = props;
   const filterFunction = useFilterFunc();
   const [resources, setResources] = React.useState(null);
@@ -122,7 +122,7 @@ function ImagePolicyList(props: { resourceClass: KubeObjectIface<KubeObjectInter
   resourceClass.useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Image Update Policies" />
+    return <NotSupported typeName="Image Update Policies" />;
   }
 
   return (
@@ -160,7 +160,7 @@ function ImagePolicyList(props: { resourceClass: KubeObjectIface<KubeObjectInter
   );
 }
 
-function ImageRepositoryList(props: { resourceClass: KubeObjectIface<KubeObjectInterface> }) {
+function ImageRepositoryList(props: { resourceClass: KubeObjectClass }) {
   const { resourceClass } = props;
   const filterFunction = useFilterFunc();
   const [resources, setResources] = React.useState(null);
@@ -169,7 +169,7 @@ function ImageRepositoryList(props: { resourceClass: KubeObjectIface<KubeObjectI
   resourceClass.useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Image Repositories" />
+    return <NotSupported typeName="Image Repositories" />;
   }
 
   return (

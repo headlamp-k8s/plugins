@@ -34,8 +34,8 @@ interface NameColumn extends Partial<TableCol> {
   routeName?: string;
 }
 
-export interface TableProps extends Omit<HTableProps, 'columns'> {
-  columns: (TableCol | CommonColumnType | NameColumn | TableColumn)[];
+export interface TableProps extends Omit<HTableProps<any>, 'columns'> {
+  columns: (TableCol | CommonColumnType | NameColumn | TableColumn<any, any>)[];
 }
 
 function prepareLastUpdated(item: KubeCRD) {
@@ -120,7 +120,7 @@ export function Table(props: TableProps) {
                 const { name } = getSourceNameAndType(item);
                 return name;
               },
-              Cell: ({ row: {original: item}}: any) => {
+              Cell: ({ row: { original: item } }: any) => {
                 const { name, type } = getSourceNameAndType(item);
                 return (
                   <Link
@@ -136,9 +136,7 @@ export function Table(props: TableProps) {
             return {
               header: 'Status',
               accessorFn: item => {
-                return (
-                  <StatusLabel item={item} />
-                );
+                return <StatusLabel item={item} />;
               },
             };
           case 'revision':
@@ -180,7 +178,14 @@ export function Table(props: TableProps) {
     });
   }, [columns]);
 
-  return <HTable data={data} loading={data === null} {...otherProps} columns={processedColumns} />;
+  return (
+    <HTable
+      data={data}
+      loading={data === null}
+      {...otherProps}
+      columns={processedColumns as TableCol[]}
+    />
+  );
 }
 
 export default Table;
