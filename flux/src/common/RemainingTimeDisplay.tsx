@@ -59,7 +59,7 @@ interface NextAttemptStatus {
   isReconciling: boolean;
   lastReconcileUnknown: boolean;
   isStalled: boolean;
-};
+}
 
 export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
   const { item } = props;
@@ -80,10 +80,12 @@ export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
       );
     }
 
-    const isReconciling =
-      !!item?.jsonData?.status?.conditions?.find(condition => isReconcilingCondition(condition));
-    const isStalled =
-      !!item?.jsonData?.status?.conditions?.find(condition => condition.type === 'Stalled' && condition.status === 'True');
+    const isReconciling = !!item?.jsonData?.status?.conditions?.find(condition =>
+      isReconcilingCondition(condition)
+    );
+    const isStalled = !!item?.jsonData?.status?.conditions?.find(
+      condition => condition.type === 'Stalled' && condition.status === 'True'
+    );
 
     const nextAttempt = getNextReconciliationAttempt(item);
     setNextAttemptStatus({
@@ -101,10 +103,7 @@ export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
   React.useEffect(() => {
     const { nextAttempt, lastReconcileUnknown } = nextAttemptStatus;
 
-    if (
-      lastReconcileUnknown ||
-      nextAttempt === 0
-    ) {
+    if (lastReconcileUnknown || nextAttempt === 0) {
       return;
     }
 

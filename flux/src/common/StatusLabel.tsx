@@ -23,11 +23,9 @@ export default function StatusLabel(props: StatusLabelProps) {
 
   if (ready.reason === 'DependencyNotReady') {
     return (
-        <HLStatusLabel status={'warning'}>
-          <Tooltip title={ready.message}>
-          {'Waiting' }
-          </Tooltip>
-        </HLStatusLabel>
+      <HLStatusLabel status={'warning'}>
+        <Tooltip title={ready.message}>{'Waiting'}</Tooltip>
+      </HLStatusLabel>
     );
   }
 
