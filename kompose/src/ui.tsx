@@ -32,7 +32,8 @@ export function KomposeUI() {
     let cancel = null;
     let cancelled = false;
     async function runKompose() {
-      const job = new ResourceClasses.Job(komposePod(composeYAMLToConvert.yaml));
+      // TODO: Fix status field in KubeJob to be optional
+      const job = new ResourceClasses.Job(komposePod(composeYAMLToConvert.yaml) as any as KubeJob);
       setError(false);
       setProgressStatus('Creating namespace (if needed)…');
 
