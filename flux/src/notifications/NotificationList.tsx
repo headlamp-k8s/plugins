@@ -6,9 +6,9 @@ import {
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box } from '@mui/material';
+import React from 'react';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
-import React from 'react';
 
 const notificationGroup = 'notification.toolkit.fluxcd.io';
 const notificationVersion = 'v1beta3';
@@ -58,7 +58,7 @@ function Alerts() {
   alertNotificationClass().useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Alerts" />
+    return <NotSupported typeName="Alerts" />;
   }
 
   return (
@@ -129,7 +129,7 @@ function Providers() {
   providerNotificationClass().useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Providers" />
+    return <NotSupported typeName="Providers" />;
   }
 
   return (
@@ -216,7 +216,7 @@ function Receivers() {
   receiverNotificationClass().useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Receivers" />
+    return <NotSupported typeName="Receivers" />;
   }
 
   return (
