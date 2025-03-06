@@ -1,6 +1,6 @@
 // src/components/PurePluginDetail.stories.tsx
 
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { PluginDetailResp, PurePluginDetail, PurePluginDetailProps } from './Detail';
 
@@ -9,7 +9,7 @@ export default {
   component: PurePluginDetail,
 } as Meta;
 
-const Template: Story<PurePluginDetailProps> = args => <PurePluginDetail {...args} />;
+const Template: StoryFn<PurePluginDetailProps> = args => <PurePluginDetail {...args} />;
 
 const samplePluginDetail: PluginDetailResp = {
   isInstalled: true,

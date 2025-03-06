@@ -1,6 +1,6 @@
 // src/components/PluginCard.stories.tsx
 
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { PluginPackage } from './List';
@@ -29,7 +29,7 @@ export default {
   },
 } as Meta;
 
-const Template: Story<PluginPackage> = args => <PluginCard plugin={args} />;
+const Template: StoryFn<PluginPackage> = args => <PluginCard plugin={args} />;
 
 export const Default = Template.bind({});
 Default.args = {

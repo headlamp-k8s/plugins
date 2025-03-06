@@ -1,4 +1,4 @@
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import LoadingButton, { LoadingButtonProps } from './LoadingButton';
 
 export default {
@@ -7,7 +7,7 @@ export default {
 } as Meta;
 
 // Template for a story
-const Template: Story<LoadingButtonProps> = args => <LoadingButton {...args} />;
+const Template: StoryFn<LoadingButtonProps> = args => <LoadingButton {...args} />;
 
 // Default state story
 export const Default = Template.bind({});

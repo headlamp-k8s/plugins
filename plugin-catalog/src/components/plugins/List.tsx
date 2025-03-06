@@ -4,12 +4,12 @@ import { ConfirmDialog, SectionHeader } from '@kinvolk/headlamp-plugin/lib/Commo
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Pagination, TextField } from '@mui/material';
 import { Typography } from '@mui/material';
-import React, { useEffect, useMemo, useState } from 'react';
-import { PluginCard } from './PluginCard';
 import { Switch } from '@mui/material';
 import { FormControlLabel } from '@mui/material';
 import { isEqual } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import semver from 'semver';
+import { PluginCard } from './PluginCard';
 
 const PAGE_SIZE = 60; // Maximum allowed by the API
 const ARTIFACTHUB_HEADLAMP_PLUGIN_KIND = '21';
@@ -47,10 +47,10 @@ export interface PluginPackage {
     repository_id: string;
     scanner_disabled: boolean;
     verified_publisher: boolean;
-    organization_name: string;
+    organization_name?: string;
   };
-  isInstalled: boolean;
-  isUpdateAvailable: boolean;
+  isInstalled?: boolean;
+  isUpdateAvailable?: boolean;
 }
 
 async function fetchPlugins(offset: number, org?: string) {
@@ -128,15 +128,12 @@ async function processPlugins() {
   } catch (err) {
     console.log('plugin-catalog: Failed to list plugins', err);
   }
-  const installedVersions: Record<string, string> = pluginData.reduce(
-    (acc, plugin: any) => {
-      if (plugin.folderName && plugin.artifacthubVersion) {
-        acc[plugin.folderName] = plugin.artifacthubVersion;
-      }
-      return acc;
-    },
-    {}
-  );
+  const installedVersions: Record<string, string> = pluginData.reduce((acc, plugin: any) => {
+    if (plugin.folderName && plugin.artifacthubVersion) {
+      acc[plugin.folderName] = plugin.artifacthubVersion;
+    }
+    return acc;
+  }, {});
 
   // Merge all plugins and org-specific plugins, removing duplicates
   const mergedPlugins = [...allPlugins, ...orgPlugins];
@@ -188,19 +185,13 @@ interface OfficialSwitchProps {
 }
 
 function OfficialSwitch(props: OfficialSwitchProps) {
-  const { onChange : onOfficialSwitchChange, isChecked} = props;
+  const { onChange: onOfficialSwitchChange, isChecked } = props;
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   return (
     <>
       <FormControlLabel
-        control={
-          <Switch defaultChecked size="small" />
-        }
-        label={
-          <Typography>
-            Only Official
-          </Typography>
-        }
+        control={<Switch defaultChecked size="small" />}
+        label={<Typography>Only Official</Typography>}
         checked={isChecked}
         onChange={() => {
           if (isChecked) {
@@ -240,11 +231,8 @@ export function PurePluginList({
         title="Plugins"
         titleSideActions={[
           <Box pl={2}>
-            <OfficialSwitch
-              isChecked={isOfficialSwitchChecked}
-              onChange={onOfficialSwitchChange}
-            />
-          </Box>
+            <OfficialSwitch isChecked={isOfficialSwitchChecked} onChange={onOfficialSwitchChange} />
+          </Box>,
         ]}
         actions={[
           <TextField
@@ -332,8 +320,7 @@ export function PluginList() {
 
       return oldSettings;
     });
-  },
-  [conf]);
+  }, [conf]);
 
   const filteredPlugins = useMemo(() => {
     if (!allPlugins) return null;
