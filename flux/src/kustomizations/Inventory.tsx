@@ -28,6 +28,7 @@ export function GetResourcesFromInventory(
   }>
 ) {
   const [resources, setResources] = React.useState<KubeObject[]>([]);
+
   React.useEffect(() => {
     props.inventory?.forEach(item => {
       const parsedID = parseID(item.id);
@@ -42,8 +43,7 @@ export function GetResourcesFromInventory(
 
       resourceClass.apiGet(
         data => {
-          // if the resource already exist replace it with the new one which is data otherwise add it
-          // use uid as the filter
+          // add the resource if it does not exist yet, compare with uid.
           setResources(prevResources => {
             if (prevResources.find(r => r.metadata.uid === data.metadata.uid)) {
               return prevResources;
@@ -52,7 +52,13 @@ export function GetResourcesFromInventory(
           });
         },
         name,
-        namespace
+        namespace,
+        () /* on error */ => {
+          const resource = { metadata: { name: name, namespace: namespace } };
+          setResources(prevResources => {
+            return [...prevResources, resource as KubeObject];
+          });
+        }
       )();
     });
   }, []);
@@ -85,40 +91,47 @@ export function GetResourcesFromInventory(
         },
         {
           header: 'Kind',
-          accessorFn: item => item.kind,
+          accessorFn: (item: KubeObject) => item.kind,
         },
         {
           header: 'Ready',
-          accessorFn: item => {
-            const ready =
-              item.jsonData?.status?.conditions?.findIndex(c => c.type === 'Ready') !== -1
+          accessorFn: (item: KubeObject) => {
+            if (item.jsonData?.status) {
+              return item.jsonData.status.conditions?.findIndex(c => c.type === 'Ready') !== -1
                 ? 'True'
                 : 'False';
-            return ready;
+            }
+            return 'Unknown';
           },
         },
         {
           header: 'Age',
-          accessorFn: item => <DateLabel date={item?.metadata?.creationTimestamp} />,
+          accessorFn: (item: KubeObject) => {
+            if (item?.metadata?.creationTimestamp) {
+              return <DateLabel date={item?.metadata?.creationTimestamp} />;
+            }
+          },
         },
       ]}
     />
   );
 }
 
-function inventoryNameLink(item) {
-  const kind = item.kind;
+function inventoryNameLink(item: KubeObject) {
+  // return the name and not a link if we could not query the resource
+  if (!item.metadata.creationTimestamp) {
+    return item.metadata.name;
+  }
 
+  const kind = item.kind;
   // remove version from apiVersion to get the groupName
   const apiVersion = item.jsonData.apiVersion;
   const slashIndex = apiVersion.lastIndexOf('/');
   const groupName = slashIndex > 0 ? apiVersion.substring(0, slashIndex) : apiVersion;
   const pluralName = PluralName(kind);
 
-
   // Flux types
   if (groupName.endsWith('toolkit.fluxcd.io')) {
-   
     return (
       <Link
         routeName={groupName.substr(0, groupName.indexOf('.'))}
