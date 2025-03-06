@@ -15,6 +15,7 @@ import { NameLink } from '../helpers';
 
 const imageGroup = 'image.toolkit.fluxcd.io';
 const imageVersion = 'v1beta2';
+export const IMAGE_AUTOMATION_BETA_VERSION = 'v1beta2';
 
 export function imageRepositoriesClass() {
   return makeCustomResourceClass({
