@@ -11,11 +11,11 @@ describe('getTimeRange', () => {
   const day = 86400; // seconds in a day
 
   beforeEach(() => {
-    jest.spyOn(Date, 'now').mockImplementation(() => mockNow * 1000);
+    vitest.spyOn(Date, 'now').mockImplementation(() => mockNow * 1000);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vitest.restoreAllMocks();
   });
 
   test.each([
@@ -50,7 +50,7 @@ describe('getTimeRange', () => {
   test('should handle different timestamps correctly', () => {
     // Test with a specific timestamp
     const specificTime = 1600000000;
-    jest.spyOn(Date, 'now').mockImplementation(() => specificTime * 1000);
+    vitest.spyOn(Date, 'now').mockImplementation(() => specificTime * 1000);
 
     const result = getTimeRange('1h');
     expect(result).toEqual({

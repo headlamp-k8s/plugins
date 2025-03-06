@@ -1,4 +1,4 @@
-import { SectionBox} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Link } from '@mui/material';
 
 export default function Flux404(props: Readonly<{ message: string; docs?: string }>) {
@@ -30,7 +30,7 @@ export default function Flux404(props: Readonly<{ message: string; docs?: string
 export function NotSupported(props: { typeName: string }) {
   const { typeName } = props;
   return (
-    <SectionBox title={typeName}> 
+    <SectionBox title={typeName}>
       <p>Flux installation has no support for {typeName}.</p>
       <p>
         Follow the{' '}
@@ -39,6 +39,6 @@ export function NotSupported(props: { typeName: string }) {
         </Link>{' '}
         to support {typeName} on your cluster
       </p>
-    </SectionBox> 
+    </SectionBox>
   );
 }

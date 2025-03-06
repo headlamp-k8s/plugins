@@ -1,9 +1,9 @@
 import { SectionBox, SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
+import React from 'react';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
-import React from 'react';
 
 export function HelmReleases() {
   return <HelmReleasesList />;
@@ -29,13 +29,14 @@ function HelmReleasesList() {
   helmReleaseClass().useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Helm Releases" />
+    return <NotSupported typeName="Helm Releases" />;
   }
 
   return (
     <SectionBox title={<SectionFilterHeader title="Helm Releases" />}>
       <Table
         data={resources}
+        // @ts-ignore -- TODO Update the sorting param
         defaultSortingColumn={2}
         columns={['name', 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
         filterFunction={filterFunction}

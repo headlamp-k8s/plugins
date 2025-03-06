@@ -1,7 +1,8 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
-import React, { cloneElement } from 'react';
+import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
+import React from 'react';
 import Table from '../common/Table';
 import { prepareNameLink } from '../helpers/index';
 
@@ -123,7 +124,7 @@ function GetCustomResourceCRWrapper(props) {
 
 function GetCustomResourceCR(props: {
   resources: KubeObject[];
-  resource: KubeObject;
+  resource: CustomResourceDefinition;
   setResources: (...args) => void;
 }) {
   const { resource, setResources } = props;

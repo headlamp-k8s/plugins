@@ -142,7 +142,7 @@ function SourceDetailView(props) {
 
 function Events(props) {
   const { cr } = props;
-  const [events] = Event?.default.useList({
+  const [events] = Event.useList({
     namespace: cr?.jsonData.metadata.namespace,
     fieldSelector: `involvedObject.name=${cr?.jsonData.metadata.name},involvedObject.kind=${cr?.jsonData.kind}`,
   });

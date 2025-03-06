@@ -1,4 +1,4 @@
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { EnableSwitch } from './EnableSwitch';
 
@@ -7,7 +7,7 @@ export default {
   component: EnableSwitch,
 } as Meta;
 
-const Template: Story = args => <EnableSwitch {...args} />;
+const Template: StoryFn = args => <EnableSwitch {...args} />;
 
 export const CheckedTrue = Template.bind({});
 CheckedTrue.args = {

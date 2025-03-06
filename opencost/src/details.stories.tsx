@@ -1,4 +1,4 @@
-import { Meta, Story } from '@storybook/react/types-6-0';
+import { Meta, StoryFn } from '@storybook/react/types-6-0';
 import { OpencostDetailSectionPure } from './detail';
 
 export default {
@@ -6,7 +6,7 @@ export default {
   component: OpencostDetailSectionPure,
 } as Meta;
 
-const Template: Story = args => <OpencostDetailSectionPure {...args} />;
+const Template: StoryFn = (args: any) => <OpencostDetailSectionPure {...args} />;
 
 export const LoadingState = Template.bind({});
 LoadingState.args = {

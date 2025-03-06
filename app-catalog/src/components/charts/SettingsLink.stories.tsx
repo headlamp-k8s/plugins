@@ -1,4 +1,4 @@
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { SettingsLink } from './SettingsLink';
@@ -15,7 +15,7 @@ export default {
   ],
 } as Meta;
 
-const Template: Story = args => <SettingsLink {...args} />;
+const Template: StoryFn = args => <SettingsLink {...args} />;
 
 export const Title = Template.bind({});
 Title.args = {};

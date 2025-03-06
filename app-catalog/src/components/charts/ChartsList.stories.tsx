@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { Meta, Story } from '@storybook/react/types-6-0';
+import { Meta, StoryFn } from '@storybook/react/types-6-0';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
@@ -75,7 +75,7 @@ const initialStateFalse = {
   },
 };
 
-const Template: Story = ({ initialState, ...args }) => {
+const Template: StoryFn = ({ initialState, ...args }) => {
   const mockStore = configureStore({
     reducer: (state = initialState) => state,
   });

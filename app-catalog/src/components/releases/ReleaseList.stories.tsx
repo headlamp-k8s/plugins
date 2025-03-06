@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { Meta, Story } from '@storybook/react/types-6-0';
+import { Meta, StoryFn } from '@storybook/react/types-6-0';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
@@ -58,7 +58,7 @@ const mockStore = configureStore({
   reducer: (state = initialState) => state,
 });
 
-const Template: Story = args => (
+const Template: StoryFn = args => (
   <Provider store={mockStore}>
     <BrowserRouter>
       <ReleaseList {...args} fetchReleases={() => Promise.resolve({ releases: mockReleases })} />

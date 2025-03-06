@@ -1,4 +1,4 @@
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { SettingsPure, SettingsPureProps } from './SettingsPure';
 
@@ -7,7 +7,7 @@ export default {
   component: SettingsPure,
 } as Meta;
 
-const Template: Story<SettingsPureProps> = args => <SettingsPure {...args} />;
+const Template: StoryFn<SettingsPureProps> = args => <SettingsPure {...args} />;
 
 export const Default = Template.bind({});
 Default.args = {

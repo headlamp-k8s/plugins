@@ -11,13 +11,18 @@ function ForceReconciliationAction(props) {
   return (
     <>
       <ActionButton
-        description={resource.jsonData.spec.force ? `Disable force reconciliation for ${resource.metadata.name}` : `Enable force reconciliation for ${resource.metadata.name}` }
+        description={
+          resource.jsonData.spec.force
+            ? `Disable force reconciliation for ${resource.metadata.name}`
+            : `Enable force reconciliation for ${resource.metadata.name}`
+        }
         icon={resource.jsonData.spec.force ? 'mdi:invoice-text-remove' : 'mdi:invoice-text-new'}
         onClick={() => {
           setOpen(true);
         }}
       />
       <ConfirmDialog
+        // @ts-ignore -- Remove this once mui types are working, related to wildcard paths in plugins-tsconfig.json
         open={open}
         handleClose={() => setOpen(false)}
         onConfirm={() => {
@@ -33,20 +38,25 @@ function ForceReconciliationAction(props) {
             resource.jsonData.metadata.name
           )
             .then(response => {
-                enqueueSnackbar(
-                  response.spec.force ? `Successfully Disabled force reconciliation for ${resource.metadata.name}` : `Successfully Enabled force reconciliation for ${resource.metadata.name}`,
-                  { variant: 'success' }
-                );
+              enqueueSnackbar(
+                response.spec.force
+                  ? `Successfully Disabled force reconciliation for ${resource.metadata.name}`
+                  : `Successfully Enabled force reconciliation for ${resource.metadata.name}`,
+                { variant: 'success' }
+              );
             })
             .catch(error => {
-              enqueueSnackbar(
-                `error ${error}`,
-                { variant: 'error' }
-              );
+              enqueueSnackbar(`error ${error}`, { variant: 'error' });
             });
         }}
-        title={resource.jsonData.force ? 'Enable Force Reconciliation' : 'Disable Force Reconciliation' }
-        description={`${resource.jsonData.force ? 'Are you sure you want to enable force reconciliation for ' : 'Are you sure you want to disable force reconciliation for '}${resource?.jsonData.metadata.name}?`}
+        title={
+          resource.jsonData.force ? 'Enable Force Reconciliation' : 'Disable Force Reconciliation'
+        }
+        description={`${
+          resource.jsonData.force
+            ? 'Are you sure you want to enable force reconciliation for '
+            : 'Are you sure you want to disable force reconciliation for '
+        }${resource?.jsonData.metadata.name}?`}
       />
     </>
   );
@@ -57,7 +67,7 @@ function SuspendAction(props) {
   const { resource } = props;
   const [open, setOpen] = React.useState<boolean>(false);
 
-  if(resource?.jsonData?.spec?.suspend) {
+  if (resource?.jsonData?.spec?.suspend) {
     return null;
   }
   return (
@@ -114,7 +124,7 @@ function SuspendAction(props) {
 function ResumeAction(props) {
   const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
-  if(!resource.jsonData.spec.suspend) {
+  if (!resource.jsonData.spec.suspend) {
     return null;
   }
   return (
@@ -157,7 +167,7 @@ function ResumeAction(props) {
 function syncRequest(resource: KubeObject, enqueueSnackbar, date) {
   const name = resource.jsonData.metadata.name;
 
-  const patch = resource.constructor.apiEndpoint.patch;
+  const patch = (resource.constructor as any).apiEndpoint.patch;
   return patch(
     {
       metadata: {
@@ -284,4 +294,11 @@ function SyncWithoutSourceAction(props) {
   );
 }
 
-export { SuspendAction, ResumeAction, SyncAction, SyncWithSourceAction, SyncWithoutSourceAction, ForceReconciliationAction };
+export {
+  SuspendAction,
+  ResumeAction,
+  SyncAction,
+  SyncWithSourceAction,
+  SyncWithoutSourceAction,
+  ForceReconciliationAction,
+};

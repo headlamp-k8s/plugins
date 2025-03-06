@@ -43,10 +43,7 @@ interface SearchProps {
   setSearch: React.Dispatch<React.SetStateAction<string>>;
 }
 
-function Search({
-  search, 
-  setSearch 
-}: SearchProps) {
+function Search({ search, setSearch }: SearchProps) {
   const [inputValue, setInputValue] = useState(search);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
@@ -88,10 +85,10 @@ interface CategoryForChartsProps {
   setChartCategory: React.Dispatch<React.SetStateAction<{ title: string; value: number }>>;
 }
 
-function CategoryForCharts({ 
+function CategoryForCharts({
   helmChartCategoryList,
   chartCategory,
-  setChartCategory
+  setChartCategory,
 }: CategoryForChartsProps) {
   return (
     <Autocomplete
@@ -104,7 +101,7 @@ function CategoryForCharts({
       value={chartCategory}
       onChange={(event, newValue) => {
         // @ts-ignore
-        setChartCategory((oldValue) => {
+        setChartCategory(oldValue => {
           if ((newValue?.value ?? helmChartCategoryList[0].value) === oldValue.value) {
             return oldValue;
           }
@@ -189,11 +186,11 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         chart={selectedChartForInstall}
         handleEditor={(open: boolean) => setEditorOpen(open)}
       />
-      <SectionHeader 
+      <SectionHeader
         title="Applications"
         titleSideActions={[<SettingsLink />]}
         actions={[
-          <Search search={search} setSearch={setSearch} />, 
+          <Search search={search} setSearch={setSearch} />,
           <CategoryForCharts
             helmChartCategoryList={helmChartCategoryList}
             chartCategory={chartCategory}
@@ -213,8 +210,9 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         ) : charts.length === 0 ? (
           <Box mt={2} mx={2}>
             <Typography variant="h5" component="h2">
-              {`No charts found for ${search ? `search term: ${search}` : `category: ${chartCategory.title}`
-                }`}
+              {`No charts found for ${
+                search ? `search term: ${search}` : `category: ${chartCategory.title}`
+              }`}
             </Typography>
           </Box>
         ) : (
@@ -228,17 +226,19 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
           >
             {charts.map(chart => {
               return (
-                <Card sx={{
-                  margin: '1rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  height: '100%',
-                  boxShadow: '0px 0px 5px 0px rgba(0,0,0,0.5)',
-                  width: {
-                    md: '40%',
-                    lg: '30%',
-                  },
-                }}>
+                <Card
+                  sx={{
+                    margin: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    boxShadow: '0px 0px 5px 0px rgba(0,0,0,0.5)',
+                    width: {
+                      md: '40%',
+                      lg: '30%',
+                    },
+                  }}
+                >
                   <Box
                     height="60px"
                     display="flex"
@@ -260,12 +260,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                         component="img"
                       />
                     )}
-                    <Box
-                      display="flex"
-                      alignItems="center"
-                      marginLeft="auto"
-                      marginRight="10px"
-                    >
+                    <Box display="flex" alignItems="center" marginLeft="auto" marginRight="10px">
                       {(chart.cncf || chart.repository.cncf) && (
                         <Tooltip title="CNCF Project">
                           <Icon
