@@ -6,6 +6,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject, KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
+import React from 'react';
 import Table from '../common/Table';
 import { PluralName } from './pluralName';
 
@@ -165,5 +166,41 @@ export function NameLink(resourceClass: KubeObjectClass) {
         {cell.getValue()}
       </Link>
     ),
+  };
+}
+export function useFluxCheck(sourceCRDs) {
+  const [gitRepoCRD, allCrdsSuccessful] = React.useMemo(() => {
+    const gitRepoCRD = sourceCRDs.find(
+      crd => crd?.metadata?.name === 'gitrepositories.source.toolkit.fluxcd.io'
+    );
+    const allCrdsSuccessful = sourceCRDs.every(crd => {
+      if (!crd) return true;
+      const conditions = crd.status?.conditions || [];
+      // Check if any condition has  status "True"
+      const isSuccess = conditions.some(cond => cond.status === 'True');
+      return isSuccess;
+    });
+
+    return [gitRepoCRD, allCrdsSuccessful];
+  }, sourceCRDs);
+
+  const fluxCheck = React.useMemo(() => {
+    const partOfLabel = 'app.kubernetes.io/part-of';
+    const kustomizeLabel = 'kustomize.toolkit.fluxcd.io';
+    const version = gitRepoCRD?.metadata.labels?.['app.kubernetes.io/version'] ?? '';
+    const name = gitRepoCRD?.metadata.labels?.[kustomizeLabel + '/name'] ?? '';
+    const namespace = gitRepoCRD?.metadata.labels?.[kustomizeLabel + '/namespace'] ?? '';
+    const partOf = gitRepoCRD?.metadata.labels?.[partOfLabel] ?? '';
+
+    return {
+      version,
+      isBoostrapped: !!name && !!namespace,
+      distribution: !!partOf && !!version ? partOf + '-' + version : '',
+    };
+  }, [gitRepoCRD]);
+
+  return {
+    ...fluxCheck,
+    allCrdsSuccessful,
   };
 }
