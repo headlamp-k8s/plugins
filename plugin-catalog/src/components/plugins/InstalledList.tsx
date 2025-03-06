@@ -26,19 +26,16 @@ export function PurePluginInstalledList({ installedPlugins, error }: PurePluginI
       title="Installed"
       paddingTop={2}
       headerProps={{
-        noPadding: false, headerStyle: 'subsection' ,
-        actions: [
-          <Link routeName="plugins">Go to all installed plugins</Link>,
-        ]
+        noPadding: false,
+        headerStyle: 'subsection',
+        actions: [<Link routeName="plugins">Go to all installed plugins</Link>],
       }}
     >
       {error ? (
         <Typography>{`Error loading Installed plugins: ${error}`}</Typography>
       ) : (
         <>
-          <Typography component="h2">
-            Plugins installed from the Plugin Catalog.
-          </Typography>
+          <Typography component="h2">Plugins installed from the Plugin Catalog.</Typography>
           <SimpleTable
             columns={[
               {
