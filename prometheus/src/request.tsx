@@ -4,7 +4,8 @@ const request = ApiProxy.request;
 
 const CUSTOM_HEADLAMP_LABEL = 'headlamp-prometheus=true';
 const COMMON_PROMETHEUS_POD_LABEL = 'app.kubernetes.io/name=prometheus';
-const COMMON_PROMETHEUS_SERVICE_LABEL = 'app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server';
+const COMMON_PROMETHEUS_SERVICE_LABEL =
+  'app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server';
 const DEFAULT_PROMETHEUS_PORT = '9090';
 
 export type KubernetesPodListResponseItem = {
@@ -59,9 +60,9 @@ export type KubernetesSearchResponse = KubernetesPodListResponse | KubernetesSer
 
 export enum KubernetesType {
   none = 'none',
-  pods   = 'pods',
+  pods = 'pods',
   services = 'services',
-};
+}
 
 export type PrometheusEndpoint = {
   type: KubernetesType;
@@ -88,7 +89,7 @@ export function createPrometheusEndpoint(
     type,
     name,
     namespace,
-    port
+    port,
   };
 }
 
@@ -98,25 +99,37 @@ export function createPrometheusEndpoint(
  */
 export async function isPrometheusInstalled(): Promise<PrometheusEndpoint> {
   // Search by a custom label for a pod
-  const podSearchSpecificResponse = await searchKubernetesByLabel(KubernetesType.pods, CUSTOM_HEADLAMP_LABEL);
+  const podSearchSpecificResponse = await searchKubernetesByLabel(
+    KubernetesType.pods,
+    CUSTOM_HEADLAMP_LABEL
+  );
   if (podSearchSpecificResponse.type !== KubernetesType.none) {
     return podSearchSpecificResponse;
   }
 
   // Search by a custom label for a service
-  const serviceSearchSpecificResponse = await searchKubernetesByLabel(KubernetesType.services, CUSTOM_HEADLAMP_LABEL);
+  const serviceSearchSpecificResponse = await searchKubernetesByLabel(
+    KubernetesType.services,
+    CUSTOM_HEADLAMP_LABEL
+  );
   if (serviceSearchSpecificResponse.type !== KubernetesType.none) {
     return serviceSearchSpecificResponse;
   }
 
   // Search by common label for a pod
-  const podSearchResponse = await searchKubernetesByLabel(KubernetesType.pods, COMMON_PROMETHEUS_POD_LABEL);
+  const podSearchResponse = await searchKubernetesByLabel(
+    KubernetesType.pods,
+    COMMON_PROMETHEUS_POD_LABEL
+  );
   if (podSearchResponse.type !== KubernetesType.none) {
     return podSearchResponse;
   }
 
   // Search by common label for a service
-  const serviceSearchResponse = await searchKubernetesByLabel(KubernetesType.services, COMMON_PROMETHEUS_SERVICE_LABEL);
+  const serviceSearchResponse = await searchKubernetesByLabel(
+    KubernetesType.services,
+    COMMON_PROMETHEUS_SERVICE_LABEL
+  );
   if (serviceSearchResponse.type !== KubernetesType.none) {
     return serviceSearchResponse;
   }
@@ -161,20 +174,30 @@ async function searchKubernetesByLabel(
     const prometheusName = metadata.name;
     const prometheusNamespace = metadata.namespace;
     const prometheusPorts = getPrometheusPortsFromResponse(searchResponseTyped);
-    
+
     const testResults = await Promise.all(
-      prometheusPorts.map(async (prometheusPort) => {
-        const testSuccess = await testPrometheusQuery(kubernetesType, prometheusName, prometheusNamespace, prometheusPort);
+      prometheusPorts.map(async prometheusPort => {
+        const testSuccess = await testPrometheusQuery(
+          kubernetesType,
+          prometheusName,
+          prometheusNamespace,
+          prometheusPort
+        );
         return {
           prometheusPort,
-          testSuccess
+          testSuccess,
         };
       })
     );
 
     for (const result of testResults) {
       if (result.testSuccess) {
-        return createPrometheusEndpoint(kubernetesType, prometheusName, prometheusNamespace, result.prometheusPort);
+        return createPrometheusEndpoint(
+          kubernetesType,
+          prometheusName,
+          prometheusNamespace,
+          result.prometheusPort
+        );
       }
     }
   }
@@ -236,20 +259,23 @@ async function testPrometheusQuery(
   queryParams.append('query', 'up');
   const start = Math.floor(Date.now() / 1000);
   const testSuccess = await fetchMetrics({
-    prefix: `${prometheusNamespace}/${kubernetesType}/${prometheusName}${prometheusPort ? `:${prometheusPort}` : ''}`,
+    prefix: `${prometheusNamespace}/${kubernetesType}/${prometheusName}${
+      prometheusPort ? `:${prometheusPort}` : ''
+    }`,
     query: 'up',
     from: start - 86400,
     to: start,
     step: 300,
-  }).then(() => {
-    return true;
-  }).catch(() => {
-    return false;
-  });
+  })
+    .then(() => {
+      return true;
+    })
+    .catch(() => {
+      return false;
+    });
 
   return testSuccess;
 }
-
 
 /**
  * Fetches metrics data from Prometheus using the provided parameters.
