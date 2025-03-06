@@ -1,4 +1,4 @@
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import { BrowserRouter } from 'react-router-dom';
 import Chart, { ChartProps } from './Chart';
 
@@ -323,7 +323,7 @@ export default {
   ],
 } as Meta;
 
-const Template: Story<ChartProps> = () => {
+const Template: StoryFn<ChartProps> = () => {
   return (
     <Chart
       plots={[
