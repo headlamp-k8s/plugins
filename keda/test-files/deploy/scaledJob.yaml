@@ -1,0 +1,39 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: rabbitmq-consumer-job
+  namespace: default
+spec:
+  jobTargetRef:
+    template:
+      spec:
+        containers:
+          - name: rabbitmq-consumer-job
+            image: some-registry/rabbitmq-client:latest
+            imagePullPolicy: Always
+            command:
+              - receive
+            env:
+              - name: RABBITMQ_CONNECTION
+                valueFrom:
+                  secretKeyRef:
+                    name: rabbitmq-connection-secret
+                    key: RABBITMQ_CONNECTION_STRING
+            args:
+              - '-batch' # Enable batch mode
+              - '-messages=10' # Process 10 messages per job
+              - '-timeout=30' # 30 second timeout
+              - '$(RABBITMQ_CONNECTION)'
+        restartPolicy: Never
+  pollingInterval: 5 # Optional. Default: 30 seconds
+  successfulJobsHistoryLimit: 5 # Optional. Default: 100
+  failedJobsHistoryLimit: 5 # Optional. Default: 100
+  maxReplicaCount: 30 # Optional. Default: 100
+  triggers:
+    - type: rabbitmq
+      metadata:
+        queueName: hello
+        queueLength: '5'
+        activationQueueLength: '10' # Optional. Queue length to activate scaling from 0 to N
+      authenticationRef:
+        name: rabbitmq-consumer-trigger
