@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-publish
+spec:
+  template:
+    spec:
+      containers:
+        - name: rabbitmq-client
+          image: some-registry/rabbitmq-client:latest
+          imagePullPolicy: Always
+          env:
+            - name: RABBITMQ_CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-connection-secret
+                  key: RABBITMQ_CONNECTION_STRING
+          command: ['send', '$(RABBITMQ_CONNECTION)', '300']
+      restartPolicy: Never
+  backoffLimit: 4
