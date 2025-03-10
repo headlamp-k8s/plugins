@@ -1,11 +1,17 @@
-import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { addIcon, Icon } from '@iconify/react';
+import {
+  registerKindIcon,
+  registerMapSource,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
 import { HelmReleases } from './helm-releases/HelmReleaseList';
 import { FluxHelmReleaseDetailView } from './helm-releases/HelmReleaseSingle';
 import { ImageAutomation } from './image-automation/ImageAutomationList';
 import { FluxImageAutomationDetailView } from './image-automation/ImageAutomationSingle';
 import { Kustomizations } from './kustomizations/KustomizationList';
 import { FluxKustomizationDetailView } from './kustomizations/KustomizationSingle';
+import { fluxSource } from './mapView';
 import { Notifications } from './notifications/NotificationList';
 import { Notification } from './notifications/NotificationSingle';
 import { FluxRunTime } from './runtime/RuntimeList';
@@ -161,4 +167,25 @@ registerRoute({
   parent: 'flux',
   sidebar: 'flux-runtime',
   component: () => <FluxRunTime />,
+});
+
+registerMapSource(fluxSource);
+
+registerKindIcon('HelmRelease', {
+  icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
+
+registerKindIcon('HelmRepository', {
+  icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
+
+registerKindIcon('Kustomization', {
+  icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
+registerKindIcon('OCIRepository', {
+  icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
 });

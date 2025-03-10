@@ -24,8 +24,9 @@ import { GetResourcesFromInventory } from '../inventory';
 import { GetSource } from '../sources/Source';
 import { kustomizationClass } from './KustomizationList';
 
-export function FluxKustomizationDetailView() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export function FluxKustomizationDetailView(props: { name?: string; namespace?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const { name = params.name, namespace = params.namespace } = props;
 
   const [events] = Event.useList({
     namespace,

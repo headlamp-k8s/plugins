@@ -27,8 +27,9 @@ import {
   ociRepositoryClass,
 } from './SourceList';
 
-export function FluxSourceDetailView() {
-  const { namespace, type, name } = useParams<{ namespace: string; type: string; name: string }>();
+export function FluxSourceDetailView(props: { name?: string; namespace?: string; type?: string }) {
+  const params = useParams<{ namespace: string; type: string; name: string }>();
+  const { name = params.name, namespace = params.namespace, type = params.type } = props;
 
   const resourceClass = (() => {
     switch (type) {
