@@ -184,7 +184,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
   
 
   if (error?.status === 404) {
-      return <NotSupported typeName={title} />
+    return <NotSupported typeName={title} />;
   }
 
   return (
@@ -192,6 +192,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
       <Table
         data={resources}
         columns={columns}
+        // @ts-ignore -- TODO Update the sorting column param
         defaultSortingColumn={3}
         filterFunction={filterFunction}
       />

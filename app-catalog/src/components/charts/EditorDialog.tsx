@@ -49,7 +49,7 @@ export function EditorDialog(props: {
 
   useEffect(() => {
     if (!selectedNamespace && !!namespaceNames) {
-      setSelectedNamespace(namespaceNames[0])
+      setSelectedNamespace(namespaceNames[0]);
     }
   }, [selectedNamespace, namespaceNames]);
 
@@ -76,7 +76,10 @@ export function EditorDialog(props: {
     setChartInstallDescription(`${chart.name} deployment`);
     fetchChartDetailFromArtifact(chart.name, chart.repository.name).then(response => {
       if (response.available_versions) {
-        const availableVersions = response.available_versions.map(({ version }) => ({ title: version, value: version }));
+        const availableVersions = response.available_versions.map(({ version }) => ({
+          title: version,
+          value: version,
+        }));
         setVersions(availableVersions);
         setSelectedVersion(availableVersions[0]);
       }

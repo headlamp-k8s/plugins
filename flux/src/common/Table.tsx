@@ -10,8 +10,8 @@ import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import React from 'react';
 import { getSourceNameAndPluralKind } from '../helpers';
-import StatusLabel from './StatusLabel';
 import { PluralName } from '../helpers/pluralName';
+import StatusLabel from './StatusLabel';
 
 type CommonColumnType =
   | 'namespace'
@@ -35,8 +35,8 @@ interface NameColumn extends Partial<TableCol> {
   routeName?: string;
 }
 
-export interface TableProps extends Omit<HTableProps, 'columns'> {
-  columns: (TableCol | CommonColumnType | NameColumn | TableColumn)[];
+export interface TableProps extends Omit<HTableProps<any>, 'columns'> {
+  columns: (TableCol | CommonColumnType | NameColumn | TableColumn<any, any>)[];
 }
 
 function prepareLastUpdated(item: KubeCRD) {
@@ -184,7 +184,14 @@ export function Table(props: TableProps) {
     });
   }, [columns]);
 
-  return <HTable data={data} loading={data === null} {...otherProps} columns={processedColumns} />;
+  return (
+    <HTable
+      data={data}
+      loading={data === null}
+      {...otherProps}
+      columns={processedColumns as TableCol[]}
+    />
+  );
 }
 
 export default Table;

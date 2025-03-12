@@ -1,4 +1,4 @@
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import { VisibilityButton } from './VisibilityButton';
 
 export default {
@@ -6,6 +6,6 @@ export default {
   component: VisibilityButton,
 } as Meta;
 
-const Template: Story<{}> = args => <VisibilityButton {...args} />;
+const Template: StoryFn<{}> = args => <VisibilityButton {...args} />;
 
 export const Default = Template.bind({});

@@ -78,8 +78,8 @@ export interface PluginDetailResp {
     official: boolean;
     scanner_disabled: boolean;
     user_alias: string;
-    organization_name: string;
-    organization_display_name: string;
+    organization_name?: string;
+    organization_display_name?: string;
   };
   stats: {
     subscriptions: number;

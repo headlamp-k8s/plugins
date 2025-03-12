@@ -8,7 +8,6 @@ import {
 import { Box, Button, Link, Table, TableCell, TableHead, TableRow } from '@mui/material';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import rehypeFilter from 'react-markdown/lib/rehype-filter';
 import { useParams } from 'react-router';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import remarkGfm from 'remark-gfm';
@@ -139,7 +138,7 @@ export default function ChartDetails() {
             style={{
               padding: '1rem',
             }}
-            remarkPlugins={[remarkGfm, rehypeFilter]}
+            remarkPlugins={[remarkGfm]}
             children={chart.readme}
             components={{
               a: props => {
@@ -156,8 +155,7 @@ export default function ChartDetails() {
                   />
                 );
               },
-              thead: ({ node, ...props }) => {
-                console.log(node, props);
+              thead: props => {
                 return <TableHead {...props} />;
               },
               tr: props => {

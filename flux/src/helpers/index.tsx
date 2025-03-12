@@ -40,6 +40,7 @@ export function ObjectEvents(props: { events: any }) {
   return (
     <SectionBox title={'Events'}>
       <Table
+        // @ts-ignore -- TODO Update the sorting param
         defaultSortingColumn={4}
         columns={[
           {

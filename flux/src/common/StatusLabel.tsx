@@ -1,5 +1,6 @@
 import { StatusLabel as HLStatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
+import { Tooltip } from '@mui/material';
 
 interface StatusLabelProps {
   item: KubeCRD;
@@ -18,6 +19,14 @@ export default function StatusLabel(props: StatusLabelProps) {
   }
   if (ready.status === 'Unknown') {
     return <HLStatusLabel status="warning">Reconciling…</HLStatusLabel>;
+  }
+
+  if (ready.reason === 'DependencyNotReady') {
+    return (
+      <HLStatusLabel status={'warning'}>
+        <Tooltip title={ready.message}>{'Waiting'}</Tooltip>
+      </HLStatusLabel>
+    );
   }
 
   const isReady = ready.status === 'True';

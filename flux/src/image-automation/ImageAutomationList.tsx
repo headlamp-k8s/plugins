@@ -7,10 +7,11 @@ import {
 import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
+import React from 'react';
+import React from 'react';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
-import React from 'react';
 import { NameLink } from '../helpers';
 
 const imageGroup = 'image.toolkit.fluxcd.io';
@@ -62,7 +63,7 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObjectClass }) {
   resourceClass.useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Image Update Automations" />
+    return <NotSupported typeName="Image Update Automations" />;
   }
 
   return (
@@ -123,7 +124,7 @@ function ImagePolicyList(props: { resourceClass: KubeObjectClass }) {
   resourceClass.useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Image Update Policies" />
+    return <NotSupported typeName="Image Update Policies" />;
   }
 
   return (
@@ -156,7 +157,7 @@ function ImageRepositoryList(props: { resourceClass: KubeObjectClass }) {
   resourceClass.useApiList(setResources, setError);
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Image Repositories" />
+    return <NotSupported typeName="Image Repositories" />;
   }
 
   return (

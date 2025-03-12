@@ -1,5 +1,4 @@
-import { Meta, Story } from '@storybook/react';
-import React from 'react';
+import { Meta, StoryFn } from '@storybook/react';
 import { BackstageButtonPure, BackstageButtonPureProps } from './BackstageButtonPure';
 
 export default {
@@ -14,7 +13,7 @@ export default {
   },
 } as Meta;
 
-const Template: Story<BackstageButtonPureProps> = args => <BackstageButtonPure {...args} />;
+const Template: StoryFn<BackstageButtonPureProps> = args => <BackstageButtonPure {...args} />;
 
 export const Default = Template.bind({});
 Default.args = {

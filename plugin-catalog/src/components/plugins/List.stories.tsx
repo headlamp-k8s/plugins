@@ -1,6 +1,6 @@
 // src/components/PurePluginList.stories.tsx
 
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { PluginPackage, PurePluginList, PurePluginListProps } from './List';
@@ -19,7 +19,7 @@ export default {
   ],
 } as Meta;
 
-const Template: Story<PurePluginListProps> = args => <PurePluginList {...args} />;
+const Template: StoryFn<PurePluginListProps> = args => <PurePluginList {...args} />;
 
 const samplePlugins: PluginPackage[] = [
   {

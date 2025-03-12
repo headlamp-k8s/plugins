@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { Meta, Story } from '@storybook/react';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
@@ -25,7 +25,9 @@ export default {
   ],
 } as Meta;
 
-const Template: Story<PurePluginInstalledListProps> = args => <PurePluginInstalledList {...args} />;
+const Template: StoryFn<PurePluginInstalledListProps> = args => (
+  <PurePluginInstalledList {...args} />
+);
 
 const samplePlugins = [
   {

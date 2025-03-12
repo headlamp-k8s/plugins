@@ -21,24 +21,20 @@
     "kubernetes-debugging",
     "plugins"
   ],
-  "prettier": "@kinvolk/eslint-config/prettier-config",
+  "prettier": "@headlamp-k8s/eslint-config/prettier-config",
   "eslintConfig": {
     "extends": [
-      "@kinvolk",
+      "@headlamp-k8s",
       "prettier",
       "plugin:jsx-a11y/recommended"
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "0.10.0"
+    "@kinvolk/headlamp-plugin": "^0.11.0-alpha.3"
   },
   "dependencies": {
-    "@monaco-editor/react": "^4.5.0",
-    "@types/js-yaml": "^4.0.5",
-    "js-yaml": "^4.1.0",
-    "react-markdown": "^8.0.7",
     "react-syntax-highlighter": "^15.5.0",
-    "remark-gfm": "^3.0.1",
-    "semver": "^7.6.3"
+    "remark-gfm": "^4.0.1",
+    "semver": "^6.3.1"
   }
 }
