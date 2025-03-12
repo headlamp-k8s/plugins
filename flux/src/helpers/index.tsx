@@ -9,23 +9,23 @@ import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
 import Table from '../common/Table';
 import { PluralName } from './pluralName';
 
-export function getSourceNameAndPluralKind(item: KubeObject): { name: string, pluralKind: string} {
+export function getSourceNameAndPluralKind(item: KubeObject): { name: string; pluralKind: string } {
   const itemKind = item.jsonData.kind;
   let pluralKind = '';
   let name = '';
 
   if (itemKind === 'Kustomization') {
-    pluralKind = PluralName(item.jsonData.spec.sourceRef.kind)
+    pluralKind = PluralName(item.jsonData.spec.sourceRef.kind);
     name = item.jsonData.spec?.sourceRef?.name;
   } else if (itemKind === 'HelmRelease') {
     const refToCheck =
       item?.jsonData?.spec?.chartRef ?? item?.jsonData?.spec?.chart?.spec?.sourceRef;
     if (refToCheck) {
-      pluralKind = PluralName(refToCheck.kind) 
+      pluralKind = PluralName(refToCheck.kind);
       name = refToCheck.name;
     }
   } else {
-    pluralKind = PluralName(itemKind)  
+    pluralKind = PluralName(itemKind);
     name = item.metadata.name;
   }
 

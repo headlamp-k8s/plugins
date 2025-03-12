@@ -22,7 +22,11 @@ import {
 } from './NotificationList';
 
 export function Notification() {
-  const { namespace, pluralName, name } = useParams<{ namespace: string; pluralName: string; name: string }>();
+  const { namespace, pluralName, name } = useParams<{
+    namespace: string;
+    pluralName: string;
+    name: string;
+  }>();
   const resourceClass = (() => {
     switch (pluralName) {
       case 'alerts':

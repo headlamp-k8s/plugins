@@ -23,7 +23,6 @@ import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
 import { GetSource } from '../sources/Source';
 import { GetResourcesFromInventory } from './Inventory';
 import { kustomizationClass } from './KustomizationList';
-import { kustomizationClass } from './KustomizationList';
 
 export function FluxKustomizationDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();

@@ -22,7 +22,6 @@ import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
 import { GetSource } from '../sources/Source';
 import { helmReleaseClass } from './HelmReleaseList';
-import { helmReleaseClass } from './HelmReleaseList';
 
 export function FluxHelmReleaseDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();

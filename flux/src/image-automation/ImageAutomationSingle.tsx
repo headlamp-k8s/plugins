@@ -49,7 +49,7 @@ export function FluxImageAutomationDetailView() {
     return <Flux404 message={`Unknown type ${pluralName}`} />;
   }
 
-  const [events] = Event?.default.useList({
+  const [events] = Event.useList({
     namespace,
     fieldSelector: `involvedObject.name=${name},involvedObject.kind=${resourceClass.kind}`,
   });

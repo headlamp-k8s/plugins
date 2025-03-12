@@ -1,8 +1,8 @@
-// Method to derive Plural name for a k8s kind. 
-// Copied from https://github.com/kubernetes/gengo/blob/master/namer/plural_namer.go (converted from go to typescript). 
-// 
-// This method is required because the kustomization inventory provides only the singular name of the entry, 
-// whereas the k8s REST API expects a plural name. 
+// Method to derive Plural name for a k8s kind.
+// Copied from https://github.com/kubernetes/gengo/blob/master/namer/plural_namer.go (converted from go to typescript).
+//
+// This method is required because the kustomization inventory provides only the singular name of the entry,
+// whereas the k8s REST API expects a plural name.
 
 import { indexOf } from 'lodash';
 

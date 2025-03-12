@@ -2,7 +2,6 @@ import { SectionBox, SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/co
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
-import React from 'react';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
 import { NameLink } from '../helpers';

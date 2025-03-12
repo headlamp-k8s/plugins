@@ -7,7 +7,6 @@ import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cr
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box } from '@mui/material';
 import React from 'react';
-import React from 'react';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
 import { NameLink } from '../helpers';

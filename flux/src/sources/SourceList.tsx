@@ -181,7 +181,6 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
       },
     });
   }
-  
 
   if (error?.status === 404) {
     return <NotSupported typeName={title} />;

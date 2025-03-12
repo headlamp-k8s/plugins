@@ -28,7 +28,11 @@ import {
 } from './SourceList';
 
 export function FluxSourceDetailView() {
-  const { namespace, pluralName, name } = useParams<{ namespace: string; pluralName: string; name: string }>();
+  const { namespace, pluralName, name } = useParams<{
+    namespace: string;
+    pluralName: string;
+    name: string;
+  }>();
 
   const resourceClass = (() => {
     switch (pluralName) {
