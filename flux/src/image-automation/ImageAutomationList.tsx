@@ -11,6 +11,7 @@ import React from 'react';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
+import { NameLink } from '../helpers';
 
 const imageGroup = 'image.toolkit.fluxcd.io';
 const imageVersion = 'v1beta2';
@@ -33,7 +34,7 @@ export function imagePolicyClass() {
   });
 }
 
-export function imageUpdateAutomationClass() {
+export function imageUpdateAutomationClass(): KubeObjectClass {
   return makeCustomResourceClass({
     apiInfo: [{ group: imageGroup, version: imageVersion }],
     isNamespaced: true,
@@ -130,21 +131,7 @@ function ImagePolicyList(props: { resourceClass: KubeObjectClass }) {
       <Table
         data={resources}
         columns={[
-          {
-            header: 'Name',
-            accessorFn: item => (
-              <Link
-                routeName={`/flux/image-automations/:type/:namespace/:name`}
-                params={{
-                  name: item.metadata.name,
-                  namespace: item.metadata.namespace,
-                  type: 'imagepolicies',
-                }}
-              >
-                {item?.jsonData?.metadata.name}
-              </Link>
-            ),
-          },
+          NameLink(resourceClass),
           'namespace',
           'status',
           {
@@ -177,21 +164,7 @@ function ImageRepositoryList(props: { resourceClass: KubeObjectClass }) {
       <Table
         data={resources}
         columns={[
-          {
-            header: 'Name',
-            accessorFn: item => (
-              <Link
-                routeName={`/flux/image-automations/:type/:namespace/:name`}
-                params={{
-                  name: item.metadata.name,
-                  namespace: item.metadata.namespace,
-                  type: 'imagerepositories',
-                }}
-              >
-                {item?.jsonData?.metadata.name}
-              </Link>
-            ),
-          },
+          NameLink(resourceClass),
           'namespace',
           'status',
           {

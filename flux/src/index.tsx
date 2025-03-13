@@ -75,25 +75,25 @@ registerRoute({
 });
 
 registerRoute({
-  path: '/flux/kustomizations/:namespace/:name',
+  path: '/flux/kustomize/kustomizations/:namespace/:name',
   parent: 'flux',
   sidebar: 'kustomizations',
   component: () => <FluxKustomizationDetailView />,
   exact: true,
-  name: 'kustomizations',
+  name: 'kustomize',
 });
 
 registerRoute({
-  path: '/flux/helmreleases/:namespace/:name',
+  path: '/flux/helm/helmreleases/:namespace/:name',
   parent: 'flux',
   sidebar: 'helmreleases',
   component: () => <FluxHelmReleaseDetailView />,
   exact: true,
-  name: 'helmrelease',
+  name: 'helm',
 });
 
 registerRoute({
-  path: '/flux/sources/:type/:namespace/:name',
+  path: '/flux/source/:pluralName/:namespace/:name',
   parent: 'flux',
   sidebar: 'sources',
   component: () => <FluxSourceDetailView />,
@@ -118,12 +118,12 @@ registerRoute({
 });
 
 registerRoute({
-  path: '/flux/image-automations/:type/:namespace/:name',
+  path: '/flux/image/:pluralName/:namespace/:name',
   parent: 'flux',
   sidebar: 'image-automations',
   component: () => <FluxImageAutomationDetailView />,
   exact: true,
-  name: 'image-automation',
+  name: 'image',
 });
 
 registerSidebarEntry({
@@ -142,11 +142,12 @@ registerRoute({
 });
 
 registerRoute({
-  path: '/flux/notifications/:type/:namespace/:name',
+  path: '/flux/notification/:pluralName/:namespace/:name',
   parent: 'flux',
   sidebar: 'notifications',
   component: () => <Notification />,
   exact: true,
+  name: 'notification',
 });
 
 registerSidebarEntry({

@@ -22,9 +22,13 @@ import {
 } from './NotificationList';
 
 export function Notification() {
-  const { namespace, type, name } = useParams<{ namespace: string; type: string; name: string }>();
+  const { namespace, pluralName, name } = useParams<{
+    namespace: string;
+    pluralName: string;
+    name: string;
+  }>();
   const resourceClass = (() => {
-    switch (type) {
+    switch (pluralName) {
       case 'alerts':
         return alertNotificationClass();
       case 'providers':
@@ -37,7 +41,7 @@ export function Notification() {
   })();
 
   if (!resourceClass) {
-    return <Flux404 message="Unknown type {type}" />;
+    return <Flux404 message={`Unknown type ${pluralName}`} />;
   }
 
   const [events] = Event.useList({

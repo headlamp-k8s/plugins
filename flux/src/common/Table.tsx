@@ -9,7 +9,8 @@ import {
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import React from 'react';
-import { getSourceNameAndType } from '../helpers';
+import { getSourceNameAndPluralKind } from '../helpers';
+import { PluralName } from '../helpers/pluralName';
 import StatusLabel from './StatusLabel';
 
 type CommonColumnType =
@@ -54,10 +55,11 @@ function prepareNameColumn(colProps: Partial<NameColumn> = {}): TableCol {
     accessorKey: 'metadata.name',
     Cell: ({ row: { original: item } }) => (
       <Link
-        routeName={routeName ?? `/flux/${item.kind.toLowerCase()}s/:namespace/:name`}
+        routeName={routeName}
         params={{
           name: item.metadata.name,
           namespace: item.metadata.namespace,
+          pluralName: PluralName(item.kind),
         }}
       >
         {item.metadata.name}
@@ -117,15 +119,19 @@ export function Table(props: TableProps) {
             return {
               header: 'Source',
               accessorFn: item => {
-                const { name } = getSourceNameAndType(item);
+                const { name } = getSourceNameAndPluralKind(item);
                 return name;
               },
-              Cell: ({ row: { original: item } }: any) => {
-                const { name, type } = getSourceNameAndType(item);
+              Cell: ({ row }: any) => {
+                const { name, pluralKind } = getSourceNameAndPluralKind(row.original);
                 return (
                   <Link
-                    routeName={`/flux/sources/:type/:namespace/:name`}
-                    params={{ namespace: item.jsonData.metadata.namespace, type, name }}
+                    routeName="source"
+                    params={{
+                      pluralName: pluralKind,
+                      namespace: row.original.jsonData.metadata.namespace,
+                      name: name,
+                    }}
                   >
                     {name}
                   </Link>

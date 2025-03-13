@@ -19,8 +19,7 @@ import {
 } from '../actions/index';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import StatusLabel from '../common/StatusLabel';
-import { getSourceNameAndType, ObjectEvents } from '../helpers/index';
-import { GetResourcesFromInventory } from '../inventory';
+import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
 import { GetSource } from '../sources/Source';
 import { helmReleaseClass } from './HelmReleaseList';
 
@@ -51,7 +50,7 @@ function CustomResourceDetails(props) {
     if (!cr) {
       return [];
     }
-    const { name: sourceName, type: sourceType } = getSourceNameAndType(cr);
+    const { name: sourceName, pluralKind: sourcePluralKind } = getSourceNameAndPluralKind(cr);
     const extraInfo = [
       {
         name: 'Status',
@@ -72,11 +71,11 @@ function CustomResourceDetails(props) {
         name: 'Source Ref',
         value: (
           <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
+            routeName="source"
             params={{
               namespace: cr?.jsonData?.metadata.namespace,
               name: sourceName,
-              type: sourceType,
+              pluralName: sourcePluralKind,
             }}
           >
             {sourceName}
@@ -90,11 +89,11 @@ function CustomResourceDetails(props) {
         name: 'Source Ref',
         value: (
           <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
+            routeName="source"
             params={{
-              namespace: cr?.jsonData?.metadata?.namespace,
-              type: sourceType,
               name: sourceName,
+              namespace: cr?.jsonData?.metadata?.namespace,
+              pluralName: sourcePluralKind,
             }}
           >
             {sourceName}
@@ -154,35 +153,28 @@ function CustomResourceDetails(props) {
           />
         </SectionBox>
       )}
-      {cr && (
-        <SectionBox title="Inventory">
-          <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
-        </SectionBox>
-      )}
       <SectionBox title="Dependencies">
         <Table
           data={cr?.jsonData?.spec?.dependsOn}
           columns={[
             {
               header: 'Name',
-              accessorFn: item => {
-                return (
-                  <Link
-                    routeName={`/flux/helmreleases/:namespace/:name`}
-                    params={{
-                      name: item.name,
-                      namespace: item.namespace || namespace,
-                    }}
-                  >
-                    {item.name}
-                  </Link>
-                );
-              },
+              accessorFn: item => (
+                <Link
+                  routeName="helm"
+                  params={{
+                    name: item.name,
+                    namespace: item.namespace || namespace,
+                  }}
+                >
+                  {item.name}
+                </Link>
+              ),
             },
             {
               header: 'Namespace',
               accessorFn: item => (
-                <Link routeName={`namespace`} params={{ name: item.namespace || namespace }}>
+                <Link routeName="namespace" params={{ name: item.namespace || namespace }}>
                   {item.namespace || namespace}
                 </Link>
               ),

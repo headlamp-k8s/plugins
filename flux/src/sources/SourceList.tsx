@@ -98,11 +98,11 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
         extends: 'name',
         Cell: ({ row: { original: item } }) => (
           <Link
-            routeName={`/flux/sources/:type/:namespace/:name`}
+            routeName={'source'}
             params={{
               name: item.metadata.name,
               namespace: item.metadata.namespace,
-              type: pluralName,
+              pluralName: pluralName,
             }}
           >
             {item.metadata.name}
@@ -158,10 +158,10 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
         if (sourceName) {
           return (
             <Link
-              routeName={`/flux/sources/:type/:namespace/:name`}
+              routeName={'source'}
               params={{
                 namespace: item.jsonData.metadata.namespace,
-                type: item.jsonData.spec.sourceRef.kind,
+                pluralName: item.jsonData.spec.sourceRef.kind,
                 name: sourceName,
               }}
             >

@@ -4,6 +4,7 @@ import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
+import { NameLink } from '../helpers';
 
 export function HelmReleases() {
   return <HelmReleasesList />;
@@ -38,7 +39,15 @@ function HelmReleasesList() {
         data={resources}
         // @ts-ignore -- TODO Update the sorting param
         defaultSortingColumn={2}
-        columns={['name', 'namespace', 'status', 'source', 'revision', 'message', 'lastUpdated']}
+        columns={[
+          NameLink(helmReleaseClass()),
+          'namespace',
+          'status',
+          'source',
+          'revision',
+          'message',
+          'lastUpdated',
+        ]}
         filterFunction={filterFunction}
       />
     </SectionBox>
