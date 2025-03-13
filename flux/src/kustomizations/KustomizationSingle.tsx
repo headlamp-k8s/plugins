@@ -51,7 +51,11 @@ function KustomizationDetails(props) {
     if (!cr) {
       return [];
     }
-    const { name: sourceName, pluralKind: sourceType } = getSourceNameAndPluralKind(cr);
+    const {
+      name: sourceName,
+      pluralKind: sourceType,
+      namespace: sourceNamespace,
+    } = getSourceNameAndPluralKind(cr);
     const extraInfo = [
       {
         name: 'Status',
@@ -75,7 +79,7 @@ function KustomizationDetails(props) {
           <Link
             routeName="source"
             params={{
-              namespace: cr?.jsonData?.metadata?.namespace,
+              namespace: sourceNamespace ?? cr?.jsonData?.metadata?.namespace,
               pluralName: sourceType,
               name: sourceName,
             }}
