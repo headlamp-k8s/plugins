@@ -31,10 +31,10 @@ export function GetSource(props: { item: KubeObject | null; setSource: (...args)
   const { item, setSource } = props;
   const namespace = item.jsonData.metadata.namespace;
 
-  const { name, pluralKind } = getSourceNameAndPluralKind(item);
+  const { name, pluralKind, namespace: sourceNamespace } = getSourceNameAndPluralKind(item);
 
   const resourceClass = GetSourceClass(pluralKind);
-  resourceClass.useApiGet(setSource, name, namespace);
+  resourceClass.useApiGet(setSource, name, sourceNamespace ?? namespace);
 
   return <></>;
 }
