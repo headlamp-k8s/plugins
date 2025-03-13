@@ -8,6 +8,7 @@ import { Kustomizations } from './kustomizations/KustomizationList';
 import { FluxKustomizationDetailView } from './kustomizations/KustomizationSingle';
 import { Notifications } from './notifications/NotificationList';
 import { Notification } from './notifications/NotificationSingle';
+import { FluxOverview } from './overview';
 import { FluxRunTime } from './runtime/RuntimeList';
 import { FluxSources } from './sources/SourceList';
 import { FluxSourceDetailView } from './sources/SourceSingle';
@@ -23,7 +24,23 @@ registerSidebarEntry({
   name: 'flux',
   label: 'Flux',
   icon: 'simple-icons:flux',
-  url: '/flux/kustomizations',
+  url: '/flux/overview',
+});
+
+registerSidebarEntry({
+  parent: 'flux',
+  name: 'overview',
+  label: 'Overview',
+  url: '/flux/overview',
+});
+
+registerRoute({
+  path: '/flux/overview',
+  parent: 'flux',
+  sidebar: 'overview',
+  component: () => <FluxOverview />,
+  exact: true,
+  name: 'overview',
 });
 
 registerSidebarEntry({

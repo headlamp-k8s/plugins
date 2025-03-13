@@ -167,3 +167,11 @@ export function NameLink(resourceClass: KubeObjectClass) {
     ),
   };
 }
+export function getFluxVersion(sourceCRDs) {
+  if (!sourceCRDs) {
+    return 'Unknown';
+  }
+  // from any crd pick the label with the flux version
+  const sourceCRD = sourceCRDs.find(crd => crd?.metadata.labels?.['app.kubernetes.io/version']);
+  return sourceCRD?.metadata.labels?.['app.kubernetes.io/version'] ?? '';
+}
