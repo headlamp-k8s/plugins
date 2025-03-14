@@ -1,5 +1,5 @@
 import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { registerRoute, registerSidebarEntry, registerPluginSettings } from '@kinvolk/headlamp-plugin/lib';
 import { HelmReleases } from './helm-releases/HelmReleaseList';
 import { FluxHelmReleaseDetailView } from './helm-releases/HelmReleaseSingle';
 import { ImageAutomation } from './image-automation/ImageAutomationList';
@@ -163,3 +163,13 @@ registerRoute({
   sidebar: 'flux-runtime',
   component: () => <FluxRunTime />,
 });
+
+
+/**
+ * Register the settings component for the plugin.
+ *
+ * In this example, the settings component allows users to update the logo URL.
+ * The updated URL is automatically saved to the configStore.
+ */
+
+registerPluginSettings('change-logo', Settings, false);
