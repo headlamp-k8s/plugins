@@ -1,0 +1,100 @@
+name: Create plugin release draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: 'The plugin name (e.g., flux)'
+        required: true
+        type: string
+      version:
+        description: 'The plugin version (e.g., 0.1.0)'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cpde
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      
+      - name: Build plugin tarball
+        id: build_tarball
+        run: |
+          PLUGIN="${{ github.event.inputs.plugin }}"
+          cd $PLUGIN
+          npm install
+          npm run build
+          OUTPUT=$(npx @kinvolk/headlamp-plugin package | tail -n2)
+          TARBALL=$(echo "$OUTPUT" | head -n1 | sed -E 's/Created tarball: "([^"]+)".*/\1/')
+          CHECKSUM=$(echo "$OUTPUT" | tail -n1 | sed -E 's/Tarball checksum \(sha256\): (.*)/\1/')
+          echo "tarball_path=$TARBALL" >> $GITHUB_ENV
+          echo "checksum=$CHECKSUM" >> $GITHUB_ENV
+      
+      - name: Check ArtifactHub pkg for in-cluster compatibility
+        id: check_artifacthub
+        run: |
+          if grep -q "in-cluster" "${{ github.event.inputs.plugin }}/artifacthub-pkg.yml"; then
+            echo "::set-output name=incluster::true"
+          else
+            echo "::set-output name=incluster::false"
+          fi
+
+      - name: Build and push OCI image
+        if: steps.check_artifacthub.outputs.incluster == 'true'
+        env:
+          PLUGIN: ${{ github.event.inputs.plugin }}
+          VERSION: ${{ github.event.inputs.version }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: headlamp-plugin-${{ github.event.inputs.plugin }}
+        run: |
+          docker buildx build \
+          --build-arg PLUGIN=$PLUGIN \
+          -t $REGISTRY/headlamp-k8s/headlamp-plugin-$PLUGIN:$VERSION \
+          --push \
+          .
+
+      - name: Create release draft and push tarball
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
+        with:
+          draft: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: "${{ github.event.inputs.plugin }} ${{ github.event.inputs.version }}"
+          body: Draft release for ${{ github.event.inputs.plugin }} version ${{ github.event.inputs.version }}
+          files: ${{ steps.build_tarball.outputs.tarball_path }}
+        env:
+          GITHUB_TOKEN: ${{ github.repository }}
+
+      - name: Update ArtifactHub pkg file
+        env:
+          PLUGIN: ${{ github.event.inputs.plugin }}
+          VERSION: ${{ github.event.inputs.version }}
+          TAR_PATH: ${{ steps.build_tarball.outputs.tarball_path }}
+          CHECKSUM: ${{ steps.build_tarball.outputs.checksum }}
+        run: |
+          PKG_FILE="${PLUGIN}/artifacthub-pkg.yml"
+          TAR_URL="https://github.com/headlamp-k8s/plugins/releases/download/${PLUGIN}-${VERSION}/$(basename $TAR_PATH)"
+          sed -i "s|^\(headlamp/plugin/archive-url:\).*|\1 \"$TAR_URL\"|g" "$PKG_FILE"
+          sed -i "s|^\(headlamp/plugin/archive-checksum:\).*|\1 \"SHA256:$CHECKSUM\"|g" "$PKG_FILE"
+
+          echo "ArtifactHub pkg file updated. Please review the changes below and commit manually:"
+          git diff "$PKG_FILE"
+
