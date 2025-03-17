@@ -21,6 +21,7 @@ interface FilesystemChartProps {
   interval: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
+  subPath: string;
 }
 
 export function FilesystemChart(props: FilesystemChartProps) {

@@ -18,6 +18,7 @@ interface CPUChartProps {
   prometheusPrefix: string;
   interval: string;
   autoRefresh: boolean;
+  subPath: string;
 }
 
 export function CPUChart(props: CPUChartProps) {

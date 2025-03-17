@@ -4,7 +4,12 @@ import { useCluster } from '@kinvolk/headlamp-plugin/lib/lib/k8s';
 import { Box, Icon, IconButton } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import { useEffect, useState } from 'react';
-import { getConfigStore, getPrometheusInterval, getPrometheusPrefix } from '../../../util';
+import {
+  getConfigStore,
+  getPrometheusInterval,
+  getPrometheusPrefix,
+  getPrometheusSubPath,
+} from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
 import { DiskChart } from '../DiskChart/DiskChart';
 
@@ -71,6 +76,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
   }
 
   const interval = getPrometheusInterval(cluster);
+  const subPath = getPrometheusSubPath(cluster);
   return (
     <SectionBox>
       <Box
@@ -112,6 +118,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
             interval={interval}
             autoRefresh={refresh}
             prometheusPrefix={prometheusPrefix}
+            subPath={subPath}
           />
         </Box>
       ) : state === prometheusState.LOADING ? (

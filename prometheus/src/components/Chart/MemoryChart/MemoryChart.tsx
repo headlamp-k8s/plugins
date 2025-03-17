@@ -19,6 +19,7 @@ interface MemoryChartProps {
   prometheusPrefix: string;
   interval: string;
   autoRefresh: boolean;
+  subPath: string;
 }
 
 export function MemoryChart(props: MemoryChartProps) {

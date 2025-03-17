@@ -13,7 +13,12 @@ import {
 } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import { useEffect, useState } from 'react';
-import { getConfigStore, getPrometheusInterval, getPrometheusPrefix } from '../../../util';
+import {
+  getConfigStore,
+  getPrometheusInterval,
+  getPrometheusPrefix,
+  getPrometheusSubPath,
+} from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
 import { CPUChart } from '../CPUChart/CPUChart';
 import { FilesystemChart } from '../FilesystemChart/FilesystemChart';
@@ -91,6 +96,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
   };
 
   const interval = getPrometheusInterval(cluster);
+  const subPath = getPrometheusSubPath(cluster);
 
   const [timespan, setTimespan] = useState(interval ?? '1h');
 
@@ -168,6 +174,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 autoRefresh={refresh}
                 prometheusPrefix={prometheusPrefix}
                 interval={timespan}
+                subPath={subPath}
               />
             )}
             {chartVariant === 'memory' && (
@@ -176,6 +183,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 autoRefresh={refresh}
                 prometheusPrefix={prometheusPrefix}
                 interval={timespan}
+                subPath={subPath}
               />
             )}
             {chartVariant === 'network' && (
@@ -185,6 +193,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 autoRefresh={refresh}
                 interval={timespan}
                 prometheusPrefix={prometheusPrefix}
+                subPath={subPath}
               />
             )}
             {chartVariant === 'filesystem' && (
@@ -194,6 +203,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 autoRefresh={refresh}
                 interval={timespan}
                 prometheusPrefix={prometheusPrefix}
+                subPath={subPath}
               />
             )}
           </Box>

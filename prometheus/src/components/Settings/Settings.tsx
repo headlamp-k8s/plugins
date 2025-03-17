@@ -33,6 +33,7 @@ interface SettingsProps {
       isMetricsEnabled?: boolean;
       autoDetect?: boolean;
       address?: string;
+      subPath?: string;
       defaultTimespan?: string;
     }
   >;
@@ -141,6 +142,23 @@ export function Settings(props: SettingsProps) {
               },
             });
             setAddressError(!isValidAddress(newAddress));
+          }}
+        />
+      ),
+    },
+    {
+      name: 'Prometheus Service Subpath',
+      value: (
+        <TextField
+          value={selectedClusterData.subPath || ''}
+          disabled={!isAddressFieldEnabled}
+          helperText="Optional subpath to the Prometheus Service endpoint. Only used when auto-detection is disabled. Examples: 'prometheus'."
+          onChange={e => {
+            const newSubPath = e.target.value;
+            onDataChange({
+              ...(data || {}),
+              [selectedCluster]: { ...((data || {})[selectedCluster] || {}), subPath: newSubPath },
+            });
           }}
         />
       ),
