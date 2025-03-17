@@ -21,7 +21,7 @@ export function kustomizationClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: kustomizationGroup, version: kustomizationVersion }],
     isNamespaced: true,
-    singularName: 'kustomization',
+    singularName: 'Kustomization',
     pluralName: 'kustomizations',
   });
 }

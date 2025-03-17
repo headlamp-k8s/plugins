@@ -1,5 +1,5 @@
 import {
-  Link,
+  DateLabel,
   SectionBox,
   SectionFilterHeader,
   ShowHideLabel,
@@ -8,6 +8,7 @@ import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
+import YAML from 'yaml';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
@@ -20,7 +21,7 @@ export function imageRepositoriesClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: imageGroup, version: imageVersion }],
     isNamespaced: true,
-    singularName: 'imagerepository',
+    singularName: 'ImageRepository',
     pluralName: 'imagerepositories',
   });
 }
@@ -29,7 +30,7 @@ export function imagePolicyClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: imageGroup, version: imageVersion }],
     isNamespaced: true,
-    singularName: 'imagepolicy',
+    singularName: 'ImagePolicy',
     pluralName: 'imagepolicies',
   });
 }
@@ -38,7 +39,7 @@ export function imageUpdateAutomationClass(): KubeObjectClass {
   return makeCustomResourceClass({
     apiInfo: [{ group: imageGroup, version: imageVersion }],
     isNamespaced: true,
-    singularName: 'imageupdateautomation',
+    singularName: 'ImageUpdateAutomation',
     pluralName: 'imageupdateautomations',
   });
 }
@@ -70,41 +71,33 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObjectClass }) {
       <Table
         data={resources}
         columns={[
-          {
-            header: 'Name',
-            accessorKey: 'metadata.name',
-            Cell: ({ row: { original: item } }) => (
-              <Link
-                routeName={`/flux/image-automations/:type/:namespace/:name`}
-                params={{
-                  name: item.metadata.name,
-                  namespace: item.metadata.namespace,
-                  type: 'imageupdateautomations',
-                }}
-              >
-                {item?.jsonData?.metadata.name}
-              </Link>
-            ),
-          },
+          NameLink(resourceClass),
           'namespace',
           'status',
           {
+            header: 'Last Push',
+            accessorFn: item => (
+              <DateLabel date={item.jsonData.status?.lastPushTime} format="mini" />
+            ),
+          },
+          {
             header: 'Git',
             accessorFn: item =>
-              item.jsonData.spec.git && (
+              item.jsonData.spec.git?.checkout?.ref && (
                 <ShowHideLabel labelId={item?.metadata.uid}>
-                  {JSON.stringify(item.jsonData.spec.git)}
+                  {YAML.stringify(item.jsonData.spec.git.checkout.ref)}
                 </ShowHideLabel>
               ),
           },
           {
             header: 'Interval',
             accessorFn: item => item.jsonData.spec.interval,
+            gridTemplate: 'min-content',
           },
           {
             header: 'Update',
             accessorFn: item =>
-              item.jsonData.spec.update && JSON.stringify(item.jsonData.spec.update),
+              item.jsonData.spec.update && YAML.stringify(item.jsonData.spec.update),
           },
           'age',
         ]}
@@ -137,7 +130,11 @@ function ImagePolicyList(props: { resourceClass: KubeObjectClass }) {
           {
             header: 'Policy',
             accessorFn: item =>
-              item.jsonData.spec.policy && JSON.stringify(item.jsonData.spec.policy),
+              item.jsonData.spec.policy && YAML.stringify(item.jsonData.spec.policy),
+          },
+          {
+            header: 'Latest',
+            accessorFn: item => item.jsonData.status?.latestImage,
           },
           'age',
         ]}
@@ -168,32 +165,22 @@ function ImageRepositoryList(props: { resourceClass: KubeObjectClass }) {
           'namespace',
           'status',
           {
-            header: 'Insecure',
-            accessorFn: item => item.jsonData.spec.insecure || 'False',
+            header: 'Image',
+            accessorFn: item => <SourceLink wrap url={item.jsonData.spec.image} />,
+          },
+          {
+            header: 'Tags',
+            accessorFn: item => item.jsonData.status.lastScanResult?.tagCount,
+            gridTemplate: 'min-content',
           },
           {
             header: 'Secret Ref',
             accessorFn: item => item.jsonData.spec?.secretRef?.name || '-',
           },
           {
-            header: 'Image',
-            accessorFn: item => <SourceLink wrap url={item.jsonData.spec.image} />,
-          },
-          {
             header: 'Interval',
             accessorFn: item => item.jsonData.spec.interval,
-          },
-          {
-            header: 'Schedule',
-            accessorFn: item => item.jsonData.spec.schedule,
-          },
-          {
-            header: 'Service Account',
-            accessorFn: item => item.jsonData.spec.serviceAccountName || '-',
-          },
-          {
-            header: 'Timeout',
-            accessorFn: item => item.jsonData.spec.timeout,
+            gridTemplate: 'min-content',
           },
           'age',
         ]}

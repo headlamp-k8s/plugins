@@ -5,7 +5,6 @@ import {
   NameValueTable,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -132,7 +131,7 @@ function SourceDetailView(props) {
         ]}
         extraInfo={prepareExtraInfo()}
       />
-      {resource && <Events namespace={namespace} name={name} cr={resource} />}
+      {resource && <ObjectEvents namespace={namespace} name={name} resourceClass={resourceClass} />}
       {resource && (
         <SectionBox title="Conditions">
           <ConditionsTable resource={resource?.jsonData} showLastUpdate={false} />
@@ -142,16 +141,6 @@ function SourceDetailView(props) {
       {resource && <ArtifactTable artifact={resource?.jsonData?.status?.artifact} />}
     </>
   );
-}
-
-function Events(props) {
-  const { cr } = props;
-  const [events] = Event.useList({
-    namespace: cr?.jsonData.metadata.namespace,
-    fieldSelector: `involvedObject.name=${cr?.jsonData.metadata.name},involvedObject.kind=${cr?.jsonData.kind}`,
-  });
-
-  return <ObjectEvents events={events} />;
 }
 
 function ArtifactTable(props) {

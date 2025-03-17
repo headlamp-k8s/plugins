@@ -17,7 +17,7 @@ export function helmReleaseClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: helmreleaseGroup, version: helmreleaseVersion }],
     isNamespaced: true,
-    singularName: 'helmrelease',
+    singularName: 'HelmRelease',
     pluralName: 'helmreleases',
   });
 }

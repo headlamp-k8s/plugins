@@ -32,7 +32,7 @@ export default function StatusLabel(props: StatusLabelProps) {
   const isReady = ready.status === 'True';
   return (
     <HLStatusLabel status={isReady ? 'success' : 'error'}>
-      {isReady ? 'Ready' : 'Failed'}
+      <Tooltip title={ready.message}>{isReady ? 'Ready' : 'Failed'}</Tooltip>
     </HLStatusLabel>
   );
 }

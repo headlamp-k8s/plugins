@@ -5,7 +5,6 @@ import {
   SectionBox,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Event, { KubeEvent } from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import Editor from '@monaco-editor/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
@@ -26,15 +25,10 @@ import { helmReleaseClass } from './HelmReleaseList';
 export function FluxHelmReleaseDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
 
-  const [events] = Event.useList({
-    namespace,
-    fieldSelector: `involvedObject.name=${name},involvedObject.kind=${'HelmRelease'}`,
-  });
-
   return (
     <>
       <CustomResourceDetails name={name} namespace={namespace} />
-      <ObjectEvents events={events?.map((event: KubeEvent) => new Event(event))} />
+      <ObjectEvents name={name} namespace={namespace} resourceClass={helmReleaseClass()} />
     </>
   );
 }

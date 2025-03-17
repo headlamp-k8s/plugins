@@ -4,7 +4,6 @@ import {
   MainInfoSection,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Event, { KubeEvent } from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import Editor from '@monaco-editor/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
@@ -27,15 +26,10 @@ import { kustomizationClass } from './KustomizationList';
 export function FluxKustomizationDetailView() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
 
-  const [events] = Event.useList({
-    namespace,
-    fieldSelector: `involvedObject.name=${name},involvedObject.kind=${'Kustomization'}`,
-  });
-
   return (
     <>
       <KustomizationDetails name={name} namespace={namespace} />
-      <ObjectEvents events={events?.map((event: KubeEvent) => new Event(event))} />
+      <ObjectEvents name={name} namespace={namespace} resourceClass={kustomizationClass()} />
     </>
   );
 }
