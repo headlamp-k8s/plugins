@@ -1,9 +1,22 @@
-import { registerAppBarAction } from '@kinvolk/headlamp-plugin/lib';
+import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import CreateClusterPage from './CreateClusterPage';
 
-// Below are some imports you may want to use.
-//   See README.md for links to plugin development documentation.
-// import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-// import { K8s } from '@kinvolk/headlamp-plugin/lib/K8s';
-// import { Typography } from '@mui/material';
+registerSidebarEntry({
+  parent: null,
+  name: 'minikube',
+  label: 'Minikube',
+  url: '/create-cluster-minikube',
+  icon: 'mdi:comment-quote',
+  sidebar: 'HOME',
+  useClusterURL: false,
+});
 
-registerAppBarAction(<span>Hello</span>);
+registerRoute({
+  path: '/create-cluster-minikube',
+  sidebar: 'minikube',
+  name: 'minikube',
+  component: () => <CreateClusterPage />,
+  exact: true,
+  useClusterURL: false,
+  noAuthRequired: true,
+});
