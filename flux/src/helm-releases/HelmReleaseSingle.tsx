@@ -50,7 +50,11 @@ function CustomResourceDetails(props) {
     if (!cr) {
       return [];
     }
-    const { name: sourceName, pluralKind: sourcePluralKind } = getSourceNameAndPluralKind(cr);
+    const {
+      name: sourceName,
+      pluralKind: sourcePluralKind,
+      namespace: sourceNamespace,
+    } = getSourceNameAndPluralKind(cr);
     const extraInfo = [
       {
         name: 'Status',
@@ -73,7 +77,7 @@ function CustomResourceDetails(props) {
           <Link
             routeName="source"
             params={{
-              namespace: cr?.jsonData?.metadata.namespace,
+              namespace: sourceNamespace ?? cr.jsonData.metadata?.namespace,
               name: sourceName,
               pluralName: sourcePluralKind,
             }}
@@ -92,7 +96,7 @@ function CustomResourceDetails(props) {
             routeName="source"
             params={{
               name: sourceName,
-              namespace: cr?.jsonData?.metadata?.namespace,
+              namespace: sourceNamespace ?? cr.jsonData.metadata?.namespace,
               pluralName: sourcePluralKind,
             }}
           >

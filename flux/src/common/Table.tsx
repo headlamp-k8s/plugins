@@ -123,13 +123,13 @@ export function Table(props: TableProps) {
                 return name;
               },
               Cell: ({ row }: any) => {
-                const { name, pluralKind } = getSourceNameAndPluralKind(row.original);
+                const { name, pluralKind, namespace } = getSourceNameAndPluralKind(row.original);
                 return (
                   <Link
                     routeName="source"
                     params={{
                       pluralName: pluralKind,
-                      namespace: row.original.jsonData.metadata.namespace,
+                      namespace: namespace ?? row.original.jsonData.metadata.namespace,
                       name: name,
                     }}
                   >
