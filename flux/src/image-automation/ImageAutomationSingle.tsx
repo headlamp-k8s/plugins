@@ -201,7 +201,7 @@ function TagList(props: { resource }) {
 function Policies(props: { resource }) {
   const { resource } = props;
 
-  const policies: any = Object.entries(resource.status?.observedPolicies);
+  const policies: any = Object.entries(resource?.status?.observedPolicies || {});
 
   return (
     <SectionBox title="Policies">
