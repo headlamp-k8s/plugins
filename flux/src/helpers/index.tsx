@@ -56,6 +56,15 @@ export function ObjectEvents(props: {
   if (!events) {
     return <></>;
   }
+  return <ObjectEventsRenderer events={events} />;
+}
+
+export function ObjectEventsRenderer(props: { events?: Event[] }) {
+  const { events } = props;
+
+  if (!events) {
+    return <></>;
+  }
 
   return (
     <SectionBox title={'Events'}>
