@@ -215,6 +215,7 @@ export function useFluxCheck(sourceCRDs) {
       version,
       isBoostrapped: !!name && !!namespace,
       distribution: !!partOf && !!version ? partOf + '-' + version : '',
+      namespace,
     };
   }, [gitRepoCRD]);
 
