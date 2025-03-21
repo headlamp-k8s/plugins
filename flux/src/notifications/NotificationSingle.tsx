@@ -3,7 +3,6 @@ import {
   MainInfoSection,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Event from '@kinvolk/headlamp-plugin/lib/k8s/event';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -44,15 +43,10 @@ export function Notification() {
     return <Flux404 message={`Unknown type ${pluralName}`} />;
   }
 
-  const [events] = Event.useList({
-    namespace,
-    fieldSelector: `involvedObject.name=${name},involvedObject.kind=${resourceClass.kind}`,
-  });
-
   return (
     <>
       <NotificationDetails name={name} namespace={namespace} resourceClass={resourceClass} />
-      <ObjectEvents events={events} />
+      <ObjectEvents name={name} namespace={namespace} resourceClass={resourceClass} />
     </>
   );
 }

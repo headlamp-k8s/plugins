@@ -4,6 +4,7 @@ import {
   SectionBox,
   ShowHideLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import { KubeObject, KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
 import Table from '../common/Table';
@@ -39,11 +40,22 @@ export function getSourceNameAndPluralKind(item: KubeObject): {
   return { name, pluralKind, namespace };
 }
 
-export function ObjectEvents(props: { events: any }) {
-  const { events } = props;
+export function ObjectEvents(props: {
+  name: string;
+  namespace: string;
+  resourceClass: KubeObjectClass;
+}) {
+  const { name, namespace, resourceClass } = props;
+
+  const [events] = Event.useList({
+    namespace,
+    fieldSelector: `involvedObject.name=${name},involvedObject.kind=${resourceClass.kind}`,
+  });
+
   if (!events) {
-    return null;
+    return <></>;
   }
+
   return (
     <SectionBox title={'Events'}>
       <Table

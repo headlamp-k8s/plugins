@@ -18,7 +18,7 @@ export function alertNotificationClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: notificationGroup, version: notificationVersion }],
     isNamespaced: true,
-    singularName: 'alert',
+    singularName: 'Alert',
     pluralName: 'alerts',
   });
 }
@@ -27,7 +27,7 @@ export function providerNotificationClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: notificationGroup, version: notificationVersion }],
     isNamespaced: true,
-    singularName: 'provider',
+    singularName: 'Provider',
     pluralName: 'providers',
   });
 }
@@ -36,7 +36,7 @@ export function receiverNotificationClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: notificationGroup, version: notificationVersion }],
     isNamespaced: true,
-    singularName: 'receiver',
+    singularName: 'Receiver',
     pluralName: 'receivers',
   });
 }

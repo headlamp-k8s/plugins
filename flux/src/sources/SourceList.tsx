@@ -13,7 +13,7 @@ export function gitRepositoryClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: sourceGroup, version: 'v1' }],
     isNamespaced: true,
-    singularName: 'gitrepository',
+    singularName: 'GitRepository',
     pluralName: 'gitrepositories',
   });
 }
@@ -22,7 +22,7 @@ export function ociRepositoryClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: sourceGroup, version: 'v1beta2' }],
     isNamespaced: true,
-    singularName: 'ocirepository',
+    singularName: 'OCIRepository',
     pluralName: 'ocirepositories',
   });
 }
@@ -31,7 +31,7 @@ export function bucketRepositoryClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: sourceGroup, version: 'v1' }],
     isNamespaced: true,
-    singularName: 'bucket',
+    singularName: 'Bucket',
     pluralName: 'buckets',
   });
 }
@@ -40,7 +40,7 @@ export function helmRepositoryClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: sourceGroup, version: 'v1' }],
     isNamespaced: true,
-    singularName: 'helmrepository',
+    singularName: 'HelmRepository',
     pluralName: 'helmrepositories',
   });
 }
@@ -49,7 +49,7 @@ export function helmChartClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: sourceGroup, version: 'v1' }],
     isNamespaced: true,
-    singularName: 'helmchart',
+    singularName: 'HelmChart',
     pluralName: 'helmcharts',
   });
 }
