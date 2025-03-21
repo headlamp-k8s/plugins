@@ -294,6 +294,7 @@ export async function fetchMetrics(data: {
   from: number;
   to: number;
   step: number;
+  subPath?: string;
 }): Promise<object> {
   const params = new URLSearchParams();
   if (data.from) {
@@ -308,14 +309,23 @@ export async function fetchMetrics(data: {
   if (data.query) {
     params.append('query', data.query);
   }
-
-  const response = await request(
-    `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`,
-    {
-      method: 'GET',
-      isJSON: false,
+  var url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
+  if (data.subPath && data.subPath !== '') {
+    if (data.subPath.startsWith('/')) {
+      data.subPath = data.subPath.slice(1);
     }
-  );
+    if (data.subPath.endsWith('/')) {
+      data.subPath = data.subPath.slice(0, -1);
+    }
+    url = `/api/v1/namespaces/${data.prefix}/proxy/${
+      data.subPath
+    }/api/v1/query_range?${params.toString()}`;
+  }
+
+  const response = await request(url, {
+    method: 'GET',
+    isJSON: false,
+  });
   if (response.status === 200) {
     return response.json();
   } else {

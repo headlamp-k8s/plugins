@@ -14,6 +14,7 @@ type ClusterData = {
   autoDetect?: boolean;
   isMetricsEnabled?: boolean;
   address?: string;
+  subPath?: string;
   defaultTimespan?: string;
 };
 
@@ -114,6 +115,16 @@ export async function getPrometheusPrefix(cluster: string): Promise<string | nul
     return `${namespace}/services/${service}`;
   }
   return null;
+}
+
+/**
+ * getPrometheusSubPath returns the subpath for the Prometheus metrics.
+ * @param {string} cluster - The name of the cluster.
+ * @returns {string | null} The subpath for the Prometheus metrics, or null if not found.
+ */
+export function getPrometheusSubPath(cluster: string): string | null {
+  const clusterData = getClusterConfig(cluster);
+  return !clusterData?.subPath || clusterData.subPath === '' ? null : clusterData.subPath;
 }
 
 /**

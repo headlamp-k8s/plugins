@@ -21,6 +21,7 @@ interface NetworkChartProps {
   interval: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
+  subPath: string;
 }
 
 export function NetworkChart(props: NetworkChartProps) {

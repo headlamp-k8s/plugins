@@ -49,6 +49,7 @@ export interface ChartProps {
     [key: string]: any;
   };
   CustomTooltip?: ({ active, payload, label }) => JSX.Element | null;
+  subPath?: string;
 }
 
 export default function Chart(props: ChartProps) {
@@ -90,6 +91,7 @@ export default function Chart(props: ChartProps) {
           from: from,
           to: to,
           step: step,
+          subPath: props.subPath,
         });
       } catch (e) {
         fetchedMetrics[plot.name] = { data: [], state: ChartState.ERROR };

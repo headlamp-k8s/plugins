@@ -20,6 +20,7 @@ interface DiskChartProps {
   interval: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
+  subPath: string;
 }
 
 export function DiskChart(props: DiskChartProps) {
