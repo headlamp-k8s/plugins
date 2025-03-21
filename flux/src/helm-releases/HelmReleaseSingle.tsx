@@ -22,8 +22,9 @@ import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
 import { GetSource } from '../sources/Source';
 import { helmReleaseClass } from './HelmReleaseList';
 
-export function FluxHelmReleaseDetailView() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const { name = params.name, namespace = params.namespace } = props;
 
   return (
     <>
