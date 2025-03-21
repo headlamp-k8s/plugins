@@ -61,7 +61,7 @@ function NotificationDetails(props) {
   const { name, namespace, resourceClass } = props;
   const [resource, setResource] = React.useState(null);
 
-  resourceClass.useGet(setResource, name, namespace);
+  resourceClass.useApiGet(setResource, name, namespace);
 
   function prepareExtraInfo() {
     const extraInfo = [];
