@@ -109,6 +109,14 @@ function CustomResourceDetails(props) {
         ),
       });
       extraInfo.push({
+        name: 'Tag Filter Pattern',
+        value: resource.jsonData.spec.filterTags?.pattern,
+      });
+      extraInfo.push({
+        name: 'Tag Filter Extract',
+        value: resource.jsonData.spec.filterTags?.extract,
+      });
+      extraInfo.push({
         name: 'Policy',
         value: resource?.jsonData.spec?.policy && (
           <Editor
