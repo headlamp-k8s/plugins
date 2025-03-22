@@ -9,12 +9,7 @@ import Editor from '@monaco-editor/react';
 import React, { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import YAML from 'yaml';
-import {
-  ForceReconciliationAction,
-  ResumeAction,
-  SuspendAction,
-  SyncAction,
-} from '../actions/index';
+import { ResumeAction, SuspendAction, SyncAction } from '../actions/index';
 import Flux404 from '../checkflux';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
@@ -74,32 +69,52 @@ function CustomResourceDetails(props) {
       },
     ];
 
-    if (resource?.jsonData.kind === 'ImageRepository') {
+    if (resource.jsonData.kind === 'ImageRepository') {
       extraInfo.push({
         name: 'Image',
-        value: <Link url={resource?.jsonData.spec?.image} />,
+        value: <Link url={resource.jsonData.spec?.image} />,
       });
       extraInfo.push({
         name: 'Provider',
-        value: resource?.jsonData.spec?.provider || 'None',
+        value: resource.jsonData.spec?.provider || 'None',
       });
       extraInfo.push({
         name: 'Exclusion List',
-        value: resource?.jsonData.spec?.exclusionList
-          ? resource?.jsonData.spec?.exclusionList.join(', ')
+        value: resource.jsonData.spec?.exclusionList
+          ? resource.jsonData.spec?.exclusionList.join(', ')
           : 'None',
       });
       extraInfo.push({
         name: 'Canonical Image Name',
-        value: resource?.jsonData?.status?.canonicalImageName || '-',
+        value: resource.jsonData?.status?.canonicalImageName || '-',
       });
     }
-    if (resource?.jsonData.kind === 'ImagePolicy') {
+
+    if (resource.jsonData.kind === 'ImagePolicy') {
       extraInfo.push({
-        name: 'Image Repository Ref',
-        value:
-          resource?.jsonData.spec?.imageRepositoryRef &&
-          YAML.stringify(resource?.jsonData.spec?.imageRepositoryRef),
+        name: 'Image Repository',
+        value: (
+          <HeadlampLink
+            routeName="image"
+            params={{
+              name: resource.jsonData.spec?.imageRepositoryRef.name,
+              namespace:
+                resource.jsonData.spec.imageRepositoryRef.namespace ??
+                resource.jsonData.metadata.namespace,
+              pluralName: 'imagerepositories',
+            }}
+          >
+            {resource.jsonData.spec?.imageRepositoryRef.name}
+          </HeadlampLink>
+        ),
+      });
+      extraInfo.push({
+        name: 'Tag Filter Pattern',
+        value: resource.jsonData.spec.filterTags?.pattern,
+      });
+      extraInfo.push({
+        name: 'Tag Filter Extract',
+        value: resource.jsonData.spec.filterTags?.extract,
       });
       extraInfo.push({
         name: 'Policy',
@@ -118,25 +133,14 @@ function CustomResourceDetails(props) {
       });
     }
 
-    extraInfo.push({
-      name: 'Suspend',
-      value: resource?.jsonData.spec?.suspend ? 'True' : 'False',
-    });
-    if (resource?.jsonData?.spec?.interval) {
-      extraInfo.push({
-        name: 'Interval',
-        value: resource.jsonData.spec.interval,
-      });
-    }
-
-    if (resource?.jsonData.kind === 'ImageUpdateAutomation') {
+    if (resource.jsonData.kind === 'ImageUpdateAutomation') {
       extraInfo.push({
         name: 'Git',
-        value: resource?.jsonData.spec?.git && (
+        value: resource.jsonData.spec?.git && (
           <Editor
             theme={themeName === 'dark' ? 'vs-dark' : 'light'}
             language="yaml"
-            value={YAML.stringify(resource?.jsonData.spec?.git)}
+            value={YAML.stringify(resource.jsonData.spec?.git)}
             height={200}
             options={{
               // no lines
@@ -147,13 +151,30 @@ function CustomResourceDetails(props) {
       });
     }
 
-    if (!resource?.jsonData.spec?.suspend) {
+    if (resource.jsonData.kind !== 'ImagePolicy') {
       extraInfo.push({
-        name: 'Next Reconciliation',
-        value: <RemainingTimeDisplay item={resource} />,
+        name: 'Suspend',
+        value: resource.jsonData.spec?.suspend ? 'True' : 'False',
       });
+      if (resource.jsonData?.spec?.interval) {
+        extraInfo.push({
+          name: 'Interval',
+          value: resource.jsonData.spec.interval,
+        });
+      }
+
+      if (!resource.jsonData.spec?.suspend) {
+        extraInfo.push({
+          name: 'Next Reconciliation',
+          value: <RemainingTimeDisplay item={resource} />,
+        });
+      }
     }
     return extraInfo;
+  }
+
+  if (!resource) {
+    return <></>;
   }
 
   return (
@@ -161,19 +182,22 @@ function CustomResourceDetails(props) {
       <MainInfoSection
         resource={resource}
         extraInfo={prepareExtraInfo()}
-        actions={[
-          <SyncAction resource={resource} />,
-          <SuspendAction resource={resource} />,
-          <ResumeAction resource={resource} />,
-          <ForceReconciliationAction resource={resource} />,
-        ]}
+        actions={
+          resourceClass.pluralName === 'imagepolicies'
+            ? []
+            : [
+                <SyncAction resource={resource} />,
+                <SuspendAction resource={resource} />,
+                <ResumeAction resource={resource} />,
+              ]
+        }
       />
-      {resource?.jsonData?.kind === 'ImageRepository' && <TagList resource={resource?.jsonData} />}
-      {resource?.jsonData?.kind === 'ImageUpdateAutomation' && (
+      {resource.jsonData?.kind === 'ImageRepository' && <TagList resource={resource?.jsonData} />}
+      {resource.jsonData?.kind === 'ImageUpdateAutomation' && (
         <Policies resource={resource?.jsonData} />
       )}
       <SectionBox title="Conditions">
-        <ConditionsTable resource={resource?.jsonData} />
+        <ConditionsTable resource={resource.jsonData} />
       </SectionBox>
     </>
   );
