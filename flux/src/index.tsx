@@ -5,6 +5,8 @@ import {
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
+import Canaries from './flagger/canaries';
+import CanaryDetails from './flagger/canarydetails';
 import { HelmReleases } from './helm-releases/HelmReleaseList';
 import { FluxHelmReleaseDetailView } from './helm-releases/HelmReleaseSingle';
 import { ImageAutomation } from './image-automation/ImageAutomationList';
@@ -171,6 +173,29 @@ registerRoute({
   component: () => <Notification />,
   exact: true,
   name: 'notification',
+});
+
+registerSidebarEntry({
+  parent: 'flux',
+  name: 'canaries',
+  label: 'Canaries',
+  url: '/flux/flagger/canaries',
+});
+
+registerRoute({
+  path: '/flux/flagger/canaries',
+  parent: 'flux',
+  sidebar: 'canaries',
+  component: () => <Canaries />,
+  exact: true,
+});
+
+registerRoute({
+  path: '/flux/flagger/canaries/:namespace/:name',
+  parent: 'flux',
+  sidebar: 'canaries',
+  component: () => <CanaryDetails />,
+  exact: true,
 });
 
 registerSidebarEntry({
