@@ -17,31 +17,6 @@ import { useFluxCheck } from '../helpers';
 import { IMAGE_AUTOMATION_BETA_VERSION } from '../image-automation/ImageAutomationList';
 
 export function FluxOverview() {
-  const [pods] = K8s.ResourceClasses.Pod.useList();
-  const helmController = pods?.filter(pod => pod.metadata.labels?.['app'] === 'helm-controller');
-  const kustomizeController = pods?.filter(
-    pod => pod.metadata.labels?.['app'] === 'kustomize-controller'
-  );
-  const notificationController = pods?.filter(
-    pod => pod.metadata.labels?.['app'] === 'notification-controller'
-  );
-  const sourceController = pods?.filter(
-    pod => pod.metadata.labels?.['app'] === 'source-controller'
-  );
-  const imageReflectorController = pods?.filter(
-    pod => pod.metadata.labels?.['app'] === 'image-reflector-controller'
-  );
-  const imageAutomationController = pods?.filter(
-    pod => pod.metadata.labels?.['app'] === 'image-automation-controller'
-  );
-
-  const controllers = helmController?.concat(
-    kustomizeController,
-    notificationController,
-    sourceController,
-    imageReflectorController,
-    imageAutomationController
-  );
   const [kustomizations] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
     'kustomizations.kustomize.toolkit.fluxcd.io'
   );
@@ -74,26 +49,76 @@ export function FluxOverview() {
     'receivers.notification.toolkit.fluxcd.io'
   );
 
-  const CRD = K8s.ResourceClasses.CustomResourceDefinition;
-  const isVersionAvailable = CRD.apiEndpoint.apiInfo.find(
-    apiInfo => apiInfo.version === IMAGE_AUTOMATION_BETA_VERSION
-  );
-  if (!isVersionAvailable) {
-    CRD.apiEndpoint = apiFactory(
-      ...CRD.apiEndpoint.apiInfo.map(apiInfo => {
-        const params = [];
-        params.push(apiInfo.group);
-        params.push(apiInfo.version);
-        params.push(apiInfo.resource);
-        return params;
-      }),
-      ['apiextensions.k8s.io', IMAGE_AUTOMATION_BETA_VERSION, 'customresourcedefinitions']
+  const CRD = React.useMemo(() => {
+    const CRD = K8s.ResourceClasses.CustomResourceDefinition;
+    const isVersionAvailable = CRD.apiEndpoint.apiInfo.find(
+      apiInfo => apiInfo.version === IMAGE_AUTOMATION_BETA_VERSION
     );
-  }
+    if (!isVersionAvailable) {
+      CRD.apiEndpoint = apiFactory(
+        ...CRD.apiEndpoint.apiInfo.map(apiInfo => {
+          const params = [];
+          params.push(apiInfo.group);
+          params.push(apiInfo.version);
+          params.push(apiInfo.resource);
+          return params;
+        }),
+        ['apiextensions.k8s.io', IMAGE_AUTOMATION_BETA_VERSION, 'customresourcedefinitions']
+      );
+    }
+
+    return CRD;
+  }, []);
 
   const [imageRepository] = CRD.useGet('imagerepositories.image.toolkit.fluxcd.io');
   const [imageUpdateAutomation] = CRD.useGet('imageupdateautomations.image.toolkit.fluxcd.io');
   const [imagePolicy] = CRD.useGet('imagepolicies.image.toolkit.fluxcd.io');
+
+  const fluxCheck = useFluxCheck([
+    gitRepoCRD,
+    ociRepos,
+    bucketRepos,
+    helmRepos,
+    helmCharts,
+    kustomizations,
+    alerts,
+    providers,
+    receivers,
+    imageRepository,
+    imageUpdateAutomation,
+    imagePolicy,
+  ]);
+
+  const [pods] = K8s.ResourceClasses.Pod.useList({
+    namespace: fluxCheck.namespace,
+  });
+
+  const controllers = React.useMemo(() => {
+    const helmController = pods?.filter(pod => pod.metadata.labels?.['app'] === 'helm-controller');
+    const kustomizeController = pods?.filter(
+      pod => pod.metadata.labels?.['app'] === 'kustomize-controller'
+    );
+    const notificationController = pods?.filter(
+      pod => pod.metadata.labels?.['app'] === 'notification-controller'
+    );
+    const sourceController = pods?.filter(
+      pod => pod.metadata.labels?.['app'] === 'source-controller'
+    );
+    const imageReflectorController = pods?.filter(
+      pod => pod.metadata.labels?.['app'] === 'image-reflector-controller'
+    );
+    const imageAutomationController = pods?.filter(
+      pod => pod.metadata.labels?.['app'] === 'image-automation-controller'
+    );
+
+    return helmController?.concat(
+      kustomizeController,
+      notificationController,
+      sourceController,
+      imageReflectorController,
+      imageAutomationController
+    );
+  }, [pods]);
 
   const kustomizationResourceClass = React.useMemo(() => {
     return kustomizations?.makeCRClass();
@@ -134,21 +159,6 @@ export function FluxOverview() {
   const imagePolicyClass = React.useMemo(() => {
     return imagePolicy?.makeCRClass();
   }, [imagePolicy]);
-
-  const fluxCheck = useFluxCheck([
-    gitRepoCRD,
-    ociRepos,
-    bucketRepos,
-    helmRepos,
-    helmCharts,
-    kustomizations,
-    alerts,
-    providers,
-    receivers,
-    imageRepository,
-    imageUpdateAutomation,
-    imagePolicy,
-  ]);
 
   return (
     <>
