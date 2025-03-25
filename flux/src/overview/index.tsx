@@ -405,25 +405,38 @@ function FluxOverviewChart({ resourceClass }) {
     return '';
   }
 
+  function getStatus(crds) {
+    const isOciHelmRepository = resource => {
+      return resource.kind === 'HelmRepository' && resource.spec.type === 'oci';
+    };
+
+    const success = crds.filter(
+      crd =>
+        (crd.jsonData.status?.conditions?.some(
+          condition => condition.type === 'Ready' && condition.status === 'True'
+        ) &&
+          !crd.jsonData.spec?.suspend) ||
+        isOciHelmRepository(crd.jsonData)
+    ).length;
+    const failed = crds.filter(
+      crd =>
+        !crd.jsonData.spec?.suspend &&
+        !crd.jsonData.status?.conditions?.some(
+          condition => condition.type === 'Ready' && condition.status === 'True'
+        ) &&
+        !crd.jsonData.spec?.suspend &&
+        !isOciHelmRepository(crd.jsonData)
+    ).length;
+
+    const suspended = crds.filter(crd => crd.jsonData.spec?.suspend).length;
+
+    return [success, failed, suspended];
+  }
+
   function makeData() {
     if (crds) {
       const total = crds.length;
-      const suspended = crds.filter(crd => crd.jsonData.spec?.suspend).length;
-
-      const success = crds.filter(
-        crd =>
-          crd.jsonData.status?.conditions?.some(
-            condition => condition.type === 'Ready' && condition.status === 'True'
-          ) && !crd.jsonData.spec?.suspend
-      ).length;
-      const failed = crds.filter(
-        crd =>
-          !crd.jsonData.spec?.suspend &&
-          !crd.jsonData.status?.conditions?.some(
-            condition => condition.type === 'Ready' && condition.status === 'True'
-          ) &&
-          !crd.jsonData.spec?.suspend
-      ).length;
+      const [success, failed, suspended] = getStatus(crds);
 
       // Calculate actual percentages
       // Use Math.round to ensure whole numbers
@@ -473,21 +486,7 @@ function FluxOverviewChart({ resourceClass }) {
   function makeLegend() {
     if (crds) {
       const total = crds.length;
-      const success = crds.filter(
-        crd =>
-          crd.jsonData.status?.conditions?.some(
-            condition => condition.type === 'Ready' && condition.status === 'True'
-          ) && !crd.jsonData.spec?.suspend
-      ).length;
-      const failed = crds.filter(
-        crd =>
-          !crd.jsonData.spec?.suspend &&
-          !crd.jsonData.status?.conditions?.some(
-            condition => condition.type === 'Ready' && condition.status === 'True'
-          ) &&
-          !crd.jsonData.spec?.suspend
-      ).length;
-      const suspended = crds.filter(crd => crd.jsonData.spec?.suspend).length;
+      const [success, failed, suspended] = getStatus(crds);
 
       return (
         <Box>
