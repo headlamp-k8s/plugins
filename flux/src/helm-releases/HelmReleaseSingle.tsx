@@ -101,6 +101,10 @@ function CustomResourceDetails(props) {
       });
     }
     extraInfo.push({
+      name: 'Version',
+      value: cr?.jsonData?.spec.chart?.spec?.version,
+    });
+    extraInfo.push({
       name: 'Suspend',
       value: cr?.jsonData.spec?.suspend ? 'True' : 'False',
     });
