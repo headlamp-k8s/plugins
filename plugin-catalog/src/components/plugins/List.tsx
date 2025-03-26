@@ -197,7 +197,7 @@ function OfficialSwitch(props: OfficialSwitchProps) {
           if (isChecked) {
             setIsConfirmOpen(true);
           } else {
-            onOfficialSwitchChange(false);
+            onOfficialSwitchChange(true);
           }
         }}
       />
@@ -208,7 +208,7 @@ function OfficialSwitch(props: OfficialSwitchProps) {
         description="Important: Non-official plugins may not be published by the actual projects they are related to, nor by Headlamp's maintainers. Are you sure you want to show them?"
         handleClose={() => setIsConfirmOpen(false)}
         onConfirm={() => {
-          onOfficialSwitchChange(true);
+          onOfficialSwitchChange(false);
         }}
       />
     </>
@@ -355,8 +355,8 @@ export function PluginList() {
       onSearchChange={handleSearchChange}
       onPageChange={handlePageChange}
       isOfficialSwitchChecked={conf?.displayOnlyOfficialPlugins ?? true}
-      onOfficialSwitchChange={() => {
-        configStore.update({ displayOnlyOfficialPlugins: !conf?.displayOnlyOfficialPlugins });
+      onOfficialSwitchChange={(isChecked: boolean) => {
+        configStore.update({ displayOnlyOfficialPlugins: isChecked });
       }}
     />
   );
