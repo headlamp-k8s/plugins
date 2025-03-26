@@ -36,11 +36,21 @@ RUN echo "Extracting plugin $PLUGIN..."; \
 
 FROM alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d
 
+# Create a non-root user and group
+RUN addgroup -S headlamp && adduser -S headlamp -G headlamp
+
 # Copy the built plugin files from the builder stage to the /plugins directory in the final image
 COPY --from=builder /headlamp-plugins/build/ /plugins/
 
+# Set appropriate permissions for the plugins directory
+RUN chown -R headlamp:headlamp /plugins && \
+    chmod -R 755 /plugins
+
 LABEL org.opencontainers.image.source=https://github.com/headlamp-k8s/plugins
 LABEL org.opencontainers.image.licenses=MIT
+
+# Switch to non-root user
+USER headlamp
 
 # Set the default command to list the installed plugins
 CMD ["sh", "-c", "echo Plugins installed at /plugins/:; ls /plugins/"]
