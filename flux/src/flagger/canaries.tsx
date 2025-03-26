@@ -56,8 +56,7 @@ function CanaryList({ canaryResourceClass }) {
           d.jsonData.metadata.namespace === namespace
       );
 
-      const abTesting = canary?.jsonData?.spec?.analysis?.match || [];
-
+      const abTesting = canary?.jsonData?.spec?.service?.match || [];
       // Check if A/B testing is enabled
       const hasAbTesting = abTesting.length > 0;
 
