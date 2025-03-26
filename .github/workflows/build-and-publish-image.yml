@@ -94,12 +94,7 @@ jobs:
             org.opencontainers.image.licenses=Apache-2.0
           provenance: true
           build-args: PLUGIN=${{ env.PLUGIN }}
-          cache-from: |
-            type=gha,scope=${{ github.workflow }}-${{ env.PLUGIN }}-amd64
-            type=gha,scope=${{ github.workflow }}-${{ env.PLUGIN }}-arm64
-          cache-to: |
-            type=gha,scope=${{ github.workflow }}-${{ env.PLUGIN }}-amd64,mode=max
-            type=gha,scope=${{ github.workflow }}-${{ env.PLUGIN }}-arm64,mode=max
+          no-cache: true
 
       - name: Summary
         run: |
