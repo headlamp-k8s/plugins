@@ -11,7 +11,8 @@
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
-    "test": "headlamp-plugin test"
+    "test": "headlamp-plugin test",
+    "package": "headlamp-plugin package"
   },
   "keywords": [
     "headlamp",
