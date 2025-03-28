@@ -1,12 +1,12 @@
-version: 0.1.0-alpha-1
+version: 0.1.0
 name: headlamp_minikube
 displayName: minikube
-createdAt: "2025-03-24T05:35:50Z"
+createdAt: "2025-03-28T012:35:50Z"
 logoURL: "https://raw.githubusercontent.com/kubernetes/minikube/42aa2eab55893d852bf9bb17744c79e7b20f8f71/images/logo/logo.svg"
-description: A UI for managing local minikube clusters. Alpha release.
+description: A UI for managing local minikube clusters. This is an early release (alpha 0.1.0). Feedback welcome.
 annotations:
-  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/minikube-0.1.0-alpha-1/headlamp-k8s-minikube-0.1.0-alpha-1.tar.gz"
-  headlamp/plugin/archive-checksum: "SHA256:38d36d8f2dcf1275cf62b8be097c04fb81abbdef6f39dab2d40f15670a7c4fe9"
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/minikube-0.1.0/headlamp-k8s-minikube-0.1.0.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:412241439f80c1c77f0510a5e2645793ccd7866de66ca9c072424c173dd28d85"
   headlamp/plugin/version-compat: ">=0.30"
   headlamp/plugin/distro-compat: "desktop"
   headlamp/plugin/extra-files/0/url: "https://github.com/kubernetes/minikube/releases/download/v1.35.0/minikube-linux-amd64.tar.gz"
