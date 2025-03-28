@@ -67,6 +67,25 @@ export default function CommandDialog({
   const clusters = useClustersConf() || {};
   const clusterNames = Object.keys(clusters);
 
+  React.useEffect(() => {
+    if (!initialClusterName) {
+      setClusterName(generateClusterName(clusterNames));
+    }
+  }, [initialClusterName, clusterNames]);
+
+  function generateClusterName(existingNames: string[]): string {
+    const baseName = 'minikube';
+    let newName = baseName;
+    let counter = 1;
+
+    while (existingNames.includes(newName)) {
+      newName = `${baseName}-${counter}`;
+      counter++;
+    }
+
+    return newName;
+  }
+
   if (acting && open && !running) {
     if (askClusterName) {
       return <Loader title={`Loading data for ${title}`} />;
