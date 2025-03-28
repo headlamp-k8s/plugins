@@ -1,5 +1,6 @@
 import { clusterAction, runCommand } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
+import { Prompt } from 'react-router-dom';
 import CommandDialog from './CommandDialog';
 
 const DEBUG = false;
@@ -140,33 +141,40 @@ export default function CommandCluster(props: CommandClusterProps) {
   }
 
   return (
-    <CommandDialog
-      open={openDialog}
-      onClose={() => {
-        setOpenDialog(false);
-        handleClose();
-        allDataRef.current = [];
-        setActing(false);
-        setCommandDone(false);
-      }}
-      onConfirm={({ clusterName, driver }) => handleRunCommand({ clusterName, driver })}
-      command={command}
-      title={
-        askClusterName
-          ? acting
-            ? `Creating Minikube Cluster ${theCluster}...`
-            : 'Create a New Minikube Cluster'
-          : acting
-          ? `Running "${command}" on Minikube Cluster`
-          : `Running "${command}" on Minikube Cluster`
-      }
-      acting={acting}
-      running={running}
-      actingLines={runningLines}
-      commandDone={commandDone}
-      useGrid={props.useGrid}
-      initialClusterName={initialClusterName}
-      askClusterName={askClusterName}
-    />
+    <>
+      <Prompt
+        when={!commandDone && running}
+        message="The command is still running. If you leave, the command 
+may keep running in the background. Leave?"
+      />
+      <CommandDialog
+        open={openDialog}
+        onClose={() => {
+          setOpenDialog(false);
+          handleClose();
+          allDataRef.current = [];
+          setActing(false);
+          setCommandDone(false);
+        }}
+        onConfirm={({ clusterName, driver }) => handleRunCommand({ clusterName, driver })}
+        command={command}
+        title={
+          askClusterName
+            ? acting
+              ? `Creating Minikube Cluster ${theCluster}...`
+              : 'Create a New Minikube Cluster'
+            : acting
+            ? `Running "${command}" on Minikube Cluster`
+            : `Running "${command}" on Minikube Cluster`
+        }
+        acting={acting}
+        running={running}
+        actingLines={runningLines}
+        commandDone={commandDone}
+        useGrid={props.useGrid}
+        initialClusterName={initialClusterName}
+        askClusterName={askClusterName}
+      />
+    </>
   );
 }
