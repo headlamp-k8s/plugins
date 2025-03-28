@@ -1,4 +1,5 @@
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { Card } from '@mui/material';
 import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
@@ -60,8 +61,30 @@ export default function CommandDialog({
 }: CommandDialogProps) {
   const [clusterName, setClusterName] = React.useState(initialClusterName);
   const [driver, setDriver] = React.useState('');
+  const [nameTaken, setNameTaken] = React.useState(false);
 
   const history = useHistory();
+  const clusters = useClustersConf() || {};
+  const clusterNames = Object.keys(clusters);
+
+  React.useEffect(() => {
+    if (!initialClusterName) {
+      setClusterName(generateClusterName(clusterNames));
+    }
+  }, [initialClusterName, clusterNames]);
+
+  function generateClusterName(existingNames: string[]): string {
+    const baseName = 'minikube';
+    let newName = baseName;
+    let counter = 1;
+
+    while (existingNames.includes(newName)) {
+      newName = `${baseName}-${counter}`;
+      counter++;
+    }
+
+    return newName;
+  }
 
   if (acting && open && !running) {
     if (askClusterName) {
@@ -88,9 +111,13 @@ export default function CommandDialog({
                 label="Cluster Name"
                 value={clusterName}
                 onChange={function handleNameChange(event: React.ChangeEvent<HTMLInputElement>) {
-                  setClusterName(event.target.value);
+                  const name = event.target.value;
+                  setClusterName(name);
+                  setNameTaken(clusterNames.includes(name));
                 }}
                 variant="outlined"
+                error={nameTaken}
+                helperText={nameTaken ? 'Cluster name is already taken' : ''}
               />
             </Box>
           </FormControl>
@@ -123,6 +150,7 @@ export default function CommandDialog({
             }}
             variant="contained"
             color="primary"
+            disabled={nameTaken && askClusterName}
           >
             {`${command}`}
           </Button>
