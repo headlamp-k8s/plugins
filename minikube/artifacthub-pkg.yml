@@ -1,7 +1,7 @@
 version: 0.1.0
 name: headlamp_minikube
 displayName: minikube
-createdAt: "2025-03-28T012:35:50Z"
+createdAt: "2025-03-28T09:35:50Z"
 logoURL: "https://raw.githubusercontent.com/kubernetes/minikube/42aa2eab55893d852bf9bb17744c79e7b20f8f71/images/logo/logo.svg"
 description: A UI for managing local minikube clusters. This is an early release (alpha 0.1.0). Feedback welcome.
 annotations:
