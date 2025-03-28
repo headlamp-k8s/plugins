@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/minikube",
-  "version": "0.1.0-alpha-1",
+  "version": "0.1.0",
   "description": "A UI for managing local minikube clusters. Run Kubernetes locally. Alpha release.",
   "scripts": {
     "start": "headlamp-plugin start",
