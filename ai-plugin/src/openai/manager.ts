@@ -26,12 +26,6 @@ export default class OpenAIManager extends AIManager {
       apiKey: apiKey,
     };
 
-    if (endpoint) {
-      options.baseURL = endpoint;
-      options.defaultQuery = { 'api-version': '2024-12-01-preview' };
-      options.defaultHeaders = { 'api-key': apiKey };
-    }
-
     // Allow in browser for demo purposes
     options.dangerouslyAllowBrowser = true;
     if (endpoint && deploymentName) {
@@ -70,7 +64,7 @@ export default class OpenAIManager extends AIManager {
 
       const params: any = {
         messages,
-        model: this.deploymentName || this.model,
+        model: this.model,
         stream: false,
       };
 
@@ -132,7 +126,7 @@ export default class OpenAIManager extends AIManager {
 
       const params: any = {
         messages,
-        model: this.deploymentName || this.model,
+        model: this.model,
         stream: false,
       };
 
