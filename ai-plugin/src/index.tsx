@@ -235,8 +235,19 @@ function Settings(props) {
   };
 
   const handleApiTypeChange = event => {
-    setApiType(event.target.value);
-    onDataChange({ ...data, API_TYPE: event.target.value });
+    const newApiType = event.target.value;
+    setApiType(newApiType);
+    
+    if (newApiType === 'openai') {
+      // Remove Azure-specific fields when OpenAI is selected
+      const { DEPLOYMENT_NAME, ENDPOINT, ...restData } = data;
+      // console.log('restData', restData);
+      console.log('DEPLOYMENT_NAME', DEPLOYMENT_NAME);
+      console.log('ENDPOINT', ENDPOINT);
+      onDataChange({ ...restData, API_TYPE: newApiType });
+    } else {
+      onDataChange({ ...data, API_TYPE: newApiType });
+    }
   };
 
   const settingsRows = [
