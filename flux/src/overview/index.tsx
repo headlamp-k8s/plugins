@@ -524,12 +524,8 @@ function FluxOverviewChart({ resourceClass }) {
       const total = crds.length;
       if (total === 0) return '0%';
 
-      const success = crds.filter(
-        crd =>
-          crd.jsonData.status?.conditions?.some(
-            condition => condition.type === 'Ready' && condition.status === 'True'
-          ) && !crd.jsonData.spec?.suspend
-      ).length;
+      const [success] = getStatus(crds);
+
       const percentage = Math.round((success / total) * 100);
 
       return `${percentage}%`;
