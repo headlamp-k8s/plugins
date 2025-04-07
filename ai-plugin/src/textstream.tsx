@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, CircularProgress,Typography } from '@mui/material';
+import { Box, CircularProgress, Typography } from '@mui/material';
 import React from 'react';
 import { Prompt } from './ai/manager';
 
@@ -68,7 +68,6 @@ const formatContent = (content: string) => {
       <Box
         component="pre"
         sx={{
-          backgroundColor: 'grey.100',
           padding: 1,
           borderRadius: 1,
           overflowX: 'auto',
