@@ -1,6 +1,5 @@
 import { Icon } from '@iconify/react';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { clusterFetch } from '@kinvolk/headlamp-plugin/lib/K8s/api/v2/fetch';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button, Chip, Drawer, Grid, Paper, TextField, Typography } from '@mui/material';
 import React from 'react';
@@ -8,9 +7,9 @@ import AIManager, { Prompt } from './ai/manager';
 import OpenAIManager from './openai/manager';
 import TextStreamContainer from './textstream';
 import { useGlobalState } from './utils';
+import { clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 
 const maxCharLimit = 3000;
-
 function summarizeKubeObject(obj) {
   if (obj.kind === 'Event') {
     return {
@@ -156,46 +155,49 @@ export default function AIPrompt(props: {
     try {
       const cluster = getCluster();
       if (!cluster) {
-        return { error: true, message: 'No cluster selected' };
+        return JSON.stringify({ error: true, message: 'No cluster selected' });
       }
 
-      const response = await clusterFetch(url, {
-        method,
-        cluster,
-        body: body === '' ? undefined : body,
-        headers: {
-          'Content-Type': method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-          accept: url.includes('/log')
-            ? 'application/json'
-            : 'application/json;as=Table;g=meta.k8s.io;v=v1',
-        },
-      });
+      try {
+        const response = await clusterRequest(url, {
+          method,
+          cluster,
+          body: body === '' ? undefined : body,
+          headers: {
+            'Content-Type':
+              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+            accept: url.includes('/log')
+              ? 'application/json'
+              : 'application/json;as=Table;g=meta.k8s.io;v=v1',
+          },
+        });
 
-      if (response.headers.get('Content-Type') === 'text/plain') {
-        return await response.text();
+        if (typeof response === 'object' && response?.kind === 'Table') {
+          const result = [
+            [...response.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
+            ...response.rows.map((row: any) =>
+              [
+                ...row.cells,
+                'Important! namespace = ' + (row.object?.metadata?.namespace || 'default'),
+              ].join(',')
+            ),
+          ].join('\n');
+
+          return JSON.stringify({ table: result });
+        }
+
+        // Return the JSON stringified response
+        return JSON.stringify(response || 'ok');
+      } catch (apiError: any) {
+        console.error(`API request failed: ${apiError.message}`);
+        return JSON.stringify({
+          error: true,
+          message: `API request failed: ${apiError.message}`,
+        });
       }
-
-      const data = await response.json();
-
-      // Format table data if returned
-      if (typeof data === 'object' && data?.kind === 'Table') {
-        const result = [
-          [...data.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
-          ...data.rows.map((row: any) =>
-            [
-              ...row.cells,
-              'Important! namespace = ' + (row.object?.metadata?.namespace || 'default'),
-            ].join(',')
-          ),
-        ].join('\n');
-
-        return result;
-      }
-
-      return data || 'ok';
     } catch (error) {
       console.error('Error making Kubernetes API request:', error);
-      return { error: true, message: error.message };
+      return JSON.stringify({ error: true, message: error.message });
     }
   };
 
