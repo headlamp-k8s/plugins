@@ -237,7 +237,7 @@ function Settings(props) {
   const handleApiTypeChange = event => {
     const newApiType = event.target.value;
     setApiType(newApiType);
-    
+
     if (newApiType === 'openai') {
       // Remove Azure-specific fields when OpenAI is selected
       const { DEPLOYMENT_NAME, ENDPOINT, ...restData } = data;
