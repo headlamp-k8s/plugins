@@ -4,6 +4,7 @@ export interface Prompt {
   error?: boolean;
   toolCalls?: any[];
   toolCallId?: string;
+  name?: string; // Added for tool responses
 }
 
 export default abstract class AIManager {
@@ -19,6 +20,7 @@ export default abstract class AIManager {
   ): void;
 
   addContext(id: string, context: any) {
+    console.log("Adding context:", { id, context });
     this.contexts[id] = context;
   }
 
