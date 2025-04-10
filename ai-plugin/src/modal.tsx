@@ -5,9 +5,11 @@ import { Box, Button, Chip, Drawer, Grid, Paper, TextField, Typography } from '@
 import React from 'react';
 import AIManager, { Prompt } from './ai/manager';
 import OpenAIManager from './openai/manager';
+import LangChainManager from './langchain/LangChainManager';
 import TextStreamContainer from './textstream';
 import { useGlobalState } from './utils';
 import { clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
+import { getProviderById } from './config/modelConfig';
 
 const maxCharLimit = 3000;
 function summarizeKubeObject(obj) {
@@ -112,23 +114,9 @@ function getWarningsContext(events): [string, ReturnType<typeof summarizeKubeObj
 export default function AIPrompt(props: {
   openPopup: boolean;
   setOpenPopup: (...args) => void;
-  isAzureOpenAI: boolean;
-  openApiName: string;
-  openApiKey: string;
-  gptModel: string;
-  endpoint: string;
-  deploymentName: string;
+  pluginSettings: any;
 }) {
-  const {
-    openPopup,
-    setOpenPopup,
-    isAzureOpenAI,
-    openApiName,
-    openApiKey,
-    gptModel,
-    endpoint,
-    deploymentName,
-  } = props;
+  const { openPopup, setOpenPopup, pluginSettings } = props;
 
   const [promptError] = React.useState(false);
   const rootRef = React.useRef(null);
@@ -141,10 +129,74 @@ export default function AIPrompt(props: {
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
 
   React.useEffect(() => {
-    if (!aiManager && openApiKey) {
-      setAiManager(new OpenAIManager(openApiKey, gptModel, endpoint, deploymentName));
+    // Create appropriate AI Manager based on settings
+    if (!aiManager && pluginSettings) {
+      console.log("Initializing AI manager with settings:", JSON.stringify({
+        ...pluginSettings,
+        API_KEY: pluginSettings.API_KEY ? "[REDACTED]" : undefined,
+        config: pluginSettings.config ? {
+          ...pluginSettings.config,
+          apiKey: pluginSettings.config.apiKey ? "[REDACTED]" : undefined
+        } : undefined
+      }));
+      
+      const { provider, config } = pluginSettings;
+      
+      // If provider is set to langchain model
+      if (provider && config) {
+        try {
+          console.log(`Creating new LangChainManager with provider: ${provider}`);
+          // Make sure all required fields are present
+          const newManager = new LangChainManager(provider, config);
+          setAiManager(newManager);
+          return;
+        } catch (error) {
+          console.error("Error initializing LangChainManager:", error);
+          setApiError(`Failed to initialize AI model: ${error.message}`);
+        }
+      }
+      
+      // Legacy support for OpenAI and Azure OpenAI
+      if (pluginSettings.API_KEY) {
+        const isAzure = pluginSettings.API_TYPE === 'azure';
+        console.log(`Creating legacy OpenAIManager with isAzure=${isAzure}`);
+        
+        if (isAzure && pluginSettings.DEPLOYMENT_NAME && pluginSettings.ENDPOINT) {
+          try {
+            setAiManager(
+              new OpenAIManager(
+                pluginSettings.API_KEY,
+                pluginSettings.GPT_MODEL,
+                pluginSettings.ENDPOINT,
+                pluginSettings.DEPLOYMENT_NAME
+              )
+            );
+          } catch (error) {
+            console.error("Error initializing OpenAIManager for Azure:", error);
+            setApiError(`Failed to initialize Azure OpenAI model: ${error.message}`);
+          }
+        } else if (!isAzure && pluginSettings.GPT_MODEL) {
+          try {
+            setAiManager(new OpenAIManager(pluginSettings.API_KEY, pluginSettings.GPT_MODEL));
+          } catch (error) {
+            console.error("Error initializing OpenAIManager:", error);
+            setApiError(`Failed to initialize OpenAI model: ${error.message}`);
+          }
+        } else {
+          console.error("Incomplete OpenAI configuration:", 
+            isAzure ? "Missing DEPLOYMENT_NAME or ENDPOINT" : "Missing GPT_MODEL");
+          setApiError(
+            isAzure 
+              ? "Missing Azure OpenAI configuration. Please check your settings."
+              : "Missing OpenAI configuration. Please check your settings."
+          );
+        }
+      } else {
+        console.error("No valid API configuration found in settings");
+        setApiError("No valid API configuration found. Please check your settings.");
+      }
     }
-  }, [isAzureOpenAI, aiManager, openApiKey, openApiName, gptModel]);
+  }, [aiManager, pluginSettings]);
 
   const updateHistory = React.useCallback(() => {
     setPromptHistory(aiManager?.history ?? []);
@@ -155,48 +207,31 @@ export default function AIPrompt(props: {
     try {
       const cluster = getCluster();
       if (!cluster) {
+        console.error("No cluster selected.");
         return JSON.stringify({ error: true, message: 'No cluster selected' });
       }
-
-      try {
-        const response = await clusterRequest(url, {
-          method,
-          cluster,
-          body: body === '' ? undefined : body,
-          headers: {
-            'Content-Type':
-              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-            accept: url.includes('/log')
-              ? 'application/json'
-              : 'application/json;as=Table;g=meta.k8s.io;v=v1',
-          },
-        });
-
-        if (typeof response === 'object' && response?.kind === 'Table') {
-          const result = [
-            [...response.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
-            ...response.rows.map((row: any) =>
-              [
-                ...row.cells,
-                'Important! namespace = ' + (row.object?.metadata?.namespace || 'default'),
-              ].join(',')
-            ),
-          ].join('\n');
-
-          return JSON.stringify({ table: result });
-        }
-
-        // Return the JSON stringified response
-        return JSON.stringify(response || 'ok');
-      } catch (apiError: any) {
-        console.error(`API request failed: ${apiError.message}`);
-        return JSON.stringify({
-          error: true,
-          message: `API request failed: ${apiError.message}`,
-        });
+  
+      console.log("Making Kubernetes API request:", { url, method, body });
+  
+      const response = await clusterRequest(url, {
+        method,
+        cluster,
+        body: body === '' ? undefined : body,
+        headers: {
+          'Content-Type': method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+          accept: 'application/json',
+        },
+      });
+  
+      console.log("Kubernetes API Response:", response);
+  
+      if (typeof response === 'object') {
+        return JSON.stringify(response);
       }
+  
+      return response || 'ok';
     } catch (error) {
-      console.error('Error making Kubernetes API request:', error);
+      console.error("Error in makeKubeRequest:", error);
       return JSON.stringify({ error: true, message: error.message });
     }
   };
@@ -277,7 +312,7 @@ export default function AIPrompt(props: {
     setLoading(true);
     // @todo: Needs to be cancellable.
     const promptResponse = await aiManager.userSend(prompt);
-
+    console.log('Prompt response:', promptResponse);
     setLoading(false);
     if (promptResponse.error) {
       throw new Error(promptResponse.content);
@@ -287,6 +322,19 @@ export default function AIPrompt(props: {
     setAiManager(aiManager);
     updateHistory();
   }
+
+  // Get provider display name
+  const getProviderDisplayName = () => {
+    if (!pluginSettings) return "AI";
+    
+    if (pluginSettings.provider) {
+      const provider = getProviderById(pluginSettings.provider);
+      return provider ? `${provider.name} AI` : "AI";
+    }
+    
+    // Legacy support
+    return pluginSettings.API_TYPE === 'azure' ? "Azure OpenAI" : "OpenAI";
+  };
 
   // const context = `${_pluginSetting.event?.title || _pluginSetting.event?.type || 'Loading...'}`;
   return openPopup ? (
@@ -316,7 +364,9 @@ export default function AIPrompt(props: {
           }}
         >
           <Box>
-            <Typography variant="h6">AI Assistant (beta)</Typography>
+            <Typography variant="h6">
+              {getProviderDisplayName()} Assistant (beta)
+            </Typography>
           </Box>
           <Box>
             <ActionButton
@@ -400,8 +450,16 @@ export default function AIPrompt(props: {
                 variant="outlined"
                 value={promptVal}
                 label="Ask AI"
-                fullWidth
                 multiline
+                fullWidth
+                minRows={2}
+                sx={{
+                  width: '100%',
+                  '& .MuiInputBase-root': {
+                    wordWrap: 'break-word',
+                    overflowX: 'hidden',
+                  }
+                }}
                 error={promptError}
                 helperText={
                   promptError ? 'Please select from one of the provided prompts above' : ''
