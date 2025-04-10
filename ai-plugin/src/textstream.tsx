@@ -1,7 +1,7 @@
 import { Icon } from '@iconify/react';
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, CircularProgress, Typography } from '@mui/material';
-import React from 'react';
+import { Box, Button, CircularProgress, Typography } from '@mui/material';
+import React, { useState } from 'react';
 import { Prompt } from './ai/manager';
 
 // Function to render Kubernetes resource links in the format $$$LINK:kind:namespace:name$$$
@@ -60,27 +60,60 @@ const renderKubeLinks = (text: string) => {
 };
 
 // Helper function to format code or JSON content
-const formatContent = (content: string) => {
+const formatContent = (content: string, isExpanded: boolean, toggleExpand: () => void) => {
+  const contentIsTrimmed = content.length > 200 && !isExpanded;
+  const displayContent = contentIsTrimmed ? content.substring(0, 200) + '...' : content;
+  console.log('Content:', content);
   try {
     // Check if the content is valid JSON
     const parsedJson = JSON.parse(content);
+    const displayJson = contentIsTrimmed
+      ? JSON.stringify(parsedJson, null, 2).substring(0, 200) + '...'
+      : JSON.stringify(parsedJson, null, 2);
+
     return (
-      <Box
-        component="pre"
-        sx={{
-          padding: 1,
-          borderRadius: 1,
-          overflowX: 'auto',
-          fontSize: '0.75rem',
-          margin: 0,
-        }}
-      >
-        {JSON.stringify(parsedJson, null, 2)}
-      </Box>
+      <>
+        <Box
+          component="pre"
+          sx={{
+            padding: 1,
+            borderRadius: 1,
+            fontSize: '0.75rem',
+            margin: 0,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word'
+          }}
+        >
+          {displayJson}
+        </Box>
+        {content.length > 200 && (
+          <Button
+            size="small"
+            onClick={toggleExpand}
+            sx={{ mt: 1, textTransform: 'none' }}
+          >
+            {isExpanded ? 'Show less' : 'Show more'}
+          </Button>
+        )}
+      </>
     );
   } catch (e) {
     // If not valid JSON, return the content normally
-    return renderKubeLinks(content);
+    return (
+      <>
+        <div>{renderKubeLinks(displayContent)}</div>
+        {content.length > 200 && (
+          <Button
+            size="small"
+            onClick={toggleExpand}
+            sx={{ mt: 1, textTransform: 'none' }}
+          >
+            {isExpanded ? 'Show less' : 'Show more'}
+          </Button>
+        )}
+      </>
+    );
   }
 };
 
@@ -93,6 +126,15 @@ export default function TextStreamContainer({
   isLoading: boolean;
   apiError: string | null;
 }) {
+  const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (index: number) => {
+    setExpandedTools(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
   return (
     <Box>
       {history.map((prompt, index) => (
@@ -116,9 +158,13 @@ export default function TextStreamContainer({
           </Typography>
 
           <Box sx={{ whiteSpace: 'pre-wrap' }}>
-            {prompt.role === 'tool'
-              ? formatContent(prompt.content)
-              : renderKubeLinks(prompt.content)}
+          {prompt.role === 'tool'
+  ? formatContent(
+      prompt.content || 'No response from tool.',
+      !!expandedTools[index],
+      () => toggleExpand(index)
+    )
+  : renderKubeLinks(prompt.content || 'No content available.')}
 
             {prompt.toolCalls && (
               <Box sx={{ mt: 1 }}>
@@ -138,7 +184,11 @@ export default function TextStreamContainer({
                       }}
                     >
                       <Icon icon="mdi:api" style={{ marginRight: '8px' }} />
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{
+                        wordBreak: 'break-word',
+                        whiteSpace: 'normal',
+                        overflowWrap: 'break-word'
+                      }}>
                         Fetching: {args.method} {args.url}
                       </Typography>
                     </Box>
