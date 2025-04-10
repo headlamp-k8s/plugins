@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-connection-secret
+data:
+  # Base64 encoded value of: amqp://user:PASSWORD@rabbitmq.default.svc.cluster.local:5672
+  RABBITMQ_CONNECTION_STRING: YW1xcDovL3VzZXI6UEFTU1dPUkRAcmFiYml0bXEuZGVmYXVsdC5zdmMuY2x1c3Rlci5sb2NhbDo1Njcy
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: rabbitmq-consumer-trigger
+  namespace: default
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: rabbitmq-connection-secret
+      key: RABBITMQ_CONNECTION_STRING
