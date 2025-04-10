@@ -5,22 +5,22 @@ import {
   registerHeadlampEventCallback,
   registerPluginSettings,
 } from '@kinvolk/headlamp-plugin/lib';
-import { Link, NameValueTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Backdrop,
   Box,
-  MenuItem,
   Paper,
   Popper,
-  Select,
-  TextField,
-  ToggleButton,
   Tooltip,
+  ToggleButton,
   Typography,
+  Divider,
 } from '@mui/material';
 import React from 'react';
 import AIPrompt from './modal';
 import { useGlobalState } from './utils';
+import ModelSelector from './components/ModelSelector';
+import { getDefaultConfig, getProviderById } from './config/modelConfig';
 
 function DeploymentAIPrompt() {
   const [openPopup, setOpenPopup] = React.useState(false);
@@ -28,29 +28,21 @@ function DeploymentAIPrompt() {
   const config = new ConfigStore<{ errorMessage?: string }>('@headlamp-k8s/headlamp-ai');
   const useConf = config.useConfig();
   const conf = useConf();
-  console.log('conf', conf);
-  const isAzureOpenAI = conf?.API_TYPE === 'azure';
-  const apiName = conf?.API_NAME;
-  const apiKey = conf?.API_KEY;
-  const gptModel = conf?.GPT_MODEL;
-  const endpoint = conf?.ENDPOINT;
-  const deploymentName = conf?.DEPLOYMENT_NAME;
 
-  const isAzureOpenAICredentialsAvailable = isAzureOpenAI && deploymentName && apiKey && gptModel;
-  const isOpenAICredentialsAvailable = !isAzureOpenAI && apiKey && gptModel;
-  console.log(
-    'isAzureOpenAICredentialsAvailable',
-    isAzureOpenAICredentialsAvailable,
-    'isOpenAICredentialsAvailable',
-    isOpenAICredentialsAvailable
-  );
+  // Check if configuration is valid - now supports both legacy and new format
+  const hasLegacyConfig = 
+    (conf?.API_TYPE === 'azure' && conf?.DEPLOYMENT_NAME && conf?.API_KEY && conf?.GPT_MODEL) ||
+    (conf?.API_TYPE !== 'azure' && conf?.API_KEY && conf?.GPT_MODEL);
+  
+  const hasNewConfig = conf?.provider && conf?.config && Object.keys(conf.config).length > 0;
+  const hasValidConfig = hasLegacyConfig || hasNewConfig;
+
   return (
     <>
       <Tooltip title="AI Assistant">
         <ToggleButton
           aria-label={'description'}
           onClick={event => {
-            // Add the event parameter here
             setOpenPopup(prev => !prev);
             setAnchorEl(event.currentTarget);
           }}
@@ -60,16 +52,17 @@ function DeploymentAIPrompt() {
           <Icon icon="mdi:message-flash" width="24px" />
         </ToggleButton>
       </Tooltip>
-      {!isAzureOpenAICredentialsAvailable && !isOpenAICredentialsAvailable ? (
+      
+      {!hasValidConfig ? (
         <>
           <Popper
             placement="bottom-start"
             anchorEl={anchorEl}
             disablePortal={false}
-            open={openPopup && Boolean(anchorEl)} // Ensure anchorEl exists
+            open={openPopup && Boolean(anchorEl)}
             style={{
               zIndex: 2000,
-              marginTop: '8px', // Add some spacing from the button
+              marginTop: '8px',
             }}
             modifiers={[
               {
@@ -84,7 +77,7 @@ function DeploymentAIPrompt() {
             <Paper>
               <Box
                 style={{
-                  padding: '16px', // Increased padding
+                  padding: '16px',
                   fontSize: '16px',
                   maxWidth: '300px',
                 }}
@@ -116,12 +109,7 @@ function DeploymentAIPrompt() {
         <AIPrompt
           openPopup={openPopup}
           setOpenPopup={setOpenPopup}
-          isAzureOpenAI={isAzureOpenAI}
-          openApiName={apiName}
-          openApiKey={apiKey}
-          gptModel={gptModel}
-          endpoint={endpoint}
-          deploymentName={deploymentName}
+          pluginSettings={conf}
         />
       )}
     </>
@@ -170,185 +158,70 @@ registerAppBarAction(() => {
  */
 function Settings(props) {
   const { data, onDataChange } = props;
-  // Track the API type to conditionally render fields
-  const [apiType, setApiType] = React.useState(data?.API_TYPE || 'openai');
-
-  // Define model options for each API type
-  const openAiModels = [
-    'gpt-4o',
-    'gpt-4o-mini',
-    'o1-mini',
-    'o1',
-    'o1-preview',
-    'o3-mini',
-    'gpt-4-turbo',
-    'gpt-4-0125-preview',
-    'gpt-4-1106-preview',
-    'gpt-4',
-    'gpt-4-32k',
-    'gpt-3.5-turbo-0125',
-    'gpt-35-turbo',
-    'gpt-35-turbo-16k',
-    'gpt-35-turbo-instruct',
-  ];
-
-  const azureOpenAiModels = [
-    'gpt-4o',
-    'gpt-4o-mini',
-    'o1-mini',
-    'o1',
-    'o1-preview',
-    'o3-mini',
-    'gpt-4',
-    'gpt-4-32k',
-    'gpt-4-turbo',
-    'gpt-35-turbo',
-    'gpt-35-turbo-16k',
-    'gpt-35-turbo-instruct',
-  ];
-
-  /**
-   * Handles changes to the error message input field by invoking the onDataChange callback
-   * with the new error message.
-   *
-   * @param {React.ChangeEvent<HTMLInputElement>} event - The change event from the input field.
-   */
-  const handleApiKeyChange = event => {
-    onDataChange({ ...data, API_KEY: event.target.value });
-  };
-
-  const handleApiNameChange = event => {
-    console.log('event.target.value', event.target.value);
-    onDataChange({ ...data, API_NAME: event.target.value });
-  };
-
-  const handleEndpointChange = event => {
-    onDataChange({ ...data, ENDPOINT: event.target.value });
-  };
-
-  const handleDeploymentNameChange = event => {
-    onDataChange({ ...data, DEPLOYMENT_NAME: event.target.value });
-  };
-
-  const handleApiModelChange = event => {
-    onDataChange({ ...data, GPT_MODEL: event.target.value });
-  };
-
-  const handleApiTypeChange = event => {
-    const newApiType = event.target.value;
-    setApiType(newApiType);
-
-    if (newApiType === 'openai') {
-      // Remove Azure-specific fields when OpenAI is selected
-      const { DEPLOYMENT_NAME, ENDPOINT, ...restData } = data;
-      // console.log('restData', restData);
-      console.log('DEPLOYMENT_NAME', DEPLOYMENT_NAME);
-      console.log('ENDPOINT', ENDPOINT);
-      onDataChange({ ...restData, API_TYPE: newApiType });
-    } else {
-      onDataChange({ ...data, API_TYPE: newApiType });
+  // Track the provider type
+  const [selectedProvider, setSelectedProvider] = React.useState(data?.provider || 'openai');
+  
+  // Track the provider-specific configuration
+  const [providerConfig, setProviderConfig] = React.useState<Record<string, any>>(() => {
+    // Initialize with saved config or default values
+    if (data?.provider === selectedProvider && data?.config) {
+      return data.config;
     }
+    return getDefaultConfig(selectedProvider);
+  });
+
+  // Handle provider change
+  const handleProviderChange = (providerId: string) => {
+    setSelectedProvider(providerId);
+    // Reset config to defaults when changing provider
+    setProviderConfig(getDefaultConfig(providerId));
+    
+    // Update the global configuration
+    onDataChange({
+      ...data,
+      provider: providerId,
+      config: getDefaultConfig(providerId)
+    });
   };
 
-  const settingsRows = [
-    {
-      name: 'API_KEY',
-      value: (
-        <TextField
-          onChange={handleApiKeyChange}
-          value={data?.API_KEY}
-          label="API_KEY"
-          fullWidth
-          defaultValue={data?.API_KEY}
-        />
-      ),
-    },
-    ...(apiType === 'azure'
-      ? [
-          {
-            name: 'ENDPOINT',
-            value: (
-              <TextField
-                onChange={handleEndpointChange}
-                value={data?.ENDPOINT}
-                label="ENDPOINT"
-                fullWidth
-                defaultValue={data?.ENDPOINT}
-              />
-            ),
-          },
-          {
-            name: 'DEPLOYMENT_NAME',
-            value: (
-              <TextField
-                onChange={handleDeploymentNameChange}
-                value={data?.DEPLOYMENT_NAME}
-                label="DEPLOYMENT_NAME"
-                fullWidth
-                defaultValue={data?.DEPLOYMENT_NAME}
-              />
-            ),
-          },
-        ]
-      : [
-          {
-            name: 'API_NAME',
-            value: (
-              <TextField
-                onChange={handleApiNameChange}
-                value={data?.API_NAME}
-                label="API_NAME"
-                fullWidth
-                defaultValue={data?.API_NAME}
-              />
-            ),
-          },
-        ]),
-    {
-      name: 'GPT_MODEL',
-      value: (
-        <Select
-          onChange={handleApiModelChange}
-          value={data?.GPT_MODEL || ''}
-          label="GPT_MODEL"
-          fullWidth
-          displayEmpty
-        >
-          <MenuItem value="" disabled>
-            <em>Select a model</em>
-          </MenuItem>
-          {(apiType === 'azure' ? azureOpenAiModels : openAiModels).map(model => (
-            <MenuItem key={model} value={model}>
-              {model}
-            </MenuItem>
-          ))}
-        </Select>
-      ),
-    },
-    {
-      name: 'API_TYPE',
-      value: (
-        <Select
-          label="API_TYPE"
-          onChange={handleApiTypeChange}
-          fullWidth
-          value={apiType}
-          defaultValue={data?.API_TYPE || 'openai'}
-        >
-          <MenuItem value={'openai'}>OpenAI</MenuItem>
-          <MenuItem value={'azure'}>Azure OpenAI</MenuItem>
-        </Select>
-      ),
-    },
-  ];
+  // Handle configuration changes
+  const handleConfigChange = (newConfig: Record<string, any>) => {
+    setProviderConfig(newConfig);
+    onDataChange({
+      ...data,
+      provider: selectedProvider,
+      config: newConfig
+    });
+  };
+
+  const provider = getProviderById(selectedProvider);
+  const isConfigValid = provider?.fields.every(field => 
+    !field.required || (providerConfig[field.name] && providerConfig[field.name] !== '')
+  );
 
   return (
     <Box width={'80%'}>
-      <Typography variant="body1">
+      <Typography variant="body1" sx={{ mb: 3 }}>
         This plugin is in early development and is not yet ready for production use. Using it may
         incur in costs from the AI provider! Use at your own risk.
       </Typography>
-      <NameValueTable rows={settingsRows} />
+      
+      <Divider sx={{ my: 3 }} />
+      
+      <ModelSelector
+        selectedProvider={selectedProvider}
+        config={providerConfig}
+        onProviderChange={handleProviderChange}
+        onConfigChange={handleConfigChange}
+      />
+      
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="body2" color={isConfigValid ? 'success.main' : 'error.main'}>
+          {isConfigValid 
+            ? 'Configuration is valid. You can now use the AI assistant.' 
+            : 'Please fill in all required fields to use the AI assistant.'}
+        </Typography>
+      </Box>
     </Box>
   );
 }
