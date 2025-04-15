@@ -11,12 +11,22 @@ on:
         description: 'The plugin version (without a v prefix e.g., 0.1.0) - if not provided, will use version from package.json'
         required: false
         type: string
+      architectures:
+        description: 'Target architectures to build for'
+        required: true
+        type: choice
+        options:
+          - linux/amd64,linux/arm64
+          - linux/amd64
+          - linux/arm64
+        default: 'linux/amd64,linux/arm64'
 
 env:
   REGISTRY: ghcr.io
   ORG: headlamp-k8s
   PLUGIN: ${{ github.event.inputs.plugin }}
   IMAGE_NAME: headlamp-plugin-${{ github.event.inputs.plugin }}
+  ARCHITECTURES: ${{ github.event.inputs.architectures }}
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
@@ -59,6 +69,11 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ contains(env.ARCHITECTURES, 'arm64') && 'arm64,amd64' || 'amd64' }}
+
       - name: Log in to the Container registry
         uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2.2.0
         with:
@@ -72,15 +87,14 @@ jobs:
           context: .
           push: true
           pull: true
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.ARCHITECTURES }}
           tags: ${{ env.FULL_IMAGE_NAME }}:${{ env.IMAGE_TAG_VERSION }},${{ env.FULL_IMAGE_NAME }}:latest
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
             org.opencontainers.image.licenses=Apache-2.0
           provenance: true
           build-args: PLUGIN=${{ env.PLUGIN }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          no-cache: true
 
       - name: Summary
         run: |
@@ -88,3 +102,4 @@ jobs:
           echo "Plugin: ${{ env.PLUGIN }}" >> $GITHUB_STEP_SUMMARY
           echo "Version: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "Image: ${{ env.FULL_IMAGE_NAME }}:${{ env.IMAGE_TAG_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "Architectures: ${{ env.ARCHITECTURES }}" >> $GITHUB_STEP_SUMMARY
