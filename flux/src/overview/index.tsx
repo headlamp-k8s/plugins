@@ -8,6 +8,7 @@ import {
   StatusLabel,
   TileChart,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { Accordion, AccordionDetails, AccordionSummary, Box } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import React, { useEffect } from 'react';
@@ -405,30 +406,26 @@ function FluxOverviewChart({ resourceClass }) {
     return '';
   }
 
-  function getStatus(crds) {
-    const isOciHelmRepository = resource => {
-      return resource.kind === 'HelmRepository' && resource.spec.type === 'oci';
-    };
+  function getStatus(customResources: KubeObject[]) {
+    let success: number = 0;
+    let failed: number = 0;
+    let suspended: number = 0;
 
-    const success = crds.filter(
-      crd =>
-        (crd.jsonData.status?.conditions?.some(
+    for (const resource of customResources) {
+      if (!resource.jsonData.status) {
+        success++;
+      } else if (resource.jsonData.spec?.suspend) {
+        suspended++;
+      } else if (
+        resource.jsonData.status.conditions?.some(
           condition => condition.type === 'Ready' && condition.status === 'True'
-        ) &&
-          !crd.jsonData.spec?.suspend) ||
-        isOciHelmRepository(crd.jsonData)
-    ).length;
-    const failed = crds.filter(
-      crd =>
-        !crd.jsonData.spec?.suspend &&
-        !crd.jsonData.status?.conditions?.some(
-          condition => condition.type === 'Ready' && condition.status === 'True'
-        ) &&
-        !crd.jsonData.spec?.suspend &&
-        !isOciHelmRepository(crd.jsonData)
-    ).length;
-
-    const suspended = crds.filter(crd => crd.jsonData.spec?.suspend).length;
+        )
+      ) {
+        success++;
+      } else {
+        failed++;
+      }
+    }
 
     return [success, failed, suspended];
   }
