@@ -21,6 +21,7 @@ import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
 import { GetSource } from '../sources/Source';
 import { helmReleaseClass } from './HelmReleaseList';
+import { HelmInventory } from './Inventory';
 
 export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
@@ -156,6 +157,11 @@ function CustomResourceDetails(props) {
           />
         </SectionBox>
       )}
+
+      <SectionBox title="Inventory">
+        <HelmInventory name={name} namespace={namespace} />
+      </SectionBox>
+
       <SectionBox title="Dependencies">
         <Table
           data={cr?.jsonData?.spec?.dependsOn}
