@@ -128,6 +128,28 @@ export default function AIPrompt(props: {
   const [promptHistory, setPromptHistory] = React.useState<Prompt[]>([]);
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
 
+  const handleOperationSuccess = (response: any) => {
+    // Add the response to the conversation
+    const operationType = response.metadata?.deletionTimestamp ? 'deletion' : 'application';
+    
+    const toolPrompt: Prompt = {
+      role: 'tool',
+      content: `Resource ${operationType} completed successfully: ${JSON.stringify({
+        kind: response.kind,
+        name: response.metadata.name,
+        namespace: response.metadata.namespace,
+        status: 'Success'
+      }, null, 2)}`,
+      name: 'kubernetes_api_request',
+      toolCallId: `${operationType}-${Date.now()}`,
+    };
+    
+    if (aiManager) {
+      aiManager.history.push(toolPrompt);
+      updateHistory();
+    }
+  };
+
   React.useEffect(() => {
     // Create appropriate AI Manager based on settings
     if (!aiManager && pluginSettings) {
@@ -219,17 +241,23 @@ export default function AIPrompt(props: {
         body: body === '' ? undefined : body,
         headers: {
           'Content-Type': method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-          accept: 'application/json',
+          accept: 'application/json;as=Table;g=meta.k8s.io;v=v1',
         },
       });
   
       console.log("Kubernetes API Response:", response);
-  
-      if (typeof response === 'object') {
-        return JSON.stringify(response);
+      if (typeof response === 'object' && response?.kind === 'Table') {
+        const result = [
+          [...response.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
+          ...response.rows.map((row: any) =>
+            [...row.cells, 'Important! namespace = ' + row.object.metadata.namespace].join(',')
+          ),
+        ].join('\n');
+    
+        return result;
       }
-  
-      return response || 'ok';
+    
+      return response ?? 'ok';
     } catch (error) {
       console.error("Error in makeKubeRequest:", error);
       return JSON.stringify({ error: true, message: error.message });
@@ -396,8 +424,13 @@ export default function AIPrompt(props: {
               overflowY: 'auto',
             }}
           >
-            <TextStreamContainer history={promptHistory} isLoading={loading} apiError={apiError} />
-          </Grid>
+          <TextStreamContainer 
+  history={promptHistory} 
+  isLoading={loading} 
+  apiError={apiError}
+  onOperationSuccess={handleOperationSuccess}
+/>
+</Grid>
           <Grid
             item
             sx={{
