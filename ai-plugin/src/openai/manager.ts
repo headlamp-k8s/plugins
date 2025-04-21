@@ -35,7 +35,7 @@ export default class OpenAIManager extends AIManager {
         apiKey,
         deploymentName,
         model,
-        apiVersion: '2024-12-01-preview',
+        apiVersion: '2025-01-01-preview',
         dangerouslyAllowBrowser: true,
       });
     } else {
