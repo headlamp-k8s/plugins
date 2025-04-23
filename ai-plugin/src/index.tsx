@@ -9,18 +9,18 @@ import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Backdrop,
   Box,
+  Divider,
   Paper,
   Popper,
-  Tooltip,
   ToggleButton,
+  Tooltip,
   Typography,
-  Divider,
 } from '@mui/material';
 import React from 'react';
-import AIPrompt from './modal';
-import { useGlobalState } from './utils';
 import ModelSelector from './components/ModelSelector';
 import { getDefaultConfig, getProviderById } from './config/modelConfig';
+import AIPrompt from './modal';
+import { useGlobalState } from './utils';
 
 function DeploymentAIPrompt() {
   const [openPopup, setOpenPopup] = React.useState(false);
@@ -30,10 +30,10 @@ function DeploymentAIPrompt() {
   const conf = useConf();
 
   // Check if configuration is valid - now supports both legacy and new format
-  const hasLegacyConfig = 
+  const hasLegacyConfig =
     (conf?.API_TYPE === 'azure' && conf?.DEPLOYMENT_NAME && conf?.API_KEY && conf?.GPT_MODEL) ||
     (conf?.API_TYPE !== 'azure' && conf?.API_KEY && conf?.GPT_MODEL);
-  
+
   const hasNewConfig = conf?.provider && conf?.config && Object.keys(conf.config).length > 0;
   const hasValidConfig = hasLegacyConfig || hasNewConfig;
 
@@ -52,7 +52,7 @@ function DeploymentAIPrompt() {
           <Icon icon="mdi:message-flash" width="24px" />
         </ToggleButton>
       </Tooltip>
-      
+
       {!hasValidConfig ? (
         <>
           <Popper
@@ -106,11 +106,7 @@ function DeploymentAIPrompt() {
           />
         </>
       ) : (
-        <AIPrompt
-          openPopup={openPopup}
-          setOpenPopup={setOpenPopup}
-          pluginSettings={conf}
-        />
+        <AIPrompt openPopup={openPopup} setOpenPopup={setOpenPopup} pluginSettings={conf} />
       )}
     </>
   );
@@ -160,7 +156,7 @@ function Settings(props) {
   const { data, onDataChange } = props;
   // Track the provider type
   const [selectedProvider, setSelectedProvider] = React.useState(data?.provider || 'openai');
-  
+
   // Track the provider-specific configuration
   const [providerConfig, setProviderConfig] = React.useState<Record<string, any>>(() => {
     // Initialize with saved config or default values
@@ -175,12 +171,12 @@ function Settings(props) {
     setSelectedProvider(providerId);
     // Reset config to defaults when changing provider
     setProviderConfig(getDefaultConfig(providerId));
-    
+
     // Update the global configuration
     onDataChange({
       ...data,
       provider: providerId,
-      config: getDefaultConfig(providerId)
+      config: getDefaultConfig(providerId),
     });
   };
 
@@ -190,13 +186,13 @@ function Settings(props) {
     onDataChange({
       ...data,
       provider: selectedProvider,
-      config: newConfig
+      config: newConfig,
     });
   };
 
   const provider = getProviderById(selectedProvider);
-  const isConfigValid = provider?.fields.every(field => 
-    !field.required || (providerConfig[field.name] && providerConfig[field.name] !== '')
+  const isConfigValid = provider?.fields.every(
+    field => !field.required || (providerConfig[field.name] && providerConfig[field.name] !== '')
   );
 
   return (
@@ -205,20 +201,20 @@ function Settings(props) {
         This plugin is in early development and is not yet ready for production use. Using it may
         incur in costs from the AI provider! Use at your own risk.
       </Typography>
-      
+
       <Divider sx={{ my: 3 }} />
-      
+
       <ModelSelector
         selectedProvider={selectedProvider}
         config={providerConfig}
         onProviderChange={handleProviderChange}
         onConfigChange={handleConfigChange}
       />
-      
+
       <Box sx={{ mt: 4 }}>
         <Typography variant="body2" color={isConfigValid ? 'success.main' : 'error.main'}>
-          {isConfigValid 
-            ? 'Configuration is valid. You can now use the AI assistant.' 
+          {isConfigValid
+            ? 'Configuration is valid. You can now use the AI assistant.'
             : 'Please fill in all required fields to use the AI assistant.'}
         </Typography>
       </Box>
