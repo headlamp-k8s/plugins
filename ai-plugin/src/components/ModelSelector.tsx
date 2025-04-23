@@ -1,5 +1,14 @@
 import { Icon } from '@iconify/react';
-import { Box, FormHelperText, Grid, MenuItem, Paper, Select, TextField, Typography } from '@mui/material';
+import {
+  Box,
+  FormHelperText,
+  Grid,
+  MenuItem,
+  Paper,
+  Select,
+  TextField,
+  Typography,
+} from '@mui/material';
 import React from 'react';
 import { getProviderById, getProviderFields, modelProviders } from '../config/modelConfig';
 
@@ -16,7 +25,6 @@ export default function ModelSelector({
   onProviderChange,
   onConfigChange,
 }: ModelSelectorProps) {
-
   const handleFieldChange = (fieldName: string, value: any) => {
     onConfigChange({
       ...config,
@@ -34,7 +42,7 @@ export default function ModelSelector({
       </Typography>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        {modelProviders.map((provider) => (
+        {modelProviders.map(provider => (
           <Grid item key={provider.id} xs={6} md={3}>
             <Paper
               elevation={selectedProvider === provider.id ? 3 : 1}
@@ -72,17 +80,22 @@ export default function ModelSelector({
           </Typography>
 
           <Grid container spacing={2}>
-            {fields.map((field) => (
+            {fields.map(field => (
               <Grid item xs={12} md={6} key={field.name}>
                 {field.type === 'select' ? (
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body2" sx={{ mb: 0.5 }}>
                       {field.label}
-                      {field.required && <Box component="span" sx={{ color: 'error.main' }}> *</Box>}
+                      {field.required && (
+                        <Box component="span" sx={{ color: 'error.main' }}>
+                          {' '}
+                          *
+                        </Box>
+                      )}
                     </Typography>
                     <Select
                       value={config[field.name] || ''}
-                      onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                      onChange={e => handleFieldChange(field.name, e.target.value)}
                       fullWidth
                       size="small"
                       displayEmpty
@@ -90,52 +103,56 @@ export default function ModelSelector({
                       <MenuItem value="" disabled>
                         <em>Select {field.label}</em>
                       </MenuItem>
-                      {field.options?.map((option) => (
+                      {field.options?.map(option => (
                         <MenuItem key={option} value={option}>
                           {option}
                         </MenuItem>
                       ))}
                     </Select>
-                    {field.description && (
-                      <FormHelperText>{field.description}</FormHelperText>
-                    )}
+                    {field.description && <FormHelperText>{field.description}</FormHelperText>}
                   </Box>
                 ) : field.type === 'number' ? (
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body2" sx={{ mb: 0.5 }}>
                       {field.label}
-                      {field.required && <Box component="span" sx={{ color: 'error.main' }}> *</Box>}
+                      {field.required && (
+                        <Box component="span" sx={{ color: 'error.main' }}>
+                          {' '}
+                          *
+                        </Box>
+                      )}
                     </Typography>
                     <TextField
                       type="number"
                       value={config[field.name] || ''}
-                      onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                      onChange={e => handleFieldChange(field.name, e.target.value)}
                       fullWidth
                       size="small"
                       placeholder={field.placeholder}
                       inputProps={{ step: 0.1 }}
                     />
-                    {field.description && (
-                      <FormHelperText>{field.description}</FormHelperText>
-                    )}
+                    {field.description && <FormHelperText>{field.description}</FormHelperText>}
                   </Box>
                 ) : (
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body2" sx={{ mb: 0.5 }}>
                       {field.label}
-                      {field.required && <Box component="span" sx={{ color: 'error.main' }}> *</Box>}
+                      {field.required && (
+                        <Box component="span" sx={{ color: 'error.main' }}>
+                          {' '}
+                          *
+                        </Box>
+                      )}
                     </Typography>
                     <TextField
                       type={field.name.toLowerCase().includes('key') ? 'password' : 'text'}
                       value={config[field.name] || ''}
-                      onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                      onChange={e => handleFieldChange(field.name, e.target.value)}
                       fullWidth
                       size="small"
                       placeholder={field.placeholder}
                     />
-                    {field.description && (
-                      <FormHelperText>{field.description}</FormHelperText>
-                    )}
+                    {field.description && <FormHelperText>{field.description}</FormHelperText>}
                   </Box>
                 )}
               </Grid>

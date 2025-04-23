@@ -1,290 +1,253 @@
 import { Icon } from '@iconify/react';
-import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Button, CircularProgress, Typography } from '@mui/material';
-import React, { useState } from 'react';
-import { Prompt } from './ai/manager';
-import YAML from 'yaml';
+import { Alert,Box, Button, CircularProgress, Divider, Typography } from '@mui/material';
+import React from 'react';
+import { useEffect,useState } from 'react';
+import ToolResponseDisplay from './components/ToolResponseDisplay';
+import YamlLibraryDialog from './components/YamlLibraryDialog';
 import EditorDialog from './editordialog';
-
-// Function to render Kubernetes resource links in the format $$$LINK:kind:namespace:name$$$
-const renderKubeLinks = (text: string) => {
-  if (!text) return '';
-
-  const regex = /\$\$\$LINK:([^:]+):([^:]+):([^$]+)\$\$\$/g;
-  const parts = [];
-  let lastIndex = 0;
-
-  // Create a copy of the regex to use in the loop
-  const regexCopy = new RegExp(regex);
-
-  let match;
-  while ((match = regexCopy.exec(text)) !== null) {
-    // Add text before link
-    if (match.index > lastIndex) {
-      parts.push(<span key={`text-${match.index}`}>{text.substring(lastIndex, match.index)}</span>);
-    }
-
-    const [, kind, namespace, name] = match;
-
-    // Add resource link
-    parts.push(
-      <Box
-        component="span"
-        key={`link-${match.index}`}
-        sx={{
-          display: 'inline-flex',
-          bgcolor: 'action.hover',
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 1,
-          px: 0.5,
-          py: 0.25,
-          mx: 0.5,
-          alignItems: 'center',
-        }}
-      >
-        <Icon icon={`mdi:kubernetes`} width="16" height="16" style={{ marginRight: '4px' }} />
-        <Link routeName={kind.toLowerCase()} params={{ namespace, name }}>
-          {name}
-        </Link>
-      </Box>
-    );
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    parts.push(<span key={`text-end`}>{text.substring(lastIndex)}</span>);
-  }
-
-  return parts.length > 0 ? parts : text;
-};
-
-// Helper function to format code or JSON content
-const formatContent = (content: string, isExpanded: boolean, toggleExpand: () => void) => {
-  const contentIsTrimmed = content.length > 200 && !isExpanded;
-  const displayContent = contentIsTrimmed ? content.substring(0, 200) + '...' : content;
-  
-  try {
-    // Check if the content is valid JSON
-    const parsedJson = JSON.parse(content);
-    const displayJson = contentIsTrimmed
-      ? JSON.stringify(parsedJson, null, 2).substring(0, 200) + '...'
-      : JSON.stringify(parsedJson, null, 2);
-
-    return (
-      <>
-        <Box
-          component="pre"
-          sx={{
-            padding: 1,
-            borderRadius: 1,
-            fontSize: '0.75rem',
-            margin: 0,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            overflowWrap: 'break-word'
-          }}
-        >
-          {displayJson}
-        </Box>
-        {content.length > 200 && (
-          <Button
-            size="small"
-            onClick={toggleExpand}
-            sx={{ mt: 1, textTransform: 'none' }}
-          >
-            {isExpanded ? 'Show less' : 'Show more'}
-          </Button>
-        )}
-      </>
-    );
-  } catch (e) {
-    // If not valid JSON, return the content normally
-    return (
-      <>
-        <div>{renderKubeLinks(displayContent)}</div>
-        {content.length > 200 && (
-          <Button
-            size="small"
-            onClick={toggleExpand}
-            sx={{ mt: 1, textTransform: 'none' }}
-          >
-            {isExpanded ? 'Show less' : 'Show more'}
-          </Button>
-        )}
-      </>
-    );
-  }
-};
-
-// Function to extract YAML content from messages
-const extractYamlContent = (content: string) => {
-  if (!content) return null;
-  
-  // Check for YAML code blocks
-  const yamlRegex = /```(?:yaml|yml)([\s\S]*?)```/g;
-  const matches = [];
-  let match;
-  
-  while ((match = yamlRegex.exec(content)) !== null) {
-    if (match[1] && match[1].trim()) {
-      matches.push(match[1].trim());
-    }
-  }
-  
-  return matches.length > 0 ? matches : null;
-};
-
-// Helper to determine if a YAML is for deletion
-const isDeleteOperation = (content: string) => {
-  const lowerContent = content.toLowerCase();
-  return lowerContent.includes('delete') && 
-         (lowerContent.includes('resource') || 
-          lowerContent.includes('deployment') || 
-          lowerContent.includes('pod') || 
-          lowerContent.includes('service'));
-};
-
-// Helper to get resource type from YAML
-const getResourceTypeFromYaml = (yamlContent: string) => {
-  try {
-    const resource = YAML.parse(yamlContent);
-    return resource.kind || 'Resource';
-  } catch (err) {
-    return 'Resource';
-  }
-};
+import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
+import YamlContentProcessor from './YamlContentProcessor';
 
 export default function TextStreamContainer({
   history,
   isLoading,
   apiError,
   onOperationSuccess,
+  onYamlAction,
 }: {
   history: Prompt[];
   isLoading: boolean;
   apiError: string | null;
   onOperationSuccess?: (response: any) => void;
+  onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
 }) {
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({});
-  // State for editor dialog
   const [showEditor, setShowEditor] = useState(false);
   const [editorContent, setEditorContent] = useState('');
   const [editorTitle, setEditorTitle] = useState('');
   const [resourceType, setResourceType] = useState('');
   const [isDelete, setIsDelete] = useState(false);
+  const [showYamlLibrary, setShowYamlLibrary] = useState(false);
+
+  // Store tool responses by their toolCallId
+  const [toolResponses, setToolResponses] = useState<Record<string, string>>({});
+  const [detectedYamls, setDetectedYamls] = useState<
+    Record<string, { yaml: string; resourceType: string; name: string }>
+  >({});
+
+  // Track if content filter errors were detected
+  const [contentFilterErrors, setContentFilterErrors] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Collect tool responses
+    const responseMap: Record<string, string> = {};
+    history.forEach(prompt => {
+      if (prompt.role === 'tool' && prompt.toolCallId) {
+        responseMap[prompt.toolCallId] = prompt.content;
+      }
+
+      // Check for content filter errors
+      if (prompt.role === 'assistant' && prompt.contentFilterError) {
+        setContentFilterErrors(true);
+      }
+    });
+    setToolResponses(responseMap);
+  }, [history]);
+
+  useEffect(() => {
+    // Look for YAML in tool responses
+    Object.entries(toolResponses).forEach(([toolCallId, response]) => {
+      try {
+        // Try to parse the response as YAML
+        const parsed = parseKubernetesYAML(response);
+        if (parsed.isValid && parsed.resourceType) {
+          console.log(`Found YAML in tool response: ${parsed.resourceType}`);
+          // Store this YAML for potential use
+          setDetectedYamls(prev => ({
+            ...prev,
+            [toolCallId]: {
+              yaml: response,
+              resourceType: parsed.resourceType,
+              name: parsed.name,
+            },
+          }));
+        }
+      } catch (e) {
+        // Not YAML, ignore
+      }
+    });
+  }, [toolResponses]);
 
   const toggleExpand = (index: number) => {
     setExpandedTools(prev => ({
       ...prev,
-      [index]: !prev[index]
+      [index]: !prev[index],
     }));
   };
 
-  // Function to render YAML action buttons
-  const renderYamlActions = (content: string) => {
-    const yamlContents = extractYamlContent(content);
-    if (!yamlContents) return null;
-    
+  const handleYamlDetected = (yaml: string, resourceType: string, isDelete: boolean) => {
+    setEditorContent(yaml);
+    setEditorTitle(isDelete ? `Delete ${resourceType}` : `Apply ${resourceType}`);
+    setResourceType(resourceType);
+    setIsDelete(isDelete);
+    setShowEditor(true);
+  };
+
+  const handleYamlLibrarySelect = (yaml: string, title: string, resourceType: string) => {
+    if (onYamlAction) {
+      // Always pass isDelete as false for examples from the YAML library
+      onYamlAction(yaml, title, resourceType, false);
+    } else {
+      // Always pass isDelete as false for examples from the YAML library
+      handleYamlDetected(yaml, resourceType, false);
+    }
+  };
+
+  // Enhanced function to check if text contains indicators that the content is just examples
+  const isSampleContent = (content: string): boolean => {
+    if (!content) return false;
+
+    const lowerContent = content.toLowerCase();
+
+    // Check for keywords indicating this is an example
+    const hasExampleKeywords =
+      lowerContent.includes('example yaml') ||
+      lowerContent.includes('sample yaml') ||
+      lowerContent.includes('sample kubernetes resource') ||
+      (lowerContent.includes('sample') && lowerContent.includes('kubectl apply'));
+
+    // Check for kubectl commands which suggest this is example content
+    const hasKubectlCommand =
+      lowerContent.includes('kubectl apply') ||
+      lowerContent.includes('kubectl create') ||
+      lowerContent.includes('kubectl delete');
+
+    // If there's a kubectl command but it appears to be a user instruction rather than
+    // actual code meant to be run directly, we'll consider this example content
+    if (hasKubectlCommand) {
+      // Look for instructional language near kubectl commands
+      const isInstruction =
+        lowerContent.includes('you can use') ||
+        lowerContent.includes('you could') ||
+        lowerContent.includes('you would') ||
+        lowerContent.includes('to apply') ||
+        lowerContent.includes('to create') ||
+        lowerContent.includes('for example');
+
+      // If it's phrased as an instruction, it's likely example content
+      return isInstruction || hasExampleKeywords;
+    }
+
+    return hasExampleKeywords;
+  };
+
+  const renderMessage = (prompt: Prompt, index: number) => {
+    if (prompt.role === 'system' || prompt.role === 'tool') {
+      return null;
+    }
+
+    // Determine if this is likely sample content
+    const showDeleteOption =
+      prompt.role === 'assistant' ? !isSampleContent(prompt.content || '') : true;
+
+    // Check if this is a content filter error
+    const isContentFilterError = prompt.role === 'assistant' && prompt.contentFilterError;
+
     return (
-      <Box mt={2}>
-        {yamlContents.map((yaml, idx) => {
-          const deleteOp = isDeleteOperation(content);
-          const resType = getResourceTypeFromYaml(yaml);
-          
-          return (
-            <Button
-              key={idx}
-              variant="outlined"
-              size="small"
-              color={deleteOp ? "error" : "primary"}
-              startIcon={<Icon icon={deleteOp ? "mdi:delete" : "mdi:code-json"} />}
-              onClick={() => {
-                setEditorContent(yaml);
-                setEditorTitle(deleteOp ? `Delete ${resType}` : `Apply ${resType}`);
-                setResourceType(resType);
-                setIsDelete(deleteOp);
-                setShowEditor(true);
-              }}
-              sx={{ mr: 1, mb: 1 }}
-            >
-              {deleteOp ? `Review & Delete ${resType}` : `Edit & Apply ${resType}`}
-            </Button>
-          );
-        })}
+      <Box
+        key={index}
+        sx={{
+          mb: 2,
+          p: 1.5,
+          borderRadius: 1,
+          bgcolor: prompt.role === 'user' ? 'primary.light' : 'background.paper',
+          border: '1px solid',
+          borderColor: isContentFilterError ? 'error.main' : 'divider',
+        }}
+      >
+        <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
+          {prompt.role === 'user' ? 'You' : 'AI Assistant'}
+        </Typography>
+        <Box sx={{ whiteSpace: 'pre-wrap' }}>
+          {prompt.role === 'user' ? (
+            prompt.content
+          ) : (
+            <>
+              {isContentFilterError ? (
+                <Alert severity="error" sx={{ mb: 1 }}>
+                  {prompt.content}
+                  <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+                    Tip: Focus your question specifically on Kubernetes administration tasks.
+                  </Typography>
+                </Alert>
+              ) : (
+                <>
+                  <YamlContentProcessor
+                    content={prompt.content || ''}
+                    onYamlDetected={(yaml, resourceType, isDelete) => {
+                      // If this is a sample and user tried to delete, prevent it
+                      const actuallyDelete = showDeleteOption ? isDelete : false;
+
+                      if (onYamlAction) {
+                        onYamlAction(
+                          yaml,
+                          actuallyDelete ? `Delete ${resourceType}` : `Apply ${resourceType}`,
+                          resourceType,
+                          actuallyDelete
+                        );
+                      } else {
+                        handleYamlDetected(yaml, resourceType, actuallyDelete);
+                      }
+                    }}
+                    showDeleteOption={showDeleteOption}
+                    replaceKubectlSuggestions
+                  />
+
+                  {/* Display tool calls and responses if available */}
+                  {prompt.toolCalls && prompt.toolCalls.length > 0 && (
+                    <ToolResponseDisplay
+                      toolCalls={prompt.toolCalls}
+                      toolResponses={toolResponses}
+                      expandedTools={expandedTools}
+                      toggleExpand={toggleExpand}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </Box>
       </Box>
     );
   };
 
   return (
     <Box>
-      {history.map((prompt, index) => (
-        <Box
-          key={index}
-          sx={{
-            mb: 2,
-            p: 1.5,
-            borderRadius: 1,
-            bgcolor: prompt.role === 'user' ? 'primary.light' : 'background.paper',
-            border: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
-            {prompt.role === 'user'
-              ? 'You'
-              : prompt.role === 'tool'
-              ? 'Tool Response'
-              : 'AI Assistant'}
+      {/* Content filter guidance when errors are detected */}
+      {contentFilterErrors && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            Some requests have been blocked by content filters. Please ensure your questions focus
+            only on Kubernetes tasks.
           </Typography>
+        </Alert>
+      )}
 
-          <Box sx={{ whiteSpace: 'pre-wrap' }}>
-            {prompt.role === 'tool'
-              ? formatContent(
-                  prompt.content || 'No response from tool.',
-                  !!expandedTools[index],
-                  () => toggleExpand(index)
-                )
-              : renderKubeLinks(prompt.content || 'No content available.')}
+      {/* YAML Library button at the top */}
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          variant="outlined"
+          startIcon={<Icon icon="mdi:kubernetes" />}
+          size="small"
+          onClick={() => setShowYamlLibrary(true)}
+        >
+          YAML Examples
+        </Button>
+      </Box>
 
-            {/* Add YAML action buttons for assistant messages */}
-            {prompt.role === 'assistant' && renderYamlActions(prompt.content || '')}
+      <Divider sx={{ mb: 2 }} />
 
-            {prompt.toolCalls && (
-              <Box sx={{ mt: 1 }}>
-                {prompt.toolCalls.map((call, idx) => {
-                  const args = JSON.parse(call.function.arguments);
-                  return (
-                    <Box
-                      key={idx}
-                      sx={{
-                        bgcolor: 'info.light',
-                        color: 'info.contrastText',
-                        p: 1,
-                        borderRadius: 1,
-                        mb: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Icon icon="mdi:api" style={{ marginRight: '8px' }} />
-                      <Typography variant="body2" sx={{
-                        wordBreak: 'break-word',
-                        whiteSpace: 'normal',
-                        overflowWrap: 'break-word'
-                      }}>
-                        Fetching: {args.method} {args.url}
-                      </Typography>
-                    </Box>
-                  );
-                })}
-              </Box>
-            )}
-          </Box>
-        </Box>
-      ))}
+      {history.map((prompt, index) => renderMessage(prompt, index))}
 
       {isLoading && (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2 }}>
@@ -306,6 +269,13 @@ export default function TextStreamContainer({
           <Typography variant="body2">{apiError}</Typography>
         </Box>
       )}
+
+      {/* YAML Library Dialog */}
+      <YamlLibraryDialog
+        open={showYamlLibrary}
+        onClose={() => setShowYamlLibrary(false)}
+        onSelectYaml={handleYamlLibrarySelect}
+      />
 
       {/* Editor Dialog */}
       <EditorDialog
