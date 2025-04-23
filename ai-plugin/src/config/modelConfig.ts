@@ -49,8 +49,8 @@ export const modelProviders: ModelProvider[] = [
           'gpt-3.5-turbo',
         ],
         default: 'gpt-4o',
-      }
-    ]
+      },
+    ],
   },
   {
     id: 'azure',
@@ -71,7 +71,7 @@ export const modelProviders: ModelProvider[] = [
         type: 'text',
         required: true,
         placeholder: 'https://your-resource.openai.azure.com/',
-        description: 'The full URL to your Azure OpenAI resource'
+        description: 'The full URL to your Azure OpenAI resource',
       },
       {
         name: 'deploymentName',
@@ -79,30 +79,19 @@ export const modelProviders: ModelProvider[] = [
         type: 'text',
         required: true,
         placeholder: 'Your deployment name',
-        description: 'The name of your model deployment in Azure'
+        description: 'The name of your model deployment in Azure',
       },
       {
         name: 'model',
         label: 'Model',
         type: 'select',
         required: true,
-        options: [
-          'gpt-4o',
-          'gpt-4',
-          'gpt-35-turbo',
-          'gpt-4-turbo',
-          'o3-mini'
-        ],
+        options: ['gpt-4o', 'gpt-4', 'gpt-35-turbo', 'gpt-4-turbo', 'o3-mini'],
         default: 'gpt-4',
-        description: 'The model used by your Azure OpenAI deployment'
+        description: 'The model used by your Azure OpenAI deployment',
       },
     ],
-    models: [
-      'gpt-4o',
-      'gpt-4',
-      'gpt-35-turbo',
-      'gpt-4-turbo',
-    ]
+    models: ['gpt-4o', 'gpt-4', 'gpt-35-turbo', 'gpt-4-turbo'],
   },
   {
     id: 'anthropic',
@@ -130,7 +119,7 @@ export const modelProviders: ModelProvider[] = [
           'claude-instant-1.2',
         ],
         default: 'claude-3-opus-20240229',
-      }
+      },
     ],
     models: [
       'claude-3-opus-20240229',
@@ -138,7 +127,7 @@ export const modelProviders: ModelProvider[] = [
       'claude-3-haiku-20240307',
       'claude-2.1',
       'claude-instant-1.2',
-    ]
+    ],
   },
   {
     id: 'local',
@@ -161,16 +150,10 @@ export const modelProviders: ModelProvider[] = [
         required: true,
         placeholder: 'llama2',
         default: 'llama2',
-      }
+      },
     ],
-    models: [
-      'llama2',
-      'mistral',
-      'mixtral',
-      'phi3',
-      'gemma',
-    ]
-  }
+    models: ['llama2', 'mistral', 'mixtral', 'phi3', 'gemma'],
+  },
 ];
 
 // Function to get provider by ID
@@ -188,12 +171,12 @@ export function getProviderFields(providerId: string): ModelField[] {
 export function getDefaultConfig(providerId: string): Record<string, string | number> {
   const fields = getProviderFields(providerId);
   const config: Record<string, string | number> = {};
-  
+
   fields.forEach(field => {
     if (field.default !== undefined) {
       config[field.name] = field.default;
     }
   });
-  
+
   return config;
 }
