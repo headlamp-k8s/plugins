@@ -76,6 +76,23 @@ export default class OpenAIManager extends AIManager {
       const response = await this.client.chat.completions.create(params);
       const responseContent = response.choices[0].message;
 
+      // Check for content filtering flags
+      const hasContentFilter = response.choices[0].finish_reason === 'content_filter';
+      const hasFilteredContent = !!response.choices[0].content_filter_results?.filtered;
+
+      // Handle content filter scenario
+      if (hasContentFilter || hasFilteredContent) {
+        const errorPrompt: Prompt = {
+          role: 'assistant',
+          content:
+            'Your request was blocked by content filters. Please focus only on Kubernetes-related questions.',
+          contentFilterError: true,
+          error: true,
+        };
+        this.history.push(errorPrompt);
+        return errorPrompt;
+      }
+
       // Handle tool calls if present
       if (responseContent.tool_calls && responseContent.tool_calls.length > 0 && this.toolHandler) {
         const assistantPrompt: Prompt = {
@@ -109,6 +126,25 @@ export default class OpenAIManager extends AIManager {
       return assistantPrompt;
     } catch (error) {
       console.error('Error calling OpenAI:', error);
+
+      // Check if this is a content filter error
+      if (
+        error.name === 'ContentFilterError' ||
+        error.message?.includes('content_filter') ||
+        error.message?.includes('content filter')
+      ) {
+        const errorPrompt: Prompt = {
+          role: 'assistant',
+          content:
+            'Your request was blocked by content filters. Please focus only on Kubernetes administration tasks.',
+          contentFilterError: true,
+          error: true,
+        };
+        this.history.push(errorPrompt);
+        return errorPrompt;
+      }
+
+      // Handle other errors
       const errorPrompt: Prompt = {
         role: 'assistant',
         content: 'Sorry, there was an error processing your request.',
@@ -137,6 +173,22 @@ export default class OpenAIManager extends AIManager {
       const response = await this.client.chat.completions.create(params);
       const responseContent = response.choices[0].message;
 
+      // Check for content filtering in follow-up response
+      const hasContentFilter = response.choices[0].finish_reason === 'content_filter';
+      const hasFilteredContent = !!response.choices[0].content_filter_results?.filtered;
+
+      if (hasContentFilter || hasFilteredContent) {
+        const errorPrompt: Prompt = {
+          role: 'assistant',
+          content:
+            'This response was blocked by content filters. Please focus only on Kubernetes-related topics.',
+          contentFilterError: true,
+          error: true,
+        };
+        this.history.push(errorPrompt);
+        return errorPrompt;
+      }
+
       const assistantPrompt: Prompt = {
         role: 'assistant',
         content: responseContent.content || '',
@@ -147,6 +199,24 @@ export default class OpenAIManager extends AIManager {
       return assistantPrompt;
     } catch (error) {
       console.error('Error processing tool responses:', error);
+
+      // Check for content filter errors
+      if (
+        error.name === 'ContentFilterError' ||
+        error.message?.includes('content_filter') ||
+        error.message?.includes('content filter')
+      ) {
+        const errorPrompt: Prompt = {
+          role: 'assistant',
+          content:
+            'This response was blocked by content filters. Please focus only on Kubernetes administration tasks.',
+          contentFilterError: true,
+          error: true,
+        };
+        this.history.push(errorPrompt);
+        return errorPrompt;
+      }
+
       const errorPrompt: Prompt = {
         role: 'assistant',
         content: 'Sorry, there was an error processing the tool responses.',
@@ -165,6 +235,8 @@ export default class OpenAIManager extends AIManager {
     messages.push({
       role: 'system',
       content: `You are a Kubernetes assistant. Help with analyzing Kubernetes resources and providing explanations.
+        When you provide YAML examples, format them clearly with proper code blocks.
+        Always offer to apply resources through the interface rather than suggesting kubectl commands.
         ${this.formatContext()}`,
     });
 
