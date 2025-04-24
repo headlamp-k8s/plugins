@@ -236,11 +236,8 @@ export function PurePluginDetail({
                 ) : null
               ) : (
                 <>
-                  <LoadingButton progress={currentActionProgress} onCancel={onCancel} />
                   <Tooltip title={`${currentActionState}:${currentActionMessage}`}>
-                    <Typography variant="body1" sx={{ marginLeft: 1 }}>
-                      {currentAction}
-                    </Typography>
+                    <LoadingButton progress={currentActionProgress} onCancel={onCancel} />
                   </Tooltip>
                 </>
               ),
