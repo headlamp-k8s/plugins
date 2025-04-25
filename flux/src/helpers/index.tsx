@@ -4,10 +4,11 @@ import {
   SectionBox,
   ShowHideLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import K8s from '@kinvolk/headlamp-plugin/lib/k8s';
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import { KubeObject, KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
-import React from 'react';
+import React, { useEffect } from 'react';
 import Table from '../common/Table';
 import { PluralName } from './pluralName';
 
@@ -196,29 +197,35 @@ export function NameLink(resourceClass: KubeObjectClass) {
     ),
   };
 }
-export function useFluxCheck(sourceCRDs) {
+export function useFluxCheck() {
+  const [crds] = K8s.ResourceClasses.CustomResourceDefinition.useList();
+  const [fluxCRDs, setFluxCrds] = React.useState([]);
+  useEffect(() => {
+    if (!crds) return;
+    setFluxCrds(crds?.filter(crd => crd.metadata.name.includes('fluxcd.')));
+  }, [crds]);
   const [gitRepoCRD, allCrdsSuccessful] = React.useMemo(() => {
-    const gitRepoCRD = sourceCRDs.find(
-      crd => crd?.metadata?.name === 'gitrepositories.source.toolkit.fluxcd.io'
+    const gitRepoCRD = fluxCRDs.find(
+      crd => crd?.jsonData?.metadata?.name === 'gitrepositories.source.toolkit.fluxcd.io'
     );
-    const allCrdsSuccessful = sourceCRDs.every(crd => {
+    const allCrdsSuccessful = fluxCRDs.every(crd => {
       if (!crd) return true;
-      const conditions = crd.status?.conditions || [];
+      const conditions = crd?.jsonData.status?.conditions || [];
       // Check if any condition has  status "True"
       const isSuccess = conditions.some(cond => cond.status === 'True');
       return isSuccess;
     });
 
     return [gitRepoCRD, allCrdsSuccessful];
-  }, sourceCRDs);
+  }, [fluxCRDs]);
 
   const fluxCheck = React.useMemo(() => {
     const partOfLabel = 'app.kubernetes.io/part-of';
     const kustomizeLabel = 'kustomize.toolkit.fluxcd.io';
-    const version = gitRepoCRD?.metadata.labels?.['app.kubernetes.io/version'] ?? '';
-    const name = gitRepoCRD?.metadata.labels?.[kustomizeLabel + '/name'] ?? '';
-    const namespace = gitRepoCRD?.metadata.labels?.[kustomizeLabel + '/namespace'] ?? '';
-    const partOf = gitRepoCRD?.metadata.labels?.[partOfLabel] ?? '';
+    const version = gitRepoCRD?.jsonData?.metadata.labels?.['app.kubernetes.io/version'] ?? '';
+    const name = gitRepoCRD?.jsonData?.metadata.labels?.[kustomizeLabel + '/name'] ?? '';
+    const namespace = gitRepoCRD?.jsonData?.metadata.labels?.[kustomizeLabel + '/namespace'] ?? '';
+    const partOf = gitRepoCRD?.jsonData?.metadata.labels?.[partOfLabel] ?? '';
 
     return {
       version,
