@@ -122,13 +122,16 @@ const pluginSnackbarAction = (closeCallback: () => void) => {
   return (
     <>
       <Button
+        color="inherit"
         onClick={() => {
           window.location.reload();
         }}
       >
         Reload Now
       </Button>
-      <Button onClick={closeCallback}>Close</Button>
+      <Button color="inherit" onClick={closeCallback}>
+        Close
+      </Button>
     </>
   );
 };
@@ -222,7 +225,7 @@ export function PurePluginDetail({
                         color: 'white',
                         textTransform: 'none',
                         '&:hover': {
-                          color: 'black',
+                          color: 'inherit',
                         },
                       }}
                       onClick={onInstall}
@@ -233,11 +236,8 @@ export function PurePluginDetail({
                 ) : null
               ) : (
                 <>
-                  <LoadingButton progress={currentActionProgress} onCancel={onCancel} />
                   <Tooltip title={`${currentActionState}:${currentActionMessage}`}>
-                    <Typography variant="body1" sx={{ marginLeft: 1 }}>
-                      {currentAction}
-                    </Typography>
+                    <LoadingButton progress={currentActionProgress} onCancel={onCancel} />
                   </Tooltip>
                 </>
               ),
