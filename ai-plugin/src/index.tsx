@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import ModelSelector from './components/ModelSelector';
+import UsageTracker from './components/UsageTracker';
 import { getDefaultConfig, getProviderById } from './config/modelConfig';
 import AIPrompt from './modal';
 import { useGlobalState } from './utils';
@@ -39,19 +40,24 @@ function DeploymentAIPrompt() {
 
   return (
     <>
-      <Tooltip title="AI Assistant">
-        <ToggleButton
-          aria-label={'description'}
-          onClick={event => {
-            setOpenPopup(prev => !prev);
-            setAnchorEl(event.currentTarget);
-          }}
-          selected={openPopup}
-          size="small"
-        >
-          <Icon icon="mdi:message-flash" width="24px" />
-        </ToggleButton>
-      </Tooltip>
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        {/* Add UsageTracker component if we have valid configuration */}
+        {hasValidConfig && <UsageTracker pluginSettings={conf} />}
+
+        <Tooltip title="AI Assistant">
+          <ToggleButton
+            aria-label={'description'}
+            onClick={event => {
+              setOpenPopup(prev => !prev);
+              setAnchorEl(event.currentTarget);
+            }}
+            selected={openPopup}
+            size="small"
+          >
+            <Icon icon="mdi:message-flash" width="24px" />
+          </ToggleButton>
+        </Tooltip>
+      </Box>
 
       {!hasValidConfig ? (
         <>

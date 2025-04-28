@@ -354,3 +354,22 @@ export function extractYamlContent(
 
   return results.length > 0 ? results : null;
 }
+
+// Helper function to determine if a string contains log data
+export function isLogContent(content: string): boolean {
+  if (!content || typeof content !== 'string') return false;
+
+  // Check for common log patterns
+  const hasTimestampFormat = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(content);
+  const hasNewlines = content.includes('\n');
+  const hasLogLevels = /\b(INFO|DEBUG|ERROR|WARNING|WARN)\b/i.test(content);
+
+  // Check if it might be a log response object from k8s API
+  const isLogResponseObject =
+    content.includes('"kind":"Status"') &&
+    (content.includes('"status":"Success"') || content.includes('"status":"Failure"'));
+
+  return (
+    (hasTimestampFormat && hasNewlines) || (hasLogLevels && hasNewlines) || isLogResponseObject
+  );
+}

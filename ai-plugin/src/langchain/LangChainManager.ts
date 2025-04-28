@@ -13,8 +13,8 @@ import { tool } from '@langchain/core/tools';
 import { ChatOpenAI } from '@langchain/openai';
 import { AzureChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
-// import { formatString } from "../helper";
 import AIManager, { Prompt } from '../ai/manager';
+import { trackAIUsage } from '../components/UsageTracker';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -28,6 +28,15 @@ export default class LangChainManager extends AIManager {
         toolCallId?: string,
         pendingPrompt?: Prompt
       ) => Promise<any>)
+    | null = null;
+  private logHandler:
+    | ((
+        namespace: string,
+        podName: string,
+        containerName?: string,
+        tailLines?: number,
+        previous?: boolean
+      ) => Promise<string>)
     | null = null;
 
   constructor(providerId: string, config: Record<string, any>) {
@@ -97,28 +106,32 @@ export default class LangChainManager extends AIManager {
       body?: string,
       toolCallId?: string,
       pendingPrompt?: Prompt
-    ) => Promise<any>
+    ) => Promise<any>,
+    logHandler?: (
+      namespace: string,
+      podName: string,
+      containerName?: string,
+      tailLines?: number,
+      previous?: boolean
+    ) => Promise<string>
   ): void {
-    // Store the handler in a class property
+    // Store the handlers
     this.toolHandler = handler;
 
     const kubernetesApiSchema = z.object({
-      url: z.string().describe('URL to request, e.g., /api/v1/pods'),
+      url: z
+        .string()
+        .describe(
+          'URL to request, e.g., /api/v1/pods or /api/v1/namespaces/default/pods/podinfo-123/log?container=podinfod&tailLines=100'
+        ),
       method: z.string().describe('HTTP method: GET, POST, PATCH, DELETE'),
       body: z.string().optional().describe('Optional HTTP body'),
     });
-    console.log('Handler function set for tools:', handler);
 
-    // Test the handler directly to confirm it works
-    try {
-      console.log('Testing handler with GET /api/v1/pods...');
-      handler('/api/v1/pods', 'GET')
-        .then(result => console.log('Test handler result:', result))
-        .catch(err => console.error('Test handler failed:', err));
-    } catch (error) {
-      console.error('Error testing handler:', error);
-    }
+    // Create tools array
+    const toolsArray = [];
 
+    // API Request tool
     const kubeTool = tool(
       async ({ url, method, body }) => {
         try {
@@ -126,8 +139,13 @@ export default class LangChainManager extends AIManager {
             throw new Error('Tool handler is not configured');
           }
 
-          // Format the tool call name to be more recognizable in UI highlighting
           console.log(`Processing kubernetes_api_request tool: ${method} ${url}`);
+
+          // Check if this is a log request to include proper handling hints
+          const isLogRequest = url && (url.endsWith('/log') || url.includes('/log?'));
+          if (isLogRequest) {
+            console.log('Log request detected, will use appropriate Accept header');
+          }
 
           // This is our placeholder response for non-GET requests - they will be prompted later
           if (method.toUpperCase() !== 'GET') {
@@ -152,6 +170,7 @@ export default class LangChainManager extends AIManager {
               method: method.toUpperCase(),
               url: url,
               body: body || null,
+              isLogRequest: isLogRequest,
             },
             response: response,
           };
@@ -172,13 +191,14 @@ export default class LangChainManager extends AIManager {
       },
       {
         name: 'kubernetes_api_request',
-        description: 'Make requests to the Kubernetes API server.',
+        description: 'Make requests to the Kubernetes API server, including fetching pod logs.',
         schema: kubernetesApiSchema,
       }
     );
+    toolsArray.push(kubeTool);
 
     try {
-      this.boundModel = this.model.bindTools([kubeTool]);
+      this.boundModel = this.model.bindTools(toolsArray);
     } catch (error) {
       console.error(`Error binding tools to ${this.providerId} model:`, error);
       this.boundModel = this.model;
@@ -243,6 +263,34 @@ export default class LangChainManager extends AIManager {
     try {
       const response = await modelToUse.invoke(messages);
       console.log('Model response received:', response);
+
+      // Track usage after receiving a response with consistent provider naming
+      let providerName = 'AI Service';
+      let estimatedTokens = 0;
+
+      // Estimate tokens based on input and output length
+      // This is a rough approximation: 1 token ≈ 4 characters for English text
+      const inputLength = message.length;
+      const outputLength = response.content?.length || 0;
+      estimatedTokens = Math.ceil((inputLength + outputLength) / 4);
+
+      switch (this.providerId) {
+        case 'openai':
+          providerName = 'OpenAI';
+          break;
+        case 'azure':
+          providerName = 'Azure OpenAI'; // Ensure consistent naming
+          break;
+        case 'anthropic':
+          providerName = 'Anthropic';
+          break;
+        case 'local':
+          providerName = 'Local Model';
+          break;
+      }
+
+      trackAIUsage(providerName, estimatedTokens);
+      console.log(`${providerName} - Estimated tokens: ${estimatedTokens}`);
 
       if (response.tool_calls?.length) {
         const toolCalls = response.tool_calls.map(tc => ({
@@ -475,6 +523,36 @@ export default class LangChainManager extends AIManager {
 
         const responsePromise = modelToUse.invoke(messages);
         const response = await Promise.race([responsePromise, timeoutPromise]);
+
+        // Track usage after tool processing with consistent provider naming
+        let providerName = 'AI Service';
+        let estimatedTokens = 0;
+
+        // Estimate tokens based on messages and response length
+        const messagesLength = messages.reduce(
+          (acc, msg) => acc + (typeof msg.content === 'string' ? msg.content.length : 0),
+          0
+        );
+        const outputLength = response.content?.length || 0;
+        estimatedTokens = Math.ceil((messagesLength + outputLength) / 4);
+
+        switch (this.providerId) {
+          case 'openai':
+            providerName = 'OpenAI';
+            break;
+          case 'azure':
+            providerName = 'Azure OpenAI'; // Ensure consistent naming
+            break;
+          case 'anthropic':
+            providerName = 'Anthropic';
+            break;
+          case 'local':
+            providerName = 'Local Model';
+            break;
+        }
+
+        trackAIUsage(providerName, estimatedTokens);
+        console.log(`${providerName} - Estimated tokens: ${estimatedTokens}`);
 
         console.log('Model response received:', {
           content:

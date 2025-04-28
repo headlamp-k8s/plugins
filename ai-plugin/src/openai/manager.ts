@@ -1,6 +1,7 @@
 import { OpenAI } from 'openai';
 import { AzureOpenAI } from 'openai/index';
 import AIManager, { Prompt } from '../ai/manager';
+import { trackAIUsage } from '../components/UsageTracker';
 
 type Tool = {
   type: string;
@@ -76,6 +77,13 @@ export default class OpenAIManager extends AIManager {
       const response = await this.client.chat.completions.create(params);
       const responseContent = response.choices[0].message;
 
+      // Track token usage if available
+      if (response.usage) {
+        const provider = this.endpoint ? 'Azure OpenAI' : 'OpenAI';
+        const totalTokens = response.usage.total_tokens || 0;
+        trackAIUsage(provider, totalTokens);
+      }
+
       // Check for content filtering flags
       const hasContentFilter = response.choices[0].finish_reason === 'content_filter';
       const hasFilteredContent = !!response.choices[0].content_filter_results?.filtered;
@@ -94,7 +102,7 @@ export default class OpenAIManager extends AIManager {
       }
 
       // Handle tool calls if present
-      if (responseContent.tool_calls && responseContent.tool_calls.length > 0 && this.toolHandler) {
+      if (responseContent.tool_calls && responseContent.tool_calls.length > 0) {
         const assistantPrompt: Prompt = {
           role: 'assistant',
           content: responseContent.content || '',
@@ -104,15 +112,51 @@ export default class OpenAIManager extends AIManager {
 
         // Process each tool call
         for (const toolCall of responseContent.tool_calls) {
-          if (toolCall.function.name === 'http_request') {
-            const args = JSON.parse(toolCall.function.arguments);
-            const response = await this.toolHandler(args.url, args.method, args.body);
+          try {
+            let response = null;
+
+            if (toolCall.function.name === 'http_request' && this.toolHandler) {
+              const args = JSON.parse(toolCall.function.arguments);
+
+              // Check if this is a log request
+              const isLogRequest =
+                args.url && (args.url.endsWith('/log') || args.url.includes('/log?'));
+
+              // Make the request
+              response = await this.toolHandler(args.url, args.method, args.body);
+
+              // Format log responses specifically
+              if (isLogRequest && typeof response === 'string') {
+                // Keep logs as plaintext rather than trying to convert to JSON
+                this.history.push({
+                  role: 'tool',
+                  content: response,
+                  toolCallId: toolCall.id,
+                  name: toolCall.function.name,
+                });
+                continue; // Skip the next part for logs
+              }
+            }
 
             // Add tool response to history
             this.history.push({
               role: 'tool',
               content: typeof response === 'string' ? response : JSON.stringify(response),
               toolCallId: toolCall.id,
+              name: toolCall.function.name,
+            });
+          } catch (error) {
+            console.error(`Error handling tool ${toolCall.function.name}:`, error);
+            // Add error response to history
+            this.history.push({
+              role: 'tool',
+              content: JSON.stringify({
+                error: true,
+                message: error.message || 'An error occurred while processing the tool call',
+                toolName: toolCall.function.name,
+              }),
+              toolCallId: toolCall.id,
+              name: toolCall.function.name,
             });
           }
         }
@@ -172,6 +216,14 @@ export default class OpenAIManager extends AIManager {
 
       const response = await this.client.chat.completions.create(params);
       const responseContent = response.choices[0].message;
+
+      // Track token usage if available - ensure consistent provider naming
+      if (response.usage) {
+        const provider = this.endpoint ? 'Azure OpenAI' : 'OpenAI';
+        const totalTokens = response.usage.total_tokens || 0;
+        trackAIUsage(provider, totalTokens);
+        console.log(`${provider} - Tokens used: ${totalTokens}`);
+      }
 
       // Check for content filtering in follow-up response
       const hasContentFilter = response.choices[0].finish_reason === 'content_filter';
