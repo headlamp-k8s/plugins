@@ -14,7 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import React, { useState } from 'react';
-import { YamlExample,yamlExamples } from '../utils/SampleYamlLibrary';
+import { YamlExample, yamlExamples } from '../utils/SampleYamlLibrary';
 import YamlPreview from './YamlPreview';
 
 interface YamlLibraryDialogProps {
