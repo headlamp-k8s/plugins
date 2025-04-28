@@ -1,7 +1,7 @@
 import { Icon } from '@iconify/react';
-import { Alert,Box, Button, CircularProgress, Divider, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Divider, Typography } from '@mui/material';
 import React from 'react';
-import { useEffect,useState } from 'react';
+import { useEffect, useState } from 'react';
 import ToolResponseDisplay from './components/ToolResponseDisplay';
 import YamlLibraryDialog from './components/YamlLibraryDialog';
 import EditorDialog from './editordialog';
@@ -150,8 +150,9 @@ export default function TextStreamContainer({
     const showDeleteOption =
       prompt.role === 'assistant' ? !isSampleContent(prompt.content || '') : true;
 
-    // Check if this is a content filter error
+    // Check if this is a content filter error or if the prompt has its own error
     const isContentFilterError = prompt.role === 'assistant' && prompt.contentFilterError;
+    const hasError = prompt.error === true;
 
     return (
       <Box
@@ -162,7 +163,7 @@ export default function TextStreamContainer({
           borderRadius: 1,
           bgcolor: prompt.role === 'user' ? 'primary.light' : 'background.paper',
           border: '1px solid',
-          borderColor: isContentFilterError ? 'error.main' : 'divider',
+          borderColor: isContentFilterError || hasError ? 'error.main' : 'divider',
         }}
       >
         <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
@@ -173,12 +174,14 @@ export default function TextStreamContainer({
             prompt.content
           ) : (
             <>
-              {isContentFilterError ? (
+              {isContentFilterError || hasError ? (
                 <Alert severity="error" sx={{ mb: 1 }}>
                   {prompt.content}
-                  <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-                    Tip: Focus your question specifically on Kubernetes administration tasks.
-                  </Typography>
+                  {isContentFilterError && (
+                    <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+                      Tip: Focus your question specifically on Kubernetes administration tasks.
+                    </Typography>
+                  )}
                 </Alert>
               ) : (
                 <>
@@ -256,7 +259,8 @@ export default function TextStreamContainer({
         </Box>
       )}
 
-      {apiError && (
+      {/* Show global API error only when there's no history or specific prompt errors */}
+      {apiError && history.length === 0 && (
         <Box
           sx={{
             p: 2,

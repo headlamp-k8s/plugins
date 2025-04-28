@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
-import { clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
+import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
+import { apply,clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button, Chip, Drawer, Grid, Paper, TextField, Typography } from '@mui/material';
@@ -7,6 +8,7 @@ import React from 'react';
 import YAML from 'yaml';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
+import UsageTracker, { trackAIUsage } from './components/UsageTracker';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
 import LangChainManager from './langchain/LangChainManager';
@@ -208,14 +210,6 @@ export default function AIPrompt(props: {
     setShowEditor(true);
   };
 
-  const handleExamplePrompt = (kind: string) => {
-    const prompt = `Show me an example of a Kubernetes ${kind} and explain how it works`;
-    AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-      console.log(error);
-      setApiError(error.message);
-    });
-  };
-
   React.useEffect(() => {
     // Create appropriate AI Manager based on settings
     if (!aiManager && pluginSettings) {
@@ -297,6 +291,60 @@ export default function AIPrompt(props: {
     setPromptHistory(aiManager?.history ?? []);
   }, [aiManager]);
 
+  async function AnalyzeResourceBasedOnPrompt(prompt: string) {
+    setOpenPopup(true);
+    setLoading(true);
+
+    try {
+      // @todo: Needs to be cancellable.
+      const promptResponse = await aiManager.userSend(prompt);
+      console.log('Prompt response:', promptResponse);
+
+      // Track usage after receiving a response with estimated token count
+      const provider =
+        pluginSettings?.provider ||
+        (pluginSettings?.API_TYPE === 'azure' ? 'Azure OpenAI' : 'OpenAI');
+
+      // Estimate token count based on prompt and response length
+      const estimatedTokens = Math.ceil(
+        (prompt.length + (promptResponse.content?.length || 0)) / 4
+      );
+      trackAIUsage(provider, estimatedTokens);
+
+      // Handle content filter errors specifically - these are already added to history with error flags
+      if (promptResponse.error) {
+        // Clear the global API error since errors are now handled at the prompt level
+        setApiError(null);
+      } else {
+        // Clear any previous errors
+        setApiError(null);
+      }
+
+      // Update history
+      setAiManager(aiManager);
+      updateHistory();
+    } catch (error) {
+      console.error('Error analyzing resource:', error);
+
+      // Add the error as an assistant message in the history
+      const errorPrompt: Prompt = {
+        role: 'assistant',
+        content: `Error: ${error.message || 'An unknown error occurred'}`,
+        error: true,
+      };
+
+      // Add to history so it appears with the specific request
+      aiManager.history.push(errorPrompt);
+      setAiManager(aiManager);
+      updateHistory();
+
+      // Keep API error null since we're handling it in the prompt
+      setApiError(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // Modified function to make requests to Kubernetes API with confirmation
   const makeKubeRequest = async (
     url: string,
@@ -305,6 +353,27 @@ export default function AIPrompt(props: {
     toolCallId?: string,
     pendingPrompt?: Prompt
   ) => {
+    // Try to convert any JSON body to YAML for better display
+    let displayBody = body;
+    if (
+      body &&
+      (method.toUpperCase() === 'POST' ||
+        method.toUpperCase() === 'PUT' ||
+        method.toUpperCase() === 'PATCH')
+    ) {
+      try {
+        // Check if it's JSON and convert to YAML
+        const isJson = body.trim().startsWith('{') || body.trim().startsWith('[');
+        if (isJson) {
+          const jsonObject = JSON.parse(body);
+          displayBody = YAML.stringify(jsonObject);
+        }
+      } catch (e) {
+        // If parse fails, keep original body
+        console.warn('Failed to parse body as JSON:', e);
+      }
+    }
+
     // For GET requests, proceed immediately
     if (method.toUpperCase() === 'GET') {
       return handleActualApiRequest(url, method, body);
@@ -314,7 +383,7 @@ export default function AIPrompt(props: {
     setApiRequest({
       url,
       method,
-      body,
+      body: displayBody, // Use the potentially converted YAML for display
       toolCallId,
       pendingPrompt,
     });
@@ -333,10 +402,28 @@ export default function AIPrompt(props: {
     });
   };
 
+  // Helper function to check if a URL is requesting logs
+  const isLogRequest = (url: string): boolean => {
+    return url.includes('/log?') || url.endsWith('/log');
+  };
+
   // Function to handle the actual API request after confirmation
   const handleActualApiRequest = async (url: string, method: string, body?: string) => {
     try {
-      setApiLoading(true);
+      // For modifying operations, we should close the dialog immediately
+      // as clusterAction will handle loading state
+      const isModifyingOperation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(
+        method.toUpperCase()
+      );
+
+      if (isModifyingOperation) {
+        // We'll keep the apiLoading state true until we start the clusterAction
+        // but close the dialog immediately
+        setApiLoading(true);
+      } else {
+        // For GET requests, we want to keep the dialog open to show results
+        setApiLoading(true);
+      }
 
       const cluster = getCluster();
       if (!cluster) {
@@ -347,20 +434,285 @@ export default function AIPrompt(props: {
 
       console.log('Making Kubernetes API request:', { url, method, body });
 
+      // For POST operations, use clusterAction like in EditorDialog
+      if (method.toUpperCase() === 'POST' && body) {
+        try {
+          // Parse the body - could be YAML or JSON
+          let resource;
+
+          try {
+            // Try parsing as YAML first
+            resource = YAML.parse(body);
+          } catch (e) {
+            // If YAML parsing fails, try JSON
+            resource = JSON.parse(body);
+          }
+
+          // Close dialog immediately before starting clusterAction
+          handleApiDialogClose();
+
+          // Use clusterAction for POST requests to benefit from the built-in handling
+          clusterAction(
+            async () => {
+              const response = await apply(resource, cluster);
+
+              // Add tool response to history if needed
+              if (apiRequest?.toolCallId && aiManager) {
+                const toolResponse: Prompt = {
+                  role: 'tool',
+                  content: JSON.stringify({
+                    status: 'success',
+                    message: `${resource.kind || 'Resource'} created successfully`,
+                    resourceType: resource.kind,
+                    name: resource.metadata?.name,
+                    namespace: resource.metadata?.namespace,
+                  }),
+                  toolCallId: apiRequest.toolCallId,
+                  name: 'kubernetes_api_request',
+                };
+
+                aiManager.history.push(toolResponse);
+                updateHistory();
+
+                // If there was a pending prompt from the tool call, process it now
+                if (apiRequest.pendingPrompt) {
+                  await aiManager.processToolResponses();
+                  updateHistory();
+                }
+              }
+
+              return response;
+            },
+            {
+              startMessage: `Creating ${resource.kind || 'resource'} in cluster ${cluster}...`,
+              cancelledMessage: `Cancelled creating resource in cluster.`,
+              successMessage: `${resource.kind || 'Resource'} created successfully.`,
+              errorMessage: `Failed to create resource.`,
+            }
+          );
+
+          // Return placeholder response
+          return { status: 'processing', message: 'Create operation in progress' };
+        } catch (error) {
+          console.error('Error parsing YAML or applying resource:', error);
+          setApiRequestError(`Error creating resource: ${error.message}`);
+          setApiLoading(false);
+          return JSON.stringify({
+            error: true,
+            message: `Error creating resource: ${error.message}`,
+          });
+        }
+      }
+
+      // For DELETE operations similar update to close dialog before clusterAction
+      if (method.toUpperCase() === 'DELETE' && body) {
+        try {
+          const resource = YAML.parse(body);
+
+          // Ensure finalizers are removed for proper deletion
+          if (resource.metadata) {
+            resource.metadata.finalizers = [];
+          }
+
+          const resourceName = resource.metadata?.name || 'Unknown';
+          const resourceKind = resource.kind || 'Resource';
+          const namespace = resource.metadata?.namespace;
+
+          const resourceIdentifier = namespace
+            ? `${resourceKind} "${resourceName}" in namespace "${namespace}"`
+            : `${resourceKind} "${resourceName}"`;
+
+          // Close dialog immediately before starting clusterAction
+          handleApiDialogClose();
+
+          // Use clusterAction for DELETE requests
+          clusterAction(
+            async () => {
+              const response = await apply(resource, cluster);
+
+              // Add tool response to history if needed
+              if (apiRequest?.toolCallId && aiManager) {
+                const toolResponse: Prompt = {
+                  role: 'tool',
+                  content: JSON.stringify({
+                    status: 'success',
+                    message: `${resourceIdentifier} deleted successfully`,
+                    resourceType: resource.kind,
+                    name: resource.metadata?.name,
+                    namespace: resource.metadata?.namespace,
+                  }),
+                  toolCallId: apiRequest.toolCallId,
+                  name: 'kubernetes_api_request',
+                };
+
+                aiManager.history.push(toolResponse);
+                updateHistory();
+
+                // If there was a pending prompt from the tool call, process it now
+                if (apiRequest.pendingPrompt) {
+                  await aiManager.processToolResponses();
+                  updateHistory();
+                }
+              }
+
+              return response;
+            },
+            {
+              startMessage: `Deleting ${resourceIdentifier}...`,
+              cancelledMessage: `Cancelled deleting ${resourceIdentifier}.`,
+              successMessage: `${resourceIdentifier} deleted successfully.`,
+              errorMessage: `Failed to delete ${resourceIdentifier}.`,
+            }
+          );
+
+          // Return placeholder response
+          return { status: 'processing', message: 'Delete operation in progress' };
+        } catch (error) {
+          console.error('Error parsing YAML or deleting resource:', error);
+          setApiRequestError(`Error deleting resource: ${error.message}`);
+          setApiLoading(false);
+          return JSON.stringify({
+            error: true,
+            message: `Error deleting resource: ${error.message}`,
+          });
+        }
+      }
+
+      // For PATCH/PUT operations with clusterAction
+      if ((method.toUpperCase() === 'PATCH' || method.toUpperCase() === 'PUT') && body) {
+        try {
+          // Parse the body to get resource details for better notifications
+          let resource;
+          try {
+            // Try parsing as YAML first
+            resource = YAML.parse(body);
+          } catch (e) {
+            // If YAML parsing fails, try JSON
+            resource = JSON.parse(body);
+          }
+
+          const resourceName = resource.metadata?.name || 'Unknown';
+          const resourceKind = resource.kind || 'Resource';
+          const namespace = resource.metadata?.namespace;
+
+          const resourceIdentifier = namespace
+            ? `${resourceKind} "${resourceName}" in namespace "${namespace}"`
+            : `${resourceKind} "${resourceName}"`;
+
+          // Ensure body is in JSON format for API request
+          const processedBody = JSON.stringify(resource);
+
+          // Close dialog immediately before starting clusterAction
+          handleApiDialogClose();
+
+          // Use clusterAction for PUT/PATCH requests
+          clusterAction(
+            async () => {
+              const headers = {
+                'Content-Type':
+                  method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+                Accept: 'application/json',
+              };
+
+              const response = await clusterRequest(url, {
+                method,
+                cluster,
+                body: processedBody,
+                headers,
+              });
+
+              // Add tool response to history if needed
+              if (apiRequest?.toolCallId && aiManager) {
+                const toolResponse: Prompt = {
+                  role: 'tool',
+                  content: JSON.stringify({
+                    status: 'success',
+                    message: `${resourceIdentifier} updated successfully`,
+                    resourceType: resource.kind,
+                    name: resource.metadata?.name,
+                    namespace: resource.metadata?.namespace,
+                  }),
+                  toolCallId: apiRequest.toolCallId,
+                  name: 'kubernetes_api_request',
+                };
+
+                aiManager.history.push(toolResponse);
+                updateHistory();
+
+                // If there was a pending prompt from the tool call, process it now
+                if (apiRequest.pendingPrompt) {
+                  await aiManager.processToolResponses();
+                  updateHistory();
+                }
+              }
+
+              return response;
+            },
+            {
+              startMessage: `Updating ${resourceIdentifier}...`,
+              cancelledMessage: `Cancelled updating ${resourceIdentifier}.`,
+              successMessage: `${resourceIdentifier} updated successfully.`,
+              errorMessage: `Failed to update ${resourceIdentifier}.`,
+            }
+          );
+
+          // Return placeholder response
+          return { status: 'processing', message: 'Update operation in progress' };
+        } catch (error) {
+          console.error('Error updating resource:', error);
+          setApiRequestError(`Error updating resource: ${error.message}`);
+          setApiLoading(false);
+          return JSON.stringify({
+            error: true,
+            message: `Error updating resource: ${error.message}`,
+          });
+        }
+      }
+
+      // For GET requests, continue with existing flow - we'll keep the dialog open
+      // to show results
+      const headers = isLogRequest(url)
+        ? {
+            // For log requests, use application/json as specified by the k8s API server
+            Accept: 'application/json',
+            'Content-Type':
+              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+          }
+        : {
+            'Content-Type':
+              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+            Accept: 'application/json;as=Table;g=meta.k8s.io;v=v1',
+          };
+
+      // For all other methods (GET, PATCH, PUT), continue using the original flow
       const response = await clusterRequest(url, {
         method,
         cluster,
         body: body === '' ? undefined : body,
-        headers: {
-          'Content-Type': method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-          accept: 'application/json;as=Table;g=meta.k8s.io;v=v1',
-        },
+        headers,
       });
 
       console.log('Kubernetes API Response:', response);
 
       let formattedResponse = response;
-      if (typeof response === 'object' && response?.kind === 'Table') {
+
+      // Format the response based on its type
+      if (isLogRequest(url)) {
+        // For logs, ensure we're handling the response properly
+        if (
+          typeof response === 'object' &&
+          response.kind === 'Status' &&
+          response.status === 'Failure'
+        ) {
+          // This is an error response, format it accordingly
+          formattedResponse = `Error fetching logs: ${response.message || 'Unknown error'}`;
+        } else {
+          // Format log response appropriately (could be string or object with log property)
+          formattedResponse =
+            typeof response === 'string' ? response : response.log || JSON.stringify(response);
+        }
+      } else if (typeof response === 'object' && response?.kind === 'Table') {
+        // Format Table responses as CSV
         formattedResponse = [
           [...response.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
           ...response.rows.map((row: any) =>
@@ -373,7 +725,12 @@ export default function AIPrompt(props: {
       setApiLoading(false);
 
       // If there's a pending tool call, add the response to the history
-      if (apiRequest?.toolCallId && aiManager) {
+      if (
+        apiRequest?.toolCallId &&
+        aiManager &&
+        method.toUpperCase() !== 'POST' &&
+        method.toUpperCase() !== 'DELETE'
+      ) {
         const toolResponse: Prompt = {
           role: 'tool',
           content:
@@ -400,13 +757,14 @@ export default function AIPrompt(props: {
       setApiRequestError(error.message);
       setApiLoading(false);
 
-      // If there's a pending tool call, add the error response
+      // If there's a pending tool call, add the error response to history
       if (apiRequest?.toolCallId && aiManager) {
         const errorResponse: Prompt = {
           role: 'tool',
           content: JSON.stringify({ error: true, message: error.message }),
           toolCallId: apiRequest.toolCallId,
           name: 'kubernetes_api_request',
+          error: true, // Mark as error for proper display
         };
 
         aiManager.history.push(errorResponse);
@@ -429,7 +787,6 @@ export default function AIPrompt(props: {
 
     const { url, method, body } = apiRequest;
     await handleActualApiRequest(url, method, body);
-    // Don't close the dialog automatically - let the user see the response
   };
 
   // Function to handle API confirmation dialog close
@@ -438,6 +795,7 @@ export default function AIPrompt(props: {
     setApiRequest(null);
     setApiResponse(null);
     setApiRequestError(null);
+    setApiLoading(false);
   };
 
   React.useEffect(() => {
@@ -480,14 +838,14 @@ export default function AIPrompt(props: {
             function: {
               name: 'http_request',
               description:
-                'HTTP Request to a kubernetes API server, kube-apiserver. Make sure to provide proper namespace!',
+                'HTTP Request to a kubernetes API server, kube-apiserver. Use for all operations including fetching pod logs.',
               parameters: {
                 type: 'object',
                 properties: {
                   url: {
                     type: 'string',
                     description:
-                      'URL to request, example: /api/v1/pods, /apis/apps/v1/replicasets, /api/v1/namespaces/default/pods/podinfo-123/log?container=podinfod',
+                      'URL to request, example: /api/v1/pods, /apis/apps/v1/replicasets, /api/v1/namespaces/default/pods/podinfo-123/log?container=podinfod&tailLines=100',
                   },
                   method: {
                     type: 'string',
@@ -510,33 +868,6 @@ export default function AIPrompt(props: {
 
     setSuggestions(aiManager.getPromptSuggestions());
   }, [_pluginSetting.event, aiManager]);
-
-  async function AnalyzeResourceBasedOnPrompt(prompt: string) {
-    setOpenPopup(true);
-    setLoading(true);
-    // @todo: Needs to be cancellable.
-    const promptResponse = await aiManager.userSend(prompt);
-    console.log('Prompt response:', promptResponse);
-    setLoading(false);
-
-    // Handle content filter errors specifically
-    if (promptResponse.error) {
-      if (promptResponse.contentFilterError) {
-        setApiError(promptResponse.content || 'Your request was blocked by content filters.');
-      } else {
-        setApiError(promptResponse.content || 'An error occurred processing your request.');
-      }
-
-      // Still update the history so the user can see the error message
-      setAiManager(aiManager);
-      updateHistory();
-      return;
-    }
-
-    // This is a bit hacky but it does ensure that the TextStreamContainer is updated.
-    setAiManager(aiManager);
-    updateHistory();
-  }
 
   // Helper function to suggest safe Kubernetes prompts when content filters are triggered
   const getSafePromptSuggestions = () => {
@@ -640,12 +971,14 @@ export default function AIPrompt(props: {
             borderColor: 'divider',
             display: 'flex',
             justifyContent: 'space-between',
+            alignItems: 'center',
           }}
         >
           <Box>
             <Typography variant="h6">{getProviderDisplayName()} Assistant (beta)</Typography>
           </Box>
-          <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <UsageTracker pluginSettings={pluginSettings} />
             <ActionButton
               description="Close"
               onClick={() => {
