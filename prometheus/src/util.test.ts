@@ -1,11 +1,11 @@
-import { getTimeRange } from './util';
+import { getTimeRangeAndStepSize } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
   global.TextDecoder = require('util').TextDecoder;
 });
 
-describe('getTimeRange', () => {
+describe('getTimeRangeAndStepSize', () => {
   // Mock the current timestamp for consistent testing
   const mockNow = 1700000000;
   const day = 86400; // seconds in a day
@@ -19,44 +19,87 @@ describe('getTimeRange', () => {
   });
 
   test.each([
-    ['10m', { from: mockNow - 600, to: mockNow, step: 15 }],
-    ['30m', { from: mockNow - 1800, to: mockNow, step: 30 }],
-    ['1h', { from: mockNow - 3600, to: mockNow, step: 60 }],
-    ['24h', { from: mockNow - day, to: mockNow, step: 300 }],
-    ['week', { from: mockNow - 7 * day, to: mockNow, step: 3600 }],
+    ['10m', 'medium', { from: mockNow - 600, to: mockNow, step: 2 }],
+    ['30m', 'medium', { from: mockNow - 1800, to: mockNow, step: 7 }],
+    ['3h', 'medium', { from: mockNow - 10800, to: mockNow, step: 43 }],
+    ['24h', 'medium', { from: mockNow - day, to: mockNow, step: 345 }],
     [
       'today',
+      'medium',
       {
         from: mockNow - (mockNow % day),
         to: mockNow,
-        step: 300,
+        step: Math.max(
+          Math.floor(((mockNow - (mockNow - (mockNow % day))) * 1000) / 250 / 1000),
+          1
+        ),
       },
     ],
     [
       'yesterday',
+      'medium',
       {
         from: mockNow - (mockNow % day) - day,
         to: mockNow - (mockNow % day),
-        step: 300,
+        step: 345,
       },
     ],
-    // Test default case
-    ['invalid-interval', { from: mockNow - 600, to: mockNow, step: 15 }],
-  ])('should return correct range for %s interval', (interval, expected) => {
-    const result = getTimeRange(interval);
-    expect(result).toEqual(expected);
-  });
+    ['week', 'medium', { from: mockNow - 7 * day, to: mockNow, step: 2419 }],
+    [
+      'lastweek',
+      'medium',
+      {
+        from: mockNow - 14 * day,
+        to: mockNow - 7 * day,
+        step: 2419,
+      },
+    ],
+
+    // Different resolutions with same interval
+    ['1h', 'low', { from: mockNow - 3600, to: mockNow, step: 36 }], // timeRange / 100
+    ['1h', 'medium', { from: mockNow - 3600, to: mockNow, step: 14 }], // timeRange / 250
+    ['1h', 'high', { from: mockNow - 3600, to: mockNow, step: 4 }], // timeRange / 750
+
+    // Fixed step sizes with same interval
+    ['1h', '30s', { from: mockNow - 3600, to: mockNow, step: 30 }],
+    ['1h', '15m', { from: mockNow - 3600, to: mockNow, step: 900 }],
+    ['1h', '1h', { from: mockNow - 3600, to: mockNow, step: 3600 }],
+
+    // Edge cases
+    ['1m', 'medium', { from: mockNow - 60, to: mockNow, step: 1 }], // Minimum step size is 1
+    ['14d', 'medium', { from: mockNow - 14 * day, to: mockNow, step: 4838 }], // Large time range
+    [
+      'invalid', // Falls back to 10 minutes interval
+      'medium',
+      {
+        from: mockNow - 600,
+        to: mockNow,
+        step: 2,
+      },
+    ],
+    [
+      '1h',
+      'invalid', // Falls back to medium resolution
+      { from: mockNow - 3600, to: mockNow, step: 14 },
+    ],
+  ])(
+    'should return correct timeRange and stepSize for %s interval and %s resolution',
+    (interval, resolution, expected) => {
+      const result = getTimeRangeAndStepSize(interval, resolution);
+      expect(result).toEqual(expected);
+    }
+  );
 
   test('should handle different timestamps correctly', () => {
     // Test with a specific timestamp
     const specificTime = 1600000000;
     vitest.spyOn(Date, 'now').mockImplementation(() => specificTime * 1000);
 
-    const result = getTimeRange('1h');
+    const result = getTimeRangeAndStepSize('1h', 'medium');
     expect(result).toEqual({
       from: specificTime - 3600,
       to: specificTime,
-      step: 60,
+      step: 14,
     });
   });
 });

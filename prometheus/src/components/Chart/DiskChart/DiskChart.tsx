@@ -18,6 +18,7 @@ interface DiskChartProps {
   usageQuery: string;
   capacityQuery: string;
   interval: string;
+  resolution: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
   subPath: string;

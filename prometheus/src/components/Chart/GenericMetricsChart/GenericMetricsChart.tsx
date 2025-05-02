@@ -2,21 +2,21 @@ import { Icon } from '@iconify/react';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
-import {
-  Box,
-  Button,
-  MenuItem,
-  Paper,
-  Select,
-  ToggleButton,
-  ToggleButtonGroup,
-} from '@mui/material';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import ListSubheader from '@mui/material/ListSubheader';
+import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
+import Select from '@mui/material/Select';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useEffect, useState } from 'react';
 import {
   getConfigStore,
   getPrometheusInterval,
   getPrometheusPrefix,
+  getPrometheusResolution,
   getPrometheusSubPath,
 } from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
@@ -96,9 +96,11 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
   };
 
   const interval = getPrometheusInterval(cluster);
+  const graphResolution = getPrometheusResolution(cluster);
   const subPath = getPrometheusSubPath(cluster);
 
   const [timespan, setTimespan] = useState(interval ?? '1h');
+  const [resolution, setResolution] = useState(graphResolution ?? 'medium');
 
   if (!isVisible) {
     return null;
@@ -160,6 +162,28 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 <MenuItem value={'14d'}>14 days</MenuItem>
               </Select>
             </Box>
+            <Box>
+              <Select
+                variant="outlined"
+                size="small"
+                name="Time"
+                value={resolution}
+                onChange={e => setResolution(e.target.value)}
+              >
+                <ListSubheader>Automatic resolution</ListSubheader>
+                <MenuItem value="low">Low res.</MenuItem>
+                <MenuItem value="medium">Medium res.</MenuItem>
+                <MenuItem value="high">High res.</MenuItem>
+
+                <ListSubheader>Fixed resolution</ListSubheader>
+                <MenuItem value="10s">10s</MenuItem>
+                <MenuItem value="30s">30s</MenuItem>
+                <MenuItem value="1m">1m</MenuItem>
+                <MenuItem value="5m">5m</MenuItem>
+                <MenuItem value="15m">15m</MenuItem>
+                <MenuItem value="1h">1h</MenuItem>
+              </Select>
+            </Box>
           </Box>
         )}
         {state === prometheusState.INSTALLED ? (
@@ -174,6 +198,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 autoRefresh={refresh}
                 prometheusPrefix={prometheusPrefix}
                 interval={timespan}
+                resolution={resolution}
                 subPath={subPath}
               />
             )}
@@ -183,6 +208,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 autoRefresh={refresh}
                 prometheusPrefix={prometheusPrefix}
                 interval={timespan}
+                resolution={resolution}
                 subPath={subPath}
               />
             )}
@@ -192,6 +218,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 txQuery={props.networkTxQuery}
                 autoRefresh={refresh}
                 interval={timespan}
+                resolution={resolution}
                 prometheusPrefix={prometheusPrefix}
                 subPath={subPath}
               />
@@ -202,6 +229,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 writeQuery={props.filesystemWriteQuery}
                 autoRefresh={refresh}
                 interval={timespan}
+                resolution={resolution}
                 prometheusPrefix={prometheusPrefix}
                 subPath={subPath}
               />

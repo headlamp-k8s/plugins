@@ -19,6 +19,7 @@ interface NetworkChartProps {
   rxQuery: string;
   txQuery: string;
   interval: string;
+  resolution: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
   subPath: string;
