@@ -18,10 +18,10 @@ import {
 } from '@mui/material';
 import React from 'react';
 import ModelSelector from './components/ModelSelector';
-import UsageTracker from './components/UsageTracker';
 import { getDefaultConfig, getProviderById } from './config/modelConfig';
 import AIPrompt from './modal';
 import { useGlobalState } from './utils';
+import { getActiveConfig, getSavedConfigurations, saveProviderConfig, StoredProviderConfig } from './utils/ProviderConfigManager';
 
 function DeploymentAIPrompt() {
   const [openPopup, setOpenPopup] = React.useState(false);
@@ -35,15 +35,15 @@ function DeploymentAIPrompt() {
     (conf?.API_TYPE === 'azure' && conf?.DEPLOYMENT_NAME && conf?.API_KEY && conf?.GPT_MODEL) ||
     (conf?.API_TYPE !== 'azure' && conf?.API_KEY && conf?.GPT_MODEL);
 
-  const hasNewConfig = conf?.provider && conf?.config && Object.keys(conf.config).length > 0;
-  const hasValidConfig = hasLegacyConfig || hasNewConfig;
+  // Check for new format - any valid provider config 
+  const savedConfigs = getSavedConfigurations(conf);
+  const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
+  
+  const hasValidConfig = hasLegacyConfig || hasAnyValidConfig;
 
   return (
     <>
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        {/* Add UsageTracker component if we have valid configuration */}
-        {hasValidConfig && <UsageTracker pluginSettings={conf} />}
-
         <Tooltip title="AI Assistant">
           <ToggleButton
             aria-label={'description'}
@@ -54,7 +54,7 @@ function DeploymentAIPrompt() {
             selected={openPopup}
             size="small"
           >
-            <Icon icon="mdi:message-flash" width="24px" />
+            <Icon icon="mdi:sparkles" width="24px" />
           </ToggleButton>
         </Tooltip>
       </Box>
@@ -160,39 +160,88 @@ registerAppBarAction(() => {
  */
 function Settings(props) {
   const { data, onDataChange } = props;
+  
+  // Get saved configurations from plugin data
+  const savedConfigs = React.useMemo(() => {
+    return getSavedConfigurations(data);
+  }, [data]);
+  
   // Track the provider type
-  const [selectedProvider, setSelectedProvider] = React.useState(data?.provider || 'openai');
+  const [selectedProvider, setSelectedProvider] = React.useState(() => {
+    const activeConfig = getActiveConfig(savedConfigs);
+    return activeConfig?.providerId || data?.provider || 'openai';
+  });
 
   // Track the provider-specific configuration
   const [providerConfig, setProviderConfig] = React.useState<Record<string, any>>(() => {
-    // Initialize with saved config or default values
-    if (data?.provider === selectedProvider && data?.config) {
-      return data.config;
+    // Initialize with active config or saved config or default values
+    const activeConfig = getActiveConfig(savedConfigs);
+    if (activeConfig) {
+      return { ...activeConfig.config };
     }
+    
+    // Fall back to legacy format
+    if (data?.provider === selectedProvider && data?.config) {
+      return { ...data.config };
+    }
+    
     return getDefaultConfig(selectedProvider);
+  });
+  
+  // Track configuration name
+  const [configName, setConfigName] = React.useState(() => {
+    const activeConfig = getActiveConfig(savedConfigs);
+    return activeConfig?.displayName || '';
   });
 
   // Handle provider change
   const handleProviderChange = (providerId: string) => {
     setSelectedProvider(providerId);
-    // Reset config to defaults when changing provider
-    setProviderConfig(getDefaultConfig(providerId));
-
-    // Update the global configuration
-    onDataChange({
-      ...data,
-      provider: providerId,
-      config: getDefaultConfig(providerId),
-    });
+    
+    // Try to find an existing config for this provider
+    const existingConfig = savedConfigs.providers.find(p => p.providerId === providerId);
+    
+    if (existingConfig) {
+      // Use existing config
+      setProviderConfig({ ...existingConfig.config });
+      setConfigName(existingConfig.displayName || '');
+    } else {
+      // Reset config to defaults when changing to a new provider
+      setProviderConfig(getDefaultConfig(providerId));
+      setConfigName('');
+    }
   };
 
   // Handle configuration changes
   const handleConfigChange = (newConfig: Record<string, any>) => {
     setProviderConfig(newConfig);
+  };
+  
+  // Handle saving a configuration
+  const handleSaveConfig = (providerId: string, config: Record<string, any>, makeDefault: boolean) => {
+    // Save the configuration
+    const updatedConfigs = saveProviderConfig(
+      savedConfigs, 
+      providerId, 
+      config,
+      makeDefault,
+      configName
+    );
+    
+    // Update the global data
+    onDataChange(updatedConfigs);
+  };
+  
+  // Handle selecting a saved configuration
+  const handleSelectSavedConfig = (config: StoredProviderConfig) => {
+    setSelectedProvider(config.providerId);
+    setProviderConfig({ ...config.config });
+    setConfigName(config.displayName || '');
+    
+    // Update active provider in the global data
     onDataChange({
-      ...data,
-      provider: selectedProvider,
-      config: newConfig,
+      ...savedConfigs,
+      activeProviderId: config.providerId
     });
   };
 
@@ -215,6 +264,11 @@ function Settings(props) {
         config={providerConfig}
         onProviderChange={handleProviderChange}
         onConfigChange={handleConfigChange}
+        savedConfigs={savedConfigs.providers}
+        onSaveConfig={handleSaveConfig}
+        onSelectSavedConfig={handleSelectSavedConfig}
+        configName={configName}
+        onConfigNameChange={setConfigName}
       />
 
       <Box sx={{ mt: 4 }}>
