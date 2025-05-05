@@ -1,5 +1,7 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatOllama } from '@langchain/community/chat_models/ollama';
+import { ChatMistralAI } from '@langchain/mistralai';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
   AIMessage,
@@ -14,7 +16,6 @@ import { ChatOpenAI } from '@langchain/openai';
 import { AzureChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
 import AIManager, { Prompt } from '../ai/manager';
-import { trackAIUsage } from '../components/UsageTracker';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -28,15 +29,6 @@ export default class LangChainManager extends AIManager {
         toolCallId?: string,
         pendingPrompt?: Prompt
       ) => Promise<any>)
-    | null = null;
-  private logHandler:
-    | ((
-        namespace: string,
-        podName: string,
-        containerName?: string,
-        tailLines?: number,
-        previous?: boolean
-      ) => Promise<string>)
     | null = null;
 
   constructor(providerId: string, config: Record<string, any>) {
@@ -80,6 +72,28 @@ export default class LangChainManager extends AIManager {
             modelName: config.model,
             dangerouslyAllowBrowser: true,
           });
+        case 'mistral':
+          if (!config.apiKey) {
+            throw new Error('API key is required for Mistral AI');
+          }
+          return new ChatMistralAI({
+            apiKey: config.apiKey,
+            modelName: config.model,
+            dangerouslyAllowBrowser: true,
+          });
+        case 'gemini': {
+          if (!config.apiKey) {
+            throw new Error('API key is required for Google Gemini');
+          }
+          if (!['gemini-pro', 'gemini-1.0-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'].includes(config.model)) {
+            throw new Error(`Invalid Gemini model: ${config.model}`);
+          }
+          return new ChatGoogleGenerativeAI({
+            apiKey: config.apiKey,
+            modelName: config.model,
+            dangerouslyAllowBrowser: true,
+          });
+        }
         case 'local':
           if (!config.baseUrl) {
             throw new Error('Base URL is required for local models');
@@ -106,14 +120,7 @@ export default class LangChainManager extends AIManager {
       body?: string,
       toolCallId?: string,
       pendingPrompt?: Prompt
-    ) => Promise<any>,
-    logHandler?: (
-      namespace: string,
-      podName: string,
-      containerName?: string,
-      tailLines?: number,
-      previous?: boolean
-    ) => Promise<string>
+    ) => Promise<any>
   ): void {
     // Store the handlers
     this.toolHandler = handler;
@@ -122,7 +129,7 @@ export default class LangChainManager extends AIManager {
       url: z
         .string()
         .describe(
-          'URL to request, e.g., /api/v1/pods or /api/v1/namespaces/default/pods/podinfo-123/log?container=podinfod&tailLines=100'
+          'URL to request, e.g., /api/v1/pods or /api/v1/namespaces/default/pods/pod-name'
         ),
       method: z.string().describe('HTTP method: GET, POST, PATCH, DELETE'),
       body: z.string().optional().describe('Optional HTTP body'),
@@ -141,12 +148,6 @@ export default class LangChainManager extends AIManager {
 
           console.log(`Processing kubernetes_api_request tool: ${method} ${url}`);
 
-          // Check if this is a log request to include proper handling hints
-          const isLogRequest = url && (url.endsWith('/log') || url.includes('/log?'));
-          if (isLogRequest) {
-            console.log('Log request detected, will use appropriate Accept header');
-          }
-
           // This is our placeholder response for non-GET requests - they will be prompted later
           if (method.toUpperCase() !== 'GET') {
             return JSON.stringify({
@@ -157,20 +158,20 @@ export default class LangChainManager extends AIManager {
                 url: url,
                 body: body || null,
               },
+              // Include full resource info for PATCH requests
+              fullResource: method.toUpperCase() === 'PATCH' && body 
             });
           }
 
           // Only GET requests execute immediately
           const response = await this.toolHandler(url, method, body);
-          const responseData = typeof response === 'string' ? response : JSON.stringify(response);
-
+          
           // Include request metadata with the response
           const enhancedResponse = {
             request: {
               method: method.toUpperCase(),
               url: url,
               body: body || null,
-              isLogRequest: isLogRequest,
             },
             response: response,
           };
@@ -191,7 +192,7 @@ export default class LangChainManager extends AIManager {
       },
       {
         name: 'kubernetes_api_request',
-        description: 'Make requests to the Kubernetes API server, including fetching pod logs.',
+        description: 'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
         schema: kubernetesApiSchema,
       }
     );
@@ -246,9 +247,6 @@ export default class LangChainManager extends AIManager {
 
   async userSend(message: string): Promise<Prompt> {
     console.log('User message sent:', message);
-    console.log('Current history:', this.history);
-    console.log('provider id', this.providerId);
-
     const userPrompt: Prompt = { role: 'user', content: message };
     this.history.push(userPrompt);
 
@@ -263,34 +261,6 @@ export default class LangChainManager extends AIManager {
     try {
       const response = await modelToUse.invoke(messages);
       console.log('Model response received:', response);
-
-      // Track usage after receiving a response with consistent provider naming
-      let providerName = 'AI Service';
-      let estimatedTokens = 0;
-
-      // Estimate tokens based on input and output length
-      // This is a rough approximation: 1 token ≈ 4 characters for English text
-      const inputLength = message.length;
-      const outputLength = response.content?.length || 0;
-      estimatedTokens = Math.ceil((inputLength + outputLength) / 4);
-
-      switch (this.providerId) {
-        case 'openai':
-          providerName = 'OpenAI';
-          break;
-        case 'azure':
-          providerName = 'Azure OpenAI'; // Ensure consistent naming
-          break;
-        case 'anthropic':
-          providerName = 'Anthropic';
-          break;
-        case 'local':
-          providerName = 'Local Model';
-          break;
-      }
-
-      trackAIUsage(providerName, estimatedTokens);
-      console.log(`${providerName} - Estimated tokens: ${estimatedTokens}`);
 
       if (response.tool_calls?.length) {
         const toolCalls = response.tool_calls.map(tc => ({
@@ -309,109 +279,62 @@ export default class LangChainManager extends AIManager {
         };
         this.history.push(assistantPrompt);
 
+        // Process each tool call
         for (const toolCall of toolCalls) {
           const args = JSON.parse(toolCall.function.arguments);
-          console.log('Invoking tool with arguments:', args);
-
-          // For non-GET requests, we'll let user confirm before making the request
-          if (args.method.toUpperCase() !== 'GET' && this.toolHandler) {
-            await this.toolHandler(
-              args.url,
-              args.method,
+          console.log('Processing tool call:', args);
+          
+          try {
+            // Execute the tool call
+            const result = await this.toolHandler?.(
+              args.url, 
+              args.method, 
               args.body,
               toolCall.id,
-              assistantPrompt // Pass the pending prompt
+              assistantPrompt
             );
-
-            // Don't add automatic tool response - it will be added after user confirmation
-            continue;
-          }
-
-          let result;
-          try {
-            // For GET requests, process immediately
-            if (this.toolHandler) {
-              console.log(
-                `Calling toolHandler with ${args.url}, ${args.method}${
-                  args.body ? ', ' + args.body : ''
-                }`
-              );
-              result = await this.toolHandler(args.url, args.method, args.body);
-              console.log('Tool response received:', result);
-
-              // Enhance the response with request info for better context
-              const enhancedResult = {
-                request: {
-                  method: args.method.toUpperCase(),
-                  url: args.url,
-                  body: args.body || null,
-                },
-                response: result,
-              };
-              result = enhancedResult;
-            } else {
-              console.error('Tool handler is not configured');
-              result = JSON.stringify({
-                error: true,
-                message: 'Tool handler is not configured',
-                request: {
-                  method: args.method.toUpperCase(),
-                  url: args.url,
-                  body: args.body || null,
-                },
-              });
+            
+            // Don't add tool response for non-GET methods - they'll be handled by confirmation dialog
+            if (args.method.toUpperCase() !== 'GET') {
+              continue;
             }
+            
+            // Add response to history for GET requests
+            this.history.push({
+              role: 'tool',
+              content: typeof result === 'string' ? result : JSON.stringify(result),
+              toolCallId: toolCall.id,
+              name: toolCall.function.name,
+            });
           } catch (error) {
-            console.error('Error invoking tool:', error);
-            result = JSON.stringify({
-              error: true,
-              message: error.message,
-              request: {
-                method: args.method.toUpperCase(),
-                url: args.url,
-                body: args.body || null,
-              },
+            console.error('Error executing tool call:', error);
+            this.history.push({
+              role: 'tool',
+              content: JSON.stringify({
+                error: true,
+                message: error.message,
+              }),
+              toolCallId: toolCall.id,
+              name: toolCall.function.name,
             });
           }
-
-          if (!result) {
-            result = 'No response from tool.';
-          }
-
-          this.history.push({
-            role: 'tool',
-            content: typeof result === 'string' ? result : JSON.stringify(result),
-            toolCallId: toolCall.id,
-            name: toolCall.function.name,
-          });
         }
 
-        // For GET requests, process the tool responses
-        if (
-          toolCalls.every(tc => {
-            const args = JSON.parse(tc.function.arguments);
-            return args.method.toUpperCase() === 'GET';
-          })
-        ) {
+        // Only process follow-up for GET requests
+        if (toolCalls.every(tc => {
+          const args = JSON.parse(tc.function.arguments);
+          return args.method.toUpperCase() === 'GET';
+        })) {
           return await this.processToolResponses();
         }
 
-        // For non-GET requests, return the assistant prompt without further processing
         return assistantPrompt;
       }
 
+      // Handle regular response
       const assistantPrompt: Prompt = {
         role: 'assistant',
         content: response.content || '',
-        toolCalls:
-          response.tool_calls?.map(tc => ({
-            id: tc.id,
-            type: tc.type,
-            function: {
-              name: tc.name || 'kubernetes_api_request',
-              arguments: JSON.stringify(tc.args || {}),
-            },
-          })) || [],
       };
       this.history.push(assistantPrompt);
       return assistantPrompt;
@@ -419,7 +342,7 @@ export default class LangChainManager extends AIManager {
       console.error('Error in userSend:', error);
       const errorPrompt: Prompt = {
         role: 'assistant',
-        content: `Sorry, there was an error processing your request with ${this.providerId}: ${error.message}`,
+        content: `Sorry, there was an error processing your request: ${error.message}`,
         error: true,
       };
       this.history.push(errorPrompt);
@@ -427,7 +350,8 @@ export default class LangChainManager extends AIManager {
     }
   }
 
-  private async processToolResponses(): Promise<Prompt> {
+  // Change from 'protected' to 'public' to match the base class
+  public async processToolResponses(): Promise<Prompt> {
     console.log('Processing tool responses...');
 
     const systemMessage = new SystemMessage(
@@ -522,7 +446,7 @@ export default class LangChainManager extends AIManager {
         });
 
         const responsePromise = modelToUse.invoke(messages);
-        const response = await Promise.race([responsePromise, timeoutPromise]);
+        let response = await Promise.race([responsePromise, timeoutPromise]);
 
         // Track usage after tool processing with consistent provider naming
         let providerName = 'AI Service';
@@ -551,7 +475,6 @@ export default class LangChainManager extends AIManager {
             break;
         }
 
-        trackAIUsage(providerName, estimatedTokens);
         console.log(`${providerName} - Estimated tokens: ${estimatedTokens}`);
 
         console.log('Model response received:', {
@@ -559,6 +482,57 @@ export default class LangChainManager extends AIManager {
             response.content?.substring(0, 100) + (response.content?.length > 100 ? '...' : ''),
           toolCallsCount: response.tool_calls?.length || 0,
         });
+
+        // Add this to the formatResponse method after getting a tool response
+        if (response && typeof response === 'string' && response.includes('"items":')) {
+          try {
+            // This looks like a list response - add a note not to suggest kubectl
+            const enhancedResponse = {
+              ...JSON.parse(response),
+              note: "Remember to use the kubernetes_api_request tool for all operations rather than suggesting kubectl commands.",
+            };
+            response = JSON.stringify(enhancedResponse);
+          } catch (e) {
+            // Keep original response if parsing fails
+          }
+        }
+
+        // Analyze the response content to detect if it might be suggesting kubectl
+        if (response.content && typeof response.content === 'string') {
+          const lowercaseContent = response.content.toLowerCase();
+          
+          // Check for kubectl suggestion indicators
+          const hasKubectlSuggestion = 
+            lowercaseContent.includes('kubectl') ||
+            lowercaseContent.includes('run the command') ||
+            lowercaseContent.includes('command line') ||
+            lowercaseContent.includes('terminal') ||
+            lowercaseContent.includes('shell');
+          
+          // If it looks like kubectl is being suggested, add a corrective system message
+          if (hasKubectlSuggestion) {
+            this.history.push({
+              role: 'system',
+              content: "REMINDER: Never suggest kubectl or command line tools. Always use the kubernetes_api_request tool or explain UI actions. The user is using a web dashboard and cannot access the command line.",
+            });
+            
+            // Request a correction from the model
+            const correctionPrompt = new SystemMessage(
+              "Your last response suggested using kubectl or command line, which is not available to the user. Please revise your response to use the kubernetes_api_request tool instead."
+            );
+            
+            messages.push(correctionPrompt);
+            
+            // Try to get a corrected response
+            try {
+              const correctedResponse = await modelToUse.invoke(messages);
+              response = correctedResponse; // Replace with the corrected response
+            } catch (error) {
+              console.error("Error getting corrected response:", error);
+              // Continue with original response if correction fails
+            }
+          }
+        }
 
         const assistantPrompt: Prompt = {
           role: 'assistant',
