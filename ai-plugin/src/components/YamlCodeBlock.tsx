@@ -1,7 +1,7 @@
-import { Box, Button, Paper, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Paper, Tooltip, Typography, useTheme } from '@mui/material';
 import React, { useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark, prism } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import YAML from 'yaml';
 
 interface YamlCodeBlockProps {
@@ -14,6 +14,8 @@ export default function YamlCodeBlock({ content, onApply }: YamlCodeBlockProps) 
   const [resourceType, setResourceType] = useState<string>('Resource');
   const [resourceName, setResourceName] = useState<string>('');
   const [isValid, setIsValid] = useState<boolean>(true);
+  const theme = useTheme();
+  const isDarkTheme = theme.palette.mode === 'dark';
 
   React.useEffect(() => {
     validateYaml(content);
@@ -96,10 +98,8 @@ export default function YamlCodeBlock({ content, onApply }: YamlCodeBlockProps) 
             px: 2,
             py: 1,
             borderBottom: '1px solid',
-            borderColor: theme =>
-              theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-            bgcolor: theme =>
-              theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)',
+            borderColor: 'divider',
+            bgcolor: 'action.hover',
           }}
         >
           <Typography variant="caption" fontWeight="bold">
@@ -124,7 +124,7 @@ export default function YamlCodeBlock({ content, onApply }: YamlCodeBlockProps) 
 
         <SyntaxHighlighter
           language="yaml"
-          style={oneDark}
+          style={isDarkTheme ? oneDark : prism}
           customStyle={{ margin: 0, borderRadius: 0 }}
         >
           {content}

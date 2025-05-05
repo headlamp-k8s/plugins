@@ -1,45 +1,19 @@
-export interface Prompt {
-  role: 'user' | 'assistant' | 'system' | 'tool';
+export type Prompt = {
+  role: string;
   content: string;
-  error?: boolean;
   toolCalls?: any[];
   toolCallId?: string;
-  name?: string; // Added for tool responses
-  contentFilterError?: boolean; // Add this new flag
-}
+  name?: string;
+  error?: boolean;
+  contentFilterError?: boolean;
+  alreadyDisplayed?: boolean;
+};
 
 export default abstract class AIManager {
   history: Prompt[] = [];
-  contexts: { [key: string]: any } = {};
-
-  abstract userSend(message: string): Promise<Prompt>;
-
-  // Required method to process tool responses
-  async processToolResponses(): Promise<Prompt> {
-    // Base implementation returns a default message
-    // Should be overridden by specific AI managers
-    const response: Prompt = {
-      role: 'assistant',
-      content: 'Tool response processed.',
-    };
-    this.history.push(response);
-    return response;
-  }
-
-  // Optional method to be implemented by specific AI managers
-  configureTools?(
-    tools: any[],
-    handler: (
-      url: string,
-      method: string,
-      body?: string,
-      toolCallId?: string,
-      pendingPrompt?: Prompt
-    ) => Promise<any>
-  ): void;
+  contexts: Record<string, any> = {};
 
   addContext(id: string, context: any) {
-    console.log('Adding context:', { id, context });
     this.contexts[id] = context;
   }
 
@@ -48,21 +22,31 @@ export default abstract class AIManager {
     this.contexts = {};
   }
 
+  // Abstract method that must be implemented
+  abstract userSend(message: string): Promise<Prompt>;
+
+  // Changed from protected to public to allow external calling
+  abstract processToolResponses(): Promise<Prompt>;
+  
+  // Define configureTools method for tool configuration
+  configureTools?(
+    tools: any[],
+    handler: (
+      url: string, 
+      method: string, 
+      body?: string, 
+      toolCallId?: string, 
+      pendingPrompt?: Prompt
+    ) => Promise<any>
+  ): void;
+
   getPromptSuggestions(): string[] {
-    // Return default suggestions based on contexts
-    const suggestions = [
-      'What is happening in my cluster?',
-      'Why is this resource in error state?',
+    return [
+      'Explain the resources in this list',
+      'What are the most critical issues to fix?',
+      'Show me a simple pod YAML example',
+      'How do I create a LoadBalancer service?',
+      'Check for potential security issues',
     ];
-
-    if (this.contexts.resourceDetails) {
-      suggestions.push('Explain what this resource does');
-    }
-
-    if (this.contexts.clusterWarnings) {
-      suggestions.push('Analyze these warnings and suggest fixes');
-    }
-
-    return suggestions;
   }
 }

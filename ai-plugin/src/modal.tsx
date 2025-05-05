@@ -1,20 +1,35 @@
 import { Icon } from '@iconify/react';
 import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
-import { apply,clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
+import { apply, clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
-import { Box, Button, Chip, Drawer, Grid, Paper, TextField, Typography } from '@mui/material';
-import React from 'react';
+import {
+  Box,
+  Button,
+  Chip,
+  Drawer,
+  Grid,
+  MenuItem,
+  Paper,
+  Select,
+  TextField,
+  Typography,
+} from '@mui/material';
+import React, { useEffect, useState } from 'react';
 import YAML from 'yaml';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
-import UsageTracker, { trackAIUsage } from './components/UsageTracker';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
 import LangChainManager from './langchain/LangChainManager';
 import OpenAIManager from './openai/manager';
 import TextStreamContainer from './textstream';
 import { useGlobalState } from './utils';
+import {
+  getActiveConfig,
+  getSavedConfigurations,
+  StoredProviderConfig,
+} from './utils/ProviderConfigManager';
 
 const maxCharLimit = 3000;
 function summarizeKubeObject(obj) {
@@ -133,6 +148,12 @@ export default function AIPrompt(props: {
   const [promptHistory, setPromptHistory] = React.useState<Prompt[]>([]);
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
 
+  // Get the active provider configuration
+  const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
+  
+  // Track available provider configurations
+  const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
+
   // Editor dialog state
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -210,8 +231,61 @@ export default function AIPrompt(props: {
     setShowEditor(true);
   };
 
+  // Initialize active configuration from plugin settings
+  useEffect(() => {
+    if (!pluginSettings) return;
+    
+    const savedConfigs = getSavedConfigurations(pluginSettings);
+    console.log('Saved configurations:', savedConfigs);
+    setAvailableConfigs(savedConfigs.providers || []);
+    
+    const active = getActiveConfig(savedConfigs);
+    if (active) {
+      setActiveConfig(active);
+      
+      // Update global state with all providers and active one
+      _pluginSetting.setSavedProviders(savedConfigs.providers || []);
+      _pluginSetting.setActiveProvider(active);
+    }
+  }, [pluginSettings]);
+  
+  // Handle changing the active configuration
+  const handleChangeConfig = (config: StoredProviderConfig) => {
+    if (!config) return;
+    
+    // Only reset if we're actually changing the configuration
+    if (!activeConfig || 
+        activeConfig.providerId !== config.providerId || 
+        activeConfig.config.apiKey !== config.config.apiKey) {
+      
+      console.log(`Switching provider from ${activeConfig?.providerId || 'none'} to ${config.providerId}`);
+      setActiveConfig(config);
+      
+      // Update the global state with the active provider
+      _pluginSetting.setActiveProvider(config);
+      
+      // Reset the AI manager to reinitialize with new settings
+      if (aiManager) {
+        aiManager.reset();
+        setAiManager(null);
+        setPromptHistory([]);
+        
+        // Add a system message indicating the provider change
+        setTimeout(() => {
+          const providerName = config.displayName || 
+            getProviderById(config.providerId)?.name || 
+            config.providerId;
+            
+          setPromptHistory([{
+            role: 'system',
+            content: `Switched to ${providerName}. History has been cleared.`
+          }]);
+        }, 100);
+      }
+    }
+  };
+  
   React.useEffect(() => {
-    // Create appropriate AI Manager based on settings
     if (!aiManager && pluginSettings) {
       console.log(
         'Initializing AI manager with settings:',
@@ -227,6 +301,20 @@ export default function AIPrompt(props: {
         })
       );
 
+      // If we have an active config from the new format, use it
+      if (activeConfig) {
+        try {
+          console.log(`Creating new LangChainManager with provider: ${activeConfig.providerId}`);
+          const newManager = new LangChainManager(activeConfig.providerId, activeConfig.config);
+          setAiManager(newManager);
+          return;
+        } catch (error) {
+          console.error('Error initializing LangChainManager with active config:', error);
+          setApiError(`Failed to initialize AI model: ${error.message}`);
+        }
+      }
+
+      // Legacy support for OpenAI and Azure OpenAI
       const { provider, config } = pluginSettings;
 
       // If provider is set to langchain model
@@ -280,12 +368,12 @@ export default function AIPrompt(props: {
               : 'Missing OpenAI configuration. Please check your settings.'
           );
         }
-      } else {
+      } else if (!activeConfig) {
         console.error('No valid API configuration found in settings');
-        setApiError('No valid API configuration found. Please check your settings.');
+        // setApiError('No valid API configuration found. Please check your settings.');
       }
     }
-  }, [aiManager, pluginSettings]);
+  }, [aiManager, pluginSettings, activeConfig]);
 
   const updateHistory = React.useCallback(() => {
     setPromptHistory(aiManager?.history ?? []);
@@ -300,18 +388,6 @@ export default function AIPrompt(props: {
       const promptResponse = await aiManager.userSend(prompt);
       console.log('Prompt response:', promptResponse);
 
-      // Track usage after receiving a response with estimated token count
-      const provider =
-        pluginSettings?.provider ||
-        (pluginSettings?.API_TYPE === 'azure' ? 'Azure OpenAI' : 'OpenAI');
-
-      // Estimate token count based on prompt and response length
-      const estimatedTokens = Math.ceil(
-        (prompt.length + (promptResponse.content?.length || 0)) / 4
-      );
-      trackAIUsage(provider, estimatedTokens);
-
-      // Handle content filter errors specifically - these are already added to history with error flags
       if (promptResponse.error) {
         // Clear the global API error since errors are now handled at the prompt level
         setApiError(null);
@@ -345,7 +421,7 @@ export default function AIPrompt(props: {
     }
   }
 
-  // Modified function to make requests to Kubernetes API with confirmation
+  // Simplified makeKubeRequest that follows the architecture in the example
   const makeKubeRequest = async (
     url: string,
     method: string,
@@ -353,53 +429,80 @@ export default function AIPrompt(props: {
     toolCallId?: string,
     pendingPrompt?: Prompt
   ) => {
-    // Try to convert any JSON body to YAML for better display
-    let displayBody = body;
-    if (
-      body &&
-      (method.toUpperCase() === 'POST' ||
-        method.toUpperCase() === 'PUT' ||
-        method.toUpperCase() === 'PATCH')
-    ) {
+    // For GET requests, proceed directly with clusterRequest
+    if (method.toUpperCase() === 'GET') {
       try {
-        // Check if it's JSON and convert to YAML
-        const isJson = body.trim().startsWith('{') || body.trim().startsWith('[');
-        if (isJson) {
-          const jsonObject = JSON.parse(body);
-          displayBody = YAML.stringify(jsonObject);
+        const cluster = getCluster();
+        if (!cluster) {
+          throw new Error('No cluster selected');
         }
-      } catch (e) {
-        // If parse fails, keep original body
-        console.warn('Failed to parse body as JSON:', e);
+
+        const headers = {
+          'Content-Type': 'application/json',
+          Accept: 'application/json;as=Table;g=meta.k8s.io;v=v1',
+        };
+
+        const response = await clusterRequest(url, {
+          method,
+          cluster,
+          body: body === '' ? undefined : body,
+          headers,
+        });
+
+        // Process table responses similar to the example
+        if (typeof response === 'object' && response?.kind === 'Table') {
+          const result = [
+            [...response.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
+            ...response.rows.map((row: any) =>
+              [...row.cells, row.object.metadata.namespace || ''].join(',')
+            ),
+          ].join('\n');
+          return result;
+        }
+
+        return response;
+      } catch (error) {
+        console.error('Error with GET request:', error);
+        return JSON.stringify({ error: true, message: error.message });
       }
     }
 
-    // For GET requests, proceed immediately
-    if (method.toUpperCase() === 'GET') {
-      return handleActualApiRequest(url, method, body);
-    }
+    // For non-GET methods, show confirmation dialog and return pending status
+    try {
+      // Format body as YAML for better display if it's JSON
+      let displayBody = body;
+      if (body && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+        try {
+          if (body.trim().startsWith('{') || body.trim().startsWith('[')) {
+            const jsonObject = JSON.parse(body);
+            displayBody = YAML.stringify(jsonObject);
+          }
+        } catch (e) {
+          console.warn('Failed to parse body as JSON:', e);
+        }
+      }
 
-    // For POST, DELETE, PUT, PATCH - show confirmation dialog
-    setApiRequest({
-      url,
-      method,
-      body: displayBody, // Use the potentially converted YAML for display
-      toolCallId,
-      pendingPrompt,
-    });
-    setShowApiConfirmation(true);
-    setApiResponse(null);
-    setApiRequestError(null);
-
-    // Return a promise that will be resolved when the user confirms or rejects
-    return new Promise(resolve => {
-      // The actual request will be made when the user confirms in the dialog
-      // For now, just indicate that this is pending confirmation
-      resolve({
-        status: 'pending_confirmation',
-        message: `This ${method.toUpperCase()} request requires your confirmation.`,
+      // Show confirmation dialog
+      setApiRequest({
+        url,
+        method,
+        body: displayBody,
+        toolCallId,
+        pendingPrompt,
       });
-    });
+      setShowApiConfirmation(true);
+      setApiResponse(null);
+      setApiRequestError(null);
+
+      // Return pending status - actual request will be made when confirmed
+      return {
+        status: 'pending_confirmation',
+        message: `This ${method.toUpperCase()} request requires confirmation before proceeding.`,
+      };
+    } catch (error) {
+      console.error('Error preparing request:', error);
+      return JSON.stringify({ error: true, message: error.message });
+    }
   };
 
   // Helper function to check if a URL is requesting logs
@@ -458,20 +561,29 @@ export default function AIPrompt(props: {
 
               // Add tool response to history if needed
               if (apiRequest?.toolCallId && aiManager) {
+                const successResponse = {
+                  status: 'success',
+                  message: `${resource.kind || 'Resource'} created successfully`,
+                  resourceType: resource.kind,
+                  name: resource.metadata?.name,
+                  namespace: resource.metadata?.namespace,
+                };
+
                 const toolResponse: Prompt = {
                   role: 'tool',
-                  content: JSON.stringify({
-                    status: 'success',
-                    message: `${resource.kind || 'Resource'} created successfully`,
-                    resourceType: resource.kind,
-                    name: resource.metadata?.name,
-                    namespace: resource.metadata?.namespace,
-                  }),
+                  content: JSON.stringify(successResponse),
                   toolCallId: apiRequest.toolCallId,
                   name: 'kubernetes_api_request',
                 };
 
-                aiManager.history.push(toolResponse);
+                // Remove any existing tool response with this ID
+                const updatedHistory = aiManager.history.filter(
+                  item => !(item.role === 'tool' && item.toolCallId === apiRequest.toolCallId)
+                );
+                
+                // Add the new response
+                updatedHistory.push(toolResponse);
+                aiManager.history = updatedHistory;
                 updateHistory();
 
                 // If there was a pending prompt from the tool call, process it now
@@ -491,8 +603,14 @@ export default function AIPrompt(props: {
             }
           );
 
-          // Return placeholder response
-          return { status: 'processing', message: 'Create operation in progress' };
+          // Return success response immediately
+          return { 
+            status: 'success', 
+            message: `${resource.kind || 'Resource'} created successfully`,
+            resourceType: resource.kind,
+            name: resource.metadata?.name,
+            namespace: resource.metadata?.namespace,
+          };
         } catch (error) {
           console.error('Error parsing YAML or applying resource:', error);
           setApiRequestError(`Error creating resource: ${error.message}`);
@@ -580,6 +698,7 @@ export default function AIPrompt(props: {
 
       // For PATCH/PUT operations with clusterAction
       if ((method.toUpperCase() === 'PATCH' || method.toUpperCase() === 'PUT') && body) {
+        console.log('Processing PATCH/PUT request:', { url, method, body });
         try {
           // Parse the body to get resource details for better notifications
           let resource;
@@ -636,7 +755,14 @@ export default function AIPrompt(props: {
                   name: 'kubernetes_api_request',
                 };
 
-                aiManager.history.push(toolResponse);
+                // Remove any existing tool response with this ID
+                const updatedHistory = aiManager.history.filter(
+                  item => !(item.role === 'tool' && item.toolCallId === apiRequest.toolCallId)
+                );
+                
+                // Add the new response
+                updatedHistory.push(toolResponse);
+                aiManager.history = updatedHistory;
                 updateHistory();
 
                 // If there was a pending prompt from the tool call, process it now
@@ -656,8 +782,14 @@ export default function AIPrompt(props: {
             }
           );
 
-          // Return placeholder response
-          return { status: 'processing', message: 'Update operation in progress' };
+          // Return success response immediately to update UI
+          return { 
+            status: 'success', 
+            message: `${resourceIdentifier} updated successfully`,
+            resourceType: resource.kind,
+            name: resource.metadata?.name,
+            namespace: resource.metadata?.namespace,
+          };
         } catch (error) {
           console.error('Error updating resource:', error);
           setApiRequestError(`Error updating resource: ${error.message}`);
@@ -782,14 +914,50 @@ export default function AIPrompt(props: {
   };
 
   // Function to handle API confirmation dialog confirmation
-  const handleApiConfirmation = async () => {
+  const handleApiConfirmation = async (body) => {
     if (!apiRequest) return;
 
-    const { url, method, body } = apiRequest;
-    await handleActualApiRequest(url, method, body);
+    const { url, method, toolCallId } = apiRequest;
+    const result = await handleActualApiRequest(url, method, body);
+    
+    // If we have a successful result and a toolCallId, update the tool response
+    if (result && toolCallId && aiManager) {
+      // Make sure we have a response that indicates success
+      let formattedResult;
+      if (typeof result === 'string') {
+        formattedResult = result;
+      } else if (typeof result === 'object') {
+        // For non-GET requests, make sure we have a success status
+        if (method.toUpperCase() !== 'GET' && !result.status) {
+          formattedResult = JSON.stringify({
+            status: 'success',
+            message: `${method.toUpperCase()} operation completed successfully`,
+            ...result
+          });
+        } else {
+          formattedResult = JSON.stringify(result);
+        }
+      }
+      
+      // Update the tool response with the success status
+      const toolResponse: Prompt = {
+        role: 'tool',
+        content: formattedResult,
+        toolCallId: toolCallId,
+        name: 'kubernetes_api_request',
+      };
+
+      // Update the history with the new response
+      const updatedHistory = aiManager.history.filter(
+        item => !(item.role === 'tool' && item.toolCallId === toolCallId)
+      );
+      
+      updatedHistory.push(toolResponse);
+      aiManager.history = updatedHistory;
+      updateHistory();
+    }
   };
 
-  // Function to handle API confirmation dialog close
   const handleApiDialogClose = () => {
     setShowApiConfirmation(false);
     setApiRequest(null);
@@ -797,7 +965,7 @@ export default function AIPrompt(props: {
     setApiRequestError(null);
     setApiLoading(false);
   };
-
+  
   React.useEffect(() => {
     if (!aiManager) {
       return;
@@ -880,71 +1048,10 @@ export default function AIPrompt(props: {
     ];
   };
 
-  // Extract YAML from content - This function is still useful for the TextStreamContainer
-  const extractYamlContent = (content: string) => {
-    if (!content) return null;
 
-    // Check for YAML code blocks
-    const yamlRegex = /```(?:yaml|yml)([\s\S]*?)```/g;
-    const matches = [];
-    let match;
-
-    while ((match = yamlRegex.exec(content)) !== null) {
-      if (match[1] && match[1].trim()) {
-        matches.push(match[1].trim());
-      }
-    }
-
-    // If no code blocks found, look for YAML with horizontal separators
-    if (matches.length === 0) {
-      const separatorPattern = /[-]{3,}/g;
-      const lines = content.split('\n');
-      const separatorLines = [];
-
-      // Find all separator lines
-      lines.forEach((line, index) => {
-        if (line.match(separatorPattern)) {
-          separatorLines.push(index);
-        }
-      });
-
-      // If we have at least 2 separators, extract content between them
-      if (separatorLines.length >= 2) {
-        for (let i = 0; i < separatorLines.length - 1; i++) {
-          const startLine = separatorLines[i] + 1;
-          const endLine = separatorLines[i + 1];
-
-          const potentialYaml = lines.slice(startLine, endLine).join('\n').trim();
-          if (potentialYaml) {
-            try {
-              // Verify it's valid YAML
-              const parsed = YAML.parse(potentialYaml);
-              if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
-                matches.push(potentialYaml);
-              }
-            } catch (e) {
-              // Not valid YAML, continue
-              console.debug('Not valid YAML between separators:', e);
-            }
-          }
-        }
-      }
-    }
-
-    return matches.length > 0 ? matches : null;
-  };
-
-  // Get provider display name
+  // Get provider display name from the active configuration
   const getProviderDisplayName = () => {
-    if (!pluginSettings) return 'AI';
-
-    if (pluginSettings.provider) {
-      const provider = getProviderById(pluginSettings.provider);
-      return provider ? `${provider.name} AI` : 'AI';
-    }
-
-    // Legacy support
-    return pluginSettings.API_TYPE === 'azure' ? 'Azure OpenAI' : 'OpenAI';
+    return 'AI'
   };
 
   return openPopup ? (
@@ -974,11 +1081,10 @@ export default function AIPrompt(props: {
             alignItems: 'center',
           }}
         >
-          <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="h6">{getProviderDisplayName()} Assistant (beta)</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <UsageTracker pluginSettings={pluginSettings} />
             <ActionButton
               description="Close"
               onClick={() => {
@@ -988,6 +1094,7 @@ export default function AIPrompt(props: {
             />
           </Box>
         </Box>
+
         <Grid
           container
           direction="column"
@@ -1113,16 +1220,83 @@ export default function AIPrompt(props: {
                 }
               />
               <Grid container justifyContent="space-between" alignItems="center">
-                <Grid item>
+                <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
                   <ActionButton
                     description="Clear History"
                     onClick={() => {
-                      aiManager.reset();
+                      aiManager?.reset();
                       updateHistory();
                     }}
                     icon="mdi:broom"
                   />
+                  
+                  {/* Provider Selection Dropdown */}
+                  {availableConfigs.length > 1 && (
+                    <Box ml={2} sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Select
+                        value={activeConfig?.providerId || ''}
+                        onChange={(e) => {
+                          // Find the matching saved configuration
+                          const selectedProviderId = e.target.value as string;
+                          const newConfig = availableConfigs.find(c => c.providerId === selectedProviderId);
+                          if (newConfig) handleChangeConfig(newConfig);
+                        }}
+                        size="small"
+                        sx={{ minWidth: 120, height: 32 }}
+                        variant="outlined"
+                        renderValue={(selected) => {
+                          const providerInfo = getProviderById(selected as string);
+                          return (
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Icon 
+                                icon={providerInfo?.icon || 'mdi:robot'} 
+                                width="16px"
+                                height="16px" 
+                                style={{ marginRight: 4 }} 
+                              />
+                              <Typography variant="body2" noWrap>
+                                {providerInfo?.name || selected}
+                              </Typography>
+                            </Box>
+                          );
+                        }}
+                      >
+                        {availableConfigs.map((config, index) => {
+                          // Find provider info for icon
+                          const providerInfo = getProviderById(config.providerId);
+                          
+                          return (
+                            <MenuItem 
+                              key={index} 
+                              value={config.providerId}
+                              selected={activeConfig?.providerId === config.providerId}
+                            >
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Icon 
+                                  icon={providerInfo?.icon || 'mdi:robot'} 
+                                  width="16px"
+                                  height="16px" 
+                                  style={{ marginRight: 8 }} 
+                                />
+                                <Typography variant="body2">
+                                  {config.displayName || 
+                                   providerInfo?.name || 
+                                   config.providerId}
+                                </Typography>
+                                {config.isDefault && (
+                                  <Typography component="span" variant="caption" sx={{ ml: 1, color: 'primary.main' }}>
+                                    (Default)
+                                  </Typography>
+                                )}
+                              </Box>
+                            </MenuItem>
+                          );
+                        })}
+                      </Select>
+                    </Box>
+                  )}
                 </Grid>
+                
                 <Grid item>
                   <Button
                     variant="contained"
@@ -1149,15 +1323,14 @@ export default function AIPrompt(props: {
       </Drawer>
 
       {/* Editor Dialog */}
-      <EditorDialog
+      { !isDelete && showEditor && <EditorDialog
         open={showEditor}
         onClose={() => setShowEditor(false)}
         yamlContent={editorContent}
         title={editorTitle}
         resourceType={resourceType}
-        isDelete={isDelete}
         onSuccess={handleOperationSuccess}
-      />
+      /> }
 
       {/* API Confirmation Dialog */}
       <ApiConfirmationDialog

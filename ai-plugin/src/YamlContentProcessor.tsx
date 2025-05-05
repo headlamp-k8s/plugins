@@ -1,228 +1,323 @@
-import { Box, Button } from '@mui/material';
 import React, { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Box, Typography, useTheme } from '@mui/material';
+import YamlDisplay from './components/YamlDisplay';
 import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
 
 interface YamlContentProcessorProps {
   content: string;
-  onYamlDetected: (yaml: string, resourceType: string, isDelete: boolean) => void;
-  showDeleteOption?: boolean;
-  replaceKubectlSuggestions?: boolean;
+  onYamlDetected: (yaml: string, resourceType: string) => void;
 }
 
-export default function YamlContentProcessor({
-  content,
-  onYamlDetected,
-  showDeleteOption = true,
-  replaceKubectlSuggestions = false,
-}: YamlContentProcessorProps) {
-  const [processedContent, setProcessedContent] = useState<string>(content);
-  const [yamlBlocks, setYamlBlocks] = useState<
-    Array<{
-      yaml: string;
-      index: number;
-      resourceType: string;
-      isValid: boolean;
-      processed: boolean;
-    }>
-  >([]);
+const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, onYamlDetected }) => {
+  const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
+  const theme = useTheme();
+
+  // Helper function to convert text to paragraphs
+  const textToParagraphs = (text: string): React.ReactNode[] => {
+    return text.split('\n\n').map((paragraph, idx) => {
+      if (paragraph.trim().length === 0) return null;
+      
+      // Handle bullet points
+      if (paragraph.trim().match(/^[-*•]\s/m)) {
+        const listItems = paragraph
+          .split('\n')
+          .filter(line => line.trim().length > 0)
+          .map((line, i) => (
+            <Box component="li" key={i} sx={{ mt: 0.5 }}>
+              {line.replace(/^[-*•]\s/, '')}
+            </Box>
+          ));
+        
+        return (
+          <Box component="ul" key={idx} sx={{ pl: 2, mb: 1 }}>
+            {listItems}
+          </Box>
+        );
+      }
+      
+      return (
+        <Typography key={idx} variant="body2" paragraph>
+          {paragraph.split('\n').map((line, i) => (
+            <React.Fragment key={i}>
+              {line}
+              {i < paragraph.split('\n').length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </Typography>
+      );
+    });
+  };
 
   useEffect(() => {
-    // Process the content to find YAML blocks
-    const extractedYamlBlocks = extractYamlBlocks(content);
-    setYamlBlocks(extractedYamlBlocks);
+    // Process content to separate YAML blocks from markdown
+    const sections: React.ReactNode[] = [];
+    let currentText = '';
+    let inYamlBlock = false;
+    let currentYaml = '';
+    let yamlSectionTitle = '';
+    
+    // Split the content into lines
+    const lines = content.split('\n');
+    
+    const yamlContentMarkers = [
+      /apiVersion:/i,
+      /kind:/i,
+      /metadata:/i,
+      /spec:/i
+    ];
+    
+    const isYamlContentLine = (line: string) => {
+      return yamlContentMarkers.some(marker => marker.test(line.trim()));
+    };
 
-    // Process the content to replace kubectl suggestions if enabled
-    if (replaceKubectlSuggestions) {
-      let updatedContent = content;
-
-      // Look for kubectl commands and add a note about using the built-in editor
-      const kubectlRegex =
-        /(?:```(?:sh|bash|)\s*)?kubectl\s+(?:apply|create|delete)\s+-f\s+(?:<.*?>|\S+)(?:\s*```)?/g;
-      updatedContent = updatedContent.replace(kubectlRegex, match => {
-        const isDelete = match.includes('delete');
-        return `${match}\n\n**Note:** Instead of using kubectl, you can use the Apply/View buttons below to manage resources directly through this interface.`;
-      });
-
-      setProcessedContent(updatedContent);
-    } else {
-      setProcessedContent(content);
-    }
-  }, [content, replaceKubectlSuggestions]);
-
-  // Extract YAML blocks from the content
-  const extractYamlBlocks = (content: string) => {
-    const blocks = [];
-
-    // Match YAML code blocks from markdown
-    const yamlRegex = /```(?:yaml|yml)([\s\S]*?)```/g;
-    let match;
-    let index = 0;
-
-    while ((match = yamlRegex.exec(content)) !== null) {
-      const yamlContent = match[1].trim();
-
-      try {
-        const parsedResult = parseKubernetesYAML(yamlContent);
-
-        if (parsedResult.isValid) {
-          blocks.push({
-            yaml: yamlContent,
-            index: index++,
-            resourceType: parsedResult.resourceType || 'Unknown',
-            isValid: true,
-            processed: false,
-          });
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Check for section titles that might indicate YAML examples
+      if (!inYamlBlock && /^\d+\.\s+([A-Za-z]+)\s*$/.test(line.trim())) {
+        const match = line.match(/^\d+\.\s+([A-Za-z]+)\s*$/);
+        if (match) yamlSectionTitle = match[1];
+        
+        // Add accumulated text
+        if (currentText.trim()) {
+          sections.push(...textToParagraphs(currentText));
+          currentText = '';
         }
-      } catch (error) {
-        // Not valid YAML or not a Kubernetes resource
-        console.debug('Invalid YAML block:', error);
+        
+        // Add the section title
+        sections.push(
+          <Typography key={`title-${sections.length}`} variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+            {line}
+          </Typography>
+        );
+        continue;
       }
-    }
-
-    // If no YAML blocks found in code blocks, check for YAML with separators
-    if (blocks.length === 0) {
-      // Look for YAML content between separator lines (like ----)
-      const separatorPattern = /[-]{3,}/g;
-      const lines = content.split('\n');
-      const separatorLines = [];
-
-      // Find all separator line indexes
-      lines.forEach((line, index) => {
-        if (line.match(separatorPattern)) {
-          separatorLines.push(index);
+      
+      // Check for YAML block start
+      if (!inYamlBlock) {
+        // Check if this line starts a YAML block
+        if (line.trim().startsWith('```yaml') || line.trim().startsWith('```yml')) {
+          // Start collecting YAML
+          inYamlBlock = true;
+          currentYaml = '';
+          
+          // Add accumulated text before the YAML block
+          if (currentText.trim()) {
+            sections.push(...textToParagraphs(currentText));
+            currentText = '';
+          }
+          continue;
         }
-      });
-
-      // Process content between separator lines
-      if (separatorLines.length >= 2) {
-        for (let i = 0; i < separatorLines.length - 1; i++) {
-          const startLine = separatorLines[i] + 1;
-          const endLine = separatorLines[i + 1];
-
-          const yamlContent = lines.slice(startLine, endLine).join('\n').trim();
-          if (yamlContent) {
-            try {
-              const parsedResult = parseKubernetesYAML(yamlContent);
-
-              if (parsedResult.isValid) {
-                blocks.push({
-                  yaml: yamlContent,
-                  index: index++,
-                  resourceType: parsedResult.resourceType || 'Unknown',
-                  isValid: true,
-                  processed: false,
-                });
-              }
-            } catch (error) {
-              // Not valid YAML
-              console.debug('Invalid YAML between separators:', error);
+        
+        // Check if this is a YAML separator line
+        if (line.trim().match(/^-{3,}$/)) {
+          // Look ahead to see if next few lines contain YAML content markers
+          const nextLines = lines.slice(i + 1, i + 6).join('\n');
+          if (yamlContentMarkers.some(marker => marker.test(nextLines))) {
+            // This is likely a YAML separator - start collecting YAML
+            inYamlBlock = true;
+            currentYaml = '';
+            
+            // Add accumulated text before the YAML block
+            if (currentText.trim()) {
+              sections.push(...textToParagraphs(currentText));
+              currentText = '';
             }
+            continue;
           }
         }
-      }
-    }
-
-    return blocks;
-  };
-
-  // Renders components for all detected YAML blocks
-  const renderYamlActions = () => {
-    return yamlBlocks.map(block => (
-      <Box
-        key={`yaml-${block.index}`}
-        sx={{
-          mt: 1,
-          mb: 2,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 1,
-          borderTop: '1px dashed',
-          borderColor: 'divider',
-          pt: 1,
-        }}
-      >
-        <Button
-          variant="outlined"
-          size="small"
-          color="primary"
-          onClick={() => onYamlDetected(block.yaml, block.resourceType, false)}
-        >
-          {block.resourceType === 'Unknown' ? 'View YAML' : `Apply ${block.resourceType}`}
-        </Button>
-
-        {showDeleteOption && (
-          <Button
-            variant="outlined"
-            size="small"
-            color="error"
-            onClick={() => onYamlDetected(block.yaml, block.resourceType, true)}
-          >
-            Delete {block.resourceType}
-          </Button>
-        )}
-      </Box>
-    ));
-  };
-
-  // Custom renderer for code blocks that highlights YAML and adds action buttons
-  const customRenderers = {
-    code({ node, inline, className, children, ...props }) {
-      const match = /language-(\w+)/.exec(className || '');
-      const language = match ? match[1] : '';
-
-      const isYamlBlock = language === 'yaml' || language === 'yml';
-      const codeContent = String(children).replace(/\n$/, '');
-
-      // Check if this is a YAML block that we've identified
-      if (isYamlBlock) {
-        try {
-          const parsedResult = parseKubernetesYAML(codeContent);
-
-          if (parsedResult.isValid) {
-            // This is an identifiable Kubernetes YAML block
-            // Don't add buttons here - they'll be added after the block
-            return (
-              <Box sx={{ position: 'relative' }}>
-                <SyntaxHighlighter
-                  style={tomorrow}
-                  language="yaml"
-                  customStyle={{ fontSize: '0.8rem' }}
-                >
-                  {codeContent}
-                </SyntaxHighlighter>
+        
+        // Check if line directly starts with YAML content without markers
+        if (isYamlContentLine(line)) {
+          // Verify the next few lines also have YAML patterns
+          const nextLines = lines.slice(i + 1, i + 5).join('\n');
+          const yamlMarkers = yamlContentMarkers.filter(marker => marker.test(nextLines)).length;
+          
+          if (yamlMarkers >= 2) { // At least 2 more YAML markers in next few lines
+            inYamlBlock = true;
+            currentYaml = line + '\n'; // Include this line in the YAML
+            
+            // Add accumulated text before the YAML block
+            if (currentText.trim()) {
+              sections.push(...textToParagraphs(currentText));
+              currentText = '';
+            }
+            continue;
+          }
+        }
+        
+        // Otherwise, add to current text
+        currentText += line + '\n';
+      } else {
+        // Check if this line ends a YAML block
+        if (line.trim() === '```') {
+          inYamlBlock = false;
+          
+          // Process the collected YAML
+          try {
+            const parsedYaml = parseKubernetesYAML(currentYaml);
+            if (parsedYaml.isValid) {
+              sections.push(
+                <YamlDisplay
+                  key={`yaml-${sections.length}`}
+                  yaml={currentYaml}
+                  title={yamlSectionTitle || parsedYaml.resourceType}
+                  onOpenInEditor={onYamlDetected}
+                />
+              );
+            } else {
+              // Not valid YAML, just display as code
+              sections.push(
+                <Box component="pre" key={`code-${sections.length}`} sx={{ 
+                  bgcolor: 'background.paper',
+                  p: 2,
+                  borderRadius: 1,
+                  overflow: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  fontSize: '0.85rem'
+                }}>
+                  {currentYaml}
+                </Box>
+              );
+            }
+          } catch (e) {
+            // Error parsing YAML, display as code
+            sections.push(
+              <Box component="pre" key={`code-${sections.length}`} sx={{ 
+                bgcolor: 'background.paper',
+                p: 2,
+                borderRadius: 1,
+                overflow: 'auto',
+                whiteSpace: 'pre-wrap',
+                fontSize: '0.85rem'
+              }}>
+                {currentYaml}
               </Box>
             );
           }
-        } catch (error) {
-          // Not a valid Kubernetes YAML - render as normal
+          currentYaml = '';
+          yamlSectionTitle = '';
+          continue;
+        }
+        
+        // Check for YAML section end with separator
+        if (line.trim().match(/^-{3,}$/)) {
+          // Only end the block if we've accumulated some YAML content
+          if (currentYaml.trim().length > 0) {
+            inYamlBlock = false;
+            
+            // Process the collected YAML
+            try {
+              const parsedYaml = parseKubernetesYAML(currentYaml);
+              if (parsedYaml.isValid) {
+                sections.push(
+                  <YamlDisplay
+                    key={`yaml-${sections.length}`}
+                    yaml={currentYaml}
+                    title={yamlSectionTitle || parsedYaml.resourceType}
+                    onOpenInEditor={onYamlDetected}
+                  />
+                );
+              } else {
+                // Not valid YAML, just display as pre-formatted text
+                sections.push(
+                  <Box component="pre" key={`code-${sections.length}`} sx={{ 
+                    bgcolor: 'background.paper',
+                    p: 2,
+                    borderRadius: 1,
+                    overflow: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    fontSize: '0.85rem'
+                  }}>
+                    {currentYaml}
+                  </Box>
+                );
+              }
+            } catch (e) {
+              // Error parsing YAML, display as pre-formatted text
+              sections.push(
+                <Box component="pre" key={`code-${sections.length}`} sx={{ 
+                  bgcolor: 'background.paper',
+                  p: 2,
+                  borderRadius: 1,
+                  overflow: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  fontSize: '0.85rem'
+                }}>
+                  {currentYaml}
+                </Box>
+              );
+            }
+            currentYaml = '';
+            yamlSectionTitle = '';
+            continue;
+          } else {
+            // This is probably a separator for the next YAML block
+            // Continue accumulating YAML
+            currentYaml += line + '\n';
+          }
+        } else {
+          // Add to the current YAML block
+          currentYaml += line + '\n';
         }
       }
-
-      // Default code block rendering
-      return !inline ? (
-        <SyntaxHighlighter
-          style={tomorrow}
-          language={language || 'text'}
-          customStyle={{ fontSize: '0.8rem' }}
-          {...props}
-        >
-          {codeContent}
-        </SyntaxHighlighter>
-      ) : (
-        <code className={className} {...props}>
-          {children}
-        </code>
-      );
-    },
-  };
+    }
+    
+    // Handle any remaining content
+    if (inYamlBlock && currentYaml.trim()) {
+      try {
+        const parsedYaml = parseKubernetesYAML(currentYaml);
+        if (parsedYaml.isValid) {
+          sections.push(
+            <YamlDisplay
+              key={`yaml-${sections.length}`}
+              yaml={currentYaml}
+              title={yamlSectionTitle || parsedYaml.resourceType}
+              onOpenInEditor={onYamlDetected}
+            />
+          );
+        } else {
+          // Not valid YAML, just display as pre-formatted text
+          sections.push(
+            <Box component="pre" key={`code-${sections.length}`} sx={{ 
+              bgcolor: 'background.paper',
+              p: 2,
+              borderRadius: 1,
+              overflow: 'auto',
+              whiteSpace: 'pre-wrap',
+              fontSize: '0.85rem'
+            }}>
+              {currentYaml}
+            </Box>
+          );
+        }
+      } catch (e) {
+        // Error parsing YAML, display as pre-formatted text
+        sections.push(
+          <Box component="pre" key={`code-${sections.length}`} sx={{ 
+            bgcolor: 'background.paper',
+            p: 2,
+            borderRadius: 1,
+            overflow: 'auto',
+            whiteSpace: 'pre-wrap',
+            fontSize: '0.85rem'
+          }}>
+            {currentYaml}
+          </Box>
+        );
+      }
+    } else if (currentText.trim()) {
+      sections.push(...textToParagraphs(currentText));
+    }
+    
+    setProcessedContent(sections);
+  }, [content, onYamlDetected]);
 
   return (
-    <>
-      <ReactMarkdown components={customRenderers}>{processedContent}</ReactMarkdown>
-      {renderYamlActions()}
-    </>
+    <Box>
+      {processedContent}
+    </Box>
   );
-}
+};
+
+export default YamlContentProcessor;

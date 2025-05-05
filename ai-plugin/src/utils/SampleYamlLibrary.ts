@@ -205,7 +205,7 @@ export function parseKubernetesYAML(yamlStr: string): {
       return { isValid: false };
     }
 
-    // Check if it has the basic Kubernetes resource structure
+    // Check if it has the basic Kubernetes resource structure - just need apiVersion and kind
     if (!parsed.apiVersion || !parsed.kind) {
       return { isValid: false };
     }
@@ -234,119 +234,147 @@ export function extractYamlContent(
 
   const results: { yaml: string; resourceType: string; title?: string }[] = [];
 
-  // Pattern to detect YAML sections with titles
-  const titlePattern = /[─]{3,}[\s\n]*(Sample[\s\w]*YAML:?)[\s\n]*[─]{3,}/gi;
-  const titleMatches = [...content.matchAll(titlePattern)];
+  // Simple YAML extraction:
+  // 1. Split content by triple backticks
+  const codeBlockRegex = /```yaml\n([\s\S]*?)```/g;
+  const codeBlockRegex2 = /```([\s\S]*?)```/g;
+  const codeBlockRegex3 = /~~~yaml\n([\s\S]*?)~~~(?!\n)/g;
+  const codeBlockRegex4 = /~~~([\s\S]*?)~~~(?!\n)/g;
 
-  if (titleMatches.length > 0) {
-    // If we found title patterns, extract YAMLs between them
-    for (let i = 0; i < titleMatches.length; i++) {
-      const currentMatch = titleMatches[i];
-      const title = currentMatch[1]?.trim();
-      const startPos = currentMatch.index! + currentMatch[0].length;
-
-      // Find end position (next title or end of content)
-      const nextMatch = titleMatches[i + 1];
-      const endPos = nextMatch ? nextMatch.index! : content.length;
-
-      // Extract YAML content between titles
-      let yamlSection = content.substring(startPos, endPos).trim();
-
-      // Skip explanation sections if present
-      const explanationPos = yamlSection.toLowerCase().indexOf('explanation:');
-      if (explanationPos !== -1) {
-        yamlSection = yamlSection.substring(0, explanationPos).trim();
+  const extractFromCodeBlock = (match: string) => {
+    const yamlContent = match.trim();
+    try {
+      const parsed = YAML.parse(yamlContent);
+      if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
+        results.push({
+          yaml: yamlContent,
+          resourceType: parsed.kind,
+        });
       }
-
-      // Try to parse as YAML
-      try {
-        const parsed = YAML.parse(yamlSection);
-        if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
-          results.push({
-            yaml: yamlSection,
-            resourceType: parsed.kind,
-            title: title,
-          });
-        }
-      } catch (e) {
-        console.log('Error parsing YAML between titles:', e);
-      }
+    } catch (e) {
+      console.log('Error parsing YAML code block:', e);
     }
+  };
+
+  let match;
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    extractFromCodeBlock(match[1]);
+  }
+  while ((match = codeBlockRegex2.exec(content)) !== null) {
+    extractFromCodeBlock(match[1]);
+  }
+  while ((match = codeBlockRegex3.exec(content)) !== null) {
+    extractFromCodeBlock(match[1]);
+  }
+  while ((match = codeBlockRegex4.exec(content)) !== null) {
+    extractFromCodeBlock(match[1]);
   }
 
-  // If we didn't find any YAML with title patterns, try other extraction methods
+  // If no results found with code blocks, fall back to other patterns
   if (results.length === 0) {
-    // Check for YAML code blocks using markdown style
-    const yamlRegex = /```(?:ya?ml)?\s*([\s\S]*?)```/g;
-    let match;
+    // Look for YAML surrounded by dashed lines
+    const dashedPattern = /[-]{3,}[\r\n]+([\s\S]*?)[-]{3,}/g;
+    let dashMatch;
 
-    while ((match = yamlRegex.exec(content)) !== null) {
-      if (match[1] && match[1].trim()) {
-        const yamlContent = match[1].trim();
+    while ((dashMatch = dashedPattern.exec(content)) !== null) {
+      if (dashMatch[1] && dashMatch[1].trim()) {
+        const yamlContent = dashMatch[1].trim();
+
         try {
           const parsed = YAML.parse(yamlContent);
           if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
+            // Try to find a title from the preceding content
+            const precedingContent = content.substring(0, dashMatch.index).trim();
+            const lastLineBreak = precedingContent.lastIndexOf('\n');
+            const possibleTitle = precedingContent.substring(lastLineBreak + 1).trim();
+
             results.push({
               yaml: yamlContent,
               resourceType: parsed.kind,
+              title: possibleTitle.length > 0 ? possibleTitle : `Sample ${parsed.kind}`,
             });
           }
         } catch (e) {
-          console.log('Error parsing YAML code block:', e);
+          // Not valid YAML, continue
+          console.log('Error parsing dashed YAML section:', e);
         }
       }
     }
 
-    // If still no results, look for sections with clear apiVersion and kind
+    // If still no results, fall back to other extraction methods
     if (results.length === 0) {
-      const contentByLines = content.split('\n');
-      let currentYaml = '';
-      let inYamlBlock = false;
+      // Check for YAML code blocks using markdown style
+      const yamlRegex = /```(?:ya?ml)?\s*([\s\S]*?)```/g;
+      let match;
 
-      for (let i = 0; i < contentByLines.length; i++) {
-        const line = contentByLines[i].trim();
-
-        if (line.startsWith('apiVersion:')) {
-          // Start collecting a new YAML block
-          inYamlBlock = true;
-          currentYaml = line + '\n';
-        } else if (inYamlBlock) {
-          // If we hit a blank line after collecting some YAML, try to finalize it
-          if (line === '' && currentYaml.length > 0) {
-            try {
-              const parsed = YAML.parse(currentYaml);
-              if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
-                results.push({
-                  yaml: currentYaml.trim(),
-                  resourceType: parsed.kind,
-                });
-              }
-            } catch (e) {
-              // Not valid YAML yet, continue collecting
+      while ((match = yamlRegex.exec(content)) !== null) {
+        if (match[1] && match[1].trim()) {
+          const yamlContent = match[1].trim();
+          try {
+            const parsed = YAML.parse(yamlContent);
+            if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
+              results.push({
+                yaml: yamlContent,
+                resourceType: parsed.kind,
+              });
             }
-
-            // Reset for next block
-            currentYaml = '';
-            inYamlBlock = false;
-          } else {
-            // Keep collecting lines
-            currentYaml += line + '\n';
+          } catch (e) {
+            console.log('Error parsing YAML code block:', e);
           }
         }
       }
 
-      // Check the last collected block
-      if (inYamlBlock && currentYaml.length > 0) {
-        try {
-          const parsed = YAML.parse(currentYaml);
-          if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
-            results.push({
-              yaml: currentYaml.trim(),
-              resourceType: parsed.kind,
-            });
+      // If still no results, look for sections with clear apiVersion and kind
+      if (results.length === 0) {
+        const contentByLines = content.split('\n');
+        let currentYaml = '';
+        let inYamlBlock = false;
+
+        for (let i = 0; i < contentByLines.length; i++) {
+          const line = contentByLines[i].trim();
+
+          if (line.startsWith('apiVersion:')) {
+            // Start collecting a new YAML block
+            inYamlBlock = true;
+            currentYaml = line + '\n';
+          } else if (inYamlBlock) {
+            // If we hit a blank line after collecting some YAML, try to finalize it
+            if (line === '' && currentYaml.length > 0) {
+              try {
+                const parsed = YAML.parse(currentYaml);
+                if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
+                  results.push({
+                    yaml: currentYaml.trim(),
+                    resourceType: parsed.kind,
+                  });
+                }
+              } catch (e) {
+                // Not valid YAML yet, continue collecting
+              }
+
+              // Reset for next block
+              currentYaml = '';
+              inYamlBlock = false;
+            } else {
+              // Keep collecting lines
+              currentYaml += line + '\n';
+            }
           }
-        } catch (e) {
-          // Not valid YAML, ignore
+        }
+
+        // Check the last collected block
+        if (inYamlBlock && currentYaml.length > 0) {
+          try {
+            const parsed = YAML.parse(currentYaml);
+            if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
+              results.push({
+                yaml: currentYaml.trim(),
+                resourceType: parsed.kind,
+              });
+            }
+          } catch (e) {
+            // Not valid YAML, ignore
+          }
         }
       }
     }
@@ -355,21 +383,3 @@ export function extractYamlContent(
   return results.length > 0 ? results : null;
 }
 
-// Helper function to determine if a string contains log data
-export function isLogContent(content: string): boolean {
-  if (!content || typeof content !== 'string') return false;
-
-  // Check for common log patterns
-  const hasTimestampFormat = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(content);
-  const hasNewlines = content.includes('\n');
-  const hasLogLevels = /\b(INFO|DEBUG|ERROR|WARNING|WARN)\b/i.test(content);
-
-  // Check if it might be a log response object from k8s API
-  const isLogResponseObject =
-    content.includes('"kind":"Status"') &&
-    (content.includes('"status":"Success"') || content.includes('"status":"Failure"'));
-
-  return (
-    (hasTimestampFormat && hasNewlines) || (hasLogLevels && hasNewlines) || isLogResponseObject
-  );
-}
