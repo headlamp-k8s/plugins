@@ -51,6 +51,16 @@ export const modelProviders: ModelProvider[] = [
         default: 'gpt-4o',
       },
     ],
+    models: [
+      'gpt-4o',
+      'gpt-4o-mini',
+      'o1-mini',
+      'o1',
+      'o1-preview',
+      'gpt-4-turbo',
+      'gpt-4',
+      'gpt-3.5-turbo',
+    ],
   },
   {
     id: 'azure',
@@ -128,6 +138,74 @@ export const modelProviders: ModelProvider[] = [
       'claude-2.1',
       'claude-instant-1.2',
     ],
+  },
+  {
+    id: 'mistral',
+    name: 'Mistral AI',
+    icon: 'mdi:brain',
+    description: 'Integration with Mistral AI models',
+    fields: [
+      {
+        name: 'apiKey',
+        label: 'API Key',
+        type: 'text',
+        required: true,
+        placeholder: 'Your Mistral API key',
+      },
+      {
+        name: 'model',
+        label: 'Model',
+        type: 'select',
+        required: true,
+        options: [
+          'mistral-small',
+          'mistral-medium',
+          'mistral-large',
+          'mistral-embed',
+          'mixtral-8x7b',
+          'open-mixtral-8x7b',
+          'open-mistral-7b'
+        ],
+        default: 'mistral-medium',
+      },
+    ],
+    models: [
+      'mistral-small',
+      'mistral-medium',
+      'mistral-large',
+      'mixtral-8x7b',
+      'open-mixtral-8x7b',
+      'open-mistral-7b'
+    ],
+  },
+  {
+    id: 'gemini',
+    name: 'Google Gemini',
+    icon: 'mdi:google',
+    description: 'Integration with Google Gemini models',
+    fields: [
+      {
+        name: 'apiKey',
+        label: 'API Key',
+        type: 'text',
+        required: true,
+        placeholder: 'Your Google API key',
+      },
+      {
+        name: 'model',
+        label: 'Model',
+        type: 'select',
+        required: true,
+        options: [
+          'gemini-pro',
+          'gemini-1.0-pro',
+          'gemini-1.5-pro',
+          'gemini-1.5-flash',
+        ],
+        default: 'gemini-pro',
+      },
+    ],
+    models: ['gemini-pro', 'gemini-1.0-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'],
   },
   {
     id: 'local',
