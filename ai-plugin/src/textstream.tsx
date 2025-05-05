@@ -7,6 +7,8 @@ import YamlLibraryDialog from './components/YamlLibraryDialog';
 import EditorDialog from './editordialog';
 import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
 import YamlContentProcessor from './YamlContentProcessor';
+import { Prompt } from './ai/manager';
+import { useTheme } from '@mui/material';
 
 export default function TextStreamContainer({
   history,
@@ -34,16 +36,42 @@ export default function TextStreamContainer({
   const [detectedYamls, setDetectedYamls] = useState<
     Record<string, { yaml: string; resourceType: string; name: string }>
   >({});
+  const theme = useTheme();
+  // Track pending tool calls
+  const [pendingToolCalls, setPendingToolCalls] = useState<Set<string>>(new Set());
+  
+  // Track completed operations to update the status of non-GET operations
+  const [completedOperations, setCompletedOperations] = useState<Set<string>>(new Set());
 
   // Track if content filter errors were detected
   const [contentFilterErrors, setContentFilterErrors] = useState<boolean>(false);
-
   useEffect(() => {
     // Collect tool responses
     const responseMap: Record<string, string> = {};
     history.forEach(prompt => {
       if (prompt.role === 'tool' && prompt.toolCallId) {
         responseMap[prompt.toolCallId] = prompt.content;
+        // Any tool with a response is no longer pending
+        setPendingToolCalls(prev => {
+          const updated = new Set(prev);
+          updated.delete(prompt.toolCallId);
+          return updated;
+        });
+      }
+
+      // Track pending tool calls from assistant messages
+      if (prompt.role === 'assistant' && prompt.toolCalls) {
+        // Add any new tool calls to pending set
+        prompt.toolCalls.forEach(toolCall => {
+          setPendingToolCalls(prev => {
+            const updated = new Set(prev);
+            // Only add if we don't already have a response
+            if (!responseMap[toolCall.id]) {
+              updated.add(toolCall.id);
+            }
+            return updated;
+          });
+        });
       }
 
       // Check for content filter errors
@@ -53,6 +81,87 @@ export default function TextStreamContainer({
     });
     setToolResponses(responseMap);
   }, [history]);
+
+  // Update completed operations when tool responses change
+  useEffect(() => {
+    // Map each tool response to check if any are completed operations
+    Object.entries(toolResponses).forEach(([toolCallId, response]) => {
+      try {
+        // Look through history to find the tool call data
+        const toolCall = history
+          .filter(p => p.role === 'assistant' && p.toolCalls)
+          .flatMap(p => p.toolCalls || [])
+          .find(tc => tc.id === toolCallId);
+
+        if (toolCall) {
+          const args = JSON.parse(toolCall.function.arguments || '{}');
+          
+          // Only track non-GET operations for completion
+          if (args.method?.toUpperCase() !== 'GET') {
+            // Check if the response indicates completion
+            const isCompleted = checkIfOperationCompleted(response);
+            
+            if (isCompleted) {
+              setCompletedOperations(prev => {
+                const updated = new Set(prev);
+                updated.add(toolCallId);
+                return updated;
+              });
+            }
+          }
+        }
+      } catch (e) {
+        // Error parsing, ignore
+        console.warn('Error checking completion status:', e);
+      }
+    });
+  }, [toolResponses, history]);
+
+  // Function to check if an operation has been completed
+  const checkIfOperationCompleted = (response: string): boolean => {
+    if (!response) return false;
+    
+    // Check for standard success indicators in string form
+    if (response.toLowerCase().includes('successfully') || 
+        response.toLowerCase().includes('created') || 
+        response.toLowerCase().includes('updated') ||
+        response.toLowerCase().includes('applied') ||
+        response.toLowerCase().includes('deleted') ||
+        response.toLowerCase().includes('processing')) {
+      return true;
+    }
+    
+    // Check for specific phrases that indicate non-completion
+    if (response.toLowerCase().includes('pending_confirmation') ||
+        response.toLowerCase().includes('waiting for confirmation')) {
+      return false;
+    }
+    
+    try {
+      // Try parsing as JSON to look for structured success indicators
+      const parsed = JSON.parse(response);
+      
+      // If explicitly marked as pending, it's not completed
+      if (parsed.status === 'pending_confirmation') {
+        return false;
+      }
+      
+      return (
+        parsed.status === 'success' || 
+        parsed.status === 'processing' ||
+        (parsed.metadata && parsed.kind) || // Looks like a K8s resource
+        (parsed.message && 
+          (parsed.message.toLowerCase().includes('successfully') || 
+           parsed.message.toLowerCase().includes('created') ||
+           parsed.message.toLowerCase().includes('deleted') ||
+           parsed.message.toLowerCase().includes('updated') ||
+           parsed.message.toLowerCase().includes('applied')))
+      );
+    } catch (e) {
+      // Not JSON or parsing failed, use default string check
+      return false;
+    }
+  };
 
   useEffect(() => {
     // Look for YAML in tool responses
@@ -85,70 +194,28 @@ export default function TextStreamContainer({
     }));
   };
 
-  const handleYamlDetected = (yaml: string, resourceType: string, isDelete: boolean) => {
+  const handleYamlDetected = (yaml: string, resourceType: string) => {
+    // Since we're removing the Delete button, we'll set isDelete to false always
     setEditorContent(yaml);
-    setEditorTitle(isDelete ? `Delete ${resourceType}` : `Apply ${resourceType}`);
+    setEditorTitle(`Apply ${resourceType}`);
     setResourceType(resourceType);
-    setIsDelete(isDelete);
+    setIsDelete(false);  // Always false since we don't show delete button
     setShowEditor(true);
   };
 
   const handleYamlLibrarySelect = (yaml: string, title: string, resourceType: string) => {
     if (onYamlAction) {
-      // Always pass isDelete as false for examples from the YAML library
+      // Always pass isDelete as false
       onYamlAction(yaml, title, resourceType, false);
     } else {
-      // Always pass isDelete as false for examples from the YAML library
-      handleYamlDetected(yaml, resourceType, false);
+      handleYamlDetected(yaml, resourceType);
     }
-  };
-
-  // Enhanced function to check if text contains indicators that the content is just examples
-  const isSampleContent = (content: string): boolean => {
-    if (!content) return false;
-
-    const lowerContent = content.toLowerCase();
-
-    // Check for keywords indicating this is an example
-    const hasExampleKeywords =
-      lowerContent.includes('example yaml') ||
-      lowerContent.includes('sample yaml') ||
-      lowerContent.includes('sample kubernetes resource') ||
-      (lowerContent.includes('sample') && lowerContent.includes('kubectl apply'));
-
-    // Check for kubectl commands which suggest this is example content
-    const hasKubectlCommand =
-      lowerContent.includes('kubectl apply') ||
-      lowerContent.includes('kubectl create') ||
-      lowerContent.includes('kubectl delete');
-
-    // If there's a kubectl command but it appears to be a user instruction rather than
-    // actual code meant to be run directly, we'll consider this example content
-    if (hasKubectlCommand) {
-      // Look for instructional language near kubectl commands
-      const isInstruction =
-        lowerContent.includes('you can use') ||
-        lowerContent.includes('you could') ||
-        lowerContent.includes('you would') ||
-        lowerContent.includes('to apply') ||
-        lowerContent.includes('to create') ||
-        lowerContent.includes('for example');
-
-      // If it's phrased as an instruction, it's likely example content
-      return isInstruction || hasExampleKeywords;
-    }
-
-    return hasExampleKeywords;
   };
 
   const renderMessage = (prompt: Prompt, index: number) => {
     if (prompt.role === 'system' || prompt.role === 'tool') {
       return null;
     }
-
-    // Determine if this is likely sample content
-    const showDeleteOption =
-      prompt.role === 'assistant' ? !isSampleContent(prompt.content || '') : true;
 
     // Check if this is a content filter error or if the prompt has its own error
     const isContentFilterError = prompt.role === 'assistant' && prompt.contentFilterError;
@@ -161,7 +228,7 @@ export default function TextStreamContainer({
           mb: 2,
           p: 1.5,
           borderRadius: 1,
-          bgcolor: prompt.role === 'user' ? 'primary.light' : 'background.paper',
+          bgcolor: prompt.role === 'user' ? theme.palette.info.main : 'background.paper',
           border: '1px solid',
           borderColor: isContentFilterError || hasError ? 'error.main' : 'divider',
         }}
@@ -187,23 +254,19 @@ export default function TextStreamContainer({
                 <>
                   <YamlContentProcessor
                     content={prompt.content || ''}
-                    onYamlDetected={(yaml, resourceType, isDelete) => {
-                      // If this is a sample and user tried to delete, prevent it
-                      const actuallyDelete = showDeleteOption ? isDelete : false;
-
+                    onYamlDetected={(yaml, resourceType) => {
                       if (onYamlAction) {
+                        // Simply pass the YAML to the parent handler
                         onYamlAction(
                           yaml,
-                          actuallyDelete ? `Delete ${resourceType}` : `Apply ${resourceType}`,
+                          `Apply ${resourceType}`,
                           resourceType,
-                          actuallyDelete
+                          false
                         );
                       } else {
-                        handleYamlDetected(yaml, resourceType, actuallyDelete);
+                        handleYamlDetected(yaml, resourceType);
                       }
                     }}
-                    showDeleteOption={showDeleteOption}
-                    replaceKubectlSuggestions
                   />
 
                   {/* Display tool calls and responses if available */}
@@ -289,7 +352,37 @@ export default function TextStreamContainer({
         title={editorTitle}
         resourceType={resourceType}
         isDelete={isDelete}
-        onSuccess={onOperationSuccess}
+        onSuccess={(response) => {
+          if (onOperationSuccess) {
+            onOperationSuccess(response);
+          }
+          
+          // Mark all pending operations as completed
+          pendingToolCalls.forEach(toolCallId => {
+            setCompletedOperations(prev => {
+              const updated = new Set(prev);
+              updated.add(toolCallId);
+              return updated;
+            });
+            
+            // Update the tool response to reflect completion
+            setToolResponses(prev => {
+              if (prev[toolCallId] && prev[toolCallId].includes('pending_confirmation')) {
+                return {
+                  ...prev,
+                  [toolCallId]: JSON.stringify({
+                    status: 'success',
+                    message: `${resourceType || 'Resource'} applied successfully`,
+                    resourceType: response.kind || resourceType,
+                    name: response.metadata?.name || '',
+                    namespace: response.metadata?.namespace || '',
+                  })
+                };
+              }
+              return prev;
+            });
+          });
+        }}
       />
     </Box>
   );

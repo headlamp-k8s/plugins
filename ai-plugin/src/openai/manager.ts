@@ -1,7 +1,6 @@
 import { OpenAI } from 'openai';
 import { AzureOpenAI } from 'openai/index';
 import AIManager, { Prompt } from '../ai/manager';
-import { trackAIUsage } from '../components/UsageTracker';
 
 type Tool = {
   type: string;
@@ -18,7 +17,7 @@ export default class OpenAIManager extends AIManager {
   endpoint?: string;
   deploymentName?: string;
   tools: Tool[] = [];
-  toolHandler: ((url: string, method: string, body?: string) => Promise<any>) | null = null;
+  toolHandler: ((url: string, method: string, body?: string, toolCallId?: string, pendingPrompt?: Prompt) => Promise<any>) | null = null;
 
   constructor(apiKey: string, model: string, endpoint?: string, deploymentName?: string) {
     super();
@@ -49,7 +48,7 @@ export default class OpenAIManager extends AIManager {
 
   configureTools(
     tools: Tool[],
-    handler: (url: string, method: string, body?: string) => Promise<any>
+    handler: (url: string, method: string, body?: string, toolCallId?: string, pendingPrompt?: Prompt) => Promise<any>
   ) {
     this.tools = tools;
     this.toolHandler = handler;
@@ -59,10 +58,10 @@ export default class OpenAIManager extends AIManager {
     const prompt: Prompt = { role: 'user', content: message };
     this.history.push(prompt);
     console.log('User message:', message);
-    console.log('using client', this.client);
+
     try {
       const messages = this.constructMessages();
-
+      
       const params: any = {
         messages,
         model: this.model,
@@ -76,24 +75,13 @@ export default class OpenAIManager extends AIManager {
 
       const response = await this.client.chat.completions.create(params);
       const responseContent = response.choices[0].message;
-
-      // Track token usage if available
-      if (response.usage) {
-        const provider = this.endpoint ? 'Azure OpenAI' : 'OpenAI';
-        const totalTokens = response.usage.total_tokens || 0;
-        trackAIUsage(provider, totalTokens);
-      }
-
+      
       // Check for content filtering flags
-      const hasContentFilter = response.choices[0].finish_reason === 'content_filter';
-      const hasFilteredContent = !!response.choices[0].content_filter_results?.filtered;
-
-      // Handle content filter scenario
-      if (hasContentFilter || hasFilteredContent) {
+      if (response.choices[0].finish_reason === 'content_filter' ||
+          !!response.choices[0].content_filter_results?.filtered) {
         const errorPrompt: Prompt = {
           role: 'assistant',
-          content:
-            'Your request was blocked by content filters. Please focus only on Kubernetes-related questions.',
+          content: 'Your request was blocked by content filters. Please focus only on Kubernetes-related questions.',
           contentFilterError: true,
           error: true,
         };
@@ -101,7 +89,7 @@ export default class OpenAIManager extends AIManager {
         return errorPrompt;
       }
 
-      // Handle tool calls if present
+      // Handle tool calls - similar to the example
       if (responseContent.tool_calls && responseContent.tool_calls.length > 0) {
         const assistantPrompt: Prompt = {
           role: 'assistant',
@@ -110,50 +98,46 @@ export default class OpenAIManager extends AIManager {
         };
         this.history.push(assistantPrompt);
 
-        // Process each tool call
+        // Process tool calls
         for (const toolCall of responseContent.tool_calls) {
           try {
             let response = null;
-
+            
             if (toolCall.function.name === 'http_request' && this.toolHandler) {
               const args = JSON.parse(toolCall.function.arguments);
-
-              // Check if this is a log request
-              const isLogRequest =
-                args.url && (args.url.endsWith('/log') || args.url.includes('/log?'));
-
-              // Make the request
-              response = await this.toolHandler(args.url, args.method, args.body);
-
-              // Format log responses specifically
-              if (isLogRequest && typeof response === 'string') {
-                // Keep logs as plaintext rather than trying to convert to JSON
+              
+              // For GET requests, call handler immediately
+              if (args.method.toUpperCase() === 'GET') {
+                response = await this.toolHandler(args.url, args.method, args.body);
+                
+                // Add tool response to history
                 this.history.push({
                   role: 'tool',
-                  content: response,
+                  content: typeof response === 'string' ? response : JSON.stringify(response),
                   toolCallId: toolCall.id,
                   name: toolCall.function.name,
                 });
-                continue; // Skip the next part for logs
+              } else {
+                // For non-GET methods, just call handler which will show confirmation dialog
+                // and return a pending status
+                await this.toolHandler(
+                  args.url, 
+                  args.method, 
+                  args.body,
+                  toolCall.id,
+                  assistantPrompt
+                );
+                // Skip adding response now - it will be added after confirmation
+                continue;
               }
             }
-
-            // Add tool response to history
-            this.history.push({
-              role: 'tool',
-              content: typeof response === 'string' ? response : JSON.stringify(response),
-              toolCallId: toolCall.id,
-              name: toolCall.function.name,
-            });
           } catch (error) {
             console.error(`Error handling tool ${toolCall.function.name}:`, error);
-            // Add error response to history
             this.history.push({
               role: 'tool',
               content: JSON.stringify({
                 error: true,
-                message: error.message || 'An error occurred while processing the tool call',
-                toolName: toolCall.function.name,
+                message: error.message || 'Tool execution error'
               }),
               toolCallId: toolCall.id,
               name: toolCall.function.name,
@@ -161,26 +145,32 @@ export default class OpenAIManager extends AIManager {
           }
         }
 
-        // Make a follow-up request with the tool responses
-        return await this.processToolResponses();
+        // Only process follow-up for GET requests
+        if (responseContent.tool_calls.every(
+          tc => JSON.parse(tc.function.arguments).method.toUpperCase() === 'GET'
+        )) {
+          return await this.processToolResponses();
+        }
+        
+        return assistantPrompt;
       }
 
-      const assistantPrompt: Prompt = { role: 'assistant', content: responseContent.content || '' };
+      // Handle normal response
+      const assistantPrompt: Prompt = { 
+        role: 'assistant', 
+        content: responseContent.content || '' 
+      };
       this.history.push(assistantPrompt);
       return assistantPrompt;
     } catch (error) {
       console.error('Error calling OpenAI:', error);
-
+      
       // Check if this is a content filter error
-      if (
-        error.name === 'ContentFilterError' ||
-        error.message?.includes('content_filter') ||
-        error.message?.includes('content filter')
-      ) {
+      if (error.name === 'ContentFilterError' || 
+          error.message?.includes('content_filter')) {
         const errorPrompt: Prompt = {
           role: 'assistant',
-          content:
-            'Your request was blocked by content filters. Please focus only on Kubernetes administration tasks.',
+          content: 'Your request was blocked by content filters. Please focus only on Kubernetes administration tasks.',
           contentFilterError: true,
           error: true,
         };
@@ -199,8 +189,7 @@ export default class OpenAIManager extends AIManager {
     }
   }
 
-  // Process tool responses and get final AI response
-  private async processToolResponses(): Promise<Prompt> {
+  public async processToolResponses(): Promise<Prompt> {
     try {
       const messages = this.constructMessages();
 
@@ -216,14 +205,6 @@ export default class OpenAIManager extends AIManager {
 
       const response = await this.client.chat.completions.create(params);
       const responseContent = response.choices[0].message;
-
-      // Track token usage if available - ensure consistent provider naming
-      if (response.usage) {
-        const provider = this.endpoint ? 'Azure OpenAI' : 'OpenAI';
-        const totalTokens = response.usage.total_tokens || 0;
-        trackAIUsage(provider, totalTokens);
-        console.log(`${provider} - Tokens used: ${totalTokens}`);
-      }
 
       // Check for content filtering in follow-up response
       const hasContentFilter = response.choices[0].finish_reason === 'content_filter';
