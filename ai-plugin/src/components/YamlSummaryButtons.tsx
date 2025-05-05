@@ -15,7 +15,7 @@ const YamlSummaryButtons: React.FC<YamlSummaryButtonsProps> = ({ yamls, onYamlSe
   if (!yamls || yamls.length === 0) return null;
 
   return (
-    <Box mt={2} mb={2} p={2} border={1} borderRadius={1} borderColor="divider" bgcolor="#f9f9f9">
+    <Box mt={2} mb={2} p={2} border={1} borderRadius={1} borderColor="divider" bgcolor="action.hover">
       <Typography variant="subtitle1" gutterBottom fontWeight="medium">
         <Icon icon="mdi:kubernetes" style={{ verticalAlign: 'middle', marginRight: '8px' }} />
         Kubernetes YAML Resources
@@ -43,7 +43,7 @@ const YamlSummaryButtons: React.FC<YamlSummaryButtonsProps> = ({ yamls, onYamlSe
               mb: 1,
               borderColor: 'primary.light',
               '&:hover': {
-                bgcolor: 'primary.50',
+                bgcolor: 'action.hover',
               },
             }}
           >
