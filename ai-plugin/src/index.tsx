@@ -38,21 +38,77 @@ registerUIPanel({
     const config = new ConfigStore<{ errorMessage?: string }>('@headlamp-k8s/headlamp-ai');
     const useConf = config.useConfig();
     const conf = useConf();
+    const [width, setWidth] = React.useState('35vw');
+    const [isResizing, setIsResizing] = React.useState(false);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsResizing(true);
+    };
+
+    React.useEffect(() => {
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!isResizing) return;
+
+        // Calculate width based on mouse position
+        const newWidth = window.innerWidth - e.clientX;
+        // Set minimum and maximum width constraints
+        const constrainedWidth = Math.max(300, Math.min(newWidth, window.innerWidth * 0.8));
+        setWidth(`${constrainedWidth}px`);
+      };
+
+      const handleMouseUp = () => {
+        setIsResizing(false);
+      };
+
+      if (isResizing) {
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+      }
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }, [isResizing]);
 
     // Don't render anything if panel is closed
     if (!pluginState.isUIPanelOpen) {
       return null;
     }
-
+    console.log('Rendering AI panel with width:', width);
     return (
       <Box
+        flexShrink={0}
         sx={{
           height: '100%',
-          width: '40vw', // Set a fixed width for the panel
-          maxWidth: '100%',
-          border: '1px solid ',
+          width: width,
+          border: '2px solid',
+          position: 'relative',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: '-8px', // moved left to enlarge interactive area
+            bottom: 0,
+            width: '16px', // increased width for better accessibility
+            cursor: 'ew-resize',
+            zIndex: 1,
+          },
         }}
       >
+        <Box
+          onMouseDown={handleMouseDown}
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: '-8px', // adjust position to match pseudo-element
+            bottom: 0,
+            width: '16px', // increased interactive width
+            cursor: 'ew-resize',
+            zIndex: 10,
+          }}
+        />
         <AIPrompt
           openPopup={pluginState.isUIPanelOpen}
           setOpenPopup={pluginState.setIsUIPanelOpen}
