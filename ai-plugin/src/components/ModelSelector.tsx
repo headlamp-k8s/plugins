@@ -3,14 +3,13 @@ import {
   Box,
   Button,
   Chip,
+  Divider,
   FormHelperText,
   Grid,
   MenuItem,
   Paper,
   Select,
   TextField,
-
-  Divider,
   Typography,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
@@ -74,7 +73,7 @@ export default function ModelSelector({
     if (!isCustomName && onConfigNameChange && provider) {
       // Only auto-generate name if it hasn't been manually edited
       let name = '';
-      
+
       if (config.displayName) {
         name = config.displayName;
       } else {
@@ -107,15 +106,16 @@ export default function ModelSelector({
           <Typography variant="subtitle1" sx={{ mb: 2 }}>
             Saved Configurations
           </Typography>
-          
+
           <Grid container spacing={2}>
             {savedConfigs.map((savedConfig, index) => {
-              const isActive = savedConfig.providerId === selectedProvider && 
+              const isActive =
+                savedConfig.providerId === selectedProvider &&
                 areConfigsSimilar(savedConfig.config, config);
-              
+
               // Find provider info for icon
               const savedProvider = getProviderById(savedConfig.providerId);
-              
+
               return (
                 <Grid item key={index} xs={6} md={4} lg={3}>
                   <Paper
@@ -149,10 +149,10 @@ export default function ModelSelector({
                         }}
                       />
                     )}
-                    <Icon 
-                      icon={savedProvider?.icon || 'mdi:robot'} 
-                      width="24px" 
-                      height="24px" 
+                    <Icon
+                      icon={savedProvider?.icon || 'mdi:robot'}
+                      width="24px"
+                      height="24px"
                       style={{ marginBottom: '8px' }}
                     />
                     <Typography variant="body2" sx={{ fontWeight: 'medium', textAlign: 'center' }}>
@@ -209,7 +209,7 @@ export default function ModelSelector({
           <Typography variant="subtitle1" sx={{ mb: 2 }}>
             Configure {provider.name}
           </Typography>
-          
+
           {onConfigNameChange && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -217,7 +217,7 @@ export default function ModelSelector({
               </Typography>
               <TextField
                 value={configName}
-                onChange={(e) => {
+                onChange={e => {
                   setIsCustomName(true);
                   onConfigNameChange(e.target.value);
                 }}
@@ -228,7 +228,7 @@ export default function ModelSelector({
               />
             </Box>
           )}
-          
+
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
             {provider.description}
           </Typography>
@@ -319,20 +319,24 @@ export default function ModelSelector({
                 variant="contained"
                 color="primary"
                 onClick={() => onSaveConfig(selectedProvider, config, false)}
-                disabled={!provider?.fields.every(
-                  field => !field.required || (config[field.name] && config[field.name] !== '')
-                )}
+                disabled={
+                  !provider?.fields.every(
+                    field => !field.required || (config[field.name] && config[field.name] !== '')
+                  )
+                }
               >
                 Save Configuration
               </Button>
-              
+
               <Button
                 variant="outlined"
                 color="primary"
                 onClick={() => onSaveConfig(selectedProvider, config, true)}
-                disabled={!provider?.fields.every(
-                  field => !field.required || (config[field.name] && config[field.name] !== '')
-                )}
+                disabled={
+                  !provider?.fields.every(
+                    field => !field.required || (config[field.name] && config[field.name] !== '')
+                  )
+                }
                 startIcon={<Icon icon="mdi:star" />}
               >
                 Save as Default
