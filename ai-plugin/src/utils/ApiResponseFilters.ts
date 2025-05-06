@@ -9,7 +9,7 @@ export function filterPodsByPrefix(apiResponse: any, prefix: string): string[] {
     if (!apiResponse || !apiResponse.items) {
       return [];
     }
-    
+
     const matchingPods = apiResponse.items
       .filter(pod => pod.metadata?.name?.startsWith(prefix))
       .map(pod => ({
@@ -17,7 +17,7 @@ export function filterPodsByPrefix(apiResponse: any, prefix: string): string[] {
         namespace: pod.metadata.namespace || 'default',
         status: pod.status?.phase,
       }));
-    
+
     return matchingPods;
   } catch (error) {
     console.error('Error filtering pods by prefix:', error);
@@ -31,7 +31,7 @@ export function filterResourcesByPrefix(apiResponse: any, prefix: string): any[]
     if (!apiResponse || !apiResponse.items) {
       return [];
     }
-    
+
     return apiResponse.items
       .filter(item => item.metadata?.name?.startsWith(prefix))
       .map(item => ({
@@ -52,7 +52,7 @@ export function filterResourcesByNamespace(apiResponse: any, namespace: string):
     if (!apiResponse || !apiResponse.items) {
       return [];
     }
-    
+
     return apiResponse.items
       .filter(item => item.metadata?.namespace === namespace)
       .map(item => ({
@@ -73,7 +73,7 @@ export function formatApiResponseForDisplay(apiResponse: any): string {
     if (!apiResponse) {
       return 'No data available';
     }
-    
+
     // Check if this is a list of items
     if (apiResponse.items && Array.isArray(apiResponse.items)) {
       return JSON.stringify(
@@ -91,7 +91,7 @@ export function formatApiResponseForDisplay(apiResponse: any): string {
         2
       );
     }
-    
+
     // Single resource
     return JSON.stringify(apiResponse, null, 2);
   } catch (error) {
