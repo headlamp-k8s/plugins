@@ -1,20 +1,29 @@
-import { Icon } from '@iconify/react';
-import { ConfirmDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import Editor from '@monaco-editor/react';
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Paper,
-  Typography,
-} from '@mui/material';
+import { clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
+import { ConfirmDialog, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { Box, Typography } from '@mui/material';
 import React from 'react';
 import YAML from 'yaml';
+
+// Helper function to merge two objects deeply
+function mergeDeep(target: any, source: any) {
+  for (const key in source) {
+    if (source[key] instanceof Object && key in target) {
+      target[key] = mergeDeep(target[key], source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+  return target;
+}
+
+// Helper function to clean YAML content by removing the |- prefix if present
+function cleanYamlContent(content: string): string {
+  if (content.trim().startsWith('|-')) {
+    return content.trim().substring(2).trim();
+  }
+  return content.trim();
+}
 
 interface ApiConfirmationDialogProps {
   open: boolean;
@@ -22,7 +31,7 @@ interface ApiConfirmationDialogProps {
   method: string;
   url: string;
   body?: string;
-  onConfirm: (editedBody?: string) => void;  // Updated to accept edited body
+  onConfirm: (editedBody?: string) => void; // Updated to accept edited body
   isLoading?: boolean;
   result?: any;
   error?: string;
@@ -35,66 +44,58 @@ export default function ApiConfirmationDialog({
   url,
   body,
   onConfirm,
-  isLoading = false,
-  result,
-  error,
 }: ApiConfirmationDialogProps) {
   const [editedBody, setEditedBody] = React.useState('');
-  const themeName = localStorage.getItem('headlampThemePreference');
   const [resourceInfo, setResourceInfo] = React.useState<{
     kind: string;
     name: string;
     namespace?: string;
   } | null>(null);
-  
-  // Add state for delete confirmation
+  const cluster = getCluster();
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [openEditorDialog, setOpenEditorDialog] = React.useState(true);
 
   React.useEffect(() => {
-    if(method.toUpperCase() === 'DELETE') {
+    if (method.toUpperCase() === 'DELETE') {
       setShowDeleteConfirm(true);
     }
     if (body) {
       try {
-        // Check if this is a PATCH request with partial resource
-        const processedBody = body;
-        
-        
-          // Try parsing as JSON and convert to YAML
-          try {
-            const jsonObject = JSON.parse(processedBody);
-            const yamlContent = YAML.stringify(jsonObject);
-            setEditedBody(yamlContent);
-          } catch (e) {
-            // If parsing fails, use as is
-            setEditedBody(processedBody);
-          }
-        
-        // Try to extract resource information
-        try {
-          let parsed;
-          // Try parsing as YAML first
-          try {
-            parsed = YAML.parse(processedBody);
-          } catch (e) {
-            // If YAML parsing fails, try JSON
-            parsed = JSON.parse(processedBody);
-          }
+        const processedBody = cleanYamlContent(body);
 
-          if (parsed && parsed.kind && parsed.metadata && parsed.metadata.name) {
+        let parsed;
+        try {
+          parsed = YAML.parse(processedBody);
+        } catch (yamlError) {
+          try {
+            parsed = JSON.parse(processedBody);
+          } catch (jsonError) {
+            console.warn('Failed to parse body as YAML or JSON:', yamlError, jsonError);
+            parsed = null;
+          }
+        }
+
+        if (parsed) {
+          const yamlContent = YAML.stringify(parsed).trim();
+          setEditedBody(yamlContent);
+
+          if (parsed.kind && parsed.metadata && parsed.metadata.name) {
             setResourceInfo({
               kind: parsed.kind,
               name: parsed.metadata.name,
               namespace: parsed.metadata.namespace,
             });
+          } else {
+            setResourceInfo(null);
           }
-        } catch (e) {
-          // If both parsing methods fail, continue without setting resourceInfo
+        } else {
+          setEditedBody(processedBody);
           setResourceInfo(null);
         }
       } catch (e) {
-        console.warn('Failed to parse body as JSON or YAML:', e);
-        setEditedBody(body);
+        console.warn('Unexpected error during body processing:', e);
+        setEditedBody(cleanYamlContent(body));
+        setResourceInfo(null);
       }
     } else {
       setEditedBody('');
@@ -102,20 +103,14 @@ export default function ApiConfirmationDialog({
     }
   }, [body, method]);
 
-  // Also try to extract resource info from the URL if not found in body
   React.useEffect(() => {
     if (!resourceInfo && url) {
       const urlParts = url.split('/');
-      // Try to extract resource kind and name from URL
-      // Format often follows: /api/v1/namespaces/{namespace}/{resourceType}/{name}
-      // or /apis/{group}/{version}/namespaces/{namespace}/{resourceType}/{name}
-
       const nameIndex = urlParts.length - 1;
       if (nameIndex > 0) {
         const resourceTypeIndex = nameIndex - 1;
         let namespaceIndex = -1;
 
-        // Check if URL contains namespace
         const namespacePos = urlParts.indexOf('namespaces');
         if (namespacePos >= 0 && namespacePos + 1 < urlParts.length) {
           namespaceIndex = namespacePos + 1;
@@ -132,67 +127,45 @@ export default function ApiConfirmationDialog({
     }
   }, [url, resourceInfo]);
 
-  // Handle confirmation using clusterAction like in the example
-  const handleSubmit = () => {
-    // For GET requests, just call onConfirm which will use clusterRequest
-    if (method.toUpperCase() === 'GET') {
-      onConfirm();
-      return;
-    }
-    
-    // For DELETE operations, show confirmation dialog
-    if (method.toUpperCase() === 'DELETE') {
-      setShowDeleteConfirm(true);
-      return;
-    }
-    
-    // For other modifying operations, close dialog immediately and let clusterAction handle it
-    if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
-      // Call onConfirm with the edited body
-      onConfirm(editedBody);
-      // Close dialog immediately - clusterAction will handle loading state and notifications
-      onClose();
-    }
-  };
+  React.useEffect(() => {
+    if (open && ['PUT', 'PATCH'].includes(method.toUpperCase()) && body && resourceInfo) {
+      (async () => {
+        try {
+          const response = await clusterRequest(url, {
+            method: 'GET',
+            cluster,
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+          });
+          const existingResource = await response;
+          const patchObj = YAML.parse(body);
+          const mergedResource = mergeDeep(existingResource, patchObj);
+          const mergedYAML = YAML.stringify(mergedResource).trim();
 
-  // Handle delete confirmation
+          setEditedBody(cleanYamlContent(mergedYAML));
+        } catch (e) {
+          console.error('Failed to fetch or merge resource', e);
+          setEditedBody(body.trim());
+        }
+      })();
+    }
+  }, [open, method, url, body, resourceInfo]);
+
   const handleDeleteConfirm = () => {
-    // Close the delete confirmation dialog
     setShowDeleteConfirm(false);
-    // Call onConfirm to trigger the delete operation with the edited body
-    onConfirm(editedBody);
-    // Close the main dialog
+    onConfirm(JSON.stringify(resourceInfo));
     onClose();
   };
 
-  const getMethodColor = () => {
-    switch (method.toUpperCase()) {
-      case 'GET':
-        return '#4caf50'; // Green
-      case 'POST':
-        return '#2196f3'; // Blue
-      case 'PUT':
-      case 'PATCH':
-        return '#ff9800'; // Orange
-      default:
-        return '#757575'; // Grey
-    }
-  };
+  function handleSave(items) {
+    const newItemDef = Array.isArray(items) ? items[0] : items;
 
-  const getMethodIcon = () => {
-    switch (method.toUpperCase()) {
-      case 'GET':
-        return 'mdi:database-search';
-      case 'POST':
-        return 'mdi:database-plus';
-      case 'PUT':
-      case 'PATCH':
-        return 'mdi:database-edit';
-      default:
-        return 'mdi:database';
-    }
-  };
-
+    onConfirm(JSON.stringify(newItemDef));
+    setOpenEditorDialog(false);
+    onClose();
+  }
   const getTitle = () => {
     const base =
       method.toUpperCase() === 'DELETE'
@@ -203,7 +176,6 @@ export default function ApiConfirmationDialog({
         ? 'Fetch'
         : 'Update';
 
-    // Add resource info to title if available
     if (resourceInfo) {
       return `${base} ${resourceInfo.kind}: ${resourceInfo.name}`;
     }
@@ -211,210 +183,75 @@ export default function ApiConfirmationDialog({
     return `${base} Resource`;
   };
 
-  const getConfirmButtonText = () => {
-    switch (method.toUpperCase()) {
-      case 'GET':
-        return 'Fetch';
-      case 'POST':
-        return 'Create';
-      case 'PUT':
-      case 'PATCH':
-        return 'Update';
-      default:
-        return 'Send Request';
-    }
-  };
-
-
-
-
-  // Only show results for GET requests or non-modifying operations
-  const shouldShowResult = result && !isLoading && method.toUpperCase() === 'GET';
-  // if this is a delete request
-  if(showDeleteConfirm) {
+  if (!url || !method) {
+    return null;
+  }
+  if (showDeleteConfirm) {
     return (
-       <ConfirmDialog
-       open={showDeleteConfirm}
-       handleClose={() => setShowDeleteConfirm(false)}
-       onConfirm={handleDeleteConfirm}
-       title={`Delete ${resourceInfo?.kind || 'Resource'}`}
-       description={
-         <Box>
-           <Typography variant="body1" sx={{ mb: 2 }}>
-             {resourceInfo 
-               ? `Are you sure you want to delete the ${resourceInfo.kind} "${resourceInfo.name}"${
-                   resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
-                 }?`
-               : 'Are you sure you want to delete this resource?'}
-           </Typography>
-           {resourceInfo && (
-             <Box
-               sx={{
-                 p: 2,
-                 borderRadius: 1,
-                 mb: 2,
-               }}
-             >
-               <Typography variant="subtitle2" component="div" sx={{ mb: 1 }}>
-                 Resource details:
-               </Typography>
-               <Typography variant="body2" component="div" sx={{ ml: 2 }}>
-                 <strong>Type:</strong> {resourceInfo.kind}
-               </Typography>
-               <Typography variant="body2" component="div" sx={{ ml: 2 }}>
-                 <strong>Name:</strong> {resourceInfo.name}
-               </Typography>
-               {resourceInfo.namespace && (
-                 <Typography variant="body2" component="div" sx={{ ml: 2 }}>
-                   <strong>Namespace:</strong> {resourceInfo.namespace}
-                 </Typography>
-               )}
-               {(() => {
-                 try {
-                   const resource = YAML.parse(editedBody);
-                   return (
-                     <>
-                       {resource?.metadata?.labels &&
-                         Object.keys(resource.metadata.labels).length > 0 && (
-                           <Typography variant="body2" component="div" sx={{ ml: 2 }}>
-                             <strong>Labels:</strong>{' '}
-                             {Object.entries(resource.metadata.labels)
-                               .map(([key, value]) => `${key}=${value}`)
-                               .join(', ')}
-                           </Typography>
-                         )}
-                     </>
-                   );
-                 } catch (e) {
-                   return null;
-                 }
-               })()}
-             </Box>
-           )}
-           <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-             This action cannot be undone.
-           </Typography>
-         </Box>
-       }
-       confirmButtonProps={{ color: 'error' }}
-       confirmButtonText={`Yes, Delete ${resourceInfo?.kind || 'Resource'}`}
-     />
-    )
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        handleClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        title={`Delete ${resourceInfo?.kind || 'Resource'}`}
+        description={
+          <Box>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {resourceInfo
+                ? `Are you sure you want to delete the ${resourceInfo.kind} "${resourceInfo.name}"${
+                    resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
+                  }?`
+                : 'Are you sure you want to delete this resource?'}
+            </Typography>
+            {resourceInfo && (
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  mb: 2,
+                }}
+              >
+                <Typography variant="subtitle2" component="div" sx={{ mb: 1 }}>
+                  Resource details:
+                </Typography>
+                <Typography variant="body2" component="div" sx={{ ml: 2 }}>
+                  <strong>Type:</strong> {resourceInfo.kind}
+                </Typography>
+                <Typography variant="body2" component="div" sx={{ ml: 2 }}>
+                  <strong>Name:</strong> {resourceInfo.name}
+                </Typography>
+                {resourceInfo.namespace && (
+                  <Typography variant="body2" component="div" sx={{ ml: 2 }}>
+                    <strong>Namespace:</strong> {resourceInfo.namespace}
+                  </Typography>
+                )}
+              </Box>
+            )}
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+              This action cannot be undone.
+            </Typography>
+          </Box>
+        }
+        confirmButtonProps={{ color: 'error' }}
+        confirmButtonText={`Yes, Delete ${resourceInfo?.kind || 'Resource'}`}
+      />
+    );
+  }
+
+  if (method.toUpperCase() === 'GET') {
+    onConfirm();
+    onClose();
+    return null;
   }
 
   return (
-    <>
-      <Dialog
-        open={open}
-        onClose={!isLoading ? onClose : undefined}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            maxHeight: '80vh',
-          },
-        }}
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center">
-            <Icon
-              icon={getMethodIcon()}
-              style={{ color: getMethodColor(), marginRight: '8px' }}
-              width="24"
-              height="24"
-            />
-            <Typography variant="h6" component="span">
-              {getTitle()}
-            </Typography>
-          </Box>
-        </DialogTitle>
-
-        <DialogContent>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          {shouldShowResult && (
-            <Box mb={3}>
-              <Paper variant="outlined" sx={{ p: 2, maxHeight: '200px', overflow: 'auto' }}>
-                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
-                </pre>
-              </Paper>
-            </Box>
-          )}
-
-          {isLoading && (
-            <Box display="flex" justifyContent="center" my={3}>
-              <CircularProgress size={40} />
-            </Box>
-          )}
-
-          {!result && !isLoading && (
-            <>
-              {body && (
-                <Box mb={3}>
-                  <Editor
-                    height="350px"
-                    language="yaml" // Always use YAML for better readability
-                    value={editedBody}
-                    onChange={value => {
-                      console.log('Editor value changed:', value);
-                      setEditedBody(value || '');
-                    }}
-                    options={{
-                      minimap: { enabled: false },
-                      scrollBeyondLastLine: false,
-                    }}
-                    theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-                  />
-                </Box>
-              )}
-
-              {method.toUpperCase() === 'POST' && (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  <Typography variant="body2">
-                    <strong>Info:</strong> This will create a new resource in the cluster.
-                  </Typography>
-                  {resourceInfo && (
-                    <Box mt={1} ml={2}>
-                      <Typography variant="body2">
-                        <strong>Type:</strong> {resourceInfo.kind}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Name:</strong> {resourceInfo.name}
-                      </Typography>
-                      {resourceInfo.namespace && (
-                        <Typography variant="body2">
-                          <strong>Namespace:</strong> {resourceInfo.namespace}
-                        </Typography>
-                      )}
-                    </Box>
-                  )}
-                </Alert>
-              )}
-            </>
-          )}
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={onClose} disabled={isLoading}>
-            {result ? 'Close' : 'Cancel'}
-          </Button>
-          {!result && !isLoading && (
-            <Button
-              variant="contained"
-              onClick={handleSubmit}
-              color={'primary'}
-              startIcon={<Icon icon={getMethodIcon()} />}
-            >
-              {getConfirmButtonText()}
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
-    </>
+    <EditorDialog
+      item={editedBody}
+      open={openEditorDialog}
+      onClose={() => setOpenEditorDialog(false)}
+      setOpen={setOpenEditorDialog}
+      saveLabel="Apply"
+      onSave={handleSave}
+      title={getTitle()}
+    />
   );
 }
