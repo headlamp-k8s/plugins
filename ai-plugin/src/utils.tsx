@@ -7,6 +7,8 @@ function usePluginSettings() {
   // Add states to track providers and active provider
   const [savedProviders, setSavedProviders] = React.useState<StoredProviderConfig[]>([]);
   const [activeProvider, setActiveProvider] = React.useState<StoredProviderConfig | null>(null);
+  // Add state to control UI panel visibility
+  const [isUIPanelOpen, setIsUIPanelOpen] = React.useState(false);
 
   return {
     event,
@@ -15,6 +17,8 @@ function usePluginSettings() {
     setSavedProviders,
     activeProvider,
     setActiveProvider,
+    isUIPanelOpen,
+    setIsUIPanelOpen,
   };
 }
 
