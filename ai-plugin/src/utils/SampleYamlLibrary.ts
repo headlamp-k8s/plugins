@@ -382,4 +382,3 @@ export function extractYamlContent(
 
   return results.length > 0 ? results : null;
 }
-
