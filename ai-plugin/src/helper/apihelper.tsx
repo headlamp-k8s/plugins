@@ -1,5 +1,5 @@
 import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
-import { apply,clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
+import { apply, clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
 import { isLogRequest, isSpecificResourceRequestHelper } from '.';
