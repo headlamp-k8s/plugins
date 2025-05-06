@@ -1,7 +1,5 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatOllama } from '@langchain/community/chat_models/ollama';
-import { ChatMistralAI } from '@langchain/mistralai';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
   AIMessage,
@@ -12,6 +10,8 @@ import {
   SystemMessage,
 } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatMistralAI } from '@langchain/mistralai';
 import { ChatOpenAI } from '@langchain/openai';
 import { AzureChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
@@ -85,7 +85,11 @@ export default class LangChainManager extends AIManager {
           if (!config.apiKey) {
             throw new Error('API key is required for Google Gemini');
           }
-          if (!['gemini-pro', 'gemini-1.0-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'].includes(config.model)) {
+          if (
+            !['gemini-pro', 'gemini-1.0-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'].includes(
+              config.model
+            )
+          ) {
             throw new Error(`Invalid Gemini model: ${config.model}`);
           }
           return new ChatGoogleGenerativeAI({
@@ -128,9 +132,7 @@ export default class LangChainManager extends AIManager {
     const kubernetesApiSchema = z.object({
       url: z
         .string()
-        .describe(
-          'URL to request, e.g., /api/v1/pods or /api/v1/namespaces/default/pods/pod-name'
-        ),
+        .describe('URL to request, e.g., /api/v1/pods or /api/v1/namespaces/default/pods/pod-name'),
       method: z.string().describe('HTTP method: GET, POST, PATCH, DELETE'),
       body: z.string().optional().describe('Optional HTTP body'),
     });
@@ -159,13 +161,13 @@ export default class LangChainManager extends AIManager {
                 body: body || null,
               },
               // Include full resource info for PATCH requests
-              fullResource: method.toUpperCase() === 'PATCH' && body 
+              fullResource: method.toUpperCase() === 'PATCH' && body,
             });
           }
 
           // Only GET requests execute immediately
           const response = await this.toolHandler(url, method, body);
-          
+
           // Include request metadata with the response
           const enhancedResponse = {
             request: {
@@ -192,7 +194,8 @@ export default class LangChainManager extends AIManager {
       },
       {
         name: 'kubernetes_api_request',
-        description: 'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
+        description:
+          'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
         schema: kubernetesApiSchema,
       }
     );
@@ -283,22 +286,22 @@ export default class LangChainManager extends AIManager {
         for (const toolCall of toolCalls) {
           const args = JSON.parse(toolCall.function.arguments);
           console.log('Processing tool call:', args);
-          
+
           try {
             // Execute the tool call
             const result = await this.toolHandler?.(
-              args.url, 
-              args.method, 
+              args.url,
+              args.method,
               args.body,
               toolCall.id,
               assistantPrompt
             );
-            
+
             // Don't add tool response for non-GET methods - they'll be handled by confirmation dialog
             if (args.method.toUpperCase() !== 'GET') {
               continue;
             }
-            
+
             // Add response to history for GET requests
             this.history.push({
               role: 'tool',
@@ -321,10 +324,12 @@ export default class LangChainManager extends AIManager {
         }
 
         // Only process follow-up for GET requests
-        if (toolCalls.every(tc => {
-          const args = JSON.parse(tc.function.arguments);
-          return args.method.toUpperCase() === 'GET';
-        })) {
+        if (
+          toolCalls.every(tc => {
+            const args = JSON.parse(tc.function.arguments);
+            return args.method.toUpperCase() === 'GET';
+          })
+        ) {
           return await this.processToolResponses();
         }
 
@@ -489,7 +494,7 @@ export default class LangChainManager extends AIManager {
             // This looks like a list response - add a note not to suggest kubectl
             const enhancedResponse = {
               ...JSON.parse(response),
-              note: "Remember to use the kubernetes_api_request tool for all operations rather than suggesting kubectl commands.",
+              note: 'Remember to use the kubernetes_api_request tool for all operations rather than suggesting kubectl commands.',
             };
             response = JSON.stringify(enhancedResponse);
           } catch (e) {
@@ -500,35 +505,36 @@ export default class LangChainManager extends AIManager {
         // Analyze the response content to detect if it might be suggesting kubectl
         if (response.content && typeof response.content === 'string') {
           const lowercaseContent = response.content.toLowerCase();
-          
+
           // Check for kubectl suggestion indicators
-          const hasKubectlSuggestion = 
+          const hasKubectlSuggestion =
             lowercaseContent.includes('kubectl') ||
             lowercaseContent.includes('run the command') ||
             lowercaseContent.includes('command line') ||
             lowercaseContent.includes('terminal') ||
             lowercaseContent.includes('shell');
-          
+
           // If it looks like kubectl is being suggested, add a corrective system message
           if (hasKubectlSuggestion) {
             this.history.push({
               role: 'system',
-              content: "REMINDER: Never suggest kubectl or command line tools. Always use the kubernetes_api_request tool or explain UI actions. The user is using a web dashboard and cannot access the command line.",
+              content:
+                'REMINDER: Never suggest kubectl or command line tools. Always use the kubernetes_api_request tool or explain UI actions. The user is using a web dashboard and cannot access the command line.',
             });
-            
+
             // Request a correction from the model
             const correctionPrompt = new SystemMessage(
-              "Your last response suggested using kubectl or command line, which is not available to the user. Please revise your response to use the kubernetes_api_request tool instead."
+              'Your last response suggested using kubectl or command line, which is not available to the user. Please revise your response to use the kubernetes_api_request tool instead.'
             );
-            
+
             messages.push(correctionPrompt);
-            
+
             // Try to get a corrected response
             try {
               const correctedResponse = await modelToUse.invoke(messages);
               response = correctedResponse; // Replace with the corrected response
             } catch (error) {
-              console.error("Error getting corrected response:", error);
+              console.error('Error getting corrected response:', error);
               // Continue with original response if correction fails
             }
           }

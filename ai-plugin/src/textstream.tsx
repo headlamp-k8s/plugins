@@ -1,14 +1,11 @@
 import { Icon } from '@iconify/react';
 import { Alert, Box, Button, CircularProgress, Divider, Typography } from '@mui/material';
-import React from 'react';
+import { useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
-import ToolResponseDisplay from './components/ToolResponseDisplay';
+import { Prompt } from './ai/manager';
 import YamlLibraryDialog from './components/YamlLibraryDialog';
 import EditorDialog from './editordialog';
-import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
 import YamlContentProcessor from './YamlContentProcessor';
-import { Prompt } from './ai/manager';
-import { useTheme } from '@mui/material';
 
 export default function TextStreamContainer({
   history,
@@ -23,26 +20,13 @@ export default function TextStreamContainer({
   onOperationSuccess?: (response: any) => void;
   onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
 }) {
-  const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({});
   const [showEditor, setShowEditor] = useState(false);
   const [editorContent, setEditorContent] = useState('');
   const [editorTitle, setEditorTitle] = useState('');
   const [resourceType, setResourceType] = useState('');
   const [isDelete, setIsDelete] = useState(false);
   const [showYamlLibrary, setShowYamlLibrary] = useState(false);
-
-  // Store tool responses by their toolCallId
-  const [toolResponses, setToolResponses] = useState<Record<string, string>>({});
-  const [detectedYamls, setDetectedYamls] = useState<
-    Record<string, { yaml: string; resourceType: string; name: string }>
-  >({});
   const theme = useTheme();
-  // Track pending tool calls
-  const [pendingToolCalls, setPendingToolCalls] = useState<Set<string>>(new Set());
-  
-  // Track completed operations to update the status of non-GET operations
-  const [completedOperations, setCompletedOperations] = useState<Set<string>>(new Set());
-
   // Track if content filter errors were detected
   const [contentFilterErrors, setContentFilterErrors] = useState<boolean>(false);
   useEffect(() => {
@@ -51,27 +35,6 @@ export default function TextStreamContainer({
     history.forEach(prompt => {
       if (prompt.role === 'tool' && prompt.toolCallId) {
         responseMap[prompt.toolCallId] = prompt.content;
-        // Any tool with a response is no longer pending
-        setPendingToolCalls(prev => {
-          const updated = new Set(prev);
-          updated.delete(prompt.toolCallId);
-          return updated;
-        });
-      }
-
-      // Track pending tool calls from assistant messages
-      if (prompt.role === 'assistant' && prompt.toolCalls) {
-        // Add any new tool calls to pending set
-        prompt.toolCalls.forEach(toolCall => {
-          setPendingToolCalls(prev => {
-            const updated = new Set(prev);
-            // Only add if we don't already have a response
-            if (!responseMap[toolCall.id]) {
-              updated.add(toolCall.id);
-            }
-            return updated;
-          });
-        });
       }
 
       // Check for content filter errors
@@ -79,127 +42,14 @@ export default function TextStreamContainer({
         setContentFilterErrors(true);
       }
     });
-    setToolResponses(responseMap);
   }, [history]);
-
-  // Update completed operations when tool responses change
-  useEffect(() => {
-    // Map each tool response to check if any are completed operations
-    Object.entries(toolResponses).forEach(([toolCallId, response]) => {
-      try {
-        // Look through history to find the tool call data
-        const toolCall = history
-          .filter(p => p.role === 'assistant' && p.toolCalls)
-          .flatMap(p => p.toolCalls || [])
-          .find(tc => tc.id === toolCallId);
-
-        if (toolCall) {
-          const args = JSON.parse(toolCall.function.arguments || '{}');
-          
-          // Only track non-GET operations for completion
-          if (args.method?.toUpperCase() !== 'GET') {
-            // Check if the response indicates completion
-            const isCompleted = checkIfOperationCompleted(response);
-            
-            if (isCompleted) {
-              setCompletedOperations(prev => {
-                const updated = new Set(prev);
-                updated.add(toolCallId);
-                return updated;
-              });
-            }
-          }
-        }
-      } catch (e) {
-        // Error parsing, ignore
-        console.warn('Error checking completion status:', e);
-      }
-    });
-  }, [toolResponses, history]);
-
-  // Function to check if an operation has been completed
-  const checkIfOperationCompleted = (response: string): boolean => {
-    if (!response) return false;
-    
-    // Check for standard success indicators in string form
-    if (response.toLowerCase().includes('successfully') || 
-        response.toLowerCase().includes('created') || 
-        response.toLowerCase().includes('updated') ||
-        response.toLowerCase().includes('applied') ||
-        response.toLowerCase().includes('deleted') ||
-        response.toLowerCase().includes('processing')) {
-      return true;
-    }
-    
-    // Check for specific phrases that indicate non-completion
-    if (response.toLowerCase().includes('pending_confirmation') ||
-        response.toLowerCase().includes('waiting for confirmation')) {
-      return false;
-    }
-    
-    try {
-      // Try parsing as JSON to look for structured success indicators
-      const parsed = JSON.parse(response);
-      
-      // If explicitly marked as pending, it's not completed
-      if (parsed.status === 'pending_confirmation') {
-        return false;
-      }
-      
-      return (
-        parsed.status === 'success' || 
-        parsed.status === 'processing' ||
-        (parsed.metadata && parsed.kind) || // Looks like a K8s resource
-        (parsed.message && 
-          (parsed.message.toLowerCase().includes('successfully') || 
-           parsed.message.toLowerCase().includes('created') ||
-           parsed.message.toLowerCase().includes('deleted') ||
-           parsed.message.toLowerCase().includes('updated') ||
-           parsed.message.toLowerCase().includes('applied')))
-      );
-    } catch (e) {
-      // Not JSON or parsing failed, use default string check
-      return false;
-    }
-  };
-
-  useEffect(() => {
-    // Look for YAML in tool responses
-    Object.entries(toolResponses).forEach(([toolCallId, response]) => {
-      try {
-        // Try to parse the response as YAML
-        const parsed = parseKubernetesYAML(response);
-        if (parsed.isValid && parsed.resourceType) {
-          console.log(`Found YAML in tool response: ${parsed.resourceType}`);
-          // Store this YAML for potential use
-          setDetectedYamls(prev => ({
-            ...prev,
-            [toolCallId]: {
-              yaml: response,
-              resourceType: parsed.resourceType,
-              name: parsed.name,
-            },
-          }));
-        }
-      } catch (e) {
-        // Not YAML, ignore
-      }
-    });
-  }, [toolResponses]);
-
-  const toggleExpand = (index: number) => {
-    setExpandedTools(prev => ({
-      ...prev,
-      [index]: !prev[index],
-    }));
-  };
 
   const handleYamlDetected = (yaml: string, resourceType: string) => {
     // Since we're removing the Delete button, we'll set isDelete to false always
     setEditorContent(yaml);
     setEditorTitle(`Apply ${resourceType}`);
     setResourceType(resourceType);
-    setIsDelete(false);  // Always false since we don't show delete button
+    setIsDelete(false); // Always false since we don't show delete button
     setShowEditor(true);
   };
 
@@ -213,7 +63,10 @@ export default function TextStreamContainer({
   };
 
   const renderMessage = (prompt: Prompt, index: number) => {
-    if (prompt.role === 'system' || prompt.role === 'tool') {
+    if (
+      prompt.role === 'system' ||
+      (prompt.role === 'tool' && typeof prompt.content !== 'string')
+    ) {
       return null;
     }
 
@@ -221,6 +74,7 @@ export default function TextStreamContainer({
     const isContentFilterError = prompt.role === 'assistant' && prompt.contentFilterError;
     const hasError = prompt.error === true;
 
+    if (prompt.content === '' && prompt.role === 'user') return null;
     return (
       <Box
         key={index}
@@ -257,27 +111,12 @@ export default function TextStreamContainer({
                     onYamlDetected={(yaml, resourceType) => {
                       if (onYamlAction) {
                         // Simply pass the YAML to the parent handler
-                        onYamlAction(
-                          yaml,
-                          `Apply ${resourceType}`,
-                          resourceType,
-                          false
-                        );
+                        onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
                       } else {
                         handleYamlDetected(yaml, resourceType);
                       }
                     }}
                   />
-
-                  {/* Display tool calls and responses if available */}
-                  {prompt.toolCalls && prompt.toolCalls.length > 0 && (
-                    <ToolResponseDisplay
-                      toolCalls={prompt.toolCalls}
-                      toolResponses={toolResponses}
-                      expandedTools={expandedTools}
-                      toggleExpand={toggleExpand}
-                    />
-                  )}
                 </>
               )}
             </>
@@ -352,36 +191,10 @@ export default function TextStreamContainer({
         title={editorTitle}
         resourceType={resourceType}
         isDelete={isDelete}
-        onSuccess={(response) => {
+        onSuccess={response => {
           if (onOperationSuccess) {
             onOperationSuccess(response);
           }
-          
-          // Mark all pending operations as completed
-          pendingToolCalls.forEach(toolCallId => {
-            setCompletedOperations(prev => {
-              const updated = new Set(prev);
-              updated.add(toolCallId);
-              return updated;
-            });
-            
-            // Update the tool response to reflect completion
-            setToolResponses(prev => {
-              if (prev[toolCallId] && prev[toolCallId].includes('pending_confirmation')) {
-                return {
-                  ...prev,
-                  [toolCallId]: JSON.stringify({
-                    status: 'success',
-                    message: `${resourceType || 'Resource'} applied successfully`,
-                    resourceType: response.kind || resourceType,
-                    name: response.metadata?.name || '',
-                    namespace: response.metadata?.namespace || '',
-                  })
-                };
-              }
-              return prev;
-            });
-          });
         }}
       />
     </Box>

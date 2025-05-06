@@ -17,7 +17,15 @@ export default class OpenAIManager extends AIManager {
   endpoint?: string;
   deploymentName?: string;
   tools: Tool[] = [];
-  toolHandler: ((url: string, method: string, body?: string, toolCallId?: string, pendingPrompt?: Prompt) => Promise<any>) | null = null;
+  toolHandler:
+    | ((
+        url: string,
+        method: string,
+        body?: string,
+        toolCallId?: string,
+        pendingPrompt?: Prompt
+      ) => Promise<any>)
+    | null = null;
 
   constructor(apiKey: string, model: string, endpoint?: string, deploymentName?: string) {
     super();
@@ -48,7 +56,13 @@ export default class OpenAIManager extends AIManager {
 
   configureTools(
     tools: Tool[],
-    handler: (url: string, method: string, body?: string, toolCallId?: string, pendingPrompt?: Prompt) => Promise<any>
+    handler: (
+      url: string,
+      method: string,
+      body?: string,
+      toolCallId?: string,
+      pendingPrompt?: Prompt
+    ) => Promise<any>
   ) {
     this.tools = tools;
     this.toolHandler = handler;
@@ -61,7 +75,7 @@ export default class OpenAIManager extends AIManager {
 
     try {
       const messages = this.constructMessages();
-      
+
       const params: any = {
         messages,
         model: this.model,
@@ -75,13 +89,16 @@ export default class OpenAIManager extends AIManager {
 
       const response = await this.client.chat.completions.create(params);
       const responseContent = response.choices[0].message;
-      
+
       // Check for content filtering flags
-      if (response.choices[0].finish_reason === 'content_filter' ||
-          !!response.choices[0].content_filter_results?.filtered) {
+      if (
+        response.choices[0].finish_reason === 'content_filter' ||
+        !!response.choices[0].content_filter_results?.filtered
+      ) {
         const errorPrompt: Prompt = {
           role: 'assistant',
-          content: 'Your request was blocked by content filters. Please focus only on Kubernetes-related questions.',
+          content:
+            'Your request was blocked by content filters. Please focus only on Kubernetes-related questions.',
           contentFilterError: true,
           error: true,
         };
@@ -102,14 +119,14 @@ export default class OpenAIManager extends AIManager {
         for (const toolCall of responseContent.tool_calls) {
           try {
             let response = null;
-            
+
             if (toolCall.function.name === 'http_request' && this.toolHandler) {
               const args = JSON.parse(toolCall.function.arguments);
-              
+
               // For GET requests, call handler immediately
               if (args.method.toUpperCase() === 'GET') {
                 response = await this.toolHandler(args.url, args.method, args.body);
-                
+
                 // Add tool response to history
                 this.history.push({
                   role: 'tool',
@@ -121,8 +138,8 @@ export default class OpenAIManager extends AIManager {
                 // For non-GET methods, just call handler which will show confirmation dialog
                 // and return a pending status
                 await this.toolHandler(
-                  args.url, 
-                  args.method, 
+                  args.url,
+                  args.method,
                   args.body,
                   toolCall.id,
                   assistantPrompt
@@ -137,7 +154,7 @@ export default class OpenAIManager extends AIManager {
               role: 'tool',
               content: JSON.stringify({
                 error: true,
-                message: error.message || 'Tool execution error'
+                message: error.message || 'Tool execution error',
               }),
               toolCallId: toolCall.id,
               name: toolCall.function.name,
@@ -146,31 +163,33 @@ export default class OpenAIManager extends AIManager {
         }
 
         // Only process follow-up for GET requests
-        if (responseContent.tool_calls.every(
-          tc => JSON.parse(tc.function.arguments).method.toUpperCase() === 'GET'
-        )) {
+        if (
+          responseContent.tool_calls.every(
+            tc => JSON.parse(tc.function.arguments).method.toUpperCase() === 'GET'
+          )
+        ) {
           return await this.processToolResponses();
         }
-        
+
         return assistantPrompt;
       }
 
       // Handle normal response
-      const assistantPrompt: Prompt = { 
-        role: 'assistant', 
-        content: responseContent.content || '' 
+      const assistantPrompt: Prompt = {
+        role: 'assistant',
+        content: responseContent.content || '',
       };
       this.history.push(assistantPrompt);
       return assistantPrompt;
     } catch (error) {
       console.error('Error calling OpenAI:', error);
-      
+
       // Check if this is a content filter error
-      if (error.name === 'ContentFilterError' || 
-          error.message?.includes('content_filter')) {
+      if (error.name === 'ContentFilterError' || error.message?.includes('content_filter')) {
         const errorPrompt: Prompt = {
           role: 'assistant',
-          content: 'Your request was blocked by content filters. Please focus only on Kubernetes administration tasks.',
+          content:
+            'Your request was blocked by content filters. Please focus only on Kubernetes administration tasks.',
           contentFilterError: true,
           error: true,
         };

@@ -4,6 +4,7 @@ import {
   registerAppBarAction,
   registerHeadlampEventCallback,
   registerPluginSettings,
+  registerUIPanel,
 } from '@kinvolk/headlamp-plugin/lib';
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
@@ -21,10 +22,49 @@ import ModelSelector from './components/ModelSelector';
 import { getDefaultConfig, getProviderById } from './config/modelConfig';
 import AIPrompt from './modal';
 import { useGlobalState } from './utils';
-import { getActiveConfig, getSavedConfigurations, saveProviderConfig, StoredProviderConfig } from './utils/ProviderConfigManager';
+import {
+  getActiveConfig,
+  getSavedConfigurations,
+  saveProviderConfig,
+  StoredProviderConfig,
+} from './utils/ProviderConfigManager';
 
-function DeploymentAIPrompt() {
-  const [openPopup, setOpenPopup] = React.useState(false);
+// Register UI Panel component that uses the shared state to show/hide
+registerUIPanel({
+  id: 'headlamp-ai',
+  side: 'right',
+  component: () => {
+    const pluginState = useGlobalState();
+    const config = new ConfigStore<{ errorMessage?: string }>('@headlamp-k8s/headlamp-ai');
+    const useConf = config.useConfig();
+    const conf = useConf();
+
+    // Don't render anything if panel is closed
+    if (!pluginState.isUIPanelOpen) {
+      return null;
+    }
+
+    return (
+      <Box
+        sx={{
+          height: '100%',
+          width: '40vw', // Set a fixed width for the panel
+          maxWidth: '100%',
+          border: '1px solid ',
+        }}
+      >
+        <AIPrompt
+          openPopup={pluginState.isUIPanelOpen}
+          setOpenPopup={pluginState.setIsUIPanelOpen}
+          pluginSettings={conf}
+        />
+      </Box>
+    );
+  },
+});
+
+function HeadlampAIPrompt() {
+  const pluginState = useGlobalState();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const config = new ConfigStore<{ errorMessage?: string }>('@headlamp-k8s/headlamp-ai');
   const useConf = config.useConfig();
@@ -35,10 +75,10 @@ function DeploymentAIPrompt() {
     (conf?.API_TYPE === 'azure' && conf?.DEPLOYMENT_NAME && conf?.API_KEY && conf?.GPT_MODEL) ||
     (conf?.API_TYPE !== 'azure' && conf?.API_KEY && conf?.GPT_MODEL);
 
-  // Check for new format - any valid provider config 
+  // Check for new format - any valid provider config
   const savedConfigs = getSavedConfigurations(conf);
   const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
-  
+
   const hasValidConfig = hasLegacyConfig || hasAnyValidConfig;
 
   return (
@@ -46,12 +86,13 @@ function DeploymentAIPrompt() {
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
         <Tooltip title="AI Assistant">
           <ToggleButton
-            aria-label={'description'}
+            aria-label={'AI Assistant'}
             onClick={event => {
-              setOpenPopup(prev => !prev);
+              // Toggle the UI panel state
+              pluginState.setIsUIPanelOpen(!pluginState.isUIPanelOpen);
               setAnchorEl(event.currentTarget);
             }}
-            selected={openPopup}
+            selected={pluginState.isUIPanelOpen}
             size="small"
           >
             <Icon icon="mdi:sparkles" width="24px" />
@@ -65,7 +106,7 @@ function DeploymentAIPrompt() {
             placement="bottom-start"
             anchorEl={anchorEl}
             disablePortal={false}
-            open={openPopup && Boolean(anchorEl)}
+            open={pluginState.isUIPanelOpen && Boolean(anchorEl)}
             style={{
               zIndex: 2000,
               marginTop: '8px',
@@ -95,7 +136,7 @@ function DeploymentAIPrompt() {
                     name: '@headlamp-k8s/headlamp-ai',
                   }}
                   onClick={() => {
-                    setOpenPopup(false);
+                    pluginState.setIsUIPanelOpen(false);
                   }}
                 >
                   Settings
@@ -105,20 +146,18 @@ function DeploymentAIPrompt() {
             </Paper>
           </Popper>
           <Backdrop
-            open={openPopup}
+            open={pluginState.isUIPanelOpen}
             onClick={() => {
-              setOpenPopup(false);
+              pluginState.setIsUIPanelOpen(false);
             }}
           />
         </>
-      ) : (
-        <AIPrompt openPopup={openPopup} setOpenPopup={setOpenPopup} pluginSettings={conf} />
-      )}
+      ) : null}
     </>
   );
 }
 
-registerAppBarAction(DeploymentAIPrompt);
+registerAppBarAction(HeadlampAIPrompt);
 
 registerAppBarAction(() => {
   const _pluginState = useGlobalState();
@@ -160,12 +199,12 @@ registerAppBarAction(() => {
  */
 function Settings(props) {
   const { data, onDataChange } = props;
-  
+
   // Get saved configurations from plugin data
   const savedConfigs = React.useMemo(() => {
     return getSavedConfigurations(data);
   }, [data]);
-  
+
   // Track the provider type
   const [selectedProvider, setSelectedProvider] = React.useState(() => {
     const activeConfig = getActiveConfig(savedConfigs);
@@ -179,15 +218,15 @@ function Settings(props) {
     if (activeConfig) {
       return { ...activeConfig.config };
     }
-    
+
     // Fall back to legacy format
     if (data?.provider === selectedProvider && data?.config) {
       return { ...data.config };
     }
-    
+
     return getDefaultConfig(selectedProvider);
   });
-  
+
   // Track configuration name
   const [configName, setConfigName] = React.useState(() => {
     const activeConfig = getActiveConfig(savedConfigs);
@@ -197,10 +236,10 @@ function Settings(props) {
   // Handle provider change
   const handleProviderChange = (providerId: string) => {
     setSelectedProvider(providerId);
-    
+
     // Try to find an existing config for this provider
     const existingConfig = savedConfigs.providers.find(p => p.providerId === providerId);
-    
+
     if (existingConfig) {
       // Use existing config
       setProviderConfig({ ...existingConfig.config });
@@ -216,32 +255,36 @@ function Settings(props) {
   const handleConfigChange = (newConfig: Record<string, any>) => {
     setProviderConfig(newConfig);
   };
-  
+
   // Handle saving a configuration
-  const handleSaveConfig = (providerId: string, config: Record<string, any>, makeDefault: boolean) => {
+  const handleSaveConfig = (
+    providerId: string,
+    config: Record<string, any>,
+    makeDefault: boolean
+  ) => {
     // Save the configuration
     const updatedConfigs = saveProviderConfig(
-      savedConfigs, 
-      providerId, 
+      savedConfigs,
+      providerId,
       config,
       makeDefault,
       configName
     );
-    
+
     // Update the global data
     onDataChange(updatedConfigs);
   };
-  
+
   // Handle selecting a saved configuration
   const handleSelectSavedConfig = (config: StoredProviderConfig) => {
     setSelectedProvider(config.providerId);
     setProviderConfig({ ...config.config });
     setConfigName(config.displayName || '');
-    
+
     // Update active provider in the global data
     onDataChange({
       ...savedConfigs,
-      activeProviderId: config.providerId
+      activeProviderId: config.providerId,
     });
   };
 

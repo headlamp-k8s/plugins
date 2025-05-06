@@ -78,7 +78,7 @@ export default function EditorDialog({
       if (!resource) {
         throw new Error('Invalid YAML content');
       }
-      
+
       // Ensure we have the resourceType from the YAML content if not already set
       const displayResourceType = resourceType || resource.kind || 'Resource';
       // close the editor when user applies the resource

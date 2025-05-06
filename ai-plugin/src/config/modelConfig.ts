@@ -164,7 +164,7 @@ export const modelProviders: ModelProvider[] = [
           'mistral-embed',
           'mixtral-8x7b',
           'open-mixtral-8x7b',
-          'open-mistral-7b'
+          'open-mistral-7b',
         ],
         default: 'mistral-medium',
       },
@@ -175,7 +175,7 @@ export const modelProviders: ModelProvider[] = [
       'mistral-large',
       'mixtral-8x7b',
       'open-mixtral-8x7b',
-      'open-mistral-7b'
+      'open-mistral-7b',
     ],
   },
   {
@@ -196,12 +196,7 @@ export const modelProviders: ModelProvider[] = [
         label: 'Model',
         type: 'select',
         required: true,
-        options: [
-          'gemini-pro',
-          'gemini-1.0-pro',
-          'gemini-1.5-pro',
-          'gemini-1.5-flash',
-        ],
+        options: ['gemini-pro', 'gemini-1.0-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'],
         default: 'gemini-pro',
       },
     ],
