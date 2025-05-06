@@ -1,13 +1,10 @@
 import { Icon } from '@iconify/react';
-import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
-import { apply, clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
-import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
+  Alert,
   Box,
   Button,
   Chip,
-  Drawer,
   Grid,
   MenuItem,
   Paper,
@@ -16,11 +13,11 @@ import {
   Typography,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
-import YAML from 'yaml';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
+import { handleActualApiRequest } from './helper/apihelper';
 import LangChainManager from './langchain/LangChainManager';
 import OpenAIManager from './openai/manager';
 import TextStreamContainer from './textstream';
@@ -150,7 +147,7 @@ export default function AIPrompt(props: {
 
   // Get the active provider configuration
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
-  
+
   // Track available provider configurations
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
 
@@ -234,57 +231,83 @@ export default function AIPrompt(props: {
   // Initialize active configuration from plugin settings
   useEffect(() => {
     if (!pluginSettings) return;
-    
+
     const savedConfigs = getSavedConfigurations(pluginSettings);
     console.log('Saved configurations:', savedConfigs);
     setAvailableConfigs(savedConfigs.providers || []);
-    
-    const active = getActiveConfig(savedConfigs);
+
+    // Always try to get the default provider first
+    const defaultConfig = savedConfigs.providers.find(p => p.isDefault);
+    const active = defaultConfig || getActiveConfig(savedConfigs);
+
     if (active) {
       setActiveConfig(active);
-      
+
       // Update global state with all providers and active one
       _pluginSetting.setSavedProviders(savedConfigs.providers || []);
       _pluginSetting.setActiveProvider(active);
     }
   }, [pluginSettings]);
-  
+
   // Handle changing the active configuration
   const handleChangeConfig = (config: StoredProviderConfig) => {
     if (!config) return;
-    
+
     // Only reset if we're actually changing the configuration
-    if (!activeConfig || 
-        activeConfig.providerId !== config.providerId || 
-        activeConfig.config.apiKey !== config.config.apiKey) {
-      
-      console.log(`Switching provider from ${activeConfig?.providerId || 'none'} to ${config.providerId}`);
+    if (
+      !activeConfig ||
+      activeConfig.providerId !== config.providerId ||
+      activeConfig.config.apiKey !== config.config.apiKey
+    ) {
+      console.log(
+        `Switching provider from ${activeConfig?.providerId || 'none'} to ${config.providerId}`
+      );
+
+      // Immediately clear prompt history for better UX
+      setPromptHistory([]);
+      setPromptVal('');
+
+      // Clear any errors when changing provider
+      setApiError(null);
+
+      // Update active config
       setActiveConfig(config);
-      
+
       // Update the global state with the active provider
       _pluginSetting.setActiveProvider(config);
-      
+
       // Reset the AI manager to reinitialize with new settings
       if (aiManager) {
         aiManager.reset();
         setAiManager(null);
-        setPromptHistory([]);
-        
+
         // Add a system message indicating the provider change
         setTimeout(() => {
-          const providerName = config.displayName || 
-            getProviderById(config.providerId)?.name || 
-            config.providerId;
-            
-          setPromptHistory([{
-            role: 'system',
-            content: `Switched to ${providerName}. History has been cleared.`
-          }]);
+          const providerName =
+            config.displayName || getProviderById(config.providerId)?.name || config.providerId;
+
+          setPromptHistory([
+            {
+              role: 'system',
+              content: `Switched to ${providerName}. History has been cleared.`,
+            },
+          ]);
         }, 100);
+      } else {
+        // Even if there's no AI manager yet, still show the provider change message
+        const providerName =
+          config.displayName || getProviderById(config.providerId)?.name || config.providerId;
+
+        setPromptHistory([
+          {
+            role: 'system',
+            content: `Using ${providerName}.`,
+          },
+        ]);
       }
     }
   };
-  
+
   React.useEffect(() => {
     if (!aiManager && pluginSettings) {
       console.log(
@@ -327,7 +350,9 @@ export default function AIPrompt(props: {
           return;
         } catch (error) {
           console.error('Error initializing LangChainManager:', error);
-          setApiError(`Failed to initialize AI model: ${error.message}`);
+          setApiError(
+            `Failed to initialize ${provider} model: ${error.message}. Please check your settings.`
+          );
         }
       }
 
@@ -348,14 +373,18 @@ export default function AIPrompt(props: {
             );
           } catch (error) {
             console.error('Error initializing OpenAIManager for Azure:', error);
-            setApiError(`Failed to initialize Azure OpenAI model: ${error.message}`);
+            setApiError(
+              `Failed to initialize Azure OpenAI model: ${error.message}. Please update your Azure OpenAI settings.`
+            );
           }
         } else if (!isAzure && pluginSettings.GPT_MODEL) {
           try {
             setAiManager(new OpenAIManager(pluginSettings.API_KEY, pluginSettings.GPT_MODEL));
           } catch (error) {
             console.error('Error initializing OpenAIManager:', error);
-            setApiError(`Failed to initialize OpenAI model: ${error.message}`);
+            setApiError(
+              `Failed to initialize OpenAI model: ${error.message}. Please update your OpenAI settings.`
+            );
           }
         } else {
           console.error(
@@ -364,13 +393,10 @@ export default function AIPrompt(props: {
           );
           setApiError(
             isAzure
-              ? 'Missing Azure OpenAI configuration. Please check your settings.'
-              : 'Missing OpenAI configuration. Please check your settings.'
+              ? 'Missing Azure OpenAI configuration. Please check your settings and provide all required fields.'
+              : 'Missing OpenAI configuration. Please check your settings and provide all required fields.'
           );
         }
-      } else if (!activeConfig) {
-        console.error('No valid API configuration found in settings');
-        // setApiError('No valid API configuration found. Please check your settings.');
       }
     }
   }, [aiManager, pluginSettings, activeConfig]);
@@ -421,541 +447,14 @@ export default function AIPrompt(props: {
     }
   }
 
-  // Simplified makeKubeRequest that follows the architecture in the example
-  const makeKubeRequest = async (
-    url: string,
-    method: string,
-    body?: string,
-    toolCallId?: string,
-    pendingPrompt?: Prompt
-  ) => {
-    // For GET requests, proceed directly with clusterRequest
-    if (method.toUpperCase() === 'GET') {
-      try {
-        const cluster = getCluster();
-        if (!cluster) {
-          throw new Error('No cluster selected');
-        }
-
-        const headers = {
-          'Content-Type': 'application/json',
-          Accept: 'application/json;as=Table;g=meta.k8s.io;v=v1',
-        };
-
-        const response = await clusterRequest(url, {
-          method,
-          cluster,
-          body: body === '' ? undefined : body,
-          headers,
-        });
-
-        // Process table responses similar to the example
-        if (typeof response === 'object' && response?.kind === 'Table') {
-          const result = [
-            [...response.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
-            ...response.rows.map((row: any) =>
-              [...row.cells, row.object.metadata.namespace || ''].join(',')
-            ),
-          ].join('\n');
-          return result;
-        }
-
-        return response;
-      } catch (error) {
-        console.error('Error with GET request:', error);
-        return JSON.stringify({ error: true, message: error.message });
-      }
-    }
-
-    // For non-GET methods, show confirmation dialog and return pending status
-    try {
-      // Format body as YAML for better display if it's JSON
-      let displayBody = body;
-      if (body && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
-        try {
-          if (body.trim().startsWith('{') || body.trim().startsWith('[')) {
-            const jsonObject = JSON.parse(body);
-            displayBody = YAML.stringify(jsonObject);
-          }
-        } catch (e) {
-          console.warn('Failed to parse body as JSON:', e);
-        }
-      }
-
-      // Show confirmation dialog
-      setApiRequest({
-        url,
-        method,
-        body: displayBody,
-        toolCallId,
-        pendingPrompt,
-      });
-      setShowApiConfirmation(true);
-      setApiResponse(null);
-      setApiRequestError(null);
-
-      // Return pending status - actual request will be made when confirmed
-      return {
-        status: 'pending_confirmation',
-        message: `This ${method.toUpperCase()} request requires confirmation before proceeding.`,
-      };
-    } catch (error) {
-      console.error('Error preparing request:', error);
-      return JSON.stringify({ error: true, message: error.message });
-    }
-  };
-
-  // Helper function to check if a URL is requesting logs
-  const isLogRequest = (url: string): boolean => {
-    return url.includes('/log?') || url.endsWith('/log');
-  };
-
-  // Function to handle the actual API request after confirmation
-  const handleActualApiRequest = async (url: string, method: string, body?: string) => {
-    try {
-      // For modifying operations, we should close the dialog immediately
-      // as clusterAction will handle loading state
-      const isModifyingOperation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(
-        method.toUpperCase()
-      );
-
-      if (isModifyingOperation) {
-        // We'll keep the apiLoading state true until we start the clusterAction
-        // but close the dialog immediately
-        setApiLoading(true);
-      } else {
-        // For GET requests, we want to keep the dialog open to show results
-        setApiLoading(true);
-      }
-
-      const cluster = getCluster();
-      if (!cluster) {
-        console.error('No cluster selected.');
-        setApiRequestError('No cluster selected');
-        return JSON.stringify({ error: true, message: 'No cluster selected' });
-      }
-
-      console.log('Making Kubernetes API request:', { url, method, body });
-
-      // For POST operations, use clusterAction like in EditorDialog
-      if (method.toUpperCase() === 'POST' && body) {
-        try {
-          // Parse the body - could be YAML or JSON
-          let resource;
-
-          try {
-            // Try parsing as YAML first
-            resource = YAML.parse(body);
-          } catch (e) {
-            // If YAML parsing fails, try JSON
-            resource = JSON.parse(body);
-          }
-
-          // Close dialog immediately before starting clusterAction
-          handleApiDialogClose();
-
-          // Use clusterAction for POST requests to benefit from the built-in handling
-          clusterAction(
-            async () => {
-              const response = await apply(resource, cluster);
-
-              // Add tool response to history if needed
-              if (apiRequest?.toolCallId && aiManager) {
-                const successResponse = {
-                  status: 'success',
-                  message: `${resource.kind || 'Resource'} created successfully`,
-                  resourceType: resource.kind,
-                  name: resource.metadata?.name,
-                  namespace: resource.metadata?.namespace,
-                };
-
-                const toolResponse: Prompt = {
-                  role: 'tool',
-                  content: JSON.stringify(successResponse),
-                  toolCallId: apiRequest.toolCallId,
-                  name: 'kubernetes_api_request',
-                };
-
-                // Remove any existing tool response with this ID
-                const updatedHistory = aiManager.history.filter(
-                  item => !(item.role === 'tool' && item.toolCallId === apiRequest.toolCallId)
-                );
-                
-                // Add the new response
-                updatedHistory.push(toolResponse);
-                aiManager.history = updatedHistory;
-                updateHistory();
-
-                // If there was a pending prompt from the tool call, process it now
-                if (apiRequest.pendingPrompt) {
-                  await aiManager.processToolResponses();
-                  updateHistory();
-                }
-              }
-
-              return response;
-            },
-            {
-              startMessage: `Creating ${resource.kind || 'resource'} in cluster ${cluster}...`,
-              cancelledMessage: `Cancelled creating resource in cluster.`,
-              successMessage: `${resource.kind || 'Resource'} created successfully.`,
-              errorMessage: `Failed to create resource.`,
-            }
-          );
-
-          // Return success response immediately
-          return { 
-            status: 'success', 
-            message: `${resource.kind || 'Resource'} created successfully`,
-            resourceType: resource.kind,
-            name: resource.metadata?.name,
-            namespace: resource.metadata?.namespace,
-          };
-        } catch (error) {
-          console.error('Error parsing YAML or applying resource:', error);
-          setApiRequestError(`Error creating resource: ${error.message}`);
-          setApiLoading(false);
-          return JSON.stringify({
-            error: true,
-            message: `Error creating resource: ${error.message}`,
-          });
-        }
-      }
-
-      // For DELETE operations similar update to close dialog before clusterAction
-      if (method.toUpperCase() === 'DELETE' && body) {
-        try {
-          const resource = YAML.parse(body);
-
-          // Ensure finalizers are removed for proper deletion
-          if (resource.metadata) {
-            resource.metadata.finalizers = [];
-          }
-
-          const resourceName = resource.metadata?.name || 'Unknown';
-          const resourceKind = resource.kind || 'Resource';
-          const namespace = resource.metadata?.namespace;
-
-          const resourceIdentifier = namespace
-            ? `${resourceKind} "${resourceName}" in namespace "${namespace}"`
-            : `${resourceKind} "${resourceName}"`;
-
-          // Close dialog immediately before starting clusterAction
-          handleApiDialogClose();
-
-          // Use clusterAction for DELETE requests
-          clusterAction(
-            async () => {
-              const response = await apply(resource, cluster);
-
-              // Add tool response to history if needed
-              if (apiRequest?.toolCallId && aiManager) {
-                const toolResponse: Prompt = {
-                  role: 'tool',
-                  content: JSON.stringify({
-                    status: 'success',
-                    message: `${resourceIdentifier} deleted successfully`,
-                    resourceType: resource.kind,
-                    name: resource.metadata?.name,
-                    namespace: resource.metadata?.namespace,
-                  }),
-                  toolCallId: apiRequest.toolCallId,
-                  name: 'kubernetes_api_request',
-                };
-
-                aiManager.history.push(toolResponse);
-                updateHistory();
-
-                // If there was a pending prompt from the tool call, process it now
-                if (apiRequest.pendingPrompt) {
-                  await aiManager.processToolResponses();
-                  updateHistory();
-                }
-              }
-
-              return response;
-            },
-            {
-              startMessage: `Deleting ${resourceIdentifier}...`,
-              cancelledMessage: `Cancelled deleting ${resourceIdentifier}.`,
-              successMessage: `${resourceIdentifier} deleted successfully.`,
-              errorMessage: `Failed to delete ${resourceIdentifier}.`,
-            }
-          );
-
-          // Return placeholder response
-          return { status: 'processing', message: 'Delete operation in progress' };
-        } catch (error) {
-          console.error('Error parsing YAML or deleting resource:', error);
-          setApiRequestError(`Error deleting resource: ${error.message}`);
-          setApiLoading(false);
-          return JSON.stringify({
-            error: true,
-            message: `Error deleting resource: ${error.message}`,
-          });
-        }
-      }
-
-      // For PATCH/PUT operations with clusterAction
-      if ((method.toUpperCase() === 'PATCH' || method.toUpperCase() === 'PUT') && body) {
-        console.log('Processing PATCH/PUT request:', { url, method, body });
-        try {
-          // Parse the body to get resource details for better notifications
-          let resource;
-          try {
-            // Try parsing as YAML first
-            resource = YAML.parse(body);
-          } catch (e) {
-            // If YAML parsing fails, try JSON
-            resource = JSON.parse(body);
-          }
-
-          const resourceName = resource.metadata?.name || 'Unknown';
-          const resourceKind = resource.kind || 'Resource';
-          const namespace = resource.metadata?.namespace;
-
-          const resourceIdentifier = namespace
-            ? `${resourceKind} "${resourceName}" in namespace "${namespace}"`
-            : `${resourceKind} "${resourceName}"`;
-
-          // Ensure body is in JSON format for API request
-          const processedBody = JSON.stringify(resource);
-
-          // Close dialog immediately before starting clusterAction
-          handleApiDialogClose();
-
-          // Use clusterAction for PUT/PATCH requests
-          clusterAction(
-            async () => {
-              const headers = {
-                'Content-Type':
-                  method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-                Accept: 'application/json',
-              };
-
-              const response = await clusterRequest(url, {
-                method,
-                cluster,
-                body: processedBody,
-                headers,
-              });
-
-              // Add tool response to history if needed
-              if (apiRequest?.toolCallId && aiManager) {
-                const toolResponse: Prompt = {
-                  role: 'tool',
-                  content: JSON.stringify({
-                    status: 'success',
-                    message: `${resourceIdentifier} updated successfully`,
-                    resourceType: resource.kind,
-                    name: resource.metadata?.name,
-                    namespace: resource.metadata?.namespace,
-                  }),
-                  toolCallId: apiRequest.toolCallId,
-                  name: 'kubernetes_api_request',
-                };
-
-                // Remove any existing tool response with this ID
-                const updatedHistory = aiManager.history.filter(
-                  item => !(item.role === 'tool' && item.toolCallId === apiRequest.toolCallId)
-                );
-                
-                // Add the new response
-                updatedHistory.push(toolResponse);
-                aiManager.history = updatedHistory;
-                updateHistory();
-
-                // If there was a pending prompt from the tool call, process it now
-                if (apiRequest.pendingPrompt) {
-                  await aiManager.processToolResponses();
-                  updateHistory();
-                }
-              }
-
-              return response;
-            },
-            {
-              startMessage: `Updating ${resourceIdentifier}...`,
-              cancelledMessage: `Cancelled updating ${resourceIdentifier}.`,
-              successMessage: `${resourceIdentifier} updated successfully.`,
-              errorMessage: `Failed to update ${resourceIdentifier}.`,
-            }
-          );
-
-          // Return success response immediately to update UI
-          return { 
-            status: 'success', 
-            message: `${resourceIdentifier} updated successfully`,
-            resourceType: resource.kind,
-            name: resource.metadata?.name,
-            namespace: resource.metadata?.namespace,
-          };
-        } catch (error) {
-          console.error('Error updating resource:', error);
-          setApiRequestError(`Error updating resource: ${error.message}`);
-          setApiLoading(false);
-          return JSON.stringify({
-            error: true,
-            message: `Error updating resource: ${error.message}`,
-          });
-        }
-      }
-
-      // For GET requests, continue with existing flow - we'll keep the dialog open
-      // to show results
-      const headers = isLogRequest(url)
-        ? {
-            // For log requests, use application/json as specified by the k8s API server
-            Accept: 'application/json',
-            'Content-Type':
-              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-          }
-        : {
-            'Content-Type':
-              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-            Accept: 'application/json;as=Table;g=meta.k8s.io;v=v1',
-          };
-
-      // For all other methods (GET, PATCH, PUT), continue using the original flow
-      const response = await clusterRequest(url, {
-        method,
-        cluster,
-        body: body === '' ? undefined : body,
-        headers,
-      });
-
-      console.log('Kubernetes API Response:', response);
-
-      let formattedResponse = response;
-
-      // Format the response based on its type
-      if (isLogRequest(url)) {
-        // For logs, ensure we're handling the response properly
-        if (
-          typeof response === 'object' &&
-          response.kind === 'Status' &&
-          response.status === 'Failure'
-        ) {
-          // This is an error response, format it accordingly
-          formattedResponse = `Error fetching logs: ${response.message || 'Unknown error'}`;
-        } else {
-          // Format log response appropriately (could be string or object with log property)
-          formattedResponse =
-            typeof response === 'string' ? response : response.log || JSON.stringify(response);
-        }
-      } else if (typeof response === 'object' && response?.kind === 'Table') {
-        // Format Table responses as CSV
-        formattedResponse = [
-          [...response.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
-          ...response.rows.map((row: any) =>
-            [...row.cells, 'Important! namespace = ' + row.object.metadata.namespace].join(',')
-          ),
-        ].join('\n');
-      }
-
-      setApiResponse(formattedResponse);
-      setApiLoading(false);
-
-      // If there's a pending tool call, add the response to the history
-      if (
-        apiRequest?.toolCallId &&
-        aiManager &&
-        method.toUpperCase() !== 'POST' &&
-        method.toUpperCase() !== 'DELETE'
-      ) {
-        const toolResponse: Prompt = {
-          role: 'tool',
-          content:
-            typeof formattedResponse === 'string'
-              ? formattedResponse
-              : JSON.stringify(formattedResponse),
-          toolCallId: apiRequest.toolCallId,
-          name: 'kubernetes_api_request',
-        };
-
-        aiManager.history.push(toolResponse);
-        updateHistory();
-
-        // If there was a pending prompt from the tool call, process it now
-        if (apiRequest.pendingPrompt) {
-          await aiManager.processToolResponses();
-          updateHistory();
-        }
-      }
-
-      return formattedResponse ?? 'ok';
-    } catch (error) {
-      console.error('Error in makeKubeRequest:', error);
-      setApiRequestError(error.message);
-      setApiLoading(false);
-
-      // If there's a pending tool call, add the error response to history
-      if (apiRequest?.toolCallId && aiManager) {
-        const errorResponse: Prompt = {
-          role: 'tool',
-          content: JSON.stringify({ error: true, message: error.message }),
-          toolCallId: apiRequest.toolCallId,
-          name: 'kubernetes_api_request',
-          error: true, // Mark as error for proper display
-        };
-
-        aiManager.history.push(errorResponse);
-        updateHistory();
-
-        // If there was a pending prompt from the tool call, process it now
-        if (apiRequest.pendingPrompt) {
-          await aiManager.processToolResponses();
-          updateHistory();
-        }
-      }
-
-      return JSON.stringify({ error: true, message: error.message });
-    }
-  };
-
   // Function to handle API confirmation dialog confirmation
-  const handleApiConfirmation = async (body) => {
+  const handleApiConfirmation = async body => {
     if (!apiRequest) return;
 
-    const { url, method, toolCallId } = apiRequest;
-    const result = await handleActualApiRequest(url, method, body);
-    
-    // If we have a successful result and a toolCallId, update the tool response
-    if (result && toolCallId && aiManager) {
-      // Make sure we have a response that indicates success
-      let formattedResult;
-      if (typeof result === 'string') {
-        formattedResult = result;
-      } else if (typeof result === 'object') {
-        // For non-GET requests, make sure we have a success status
-        if (method.toUpperCase() !== 'GET' && !result.status) {
-          formattedResult = JSON.stringify({
-            status: 'success',
-            message: `${method.toUpperCase()} operation completed successfully`,
-            ...result
-          });
-        } else {
-          formattedResult = JSON.stringify(result);
-        }
-      }
-      
-      // Update the tool response with the success status
-      const toolResponse: Prompt = {
-        role: 'tool',
-        content: formattedResult,
-        toolCallId: toolCallId,
-        name: 'kubernetes_api_request',
-      };
+    const { url, method } = apiRequest;
+    setApiRequest(null);
 
-      // Update the history with the new response
-      const updatedHistory = aiManager.history.filter(
-        item => !(item.role === 'tool' && item.toolCallId === toolCallId)
-      );
-      
-      updatedHistory.push(toolResponse);
-      aiManager.history = updatedHistory;
-      updateHistory();
-    }
+    await handleActualApiRequest(url, method, body, handleApiDialogClose, aiManager);
   };
 
   const handleApiDialogClose = () => {
@@ -965,7 +464,7 @@ export default function AIPrompt(props: {
     setApiRequestError(null);
     setApiLoading(false);
   };
-  
+
   React.useEffect(() => {
     if (!aiManager) {
       return;
@@ -1030,7 +529,10 @@ export default function AIPrompt(props: {
             },
           },
         ],
-        makeKubeRequest
+        async (url, method, body = '') => {
+          setApiRequest({ url, method, body });
+          setShowApiConfirmation(true);
+        }
       );
     }
 
@@ -1048,27 +550,21 @@ export default function AIPrompt(props: {
     ];
   };
 
-
   // Get provider display name from the active configuration
   const getProviderDisplayName = () => {
-    return 'AI'
+    return 'AI';
   };
 
-  return openPopup ? (
+  // If panel is not open, don't render
+  if (!openPopup) return null;
+
+  return (
     <div ref={rootRef}>
-      <Drawer
-        open={openPopup}
-        anchor={'right'}
-        transitionDuration={{ enter: 2000, exit: 2000 }}
-        BackdropProps={{ invisible: true }}
-        variant="persistent"
-        PaperProps={{
-          style: {
-            width: '25%',
-            maxWidth: '50%',
-            height: '95vh',
-            top: '60px',
-          },
+      <Box
+        sx={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <Box
@@ -1090,7 +586,7 @@ export default function AIPrompt(props: {
               onClick={() => {
                 setOpenPopup(false);
               }}
-              icon="mdi:chevron-right-box-outline"
+              icon="mdi:close"
             />
           </Box>
         </Box>
@@ -1113,6 +609,27 @@ export default function AIPrompt(props: {
               overflowY: 'auto',
             }}
           >
+            {apiError && (
+              <Alert
+                severity="error"
+                sx={{ mb: 2 }}
+                action={
+                  <Button color="inherit" size="small">
+                    <Link
+                      routeName="pluginDetails"
+                      params={{
+                        name: '@headlamp-k8s/headlamp-ai',
+                      }}
+                    >
+                      Settings
+                    </Link>
+                  </Button>
+                }
+              >
+                {apiError}
+              </Alert>
+            )}
+
             <TextStreamContainer
               history={promptHistory}
               isLoading={loading}
@@ -1229,30 +746,32 @@ export default function AIPrompt(props: {
                     }}
                     icon="mdi:broom"
                   />
-                  
+
                   {/* Provider Selection Dropdown */}
                   {availableConfigs.length > 1 && (
                     <Box ml={2} sx={{ display: 'flex', alignItems: 'center' }}>
                       <Select
                         value={activeConfig?.providerId || ''}
-                        onChange={(e) => {
+                        onChange={e => {
                           // Find the matching saved configuration
                           const selectedProviderId = e.target.value as string;
-                          const newConfig = availableConfigs.find(c => c.providerId === selectedProviderId);
+                          const newConfig = availableConfigs.find(
+                            c => c.providerId === selectedProviderId
+                          );
                           if (newConfig) handleChangeConfig(newConfig);
                         }}
                         size="small"
                         sx={{ minWidth: 120, height: 32 }}
                         variant="outlined"
-                        renderValue={(selected) => {
+                        renderValue={selected => {
                           const providerInfo = getProviderById(selected as string);
                           return (
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Icon 
-                                icon={providerInfo?.icon || 'mdi:robot'} 
+                              <Icon
+                                icon={providerInfo?.icon || 'mdi:robot'}
                                 width="16px"
-                                height="16px" 
-                                style={{ marginRight: 4 }} 
+                                height="16px"
+                                style={{ marginRight: 4 }}
                               />
                               <Typography variant="body2" noWrap>
                                 {providerInfo?.name || selected}
@@ -1264,27 +783,29 @@ export default function AIPrompt(props: {
                         {availableConfigs.map((config, index) => {
                           // Find provider info for icon
                           const providerInfo = getProviderById(config.providerId);
-                          
+
                           return (
-                            <MenuItem 
-                              key={index} 
+                            <MenuItem
+                              key={index}
                               value={config.providerId}
                               selected={activeConfig?.providerId === config.providerId}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Icon 
-                                  icon={providerInfo?.icon || 'mdi:robot'} 
+                                <Icon
+                                  icon={providerInfo?.icon || 'mdi:robot'}
                                   width="16px"
-                                  height="16px" 
-                                  style={{ marginRight: 8 }} 
+                                  height="16px"
+                                  style={{ marginRight: 8 }}
                                 />
                                 <Typography variant="body2">
-                                  {config.displayName || 
-                                   providerInfo?.name || 
-                                   config.providerId}
+                                  {config.displayName || providerInfo?.name || config.providerId}
                                 </Typography>
                                 {config.isDefault && (
-                                  <Typography component="span" variant="caption" sx={{ ml: 1, color: 'primary.main' }}>
+                                  <Typography
+                                    component="span"
+                                    variant="caption"
+                                    sx={{ ml: 1, color: 'primary.main' }}
+                                  >
                                     (Default)
                                   </Typography>
                                 )}
@@ -1296,7 +817,7 @@ export default function AIPrompt(props: {
                     </Box>
                   )}
                 </Grid>
-                
+
                 <Grid item>
                   <Button
                     variant="contained"
@@ -1320,17 +841,19 @@ export default function AIPrompt(props: {
             </Paper>
           </Grid>
         </Grid>
-      </Drawer>
+      </Box>
 
       {/* Editor Dialog */}
-      { !isDelete && showEditor && <EditorDialog
-        open={showEditor}
-        onClose={() => setShowEditor(false)}
-        yamlContent={editorContent}
-        title={editorTitle}
-        resourceType={resourceType}
-        onSuccess={handleOperationSuccess}
-      /> }
+      {!isDelete && showEditor && (
+        <EditorDialog
+          open={showEditor}
+          onClose={() => setShowEditor(false)}
+          yamlContent={editorContent}
+          title={editorTitle}
+          resourceType={resourceType}
+          onSuccess={handleOperationSuccess}
+        />
+      )}
 
       {/* API Confirmation Dialog */}
       <ApiConfirmationDialog
@@ -1345,5 +868,5 @@ export default function AIPrompt(props: {
         error={apiRequestError}
       />
     </div>
-  ) : null;
+  );
 }

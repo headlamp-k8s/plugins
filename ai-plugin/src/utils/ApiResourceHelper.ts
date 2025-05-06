@@ -12,24 +12,24 @@ export function ensureFullResource(resource: any): any {
 
   // Create a base structure if needed
   const result = { ...resource };
-  
+
   // Add missing required fields
   if (!result.apiVersion) {
     result.apiVersion = resource.apiVersion || 'v1';
   }
-  
+
   if (!result.kind) {
     result.kind = resource.kind || 'Resource';
   }
-  
+
   if (!result.metadata) {
     result.metadata = {};
   }
-  
+
   if (!result.metadata.name && resource.name) {
     result.metadata.name = resource.name;
   }
-  
+
   return result;
 }
 

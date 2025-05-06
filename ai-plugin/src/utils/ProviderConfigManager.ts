@@ -32,7 +32,7 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
 
   // Create empty configuration if nothing is found
   const providers: StoredProviderConfig[] = [];
-  
+
   // Handle legacy format (convert to new format)
   if (data.API_KEY) {
     // Check if this is OpenAI or Azure OpenAI
@@ -60,12 +60,12 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
       });
     }
   }
-  
+
   // Check for "provider" and "config" format (intermediate format)
   if (data.provider && data.config && typeof data.config === 'object') {
     // Make sure it's not already added from legacy format
     const alreadyAdded = providers.some(p => p.providerId === data.provider);
-    
+
     if (!alreadyAdded) {
       providers.push({
         providerId: data.provider,
@@ -75,12 +75,13 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
       });
     }
   }
-  
-  return { 
+
+  return {
     providers,
-    activeProviderId: providers.length > 0 ? 
-      (providers.find(p => p.isDefault)?.providerId || providers[0].providerId) : 
-      undefined
+    activeProviderId:
+      providers.length > 0
+        ? providers.find(p => p.isDefault)?.providerId || providers[0].providerId
+        : undefined,
   };
 }
 
@@ -119,41 +120,39 @@ export function saveProviderConfig(
   displayName?: string
 ): SavedConfigurations {
   // Create new array to avoid modifying the original
-  const providers = Array.isArray(savedConfigs.providers) 
-    ? [...savedConfigs.providers]
-    : [];
-  
+  const providers = Array.isArray(savedConfigs.providers) ? [...savedConfigs.providers] : [];
+
   // Check if this provider already exists
   const existingIndex = providers.findIndex(p => p.providerId === providerId);
-  
+
   // If makeDefault is true, unset default flag on all other providers
   if (makeDefault) {
     providers.forEach(p => {
       p.isDefault = false;
     });
   }
-  
+
   // Create new config object
   const updatedConfig: StoredProviderConfig = {
     providerId,
     displayName: displayName || providers[existingIndex]?.displayName,
     config: { ...config },
-    isDefault: makeDefault || (existingIndex === -1 && providers.length === 0)
+    isDefault: makeDefault || (existingIndex === -1 && providers.length === 0),
   };
-  
+
   // Update or add the configuration
   if (existingIndex >= 0) {
     providers[existingIndex] = updatedConfig;
   } else {
     providers.push(updatedConfig);
   }
-  
+
   // Set activeProviderId to the saved provider
   const activeProviderId = providerId;
-  
+
   // Return updated configurations
   return {
     providers,
-    activeProviderId
+    activeProviderId,
   };
 }
