@@ -1,13 +1,16 @@
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/lib/k8s';
-import { Box, Icon, IconButton } from '@mui/material';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Icon from '@mui/material/Icon';
+import IconButton from '@mui/material/IconButton';
 import { useEffect, useState } from 'react';
 import {
   getConfigStore,
   getPrometheusInterval,
   getPrometheusPrefix,
+  getPrometheusResolution,
   getPrometheusSubPath,
 } from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
@@ -76,6 +79,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
   }
 
   const interval = getPrometheusInterval(cluster);
+  const resolution = getPrometheusResolution(cluster);
   const subPath = getPrometheusSubPath(cluster);
   return (
     <SectionBox>
@@ -116,6 +120,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
             usageQuery={props.usageQuery}
             capacityQuery={props.capacityQuery}
             interval={interval}
+            resolution={resolution}
             autoRefresh={refresh}
             prometheusPrefix={prometheusPrefix}
             subPath={subPath}

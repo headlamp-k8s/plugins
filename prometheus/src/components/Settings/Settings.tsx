@@ -1,6 +1,7 @@
 import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
 import Box from '@mui/material/Box';
+import ListSubheader from '@mui/material/ListSubheader';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Switch from '@mui/material/Switch';
@@ -23,7 +24,7 @@ function isValidAddress(address: string): boolean {
 /**
  * Props for the Settings component.
  * @interface SettingsProps
- * @property {Object.<string, {isMetricsEnabled?: boolean, autoDetect?: boolean, address?: string, defaultTimespan?: string}>} data - Configuration data for each cluster
+ * @property {Object.<string, {isMetricsEnabled?: boolean, autoDetect?: boolean, address?: string, defaultTimespan?: string, defaultResolution?: string}>} data - Configuration data for each cluster
  * @property {Function} onDataChange - Callback function when data changes
  */
 interface SettingsProps {
@@ -35,6 +36,7 @@ interface SettingsProps {
       address?: string;
       subPath?: string;
       defaultTimespan?: string;
+      defaultResolution?: string;
     }
   >;
   onDataChange: (newData: SettingsProps['data']) => void;
@@ -64,6 +66,7 @@ export function Settings(props: SettingsProps) {
           isMetricsEnabled: true,
           autoDetect: true,
           defaultTimespan: '24h',
+          defaultResolution: 'medium',
         },
       });
     }
@@ -164,7 +167,7 @@ export function Settings(props: SettingsProps) {
       ),
     },
     {
-      name: 'Default timespan',
+      name: 'Default Timespan',
       value: (
         <Select
           disabled={!isMetricsEnabled}
@@ -193,6 +196,37 @@ export function Settings(props: SettingsProps) {
           <MenuItem value={'lastweek'}>Last week</MenuItem>
           <MenuItem value={'7d'}>7 days</MenuItem>
           <MenuItem value={'14d'}>14 days</MenuItem>
+        </Select>
+      ),
+    },
+    {
+      name: 'Default Resolution',
+      value: (
+        <Select
+          disabled={!isMetricsEnabled}
+          value={data?.[selectedCluster]?.defaultResolution || 'medium'}
+          onChange={e =>
+            onDataChange({
+              ...(data || {}),
+              [selectedCluster]: {
+                ...((data || {})[selectedCluster] || {}),
+                defaultResolution: e.target.value,
+              },
+            })
+          }
+        >
+          <ListSubheader>Automatic resolution</ListSubheader>
+          <MenuItem value="low">Low res.</MenuItem>
+          <MenuItem value="medium">Medium res.</MenuItem>
+          <MenuItem value="high">High res.</MenuItem>
+
+          <ListSubheader>Fixed resolution</ListSubheader>
+          <MenuItem value="10s">10s</MenuItem>
+          <MenuItem value="30s">30s</MenuItem>
+          <MenuItem value="1m">1m</MenuItem>
+          <MenuItem value="5m">5m</MenuItem>
+          <MenuItem value="15m">15m</MenuItem>
+          <MenuItem value="1h">1h</MenuItem>
         </Select>
       ),
     },

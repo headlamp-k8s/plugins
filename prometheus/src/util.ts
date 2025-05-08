@@ -9,6 +9,7 @@ export const PLUGIN_NAME = 'prometheus';
  * @property {boolean} isMetricsEnabled - Whether metrics are enabled for the cluster.
  * @property {string} address - The address of the Prometheus service.
  * @property {string} defaultTimespan - The default timespan for metrics.
+ * @property {string} defaultResolution - The default resolution for metrics.
  */
 type ClusterData = {
   autoDetect?: boolean;
@@ -16,6 +17,7 @@ type ClusterData = {
   address?: string;
   subPath?: string;
   defaultTimespan?: string;
+  defaultResolution?: string;
 };
 
 /**
@@ -137,6 +139,16 @@ export function getPrometheusInterval(cluster: string): string {
   return clusterData?.defaultTimespan ?? '24h';
 }
 
+/**
+ * getPrometheusResolution returns the default resolution for the Prometheus metrics.
+ * @param {string} cluster - The name of the cluster.
+ * @returns {string} The default resolution for the Prometheus metrics.
+ */
+export function getPrometheusResolution(cluster: string): string {
+  const clusterData = getClusterConfig(cluster);
+  return clusterData?.defaultResolution ?? 'medium';
+}
+
 export const ChartEnabledKinds = [
   'Pod',
   'Deployment',
@@ -237,45 +249,89 @@ export function formatBytes(bytes: number) {
   return (bytes / Math.pow(1024, i)).toFixed(2) + units[i];
 }
 
+// Number of seconds in a day (24h)
+const DAY_IN_SECONDS = 86400;
+
+// Time intervals mapped to seconds
+const TIME_INTERVALS: Record<string, number> = {
+  '1m': 60,
+  '10m': 600,
+  '30m': 1800,
+  '1h': 3600,
+  '3h': 10800,
+  '6h': 21600,
+  '12h': 43200,
+  '24h': DAY_IN_SECONDS,
+  '48h': 2 * DAY_IN_SECONDS,
+  '7d': 7 * DAY_IN_SECONDS,
+  '14d': 14 * DAY_IN_SECONDS,
+};
+
+// Fixed step sizes in seconds
+const FIXED_STEPS: Record<string, number> = {
+  '10s': 10,
+  '30s': 30,
+  '1m': 60,
+  '5m': 300,
+  '15m': 900,
+  '1h': 3600,
+};
+
+// Resolution factors for dynamic calculation
+const RESOLUTION_FACTORS: Record<string, number> = {
+  low: 100,
+  medium: 250,
+  high: 750,
+};
+
 /**
- * Calculates the time range based on the given interval.
+ * Calculates the time range and step size based on the given interval and resolution.
  * @param {string} interval - The time interval (e.g., '10m', '1h', '24h', 'week').
+ * @param {string} resolution - The resolution level or fixed interval (e.g., 'low', 'medium', 'high', '10s', '1m', '1h').
  * @returns {Object} An object containing the 'from' timestamp, 'to' timestamp, and 'step' in seconds.
  */
-export function getTimeRange(interval: string): { from: number; to: number; step: number } {
+export function getTimeRangeAndStepSize(
+  interval: string,
+  resolution: string
+): { from: number; to: number; step: number } {
   const now = Math.floor(Date.now() / 1000);
-  const day = 86400; // seconds in a day
+
+  // Calculate time range
+  let from: number;
+  let to: number = now;
 
   switch (interval) {
-    case '10m':
-      return { from: now - 600, to: now, step: 15 }; // 15 seconds step
-    case '30m':
-      return { from: now - 1800, to: now, step: 30 }; // 30 seconds step
-    case '1h':
-      return { from: now - 3600, to: now, step: 60 }; // 1 minute step
-    case '3h':
-      return { from: now - 10800, to: now, step: 180 }; // 3 minutes step
-    case '6h':
-      return { from: now - 21600, to: now, step: 360 }; // 6 minutes step
-    case '12h':
-      return { from: now - 43200, to: now, step: 720 }; // 12 minutes step
-    case '24h':
-      return { from: now - day, to: now, step: 300 }; // 5 minutes step
-    case '48h':
-      return { from: now - 2 * day, to: now, step: 600 }; // 10 minutes step
     case 'today':
-      return { from: now - (now % day), to: now, step: 300 }; // 5 minutes step
+      from = now - (now % DAY_IN_SECONDS);
+      break;
     case 'yesterday':
-      return { from: now - (now % day) - day, to: now - (now % day), step: 300 }; // 5 minutes step
+      from = now - (now % DAY_IN_SECONDS) - DAY_IN_SECONDS;
+      to = now - (now % DAY_IN_SECONDS);
+      break;
     case 'week':
-      return { from: now - 7 * day, to: now, step: 3600 }; // 1 hour step
+      from = now - 7 * DAY_IN_SECONDS;
+      break;
     case 'lastweek':
-      return { from: now - 14 * day, to: now - 7 * day, step: 3600 }; // 1 hour step
-    case '7d':
-      return { from: now - 7 * day, to: now, step: 3600 }; // 1 hour step
-    case '14d':
-      return { from: now - 14 * day, to: now, step: 7200 }; // 2 hours step
-    default:
-      return { from: now - 600, to: now, step: 15 }; // Default to 10 minutes with 15 seconds step
+      from = now - 14 * DAY_IN_SECONDS;
+      to = now - 7 * DAY_IN_SECONDS;
+      break;
+    default: {
+      const duration = TIME_INTERVALS[interval] || 600; // Default to 10 minutes interval
+      from = now - duration;
+      break;
+    }
   }
+
+  // Calculate step size
+  let step: number;
+
+  if (resolution in FIXED_STEPS) {
+    step = FIXED_STEPS[resolution];
+  } else {
+    const rangeMs = (to - from) * 1000;
+    const factor = RESOLUTION_FACTORS[resolution] || RESOLUTION_FACTORS.medium; // Default to medium resolution
+    step = Math.max(Math.floor(rangeMs / factor / 1000), 1);
+  }
+
+  return { from, to, step };
 }

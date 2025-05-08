@@ -17,6 +17,7 @@ interface CPUChartProps {
   query: string;
   prometheusPrefix: string;
   interval: string;
+  resolution: string;
   autoRefresh: boolean;
   subPath: string;
 }
