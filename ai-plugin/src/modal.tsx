@@ -448,13 +448,13 @@ export default function AIPrompt(props: {
   }
 
   // Function to handle API confirmation dialog confirmation
-  const handleApiConfirmation = async body => {
+  const handleApiConfirmation = async (body, resourceInfo) => {
     if (!apiRequest) return;
 
     const { url, method } = apiRequest;
     setApiRequest(null);
 
-    await handleActualApiRequest(url, method, body, handleApiDialogClose, aiManager);
+    await handleActualApiRequest(url, method, body, handleApiDialogClose, aiManager, resourceInfo);
   };
 
   const handleApiDialogClose = () => {

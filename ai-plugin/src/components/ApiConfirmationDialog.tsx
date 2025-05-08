@@ -1,21 +1,7 @@
-import { clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { ConfirmDialog, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Typography } from '@mui/material';
 import React from 'react';
 import YAML from 'yaml';
-
-// Helper function to merge two objects deeply
-function mergeDeep(target: any, source: any) {
-  for (const key in source) {
-    if (source[key] instanceof Object && key in target) {
-      target[key] = mergeDeep(target[key], source[key]);
-    } else {
-      target[key] = source[key];
-    }
-  }
-  return target;
-}
 
 // Helper function to clean YAML content by removing the |- prefix if present
 function cleanYamlContent(content: string): string {
@@ -31,7 +17,7 @@ interface ApiConfirmationDialogProps {
   method: string;
   url: string;
   body?: string;
-  onConfirm: (editedBody?: string) => void; // Updated to accept edited body
+  onConfirm: (editedBody?: string, resourceInfo?: string) => void; // Updated to accept edited body
   isLoading?: boolean;
   result?: any;
   error?: string;
@@ -51,9 +37,10 @@ export default function ApiConfirmationDialog({
     name: string;
     namespace?: string;
   } | null>(null);
-  const cluster = getCluster();
+  // const cluster = getCluster();
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [openEditorDialog, setOpenEditorDialog] = React.useState(true);
+  const [showPatchConfirm, setShowPatchConfirm] = React.useState(false);
 
   React.useEffect(() => {
     if (method.toUpperCase() === 'DELETE') {
@@ -129,33 +116,27 @@ export default function ApiConfirmationDialog({
 
   React.useEffect(() => {
     if (open && ['PUT', 'PATCH'].includes(method.toUpperCase()) && body && resourceInfo) {
-      (async () => {
-        try {
-          const response = await clusterRequest(url, {
-            method: 'GET',
-            cluster,
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
-          });
-          const existingResource = await response;
-          const patchObj = YAML.parse(body);
-          const mergedResource = mergeDeep(existingResource, patchObj);
-          const mergedYAML = YAML.stringify(mergedResource).trim();
-
-          setEditedBody(cleanYamlContent(mergedYAML));
-        } catch (e) {
-          console.error('Failed to fetch or merge resource', e);
-          setEditedBody(body.trim());
-        }
-      })();
+      const processedBody = cleanYamlContent(body);
+      try {
+        const parsed = YAML.parse(processedBody);
+        const yamlContent = YAML.stringify(parsed).trim();
+        setEditedBody(yamlContent);
+      } catch (e) {
+        setEditedBody(processedBody);
+      }
+      setShowPatchConfirm(true);
     }
-  }, [open, method, url, body, resourceInfo]);
+  }, [open, method, body, resourceInfo]);
 
   const handleDeleteConfirm = () => {
     setShowDeleteConfirm(false);
     onConfirm(JSON.stringify(resourceInfo));
+    onClose();
+  };
+
+  const handlePatchConfirm = () => {
+    setShowPatchConfirm(false);
+    onConfirm(editedBody, JSON.stringify(resourceInfo));
     onClose();
   };
 
@@ -233,6 +214,34 @@ export default function ApiConfirmationDialog({
         }
         confirmButtonProps={{ color: 'error' }}
         confirmButtonText={`Yes, Delete ${resourceInfo?.kind || 'Resource'}`}
+      />
+    );
+  }
+
+  if (['PUT', 'PATCH'].includes(method.toUpperCase()) && showPatchConfirm) {
+    return (
+      <ConfirmDialog
+        open={showPatchConfirm}
+        handleClose={() => {
+          setShowPatchConfirm(false);
+          onClose();
+        }}
+        onConfirm={handlePatchConfirm}
+        title={`Apply Patch for ${resourceInfo ? `${resourceInfo.kind}: ${resourceInfo.name}` : 'Resource'}`}
+        description={
+          <Box>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              The following patch will be applied:
+            </Typography>
+            <Box sx={{ p: 2, border: '1px solid #ccc', borderRadius: 1 }}>
+              <pre>{editedBody}</pre>
+            </Box>
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Are you sure you want to apply these changes?
+            </Typography>
+          </Box>
+        }
+        confirmButtonText="Yes, Apply Patch"
       />
     );
   }
