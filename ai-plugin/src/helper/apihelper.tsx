@@ -10,7 +10,8 @@ export const handleActualApiRequest = async (
   method: string,
   body: string = '',
   dialogClose: () => void,
-  aiManager: any
+  aiManager: any, 
+  resourceInfo: string
 ) => {
   const cluster = getCluster();
   if (!cluster) {
@@ -117,12 +118,10 @@ export const handleActualApiRequest = async (
         resource = JSON.parse(body);
       }
 
-      const resourceName = resource.metadata?.name || 'Unknown';
-      const resourceKind = resource.kind || 'Resource';
-      const namespace = resource.metadata?.namespace;
-      const resourceIdentifier = namespace
-        ? `${resourceKind} "${resourceName}" in namespace "${namespace}"`
-        : `${resourceKind} "${resourceName}"`;
+      const parsedResourceInfo = JSON.parse(resourceInfo);
+      const resourceIdentifier = `${parsedResourceInfo.kind} ${parsedResourceInfo.name}`;
+
+      // Ensure the resource has the required fields
 
       const processedBody = JSON.stringify(resource);
 
