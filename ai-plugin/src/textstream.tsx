@@ -1,9 +1,7 @@
-import { Icon } from '@iconify/react';
-import { Alert, Box, Button, CircularProgress, Divider, Typography } from '@mui/material';
+import { Alert, Box, CircularProgress, Typography } from '@mui/material';
 import { useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Prompt } from './ai/manager';
-import YamlLibraryDialog from './components/YamlLibraryDialog';
 import EditorDialog from './editordialog';
 import YamlContentProcessor from './YamlContentProcessor';
 
@@ -25,7 +23,6 @@ export default function TextStreamContainer({
   const [editorTitle, setEditorTitle] = useState('');
   const [resourceType, setResourceType] = useState('');
   const [isDelete, setIsDelete] = useState(false);
-  const [showYamlLibrary, setShowYamlLibrary] = useState(false);
   const theme = useTheme();
   // Track if content filter errors were detected
   const [contentFilterErrors, setContentFilterErrors] = useState<boolean>(false);
@@ -51,15 +48,6 @@ export default function TextStreamContainer({
     setResourceType(resourceType);
     setIsDelete(false); // Always false since we don't show delete button
     setShowEditor(true);
-  };
-
-  const handleYamlLibrarySelect = (yaml: string, title: string, resourceType: string) => {
-    if (onYamlAction) {
-      // Always pass isDelete as false
-      onYamlAction(yaml, title, resourceType, false);
-    } else {
-      handleYamlDetected(yaml, resourceType);
-    }
   };
 
   const renderMessage = (prompt: Prompt, index: number) => {
@@ -138,20 +126,6 @@ export default function TextStreamContainer({
         </Alert>
       )}
 
-      {/* YAML Library button at the top */}
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          variant="outlined"
-          startIcon={<Icon icon="mdi:kubernetes" />}
-          size="small"
-          onClick={() => setShowYamlLibrary(true)}
-        >
-          YAML Examples
-        </Button>
-      </Box>
-
-      <Divider sx={{ mb: 2 }} />
-
       {history.map((prompt, index) => renderMessage(prompt, index))}
 
       {isLoading && (
@@ -175,13 +149,6 @@ export default function TextStreamContainer({
           <Typography variant="body2">{apiError}</Typography>
         </Box>
       )}
-
-      {/* YAML Library Dialog */}
-      <YamlLibraryDialog
-        open={showYamlLibrary}
-        onClose={() => setShowYamlLibrary(false)}
-        onSelectYaml={handleYamlLibrarySelect}
-      />
 
       {/* Editor Dialog */}
       <EditorDialog
