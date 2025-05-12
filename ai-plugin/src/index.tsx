@@ -214,6 +214,13 @@ registerAppBarAction(HeadlampAIPrompt);
 registerAppBarAction(() => {
   const _pluginState = useGlobalState();
   registerHeadlampEventCallback(event => {
+    if(event.type === 'headlamp.home-page-loaded') {
+      _pluginState.setEvent({
+        ..._pluginState.event,
+        clusters: event.data.clusters,
+        errors: event.data.errors,
+      })
+    }
     if (event.type === 'headlamp.object-events') {
       _pluginState.setEvent({
         ..._pluginState.event,
