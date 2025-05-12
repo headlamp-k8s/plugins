@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useHistory } from 'react-router-dom';
 import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Alert,
@@ -12,7 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
 import { getProviderById } from './config/modelConfig';
@@ -21,7 +22,7 @@ import { handleActualApiRequest } from './helper/apihelper';
 import LangChainManager from './langchain/LangChainManager';
 import OpenAIManager from './openai/manager';
 import TextStreamContainer from './textstream';
-import { useGlobalState } from './utils';
+import { getSettingsURL, useGlobalState } from './utils';
 import {
   getActiveConfig,
   getSavedConfigurations,
@@ -135,6 +136,7 @@ export default function AIPrompt(props: {
 }) {
   const { openPopup, setOpenPopup, pluginSettings } = props;
 
+  const history = useHistory();
   const [promptError] = React.useState(false);
   const rootRef = React.useRef(null);
   const [promptVal, setPromptVal] = React.useState('');
@@ -555,6 +557,12 @@ export default function AIPrompt(props: {
     return 'AI';
   };
 
+  const disableSettingsButton = useMemo(() => {
+    // Compensate the @ symbol not getting encoded in the history's URL
+    const currentURL = history.location.pathname.replace('@', '%40');
+    return currentURL === getSettingsURL();
+  }, [history.location.pathname]);
+
   // If panel is not open, don't render
   if (!openPopup) return null;
 
@@ -581,6 +589,16 @@ export default function AIPrompt(props: {
             <Typography variant="h6">{getProviderDisplayName()} Assistant (beta)</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <ActionButton
+              description="Settings"
+              onClick={() => {
+                history.push(getSettingsURL())
+              }}
+              icon="mdi:settings"
+              iconButtonProps={{
+                disabled: disableSettingsButton,
+              }}
+            />
             <ActionButton
               description="Close"
               onClick={() => {
@@ -700,7 +718,7 @@ export default function AIPrompt(props: {
                 )}
               </Box>
             )}
-            <Paper component="form" elevation={0}>
+            <Box>
               <TextField
                 id="deployment-ai-prompt"
                 onChange={event => {
@@ -838,7 +856,7 @@ export default function AIPrompt(props: {
                   </Button>
                 </Grid>
               </Grid>
-            </Paper>
+            </Box>
           </Grid>
         </Grid>
       </Box>
