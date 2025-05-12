@@ -336,6 +336,7 @@ const Template: StoryFn<ChartProps> = () => {
         },
       ]}
       interval="10m"
+      resolution="medium"
       autoRefresh={false}
       xAxisProps={XTickProps}
       yAxisProps={YTickProps}

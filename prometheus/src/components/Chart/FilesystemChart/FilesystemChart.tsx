@@ -19,6 +19,7 @@ interface FilesystemChartProps {
   readQuery: string;
   writeQuery: string;
   interval: string;
+  resolution: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
   subPath: string;

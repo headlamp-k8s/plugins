@@ -1,6 +1,6 @@
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, useTheme } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getTimeRange } from '../../../util';
+import { getTimeRangeAndStepSize } from '../../../util';
 
 /**
  * Props for the Chart component.
@@ -40,6 +40,7 @@ export interface ChartProps {
   }>;
   fetchMetrics: (query: object) => Promise<any>;
   interval: string;
+  resolution: string;
   prometheusPrefix: string;
   autoRefresh: boolean;
   xAxisProps: {
@@ -64,14 +65,19 @@ export default function Chart(props: ChartProps) {
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
-  const timeRange = getTimeRange(props.interval);
+  const {
+    from: fromTimestamp,
+    to: toTimestamp,
+    step: stepSize,
+  } = useMemo(
+    () => getTimeRangeAndStepSize(props.interval, props.resolution),
+    [props.interval, props.resolution]
+  );
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
     firstLoad: boolean = false
   ) => {
-    const { from, to, step } = getTimeRange(props.interval);
-
     const fetchedMetrics: {
       [key: string]: {
         data: { timestamp: number; y: number }[];
@@ -88,9 +94,9 @@ export default function Chart(props: ChartProps) {
         response = await fetchMetrics({
           prefix: props.prometheusPrefix,
           query: plot.query,
-          from: from,
-          to: to,
-          step: step,
+          from: fromTimestamp,
+          to: toTimestamp,
+          step: stepSize,
           subPath: props.subPath,
         });
       } catch (e) {
@@ -140,7 +146,7 @@ export default function Chart(props: ChartProps) {
   // Fetch data on initial load
   useEffect(() => {
     fetchMetricsData(props.plots, true);
-  }, []);
+  }, [props.interval, props.resolution]);
 
   // if reload is true, set up a timer to refresh data every 10 seconds
   // Set up a timer to refresh data every 10 seconds
@@ -154,7 +160,7 @@ export default function Chart(props: ChartProps) {
         clearInterval(refreshInterval);
       };
     }
-  }, [props.autoRefresh, props.plots, props.interval]);
+  }, [props.autoRefresh, props.plots, props.interval, props.resolution]);
 
   let chartContent;
 
@@ -166,7 +172,7 @@ export default function Chart(props: ChartProps) {
           fontSize={12}
           {...xAxisProps}
           type="number"
-          domain={[timeRange.from, timeRange.to]}
+          domain={[fromTimestamp, toTimestamp]}
           allowDataOverflow
         />
         <YAxis fontSize={14} stroke={theme.palette.chartStyles.labelColor} {...yAxisProps} />
@@ -179,6 +185,7 @@ export default function Chart(props: ChartProps) {
         <CartesianGrid strokeDasharray="2 4" stroke={theme.palette.divider} vertical={false} />
         {props.plots.map(plot => (
           <Area
+            key={plot.name}
             stackId="1"
             type="step"
             dataKey={plot.name}
