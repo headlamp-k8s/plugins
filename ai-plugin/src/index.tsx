@@ -368,6 +368,7 @@ function Settings(props) {
         onSelectSavedConfig={handleSelectSavedConfig}
         configName={configName}
         onConfigNameChange={setConfigName}
+        isConfigView={true} // Add this prop to disable selection in configuration view
       />
 
       <Box sx={{ mt: 4 }}>
