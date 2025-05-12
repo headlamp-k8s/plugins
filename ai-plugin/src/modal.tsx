@@ -478,13 +478,19 @@ export default function AIPrompt(props: {
     const items = event?.items;
     const resource = event?.resource;
     const title = event?.title || event?.type;
-
+    const clusters = event?.clusters;
+    const errors = event?.errors;
     const events = event?.objectEvent?.events;
     if (!!events) {
       const [contextId, warnings] = getWarningsContext(events);
       aiManager.addContext(contextId, warnings);
     }
-
+    if(!!clusters && !!errors) {
+      aiManager.addContext('clusters list and errors', {
+        clusters: clusters,
+        errors: errors,
+      });
+    }
     if (!!items) {
       const objList = summarizeKubeObjectListIfNeeded(items);
       aiManager.addContext('resourceList', {
