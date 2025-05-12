@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Alert,
@@ -137,6 +137,7 @@ export default function AIPrompt(props: {
   const { openPopup, setOpenPopup, pluginSettings } = props;
 
   const history = useHistory();
+  const location = useLocation();
   const [promptError] = React.useState(false);
   const rootRef = React.useRef(null);
   const [promptVal, setPromptVal] = React.useState('');
@@ -559,9 +560,9 @@ export default function AIPrompt(props: {
 
   const disableSettingsButton = useMemo(() => {
     // Compensate the @ symbol not getting encoded in the history's URL
-    const currentURL = history.location.pathname.replace('@', '%40');
+    const currentURL = location.pathname.replace('@', '%40');
     return currentURL === getSettingsURL();
-  }, [history.location.pathname]);
+  }, [location]);
 
   // If panel is not open, don't render
   if (!openPopup) return null;
