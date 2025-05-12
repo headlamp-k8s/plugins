@@ -21,7 +21,7 @@ import React from 'react';
 import ModelSelector from './components/ModelSelector';
 import { getDefaultConfig, getProviderById } from './config/modelConfig';
 import AIPrompt from './modal';
-import { useGlobalState } from './utils';
+import { PLUGIN_NAME, useGlobalState } from './utils';
 import {
   getActiveConfig,
   getSavedConfigurations,
@@ -381,4 +381,4 @@ function Settings(props) {
   );
 }
 
-registerPluginSettings('@headlamp-k8s/headlamp-ai', Settings, true);
+registerPluginSettings(PLUGIN_NAME, Settings, true);
