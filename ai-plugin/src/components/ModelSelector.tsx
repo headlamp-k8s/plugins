@@ -309,6 +309,7 @@ interface ModelSelectorProps {
   onSelectSavedConfig?: (config: StoredProviderConfig) => void;
   configName?: string;
   onConfigNameChange?: (name: string) => void;
+  isConfigView?: boolean;
 }
 
 export default function ModelSelector({
@@ -321,6 +322,7 @@ export default function ModelSelector({
   onSelectSavedConfig,
   configName = '',
   onConfigNameChange,
+  isConfigView = false,
 }: ModelSelectorProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogProviderId, setDialogProviderId] = useState('');
@@ -463,7 +465,7 @@ export default function ModelSelector({
                     elevation={isActive ? 3 : 1}
                     sx={{
                       p: 2,
-                      cursor: 'pointer',
+                      cursor: isConfigView ? 'default' : 'pointer',
                       border: isActive ? '2px solid' : '1px solid',
                       borderColor: isActive ? 'primary.main' : 'divider',
                       display: 'flex',
@@ -473,10 +475,14 @@ export default function ModelSelector({
                       transition: 'all 0.2s',
                       '&:hover': {
                         borderColor: 'primary.light',
-                        boxShadow: 1,
+                        boxShadow: isConfigView ? 0 : 1,
                       },
                     }}
-                    onClick={() => onSelectSavedConfig?.(savedConfig)}
+                    onClick={() => {
+                      if (!isConfigView && onSelectSavedConfig) {
+                        onSelectSavedConfig(savedConfig);
+                      }
+                    }}
                   >
                     <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
                       <Button
