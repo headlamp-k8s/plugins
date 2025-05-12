@@ -20,7 +20,68 @@ import React, { useEffect, useState } from 'react';
 import { getProviderById, getProviderFields, modelProviders } from '../config/modelConfig';
 import { StoredProviderConfig } from '../utils/ProviderConfigManager';
 
-// New dialog component for provider configuration
+interface ProviderSelectionDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onSelectProvider: (providerId: string) => void;
+}
+
+function ProviderSelectionDialog({
+  open,
+  onClose,
+  onSelectProvider,
+}: ProviderSelectionDialogProps) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md">
+      <DialogTitle>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Icon icon="mdi:plus-circle" width="24px" height="24px" />
+          <Typography variant="h6">Select Provider</Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+          Select a provider to add a new configuration
+        </Typography>
+        <Grid container spacing={2}>
+          {modelProviders.map(provider => (
+            <Grid item key={provider.id} xs={6} md={3}>
+              <Paper
+                sx={{
+                  p: 2,
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    boxShadow: 2,
+                  },
+                }}
+                onClick={() => {
+                  onSelectProvider(provider.id);
+                }}
+              >
+                <Icon icon={provider.icon} width="32px" height="32px" />
+                <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
+                  {provider.name}
+                </Typography>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// Configuration dialog component
 interface ConfigurationDialogProps {
   open: boolean;
   onClose: () => void;
@@ -261,11 +322,13 @@ export default function ModelSelector({
   configName = '',
   onConfigNameChange,
 }: ModelSelectorProps) {
-  const [isCustomName, setIsCustomName] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogProviderId, setDialogProviderId] = useState('');
   const [dialogConfig, setDialogConfig] = useState<Record<string, any>>({});
   const [dialogConfigName, setDialogConfigName] = useState('');
+
+  // New state for provider selection dialog
+  const [providerSelectionOpen, setProviderSelectionOpen] = useState(false);
 
   // Track if this is a new configuration being edited
   const isNewConfig = !savedConfigs.some(
@@ -335,15 +398,56 @@ export default function ModelSelector({
     setDialogConfigName(name);
   };
 
+  // Handle provider selection from the provider selection dialog
+  const handleProviderSelection = (providerId: string) => {
+    setProviderSelectionOpen(false);
+    handleOpenDialog(providerId);
+  };
+
   return (
     <Box sx={{ width: '100%' }}>
-      {/* Saved Configurations Section */}
-      {savedConfigs.length > 0 && onSelectSavedConfig && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="subtitle1" sx={{ mb: 2 }}>
-            Saved Configurations
+      {/* Configured Providers Section */}
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="subtitle1">
+            {savedConfigs.length === 0
+              ? 'No Configured Providers'
+              : 'Configured Providers'}
           </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Icon icon="mdi:plus-circle" />}
+            onClick={() => setProviderSelectionOpen(true)}
+          >
+            Add Provider
+          </Button>
+        </Box>
 
+        {savedConfigs.length === 0 ? (
+          <Paper
+            sx={{
+              p: 3,
+              mb: 3,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              borderStyle: 'dashed',
+              borderWidth: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Icon icon="mdi:robot-confused" width="48px" height="48px" style={{ opacity: 0.6 }} />
+            <Typography variant="body1" sx={{ mt: 2, mb: 1 }}>
+              No AI providers configured yet
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Click "Add Provider" to configure your first AI provider
+            </Typography>
+          </Paper>
+        ) : (
           <Grid container spacing={2}>
             {savedConfigs.map((savedConfig, index) => {
               const isActive =
@@ -369,9 +473,10 @@ export default function ModelSelector({
                       transition: 'all 0.2s',
                       '&:hover': {
                         borderColor: 'primary.light',
+                        boxShadow: 1,
                       },
                     }}
-                    onClick={() => onSelectSavedConfig(savedConfig)}
+                    onClick={() => onSelectSavedConfig?.(savedConfig)}
                   >
                     <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
                       <Button
@@ -397,18 +502,18 @@ export default function ModelSelector({
                         sx={{
                           position: 'absolute',
                           top: -10,
-                          right: -10,
+                          left: -10,
                           fontSize: '0.7rem',
                         }}
                       />
                     )}
                     <Icon
                       icon={savedProvider?.icon || 'mdi:robot'}
-                      width="24px"
-                      height="24px"
+                      width="32px"
+                      height="32px"
                       style={{ marginBottom: '8px' }}
                     />
-                    <Typography variant="body2" sx={{ fontWeight: 'medium', textAlign: 'center' }}>
+                    <Typography variant="body1" sx={{ fontWeight: 'medium', textAlign: 'center' }}>
                       {savedConfig.displayName || savedConfig.config.displayName || 'Saved Config'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" align="center">
@@ -419,43 +524,15 @@ export default function ModelSelector({
               );
             })}
           </Grid>
-        </Box>
-      )}
+        )}
+      </Box>
 
-      <Divider sx={{ my: 3 }} />
-
-      <Typography variant="subtitle1" sx={{ mb: 2 }}>
-        Available Providers
-      </Typography>
-
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {modelProviders.map(provider => (
-          <Grid item key={provider.id} xs={6} md={3}>
-            <Paper
-              elevation={selectedProvider === provider.id ? 3 : 1}
-              sx={{
-                p: 2,
-                cursor: 'pointer',
-                border: selectedProvider === provider.id ? '2px solid' : '1px solid',
-                borderColor: selectedProvider === provider.id ? 'primary.main' : 'divider',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  borderColor: 'primary.main',
-                },
-              }}
-              onClick={() => handleOpenDialog(provider.id)}
-            >
-              <Icon icon={provider.icon} width="32px" height="32px" />
-              <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
-                {provider.name}
-              </Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+      {/* Provider Selection Dialog */}
+      <ProviderSelectionDialog
+        open={providerSelectionOpen}
+        onClose={() => setProviderSelectionOpen(false)}
+        onSelectProvider={handleProviderSelection}
+      />
 
       {/* Configuration Dialog */}
       <ConfigurationDialog
