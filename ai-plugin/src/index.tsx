@@ -379,7 +379,7 @@ function Settings() {
         config={providerConfig}
         onProviderChange={handleProviderChange}
         onConfigChange={handleConfigChange}
-        savedConfigs={savedConfigs.providers}
+        savedConfigs={savedConfigs}
         onSaveConfig={handleSaveConfig}
         onSelectSavedConfig={handleSelectSavedConfig}
         configName={configName}
