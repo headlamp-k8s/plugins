@@ -19,8 +19,8 @@ import {
   Typography,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
-import { getProviderById, getProviderFields, modelProviders } from '../config/modelConfig';
-import { StoredProviderConfig } from '../utils/ProviderConfigManager';
+import { getDefaultConfig, getProviderById, getProviderFields, modelProviders } from '../config/modelConfig';
+import { SavedConfigurations, StoredProviderConfig } from '../utils/ProviderConfigManager';
 
 interface ProviderSelectionDialogProps {
   open: boolean;
@@ -300,7 +300,7 @@ interface ModelSelectorProps {
   config: Record<string, any>;
   onProviderChange: (providerId: string) => void;
   onConfigChange: (config: Record<string, any>) => void;
-  savedConfigs?: StoredProviderConfig[];
+  savedConfigs?: SavedConfigurations;
   onSaveConfig?: (providerId: string, config: Record<string, any>, makeDefault: boolean) => void;
   onSelectSavedConfig?: (config: StoredProviderConfig) => void;
   onDeleteConfig?: (providerId: string, config: Record<string, any>) => void; // Add delete handler
@@ -314,7 +314,7 @@ export default function ModelSelector({
   config,
   onProviderChange,
   onConfigChange,
-  savedConfigs = [],
+  savedConfigs,
   onSaveConfig,
   onSelectSavedConfig,
   onDeleteConfig,
@@ -332,6 +332,7 @@ export default function ModelSelector({
 
   // State for the 3-dot menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedConfigIndex, setSelectedConfigIndex] = useState<number | null>(null);
   const openMenu = Boolean(anchorEl);
 
   // Compare two configuration objects to see if they're essentially the same
@@ -356,7 +357,7 @@ export default function ModelSelector({
       setDialogConfigName(configName);
     } else {
       // Otherwise use default config for the selected provider
-      const defaultConfig = getProviderById(providerId)?.defaultConfig || {};
+      const defaultConfig = getDefaultConfig(providerId);
       setDialogConfig({ ...defaultConfig });
       setDialogConfigName('');
     }
@@ -423,7 +424,7 @@ export default function ModelSelector({
       <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="subtitle1">
-            {savedConfigs.length === 0
+            {savedConfigs.providers.length === 0
               ? 'No Configured Providers'
               : 'Configured Providers'}
           </Typography>
@@ -437,7 +438,7 @@ export default function ModelSelector({
           </Button>
         </Box>
 
-        {savedConfigs.length === 0 ? (
+        {savedConfigs.providers.length === 0 ? (
           <Paper
             sx={{
               p: 3,
@@ -462,7 +463,7 @@ export default function ModelSelector({
           </Paper>
         ) : (
           <Grid container spacing={2}>
-            {savedConfigs.map((savedConfig, index) => {
+            {savedConfigs.providers.map((savedConfig, index) => {
               const isActive =
                 savedConfig.providerId === selectedProvider &&
                 areConfigsSimilar(savedConfig.config, config);
@@ -497,7 +498,7 @@ export default function ModelSelector({
                   >
                     <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Box>
-                        {savedConfig.isDefault && (
+                        {index === (savedConfigs?.defaultProviderIndex ?? 0) && (
                           <Chip
                             label="Default"
                             size="small"
@@ -506,19 +507,16 @@ export default function ModelSelector({
                           />
                         )}
                       </Box>
-                      <Button
+                      <IconButton
                         size="small"
-                        sx={{ minWidth: '30px', p: 0.5 }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleOpenDialog(savedConfig.providerId);
-                          // Pre-select this saved config
-                          setDialogConfig({ ...savedConfig.config });
-                          setDialogConfigName(savedConfig.displayName || '');
+                          setAnchorEl(e.currentTarget);
+                          setSelectedConfigIndex(index);
                         }}
                       >
-                        <Icon icon="mdi:pencil" width="16px" />
-                      </Button>
+                        <Icon icon="mdi:dots-vertical" width="16px" />
+                      </IconButton>
                     </Box>
 
                     <Icon
@@ -546,10 +544,13 @@ export default function ModelSelector({
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCloseMenu();
-                          handleOpenDialog(savedConfig.providerId);
-                          // Pre-select this saved config
-                          setDialogConfig({ ...savedConfig.config });
-                          setDialogConfigName(savedConfig.displayName || '');
+                          if (selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
+                            const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
+                            handleOpenDialog(selectedSavedConfig.providerId);
+                            // Pre-select this saved config
+                            setDialogConfig({ ...selectedSavedConfig.config });
+                            setDialogConfigName(selectedSavedConfig.displayName || '');
+                          }
                         }}
                       >
                         <Icon icon="mdi:pencil" width="16px" style={{ marginRight: 8 }} />
@@ -559,11 +560,12 @@ export default function ModelSelector({
                         onClick={e => {
                           e.stopPropagation();
                           handleCloseMenu();
-                          // Handle make default action
-                          if (onSaveConfig) {
-                            onProviderChange(savedConfig.providerId);
-                            onConfigChange(savedConfig.config);
-                            onSaveConfig(savedConfig.providerId, savedConfig.config, true);
+                          // Handle make default action using selectedConfigIndex
+                          if (onSaveConfig && selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
+                            const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
+                            onProviderChange(selectedSavedConfig.providerId);
+                            onConfigChange(selectedSavedConfig.config);
+                            onSaveConfig(selectedSavedConfig.providerId, selectedSavedConfig.config, true);
                           }
                         }}
                       >
@@ -574,9 +576,12 @@ export default function ModelSelector({
                         onClick={e => {
                           e.stopPropagation();
                           handleCloseMenu();
-                          // Handle delete action
-                          if (window.confirm('Are you sure you want to delete this configuration?')) {
-                            handleDeleteConfig(savedConfig.providerId, savedConfig.config);
+                          // Handle delete action using selectedConfigIndex
+                          if (onDeleteConfig && selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
+                            const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
+                            if (window.confirm('Are you sure you want to delete this configuration?')) {
+                              handleDeleteConfig(selectedSavedConfig.providerId, selectedSavedConfig.config);
+                            }
                           }
                         }}
                         sx={{ color: 'error.main' }}
