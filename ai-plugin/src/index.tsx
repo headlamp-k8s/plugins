@@ -1,6 +1,5 @@
 import { Icon } from '@iconify/react';
 import {
-  ConfigStore,
   registerAppBarAction,
   registerHeadlampEventCallback,
   registerPluginSettings,
@@ -21,7 +20,7 @@ import React from 'react';
 import ModelSelector from './components/ModelSelector';
 import { getDefaultConfig, getProviderById } from './config/modelConfig';
 import AIPrompt from './modal';
-import { PLUGIN_NAME, useGlobalState } from './utils';
+import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
 import {
   getActiveConfig,
   getSavedConfigurations,
@@ -36,9 +35,7 @@ registerUIPanel({
   side: 'right',
   component: () => {
     const pluginState = useGlobalState();
-    const config = new ConfigStore<{ errorMessage?: string }>('@headlamp-k8s/headlamp-ai');
-    const useConf = config.useConfig();
-    const conf = useConf();
+    const conf = usePluginConfig();
     const [width, setWidth] = React.useState('35vw');
     const [isResizing, setIsResizing] = React.useState(false);
 
@@ -123,9 +120,7 @@ registerUIPanel({
 function HeadlampAIPrompt() {
   const pluginState = useGlobalState();
   const [anchorEl, setAnchorEl] = React.useState(null);
-  const config = new ConfigStore<{ errorMessage?: string }>('@headlamp-k8s/headlamp-ai');
-  const useConf = config.useConfig();
-  const conf = useConf();
+  const conf = usePluginConfig();
 
   // Check if configuration is valid - now supports both legacy and new format
   const hasLegacyConfig =
@@ -249,23 +244,14 @@ registerAppBarAction(() => {
  * A component for displaying and editing plugin settings, specifically for customizing error messages.
  * It renders a text input field that allows users to specify a custom error message.
  * This message is intended to be displayed when a specific error condition occurs (e.g., pod count cannot be retrieved).
- *
- * @param {PluginSettingsDetailsProps} props - Properties passed to the Settings component.
- * @param {Object} props.data - The current configuration data for the plugin, including the current error message.
- * @param {function(Object): void} props.onDataChange - Callback function to handle changes to the data, specifically the error message.
  */
-function Settings(props) {
-  const { data, onDataChange } = props;
-
-  // Get saved configurations from plugin data
-  const savedConfigs = React.useMemo(() => {
-    return getSavedConfigurations(data);
-  }, [data]);
+function Settings() {
+  const savedConfigs = usePluginConfig();
 
   // Track the provider type
   const [selectedProvider, setSelectedProvider] = React.useState(() => {
     const activeConfig = getActiveConfig(savedConfigs);
-    return activeConfig?.providerId || data?.provider || 'openai';
+    return activeConfig?.providerId || 'openai';
   });
 
   // Track the provider-specific configuration
@@ -275,12 +261,6 @@ function Settings(props) {
     if (activeConfig) {
       return { ...activeConfig.config };
     }
-
-    // Fall back to legacy format
-    if (data?.provider === selectedProvider && data?.config) {
-      return { ...data.config };
-    }
-
     return getDefaultConfig(selectedProvider);
   });
 
@@ -329,7 +309,7 @@ function Settings(props) {
     );
 
     // Update the global data
-    onDataChange(updatedConfigs);
+    pluginStore.update(updatedConfigs)
   };
 
   // Handle selecting a saved configuration
@@ -338,8 +318,7 @@ function Settings(props) {
     setProviderConfig({ ...config.config });
     setConfigName(config.displayName || '');
 
-    // Update active provider in the global data
-    onDataChange({
+    pluginStore.update({
       ...savedConfigs,
       activeProviderId: config.providerId,
     });
@@ -371,7 +350,7 @@ function Settings(props) {
       }
     }
 
-    onDataChange(updatedConfigs);
+    pluginStore.update(updatedConfigs);
   };
 
   const areConfigsSimilar = (config1: Record<string, any>, config2: Record<string, any>): boolean => {
@@ -385,9 +364,6 @@ function Settings(props) {
   };
 
   const provider = getProviderById(selectedProvider);
-  const isConfigValid = provider?.fields.every(
-    field => !field.required || (providerConfig[field.name] && providerConfig[field.name] !== '')
-  );
 
   return (
     <Box width={'80%'}>
@@ -411,16 +387,8 @@ function Settings(props) {
         isConfigView={true}
         onDeleteConfig={handleDeleteConfig}
       />
-
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="body2" color={isConfigValid ? 'success.main' : 'error.main'}>
-          {isConfigValid
-            ? 'Configuration is valid. You can now use the AI assistant.'
-            : 'Please fill in all required fields to use the AI assistant.'}
-        </Typography>
-      </Box>
     </Box>
   );
 }
 
-registerPluginSettings(PLUGIN_NAME, Settings, true);
+registerPluginSettings(PLUGIN_NAME, Settings);

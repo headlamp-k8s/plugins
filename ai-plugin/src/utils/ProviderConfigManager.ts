@@ -120,17 +120,14 @@ export function saveProviderConfig(
   displayName?: string
 ): SavedConfigurations {
   // Create new array to avoid modifying the original
-  const providers = Array.isArray(savedConfigs.providers) ? [...savedConfigs.providers] : [];
+  const providers: StoredProviderConfig[] = savedConfigs.providers?.map(p => ({
+    ...p,
+    // If makeDefault is true, unset default flag on all other providers
+    isDefault: makeDefault ? false : p.isDefault,
+  })) ?? [];
 
   // Check if this provider already exists
   const existingIndex = providers.findIndex(p => p.providerId === providerId);
-
-  // If makeDefault is true, unset default flag on all other providers
-  if (makeDefault) {
-    providers.forEach(p => {
-      p.isDefault = false;
-    });
-  }
 
   // Create new config object
   const updatedConfig: StoredProviderConfig = {
