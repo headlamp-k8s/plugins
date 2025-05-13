@@ -6,12 +6,12 @@ export interface StoredProviderConfig {
   providerId: string;
   displayName?: string;
   config: Record<string, any>;
-  isDefault?: boolean;
 }
 
 export interface SavedConfigurations {
   providers: StoredProviderConfig[];
   activeProviderId?: string;
+  defaultProviderIndex?: number;
 }
 
 /**
@@ -46,7 +46,6 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
           endpoint: data.ENDPOINT,
           model: data.GPT_MODEL || 'gpt-4',
         },
-        isDefault: true,
       });
     } else if (data.GPT_MODEL) {
       providers.push({
@@ -56,7 +55,6 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
           apiKey: data.API_KEY,
           model: data.GPT_MODEL,
         },
-        isDefault: true,
       });
     }
   }
@@ -71,7 +69,6 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
         providerId: data.provider,
         displayName: `${data.provider} Config`,
         config: { ...data.config },
-        isDefault: true,
       });
     }
   }
@@ -80,7 +77,7 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
     providers,
     activeProviderId:
       providers.length > 0
-        ? providers.find(p => p.isDefault)?.providerId || providers[0].providerId
+        ? providers[0].providerId
         : undefined,
   };
 }
@@ -102,7 +99,7 @@ export function getActiveConfig(savedConfigs: SavedConfigurations): StoredProvid
   }
 
   // Then try to find the default
-  const defaultConfig = savedConfigs.providers.find(p => p.isDefault);
+  const defaultConfig = savedConfigs.providers[savedConfigs.defaultProviderIndex || 0];
   if (defaultConfig) return defaultConfig;
 
   // Otherwise return the first one
@@ -122,8 +119,6 @@ export function saveProviderConfig(
   // Create new array to avoid modifying the original
   const providers: StoredProviderConfig[] = savedConfigs.providers?.map(p => ({
     ...p,
-    // If makeDefault is true, unset default flag on all other providers
-    isDefault: makeDefault ? false : p.isDefault,
   })) ?? [];
 
   // Check if this provider already exists
@@ -134,7 +129,6 @@ export function saveProviderConfig(
     providerId,
     displayName: displayName || providers[existingIndex]?.displayName,
     config: { ...config },
-    isDefault: makeDefault || (existingIndex === -1 && providers.length === 0),
   };
 
   // Update or add the configuration
@@ -147,10 +141,23 @@ export function saveProviderConfig(
   // Set activeProviderId to the saved provider
   const activeProviderId = providerId;
 
+  // Set defaultProviderIndex if makeDefault is true
+  let defaultProviderIndex = savedConfigs.defaultProviderIndex;
+  if (makeDefault) {
+    // If we're updating an existing provider
+    if (existingIndex >= 0) {
+      defaultProviderIndex = existingIndex;
+    } else {
+      // If we're adding a new provider
+      defaultProviderIndex = 0;
+    }
+  }
+
   // Return updated configurations
   return {
     providers,
     activeProviderId,
+    defaultProviderIndex,
   };
 }
 
@@ -182,17 +189,19 @@ export function deleteProviderConfig(
   let activeProviderId = savedConfigs.activeProviderId;
   if (activeProviderId === providerId) {
     // Find a new active provider (first available, preferring default)
-    const defaultConfig = providers.find(p => p.isDefault);
+    const defaultConfig = providers[savedConfigs.defaultProviderIndex || 0];
     activeProviderId = defaultConfig?.providerId || providers[0]?.providerId;
   }
 
   // If we deleted the default provider and have others left, make the first one the default
-  if (providers.length > 0 && !providers.some(p => p.isDefault)) {
-    providers[0].isDefault = true;
+  let defaultProviderIndex = savedConfigs.defaultProviderIndex;
+  if (providers.length > 0 && providers.length !== (savedConfigs.defaultProviderIndex || 0)) {
+    defaultProviderIndex = providers.findIndex(p => p.providerId === activeProviderId);
   }
 
   return {
     providers,
     activeProviderId,
+    defaultProviderIndex,
   };
 }
