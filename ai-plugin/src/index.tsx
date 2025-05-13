@@ -27,6 +27,7 @@ import {
   getSavedConfigurations,
   saveProviderConfig,
   StoredProviderConfig,
+  deleteProviderConfig,
 } from './utils/ProviderConfigManager';
 
 // Register UI Panel component that uses the shared state to show/hide
@@ -344,6 +345,45 @@ function Settings(props) {
     });
   };
 
+  const handleDeleteConfig = (
+    providerId: string,
+    configToDelete: Record<string, any>
+  ) => {
+    const updatedConfigs = deleteProviderConfig(
+      savedConfigs,
+      providerId,
+      configToDelete
+    );
+
+    // If we're deleting the currently active config, we need to update our local state
+    if (providerId === selectedProvider && areConfigsSimilar(configToDelete, providerConfig)) {
+      // Find the new active provider
+      const newActiveConfig = getActiveConfig(updatedConfigs);
+      if (newActiveConfig) {
+        setSelectedProvider(newActiveConfig.providerId);
+        setProviderConfig({...newActiveConfig.config});
+        setConfigName(newActiveConfig.displayName || '');
+      } else {
+        // No configs left, reset to defaults
+        setSelectedProvider('openai');
+        setProviderConfig(getDefaultConfig('openai'));
+        setConfigName('');
+      }
+    }
+
+    onDataChange(updatedConfigs);
+  };
+
+  const areConfigsSimilar = (config1: Record<string, any>, config2: Record<string, any>): boolean => {
+    if (config1.apiKey && config2.apiKey) {
+      return config1.apiKey === config2.apiKey;
+    }
+    if (config1.baseUrl && config2.baseUrl) {
+      return config1.baseUrl === config2.baseUrl;
+    }
+    return false;
+  };
+
   const provider = getProviderById(selectedProvider);
   const isConfigValid = provider?.fields.every(
     field => !field.required || (providerConfig[field.name] && providerConfig[field.name] !== '')
@@ -369,6 +409,7 @@ function Settings(props) {
         configName={configName}
         onConfigNameChange={setConfigName}
         isConfigView={true} // Add this prop to disable selection in configuration view
+        onDeleteConfig={handleDeleteConfig}
       />
 
       <Box sx={{ mt: 4 }}>
