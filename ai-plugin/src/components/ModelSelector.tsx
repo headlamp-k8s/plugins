@@ -511,7 +511,17 @@ export default function ModelSelector({
                       }
                     }}
                   >
-                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Box>
+                        {savedConfig.isDefault && (
+                          <Chip
+                            label="Default"
+                            size="small"
+                            color="primary"
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        )}
+                      </Box>
                       <Button
                         size="small"
                         sx={{ minWidth: '30px', p: 0.5 }}
@@ -527,19 +537,6 @@ export default function ModelSelector({
                       </Button>
                     </Box>
 
-                    {savedConfig.isDefault && (
-                      <Chip
-                        label="Default"
-                        size="small"
-                        color="primary"
-                        sx={{
-                          position: 'absolute',
-                          top: -10,
-                          left: -10,
-                          fontSize: '0.7rem',
-                        }}
-                      />
-                    )}
                     <Icon
                       icon={savedProvider?.icon || 'mdi:robot'}
                       width="32px"
