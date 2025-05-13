@@ -156,3 +156,46 @@ export function saveProviderConfig(
     activeProviderId,
   };
 }
+
+/**
+ * Deletes a provider configuration
+ */
+export function deleteProviderConfig(
+  savedConfigs: SavedConfigurations,
+  providerId: string,
+  config: Record<string, any>
+): SavedConfigurations {
+  // Create new array without the deleted config
+  const providers = Array.isArray(savedConfigs.providers)
+    ? savedConfigs.providers.filter(p => {
+        if (p.providerId !== providerId) return true;
+
+        if (p.config.apiKey && config.apiKey) {
+          return p.config.apiKey !== config.apiKey;
+        }
+        if (p.config.baseUrl && config.baseUrl) {
+          return p.config.baseUrl !== config.baseUrl;
+        }
+
+        return JSON.stringify(p.config) !== JSON.stringify(config);
+      })
+    : [];
+
+  // If we're deleting the active provider, clear the active provider ID
+  let activeProviderId = savedConfigs.activeProviderId;
+  if (activeProviderId === providerId) {
+    // Find a new active provider (first available, preferring default)
+    const defaultConfig = providers.find(p => p.isDefault);
+    activeProviderId = defaultConfig?.providerId || providers[0]?.providerId;
+  }
+
+  // If we deleted the default provider and have others left, make the first one the default
+  if (providers.length > 0 && !providers.some(p => p.isDefault)) {
+    providers[0].isDefault = true;
+  }
+
+  return {
+    providers,
+    activeProviderId,
+  };
+}

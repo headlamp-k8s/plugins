@@ -10,6 +10,8 @@ import {
   Divider,
   FormHelperText,
   Grid,
+  IconButton,
+  Menu,
   MenuItem,
   Paper,
   Select,
@@ -114,32 +116,37 @@ function ConfigurationDialog({
     });
   };
 
-  // Generate a name for the config if not provided
+  // Generate a name for the config if not provided or when we're configuring a new provider
   useEffect(() => {
+    // Only auto-generate name if it hasn't been manually edited and we have provider info
     if (!isCustomName && onConfigNameChange && provider) {
-      // Only auto-generate name if it hasn't been manually edited
+      // Generate a provider-specific name based on its important fields
       let name = '';
 
-      if (config.displayName) {
-        name = config.displayName;
-      } else {
-        switch (providerId) {
-          case 'openai':
-            name = `OpenAI (${config.model || 'gpt-4o'})`;
-            break;
-          case 'azure':
-            name = `Azure (${config.deploymentName || ''})`;
-            break;
-          case 'anthropic':
-            name = `Anthropic (${config.model || 'claude'})`;
-            break;
-          case 'local':
-            name = `${config.model || 'Local model'}`;
-            break;
-          default:
-            name = providerId;
-        }
+      // Don't use config.displayName directly as it may be from another provider
+      switch (providerId) {
+        case 'openai':
+          name = `OpenAI (${config.model || 'gpt-4o'})`;
+          break;
+        case 'azure':
+          name = `Azure (${config.deploymentName || ''})`;
+          break;
+        case 'anthropic':
+          name = `Anthropic (${config.model || 'claude'})`;
+          break;
+        case 'mistral':
+          name = `Mistral (${config.model || 'mistral-medium'})`;
+          break;
+        case 'gemini':
+          name = `Gemini (${config.model || 'gemini-pro'})`;
+          break;
+        case 'local':
+          name = `${config.model || 'Local model'}`;
+          break;
+        default:
+          name = provider.name || providerId;
       }
+
       onConfigNameChange(name);
     }
   }, [providerId, config, onConfigNameChange, isCustomName, provider]);
@@ -307,6 +314,7 @@ interface ModelSelectorProps {
   savedConfigs?: StoredProviderConfig[];
   onSaveConfig?: (providerId: string, config: Record<string, any>, makeDefault: boolean) => void;
   onSelectSavedConfig?: (config: StoredProviderConfig) => void;
+  onDeleteConfig?: (providerId: string, config: Record<string, any>) => void; // Add delete handler
   configName?: string;
   onConfigNameChange?: (name: string) => void;
   isConfigView?: boolean;
@@ -320,6 +328,7 @@ export default function ModelSelector({
   savedConfigs = [],
   onSaveConfig,
   onSelectSavedConfig,
+  onDeleteConfig,
   configName = '',
   onConfigNameChange,
   isConfigView = false,
@@ -331,6 +340,10 @@ export default function ModelSelector({
 
   // New state for provider selection dialog
   const [providerSelectionOpen, setProviderSelectionOpen] = useState(false);
+
+  // State for the 3-dot menu
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const openMenu = Boolean(anchorEl);
 
   // Track if this is a new configuration being edited
   const isNewConfig = !savedConfigs.some(
@@ -404,6 +417,20 @@ export default function ModelSelector({
   const handleProviderSelection = (providerId: string) => {
     setProviderSelectionOpen(false);
     handleOpenDialog(providerId);
+  };
+
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
+
+  const handleDeleteConfig = (providerId: string, config: Record<string, any>) => {
+    if (onDeleteConfig) {
+      onDeleteConfig(providerId, config);
+    }
   };
 
   return (
@@ -525,6 +552,58 @@ export default function ModelSelector({
                     <Typography variant="caption" color="text.secondary" align="center">
                       {savedProvider?.name || savedConfig.providerId}
                     </Typography>
+
+                    <Menu
+                      anchorEl={anchorEl}
+                      open={openMenu}
+                      onClose={handleCloseMenu}
+                      MenuListProps={{
+                        'aria-labelledby': 'basic-button',
+                      }}
+                    >
+                      <MenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCloseMenu();
+                          handleOpenDialog(savedConfig.providerId);
+                          // Pre-select this saved config
+                          setDialogConfig({ ...savedConfig.config });
+                          setDialogConfigName(savedConfig.displayName || '');
+                        }}
+                      >
+                        <Icon icon="mdi:pencil" width="16px" style={{ marginRight: 8 }} />
+                        Edit
+                      </MenuItem>
+                      <MenuItem
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleCloseMenu();
+                          // Handle make default action
+                          if (onSaveConfig) {
+                            onProviderChange(savedConfig.providerId);
+                            onConfigChange(savedConfig.config);
+                            onSaveConfig(savedConfig.providerId, savedConfig.config, true);
+                          }
+                        }}
+                      >
+                        <Icon icon="mdi:star" width="16px" style={{ marginRight: 8 }} />
+                        Make Default
+                      </MenuItem>
+                      <MenuItem
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleCloseMenu();
+                          // Handle delete action
+                          if (window.confirm('Are you sure you want to delete this configuration?')) {
+                            handleDeleteConfig(savedConfig.providerId, savedConfig.config);
+                          }
+                        }}
+                        sx={{ color: 'error.main' }}
+                      >
+                        <Icon icon="mdi:trash-can" width="16px" style={{ marginRight: 8 }} />
+                        Delete
+                      </MenuItem>
+                    </Menu>
                   </Paper>
                 </Grid>
               );
