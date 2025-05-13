@@ -281,25 +281,14 @@ function ConfigurationDialog({
         </Box>
         <Button onClick={onClose}>Cancel</Button>
         {onSave && (
-          <>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => onSave(false)}
-              disabled={!isValid}
-            >
-              Save Configuration
-            </Button>
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={() => onSave(true)}
-              disabled={!isValid}
-              startIcon={<Icon icon="mdi:star" />}
-            >
-              Save as Default
-            </Button>
-          </>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => onSave(true)}
+            disabled={!isValid}
+          >
+            Save
+          </Button>
         )}
       </DialogActions>
     </Dialog>
@@ -344,11 +333,6 @@ export default function ModelSelector({
   // State for the 3-dot menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const openMenu = Boolean(anchorEl);
-
-  // Track if this is a new configuration being edited
-  const isNewConfig = !savedConfigs.some(
-    sc => sc.providerId === selectedProvider && areConfigsSimilar(sc.config, config)
-  );
 
   // Compare two configuration objects to see if they're essentially the same
   function areConfigsSimilar(config1: Record<string, any>, config2: Record<string, any>): boolean {
