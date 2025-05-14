@@ -13,7 +13,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s'
+import React, { useEffect, useState, useMemo } from 'react';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
 import { getProviderById } from './config/modelConfig';
@@ -28,7 +29,7 @@ import {
   getSavedConfigurations,
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
-
+import { getSelectedClusters } from '@kinvolk/headlamp-plugin/lib/Utils';
 const maxCharLimit = 3000;
 function summarizeKubeObject(obj) {
   if (obj.kind === 'Event') {
@@ -167,6 +168,7 @@ export default function AIPrompt(props: {
     url: string;
     method: string;
     body?: string;
+    cluster?: string;
     toolCallId?: string;
     pendingPrompt?: Prompt;
   } | null>(null);
@@ -514,7 +516,7 @@ export default function AIPrompt(props: {
             function: {
               name: 'http_request',
               description:
-                'HTTP Request to a kubernetes API server, kube-apiserver. Use for all operations including fetching pod logs.',
+                'HTTP Request to a kubernetes API server, kube-apiserver. Use for all operations including fetching pod logs. If cluster is not provided, the user will be prompted to select from available clusters.',
               parameters: {
                 type: 'object',
                 properties: {
@@ -531,6 +533,11 @@ export default function AIPrompt(props: {
                     type: 'string',
                     description: 'HTTP request body, optional',
                   },
+                  cluster: {
+                    type: 'string',
+                    description:
+                      'Kubernetes cluster identifier. Available clusters: ' + JSON.stringify(getSelectedClusters()),
+                  },
                 },
                 required: ['url', 'method'],
                 additionalProperties: false,
@@ -538,8 +545,14 @@ export default function AIPrompt(props: {
             },
           },
         ],
-        async (url, method, body = '') => {
-          setApiRequest({ url, method, body });
+        async (url, method, body = '', cluster = '') => {
+          if (!cluster) {
+            setApiError(
+              'Cluster not specified. Please choose one from: ' + JSON.stringify(getSelectedClusters())
+            );
+            return;
+          }
+          setApiRequest({ url, method, body, cluster });
           setShowApiConfirmation(true);
         }
       );
