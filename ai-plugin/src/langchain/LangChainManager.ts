@@ -374,6 +374,10 @@ export default class LangChainManager extends AIManager {
       for (const prompt of this.history) {
         if (prompt.role === 'tool' && prompt.toolCallId) {
           // Validate the tool response
+          if (!prompt.content) {
+            // Use a safe placeholder instead of empty content
+            continue;
+          }
           if (!prompt.content || typeof prompt.content !== 'string') {
             console.warn(`Invalid tool response format for ${prompt.toolCallId}`, prompt);
             // Use a safe placeholder instead of potentially unsafe content
