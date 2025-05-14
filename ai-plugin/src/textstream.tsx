@@ -63,6 +63,7 @@ export default function TextStreamContainer({
     const hasError = prompt.error === true;
 
     if (prompt.content === '' && prompt.role === 'user') return null;
+    if(prompt.content === '' && prompt.role === 'assistant') return null;
     return (
       <Box
         key={index}
