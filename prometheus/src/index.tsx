@@ -7,6 +7,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
+import { KedaMetricsChart } from './components/Chart/KedaMetricsChart/KedaMetricsChart';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import { ChartEnabledKinds, PLUGIN_NAME } from './util';
@@ -47,6 +48,28 @@ function PrometheusMetrics(resource: DetailsViewSectionProps) {
       <DiskMetricsChart
         usageQuery={`sum(kubelet_volume_stats_used_bytes{namespace='${resource.jsonData.metadata.namespace}',persistentvolumeclaim='${resource.jsonData.metadata.name}'}) by (persistentvolumeclaim, namespace)`}
         capacityQuery={`sum(kubelet_volume_stats_capacity_bytes{namespace='${resource.jsonData.metadata.namespace}',persistentvolumeclaim='${resource.jsonData.metadata.name}'}) by (persistentvolumeclaim, namespace)`}
+      />
+    );
+  }
+
+  if (resource.kind === 'ScaledObject') {
+    return (
+      <KedaMetricsChart
+        scalerMetricsQuery={`keda_scaler_metrics_value{exported_namespace='${resource.jsonData.metadata.namespace}',scaledObject='${resource.jsonData.metadata.name}',type='scaledobject'}`}
+        hpaReplicasQuery={`kube_horizontalpodautoscaler_status_current_replicas{namespace='${resource.jsonData.metadata.namespace}',horizontalpodautoscaler='${resource.jsonData.status.hpaName}'}`}
+        minReplicaCount={resource.jsonData.spec.minReplicaCount || 0}
+        maxReplicaCount={resource.jsonData.spec.maxReplicaCount || 100}
+      />
+    );
+  }
+
+  if (resource.kind === 'ScaledJob') {
+    return (
+      <KedaMetricsChart
+        scalerMetricsQuery={`keda_scaler_metrics_value{exported_namespace='${resource.jsonData.metadata.namespace}',scaledObject='${resource.jsonData.metadata.name}',type='scaledjob'}`}
+        activeJobsQuery={`sum(kube_job_status_active{namespace='${resource.jsonData.metadata.namespace}',job_name=~"${resource.jsonData.metadata.name}-.*"})`}
+        minReplicaCount={resource.jsonData.spec.minReplicaCount || 0}
+        maxReplicaCount={resource.jsonData.spec.maxReplicaCount || 100}
       />
     );
   }
