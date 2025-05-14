@@ -188,7 +188,7 @@ export const handleActualApiRequest = async (
       });
 
       let formattedResponse = response;
-
+      
       if (isLogRequest(url)) {
         if (
           typeof response === 'object' &&
@@ -197,18 +197,22 @@ export const handleActualApiRequest = async (
         ) {
           formattedResponse = `Error fetching logs: ${response.message || 'Unknown error'}`;
         }
-      } else if (typeof response === 'object' && response?.kind === 'Table') {
+      } else if (response?.kind === 'Table') {
         formattedResponse = [
           [...response.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
           ...response.rows.map((row: any) =>
             [...row.cells, 'Important! namespace = ' + row.object.metadata.namespace].join(',')
           ),
         ].join('\n');
-      }
-
+      } else if (typeof response === 'object') {
+        formattedResponse = JSON.stringify(response, null, 2);
+      } else if (typeof response === 'string') {
+        formattedResponse = response;
+      } 
+      
       aiManager.history.push({
         role: 'tool',
-        content: `API call to ${url} successful: ${formattedResponse.toString()}`,
+        content: `${formattedResponse.toString()}`,
       });
       return formattedResponse ?? 'ok';
     } catch (error) {
