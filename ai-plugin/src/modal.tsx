@@ -262,7 +262,8 @@ export default function AIPrompt(props: {
     if (
       !activeConfig ||
       activeConfig.providerId !== config.providerId ||
-      activeConfig.config.apiKey !== config.config.apiKey
+      activeConfig.config.apiKey !== config.config.apiKey ||
+      JSON.stringify(activeConfig.config) !== JSON.stringify(config.config)
     ) {
       console.log(
         `Switching provider from ${activeConfig?.providerId || 'none'} to ${config.providerId}`
@@ -789,20 +790,44 @@ export default function AIPrompt(props: {
                   {availableConfigs.length > 1 && (
                     <Box ml={2} sx={{ display: 'flex', alignItems: 'center' }}>
                       <Select
-                        value={activeConfig?.providerId || ''}
-                        onChange={e => {
-                          // Find the matching saved configuration
-                          const selectedProviderId = e.target.value as string;
-                          const newConfig = availableConfigs.find(
-                            c => c.providerId === selectedProviderId
+                        value={(() => {
+                          if (!activeConfig) return 0;
+                          const index = availableConfigs.findIndex(c =>
+                            c.providerId === activeConfig.providerId &&
+                            c.config.apiKey === activeConfig.config.apiKey
                           );
+                          return index >= 0 ? index : 0;
+                        })()}
+                        onChange={e => {
+                          // Get configuration by index
+                          const configIndex = e.target.value as number;
+                          const newConfig = availableConfigs[configIndex];
                           if (newConfig) handleChangeConfig(newConfig);
                         }}
                         size="small"
                         sx={{ minWidth: 120, height: 32 }}
                         variant="outlined"
                         renderValue={selected => {
-                          const providerInfo = getProviderById(selected as string);
+                          const selectedIndex = selected as number;
+                          // Safety check to ensure the index is valid
+                          if (selectedIndex < 0 || selectedIndex >= availableConfigs.length) {
+                            return (
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Icon
+                                  icon="mdi:robot"
+                                  width="16px"
+                                  height="16px"
+                                  style={{ marginRight: 4 }}
+                                />
+                                <Typography variant="body2" noWrap>
+                                  Select Provider
+                                </Typography>
+                              </Box>
+                            );
+                          }
+
+                          const selectedConfig = availableConfigs[selectedIndex];
+                          const providerInfo = getProviderById(selectedConfig.providerId);
                           return (
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <Icon
@@ -812,7 +837,7 @@ export default function AIPrompt(props: {
                                 style={{ marginRight: 4 }}
                               />
                               <Typography variant="body2" noWrap>
-                                {providerInfo?.name || selected}
+                                {selectedConfig.displayName || providerInfo?.name || selectedConfig.providerId}
                               </Typography>
                             </Box>
                           );
@@ -825,8 +850,9 @@ export default function AIPrompt(props: {
                           return (
                             <MenuItem
                               key={index}
-                              value={config.providerId}
-                              selected={activeConfig?.providerId === config.providerId}
+                              value={index}
+                              selected={activeConfig?.providerId === config.providerId &&
+                                      activeConfig?.config.apiKey === config.config.apiKey}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Icon
