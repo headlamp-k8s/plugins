@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s'
+import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s'
 import React, { useEffect, useState, useMemo } from 'react';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
@@ -29,7 +29,6 @@ import {
   getSavedConfigurations,
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
-import { getSelectedClusters } from '@kinvolk/headlamp-plugin/lib/Utils';
 const maxCharLimit = 3000;
 function summarizeKubeObject(obj) {
   if (obj.kind === 'Event') {
@@ -148,6 +147,7 @@ export default function AIPrompt(props: {
   const _pluginSetting = useGlobalState();
   const [promptHistory, setPromptHistory] = React.useState<Prompt[]>([]);
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
+  const selectedClusters = useSelectedClusters();
 
   // Get the active provider configuration
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
@@ -536,7 +536,7 @@ export default function AIPrompt(props: {
                   cluster: {
                     type: 'string',
                     description:
-                      'Kubernetes cluster identifier. Available clusters: ' + JSON.stringify(getSelectedClusters()),
+                      'Kubernetes cluster identifier. Available clusters: ' + JSON.stringify(selectedClusters),
                   },
                 },
                 required: ['url', 'method'],
@@ -548,7 +548,7 @@ export default function AIPrompt(props: {
         async (url, method, body = '', cluster = '') => {
           if (!cluster) {
             setApiError(
-              'Cluster not specified. Please choose one from: ' + JSON.stringify(getSelectedClusters())
+              'Cluster not specified. Please choose one from: ' + JSON.stringify(selectedClusters)
             );
             return;
           }
