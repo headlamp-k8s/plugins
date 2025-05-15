@@ -105,25 +105,34 @@ function ConfigurationDialog({
   onConfigNameChange,
   onSave,
 }: ConfigurationDialogProps) {
-  const [isCustomName, setIsCustomName] = useState(false);
   const provider = getProviderById(providerId);
   const fields = getProviderFields(providerId);
+  const [initialRender, setInitialRender] = useState(true);
 
   const handleFieldChange = (fieldName: string, value: any) => {
+    // Update the config with the new field value
     onConfigChange({
       ...config,
       [fieldName]: value,
     });
+
+    // If we're changing a model identifier field and have a standard auto-generated name,
+    // this will trigger the useEffect to update the name
+    // The useEffect will handle the name update based on the configName pattern
   };
 
-  // Generate a name for the config if not provided or when we're configuring a new provider
+  // Generate a name on initial render or when key model parameters change
   useEffect(() => {
-    // Only auto-generate name if it hasn't been manually edited and we have provider info
-    if (!isCustomName && onConfigNameChange && provider) {
+    // Check if this is an initial render with no name
+    const shouldGenerateName = (initialRender && !configName) ||
+      // Or if we detect key model fields changed and should update the name
+      (config.model && configName &&
+        (configName.includes(providerId) || configName.includes(provider?.name || '')));
+
+    if (onConfigNameChange && provider && shouldGenerateName) {
       // Generate a provider-specific name based on its important fields
       let name = '';
 
-      // Don't use config.displayName directly as it may be from another provider
       switch (providerId) {
         case 'openai':
           name = `OpenAI (${config.model || 'gpt-4o'})`;
@@ -148,8 +157,12 @@ function ConfigurationDialog({
       }
 
       onConfigNameChange(name);
+
+      if (initialRender) {
+        setInitialRender(false);
+      }
     }
-  }, [providerId, config, onConfigNameChange, isCustomName, provider]);
+  }, [providerId, config, configName, onConfigNameChange, provider, initialRender]);
 
   const isValid = provider?.fields.every(
     field => !field.required || (config[field.name] && config[field.name] !== '')
@@ -180,7 +193,6 @@ function ConfigurationDialog({
                 <TextField
                   value={configName}
                   onChange={e => {
-                    setIsCustomName(true);
                     onConfigNameChange(e.target.value);
                   }}
                   size="small"
@@ -301,7 +313,7 @@ interface ModelSelectorProps {
   onProviderChange: (providerId: string) => void;
   onConfigChange: (config: Record<string, any>) => void;
   savedConfigs?: SavedConfigurations;
-  onSaveConfig?: (providerId: string, config: Record<string, any>, makeDefault: boolean) => void;
+  onSaveConfig?: (providerId: string, config: Record<string, any>, makeDefault: boolean, displayName?: string) => void;
   onSelectSavedConfig?: (config: StoredProviderConfig) => void;
   onDeleteConfig?: (providerId: string, config: Record<string, any>) => void; // Add delete handler
   configName?: string;
@@ -380,8 +392,8 @@ export default function ModelSelector({
         onConfigNameChange(dialogConfigName);
       }
 
-      // Save the configuration
-      onSaveConfig(dialogProviderId, dialogConfig, makeDefault);
+      // Save the configuration - also pass the display name
+      onSaveConfig(dialogProviderId, dialogConfig, makeDefault, dialogConfigName);
 
       // Close dialog
       setDialogOpen(false);
@@ -401,6 +413,11 @@ export default function ModelSelector({
   // Handle provider selection from the provider selection dialog
   const handleProviderSelection = (providerId: string) => {
     setProviderSelectionOpen(false);
+
+    // Reset the dialog config name when selecting a new provider
+    // to ensure the auto-generated name will be used
+    setDialogConfigName('');
+
     handleOpenDialog(providerId);
   };
 
@@ -526,10 +543,12 @@ export default function ModelSelector({
                       style={{ marginBottom: '8px' }}
                     />
                     <Typography variant="body1" sx={{ fontWeight: 'medium', textAlign: 'center' }}>
-                      {savedConfig.displayName || savedConfig.config.displayName || 'Saved Config'}
+                      {savedConfig.displayName || `${savedProvider?.name || savedConfig.providerId} Config`}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" align="center">
                       {savedProvider?.name || savedConfig.providerId}
+                      {savedConfig.config.model && ` - ${savedConfig.config.model}`}
+                      {savedConfig.config.deploymentName && ` - ${savedConfig.config.deploymentName}`}
                     </Typography>
 
                     <Menu
