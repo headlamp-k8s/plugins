@@ -20,7 +20,13 @@ import {
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { getDefaultConfig, getProviderById, getProviderFields, modelProviders } from '../config/modelConfig';
-import { SavedConfigurations, StoredProviderConfig } from '../utils/ProviderConfigManager';
+import {
+  SavedConfigurations,
+  StoredProviderConfig,
+  saveProviderConfig,
+  deleteProviderConfig,
+  getActiveConfig
+} from '../utils/ProviderConfigManager';
 import {ConfirmDialog} from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 
 interface ProviderSelectionDialogProps {
@@ -279,29 +285,24 @@ function ConfigurationDialog({
 interface ModelSelectorProps {
   selectedProvider: string;
   config: Record<string, any>;
-  onProviderChange: (providerId: string) => void;
-  onConfigChange: (config: Record<string, any>) => void;
-  savedConfigs?: SavedConfigurations;
-  onSaveConfig?: (providerId: string, config: Record<string, any>, makeDefault: boolean, displayName?: string) => void;
-  onSelectSavedConfig?: (config: StoredProviderConfig) => void;
-  onDeleteConfig?: (providerId: string, config: Record<string, any>) => void; // Add delete handler
+  savedConfigs: SavedConfigurations;
   configName?: string;
-  onConfigNameChange?: (name: string) => void;
   isConfigView?: boolean;
+  onChange?: (changes: {
+    providerId: string;
+    config: Record<string, any>;
+    displayName: string;
+    savedConfigs?: SavedConfigurations;
+  }) => void;
 }
 
 export default function ModelSelector({
   selectedProvider,
   config,
-  onProviderChange,
-  onConfigChange,
   savedConfigs,
-  onSaveConfig,
-  onSelectSavedConfig,
-  onDeleteConfig,
   configName = '',
-  onConfigNameChange,
   isConfigView = false,
+  onChange,
 }: ModelSelectorProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogProviderId, setDialogProviderId] = useState('');
@@ -452,20 +453,16 @@ export default function ModelSelector({
 
   // Handle saving config from dialog
   const handleSaveDialog = (makeDefault: boolean) => {
-    if (onSaveConfig) {
-      // Apply the changes from dialog to the main config
-      onProviderChange(dialogProviderId);
-      onConfigChange(dialogConfig);
-      if (onConfigNameChange) {
-        onConfigNameChange(dialogConfigName);
-      }
+    // Apply the changes from dialog to the main config
+    handleProviderChange(dialogProviderId);
+    handleConfigChange(dialogConfig);
+    handleConfigNameChange(dialogConfigName);
 
-      // Save the configuration - also pass the display name
-      onSaveConfig(dialogProviderId, dialogConfig, makeDefault, dialogConfigName);
+    // Save the configuration - also pass the display name
+    handleSaveConfig(dialogProviderId, dialogConfig, makeDefault, dialogConfigName);
 
-      // Close dialog
-      setDialogOpen(false);
-    }
+    // Close dialog
+    setDialogOpen(false);
   };
 
   // Handle dialog config change
@@ -493,9 +490,130 @@ export default function ModelSelector({
     setAnchorEl(null);
   };
 
-  const handleDeleteConfig = (providerId: string, config: Record<string, any>) => {
-    if (onDeleteConfig) {
-      onDeleteConfig(providerId, config);
+  // Menu handling
+
+  // Handle provider change internally
+  const handleProviderChange = (providerId: string) => {
+    // Try to find an existing config for this provider
+    const existingConfig = savedConfigs.providers.find(p => p.providerId === providerId);
+
+    if (existingConfig) {
+      // Use existing config
+      if (onChange) {
+        onChange({
+          providerId,
+          config: { ...existingConfig.config },
+          displayName: existingConfig.displayName || '',
+        });
+      }
+    } else {
+      // Reset config to defaults when changing to a new provider
+      if (onChange) {
+        onChange({
+          providerId,
+          config: getDefaultConfig(providerId),
+          displayName: '',
+        });
+      }
+    }
+  };
+
+  // Handle configuration changes internally
+  const handleConfigChange = (newConfig: Record<string, any>) => {
+    if (onChange) {
+      onChange({
+        providerId: selectedProvider,
+        config: newConfig,
+        displayName: configName,
+      });
+    }
+  };
+
+  // Handle saving a configuration internally
+  const handleSaveConfig = (
+    providerId: string,
+    config: Record<string, any>,
+    makeDefault: boolean,
+    displayName?: string
+  ) => {
+    // Save the configuration with the display name from dialog or existing one
+    const updatedConfigs = saveProviderConfig(
+      savedConfigs,
+      providerId,
+      config,
+      makeDefault,
+      displayName || configName
+    );
+
+    // Notify parent of changes
+    if (onChange) {
+      onChange({
+        providerId,
+        config,
+        displayName: displayName || configName,
+        savedConfigs: updatedConfigs,
+      });
+    }
+  };
+
+  // Handle selecting a saved configuration internally
+  const handleSelectSavedConfig = (config: StoredProviderConfig) => {
+    if (onChange) {
+      onChange({
+        providerId: config.providerId,
+        config: { ...config.config },
+        displayName: config.displayName || '',
+      });
+    }
+  };
+
+  // Handle config name changes internally
+  const handleConfigNameChange = (name: string) => {
+    if (onChange) {
+      onChange({
+        providerId: selectedProvider,
+        config,
+        displayName: name,
+      });
+    }
+  };
+
+  // Handle deleting a config internally
+  const handleDeleteConfig = (providerId: string, configToDelete: Record<string, any>) => {
+    const updatedConfigs = deleteProviderConfig(
+      savedConfigs,
+      providerId,
+      configToDelete
+    );
+
+    // If we're deleting the currently active config, we need to update our local state
+    if (providerId === selectedProvider && areConfigsSimilar(configToDelete, config)) {
+      // Find the new active provider
+      const newActiveConfig = getActiveConfig(updatedConfigs);
+      if (newActiveConfig && onChange) {
+        onChange({
+          providerId: newActiveConfig.providerId,
+          config: { ...newActiveConfig.config },
+          displayName: newActiveConfig.displayName || '',
+          savedConfigs: updatedConfigs,
+        });
+      } else if (onChange) {
+        // No configs left, reset to defaults
+        onChange({
+          providerId: 'openai',
+          config: getDefaultConfig('openai'),
+          displayName: '',
+          savedConfigs: updatedConfigs,
+        });
+      }
+    } else if (onChange) {
+      // Not deleting the active config, just update the saved configs
+      onChange({
+        providerId: selectedProvider,
+        config,
+        displayName: configName,
+        savedConfigs: updatedConfigs,
+      });
     }
   };
 
@@ -572,8 +690,8 @@ export default function ModelSelector({
                       },
                     }}
                     onClick={() => {
-                      if (!isConfigView && onSelectSavedConfig) {
-                        onSelectSavedConfig(savedConfig);
+                      if (!isConfigView) {
+                        handleSelectSavedConfig(savedConfig);
                       }
                     }}
                   >
@@ -657,12 +775,12 @@ export default function ModelSelector({
                           e.stopPropagation();
                           handleCloseMenu();
                           // Handle make default action using selectedConfigIndex
-                          if (onSaveConfig && selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
+                          if (selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
                             const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
-                            onProviderChange(selectedSavedConfig.providerId);
-                            onConfigChange(selectedSavedConfig.config);
+                            handleProviderChange(selectedSavedConfig.providerId);
+                            handleConfigChange(selectedSavedConfig.config);
                             // Pass the display name to ensure we're setting the correct config as default
-                            onSaveConfig(
+                            handleSaveConfig(
                               selectedSavedConfig.providerId,
                               selectedSavedConfig.config,
                               true,
@@ -679,7 +797,7 @@ export default function ModelSelector({
                           e.stopPropagation();
                           handleCloseMenu();
                           // Handle delete action using selectedConfigIndex
-                          if (onDeleteConfig && selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
+                          if (selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
                             setShowDeleteConfirm(true);
                           }
                         }}
@@ -712,11 +830,12 @@ export default function ModelSelector({
         config={dialogConfig}
         onConfigChange={handleDialogConfigChange}
         configName={dialogConfigName}
-        onConfigNameChange={onConfigNameChange ? handleDialogConfigNameChange : undefined}
-        onSave={onSaveConfig ? handleSaveDialog : undefined}
+        onConfigNameChange={handleDialogConfigNameChange}
+        onSave={handleSaveDialog}
       />
 
       <ConfirmDialog
+        // @ts-ignore - 'open' property is not in the type definition but is required
         open={showDeleteConfirm}
         handleClose={() => {
           setShowDeleteConfirm(false);
