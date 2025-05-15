@@ -121,48 +121,16 @@ function ConfigurationDialog({
     // The useEffect will handle the name update based on the configName pattern
   };
 
-  // Generate a name on initial render or when key model parameters change
+  // Generate a name on initial render if no name is provided
   useEffect(() => {
-    // Check if this is an initial render with no name
-    const shouldGenerateName = (initialRender && !configName) ||
-      // Or if we detect key model fields changed and should update the name
-      (config.model && configName &&
-        (configName.includes(providerId) || configName.includes(provider?.name || '')));
-
-    if (onConfigNameChange && provider && shouldGenerateName) {
-      // Generate a provider-specific name based on its important fields
-      let name = '';
-
-      switch (providerId) {
-        case 'openai':
-          name = `OpenAI (${config.model || 'gpt-4o'})`;
-          break;
-        case 'azure':
-          name = `Azure (${config.deploymentName || ''})`;
-          break;
-        case 'anthropic':
-          name = `Anthropic (${config.model || 'claude'})`;
-          break;
-        case 'mistral':
-          name = `Mistral (${config.model || 'mistral-medium'})`;
-          break;
-        case 'gemini':
-          name = `Gemini (${config.model || 'gemini-pro'})`;
-          break;
-        case 'local':
-          name = `${config.model || 'Local model'}`;
-          break;
-        default:
-          name = provider.name || providerId;
-      }
-
+    // Only set the name if it's an initial render and no name has been set
+    if (onConfigNameChange && provider && initialRender && !configName) {
+      // Simply use the provider name as the initial configuration name
+      const name = provider.name || providerId;
       onConfigNameChange(name);
-
-      if (initialRender) {
-        setInitialRender(false);
-      }
+      setInitialRender(false);
     }
-  }, [providerId, config, configName, onConfigNameChange, provider, initialRender]);
+  }, [providerId, configName, onConfigNameChange, provider, initialRender]);
 
   const isValid = provider?.fields.every(
     field => !field.required || (config[field.name] && config[field.name] !== '')
@@ -349,29 +317,127 @@ export default function ModelSelector({
 
   // Compare two configuration objects to see if they're essentially the same
   function areConfigsSimilar(config1: Record<string, any>, config2: Record<string, any>): boolean {
-    // Compare key fields based on provider type
+    // If one of the configs is empty or undefined, they're not similar
+    if (!config1 || !config2) return false;
+
+    // Compare API key if both have it
     if (config1.apiKey && config2.apiKey) {
-      return config1.apiKey === config2.apiKey;
+      if (config1.apiKey !== config2.apiKey) {
+        return false;
+      }
+
+      // For API keys, also check model and deploymentName if they exist
+      // to distinguish between different configurations using the same key
+      if (config1.model && config2.model && config1.model !== config2.model) {
+        return false;
+      }
+
+      if (config1.deploymentName && config2.deploymentName &&
+          config1.deploymentName !== config2.deploymentName) {
+        return false;
+      }
+
+      // If they share the same API key and don't have conflicting models/deployments,
+      // consider them similar
+      return true;
     }
+
+    // Check if both have base URL
     if (config1.baseUrl && config2.baseUrl) {
-      return config1.baseUrl === config2.baseUrl;
+      if (config1.baseUrl !== config2.baseUrl) {
+        return false;
+      }
+
+      // For base URLs, also check model if it exists
+      if (config1.model && config2.model && config1.model !== config2.model) {
+        return false;
+      }
+
+      // If they share the same base URL and model, consider them similar
+      return true;
     }
+
+    // If we don't have API keys or base URLs to compare (unusual),
+    // do a more thorough check on important fields
+
+    // Compare models if both have them
+    if (config1.model && config2.model) {
+      if (config1.model !== config2.model) {
+        return false;
+      }
+    } else if ((config1.model && !config2.model) || (!config1.model && config2.model)) {
+      // One has a model and the other doesn't - they're different
+      return false;
+    }
+
+    // Compare deploymentNames if both have them
+    if (config1.deploymentName && config2.deploymentName) {
+      if (config1.deploymentName !== config2.deploymentName) {
+        return false;
+      }
+    } else if ((config1.deploymentName && !config2.deploymentName) ||
+              (!config1.deploymentName && config2.deploymentName)) {
+      // One has a deploymentName and the other doesn't - they're different
+      return false;
+    }
+
+    // If we've made it this far and both configs have either matching models
+    // or matching deploymentNames, consider them similar
+    if ((config1.model && config2.model) || (config1.deploymentName && config2.deploymentName)) {
+      return true;
+    }
+
+    // If we don't have enough information to make a determination, consider them different
     return false;
   }
 
   // Open dialog with provider configuration
-  const handleOpenDialog = (providerId: string) => {
+  const handleOpenDialog = (providerId: string, isNewConfig = false) => {
     setDialogProviderId(providerId);
 
-    // If this is the currently selected provider, use its config
-    if (providerId === selectedProvider) {
+    // Get provider info to access its name
+    const providerInfo = getProviderById(providerId);
+    const providerName = providerInfo?.name || providerId;
+
+    // If this is editing the currently selected provider, use its config
+    if (providerId === selectedProvider && !isNewConfig) {
       setDialogConfig({ ...config });
       setDialogConfigName(configName);
     } else {
-      // Otherwise use default config for the selected provider
+      // For a new config or a different provider, use default config
       const defaultConfig = getDefaultConfig(providerId);
       setDialogConfig({ ...defaultConfig });
-      setDialogConfigName('');
+
+      // Generate a unique name for this configuration
+
+      // Check if there are existing configurations for this provider
+      const existingConfigsForProvider = savedConfigs.providers.filter(
+        p => p.providerId === providerId
+      );
+
+      if (existingConfigsForProvider.length > 0) {
+        // Find the highest number used in existing configurations
+        let maxNumber = 0;
+        const regex = new RegExp(`^${providerName}\\s+(\\d+)$`);
+
+        existingConfigsForProvider.forEach(p => {
+          if (p.displayName) {
+            const match = p.displayName.match(regex);
+            if (match && match[1]) {
+              const num = parseInt(match[1], 10);
+              if (!isNaN(num) && num > maxNumber) {
+                maxNumber = num;
+              }
+            }
+          }
+        });
+
+        // Use the next available number
+        setDialogConfigName(`${providerName} ${maxNumber + 1}`);
+      } else {
+        // Use the provider name as the initial configuration name for the first instance
+        setDialogConfigName(providerName);
+      }
     }
 
     setDialogOpen(true);
@@ -413,12 +479,8 @@ export default function ModelSelector({
   // Handle provider selection from the provider selection dialog
   const handleProviderSelection = (providerId: string) => {
     setProviderSelectionOpen(false);
-
-    // Reset the dialog config name when selecting a new provider
-    // to ensure the auto-generated name will be used
-    setDialogConfigName('');
-
-    handleOpenDialog(providerId);
+    // Always treat selection from the provider dialog as a new configuration
+    handleOpenDialog(providerId, true);
   };
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -543,12 +605,24 @@ export default function ModelSelector({
                       style={{ marginBottom: '8px' }}
                     />
                     <Typography variant="body1" sx={{ fontWeight: 'medium', textAlign: 'center' }}>
-                      {savedConfig.displayName || `${savedProvider?.name || savedConfig.providerId} Config`}
+                      {savedConfig.displayName || savedProvider?.name || savedConfig.providerId}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" align="center">
-                      {savedProvider?.name || savedConfig.providerId}
-                      {savedConfig.config.model && ` - ${savedConfig.config.model}`}
-                      {savedConfig.config.deploymentName && ` - ${savedConfig.config.deploymentName}`}
+                      {savedConfig.config.model || savedConfig.config.deploymentName ?
+                        (savedConfig.config.model ? savedConfig.config.model : savedConfig.config.deploymentName) :
+                        'Configuration'
+                      }
+                      {/* Count similar configs to indicate multiple instances of the same provider */}
+                      {(() => {
+                        const similarConfigs = savedConfigs.providers.filter(
+                          c => c.providerId === savedConfig.providerId &&
+                               c !== savedConfig &&
+                               (c.displayName === savedConfig.displayName ||
+                                (!c.displayName && !savedConfig.displayName))
+                        );
+                        return similarConfigs.length > 0 ?
+                          ` (${savedConfigs.providers.indexOf(savedConfig) + 1})` : '';
+                      })()}
                     </Typography>
 
                     <Menu
@@ -565,7 +639,8 @@ export default function ModelSelector({
                           handleCloseMenu();
                           if (selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
                             const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
-                            handleOpenDialog(selectedSavedConfig.providerId);
+                            // Use false for isNewConfig to indicate we're editing an existing config
+                            handleOpenDialog(selectedSavedConfig.providerId, false);
                             // Pre-select this saved config
                             setDialogConfig({ ...selectedSavedConfig.config });
                             setDialogConfigName(selectedSavedConfig.displayName || '');
@@ -584,7 +659,13 @@ export default function ModelSelector({
                             const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
                             onProviderChange(selectedSavedConfig.providerId);
                             onConfigChange(selectedSavedConfig.config);
-                            onSaveConfig(selectedSavedConfig.providerId, selectedSavedConfig.config, true);
+                            // Pass the display name to ensure we're setting the correct config as default
+                            onSaveConfig(
+                              selectedSavedConfig.providerId,
+                              selectedSavedConfig.config,
+                              true,
+                              selectedSavedConfig.displayName
+                            );
                           }
                         }}
                       >
