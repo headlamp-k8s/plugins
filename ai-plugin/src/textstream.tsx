@@ -1,5 +1,6 @@
 import { Alert, Box, CircularProgress, Typography } from '@mui/material';
 import { useTheme } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { useEffect, useState } from 'react';
 import { Prompt } from './ai/manager';
 import EditorDialog from './editordialog';
@@ -71,9 +72,12 @@ export default function TextStreamContainer({
           mb: 2,
           p: 1.5,
           borderRadius: 1,
-          bgcolor: prompt.role === 'user' ? theme.palette.info.main : 'background.paper',
+          bgcolor: prompt.role === 'user' ? alpha(theme.palette.sidebar.selectedBackground, .75) : theme.palette.background.paper,
           border: '1px solid',
           borderColor: isContentFilterError || hasError ? 'error.main' : 'divider',
+          color: theme.palette.getContrastText(prompt.role === 'user' ? alpha(theme.palette.sidebar.selectedBackground, .75) : theme.palette.background.paper),
+          ml: prompt.role === 'user' ? 3 : 0,
+          mr: prompt.role !== 'user' ? 3 : 0,
         }}
       >
         <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
