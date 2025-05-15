@@ -107,13 +107,53 @@ export function saveProviderConfig(
     ...p,
   })) ?? [];
 
-  // Check if this provider already exists
-  const existingIndex = providers.findIndex(p => p.providerId === providerId);
+  // Check if this exact configuration already exists (by comparing display name or key fields)
+  const existingIndex = providers.findIndex(p => {
+    // If displayName is provided, use that as primary matching criteria
+    if (displayName && p.displayName === displayName && p.providerId === providerId) {
+      return true;
+    }
+
+    // Must match provider ID
+    if (p.providerId !== providerId) return false;
+
+    // If either config doesn't have API key or other identifying fields, they're not matching
+    if ((!p.config.apiKey && config.apiKey) || (p.config.apiKey && !config.apiKey)) {
+      return false;
+    }
+
+    // If API keys exist and match, consider a match (same account)
+    if (p.config.apiKey && config.apiKey && p.config.apiKey === config.apiKey) {
+      // But if models or deployment names differ, they're different configs
+      if (p.config.model && config.model && p.config.model !== config.model) {
+        return false;
+      }
+      if (p.config.deploymentName && config.deploymentName &&
+          p.config.deploymentName !== config.deploymentName) {
+        return false;
+      }
+
+      // If we got here with matching API keys and no conflicting models/deployments,
+      // consider it the same configuration
+      return true;
+    }
+
+    // If baseURLs exist and match, consider a potential match
+    if (p.config.baseUrl && config.baseUrl && p.config.baseUrl === config.baseUrl) {
+      // For base URLs, we also need matching models to consider them the same config
+      if (p.config.model && config.model && p.config.model === config.model) {
+        return true;
+      }
+    }
+
+    // Otherwise, consider it a different configuration
+    return false;
+  });
 
   // Create new config object
   const updatedConfig: StoredProviderConfig = {
     providerId,
-    displayName: displayName || providers[existingIndex]?.displayName,
+    displayName: displayName || (existingIndex >= 0 ? providers[existingIndex]?.displayName : undefined),
     config: { ...config },
   };
 
@@ -121,6 +161,7 @@ export function saveProviderConfig(
   if (existingIndex >= 0) {
     providers[existingIndex] = updatedConfig;
   } else {
+    // This is a new configuration, add it to the list
     providers.push(updatedConfig);
   }
 
