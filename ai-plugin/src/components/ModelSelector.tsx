@@ -21,6 +21,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { getDefaultConfig, getProviderById, getProviderFields, modelProviders } from '../config/modelConfig';
 import { SavedConfigurations, StoredProviderConfig } from '../utils/ProviderConfigManager';
+import {ConfirmDialog} from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 
 interface ProviderSelectionDialogProps {
   open: boolean;
@@ -306,6 +307,7 @@ export default function ModelSelector({
   const [dialogProviderId, setDialogProviderId] = useState('');
   const [dialogConfig, setDialogConfig] = useState<Record<string, any>>({});
   const [dialogConfigName, setDialogConfigName] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // New state for provider selection dialog
   const [providerSelectionOpen, setProviderSelectionOpen] = useState(false);
@@ -678,10 +680,7 @@ export default function ModelSelector({
                           handleCloseMenu();
                           // Handle delete action using selectedConfigIndex
                           if (onDeleteConfig && selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
-                            const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
-                            if (window.confirm('Are you sure you want to delete this configuration?')) {
-                              handleDeleteConfig(selectedSavedConfig.providerId, selectedSavedConfig.config);
-                            }
+                            setShowDeleteConfirm(true);
                           }
                         }}
                         sx={{ color: 'error.main' }}
@@ -716,6 +715,25 @@ export default function ModelSelector({
         onConfigNameChange={onConfigNameChange ? handleDialogConfigNameChange : undefined}
         onSave={onSaveConfig ? handleSaveDialog : undefined}
       />
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        handleClose={() => {
+          setShowDeleteConfirm(false);
+          setSelectedConfigIndex(null);
+        }}
+        onConfirm={() => {
+          if (selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
+            const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
+            handleDeleteConfig(selectedSavedConfig.providerId, selectedSavedConfig.config);
+          }
+        }}
+        title="Delete Configuration"
+        description="Are you sure you want to delete this configuration?"
+        cancelLabel="Cancel"
+        confirmButtonText="Delete"
+      />
+
     </Box>
   );
 }
