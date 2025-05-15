@@ -307,15 +307,16 @@ function Settings() {
   const handleSaveConfig = (
     providerId: string,
     config: Record<string, any>,
-    makeDefault: boolean
+    makeDefault: boolean,
+    displayName?: string
   ) => {
-    // Save the configuration
+    // Save the configuration with the display name from dialog or existing one
     const updatedConfigs = saveProviderConfig(
       savedConfigs,
       providerId,
       config,
       makeDefault,
-      activeConfiguration.displayName
+      displayName || activeConfiguration.displayName
     );
 
     // Update the global data
