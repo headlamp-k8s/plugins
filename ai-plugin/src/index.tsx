@@ -273,110 +273,24 @@ function Settings() {
     return { providerId: 'openai', config: getDefaultConfig('openai'), displayName: '' };
   });
 
-  // Handle provider change
-  const handleProviderChange = (providerId: string) => {
-    // Try to find an existing config for this provider
-    const existingConfig = savedConfigs.providers.find(p => p.providerId === providerId);
-
-    if (existingConfig) {
-      // Use existing config
-      setActiveConfiguration({
-        providerId,
-        config: { ...existingConfig.config },
-        displayName: existingConfig.displayName || '',
-      });
-    } else {
-      // Reset config to defaults when changing to a new provider
-      setActiveConfiguration({
-        providerId,
-        config: getDefaultConfig(providerId),
-        displayName: '',
-      });
-    }
-  };
-
-  // Handle configuration changes
-  const handleConfigChange = (newConfig: Record<string, any>) => {
-    setActiveConfiguration(current => ({
-      ...current,
-      config: newConfig,
-    }));
-  };
-
-  // Handle saving a configuration
-  const handleSaveConfig = (
-    providerId: string,
-    config: Record<string, any>,
-    makeDefault: boolean,
-    displayName?: string
-  ) => {
-    // Save the configuration with the display name from dialog or existing one
-    const updatedConfigs = saveProviderConfig(
-      savedConfigs,
-      providerId,
-      config,
-      makeDefault,
-      displayName || activeConfiguration.displayName
-    );
-
-    // Update the global data
-    pluginStore.update(updatedConfigs);
-  };
-
-  // Handle selecting a saved configuration
-  const handleSelectSavedConfig = (config: StoredProviderConfig) => {
+  // Handle all changes from the ModelSelector in one place
+  const handleModelSelectorChange = (changes: {
+    providerId: string;
+    config: Record<string, any>;
+    displayName: string;
+    savedConfigs?: SavedConfigurations;
+  }) => {
+    // Update active configuration
     setActiveConfiguration({
-      providerId: config.providerId,
-      config: { ...config.config },
-      displayName: config.displayName || '',
+      providerId: changes.providerId,
+      config: changes.config,
+      displayName: changes.displayName,
     });
 
-    pluginStore.update({
-      ...savedConfigs,
-    });
-  };
-
-  const handleDeleteConfig = (
-    providerId: string,
-    configToDelete: Record<string, any>
-  ) => {
-    const updatedConfigs = deleteProviderConfig(
-      savedConfigs,
-      providerId,
-      configToDelete
-    );
-
-    // If we're deleting the currently active config, we need to update our local state
-    if (providerId === activeConfiguration.providerId && areConfigsSimilar(configToDelete, activeConfiguration.config)) {
-      // Find the new active provider
-      const newActiveConfig = getActiveConfig(updatedConfigs);
-      if (newActiveConfig) {
-        setActiveConfiguration({
-          providerId: newActiveConfig.providerId,
-          config: { ...newActiveConfig.config },
-          displayName: newActiveConfig.displayName || '',
-        });
-      } else {
-        // No configs left, reset to defaults
-        setActiveConfiguration({
-          providerId: 'openai',
-          config: getDefaultConfig('openai'),
-          displayName: '',
-        });
-      }
+    // If savedConfigs were changed, update the store
+    if (changes.savedConfigs) {
+      pluginStore.update(changes.savedConfigs);
     }
-
-    pluginStore.update(updatedConfigs);
-  };
-
-  const areConfigsSimilar = (config1: Record<string, any>, config2: Record<string, any>): boolean => {
-    if (config1.apiKey && config2.apiKey) {
-      return config1.apiKey === config2.apiKey;
-    }
-    if (config1.baseUrl && config2.baseUrl) {
-      return config1.baseUrl === config2.baseUrl;
-    }
-    return false;
   };
 
   const provider = getProviderById(activeConfiguration.providerId);
@@ -393,20 +307,10 @@ function Settings() {
       <ModelSelector
         selectedProvider={activeConfiguration.providerId}
         config={activeConfiguration.config}
-        onProviderChange={handleProviderChange}
-        onConfigChange={handleConfigChange}
         savedConfigs={savedConfigs}
-        onSaveConfig={handleSaveConfig}
-        onSelectSavedConfig={handleSelectSavedConfig}
         configName={activeConfiguration.displayName}
-        onConfigNameChange={(name) => {
-          setActiveConfiguration(current => ({
-            ...current,
-            displayName: name,
-          }));
-        }}
         isConfigView={true}
-        onDeleteConfig={handleDeleteConfig}
+        onChange={handleModelSelectorChange}
       />
     </Box>
   );
