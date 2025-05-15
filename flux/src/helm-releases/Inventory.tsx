@@ -271,10 +271,12 @@ function inventoryNameLink(item): JSX.Element {
   const pluralName = PluralName(kind);
 
   // Flux types
-  if (groupName.endsWith('toolkit.fluxcd.io')) {
+  const allowedDomain = 'toolkit.fluxcd.io';
+  const groupNameParts = groupName.split('.');
+  if (groupNameParts.length >= 3 && groupNameParts.slice(-2).join('.') === allowedDomain) {
     return (
       <Link
-        routeName={groupName.substring(0, groupName.indexOf('.'))}
+        routeName={groupNameParts[0]} // Extract the first segment as the route name
         params={{
           pluralName: pluralName,
           name: item.metadata.name,
