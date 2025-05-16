@@ -1,10 +1,11 @@
-import { Alert, Box, CircularProgress, Typography } from '@mui/material';
+import { Alert, Box, CircularProgress, Fab, Typography } from '@mui/material';
 import { useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Prompt } from './ai/manager';
 import EditorDialog from './editordialog';
 import YamlContentProcessor from './YamlContentProcessor';
+import { Icon } from '@iconify/react';
 
 export default function TextStreamContainer({
   history,
@@ -27,6 +28,73 @@ export default function TextStreamContainer({
   const theme = useTheme();
   // Track if content filter errors were detected
   const [contentFilterErrors, setContentFilterErrors] = useState<boolean>(false);
+  // Refs for controlling auto-scrolling
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  // State to track if user has scrolled up
+  const [showScrollButton, setShowScrollButton] = useState<boolean>(false);
+
+  // Check if user is near bottom for auto-scrolling
+  const isNearBottom = () => {
+    if (!containerRef.current) return true;
+
+    const container = containerRef.current;
+    const threshold = 100; // pixels from bottom to trigger auto-scroll
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    return distanceFromBottom <= threshold;
+  };
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Hide the button immediately after clicking it
+      setShowScrollButton(false);
+    } else if (containerRef.current) {
+      // Fallback scrolling method if the ref isn't available
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  };
+
+  const scrollToLastMessage = () => {
+    if (!lastMessageRef.current) {
+      return;
+    }
+
+    lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Handle container scroll event
+  const handleScroll = () => {
+    if (containerRef.current) {
+      const nearBottom = isNearBottom();
+      setShowScrollButton(!nearBottom);
+    }
+  };
+
+  // Scroll to latest message when new messages appear, but only if already near bottom
+  useEffect(() => {
+    // Small delay to ensure DOM is updated before scrolling
+    setTimeout(() => {
+      if (isNearBottom() || isLoading) {
+        scrollToBottom();
+      } else if (history.length > 0) {
+        // If not at bottom, show the scroll button
+        setShowScrollButton(true);
+      }
+    }, 100);
+  }, [history, isLoading]);
+
+  // Additional effect for when loading finishes, to ensure we scroll to the final content
+  useEffect(() => {
+    if (!isLoading && history.length > 0) {
+      // Small delay to ensure content has rendered
+      setTimeout(scrollToLastMessage, 200);
+    }
+  }, [isLoading]);
+
   useEffect(() => {
     // Collect tool responses
     const responseMap: Record<string, string> = {};
@@ -67,6 +135,7 @@ export default function TextStreamContainer({
     if(prompt.content === '' && prompt.role === 'assistant') return null;
     return (
       <Box
+        ref={history.length === index + 1 ? lastMessageRef : null}
         key={index}
         sx={{
           mb: 2,
@@ -120,24 +189,56 @@ export default function TextStreamContainer({
   };
 
   return (
-    <Box>
-      {/* Content filter guidance when errors are detected */}
-      {contentFilterErrors && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <Typography variant="body2">
-            Some requests have been blocked by content filters. Please ensure your questions focus
-            only on Kubernetes tasks.
-          </Typography>
-        </Alert>
-      )}
+    <Box sx={{ position: 'relative', height: '100%' }}>
+      <Box
+        ref={containerRef}
+        onScroll={handleScroll}
+        sx={{
+          maxHeight: '100%',
+          height: '100%',
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        {/* Content filter guidance when errors are detected */}
+        {contentFilterErrors && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              Some requests have been blocked by content filters. Please ensure your questions focus
+              only on Kubernetes tasks.
+            </Typography>
+          </Alert>
+        )}
 
-      {history.map((prompt, index) => renderMessage(prompt, index))}
+        {history.map((prompt, index) => renderMessage(prompt, index))}
 
-      {isLoading && (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2 }}>
-          <CircularProgress size={24} sx={{ mr: 1 }} />
-          <Typography>Processing your request...</Typography>
-        </Box>
+        {isLoading && (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2 }}>
+            <CircularProgress size={24} sx={{ mr: 1 }} />
+            <Typography>Processing your request...</Typography>
+          </Box>
+        )}
+
+        {/* This is an invisible element that we'll scroll to */}
+        <div ref={messagesEndRef} />
+      </Box>
+
+      {showScrollButton && (
+        <Fab
+          color="primary"
+          size="small"
+          onClick={scrollToBottom}
+          sx={{
+            position: 'absolute',
+            bottom: 16,
+            right: 16,
+            zIndex: 2
+          }}
+          aria-label="scroll to bottom"
+        >
+          <Icon icon="mdi:chevron-down" width="20px" />
+        </Fab>
       )}
 
       {/* Show global API error only when there's no history or specific prompt errors */}
