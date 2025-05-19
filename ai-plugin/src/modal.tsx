@@ -8,12 +8,11 @@ import {
   Chip,
   Grid,
   MenuItem,
-  Paper,
   Select,
   TextField,
   Typography,
 } from '@mui/material';
-import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s'
+import {  useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s'
 import React, { useEffect, useState, useMemo } from 'react';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
