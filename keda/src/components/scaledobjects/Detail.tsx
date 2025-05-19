@@ -112,7 +112,7 @@ export function ScaledObjectDetail() {
                 ? [
                     {
                       id: 'pods',
-                      section: <OwnedPodsSection resource={scaleTarget.jsonData} />,
+                      section: <OwnedPodsSection resource={scaleTarget} />,
                     },
                   ]
                 : []),

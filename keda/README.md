@@ -2,12 +2,28 @@
 
 ## Prerequisites
 
-- Docker installed on your system
-- A Kubernetes cluster with KEDA installed
-  - If you need to install KEDA, follow the [official installation guide](https://keda.sh/docs/latest/deploy)
-- Helm installed on your system
-  - If you need to install Helm, follow the [official installation guide](https://helm.sh/docs/intro/install/)
-- Node.js and npm installed on your system
+- Node.js and npm installed on your system.
+- Docker installed on your system.
+- Helm installed on your system.
+  - If you need to install Helm, please follow the [official installation guide](https://helm.sh/docs/intro/install/).
+- A Kubernetes cluster with KEDA installed.
+  - ⚠️ **Note:** If you want to enable support for Prometheus metrics exposed by KEDA, please **refer to the [optional section below](#optionals-to-enable-support-for-prometheus-metrics-exposed-by-keda)** before installing KEDA.
+  - If you need to install KEDA directly in your cluster without any additional configurations, please follow the [official installation guide](https://keda.sh/docs/latest/deploy).
+
+## Optionals (to enable support for Prometheus metrics exposed by KEDA)
+
+- Prometheus installed in your Kubernetes cluster.
+  - If you need to install Prometheus in your cluster, please follow the [official installation guide](https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack) of `kube-prometheus-stack` Helm Chart on `ArtifactHUB`.
+- A Kubernetes cluster with KEDA installed via special flags enabling Prometheus metrics export using the below command:
+  - ```bash
+     helm install keda kedacore/keda \
+     --namespace keda \
+     --create-namespace \
+     --set prometheus.operator.enabled=true \
+     --set prometheus.operator.serviceMonitor.enabled=true \
+     --set prometheus.operator.serviceMonitor.interval="10s" \
+     --set prometheus.operator.serviceMonitor.additionalLabels.release="prometheus"
+    ```
 
 ## Steps to Test
 
