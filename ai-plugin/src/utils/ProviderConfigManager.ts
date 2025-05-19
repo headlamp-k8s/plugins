@@ -80,30 +80,32 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
 /**
  * Gets the active configuration based on the default config
  */
-export function getActiveConfig(savedConfigs: SavedConfigurations): StoredProviderConfig | null {
-  if (!savedConfigs.providers || savedConfigs.providers.length === 0) {
+export function getActiveConfig(savedConfigs: SavedConfigurations | null | undefined): StoredProviderConfig | null {
+  if (!savedConfigs?.providers || savedConfigs.providers.length === 0) {
     return null;
   }
-
-  const defaultConfig = savedConfigs.providers[savedConfigs.defaultProviderIndex || 0];
+  const defaultConfig = savedConfigs?.providers[savedConfigs.defaultProviderIndex || 0];
   if (defaultConfig) return defaultConfig;
 
   // Otherwise return the first one
-  return savedConfigs.providers[0];
+  return savedConfigs?.providers[0];
 }
 
 /**
  * Saves or updates a provider configuration
  */
 export function saveProviderConfig(
-  savedConfigs: SavedConfigurations,
+  savedConfigs: SavedConfigurations | null | undefined,
   providerId: string,
   config: Record<string, any>,
   makeDefault: boolean = false,
   displayName?: string
 ): SavedConfigurations {
+  // Ensure we have a valid savedConfigs object
+  const safeConfigs: SavedConfigurations = savedConfigs || { providers: [] };
+  
   // Create new array to avoid modifying the original
-  const providers: StoredProviderConfig[] = savedConfigs.providers?.map(p => ({
+  const providers: StoredProviderConfig[] = safeConfigs?.providers?.map(p => ({
     ...p,
   })) ?? [];
 
@@ -166,14 +168,14 @@ export function saveProviderConfig(
   }
 
   // Set defaultProviderIndex if makeDefault is true
-  let defaultProviderIndex = savedConfigs.defaultProviderIndex;
+  let defaultProviderIndex = safeConfigs.defaultProviderIndex;
   if (makeDefault) {
     // If we're updating an existing provider
     if (existingIndex >= 0) {
       defaultProviderIndex = existingIndex;
     } else {
       // If we're adding a new provider
-      defaultProviderIndex = 0;
+      defaultProviderIndex = providers.length - 1;
     }
   }
 
@@ -188,13 +190,16 @@ export function saveProviderConfig(
  * Deletes a provider configuration
  */
 export function deleteProviderConfig(
-  savedConfigs: SavedConfigurations,
+  savedConfigs: SavedConfigurations | null | undefined,
   providerId: string,
   config: Record<string, any>
 ): SavedConfigurations {
+  // Ensure we have a valid savedConfigs object
+  const safeConfigs: SavedConfigurations = savedConfigs || { providers: [] };
+  
   // Create new array without the deleted config
-  const providers = Array.isArray(savedConfigs.providers)
-    ? savedConfigs.providers.filter(p => {
+  const providers = Array.isArray(safeConfigs?.providers)
+    ? safeConfigs?.providers.filter(p => {
         if (p.providerId !== providerId) return true;
 
         if (p.config.apiKey && config.apiKey) {
@@ -209,7 +214,11 @@ export function deleteProviderConfig(
     : [];
 
   // If we deleted the default provider and have others left, make the first one the default
-  let defaultProviderIndex = savedConfigs.defaultProviderIndex % providers.length;
+  const defaultProviderIndex = providers.length > 0 ? 
+    (safeConfigs.defaultProviderIndex !== undefined ? 
+      Math.min(safeConfigs.defaultProviderIndex, providers.length - 1) : 
+      0) : 
+    undefined;
 
   return {
     providers,
