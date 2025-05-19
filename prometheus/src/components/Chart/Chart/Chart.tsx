@@ -1,6 +1,6 @@
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, useTheme } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -69,10 +69,7 @@ export default function Chart(props: ChartProps) {
     from: fromTimestamp,
     to: toTimestamp,
     step: stepSize,
-  } = useMemo(
-    () => getTimeRangeAndStepSize(props.interval, props.resolution),
-    [props.interval, props.resolution]
-  );
+  } = getTimeRangeAndStepSize(props.interval, props.resolution);
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
