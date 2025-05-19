@@ -6,6 +6,7 @@ import {
   AreaChart,
   CartesianGrid,
   Legend,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,6 +23,12 @@ import { getTimeRangeAndStepSize } from '../../../util';
  * @property {string} plots[].fillColor - Fill color for the plot area.
  * @property {string} plots[].strokeColor - Stroke color for the plot line.
  * @property {Function} plots[].dataProcessor - Function to process the raw metrics data.
+ * @property {Array<Object>} referenceLines - Array of reference line configurations.
+ * @property {number} [referenceLines[].x] - X-axis value for a vertical reference line.
+ * @property {number} [referenceLines[].y] - Y-axis value for a horizontal reference line.
+ * @property {string} referenceLines[].label - Label to display alongside the reference line.
+ * @property {string} referenceLines[].stroke - Color of the reference line (can be omitted to use default).
+ * @property {string} [referenceLines[].strokeDasharray] - Optional stroke pattern (e.g. "3 3" for dashed lines).
  * @property {Function} fetchMetrics - Function to fetch metrics data from Prometheus.
  * @property {string} interval - Time interval for the chart (e.g. '10m', '1h', '24h').
  * @property {string} prometheusPrefix - URL prefix for Prometheus API calls.
@@ -37,6 +44,13 @@ export interface ChartProps {
     fillColor: string;
     strokeColor: string;
     dataProcessor: (data: any) => any[];
+  }>;
+  referenceLines?: Array<{
+    x?: number;
+    y?: number;
+    label: string;
+    stroke: string;
+    strokeDasharray?: string;
   }>;
   fetchMetrics: (query: object) => Promise<any>;
   interval: string;
@@ -191,6 +205,20 @@ export default function Chart(props: ChartProps) {
             fill={plot.fillColor}
             activeDot={{ r: 2 }}
             animationDuration={props.autoRefresh ? 0 : 400} // Disable animation when refreshing
+          />
+        ))}
+        {props.referenceLines?.map(line => (
+          <ReferenceLine
+            key={line.label}
+            x={line.x}
+            y={line.y}
+            stroke="#999"
+            strokeDasharray={line.strokeDasharray || '15 15'}
+            label={{
+              value: line.label,
+              fontSize: 15,
+              fill: line.stroke,
+            }}
           />
         ))}
       </AreaChart>
