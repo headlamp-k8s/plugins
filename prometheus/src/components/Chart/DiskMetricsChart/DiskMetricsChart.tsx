@@ -47,9 +47,6 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
   useEffect(() => {
     const isEnabled = clusterConfig?.clusters?.[cluster]?.enableMetrics || false;
     setIsVisible(isEnabled);
-    console.log('cluster', cluster);
-    console.log('isEnabled', isEnabled);
-    console.log('clusterConfig', clusterConfig);
 
     if (!isEnabled) {
       setState(prometheusState.UNKNOWN);
