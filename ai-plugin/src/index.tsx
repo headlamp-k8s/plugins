@@ -24,9 +24,6 @@ import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './uti
 import {
   getActiveConfig,
   getSavedConfigurations,
-  saveProviderConfig,
-  StoredProviderConfig,
-  deleteProviderConfig,
 } from './utils/ProviderConfigManager';
 
 // Register UI Panel component that uses the shared state to show/hide
@@ -294,7 +291,7 @@ function Settings() {
   };
 
   const provider = getProviderById(activeConfiguration.providerId);
-
+  console.log('Rendering Settings component with provider:', provider);
   return (
     <Box width={'80%'}>
       <Typography variant="body1" sx={{ mb: 3 }}>
