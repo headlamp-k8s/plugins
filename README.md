@@ -2,6 +2,10 @@
 
 This is a repository of official plugins that Headlamp uses or recommends.
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/7551/badge)](https://www.bestpractices.dev/projects/7551)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/headlamp-k8s/plugins/badge)](https://scorecard.dev/viewer/?uri=github.com/headlamp-k8s/plugins)
+
+
 ## Current Plugins
 
 | Plugin | Description | Notes | Maintainers |
