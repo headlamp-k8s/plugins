@@ -414,11 +414,11 @@ export default function ModelSelector({
       // Generate a unique name for this configuration
 
       // Check if there are existing configurations for this provider
-      const existingConfigsForProvider = savedConfigs.providers.filter(
+      const existingConfigsForProvider = savedConfigs?.providers?.filter(
         p => p.providerId === providerId
       );
 
-      if (existingConfigsForProvider.length > 0) {
+      if (existingConfigsForProvider && existingConfigsForProvider.length > 0) {
         // Find the highest number used in existing configurations
         let maxNumber = 0;
         const regex = new RegExp(`^${providerName}\\s+(\\d+)$`);
@@ -495,7 +495,7 @@ export default function ModelSelector({
   // Handle provider change internally
   const handleProviderChange = (providerId: string) => {
     // Try to find an existing config for this provider
-    const existingConfig = savedConfigs.providers.find(p => p.providerId === providerId);
+    const existingConfig = savedConfigs?.providers?.find(p => p.providerId === providerId);
 
     if (existingConfig) {
       // Use existing config
@@ -623,7 +623,7 @@ export default function ModelSelector({
       <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="subtitle1">
-            {savedConfigs.providers.length === 0
+            {!savedConfigs?.providers?.length
               ? 'No Configured Providers'
               : 'Configured Providers'}
           </Typography>
@@ -637,7 +637,7 @@ export default function ModelSelector({
           </Button>
         </Box>
 
-        {savedConfigs.providers.length === 0 ? (
+        {!savedConfigs?.providers?.length ? (
           <Paper
             sx={{
               p: 3,
@@ -662,7 +662,7 @@ export default function ModelSelector({
           </Paper>
         ) : (
           <Grid container spacing={2}>
-            {savedConfigs.providers.map((savedConfig, index) => {
+            {savedConfigs?.providers?.map((savedConfig, index) => {
               const isActive =
                 savedConfig.providerId === selectedProvider &&
                 areConfigsSimilar(savedConfig.config, config);
@@ -697,7 +697,7 @@ export default function ModelSelector({
                   >
                     <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Box>
-                        {index === (savedConfigs?.defaultProviderIndex ?? 0) && (
+                        {savedConfigs && index === (savedConfigs.defaultProviderIndex ?? 0) && (
                           <Chip
                             label="Default"
                             size="small"
@@ -734,14 +734,14 @@ export default function ModelSelector({
                       }
                       {/* Count similar configs to indicate multiple instances of the same provider */}
                       {(() => {
-                        const similarConfigs = savedConfigs.providers.filter(
+                        const similarConfigs = savedConfigs?.providers?.filter(
                           c => c.providerId === savedConfig.providerId &&
                                c !== savedConfig &&
                                (c.displayName === savedConfig.displayName ||
                                 (!c.displayName && !savedConfig.displayName))
                         );
                         return similarConfigs.length > 0 ?
-                          ` (${savedConfigs.providers.indexOf(savedConfig) + 1})` : '';
+                          ` (${savedConfigs?.providers?.indexOf(savedConfig) + 1})` : '';
                       })()}
                     </Typography>
 
@@ -757,8 +757,8 @@ export default function ModelSelector({
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCloseMenu();
-                          if (selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
-                            const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
+                          if (selectedConfigIndex !== null && savedConfigs?.providers[selectedConfigIndex]) {
+                            const selectedSavedConfig = savedConfigs?.providers[selectedConfigIndex];
                             // Use false for isNewConfig to indicate we're editing an existing config
                             handleOpenDialog(selectedSavedConfig.providerId, false);
                             // Pre-select this saved config
@@ -775,7 +775,7 @@ export default function ModelSelector({
                           e.stopPropagation();
                           handleCloseMenu();
                           // Handle make default action using selectedConfigIndex
-                          if (selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
+                          if (selectedConfigIndex !== null && savedConfigs?.providers[selectedConfigIndex]) {
                             const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
                             handleProviderChange(selectedSavedConfig.providerId);
                             handleConfigChange(selectedSavedConfig.config);
@@ -797,7 +797,7 @@ export default function ModelSelector({
                           e.stopPropagation();
                           handleCloseMenu();
                           // Handle delete action using selectedConfigIndex
-                          if (selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
+                          if (selectedConfigIndex !== null && savedConfigs?.providers[selectedConfigIndex]) {
                             setShowDeleteConfirm(true);
                           }
                         }}
@@ -842,7 +842,7 @@ export default function ModelSelector({
           setSelectedConfigIndex(null);
         }}
         onConfirm={() => {
-          if (selectedConfigIndex !== null && savedConfigs.providers[selectedConfigIndex]) {
+          if (selectedConfigIndex !== null && savedConfigs?.providers[selectedConfigIndex]) {
             const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
             handleDeleteConfig(selectedSavedConfig.providerId, selectedSavedConfig.config);
           }
