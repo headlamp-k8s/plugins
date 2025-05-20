@@ -601,6 +601,49 @@ export default function AIPrompt(props: {
   // If panel is not open, don't render
   if (!openPopup) return null;
 
+  // Check if we have any valid configuration
+  const hasLegacyConfig =
+    (pluginSettings?.API_TYPE === 'azure' && pluginSettings?.DEPLOYMENT_NAME && pluginSettings?.API_KEY && pluginSettings?.GPT_MODEL) ||
+    (pluginSettings?.API_TYPE !== 'azure' && pluginSettings?.API_KEY && pluginSettings?.GPT_MODEL);
+
+  const savedConfigs = getSavedConfigurations(pluginSettings);
+  const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
+  const hasValidConfig = hasLegacyConfig || hasAnyValidConfig;
+
+  // If no valid configuration, show setup message
+  if (!hasValidConfig) {
+    return (
+      <Box
+        sx={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 3,
+          textAlign: 'center',
+        }}
+      >
+        <Typography variant="h6" gutterBottom>
+          AI Assistant Setup Required
+        </Typography>
+        <Typography variant="body1" color="text.secondary" paragraph>
+          To use the AI Assistant, please configure your AI provider credentials in the settings page.
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<Icon icon="mdi:settings" />}
+          onClick={() => {
+            history.push(getSettingsURL());
+            setOpenPopup(false);
+          }}
+        >
+          Go to Settings
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <div ref={rootRef}>
       <Box
