@@ -5,13 +5,9 @@ import {
   registerPluginSettings,
   registerUIPanel,
 } from '@kinvolk/headlamp-plugin/lib';
-import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
-  Backdrop,
   Box,
   Divider,
-  Paper,
-  Popper,
   ToggleButton,
   Tooltip,
   Typography,
@@ -23,7 +19,6 @@ import AIPrompt from './modal';
 import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
 import {
   getActiveConfig,
-  getSavedConfigurations,
 } from './utils/ProviderConfigManager';
 
 // Register UI Panel component that uses the shared state to show/hide
@@ -116,93 +111,23 @@ registerUIPanel({
 
 function HeadlampAIPrompt() {
   const pluginState = useGlobalState();
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const conf = usePluginConfig();
-
-  // Check if configuration is valid - now supports both legacy and new format
-  const hasLegacyConfig =
-    (conf?.API_TYPE === 'azure' && conf?.DEPLOYMENT_NAME && conf?.API_KEY && conf?.GPT_MODEL) ||
-    (conf?.API_TYPE !== 'azure' && conf?.API_KEY && conf?.GPT_MODEL);
-
-  // Check for new format - any valid provider config
-  const savedConfigs = getSavedConfigurations(conf);
-  const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
-
-  const hasValidConfig = hasLegacyConfig || hasAnyValidConfig;
 
   return (
-    <>
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <Tooltip title="AI Assistant">
-          <ToggleButton
-            aria-label={'AI Assistant'}
-            onClick={event => {
-              // Toggle the UI panel state
-              pluginState.setIsUIPanelOpen(!pluginState.isUIPanelOpen);
-              setAnchorEl(event.currentTarget);
-            }}
-            selected={pluginState.isUIPanelOpen}
-            size="small"
-          >
-            <Icon icon="mdi:sparkles" width="24px" />
-          </ToggleButton>
-        </Tooltip>
-      </Box>
-
-      {!hasValidConfig ? (
-        <>
-          <Popper
-            placement="bottom-start"
-            anchorEl={anchorEl}
-            disablePortal={false}
-            open={pluginState.isUIPanelOpen && Boolean(anchorEl)}
-            style={{
-              zIndex: 2000,
-              marginTop: '8px',
-            }}
-            modifiers={[
-              {
-                name: 'preventOverflow',
-                enabled: true,
-                options: {
-                  boundary: 'viewport',
-                },
-              },
-            ]}
-          >
-            <Paper>
-              <Box
-                style={{
-                  padding: '16px',
-                  fontSize: '16px',
-                  maxWidth: '300px',
-                }}
-              >
-                To set up credentials for AI Analysis tool to work, please go to the{' '}
-                <Link
-                  routeName="pluginDetails"
-                  params={{
-                    name: '@headlamp-k8s/headlamp-ai',
-                  }}
-                  onClick={() => {
-                    pluginState.setIsUIPanelOpen(false);
-                  }}
-                >
-                  Settings
-                </Link>{' '}
-                page.
-              </Box>
-            </Paper>
-          </Popper>
-          <Backdrop
-            open={pluginState.isUIPanelOpen}
-            onClick={() => {
-              pluginState.setIsUIPanelOpen(false);
-            }}
-          />
-        </>
-      ) : null}
-    </>
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Tooltip title="AI Assistant">
+        <ToggleButton
+          aria-label={'AI Assistant'}
+          onClick={() => {
+            // Toggle the UI panel state
+            pluginState.setIsUIPanelOpen(!pluginState.isUIPanelOpen);
+          }}
+          selected={pluginState.isUIPanelOpen}
+          size="small"
+        >
+          <Icon icon="mdi:sparkles" width="24px" />
+        </ToggleButton>
+      </Tooltip>
+    </Box>
   );
 }
 
