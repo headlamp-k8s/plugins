@@ -1,3 +1,6 @@
+
+import '../utils/icons';
+
 export interface ModelField {
   name: string;
   label: string;
@@ -23,7 +26,7 @@ export const modelProviders: ModelProvider[] = [
   {
     id: 'openai',
     name: 'OpenAI',
-    icon: 'mdi:openai',
+    icon: 'ai-providers:openai',
     description: 'Integration with OpenAI API (GPT models)',
     fields: [
       {
@@ -65,7 +68,7 @@ export const modelProviders: ModelProvider[] = [
   {
     id: 'azure',
     name: 'Azure OpenAI',
-    icon: 'mdi:microsoft-azure',
+    icon: 'ai-providers:azure',
     description: 'Integration with Azure OpenAI Service',
     fields: [
       {
@@ -106,7 +109,7 @@ export const modelProviders: ModelProvider[] = [
   {
     id: 'anthropic',
     name: 'Anthropic',
-    icon: 'mdi:alien',
+    icon: 'ai-providers:anthropic',
     description: 'Integration with Anthropic Claude models',
     fields: [
       {
@@ -142,7 +145,7 @@ export const modelProviders: ModelProvider[] = [
   {
     id: 'mistral',
     name: 'Mistral AI',
-    icon: 'mdi:brain',
+    icon: 'ai-providers:mistral',
     description: 'Integration with Mistral AI models',
     fields: [
       {
@@ -181,7 +184,7 @@ export const modelProviders: ModelProvider[] = [
   {
     id: 'gemini',
     name: 'Google Gemini',
-    icon: 'mdi:google',
+    icon: 'ai-providers:google',
     description: 'Integration with Google Gemini models',
     fields: [
       {
@@ -205,7 +208,7 @@ export const modelProviders: ModelProvider[] = [
   {
     id: 'local',
     name: 'Local Models',
-    icon: 'mdi:server',
+    icon: 'ai-providers:local',
     description: 'Integration with locally hosted models (Ollama or similar)',
     fields: [
       {
