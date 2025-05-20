@@ -198,22 +198,66 @@ export const handleActualApiRequest = async (
           formattedResponse = `Error fetching logs: ${response.message || 'Unknown error'}`;
         }
       } else if (response?.kind === 'Table') {
+        // Group rows by namespace
+        const rowsByNamespace = response.rows.reduce((acc: { [key: string]: any[] }, row: any) => {
+          const namespace = row.object.metadata.namespace;
+          if (!acc[namespace]) {
+            acc[namespace] = [];
+          }
+          acc[namespace].push(row);
+          return acc;
+        }, {});
+
+        // Create formatted output
+        const formattedRows = Object.entries(rowsByNamespace).map(([namespace, rows]: [string, any[]]) => {
+          const namespaceHeader = `\n### ${namespace} (${rows.length} items)`;
+          const tableHeader = '| Name | Status |';
+          const separator = '|------|--------|';
+          const tableRows = rows.map((row: any) => {
+            const name = row.cells[0] || '';
+            const status = row.cells[2] || ''; // Status is typically the 3rd column
+            return `| ${name} | ${status} |`;
+          });
+          
+          return [
+            namespaceHeader,
+            tableHeader,
+            separator,
+            ...tableRows
+          ].join('\n');
+        });
+
         formattedResponse = [
-          [...response.columnDefinitions.map((it: any) => it.name), 'namespace'].join(','),
-          ...response.rows.map((row: any) =>
-            [...row.cells, 'Important! namespace = ' + row.object.metadata.namespace].join(',')
-          ),
+          `Found ${response.rows.length} items across ${Object.keys(rowsByNamespace).length} namespaces:`,
+          ...formattedRows
         ].join('\n');
+
+        // Always push to history, even if no items found
+        aiManager.history.push({
+          role: 'tool',
+          content: formattedResponse
+        });
       } else if (typeof response === 'object') {
         formattedResponse = JSON.stringify(response, null, 2);
+        aiManager.history.push({
+          role: 'tool',
+          content: formattedResponse
+        });
       } else if (typeof response === 'string') {
         formattedResponse = response;
-      } 
+        aiManager.history.push({
+          role: 'tool',
+          content: formattedResponse
+        });
+      } else {
+        // Handle empty or null response
+        formattedResponse = 'No data found';
+        aiManager.history.push({
+          role: 'tool',
+          content: formattedResponse
+        });
+      }
       
-      aiManager.history.push({
-        role: 'tool',
-        content: `${formattedResponse.toString()}`,
-      });
       return formattedResponse ?? 'ok';
     } catch (error) {
       aiManager.history.push({

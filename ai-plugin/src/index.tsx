@@ -224,15 +224,8 @@ registerAppBarAction(() => {
         objectEvent: event.data,
       });
     }
-    if (event.type === 'headlamp.list-view') {
-      const slashCount = location.pathname.split('/').length - 1;
-      if (slashCount <= 3) {
-        _pluginState.setEvent({
-          title: event.data.resourceKind || event.data.title,
-          items: event.data.resources,
-        });
-      }
-    } else if (event.type === 'headlamp.details-view') {
+  
+    if (event.type === 'headlamp.details-view') {
       _pluginState.setEvent({
         title: event.data.title,
         resource: event.data.resource,
