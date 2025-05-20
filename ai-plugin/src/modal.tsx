@@ -28,6 +28,7 @@ import {
   getSavedConfigurations,
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
+import { useDynamicPrompts } from './utils/promptGenerator';
 const maxCharLimit = 3000;
 function summarizeKubeObject(obj) {
   if (obj.kind === 'Event') {
@@ -147,6 +148,7 @@ export default function AIPrompt(props: {
   const [promptHistory, setPromptHistory] = React.useState<Prompt[]>([]);
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
   const selectedClusters = useSelectedClusters();
+  const dynamicPrompts = useDynamicPrompts();
 
   // Get the active provider configuration
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
@@ -516,22 +518,30 @@ export default function AIPrompt(props: {
             function: {
               name: 'http_request',
               description:
-                'HTTP Request to a kubernetes API server, kube-apiserver. Use for all operations including fetching pod logs. If cluster is not provided, the user will be prompted to select from available clusters.',
+                'HTTP Request to a kubernetes API server, kube-apiserver. Use for all operations including fetching pod logs and filtering resources. If cluster is not provided, the user will be prompted to select from available clusters.',
               parameters: {
                 type: 'object',
                 properties: {
                   url: {
                     type: 'string',
                     description:
-                      'URL to request, example: /api/v1/pods, /apis/apps/v1/replicasets, /api/v1/namespaces/default/pods/podinfo-123/log?container=podinfod&tailLines=100',
+                      'URL to request. Examples:\n' +
+                      '- List all pods: /api/v1/pods\n' +
+                      '- List pods in namespace: /api/v1/namespaces/default/pods\n' +
+                      '- List pods with field selector: /api/v1/pods?fieldSelector=status.phase=Failed\n' +
+                      '- List pods with label selector: /api/v1/pods?labelSelector=app=nginx\n' +
+                      '- Get pod logs: /api/v1/namespaces/default/pods/podinfo-123/log?container=podinfod&tailLines=100\n' +
+                      '- List deployments: /apis/apps/v1/deployments\n' +
+                      '- List services: /api/v1/services',
                   },
                   method: {
                     type: 'string',
-                    description: 'GET, POST, PATCH, DELETE',
+                    description: 'HTTP method to use. Common values: GET, POST, PATCH, DELETE',
+                    enum: ['GET', 'POST', 'PATCH', 'DELETE'],
                   },
                   body: {
                     type: 'string',
-                    description: 'HTTP request body, optional',
+                    description: 'HTTP request body, required for POST/PATCH operations',
                   },
                   cluster: {
                     type: 'string',
@@ -557,9 +567,14 @@ export default function AIPrompt(props: {
         }
       );
     }
-
-    setSuggestions(aiManager.getPromptSuggestions());
   }, [_pluginSetting.event, aiManager]);
+
+  useEffect(() => {
+    if (openPopup && aiManager) {
+      // Use all context-aware prompts
+      setSuggestions(dynamicPrompts);
+    }
+  }, [openPopup, aiManager, dynamicPrompts, location.pathname]);
 
   // Helper function to suggest safe Kubernetes prompts when content filters are triggered
   const getSafePromptSuggestions = () => {
@@ -708,6 +723,18 @@ export default function AIPrompt(props: {
                             });
                           }}
                           deleteIcon={<Icon icon="mdi:send" width="20px" />}
+                          sx={{
+                            maxWidth: '100%',
+                            height: 'auto',
+                            '& .MuiChip-label': {
+                              whiteSpace: 'normal',
+                              wordWrap: 'break-word',
+                              textAlign: 'left',
+                              padding: '8px 12px',
+                              display: 'block',
+                              minHeight: '24px',
+                            },
+                          }}
                         />
                       </Box>
                     ))}
@@ -731,6 +758,18 @@ export default function AIPrompt(props: {
                             });
                           }}
                           deleteIcon={<Icon icon="mdi:send" width="20px" />}
+                          sx={{
+                            maxWidth: '100%',
+                            height: 'auto',
+                            '& .MuiChip-label': {
+                              whiteSpace: 'normal',
+                              wordWrap: 'break-word',
+                              textAlign: 'left',
+                              padding: '8px 12px',
+                              display: 'block',
+                              minHeight: '24px',
+                            },
+                          }}
                         />
                       </Box>
                     );
