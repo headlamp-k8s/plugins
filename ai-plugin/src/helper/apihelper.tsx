@@ -208,22 +208,78 @@ export const handleActualApiRequest = async (
           return acc;
         }, {});
 
-        // Create formatted output
+        // Create formatted output using small boxes instead of tables
         const formattedRows = Object.entries(rowsByNamespace).map(([namespace, rows]: [string, any[]]) => {
           const namespaceHeader = `\n### ${namespace} (${rows.length} items)`;
-          const tableHeader = '| Name | Status |';
-          const separator = '|------|--------|';
-          const tableRows = rows.map((row: any) => {
+          const resourceBoxes = rows.map((row: any) => {
             const name = row.cells[0] || '';
-            const status = row.cells[2] || ''; // Status is typically the 3rd column
-            return `| ${name} | ${status} |`;
+            // Extract all available information from cells
+            const additionalInfo = [];
+            
+            // Always add name and namespace first
+            let boxContent = `📄 Name: ${name}\n🔷 Namespace: ${namespace}`;
+            
+            // Process each cell in the row to add relevant information
+            if (row.cells && row.cells.length > 1) {
+              // Get column headers to know what data we're displaying
+              const columnHeaders = response.columnDefinitions.map(col => col.name.toLowerCase());
+              
+              // Add each cell's data if it has content and isn't already shown (name and namespace)
+              for (let i = 1; i < row.cells.length; i++) {
+                const cellValue = row.cells[i];
+                const header = columnHeaders[i] || `Field ${i+1}`;
+                
+                // Skip empty values or already shown name/namespace
+                if (!cellValue || header === 'name' || header === 'namespace') continue;
+                
+                // Special treatment for common fields
+                if (header.includes('status')) {
+                  const statusEmoji = cellValue.toLowerCase().includes('running') || 
+                                     cellValue.toLowerCase().includes('active') || 
+                                     cellValue.toLowerCase().includes('success') ? 
+                                     '✅' : '❌';
+                  additionalInfo.push(`🔶 Status: ${statusEmoji} ${cellValue}`);
+                } 
+                else if (header.includes('cpu') || header.includes('memory') || header.includes('usage')) {
+                  additionalInfo.push(`📊 ${header.charAt(0).toUpperCase() + header.slice(1)}: ${cellValue}`);
+                }
+                else if (header.includes('age')) {
+                  additionalInfo.push(`⏱️ Age: ${cellValue}`);
+                }
+                else if (header.includes('ready')) {
+                  additionalInfo.push(`🔄 Ready: ${cellValue}`);
+                }
+                else if (header.includes('restart')) {
+                  additionalInfo.push(`🔁 Restarts: ${cellValue}`);
+                }
+                else {
+                  // For other fields, just capitalize the header
+                  additionalInfo.push(`⚙️ ${header.charAt(0).toUpperCase() + header.slice(1)}: ${cellValue}`);
+                }
+              }
+            }
+            
+            // Add any additional object metadata that might be useful
+            if (row.object && row.object.metadata) {
+              if (row.object.metadata.labels && Object.keys(row.object.metadata.labels).length > 0) {
+                const keyLabels = Object.entries(row.object.metadata.labels)
+                  .map(([key, value]) => `${key}=${value}`)
+                  .join(', ');
+                additionalInfo.push(`🏷️ Labels: ${keyLabels}`);
+              }
+            }
+            
+            // Combine all information
+            if (additionalInfo.length > 0) {
+              boxContent += '\n' + additionalInfo.join('\n');
+            }
+            
+            return `\`\`\`\n${boxContent}\n\`\`\``;
           });
           
           return [
             namespaceHeader,
-            tableHeader,
-            separator,
-            ...tableRows
+            ...resourceBoxes
           ].join('\n');
         });
 
