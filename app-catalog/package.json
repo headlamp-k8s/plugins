@@ -38,6 +38,7 @@
     "semver": "^6.3.1"
   },
   "overrides": {
+    "prismjs": "^1.30.0",
     "typescript": "5.6.2"
   }
 }
