@@ -30,8 +30,7 @@
     ]
   },
   "devDependencies": {
-    "@headlamp-k8s/eslint-config": "^0.7.0",
-    "@kinvolk/headlamp-plugin": "^0.11.0"
+    "@kinvolk/headlamp-plugin": "^0.12.0"
   },
   "dependencies": {
     "use-between": "^1.3.5"
