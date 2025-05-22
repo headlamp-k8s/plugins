@@ -47,6 +47,24 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
     });
   };
 
+  // Helper function to detect resource list results
+  const isResourceListResult = (content: string): boolean => {
+    if (!content) return false;
+    
+    // Check for common resource list result patterns
+    const foundItemsPattern = /Found \d+ items across \d+ namespaces/;
+    
+    return (
+      content.includes('Found 0 items') ||
+      foundItemsPattern.test(content) ||
+      (content.includes('No resources found') && !content.includes('```yaml')) ||
+      // Resource table headers often indicate a list result
+      (content.includes('NAME') && content.includes('NAMESPACE') && content.includes('AGE') && !content.includes('```')) ||
+      // "not found" messages are common in Kubernetes CLI responses
+      (content.includes('not found') && !content.includes('```yaml'))
+    );
+  };
+
   useEffect(() => {
     // Process content to separate YAML blocks from markdown
     const sections: React.ReactNode[] = [];
@@ -55,13 +73,32 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
     let currentYaml = '';
     let yamlSectionTitle = '';
 
+    // Skip processing if this is a resource list result
+    if (isResourceListResult(content)) {
+      sections.push(...textToParagraphs(content));
+      setProcessedContent(sections);
+      return;
+    }
+
     // Split the content into lines
     const lines = content.split('\n');
-
+    
     const yamlContentMarkers = [/apiVersion:/i, /kind:/i, /metadata:/i, /spec:/i];
 
     const isYamlContentLine = (line: string) => {
-      return yamlContentMarkers.some(marker => marker.test(line.trim()));
+      // More precise detection to avoid matching incidental mentions
+      const trimmedLine = line.trim();
+      
+      // Match proper YAML key-value pattern
+      // The key should be at the beginning of the line (might have indentation)
+      return yamlContentMarkers.some(marker => {
+        const match = marker.test(trimmedLine);
+        if (match) {
+          // Further check that it's a key-value pattern and not just mentioned in text
+          return trimmedLine.match(/^\s*[a-zA-Z]+:/);
+        }
+        return false;
+      });
     };
 
     for (let i = 0; i < lines.length; i++) {
