@@ -6,6 +6,169 @@ import { Prompt } from './ai/manager';
 import EditorDialog from './editordialog';
 import YamlContentProcessor from './YamlContentProcessor';
 import { Icon } from '@iconify/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+// Helper function to detect resource list results
+const isResourceListResult = (content: string): boolean => {
+  if (!content) return false;
+  
+  // Check for common resource list result patterns
+  const foundItemsPattern = /Found \d+ items across \d+ namespaces/;
+  
+  return (
+    content.includes('Found 0 items') ||
+    foundItemsPattern.test(content) ||
+    (content.includes('No resources found') && !content.includes('```yaml')) ||
+    // Other resource list patterns can be added here
+    (content.includes('NAME') && content.includes('NAMESPACE') && content.includes('AGE') && !content.includes('```'))
+  );
+};
+
+// Markdown renderer component with proper width constraints
+const MarkdownRenderer = ({ content }: { content: string }) => {
+  return (
+    <Box sx={{ width: '100%', overflowWrap: 'break-word', wordWrap: 'break-word' }}>
+      <ReactMarkdown 
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // Override h1 rendering
+          h1: ({ ...props }) => (
+            <Typography variant="h4" gutterBottom sx={{ overflowWrap: 'break-word' }} {...props} />
+          ),
+          // Override h2 rendering
+          h2: ({ ...props }) => (
+            <Typography variant="h5" gutterBottom sx={{ overflowWrap: 'break-word' }} {...props} />
+          ),
+          // Override h3 rendering
+          h3: ({ ...props }) => (
+            <Typography variant="h6" gutterBottom sx={{ overflowWrap: 'break-word' }} {...props} />
+          ),
+          // Override paragraph rendering
+          p: ({ ...props }) => (
+            <Typography variant="body1" paragraph sx={{ overflowWrap: 'break-word' }} {...props} />
+          ),
+          // Style for code blocks
+          code: ({ className, children, ...props }: any) => {
+            // Match language if specified
+            return !props.inline ? (
+              <Box 
+                component="pre" 
+                sx={{ 
+                  backgroundColor: (theme) => theme.palette.grey[100],
+                  color: (theme) => theme.palette.grey[900],
+                  padding: 2,
+                  borderRadius: 1,
+                  overflowX: 'auto',
+                  '& code': {
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word'
+                  }
+                }}
+              >
+                <Box component="code" className={className} {...props}>
+                  {children}
+                </Box>
+              </Box>
+            ) : (
+              <Box 
+                component="code" 
+                sx={{ 
+                  backgroundColor: (theme) => theme.palette.grey[100],
+                  color: (theme) => theme.palette.grey[900],
+                  padding: '0.1em 0.3em',
+                  borderRadius: '0.3em',
+                  fontSize: '85%',
+                  wordWrap: 'break-word'
+                }} 
+                className={className} 
+                {...props}
+              >
+                {children}
+              </Box>
+            );
+          },
+          // Style for tables to enable horizontal scrolling when needed
+          table: ({ ...props }) => (
+            <Box sx={{ overflowX: 'auto', width: '100%', mb: 2 }}>
+              <Box component="table" sx={{ minWidth: '400px', borderCollapse: 'collapse' }} {...props} />
+            </Box>
+          ),
+          // Style for table headers
+          th: ({ ...props }) => (
+            <Box 
+              component="th" 
+              sx={{ 
+                borderBottom: '1px solid', 
+                borderColor: 'divider', 
+                padding: '8px 16px',
+                textAlign: 'left',
+                fontWeight: 'bold'
+              }} 
+              {...props} 
+            />
+          ),
+          // Style for table cells
+          td: ({ ...props }) => (
+            <Box 
+              component="td" 
+              sx={{ 
+                borderBottom: '1px solid', 
+                borderColor: 'divider', 
+                padding: '8px 16px',
+                textAlign: 'left'
+              }} 
+              {...props} 
+            />
+          ),
+          // Style for lists
+          ul: ({ ...props }) => (
+            <Box component="ul" sx={{ pl: 2, mb: 2, overflowWrap: 'break-word' }} {...props} />
+          ),
+          ol: ({ ...props }) => (
+            <Box component="ol" sx={{ pl: 2, mb: 2, overflowWrap: 'break-word' }} {...props} />
+          ),
+          li: ({ ...props }) => (
+            <Box component="li" sx={{ mb: 1, overflowWrap: 'break-word' }} {...props} />
+          ),
+          // Style for links
+          a: ({ ...props }) => (
+            <Box 
+              component="a" 
+              sx={{ 
+                color: 'primary.main',
+                textDecoration: 'none',
+                '&:hover': {
+                  textDecoration: 'underline'
+                },
+                overflowWrap: 'break-word',
+                wordBreak: 'break-all'
+              }} 
+              {...props} 
+            />
+          ),
+          // Style for blockquotes
+          blockquote: ({ ...props }) => (
+            <Box 
+              component="blockquote" 
+              sx={{ 
+                borderLeft: '4px solid',
+                borderColor: 'divider',
+                pl: 2,
+                my: 2,
+                color: 'text.secondary',
+                overflowWrap: 'break-word'
+              }}
+              {...props} 
+            />
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </Box>
+  );
+};
 
 export default function TextStreamContainer({
   history,
@@ -168,17 +331,48 @@ export default function TextStreamContainer({
                 </Alert>
               ) : (
                 <>
-                  <YamlContentProcessor
-                    content={prompt.content || ''}
-                    onYamlDetected={(yaml, resourceType) => {
-                      if (onYamlAction) {
-                        // Simply pass the YAML to the parent handler
-                        onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
-                      } else {
-                        handleYamlDetected(yaml, resourceType);
-                      }
-                    }}
-                  />
+                  {/* Determine if the content is YAML-heavy or regular markdown */}
+                  {(() => {
+                    const content = prompt.content || '';
+                    
+                    // First check if it's a resource list result
+                    if (isResourceListResult(content)) {
+                      // For resource lists, always use Markdown renderer
+                      return <MarkdownRenderer content={content} />;
+                    }
+                    
+                    // More precise YAML detection to avoid false positives
+                    const containsYamlBlocks = 
+                      // Explicit code blocks
+                      content.includes('```yaml') || 
+                      content.includes('```yml') || 
+                      // Structured YAML with multiple Kubernetes identifiers (more precise)
+                      (content.includes('apiVersion:') && 
+                       content.includes('kind:') && 
+                       content.includes('metadata:') &&
+                       // Make sure it has proper YAML structure with indentation
+                       (content.match(/^\s*apiVersion:/m) || content.match(/^\s*kind:/m)));
+                        
+                    if (containsYamlBlocks) {
+                      // For content with actual YAML blocks, use YamlContentProcessor
+                      return (
+                        <YamlContentProcessor
+                          content={content}
+                          onYamlDetected={(yaml, resourceType) => {
+                            if (onYamlAction) {
+                              // Simply pass the YAML to the parent handler
+                              onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
+                            } else {
+                              handleYamlDetected(yaml, resourceType);
+                            }
+                          }}
+                        />
+                      );
+                    } else {
+                      // For regular content, render as Markdown
+                      return <MarkdownRenderer content={content} />;
+                    }
+                  })()}
                 </>
               )}
             </>
