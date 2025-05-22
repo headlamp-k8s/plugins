@@ -594,7 +594,7 @@ export default function AIPrompt(props: {
 
   const disableSettingsButton = useMemo(() => {
     // Compensate the @ symbol not getting encoded in the history's URL
-    const currentURL = location.pathname.replace('@', '%40');
+    const currentURL = location.pathname.replace(/@/g, '%40');
     return currentURL === getSettingsURL();
   }, [location]);
 

@@ -14,6 +14,7 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatMistralAI } from '@langchain/mistralai';
 import { ChatOpenAI } from '@langchain/openai';
 import { AzureChatOpenAI } from '@langchain/openai';
+import sanitizeHtml from 'sanitize-html';
 import { z } from 'zod';
 import AIManager, { Prompt } from '../ai/manager';
 
@@ -602,12 +603,15 @@ export default class LangChainManager extends AIManager {
         return JSON.stringify(parsed);
       }
 
-      // Basic sanitization for non-JSON content
-      // Remove potentially harmful HTML/script tags
-      return content
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-        .replace(/<img[^>]*>/gi, '[IMAGE]');
+      // Use sanitize-html for robust HTML sanitization
+      return sanitizeHtml(content, {
+        allowedTags: [], // Disallow all HTML tags
+        allowedAttributes: {}, // Disallow all attributes
+        textFilter: (text) => {
+          // Replace image placeholders for consistency with previous implementation
+          return text.replace(/\[IMAGE\]/gi, '[IMAGE]');
+        },
+      });
     } catch (error) {
       console.warn('Error sanitizing content:', error);
       // If sanitization fails, return a safe version
