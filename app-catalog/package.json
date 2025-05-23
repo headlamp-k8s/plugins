@@ -33,11 +33,12 @@
     "@kinvolk/headlamp-plugin": "^0.12.0"
   },
   "dependencies": {
-    "react-syntax-highlighter": "^15.5.0",
+    "react-syntax-highlighter": "^15.6.1",
     "remark-gfm": "^4.0.1",
     "semver": "^6.3.1"
   },
   "overrides": {
+    "prismjs": "^1.30.0",
     "typescript": "5.6.2"
   }
 }
