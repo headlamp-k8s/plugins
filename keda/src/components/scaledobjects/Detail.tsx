@@ -13,9 +13,10 @@ import { useKedaInstalled } from '../../hooks/useKedaInstalled';
 import { ScaledObject, ScalingModifierMetricType } from '../../resources/scaledobject';
 import { NotInstalledBanner, TriggersSection } from '../common/CommonComponents';
 
-export function ScaledObjectDetail() {
-  const { name, namespace } = useParams<{ name: string; namespace: string }>();
+export function ScaledObjectDetail(props: { namespace?: string; name?: string }) {
   const { isKedaInstalled, isKedaCheckLoading } = useKedaInstalled();
+  const params = useParams<{ namespace: string; name: string }>();
+  const { namespace = params.namespace, name = params.name } = props;
 
   const [scaledObject] = ScaledObject.useGet(name, namespace);
   const scaleTargetKind = scaledObject?.scaleTargetKind;

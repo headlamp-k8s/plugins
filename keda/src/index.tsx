@@ -1,4 +1,10 @@
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { Icon } from '@iconify/react';
+import { 
+  registerKindIcon,
+  registerRoute,
+  registerSidebarEntry,
+  registerMapSource
+} from '@kinvolk/headlamp-plugin/lib';
 import { ClusterTriggerAuthenticationDetail } from './components/clustertriggerauthentication/Detail';
 import { ClusterTriggerAuthenticationsList } from './components/clustertriggerauthentication/List';
 import { ScaledJobDetail } from './components/scaledjobs/Detail';
@@ -7,6 +13,7 @@ import { ScaledObjectDetail } from './components/scaledobjects/Detail';
 import { ScaledObjectsList } from './components/scaledobjects/List';
 import { TriggerAuthenticationDetail } from './components/triggerauthentication/Detail';
 import { TriggerAuthenticationsList } from './components/triggerauthentication/List';
+import { kedaSource } from './mapView';
 
 interface ResourceRegistrationConfig {
   name: string;
@@ -82,3 +89,25 @@ registerKedaResource({
   ListComponent: ClusterTriggerAuthenticationsList,
   hasNamespace: false,
 });
+
+registerMapSource(kedaSource);
+
+registerKindIcon('ScaledObject', {
+  icon: <Icon icon="mdi:lightning-bolt" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+})
+
+registerKindIcon('ScaledJob', {
+  icon: <Icon icon="mdi:lightning-bolt" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+})
+
+registerKindIcon('TriggerAuthentication', {
+  icon: <Icon icon="mdi:shield-key" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+})
+
+registerKindIcon('ClusterTriggerAuthentication', {
+  icon: <Icon icon="mdi:shield-key" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+})
