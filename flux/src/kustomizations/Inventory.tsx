@@ -131,10 +131,14 @@ function inventoryNameLink(item: KubeObject) {
   const pluralName = PluralName(kind);
 
   // Flux types
-  if (groupName.endsWith('toolkit.fluxcd.io')) {
+  const allowedDomain = 'toolkit.fluxcd.io';
+  if (groupName === allowedDomain || groupName.endswith(`.${allowedDomain}`)) {
+    const routeName =
+      groupName === allowedDomain ? 'toolkit' : groupName.substring(0, groupName.indexOf('.'));
+
     return (
       <Link
-        routeName={groupName.substr(0, groupName.indexOf('.'))}
+        routeName={routeName}
         params={{
           pluralName: pluralName,
           name: item.metadata.name,
