@@ -1,6 +1,5 @@
 import { Icon } from '@iconify/react';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { apiFactory } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import {
   Link,
   NameValueTable,
@@ -14,81 +13,42 @@ import { useTheme } from '@mui/material/styles';
 import React, { useEffect } from 'react';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
+import { helmReleaseClass } from '../helm-releases/HelmReleaseList';
 import { useFluxCheck } from '../helpers';
-import { IMAGE_AUTOMATION_BETA_VERSION } from '../image-automation/ImageAutomationList';
+import {
+  imagePolicyClass,
+  imageRepositoriesClass,
+  imageUpdateAutomationClass,
+} from '../image-automation/ImageAutomationList';
+import { kustomizationClass } from '../kustomizations/KustomizationList';
+import { providerNotificationClass } from '../notifications/NotificationList';
+import { alertNotificationClass } from '../notifications/NotificationList';
+import { receiverNotificationClass } from '../notifications/NotificationList';
+import {
+  bucketRepositoryClass,
+  gitRepositoryClass,
+  helmChartClass,
+  helmRepositoryClass,
+  ociRepositoryClass,
+} from '../sources/SourceList';
 
 export function FluxOverview() {
-  const [kustomizations] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'kustomizations.kustomize.toolkit.fluxcd.io'
-  );
-  const [helmReleases] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'helmreleases.helm.toolkit.fluxcd.io'
-  );
-  const [gitRepoCRD] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'gitrepositories.source.toolkit.fluxcd.io'
-  );
-  const [ociRepos] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'ocirepositories.source.toolkit.fluxcd.io'
-  );
-  const [bucketRepos] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'buckets.source.toolkit.fluxcd.io'
-  );
-  const [helmRepos] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'helmrepositories.source.toolkit.fluxcd.io'
-  );
-  const [helmCharts] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'helmcharts.source.toolkit.fluxcd.io'
-  );
+  const kustomizationResourceClass = kustomizationClass();
+  const helmReleaseResourceClass = helmReleaseClass();
+  const gitRepoResourceClass = gitRepositoryClass();
+  const ociRepoResourceClass = ociRepositoryClass();
+  const bucketRepoResourceClass = bucketRepositoryClass();
+  const helmRepoResourceClass = helmRepositoryClass();
+  const helmChartResourceClass = helmChartClass();
+  const alertsResourceClass = alertNotificationClass();
+  const providersResourceClass = providerNotificationClass();
+  const receiversResourceClass = receiverNotificationClass();
 
-  const [alerts] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'alerts.notification.toolkit.fluxcd.io'
-  );
-  const [providers] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'providers.notification.toolkit.fluxcd.io'
-  );
-  const [receivers] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'receivers.notification.toolkit.fluxcd.io'
-  );
+  const imageUpdateAutomationResourceClass = imageUpdateAutomationClass();
+  const imagePolicyResourceClass = imagePolicyClass();
+  const imageRepositoryResourceClass = imageRepositoriesClass();
 
-  const CRD = React.useMemo(() => {
-    const CRD = K8s.ResourceClasses.CustomResourceDefinition;
-    const isVersionAvailable = CRD.apiEndpoint.apiInfo.find(
-      apiInfo => apiInfo.version === IMAGE_AUTOMATION_BETA_VERSION
-    );
-    if (!isVersionAvailable) {
-      CRD.apiEndpoint = apiFactory(
-        ...CRD.apiEndpoint.apiInfo.map(apiInfo => {
-          const params = [];
-          params.push(apiInfo.group);
-          params.push(apiInfo.version);
-          params.push(apiInfo.resource);
-          return params;
-        }),
-        ['apiextensions.k8s.io', IMAGE_AUTOMATION_BETA_VERSION, 'customresourcedefinitions']
-      );
-    }
-
-    return CRD;
-  }, []);
-
-  const [imageRepository] = CRD.useGet('imagerepositories.image.toolkit.fluxcd.io');
-  const [imageUpdateAutomation] = CRD.useGet('imageupdateautomations.image.toolkit.fluxcd.io');
-  const [imagePolicy] = CRD.useGet('imagepolicies.image.toolkit.fluxcd.io');
-
-  const fluxCheck = useFluxCheck([
-    gitRepoCRD,
-    ociRepos,
-    bucketRepos,
-    helmRepos,
-    helmCharts,
-    kustomizations,
-    alerts,
-    providers,
-    receivers,
-    imageRepository,
-    imageUpdateAutomation,
-    imagePolicy,
-  ]);
+  const fluxCheck = useFluxCheck();
 
   const [pods] = K8s.ResourceClasses.Pod.useList({
     namespace: fluxCheck.namespace,
@@ -120,46 +80,6 @@ export function FluxOverview() {
       imageAutomationController
     );
   }, [pods]);
-
-  const kustomizationResourceClass = React.useMemo(() => {
-    return kustomizations?.makeCRClass();
-  }, [kustomizations]);
-
-  const helmReleaseResourceClass = React.useMemo(() => {
-    return helmReleases?.makeCRClass();
-  }, [helmReleases]);
-
-  const gitRepoResourceClass = React.useMemo(() => {
-    return gitRepoCRD?.makeCRClass();
-  }, [gitRepoCRD]);
-
-  const ociRepoResourceClass = React.useMemo(() => {
-    return ociRepos?.makeCRClass();
-  }, [ociRepos]);
-
-  const bucketRepoResourceClass = React.useMemo(() => {
-    return bucketRepos?.makeCRClass();
-  }, [bucketRepos]);
-
-  const helmRepoResourceClass = React.useMemo(() => {
-    return helmRepos?.makeCRClass();
-  }, [helmRepos]);
-
-  const helmChartResourceClass = React.useMemo(() => {
-    return helmCharts?.makeCRClass();
-  }, [helmCharts]);
-
-  const imageRepositoryClass = React.useMemo(() => {
-    return imageRepository?.makeCRClass();
-  }, [imageRepository]);
-
-  const imageUpdateAutomationClass = React.useMemo(() => {
-    return imageUpdateAutomation?.makeCRClass();
-  }, [imageUpdateAutomation]);
-
-  const imagePolicyClass = React.useMemo(() => {
-    return imagePolicy?.makeCRClass();
-  }, [imagePolicy]);
 
   return (
     <>
@@ -199,23 +119,27 @@ export function FluxOverview() {
             {helmChartResourceClass && <FluxOverviewChart resourceClass={helmChartResourceClass} />}
           </Box>
           <Box width="300px" m={2}>
-            {alerts && <FluxOverviewChart resourceClass={alerts.makeCRClass()} />}
+            {alertsResourceClass && <FluxOverviewChart resourceClass={alertsResourceClass} />}
           </Box>
           <Box width="300px" m={2}>
-            {providers && <FluxOverviewChart resourceClass={providers.makeCRClass()} />}
+            {providersResourceClass && <FluxOverviewChart resourceClass={providersResourceClass} />}
           </Box>
           <Box width="300px" m={2}>
-            {receivers && <FluxOverviewChart resourceClass={receivers.makeCRClass()} />}
+            {receiversResourceClass && <FluxOverviewChart resourceClass={receiversResourceClass} />}
           </Box>
           <Box width="300px" m={2}>
-            {imageRepositoryClass && <FluxOverviewChart resourceClass={imageRepositoryClass} />}
+            {imageRepositoryResourceClass && (
+              <FluxOverviewChart resourceClass={imageRepositoryResourceClass} />
+            )}
           </Box>
           <Box width="300px" m={2}>
-            {imagePolicyClass && <FluxOverviewChart resourceClass={imagePolicyClass} />}
+            {imagePolicyResourceClass && (
+              <FluxOverviewChart resourceClass={imagePolicyResourceClass} />
+            )}
           </Box>
           <Box width="300px" m={2}>
-            {imageUpdateAutomationClass && (
-              <FluxOverviewChart resourceClass={imageUpdateAutomationClass} />
+            {imageUpdateAutomationResourceClass && (
+              <FluxOverviewChart resourceClass={imageUpdateAutomationResourceClass} />
             )}
           </Box>
         </Box>
