@@ -1,10 +1,34 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
+import { Provider } from 'react-redux';
 import CommandDialog from './CommandDialog';
+
+const mockReducer = () => ({
+  config: {
+    clusters: {
+      'test-cluster': {
+        name: 'test-cluster',
+        status: 'running',
+      },
+    },
+  },
+});
+
+const store = configureStore({
+  reducer: mockReducer,
+});
 
 export default {
   title: 'Components/CommandDialog',
   component: CommandDialog,
+  decorators: [
+    Story => (
+      <Provider store={store}>
+        <Story />
+      </Provider>
+    ),
+  ],
   argTypes: {
     onClose: { action: 'onClose' },
     onConfirm: { action: 'onConfirm' },
