@@ -31,6 +31,7 @@ const Template: StoryFn<PurePluginInstalledListProps> = args => (
 
 const samplePlugins = [
   {
+    artifacthub: 'abcde1',
     pluginName: 'plugin1',
     pluginTitle: 'Plugin 1',
     pluginVersion: '1.0.0',
@@ -39,6 +40,7 @@ const samplePlugins = [
     author: 'Author 1',
   },
   {
+    artifacthub: 'abcde2',
     pluginName: 'plugin2',
     pluginTitle: 'Plugin 2',
     pluginVersion: '1.2.0',
@@ -57,6 +59,13 @@ Default.args = {
 export const WithError = Template.bind({});
 WithError.args = {
   installedPlugins: null,
+  error: 'Failed to load plugins.',
+};
+
+export const WithRepeatedPlugins = Template.bind({});
+WithRepeatedPlugins.args = {
+  installedPlugins: samplePlugins,
+  otherInstalledPlugins: [samplePlugins[1]],
   error: 'Failed to load plugins.',
 };
 
