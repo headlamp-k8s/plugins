@@ -12,6 +12,9 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 env:
   REGISTRY: ghcr.io
   ORG: headlamp-k8s
