@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-rest-proxy
+  labels:
+    app: redis-rest-proxy
+  namespace: falco
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  selector:
+    app: redis-rest-proxy
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-rest-proxy
+  namespace: falco
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-rest-proxy
+  template:
+    metadata:
+      labels:
+        app: redis-rest-proxy
+    spec:
+      containers:
+        - name: redis-rest-proxy
+          image: python:3-alpine
+          workingDir: /tmp
+          command: ['sh', '-c']
+          args:
+            - |
+              pip install --no-cache-dir flask redis flask-cors && \
+              python3 - << 'EOF'
+              from flask import Flask, request, jsonify
+              from flask_cors import CORS
+              import redis, json, sys
+              app = Flask(__name__)
+              CORS(app)
+              rclient = redis.Redis(host='redis-service', port=6379)
+
+              @app.route('/events', methods=['POST'])
+              def post_events():
+                  try:
+                      # Try to parse JSON
+                      data = request.get_json(silent=True)
+                      
+                      # If can't parse as JSON, try getting raw data
+                      if data is None:
+                          data = request.get_data(as_text=True)
+                          # Log what we received
+                          print(f"Received raw data: {data}", file=sys.stderr)
+                          try:
+                              # Try to parse it as JSON
+                              data = json.loads(data)
+                          except:
+                              # If not valid JSON, store as is
+                              rclient.lpush('falco:events', json.dumps({"rule":"Raw Event", "output":data}))
+                              return jsonify(status='ok'), 201
+                      
+                      # Store proper JSON data
+                      print(f"Storing JSON: {json.dumps(data)}", file=sys.stderr)
+                      rclient.lpush('falco:events', json.dumps(data))
+                      return jsonify(status='ok'), 201
+                  except Exception as e:
+                      print(f"Error in post_events: {str(e)}", file=sys.stderr)
+                      return jsonify(error=str(e)), 500
+
+              @app.route('/events', methods=['GET'])
+              def get_events():
+                  limit = int(request.args.get('limit', 100))
+                  events = [json.loads(e) for e in rclient.lrange('falco:events', 0, limit-1)]
+                  return jsonify(events)
+
+              @app.route('/ping', methods=['GET'])
+              def ping():
+                  return 'pong'
+
+              if __name__ == "__main__":
+                  app.run(host='0.0.0.0', port=8080)
+              EOF
+          ports:
+            - containerPort: 8080
