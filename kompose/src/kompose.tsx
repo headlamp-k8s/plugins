@@ -56,7 +56,7 @@ export function getKomposeOutput(logs: string) {
     isError: false,
   };
 
-  const errorMatch = logs.match(/KOMPOSE_ERROR=(.+)__ENDERROR__/g);
+  const errorMatch = logs.match(/KOMPOSE_ERROR=(.+?)__ENDERROR__/g);
   if (!!errorMatch) {
     output.isError = true;
     output.data = errorMatch[0].slice('KOMPOSE_ERROR='.length, -'__ENDERROR__'.length);
