@@ -47,9 +47,10 @@ export function OwnedJobsSection(props: OwnedJobsSectionProps) {
   );
 }
 
-export function ScaledJobDetail() {
-  const { name, namespace } = useParams<{ name: string; namespace: string }>();
+export function ScaledJobDetail(props: { namespace?: string; name?: string }) {
   const { isKedaInstalled, isKedaCheckLoading } = useKedaInstalled();
+  const params = useParams<{ namespace: string; name: string }>();
+  const { namespace = params.namespace, name = params.name } = props;
 
   return (
     <>

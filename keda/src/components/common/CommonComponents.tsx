@@ -72,10 +72,11 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
 interface BaseKedaAuthenticationProps {
   title?: string;
   resourceType: typeof TriggerAuthentication | typeof ClusterTriggerAuthentication;
+  namespace?: string;
+  name: string;
 }
 
-export function BaseKedaAuthenticationDetail({ resourceType }: BaseKedaAuthenticationProps) {
-  const { name, namespace } = useParams<{ name: string; namespace?: string }>();
+export function BaseKedaAuthenticationDetail({ resourceType, namespace, name }: BaseKedaAuthenticationProps) {
   const { isKedaInstalled, isKedaCheckLoading } = useKedaInstalled();
 
   function isAuthTargetRef(value: any): value is AuthTargetRef {
