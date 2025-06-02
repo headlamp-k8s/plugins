@@ -56,23 +56,34 @@ export function getKomposeOutput(logs: string) {
     isError: false,
   };
 
-  const errorMatch = logs.match(/KOMPOSE_ERROR=(.+)__ENDERROR__/g);
-  if (!!errorMatch) {
-    output.isError = true;
-    output.data = errorMatch[0].slice('KOMPOSE_ERROR='.length, -'__ENDERROR__'.length);
-    return output;
+  // Look for the error block
+  const errorStart = logs.indexOf('KOMPOSE_ERROR=');
+  if (errorStart !== -1) {
+    const errorEnd = logs.indexOf('__ENDERROR__', errorStart);
+    if (errorEnd !== -1) {
+      output.isError = true;
+      output.data = logs.slice(errorStart + 'KOMPOSE_ERROR='.length, errorEnd);
+      return output;
+    }
   }
 
-  const match = logs.match(/KOMPOSE_OUTPUT=([A-Za-z0-9\s=]+)__ENDOUTPUT__/g);
-  if (!!match) {
-    const komposeYAML = atob(
-      match[0].slice('KOMPOSE_OUTPUT='.length, -'__ENDOUTPUT__'.length).replace(/ /g, '\n')
-    );
-    output.data = komposeYAML;
-  } else {
-    output.isError = true;
-    output.data = 'Failed to get any output from conversion.';
+  // Look for the output block
+  const outputStart = logs.indexOf('KOMPOSE_OUTPUT=');
+  if (outputStart !== -1) {
+    const outputEnd = logs.indexOf('__ENDOUTPUT__', outputStart);
+    if (outputEnd !== -1) {
+      const encoded = logs.slice(outputStart + 'KOMPOSE_OUTPUT='.length, outputEnd);
+      try {
+        output.data = atob(encoded.replace(/ /g, '\n'));
+      } catch (e) {
+        output.isError = true;
+        output.data = 'Failed to decode kompose output.';
+      }
+      return output;
+    }
   }
 
+  output.isError = true;
+  output.data = 'Failed to get any output from conversion.';
   return output;
 }
