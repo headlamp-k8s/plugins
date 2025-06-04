@@ -150,20 +150,14 @@ export default function AIPrompt(props: {
   const selectedClusters = useSelectedClusters();
   const dynamicPrompts = useDynamicPrompts();
 
-  // Get the active provider configuration
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
-
-  // Track available provider configurations
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
 
-  // Editor dialog state
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
   const [editorTitle, setEditorTitle] = React.useState('');
   const [resourceType, setResourceType] = React.useState('');
   const [isDelete, setIsDelete] = React.useState(false);
-
-  // API confirmation dialog state
   const [showApiConfirmation, setShowApiConfirmation] = React.useState(false);
   const [apiRequest, setApiRequest] = React.useState<{
     url: string;
@@ -236,6 +230,8 @@ export default function AIPrompt(props: {
 
   // Initialize active configuration from plugin settings
   useEffect(() => {
+    // If we already have an active config, no need to reinitialize
+    if(activeConfig) return;
     if (!pluginSettings) return;
 
     const savedConfigs = getSavedConfigurations(pluginSettings);
@@ -406,7 +402,7 @@ export default function AIPrompt(props: {
         }
       }
     }
-  }, [aiManager, pluginSettings, activeConfig]);
+  }, [pluginSettings, activeConfig]);
 
   const updateHistory = React.useCallback(() => {
     setPromptHistory(aiManager?.history ?? []);
@@ -417,10 +413,7 @@ export default function AIPrompt(props: {
     setLoading(true);
 
     try {
-      // @todo: Needs to be cancellable.
       const promptResponse = await aiManager.userSend(prompt);
-      console.log('Prompt response:', promptResponse);
-
       if (promptResponse.error) {
         // Clear the global API error since errors are now handled at the prompt level
         setApiError(null);
@@ -609,7 +602,7 @@ export default function AIPrompt(props: {
   const savedConfigs = getSavedConfigurations(pluginSettings);
   const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
   const hasValidConfig = hasLegacyConfig || hasAnyValidConfig;
-
+  
   // If no valid configuration, show setup message
   if (!hasValidConfig) {
     return (
@@ -972,7 +965,6 @@ export default function AIPrompt(props: {
                       setPromptVal('');
                       const prompt = promptVal;
                       AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                        console.log(error);
                         setApiError(error.message);
                       });
                     }}
