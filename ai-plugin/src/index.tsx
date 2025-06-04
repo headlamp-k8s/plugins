@@ -5,21 +5,13 @@ import {
   registerPluginSettings,
   registerUIPanel,
 } from '@kinvolk/headlamp-plugin/lib';
-import {
-  Box,
-  Divider,
-  ToggleButton,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import { Box, Divider, ToggleButton, Tooltip, Typography } from '@mui/material';
 import React from 'react';
 import ModelSelector from './components/ModelSelector';
 import { getDefaultConfig, getProviderById } from './config/modelConfig';
 import AIPrompt from './modal';
 import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
-import {
-  getActiveConfig,
-} from './utils/ProviderConfigManager';
+import { getActiveConfig } from './utils/ProviderConfigManager';
 
 // Register UI Panel component that uses the shared state to show/hide
 registerUIPanel({
@@ -136,12 +128,12 @@ registerAppBarAction(HeadlampAIPrompt);
 registerAppBarAction(() => {
   const _pluginState = useGlobalState();
   registerHeadlampEventCallback(event => {
-    if(event.type === 'headlamp.home-page-loaded') {
+    if (event.type === 'headlamp.home-page-loaded') {
       _pluginState.setEvent({
         ..._pluginState.event,
         clusters: event.data.clusters,
         errors: event.data.errors,
-      })
+      });
     }
     if (event.type === 'headlamp.object-events') {
       _pluginState.setEvent({
@@ -149,7 +141,7 @@ registerAppBarAction(() => {
         objectEvent: event.data,
       });
     }
-  
+
     if (event.type === 'headlamp.details-view') {
       _pluginState.setEvent({
         title: event.data.title,
@@ -224,7 +216,7 @@ function Settings() {
         config={activeConfiguration.config}
         savedConfigs={savedConfigs}
         configName={activeConfiguration.displayName}
-        isConfigView={true}
+        isConfigView
         onChange={handleModelSelectorChange}
       />
     </Box>
