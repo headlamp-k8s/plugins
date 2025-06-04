@@ -227,7 +227,9 @@ export default function ApiConfirmationDialog({
           onClose();
         }}
         onConfirm={handlePatchConfirm}
-        title={`Apply Patch for ${resourceInfo ? `${resourceInfo.kind}: ${resourceInfo.name}` : 'Resource'}`}
+        title={`Apply Patch for ${
+          resourceInfo ? `${resourceInfo.kind}: ${resourceInfo.name}` : 'Resource'
+        }`}
         description={
           <Box>
             <Typography variant="body1" sx={{ mb: 2 }}>
