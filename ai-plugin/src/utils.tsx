@@ -1,6 +1,6 @@
+import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
 import { useBetween } from 'use-between';
-import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
 import { StoredProviderConfig } from './utils/ProviderConfigManager';
 
 export const PLUGIN_NAME = '@headlamp-k8s/headlamp-ai';
