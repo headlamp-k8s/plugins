@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { ConfirmDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
@@ -7,7 +8,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormHelperText,
   Grid,
   IconButton,
@@ -18,16 +18,20 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
-import { getDefaultConfig, getProviderById, getProviderFields, modelProviders } from '../config/modelConfig';
+import { useEffect, useState } from 'react';
 import {
-  SavedConfigurations,
-  StoredProviderConfig,
-  saveProviderConfig,
+  getDefaultConfig,
+  getProviderById,
+  getProviderFields,
+  modelProviders,
+} from '../config/modelConfig';
+import {
   deleteProviderConfig,
-  getActiveConfig
+  getActiveConfig,
+  SavedConfigurations,
+  saveProviderConfig,
+  StoredProviderConfig,
 } from '../utils/ProviderConfigManager';
-import {ConfirmDialog} from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 
 interface ProviderSelectionDialogProps {
   open: boolean;
@@ -335,8 +339,11 @@ export default function ModelSelector({
         return false;
       }
 
-      if (config1.deploymentName && config2.deploymentName &&
-          config1.deploymentName !== config2.deploymentName) {
+      if (
+        config1.deploymentName &&
+        config2.deploymentName &&
+        config1.deploymentName !== config2.deploymentName
+      ) {
         return false;
       }
 
@@ -378,8 +385,10 @@ export default function ModelSelector({
       if (config1.deploymentName !== config2.deploymentName) {
         return false;
       }
-    } else if ((config1.deploymentName && !config2.deploymentName) ||
-              (!config1.deploymentName && config2.deploymentName)) {
+    } else if (
+      (config1.deploymentName && !config2.deploymentName) ||
+      (!config1.deploymentName && config2.deploymentName)
+    ) {
       // One has a deploymentName and the other doesn't - they're different
       return false;
     }
@@ -482,10 +491,6 @@ export default function ModelSelector({
     handleOpenDialog(providerId, true);
   };
 
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
   const handleCloseMenu = () => {
     setAnchorEl(null);
   };
@@ -580,11 +585,7 @@ export default function ModelSelector({
 
   // Handle deleting a config internally
   const handleDeleteConfig = (providerId: string, configToDelete: Record<string, any>) => {
-    const updatedConfigs = deleteProviderConfig(
-      savedConfigs,
-      providerId,
-      configToDelete
-    );
+    const updatedConfigs = deleteProviderConfig(savedConfigs, providerId, configToDelete);
 
     // If we're deleting the currently active config, we need to update our local state
     if (providerId === selectedProvider && areConfigsSimilar(configToDelete, config)) {
@@ -623,9 +624,7 @@ export default function ModelSelector({
       <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="subtitle1">
-            {!savedConfigs?.providers?.length
-              ? 'No Configured Providers'
-              : 'Configured Providers'}
+            {!savedConfigs?.providers?.length ? 'No Configured Providers' : 'Configured Providers'}
           </Typography>
           <Button
             variant="contained"
@@ -695,7 +694,14 @@ export default function ModelSelector({
                       }
                     }}
                   >
-                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Box
+                      sx={{
+                        width: '100%',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        mb: 1,
+                      }}
+                    >
                       <Box>
                         {savedConfigs && index === (savedConfigs.defaultProviderIndex ?? 0) && (
                           <Chip
@@ -708,7 +714,7 @@ export default function ModelSelector({
                       </Box>
                       <IconButton
                         size="small"
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
                           setAnchorEl(e.currentTarget);
                           setSelectedConfigIndex(index);
@@ -728,20 +734,23 @@ export default function ModelSelector({
                       {savedConfig.displayName || savedProvider?.name || savedConfig.providerId}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" align="center">
-                      {savedConfig.config.model || savedConfig.config.deploymentName ?
-                        (savedConfig.config.model ? savedConfig.config.model : savedConfig.config.deploymentName) :
-                        'Configuration'
-                      }
+                      {savedConfig.config.model || savedConfig.config.deploymentName
+                        ? savedConfig.config.model
+                          ? savedConfig.config.model
+                          : savedConfig.config.deploymentName
+                        : 'Configuration'}
                       {/* Count similar configs to indicate multiple instances of the same provider */}
                       {(() => {
                         const similarConfigs = savedConfigs?.providers?.filter(
-                          c => c.providerId === savedConfig.providerId &&
-                               c !== savedConfig &&
-                               (c.displayName === savedConfig.displayName ||
-                                (!c.displayName && !savedConfig.displayName))
+                          c =>
+                            c.providerId === savedConfig.providerId &&
+                            c !== savedConfig &&
+                            (c.displayName === savedConfig.displayName ||
+                              (!c.displayName && !savedConfig.displayName))
                         );
-                        return similarConfigs.length > 0 ?
-                          ` (${savedConfigs?.providers?.indexOf(savedConfig) + 1})` : '';
+                        return similarConfigs.length > 0
+                          ? ` (${savedConfigs?.providers?.indexOf(savedConfig) + 1})`
+                          : '';
                       })()}
                     </Typography>
 
@@ -754,11 +763,15 @@ export default function ModelSelector({
                       }}
                     >
                       <MenuItem
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
                           handleCloseMenu();
-                          if (selectedConfigIndex !== null && savedConfigs?.providers[selectedConfigIndex]) {
-                            const selectedSavedConfig = savedConfigs?.providers[selectedConfigIndex];
+                          if (
+                            selectedConfigIndex !== null &&
+                            savedConfigs?.providers[selectedConfigIndex]
+                          ) {
+                            const selectedSavedConfig =
+                              savedConfigs?.providers[selectedConfigIndex];
                             // Use false for isNewConfig to indicate we're editing an existing config
                             handleOpenDialog(selectedSavedConfig.providerId, false);
                             // Pre-select this saved config
@@ -775,7 +788,10 @@ export default function ModelSelector({
                           e.stopPropagation();
                           handleCloseMenu();
                           // Handle make default action using selectedConfigIndex
-                          if (selectedConfigIndex !== null && savedConfigs?.providers[selectedConfigIndex]) {
+                          if (
+                            selectedConfigIndex !== null &&
+                            savedConfigs?.providers[selectedConfigIndex]
+                          ) {
                             const selectedSavedConfig = savedConfigs.providers[selectedConfigIndex];
                             handleProviderChange(selectedSavedConfig.providerId);
                             handleConfigChange(selectedSavedConfig.config);
@@ -797,7 +813,10 @@ export default function ModelSelector({
                           e.stopPropagation();
                           handleCloseMenu();
                           // Handle delete action using selectedConfigIndex
-                          if (selectedConfigIndex !== null && savedConfigs?.providers[selectedConfigIndex]) {
+                          if (
+                            selectedConfigIndex !== null &&
+                            savedConfigs?.providers[selectedConfigIndex]
+                          ) {
                             setShowDeleteConfirm(true);
                           }
                         }}
@@ -852,7 +871,6 @@ export default function ModelSelector({
         cancelLabel="Cancel"
         confirmButtonText="Delete"
       />
-
     </Box>
   );
 }

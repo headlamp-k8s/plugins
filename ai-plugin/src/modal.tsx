@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
-import { useHistory, useLocation } from 'react-router-dom';
 import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import {
   Alert,
   Box,
@@ -12,8 +12,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import {  useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s'
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo,useState } from 'react';
+import { useHistory, useLocation } from 'react-router-dom';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
 import { getProviderById } from './config/modelConfig';
@@ -23,12 +23,12 @@ import LangChainManager from './langchain/LangChainManager';
 import OpenAIManager from './openai/manager';
 import TextStreamContainer from './textstream';
 import { getSettingsURL, useGlobalState } from './utils';
+import { useDynamicPrompts } from './utils/promptGenerator';
 import {
   getActiveConfig,
   getSavedConfigurations,
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
-import { useDynamicPrompts } from './utils/promptGenerator';
 const maxCharLimit = 3000;
 function summarizeKubeObject(obj) {
   if (obj.kind === 'Event') {
@@ -231,7 +231,7 @@ export default function AIPrompt(props: {
   // Initialize active configuration from plugin settings
   useEffect(() => {
     // If we already have an active config, no need to reinitialize
-    if(activeConfig) return;
+    if (activeConfig) return;
     if (!pluginSettings) return;
 
     const savedConfigs = getSavedConfigurations(pluginSettings);
@@ -482,7 +482,7 @@ export default function AIPrompt(props: {
       const [contextId, warnings] = getWarningsContext(events);
       aiManager.addContext(contextId, warnings);
     }
-    if(!!clusters && !!errors) {
+    if (!!clusters && !!errors) {
       aiManager.addContext('clusters list and errors', {
         clusters: clusters,
         errors: errors,
@@ -539,7 +539,8 @@ export default function AIPrompt(props: {
                   cluster: {
                     type: 'string',
                     description:
-                      'Kubernetes cluster identifier. Available clusters: ' + JSON.stringify(selectedClusters),
+                      'Kubernetes cluster identifier. Available clusters: ' +
+                      JSON.stringify(selectedClusters),
                   },
                 },
                 required: ['url', 'method'],
@@ -596,13 +597,16 @@ export default function AIPrompt(props: {
 
   // Check if we have any valid configuration
   const hasLegacyConfig =
-    (pluginSettings?.API_TYPE === 'azure' && pluginSettings?.DEPLOYMENT_NAME && pluginSettings?.API_KEY && pluginSettings?.GPT_MODEL) ||
+    (pluginSettings?.API_TYPE === 'azure' &&
+      pluginSettings?.DEPLOYMENT_NAME &&
+      pluginSettings?.API_KEY &&
+      pluginSettings?.GPT_MODEL) ||
     (pluginSettings?.API_TYPE !== 'azure' && pluginSettings?.API_KEY && pluginSettings?.GPT_MODEL);
 
   const savedConfigs = getSavedConfigurations(pluginSettings);
   const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
   const hasValidConfig = hasLegacyConfig || hasAnyValidConfig;
-  
+
   // If no valid configuration, show setup message
   if (!hasValidConfig) {
     return (
@@ -621,7 +625,8 @@ export default function AIPrompt(props: {
           AI Assistant Setup Required
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
-          To use the AI Assistant, please configure your AI provider credentials in the settings page.
+          To use the AI Assistant, please configure your AI provider credentials in the settings
+          page.
         </Typography>
         <Button
           variant="contained"
@@ -663,7 +668,7 @@ export default function AIPrompt(props: {
             <ActionButton
               description="Settings"
               onClick={() => {
-                history.push(getSettingsURL())
+                history.push(getSettingsURL());
               }}
               icon="mdi:settings"
               iconButtonProps={{
@@ -866,9 +871,10 @@ export default function AIPrompt(props: {
                       <Select
                         value={(() => {
                           if (!activeConfig) return 0;
-                          const index = availableConfigs.findIndex(c =>
-                            c.providerId === activeConfig.providerId &&
-                            c.config.apiKey === activeConfig.config.apiKey
+                          const index = availableConfigs.findIndex(
+                            c =>
+                              c.providerId === activeConfig.providerId &&
+                              c.config.apiKey === activeConfig.config.apiKey
                           );
                           return index >= 0 ? index : 0;
                         })()}
@@ -911,7 +917,9 @@ export default function AIPrompt(props: {
                                 style={{ marginRight: 4 }}
                               />
                               <Typography variant="body2" noWrap>
-                                {selectedConfig.displayName || providerInfo?.name || selectedConfig.providerId}
+                                {selectedConfig.displayName ||
+                                  providerInfo?.name ||
+                                  selectedConfig.providerId}
                               </Typography>
                             </Box>
                           );
@@ -925,8 +933,10 @@ export default function AIPrompt(props: {
                             <MenuItem
                               key={index}
                               value={index}
-                              selected={activeConfig?.providerId === config.providerId &&
-                                      activeConfig?.config.apiKey === config.config.apiKey}
+                              selected={
+                                activeConfig?.providerId === config.providerId &&
+                                activeConfig?.config.apiKey === config.config.apiKey
+                              }
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Icon

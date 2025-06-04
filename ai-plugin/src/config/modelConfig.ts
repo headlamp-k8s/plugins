@@ -1,4 +1,3 @@
-
 import '../utils/icons';
 
 export interface ModelField {

@@ -1,27 +1,30 @@
+import { Icon } from '@iconify/react';
 import { Alert, Box, CircularProgress, Fab, Typography } from '@mui/material';
 import { useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef,useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prompt } from './ai/manager';
 import EditorDialog from './editordialog';
 import YamlContentProcessor from './YamlContentProcessor';
-import { Icon } from '@iconify/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 // Helper function to detect resource list results
 const isResourceListResult = (content: string): boolean => {
   if (!content) return false;
-  
+
   // Check for common resource list result patterns
   const foundItemsPattern = /Found \d+ items across \d+ namespaces/;
-  
+
   return (
     content.includes('Found 0 items') ||
     foundItemsPattern.test(content) ||
     (content.includes('No resources found') && !content.includes('```yaml')) ||
     // Other resource list patterns can be added here
-    (content.includes('NAME') && content.includes('NAMESPACE') && content.includes('AGE') && !content.includes('```'))
+    (content.includes('NAME') &&
+      content.includes('NAMESPACE') &&
+      content.includes('AGE') &&
+      !content.includes('```'))
   );
 };
 
@@ -29,7 +32,7 @@ const isResourceListResult = (content: string): boolean => {
 const MarkdownRenderer = ({ content }: { content: string }) => {
   return (
     <Box sx={{ width: '100%', overflowWrap: 'break-word', wordWrap: 'break-word' }}>
-      <ReactMarkdown 
+      <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           // Override h1 rendering
@@ -52,18 +55,18 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
           code: ({ className, children, ...props }: any) => {
             // Match language if specified
             return !props.inline ? (
-              <Box 
-                component="pre" 
-                sx={{ 
-                  backgroundColor: (theme) => theme.palette.grey[100],
-                  color: (theme) => theme.palette.grey[900],
+              <Box
+                component="pre"
+                sx={{
+                  backgroundColor: theme => theme.palette.grey[100],
+                  color: theme => theme.palette.grey[900],
                   padding: 2,
                   borderRadius: 1,
                   overflowX: 'auto',
                   '& code': {
                     whiteSpace: 'pre-wrap',
-                    wordWrap: 'break-word'
-                  }
+                    wordWrap: 'break-word',
+                  },
                 }}
               >
                 <Box component="code" className={className} {...props}>
@@ -71,17 +74,17 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
                 </Box>
               </Box>
             ) : (
-              <Box 
-                component="code" 
-                sx={{ 
-                  backgroundColor: (theme) => theme.palette.grey[100],
-                  color: (theme) => theme.palette.grey[900],
+              <Box
+                component="code"
+                sx={{
+                  backgroundColor: theme => theme.palette.grey[100],
+                  color: theme => theme.palette.grey[900],
                   padding: '0.1em 0.3em',
                   borderRadius: '0.3em',
                   fontSize: '85%',
-                  wordWrap: 'break-word'
-                }} 
-                className={className} 
+                  wordWrap: 'break-word',
+                }}
+                className={className}
                 {...props}
               >
                 {children}
@@ -91,34 +94,38 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
           // Style for tables to enable horizontal scrolling when needed
           table: ({ ...props }) => (
             <Box sx={{ overflowX: 'auto', width: '100%', mb: 2 }}>
-              <Box component="table" sx={{ minWidth: '400px', borderCollapse: 'collapse' }} {...props} />
+              <Box
+                component="table"
+                sx={{ minWidth: '400px', borderCollapse: 'collapse' }}
+                {...props}
+              />
             </Box>
           ),
           // Style for table headers
           th: ({ ...props }) => (
-            <Box 
-              component="th" 
-              sx={{ 
-                borderBottom: '1px solid', 
-                borderColor: 'divider', 
+            <Box
+              component="th"
+              sx={{
+                borderBottom: '1px solid',
+                borderColor: 'divider',
                 padding: '8px 16px',
                 textAlign: 'left',
-                fontWeight: 'bold'
-              }} 
-              {...props} 
+                fontWeight: 'bold',
+              }}
+              {...props}
             />
           ),
           // Style for table cells
           td: ({ ...props }) => (
-            <Box 
-              component="td" 
-              sx={{ 
-                borderBottom: '1px solid', 
-                borderColor: 'divider', 
+            <Box
+              component="td"
+              sx={{
+                borderBottom: '1px solid',
+                borderColor: 'divider',
                 padding: '8px 16px',
-                textAlign: 'left'
-              }} 
-              {...props} 
+                textAlign: 'left',
+              }}
+              {...props}
             />
           ),
           // Style for lists
@@ -133,33 +140,33 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
           ),
           // Style for links
           a: ({ ...props }) => (
-            <Box 
-              component="a" 
-              sx={{ 
+            <Box
+              component="a"
+              sx={{
                 color: 'primary.main',
                 textDecoration: 'none',
                 '&:hover': {
-                  textDecoration: 'underline'
+                  textDecoration: 'underline',
                 },
                 overflowWrap: 'break-word',
-                wordBreak: 'break-all'
-              }} 
-              {...props} 
+                wordBreak: 'break-all',
+              }}
+              {...props}
             />
           ),
           // Style for blockquotes
           blockquote: ({ ...props }) => (
-            <Box 
-              component="blockquote" 
-              sx={{ 
+            <Box
+              component="blockquote"
+              sx={{
                 borderLeft: '4px solid',
                 borderColor: 'divider',
                 pl: 2,
                 my: 2,
                 color: 'text.secondary',
-                overflowWrap: 'break-word'
+                overflowWrap: 'break-word',
               }}
-              {...props} 
+              {...props}
             />
           ),
         }}
@@ -295,7 +302,7 @@ export default function TextStreamContainer({
     const hasError = prompt.error === true;
 
     if (prompt.content === '' && prompt.role === 'user') return null;
-    if(prompt.content === '' && prompt.role === 'assistant') return null;
+    if (prompt.content === '' && prompt.role === 'assistant') return null;
     return (
       <Box
         ref={history.length === index + 1 ? lastMessageRef : null}
@@ -304,10 +311,17 @@ export default function TextStreamContainer({
           mb: 2,
           p: 1.5,
           borderRadius: 1,
-          bgcolor: prompt.role === 'user' ? alpha(theme.palette.sidebar.selectedBackground, .75) : theme.palette.background.paper,
+          bgcolor:
+            prompt.role === 'user'
+              ? alpha(theme.palette.sidebar.selectedBackground, 0.75)
+              : theme.palette.background.paper,
           border: '1px solid',
           borderColor: isContentFilterError || hasError ? 'error.main' : 'divider',
-          color: theme.palette.getContrastText(prompt.role === 'user' ? alpha(theme.palette.sidebar.selectedBackground, .75) : theme.palette.background.paper),
+          color: theme.palette.getContrastText(
+            prompt.role === 'user'
+              ? alpha(theme.palette.sidebar.selectedBackground, 0.75)
+              : theme.palette.background.paper
+          ),
           ml: prompt.role === 'user' ? 3 : 0,
           mr: prompt.role !== 'user' ? 3 : 0,
         }}
@@ -334,25 +348,25 @@ export default function TextStreamContainer({
                   {/* Determine if the content is YAML-heavy or regular markdown */}
                   {(() => {
                     const content = prompt.content || '';
-                    
+
                     // First check if it's a resource list result
                     if (isResourceListResult(content)) {
                       // For resource lists, always use Markdown renderer
                       return <MarkdownRenderer content={content} />;
                     }
-                    
+
                     // More precise YAML detection to avoid false positives
-                    const containsYamlBlocks = 
+                    const containsYamlBlocks =
                       // Explicit code blocks
-                      content.includes('```yaml') || 
-                      content.includes('```yml') || 
+                      content.includes('```yaml') ||
+                      content.includes('```yml') ||
                       // Structured YAML with multiple Kubernetes identifiers (more precise)
-                      (content.includes('apiVersion:') && 
-                       content.includes('kind:') && 
-                       content.includes('metadata:') &&
-                       // Make sure it has proper YAML structure with indentation
-                       (content.match(/^\s*apiVersion:/m) || content.match(/^\s*kind:/m)));
-                        
+                      (content.includes('apiVersion:') &&
+                        content.includes('kind:') &&
+                        content.includes('metadata:') &&
+                        // Make sure it has proper YAML structure with indentation
+                        (content.match(/^\s*apiVersion:/m) || content.match(/^\s*kind:/m)));
+
                     if (containsYamlBlocks) {
                       // For content with actual YAML blocks, use YamlContentProcessor
                       return (
@@ -392,7 +406,7 @@ export default function TextStreamContainer({
           height: '100%',
           overflow: 'auto',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
         }}
       >
         {/* Content filter guidance when errors are detected */}
@@ -427,7 +441,7 @@ export default function TextStreamContainer({
             position: 'absolute',
             bottom: 16,
             right: 16,
-            zIndex: 2
+            zIndex: 2,
           }}
           aria-label="scroll to bottom"
         >
