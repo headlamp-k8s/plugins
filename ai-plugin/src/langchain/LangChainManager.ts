@@ -607,7 +607,7 @@ export default class LangChainManager extends AIManager {
       return sanitizeHtml(content, {
         allowedTags: [], // Disallow all HTML tags
         allowedAttributes: {}, // Disallow all attributes
-        textFilter: (text) => {
+        textFilter: text => {
           // Replace image placeholders for consistency with previous implementation
           return text.replace(/\[IMAGE\]/gi, '[IMAGE]');
         },
