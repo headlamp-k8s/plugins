@@ -21,7 +21,6 @@ import Secret from '@kinvolk/headlamp-plugin/lib/k8s/secret';
 import { formatDuration } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, CircularProgress, Grid, Link as MuiLink, Typography } from '@mui/material';
 import { Fragment, ReactNode } from 'react';
-import { useParams } from 'react-router-dom';
 import { useKedaInstalled } from '../../hooks/useKedaInstalled';
 import { AuthTargetRef } from '../../resources/authentication';
 import { ClusterTriggerAuthentication } from '../../resources/clusterTriggerAuthentication';
@@ -73,10 +72,14 @@ interface BaseKedaAuthenticationProps {
   title?: string;
   resourceType: typeof TriggerAuthentication | typeof ClusterTriggerAuthentication;
   namespace?: string;
-  name: string;
+  name?: string;
 }
 
-export function BaseKedaAuthenticationDetail({ resourceType, namespace, name }: BaseKedaAuthenticationProps) {
+export function BaseKedaAuthenticationDetail({
+  resourceType,
+  namespace,
+  name,
+}: BaseKedaAuthenticationProps) {
   const { isKedaInstalled, isKedaCheckLoading } = useKedaInstalled();
 
   function isAuthTargetRef(value: any): value is AuthTargetRef {
