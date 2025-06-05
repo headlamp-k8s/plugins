@@ -1,9 +1,9 @@
 import { Icon } from '@iconify/react';
-import { 
+import {
   registerKindIcon,
+  registerMapSource,
   registerRoute,
   registerSidebarEntry,
-  registerMapSource
 } from '@kinvolk/headlamp-plugin/lib';
 import { ClusterTriggerAuthenticationDetail } from './components/clustertriggerauthentication/Detail';
 import { ClusterTriggerAuthenticationsList } from './components/clustertriggerauthentication/List';
@@ -95,19 +95,19 @@ registerMapSource(kedaSource);
 registerKindIcon('ScaledObject', {
   icon: <Icon icon="mdi:lightning-bolt" width="70%" height="70%" />,
   color: 'rgb(50, 108, 229)',
-})
+});
 
 registerKindIcon('ScaledJob', {
   icon: <Icon icon="mdi:lightning-bolt" width="70%" height="70%" />,
   color: 'rgb(50, 108, 229)',
-})
+});
 
 registerKindIcon('TriggerAuthentication', {
   icon: <Icon icon="mdi:shield-key" width="70%" height="70%" />,
   color: 'rgb(50, 108, 229)',
-})
+});
 
 registerKindIcon('ClusterTriggerAuthentication', {
   icon: <Icon icon="mdi:shield-key" width="70%" height="70%" />,
   color: 'rgb(50, 108, 229)',
-})
+});

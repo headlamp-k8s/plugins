@@ -6,10 +6,5 @@ export function ClusterTriggerAuthenticationDetail(props: { name?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
   const { name = params.name } = props;
 
-  return (
-    <BaseKedaAuthenticationDetail
-      resourceType={ClusterTriggerAuthentication} 
-      name={name}
-    />
-  );
+  return <BaseKedaAuthenticationDetail resourceType={ClusterTriggerAuthentication} name={name} />;
 }

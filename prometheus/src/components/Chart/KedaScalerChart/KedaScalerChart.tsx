@@ -1,6 +1,6 @@
 import { alpha, useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
-import { blue,green } from '@mui/material/colors';
+import { blue, green } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import Chart from '../Chart/Chart';
