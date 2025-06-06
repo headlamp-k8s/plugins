@@ -158,6 +158,8 @@ export const ChartEnabledKinds = [
   'Job',
   'CronJob',
   'PersistentVolumeClaim',
+  'ScaledObject',
+  'ScaledJob',
 ];
 
 /**
