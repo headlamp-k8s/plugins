@@ -5,11 +5,20 @@ FROM node:18@sha256:d0bbfdbad0bff8253e6159dcbee42141db4fc309365d5b8bcfce46ed7156
 WORKDIR /headlamp-plugins
 
 # Add a build argument for the desired plugin to be built
+# Add multi-arch build arguments
 ARG PLUGIN
+ARG TARGETPLATFORM
+ARG TARGETARCH
 
 # Check if the PLUGIN argument is provided
 RUN if [ -z "$PLUGIN" ]; then \
       echo "Error: PLUGIN argument is required"; \
+      exit 1; \
+    fi
+
+# Enforce that TARGETARCH is specified
+RUN if [ -z "$TARGETARCH" ]; then \
+      echo "Error: TARGETARCH argument is required"; \
       exit 1; \
     fi
 
@@ -48,6 +57,7 @@ RUN chown -R headlamp:headlamp /plugins && \
 
 LABEL org.opencontainers.image.source=https://github.com/headlamp-k8s/plugins
 LABEL org.opencontainers.image.licenses=MIT
+LABEL org.opencontainers.image.platform=$TARGETPLATFORM
 
 # Switch to non-root user
 USER headlamp
