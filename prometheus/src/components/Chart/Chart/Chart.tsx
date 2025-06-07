@@ -79,11 +79,6 @@ export default function Chart(props: ChartProps) {
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
-  const {
-    from: fromTimestamp,
-    to: toTimestamp,
-    step: stepSize,
-  } = getTimeRangeAndStepSize(props.interval, props.resolution);
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
@@ -99,15 +94,24 @@ export default function Chart(props: ChartProps) {
     if (firstLoad) {
       setState(ChartState.LOADING);
     }
+
+    // clear any previous errors on refresh
+    if (!firstLoad) {
+      setError(null);
+    }
+
     for (const plot of plots) {
       var response;
       try {
+        // recalculate time range for each fetch to ensure we get current data
+        const currentTimeRange = getTimeRangeAndStepSize(props.interval, props.resolution);
+
         response = await fetchMetrics({
           prefix: props.prometheusPrefix,
           query: plot.query,
-          from: fromTimestamp,
-          to: toTimestamp,
-          step: stepSize,
+          from: currentTimeRange.from,
+          to: currentTimeRange.to,
+          step: currentTimeRange.step,
           subPath: props.subPath,
         });
       } catch (e) {
@@ -133,6 +137,7 @@ export default function Chart(props: ChartProps) {
     // if all the plots are in no data state, set the state to no data
     if (Object.values(fetchedMetrics).every(plot => plot.state === ChartState.NO_DATA)) {
       setState(ChartState.NO_DATA);
+      setMetrics([]);
     }
     // if all the plots are in success state, set the state to success
     else if (Object.values(fetchedMetrics).every(plot => plot.state === ChartState.SUCCESS)) {
@@ -154,24 +159,47 @@ export default function Chart(props: ChartProps) {
     }
   };
 
-  // Fetch data on initial load
+  // Fetch data on initial load and when key parameters change
   useEffect(() => {
     fetchMetricsData(props.plots, true);
-  }, [props.interval, props.resolution]);
+  }, [
+    props.interval,
+    props.resolution,
+    props.prometheusPrefix,
+    props.subPath,
+    JSON.stringify(props.plots),
+  ]);
 
   // if reload is true, set up a timer to refresh data every 10 seconds
   // Set up a timer to refresh data every 10 seconds
   useEffect(() => {
+    let refreshInterval: NodeJS.Timeout;
+
     if (props.autoRefresh) {
-      const refreshInterval = setInterval(() => {
+      refreshInterval = setInterval(() => {
         fetchMetricsData(props.plots, false);
       }, 10000);
-
-      return () => {
-        clearInterval(refreshInterval);
-      };
     }
-  }, [props.autoRefresh, props.plots, props.interval, props.resolution]);
+
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [
+    props.autoRefresh,
+    props.interval,
+    props.resolution,
+    props.prometheusPrefix,
+    props.subPath,
+    JSON.stringify(props.plots),
+  ]);
+
+  // Calculate time range for XAxis domain
+  const { from: fromTimestamp, to: toTimestamp } = getTimeRangeAndStepSize(
+    props.interval,
+    props.resolution
+  );
 
   let chartContent;
 

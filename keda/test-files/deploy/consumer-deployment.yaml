@@ -1,30 +1,36 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rabbitmq-consumer
+  name: message-consumer
   namespace: default
   labels:
-    app: rabbitmq-consumer
+    app: message-consumer
 spec:
   selector:
     matchLabels:
-      app: rabbitmq-consumer
+      app: message-consumer
   template:
     metadata:
       labels:
-        app: rabbitmq-consumer
+        app: message-consumer
     spec:
       containers:
-        - name: rabbitmq-consumer
-          image: some-registry/rabbitmq-client:latest
+        - name: message-consumer
+          image: some-registry/keda-message-consumer:latest
           imagePullPolicy: Always
           command:
-            - receive
+            - consume
           env:
             - name: RABBITMQ_CONNECTION
               valueFrom:
                 secretKeyRef:
-                  name: rabbitmq-connection-secret
+                  name: queue-connection-secrets
                   key: RABBITMQ_CONNECTION_STRING
+            - name: REDIS_CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: queue-connection-secrets
+                  key: REDIS_CONNECTION_STRING
           args:
             - '$(RABBITMQ_CONNECTION)'
+            - '$(REDIS_CONNECTION)'
