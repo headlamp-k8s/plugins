@@ -15,20 +15,26 @@ import {
   getPrometheusPrefix,
   getPrometheusResolution,
   getPrometheusSubPath,
+  PrometheusResponse,
 } from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
-import { KedaScalerChart } from '../KedaScalerChart/KedaScalerChart';
+import { KedaScalerMetricsChart } from '../KedaScalerMetricsChart/KedaScalerMetricsChart';
+import { KedaHPAReplicasChart } from '../KedaHPAReplicasChart/KedaHPAReplicasChart';
+import { KedaActiveJobsChart } from '../KedaActiveJobsChart/KedaActiveJobsChart';
 
 /**
- * Props for the KedaMetricsChart component
- * @interface KedaMetricsChartProps
+ * Props for the KedaChart component
+ * @interface KedaChartProps
+ * @property {string} kind - The kind of KEDA resource (could be either a 'ScaledObject' or a 'ScaledJob')
+ * @property {string} namespace - The namespace of KEDA resource
+ * @property {string} name - The name of KEDA resource
  * @property {string} scalerMetricsQuery - The Prometheus query to fetch KEDA Scaler Metrics Value
  * @property {string} hpaReplicasQuery - The Prometheus query to fetch HPA Replicas Count
  * @property {string} activeJobsQuery - The Prometheus query to fetch Active Jobs Count
  * @property {number} minReplicaCount - Minimum Replica Count as specified in the YAML Spec of KEDA Resource
  * @property {number} maxReplicaCount - Maximum Replica Count as specified in the YAML Spec of KEDA Resource
  */
-export interface KedaMetricsChartProps {
+export interface KedaChartProps {
   scalerMetricsQuery: string;
   hpaReplicasQuery?: string;
   activeJobsQuery?: string;
@@ -36,7 +42,67 @@ export interface KedaMetricsChartProps {
   maxReplicaCount: number;
 }
 
-export function KedaMetricsChart(props: KedaMetricsChartProps) {
+export interface BaseSeriesInfo {
+  index: number;
+  instance: string;
+  startTime: Date;
+  endTime: Date;
+}
+
+export function extractSeriesInfo<T extends BaseSeriesInfo>(
+  response: PrometheusResponse,
+  metricExtractor: (metric: any) => Omit<T, keyof BaseSeriesInfo>
+): T[] {
+  const results = response?.data?.result || [];
+
+  return results.map((result, index) => {
+    const resultMetric = result.metric || {};
+    const instance = resultMetric.instance || 'Unknown Instance';
+
+    let startTime: Date;
+    let endTime: Date;
+    const resultValues = result.values || [];
+    if (resultValues.length !== 0 && Array.isArray(resultValues[0])) {
+      startTime = new Date(Number(resultValues[0][0]) * 1000);
+      endTime = new Date(Number(resultValues[resultValues.length - 1][0]) * 1000);
+    }
+
+    const customFields = metricExtractor(resultMetric);
+
+    return {
+      index,
+      instance,
+      startTime,
+      endTime,
+      ...customFields,
+    } as T;
+  });
+}
+
+export interface InstanceGroup<T extends BaseSeriesInfo> {
+  instance: string;
+  series: T[];
+}
+
+export function groupSeriesByInstance<T extends BaseSeriesInfo>(
+  seriesInfo: T[]
+): InstanceGroup<T>[] {
+  const instanceMap = new Map<string, T[]>();
+
+  seriesInfo.forEach(series => {
+    if (!instanceMap.has(series.instance)) {
+      instanceMap.set(series.instance, []);
+    }
+    instanceMap.get(series.instance)!.push(series);
+  });
+
+  return Array.from(instanceMap.entries()).map(([instance, series]) => ({
+    instance,
+    series,
+  }));
+}
+
+export function KedaChart(props: KedaChartProps) {
   enum prometheusState {
     UNKNOWN,
     LOADING,
@@ -159,11 +225,14 @@ export function KedaMetricsChart(props: KedaMetricsChartProps) {
 
         {state === prometheusState.INSTALLED ? (
           <Box
-            style={{
-              height: '400px',
+            sx={{
+              height: '600px',
+              display: 'flex',
+              gap: 2,
+              p: 1,
             }}
           >
-            <KedaScalerChart
+            <KedaScalerMetricsChart
               autoRefresh={refresh}
               prometheusPrefix={prometheusPrefix}
               interval={timespan}
@@ -171,6 +240,26 @@ export function KedaMetricsChart(props: KedaMetricsChartProps) {
               subPath={subPath}
               {...props}
             />
+            {props.hpaReplicasQuery && (
+              <KedaHPAReplicasChart
+                autoRefresh={refresh}
+                prometheusPrefix={prometheusPrefix}
+                interval={timespan}
+                resolution={resolution}
+                subPath={subPath}
+                {...props}
+              />
+            )}
+            {props.activeJobsQuery && (
+              <KedaActiveJobsChart
+                autoRefresh={refresh}
+                prometheusPrefix={prometheusPrefix}
+                interval={timespan}
+                resolution={resolution}
+                subPath={subPath}
+                {...props}
+              />
+            )}
           </Box>
         ) : state === prometheusState.LOADING ? (
           <Box m={2}>

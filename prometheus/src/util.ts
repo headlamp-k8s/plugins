@@ -222,19 +222,52 @@ export function createTickTimestampFormatter(interval: string) {
   };
 }
 
+export type PrometheusValue = [number, string];
+export type PrometheusResult = {
+  metric?: Record<string, string>;
+  values: PrometheusValue[];
+};
+export type PrometheusResponse = {
+  data?: {
+    result?: PrometheusResult[];
+  };
+};
+export type ChartDataPoint = { timestamp: number; y: number };
+
 /**
- * Processes raw Prometheus response data into a format suitable for charting.
- * @param {any} response - The raw response from Prometheus API containing time series data
- * @returns {Array<{timestamp: number, y: number}>} An array of data points with timestamps and values
+ * Extracts chart data from a Prometheus time series result.
+ * @param {PrometheusValue[]} values - The values array from a Prometheus result item.
+ * @returns {ChartDataPoint[]} - Parsed array of { timestamp, y } objects.
  */
-export function dataProcessor(response: any): { timestamp: number; y: number }[] {
-  const data: { timestamp: number; y: number }[] = [];
-  // convert the response to a JSON object
-  response?.data?.result?.[0]?.values.forEach(element => {
-    // convert value to a number
-    data.push({ timestamp: element[0], y: Number(element[1]) });
-  });
-  return data;
+function extractChartData(values: PrometheusValue[] = []): ChartDataPoint[] {
+  return values.map(([timestamp, value]) => ({
+    timestamp,
+    y: Number(value),
+  }));
+}
+
+/**
+ * Processes the first time series in a Prometheus response into chart data.
+ * @param {PrometheusResponse} response - The raw Prometheus response.
+ * @returns {ChartDataPoint[]} - Parsed chart data for the first series.
+ */
+export function dataProcessor(response: PrometheusResponse): ChartDataPoint[] {
+  const values = response?.data?.result?.[0]?.values;
+  return extractChartData(values);
+}
+
+/**
+ * Creates a data processor for a selected time series index in the Prometheus response.
+ * @param {number} selectedIndex - Index of the desired series to process.
+ * @returns {(response: PrometheusResponse) => ChartDataPoint[]} - Data processor function for that index.
+ */
+export function createDataProcessor(
+  selectedIndex: number
+): (response: PrometheusResponse) => ChartDataPoint[] {
+  return function (response: PrometheusResponse): ChartDataPoint[] {
+    const values = response?.data?.result?.[selectedIndex]?.values;
+    return extractChartData(values);
+  };
 }
 
 /**
