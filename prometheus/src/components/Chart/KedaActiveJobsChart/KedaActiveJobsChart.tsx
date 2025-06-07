@@ -1,20 +1,16 @@
 import { alpha, useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
-import { blue, green } from '@mui/material/colors';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import { blue } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import Chart from '../Chart/Chart';
-import { KedaMetricsChartProps } from '../KedaMetricsChart/KedaMetricsChart';
+import { KedaChartProps } from '../KedaChart/KedaChart';
 
-/**
- * Props for the KedaScalerChart component
- * @interface KedaScalerChartProps
- * @property {string} prometheusPrefix - The prefix for Prometheus metrics
- * @property {string} interval - The time interval for data points
- * @property {string} resolution - The resolution for Prometheus metrics
- * @property {boolean} autoRefresh - Whether to automatically refresh the chart data
- */
-interface KedaScalerChartProps extends KedaMetricsChartProps {
+interface KedaActiveJobsChartProps extends KedaChartProps {
   prometheusPrefix: string;
   interval: string;
   resolution: string;
@@ -22,7 +18,7 @@ interface KedaScalerChartProps extends KedaMetricsChartProps {
   subPath: string;
 }
 
-export function KedaScalerChart(props: KedaScalerChartProps) {
+export function KedaActiveJobsChart(props: KedaActiveJobsChartProps) {
   const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
@@ -72,35 +68,30 @@ export function KedaScalerChart(props: KedaScalerChartProps) {
   };
 
   return (
-    <Box sx={{ display: 'flex', width: '100%', height: '100%', gap: 2 }}>
-      <Box sx={{ flex: 1 }}>
-        <Chart
-          plots={[
-            {
-              query: props.scalerMetricsQuery,
-              name: 'Scaler Metrics Value',
-              strokeColor: alpha(green[600], 0.8),
-              fillColor: alpha(green[400], 0.1),
-              dataProcessor: dataProcessor,
-            },
-          ]}
-          xAxisProps={XTickProps}
-          yAxisProps={{ domain: [0, 'auto'], width: 60 }}
-          CustomTooltip={KedaTooltip}
-          fetchMetrics={fetchMetrics}
-          {...props}
-        />
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+      {/* Placeholder for providing spacing due to Metric selector present in Scaler Metrics Chart */}
+      <Box sx={{ visibility: 'hidden' }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="select-label-hidden">Placeholder</InputLabel>
+          <Select
+            id="select-hidden"
+            labelId="select-label-hidden"
+            value={0}
+            label="Placeholder"
+            onChange={() => {}}
+          >
+            <MenuItem value={0}>Placeholder</MenuItem>
+          </Select>
+        </FormControl>
       </Box>
-      <Box sx={{ flex: 1 }}>
+
+      {/* Active Jobs Chart */}
+      <Box sx={{ flex: 1, border: `1px solid ${theme.palette.divider}`, borderRadius: 1, p: 2 }}>
         <Chart
           plots={[
             {
-              query: props.hpaReplicasQuery ?? props.activeJobsQuery,
-              name: props.hpaReplicasQuery
-                ? 'Num Replicas'
-                : props.activeJobsQuery
-                ? 'Num Active Jobs'
-                : '',
+              query: props.activeJobsQuery,
+              name: 'Num Active Jobs',
               strokeColor: alpha(blue[600], 0.8),
               fillColor: alpha(blue[400], 0.1),
               dataProcessor: dataProcessor,
@@ -116,11 +107,15 @@ export function KedaScalerChart(props: KedaScalerChartProps) {
                   },
                 ]
               : []),
-            {
-              y: props.maxReplicaCount,
-              label: 'maxReplicaCount',
-              stroke: 'red',
-            },
+            ...(props.maxReplicaCount > 0
+              ? [
+                  {
+                    y: props.maxReplicaCount,
+                    label: 'maxReplicaCount',
+                    stroke: 'red',
+                  },
+                ]
+              : []),
           ]}
           xAxisProps={XTickProps}
           yAxisProps={{ domain: [0, props.maxReplicaCount + 2], width: 60 }}
