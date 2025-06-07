@@ -1,18 +1,18 @@
-FROM golang:1.18 AS builder
+FROM golang:1.21 AS builder
 ENV CGO_ENABLED=0
 
-WORKDIR /send-src
-COPY ./send/go.mod ./send/go.sum ./
+WORKDIR /publish-src
+COPY ./publish/go.mod ./publish/go.sum ./
 RUN go mod download
-COPY ./send/* ./
-RUN go build -o /send
+COPY ./publish/* ./
+RUN go build -o /publish
 
-WORKDIR /receive-src
-COPY ./receive/go.mod ./receive/go.sum ./
+WORKDIR /consume-src
+COPY ./consume/go.mod ./consume/go.sum ./
 RUN go mod download
-COPY ./receive/* ./
-RUN go build -o /receive
+COPY ./consume/* ./
+RUN go build -o /consume
 
 FROM scratch
-COPY --from=builder /receive /send /usr/local/bin/
-CMD ["receive"]
+COPY --from=builder /consume /publish /usr/local/bin/
+CMD ["consume"]

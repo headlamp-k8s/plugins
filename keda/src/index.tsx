@@ -110,4 +110,4 @@ registerKindIcon('TriggerAuthentication', {
 registerKindIcon('ClusterTriggerAuthentication', {
   icon: <Icon icon="mdi:shield-key" width="70%" height="70%" />,
   color: 'rgb(50, 108, 229)',
-});
+})

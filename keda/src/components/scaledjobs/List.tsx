@@ -43,32 +43,9 @@ export function ScaledJobsList() {
           id: 'triggers',
           label: 'Triggers',
           getValue: item =>
-            item.spec.triggers && item.spec.triggers.length > 0 ? item.spec.triggers[0].type : '-',
-        },
-        {
-          id: 'authentications',
-          label: 'Authentications',
-          getValue: null,
-          render: item => {
-            const triggerAuthenticationRefs = item.spec.triggers
-              .map(trigger => trigger.authenticationRef)
-              .filter(Boolean);
-
-            if (!triggerAuthenticationRefs.length) return <span>-</span>;
-
-            return (
-              <Link
-                key={triggerAuthenticationRefs[0].name}
-                routeName={triggerAuthenticationRefs[0].kind ?? TriggerAuthentication.kind}
-                params={{
-                  name: triggerAuthenticationRefs[0].name,
-                  namespace: item.metadata.namespace,
-                }}
-              >
-                {triggerAuthenticationRefs[0].name}
-              </Link>
-            );
-          },
+            Array.isArray(item?.spec?.triggers)
+              ? item.spec.triggers.map(trigger => trigger.type).join(',')
+              : '-',
         },
         'age',
       ]}
