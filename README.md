@@ -34,6 +34,7 @@ Please see [headlamp plugins on Artifact Hub](https://artifacthub.io/packages/se
 | [Kyverno](https://github.com/kubebeam/kyverno-headlamp-plugin) | The Kyverno Headlamp plugin provides views in Headlamp for Policies and Reports. | Archived.  | [@mgalesloot](https://github.com/mgalesloot) |
 | [Kubescape](https://github.com/kubescape/headlamp-plugin) | The Kubescape Headlamp plugin provides views in Headlamp for configuration and vulnerabilities scanning, based on information delivered by the Kubescape operator. |  | [@mgalesloot](https://github.com/mgalesloot) |
 | [KubeVirt](https://github.com/buttahtoast/headlamp-plugins/tree/main/kubevirt) | A plugin for managing KubeVirt virtual machines within a Kubernetes cluster. |   | [@buttahtoast](https://github.com/buttahtoast) |
+| [Gatekeeper](https://github.com/sozercan/gatekeeper-headlamp-plugin) | A Headlamp plugin for managing [Gatekeeper](https://open-policy-agent.github.io/gatekeeper/) policies, violations, and a library of community-sourced policies. | | [@sozercan](https://github.com/sozercan) |
 
 
 
