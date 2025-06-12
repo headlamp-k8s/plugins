@@ -18,9 +18,9 @@ import {
   PrometheusResponse,
 } from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
-import { KedaScalerMetricsChart } from '../KedaScalerMetricsChart/KedaScalerMetricsChart';
-import { KedaHPAReplicasChart } from '../KedaHPAReplicasChart/KedaHPAReplicasChart';
 import { KedaActiveJobsChart } from '../KedaActiveJobsChart/KedaActiveJobsChart';
+import { KedaHPAReplicasChart } from '../KedaHPAReplicasChart/KedaHPAReplicasChart';
+import { KedaScalerMetricsChart } from '../KedaScalerMetricsChart/KedaScalerMetricsChart';
 
 /**
  * Props for the KedaChart component

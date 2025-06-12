@@ -1,10 +1,10 @@
 import { alpha, useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
+import { blue } from '@mui/material/colors';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
-import { blue } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import Chart from '../Chart/Chart';

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { alpha, useTheme } from '@mui/material';
-import { green } from '@mui/material/colors';
 import Box from '@mui/material/Box';
+import { green } from '@mui/material/colors';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchMetrics } from '../../../request';
 import {
   ChartDataPoint,

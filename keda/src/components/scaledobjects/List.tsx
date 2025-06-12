@@ -1,7 +1,6 @@
 import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useKedaInstalled } from '../../hooks/useKedaInstalled';
 import { ScaledObject } from '../../resources/scaledobject';
-import { TriggerAuthentication } from '../../resources/triggerAuthentication';
 import { NotInstalledBanner } from '../common/CommonComponents';
 
 export function ScaledObjectsList() {

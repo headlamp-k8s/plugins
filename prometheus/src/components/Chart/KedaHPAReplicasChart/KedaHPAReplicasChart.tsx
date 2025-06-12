@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
 import { alpha, useTheme } from '@mui/material';
-import { blue } from '@mui/material/colors';
 import Box from '@mui/material/Box';
+import { blue } from '@mui/material/colors';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { fetchMetrics } from '../../../request';
 import {
   ChartDataPoint,
   createDataProcessor,
   createTickTimestampFormatter,
   PrometheusResponse,
 } from '../../../util';
-import { fetchMetrics } from '../../../request';
+import Chart from '../Chart/Chart';
 import { KedaChartProps } from '../KedaChart/KedaChart';
 import {
   BaseSeriesInfo,
@@ -20,7 +21,6 @@ import {
   groupSeriesByInstance,
   InstanceGroup,
 } from '../KedaChart/KedaChart';
-import Chart from '../Chart/Chart';
 
 interface KedaHPASeriesInfo extends BaseSeriesInfo {
   horizontalpodautoscaler: string;
