@@ -1,6 +1,5 @@
 import { Icon } from '@iconify/react';
-import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -9,8 +8,6 @@ import ListSubheader from '@mui/material/ListSubheader';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useEffect, useState } from 'react';
 import {
   getConfigStore,
@@ -18,33 +15,94 @@ import {
   getPrometheusPrefix,
   getPrometheusResolution,
   getPrometheusSubPath,
+  PrometheusResponse,
 } from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
-import { CPUChart } from '../CPUChart/CPUChart';
-import { FilesystemChart } from '../FilesystemChart/FilesystemChart';
-import { MemoryChart } from '../MemoryChart/MemoryChart';
-import { NetworkChart } from '../NetworkChart/NetworkChart';
+import { KedaActiveJobsChart } from '../KedaActiveJobsChart/KedaActiveJobsChart';
+import { KedaHPAReplicasChart } from '../KedaHPAReplicasChart/KedaHPAReplicasChart';
+import { KedaScalerMetricsChart } from '../KedaScalerMetricsChart/KedaScalerMetricsChart';
 
 /**
- * Props for the GenericMetricsChart component
- * @interface GenericMetricsChartProps
- * @property {string} cpuQuery - The Prometheus query to fetch CPU metrics
- * @property {string} memoryQuery - The Prometheus query to fetch memory metrics
- * @property {string} networkRxQuery - The Prometheus query to fetch network receive metrics
- * @property {string} networkTxQuery - The Prometheus query to fetch network transmit metrics
- * @property {string} filesystemReadQuery - The Prometheus query to fetch filesystem read metrics
- * @property {string} filesystemWriteQuery - The Prometheus query to fetch filesystem write metrics
+ * Props for the KedaChart component
+ * @interface KedaChartProps
+ * @property {string} kind - The kind of KEDA resource (could be either a 'ScaledObject' or a 'ScaledJob')
+ * @property {string} namespace - The namespace of KEDA resource
+ * @property {string} name - The name of KEDA resource
+ * @property {string} scalerMetricsQuery - The Prometheus query to fetch KEDA Scaler Metrics Value
+ * @property {string} hpaReplicasQuery - The Prometheus query to fetch HPA Replicas Count
+ * @property {string} activeJobsQuery - The Prometheus query to fetch Active Jobs Count
+ * @property {number} minReplicaCount - Minimum Replica Count as specified in the YAML Spec of KEDA Resource
+ * @property {number} maxReplicaCount - Maximum Replica Count as specified in the YAML Spec of KEDA Resource
  */
-interface GenericMetricsChartProps {
-  cpuQuery: string;
-  memoryQuery: string;
-  networkRxQuery: string;
-  networkTxQuery: string;
-  filesystemReadQuery: string;
-  filesystemWriteQuery: string;
+export interface KedaChartProps {
+  scalerMetricsQuery: string;
+  hpaReplicasQuery?: string;
+  activeJobsQuery?: string;
+  minReplicaCount: number;
+  maxReplicaCount: number;
 }
 
-export function GenericMetricsChart(props: GenericMetricsChartProps) {
+export interface BaseSeriesInfo {
+  index: number;
+  instance: string;
+  startTime: Date;
+  endTime: Date;
+}
+
+export function extractSeriesInfo<T extends BaseSeriesInfo>(
+  response: PrometheusResponse,
+  metricExtractor: (metric: any) => Omit<T, keyof BaseSeriesInfo>
+): T[] {
+  const results = response?.data?.result || [];
+
+  return results.map((result, index) => {
+    const resultMetric = result.metric || {};
+    const instance = resultMetric.instance || 'Unknown Instance';
+
+    let startTime: Date;
+    let endTime: Date;
+    const resultValues = result.values || [];
+    if (resultValues.length !== 0 && Array.isArray(resultValues[0])) {
+      startTime = new Date(Number(resultValues[0][0]) * 1000);
+      endTime = new Date(Number(resultValues[resultValues.length - 1][0]) * 1000);
+    }
+
+    const customFields = metricExtractor(resultMetric);
+
+    return {
+      index,
+      instance,
+      startTime,
+      endTime,
+      ...customFields,
+    } as T;
+  });
+}
+
+export interface InstanceGroup<T extends BaseSeriesInfo> {
+  instance: string;
+  series: T[];
+}
+
+export function groupSeriesByInstance<T extends BaseSeriesInfo>(
+  seriesInfo: T[]
+): InstanceGroup<T>[] {
+  const instanceMap = new Map<string, T[]>();
+
+  seriesInfo.forEach(series => {
+    if (!instanceMap.has(series.instance)) {
+      instanceMap.set(series.instance, []);
+    }
+    instanceMap.get(series.instance)!.push(series);
+  });
+
+  return Array.from(instanceMap.entries()).map(([instance, series]) => ({
+    instance,
+    series,
+  }));
+}
+
+export function KedaChart(props: KedaChartProps) {
   enum prometheusState {
     UNKNOWN,
     LOADING,
@@ -52,15 +110,15 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
     INSTALLED,
   }
 
-  const [chartVariant, setChartVariant] = useState<string>('cpu');
-  const [refresh, setRefresh] = useState<boolean>(true);
-  const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
-  const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
-  const [isVisible, setIsVisible] = useState<boolean>(false);
   const cluster = useCluster();
   const configStore = getConfigStore();
   const useClusterConfig = configStore.useConfig();
   const clusterConfig = useClusterConfig();
+
+  const [refresh, setRefresh] = useState<boolean>(true);
+  const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
+  const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
+  const [isVisible, setIsVisible] = useState<boolean>(false);
 
   useEffect(() => {
     const isEnabled = clusterConfig?.[cluster]?.isMetricsEnabled || false;
@@ -83,14 +141,11 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
           setState(prometheusState.UNKNOWN);
         }
       } catch (e) {
+        console.error('Error checking Prometheus installation:', e);
         setState(prometheusState.ERROR);
       }
     })();
   }, [clusterConfig, cluster]);
-
-  const handleChartVariantChange = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setChartVariant(event.currentTarget.value);
-  };
 
   const interval = getPrometheusInterval(cluster);
   const graphResolution = getPrometheusResolution(cluster);
@@ -119,22 +174,6 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             >
               {refresh ? 'Pause' : 'Resume'}
             </Button>
-            <ToggleButtonGroup
-              onChange={handleChartVariantChange}
-              size="small"
-              aria-label="metric chooser"
-              value={chartVariant}
-              exclusive
-            >
-              <CustomToggleButton label="CPU" value="cpu" icon="mdi:chip" />
-              <CustomToggleButton label="Memory" value="memory" icon="mdi:memory" />
-              <CustomToggleButton
-                label="Network"
-                value="network"
-                icon="mdi:folder-network-outline"
-              />
-              <CustomToggleButton label="Filesystem" value="filesystem" icon="mdi:database" />
-            </ToggleButtonGroup>
             <Box>
               <Select
                 variant="outlined"
@@ -183,52 +222,42 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             </Box>
           </Box>
         )}
+
         {state === prometheusState.INSTALLED ? (
           <Box
-            style={{
-              height: '400px',
+            sx={{
+              height: '600px',
+              display: 'flex',
+              gap: 2,
+              p: 1,
             }}
           >
-            {chartVariant === 'cpu' && (
-              <CPUChart
-                query={props.cpuQuery}
+            <KedaScalerMetricsChart
+              autoRefresh={refresh}
+              prometheusPrefix={prometheusPrefix}
+              interval={timespan}
+              resolution={resolution}
+              subPath={subPath}
+              {...props}
+            />
+            {props.hpaReplicasQuery && (
+              <KedaHPAReplicasChart
                 autoRefresh={refresh}
                 prometheusPrefix={prometheusPrefix}
                 interval={timespan}
                 resolution={resolution}
                 subPath={subPath}
+                {...props}
               />
             )}
-            {chartVariant === 'memory' && (
-              <MemoryChart
-                query={props.memoryQuery}
+            {props.activeJobsQuery && (
+              <KedaActiveJobsChart
                 autoRefresh={refresh}
                 prometheusPrefix={prometheusPrefix}
                 interval={timespan}
                 resolution={resolution}
                 subPath={subPath}
-              />
-            )}
-            {chartVariant === 'network' && (
-              <NetworkChart
-                rxQuery={props.networkRxQuery}
-                txQuery={props.networkTxQuery}
-                autoRefresh={refresh}
-                interval={timespan}
-                resolution={resolution}
-                prometheusPrefix={prometheusPrefix}
-                subPath={subPath}
-              />
-            )}
-            {chartVariant === 'filesystem' && (
-              <FilesystemChart
-                readQuery={props.filesystemReadQuery}
-                writeQuery={props.filesystemWriteQuery}
-                autoRefresh={refresh}
-                interval={timespan}
-                resolution={resolution}
-                prometheusPrefix={prometheusPrefix}
-                subPath={subPath}
+                {...props}
               />
             )}
           </Box>
@@ -238,29 +267,12 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
           </Box>
         ) : state === prometheusState.ERROR ? (
           <Box m={2}>
-            <Alert severity="warning">Error fetching prometheus Info</Alert>
+            <Alert severity="warning">Error fetching Prometheus Info</Alert>
           </Box>
         ) : (
           <PrometheusNotFoundBanner />
         )}
       </Paper>
     </SectionBox>
-  );
-}
-
-function CustomToggleButton({
-  label,
-  icon,
-  value,
-}: {
-  label: string;
-  icon: string;
-  value: string;
-}) {
-  return (
-    <ToggleButton size="small" value={value} sx={{ textTransform: 'none', gap: 0.5, fontSize: 14 }}>
-      <Icon icon={icon} width="18px" />
-      {label}
-    </ToggleButton>
   );
 }
