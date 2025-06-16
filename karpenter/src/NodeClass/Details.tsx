@@ -114,7 +114,9 @@ export function NodeClassSpecDetails({ spec }: { spec: any }) {
               >
                 {item.value.length > 0
                   ? item.value.map((value: string, index: number) => (
-                      <StatusLabel key={index}>{value}</StatusLabel>
+                      <StatusLabel key={index} status="">
+                        {value}
+                      </StatusLabel>
                     ))
                   : '-'}
               </Box>
