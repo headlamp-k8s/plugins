@@ -1,7 +1,7 @@
 import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 
 export function NameLink(resourceClass: any) {
-  const apiVersion = new String(resourceClass.apiVersion);
+  const apiVersion = String(resourceClass.apiVersion);
   const slashIndex = apiVersion.lastIndexOf('/');
   const groupName = slashIndex > 0 ? apiVersion.substring(0, slashIndex) : apiVersion;
 
