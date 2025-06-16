@@ -1,5 +1,3 @@
-import { indexOf } from 'lodash';
-
 const consonants = 'bcdfghjklmnpqrstvwxyz';
 
 export function PluralName(kind: string): string {
@@ -54,5 +52,5 @@ function vesPlural(singular: string): string {
 }
 
 function isConsonant(rune: string): boolean {
-  return indexOf(consonants, rune) >= 0;
+  return consonants.indexOf(rune.toLowerCase()) >= 0;
 }

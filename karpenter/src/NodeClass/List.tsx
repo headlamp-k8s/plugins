@@ -6,8 +6,8 @@ import {
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React, { useMemo } from 'react';
+import { NameLink } from '../common/NameLink';
 import { Table } from '../common/Table';
-import { NameLink } from '../helpers';
 
 export function NodeClasses() {
   return <NodeClassesList />;
