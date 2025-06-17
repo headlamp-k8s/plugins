@@ -1,40 +1,40 @@
 import { StatusLabel as HLStatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { Tooltip } from '@mui/material';
 
 interface StatusLabelProps {
-  item: KubeCRD;
+  item: KubeObject;
+  conditionType?: string;
 }
 
-export function StatusLabel(props: StatusLabelProps) {
-  const { item } = props;
-  const ready = item?.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
+export function StatusLabel({ item, conditionType = 'Ready' }: StatusLabelProps) {
+  const condition = item?.jsonData?.status?.conditions?.find(c => c.type === conditionType);
 
-  if (!ready) {
+  if (!condition) {
     return <span>-</span>;
   }
 
   if (item?.jsonData?.spec?.suspend) {
     return <HLStatusLabel status="warning">Suspended</HLStatusLabel>;
   }
-  if (ready.status === 'Unknown') {
+  if (condition.status === 'Unknown') {
     return <HLStatusLabel status="warning">Reconciling…</HLStatusLabel>;
   }
 
-  if (ready.reason === 'DependencyNotReady') {
+  if (condition.reason === 'DependencyNotReady') {
     return (
       <HLStatusLabel status={'warning'}>
-        <Tooltip title={ready.message}>
+        <Tooltip title={condition.message}>
           <div>{'Waiting'}</div>
         </Tooltip>
       </HLStatusLabel>
     );
   }
 
-  const isReady = ready.status === 'True';
+  const isReady = condition.status === 'True';
   return (
     <HLStatusLabel status={isReady ? 'success' : 'error'}>
-      <Tooltip title={ready.message}>
+      <Tooltip title={condition.message}>
         <div>{isReady ? 'Ready' : 'Failed'}</div>
       </Tooltip>
     </HLStatusLabel>
