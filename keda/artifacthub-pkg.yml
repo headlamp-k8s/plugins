@@ -1,0 +1,11 @@
+version: 0.1.0-beta-1
+name: headlamp_keda
+displayName: KEDA
+createdAt: "2025-06-17T05:35:50Z"
+logoURL: "https://raw.githubusercontent.com/kedacore/governance/main/logos/keda-icon-colour.png"
+description: A UI for viewing and managing KEDA resources in Headlamp.
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/keda-0.1.0-beta/headlamp-k8s-keda-0.1.0-beta.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:2adb4a291455cf3757778ae0e6b1db9b4b3cd7c933c9bfbe1cfd65c6c5ce2586"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"

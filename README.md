@@ -19,7 +19,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [prometheus](./prometheus) | Provides a Prometheus-powered chart in the details views of workloads. | Needs Prometheus installed in the cluster for the chart to be shown. Shipped with Headlamp desktop and CI builds by default. | [@yolossn](https://github.com/yolossn) |
 | [cert-manager](./cert-manager) | A UI for viewing and managing cert-manager. | |[@yolossn](https://github.com/yolossn)|
 | [minikube](./minikube) | A UI for minikube, for running Kubernetes locally. | |[@illume](https://github.com/illume)|
-
+| [keda](./keda) | A UI for viewing and managing KEDA resources | |[@adwait-godbole](https://github.com/adwait-godbole), [@yolossn](https://github.com/yolossn)|
 
 ## External plugins
 
