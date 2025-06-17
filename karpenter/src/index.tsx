@@ -34,12 +34,12 @@ registerSidebarEntry({
 registerRoute({
   path: '/karpenter/nodeclass',
   sidebar: 'nodeclass',
-  component: () => <NodeClasses />,
+  component: NodeClasses,
   name: 'nodeClass',
 });
 
 registerRoute({
-  path: '/karpenter/:namespace/nodeclass/:name',
+  path: '/karpenter/nodeclass/:name',
   name: 'karpenter',
   sidebar: 'nodeclass',
   component: () => <NodeClassDetailView />,
