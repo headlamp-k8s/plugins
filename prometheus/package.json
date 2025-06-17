@@ -1,6 +1,6 @@
 {
   "name": "prometheus",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Prometheus plugin for Headlamp",
   "scripts": {
     "start": "headlamp-plugin start",
