@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: queue-connection-secrets
+data:
+  # Base64 encoded value of: amqp://user:PASSWORD@rabbitmq.default.svc.cluster.local:5672
+  RABBITMQ_CONNECTION_STRING: YW1xcDovL3VzZXI6UEFTU1dPUkRAcmFiYml0bXEuZGVmYXVsdC5zdmMuY2x1c3Rlci5sb2NhbDo1Njcy
+  # Base64 encoded value of: redis://default:PASSWORD@redis-master.default.svc.cluster.local:6379
+  REDIS_CONNECTION_STRING: cmVkaXM6Ly9kZWZhdWx0OlBBU1NXT1JEQHJlZGlzLW1hc3Rlci5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsOjYzNzk=
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: rabbitmq-trigger-auth
+  namespace: default
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: queue-connection-secrets
+      key: RABBITMQ_CONNECTION_STRING
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-scaler-secret
+  namespace: default
+type: Opaque
+stringData:
+  redis_username: default
+  redis_password: PASSWORD
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: redis-trigger-auth
+  namespace: default
+spec:
+  secretTargetRef:
+    - parameter: username
+      name: redis-scaler-secret
+      key: redis_username
+    - parameter: password
+      name: redis-scaler-secret
+      key: redis_password

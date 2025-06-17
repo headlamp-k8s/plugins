@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: message-publisher-job
+spec:
+  template:
+    spec:
+      containers:
+        - name: publisher
+          image: some-registry/keda-message-consumer:latest
+          imagePullPolicy: Always
+          env:
+            - name: RABBITMQ_CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: queue-connection-secrets
+                  key: RABBITMQ_CONNECTION_STRING
+            - name: REDIS_CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: queue-connection-secrets
+                  key: REDIS_CONNECTION_STRING
+          command: ['publish']
+          args:
+            - '$(RABBITMQ_CONNECTION)'
+            - '$(REDIS_CONNECTION)'
+            - '300' # Publish 300 messages to RabbitMQ
+            - '500' # Publish 500 messages to Redis
+      restartPolicy: Never
+  backoffLimit: 4

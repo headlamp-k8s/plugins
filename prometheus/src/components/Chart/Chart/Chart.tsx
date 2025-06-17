@@ -6,6 +6,7 @@ import {
   AreaChart,
   CartesianGrid,
   Legend,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,6 +23,12 @@ import { getTimeRangeAndStepSize } from '../../../util';
  * @property {string} plots[].fillColor - Fill color for the plot area.
  * @property {string} plots[].strokeColor - Stroke color for the plot line.
  * @property {Function} plots[].dataProcessor - Function to process the raw metrics data.
+ * @property {Array<Object>} referenceLines - Array of reference line configurations.
+ * @property {number} [referenceLines[].x] - X-axis value for a vertical reference line.
+ * @property {number} [referenceLines[].y] - Y-axis value for a horizontal reference line.
+ * @property {string} referenceLines[].label - Label to display alongside the reference line.
+ * @property {string} referenceLines[].stroke - Color of the reference line (can be omitted to use default).
+ * @property {string} [referenceLines[].strokeDasharray] - Optional stroke pattern (e.g. "3 3" for dashed lines).
  * @property {Function} fetchMetrics - Function to fetch metrics data from Prometheus.
  * @property {string} interval - Time interval for the chart (e.g. '10m', '1h', '24h').
  * @property {string} prometheusPrefix - URL prefix for Prometheus API calls.
@@ -37,6 +44,13 @@ export interface ChartProps {
     fillColor: string;
     strokeColor: string;
     dataProcessor: (data: any) => any[];
+  }>;
+  referenceLines?: Array<{
+    x?: number;
+    y?: number;
+    label: string;
+    stroke: string;
+    strokeDasharray?: string;
   }>;
   fetchMetrics: (query: object) => Promise<any>;
   interval: string;
@@ -65,11 +79,6 @@ export default function Chart(props: ChartProps) {
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
-  const {
-    from: fromTimestamp,
-    to: toTimestamp,
-    step: stepSize,
-  } = getTimeRangeAndStepSize(props.interval, props.resolution);
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
@@ -85,15 +94,24 @@ export default function Chart(props: ChartProps) {
     if (firstLoad) {
       setState(ChartState.LOADING);
     }
+
+    // clear any previous errors on refresh
+    if (!firstLoad) {
+      setError(null);
+    }
+
     for (const plot of plots) {
       var response;
       try {
+        // recalculate time range for each fetch to ensure we get current data
+        const currentTimeRange = getTimeRangeAndStepSize(props.interval, props.resolution);
+
         response = await fetchMetrics({
           prefix: props.prometheusPrefix,
           query: plot.query,
-          from: fromTimestamp,
-          to: toTimestamp,
-          step: stepSize,
+          from: currentTimeRange.from,
+          to: currentTimeRange.to,
+          step: currentTimeRange.step,
           subPath: props.subPath,
         });
       } catch (e) {
@@ -119,6 +137,7 @@ export default function Chart(props: ChartProps) {
     // if all the plots are in no data state, set the state to no data
     if (Object.values(fetchedMetrics).every(plot => plot.state === ChartState.NO_DATA)) {
       setState(ChartState.NO_DATA);
+      setMetrics([]);
     }
     // if all the plots are in success state, set the state to success
     else if (Object.values(fetchedMetrics).every(plot => plot.state === ChartState.SUCCESS)) {
@@ -140,24 +159,47 @@ export default function Chart(props: ChartProps) {
     }
   };
 
-  // Fetch data on initial load
+  // Fetch data on initial load and when key parameters change
   useEffect(() => {
     fetchMetricsData(props.plots, true);
-  }, [props.interval, props.resolution]);
+  }, [
+    props.interval,
+    props.resolution,
+    props.prometheusPrefix,
+    props.subPath,
+    JSON.stringify(props.plots),
+  ]);
 
   // if reload is true, set up a timer to refresh data every 10 seconds
   // Set up a timer to refresh data every 10 seconds
   useEffect(() => {
+    let refreshInterval: NodeJS.Timeout;
+
     if (props.autoRefresh) {
-      const refreshInterval = setInterval(() => {
+      refreshInterval = setInterval(() => {
         fetchMetricsData(props.plots, false);
       }, 10000);
-
-      return () => {
-        clearInterval(refreshInterval);
-      };
     }
-  }, [props.autoRefresh, props.plots, props.interval, props.resolution]);
+
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [
+    props.autoRefresh,
+    props.interval,
+    props.resolution,
+    props.prometheusPrefix,
+    props.subPath,
+    JSON.stringify(props.plots),
+  ]);
+
+  // Calculate time range for XAxis domain
+  const { from: fromTimestamp, to: toTimestamp } = getTimeRangeAndStepSize(
+    props.interval,
+    props.resolution
+  );
 
   let chartContent;
 
@@ -191,6 +233,20 @@ export default function Chart(props: ChartProps) {
             fill={plot.fillColor}
             activeDot={{ r: 2 }}
             animationDuration={props.autoRefresh ? 0 : 400} // Disable animation when refreshing
+          />
+        ))}
+        {props.referenceLines?.map(line => (
+          <ReferenceLine
+            key={line.label}
+            x={line.x}
+            y={line.y}
+            stroke="#999"
+            strokeDasharray={line.strokeDasharray || '15 15'}
+            label={{
+              value: line.label,
+              fontSize: 15,
+              fill: line.stroke,
+            }}
           />
         ))}
       </AreaChart>
