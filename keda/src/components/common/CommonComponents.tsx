@@ -68,6 +68,21 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
   );
 }
 
+interface KedaInstallCheckProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+export function KedaInstallCheck({ children, fallback }: KedaInstallCheckProps) {
+  const { isKedaInstalled, isKedaCheckLoading } = useKedaInstalled();
+
+  if (!isKedaInstalled) {
+    return fallback || <NotInstalledBanner isLoading={isKedaCheckLoading} />;
+  }
+
+  return <>{children}</>;
+}
+
 interface BaseKedaAuthenticationProps {
   title?: string;
   resourceType: typeof TriggerAuthentication | typeof ClusterTriggerAuthentication;
@@ -80,8 +95,6 @@ export function BaseKedaAuthenticationDetail({
   namespace,
   name,
 }: BaseKedaAuthenticationProps) {
-  const { isKedaInstalled, isKedaCheckLoading } = useKedaInstalled();
-
   function isAuthTargetRef(value: any): value is AuthTargetRef {
     return (
       typeof value === 'object' &&
@@ -145,155 +158,149 @@ export function BaseKedaAuthenticationDetail({
   };
 
   return (
-    <>
-      {isKedaInstalled ? (
-        <DetailsGrid
-          resourceType={resourceType}
-          name={name}
-          withEvents
-          namespace={resourceType.isNamespaced ? namespace : undefined}
-          extraInfo={item =>
-            item && [
-              { name: 'API Version', value: resourceType.apiVersion },
-              { name: 'Kind', value: resourceType.kind },
-            ]
-          }
-          extraSections={item =>
-            item && [
-              item.spec &&
-                Object.keys(item.spec).length > 0 && {
-                  id: 'spec',
-                  section: (
-                    <SectionBox title="Spec">
-                      {Object.entries(item.spec).map(([key, value]) => (
-                        <Fragment key={key}>
-                          <h2>{key}</h2>
-                          {renderValue(value)}
-                        </Fragment>
-                      ))}
-                    </SectionBox>
-                  ),
-                },
-              item.status &&
-                Object.keys(item.status).length > 0 && {
-                  id: 'status',
-                  section: (
-                    <SectionBox title="Status">
-                      {item.scaledjobs.length > 0 && (
-                        <NameValueTable
-                          rows={[
-                            {
-                              name: 'ScaledJobs',
-                              value: item.scaledjobs.map((objName, i) =>
-                                resourceType === TriggerAuthentication ? (
-                                  <Fragment key={objName}>
-                                    <Link
-                                      routeName="ScaledJob"
-                                      params={{
-                                        name: objName,
-                                        namespace: item.metadata.namespace,
-                                      }}
-                                    >
-                                      {objName}
-                                    </Link>
-                                    {i < item.scaledjobs.length - 1 ? ', ' : ''}
-                                  </Fragment>
-                                ) : (
-                                  `${objName}${i < item.scaledjobs.length - 1 ? ', ' : ''}`
-                                )
-                              ),
-                            },
-                          ]}
-                        />
-                      )}
-                      {item.scaledobjects.length > 0 && (
-                        <NameValueTable
-                          rows={[
-                            {
-                              name: 'ScaledObjects',
-                              value: item.scaledobjects.map((objName, i) =>
-                                resourceType === TriggerAuthentication ? (
-                                  <Fragment key={objName}>
-                                    <Link
-                                      routeName="ScaledObject"
-                                      params={{
-                                        name: objName,
-                                        namespace: item.metadata.namespace,
-                                      }}
-                                    >
-                                      {objName}
-                                    </Link>
-                                    {i < item.scaledobjects.length - 1 ? ', ' : ''}
-                                  </Fragment>
-                                ) : (
-                                  `${objName}${i < item.scaledobjects.length - 1 ? ', ' : ''}`
-                                )
-                              ),
-                            },
-                          ]}
-                        />
-                      )}
-                    </SectionBox>
-                  ),
-                },
-            ]
-          }
-        />
-      ) : (
-        <NotInstalledBanner isLoading={isKedaCheckLoading} />
-      )}
-    </>
+    <KedaInstallCheck>
+      <DetailsGrid
+        resourceType={resourceType}
+        name={name}
+        withEvents
+        namespace={resourceType.isNamespaced ? namespace : undefined}
+        extraInfo={item =>
+          item && [
+            { name: 'API Version', value: resourceType.apiVersion },
+            { name: 'Kind', value: resourceType.kind },
+          ]
+        }
+        extraSections={item =>
+          item && [
+            item.spec &&
+              Object.keys(item.spec).length > 0 && {
+                id: 'spec',
+                section: (
+                  <SectionBox title="Spec">
+                    {Object.entries(item.spec).map(([key, value]) => (
+                      <Fragment key={key}>
+                        <h2>{key}</h2>
+                        {renderValue(value)}
+                      </Fragment>
+                    ))}
+                  </SectionBox>
+                ),
+              },
+            item.status &&
+              Object.keys(item.status).length > 0 && {
+                id: 'status',
+                section: (
+                  <SectionBox title="Status">
+                    {item.scaledjobs.length > 0 && (
+                      <NameValueTable
+                        rows={[
+                          {
+                            name: 'ScaledJobs',
+                            value: item.scaledjobs.map((objName, i) =>
+                              resourceType === TriggerAuthentication ? (
+                                <Fragment key={objName}>
+                                  <Link
+                                    routeName="ScaledJob"
+                                    params={{
+                                      name: objName,
+                                      namespace: item.metadata.namespace,
+                                    }}
+                                  >
+                                    {objName}
+                                  </Link>
+                                  {i < item.scaledjobs.length - 1 ? ', ' : ''}
+                                </Fragment>
+                              ) : (
+                                `${objName}${i < item.scaledjobs.length - 1 ? ', ' : ''}`
+                              )
+                            ),
+                          },
+                        ]}
+                      />
+                    )}
+                    {item.scaledobjects.length > 0 && (
+                      <NameValueTable
+                        rows={[
+                          {
+                            name: 'ScaledObjects',
+                            value: item.scaledobjects.map((objName, i) =>
+                              resourceType === TriggerAuthentication ? (
+                                <Fragment key={objName}>
+                                  <Link
+                                    routeName="ScaledObject"
+                                    params={{
+                                      name: objName,
+                                      namespace: item.metadata.namespace,
+                                    }}
+                                  >
+                                    {objName}
+                                  </Link>
+                                  {i < item.scaledobjects.length - 1 ? ', ' : ''}
+                                </Fragment>
+                              ) : (
+                                `${objName}${i < item.scaledobjects.length - 1 ? ', ' : ''}`
+                              )
+                            ),
+                          },
+                        ]}
+                      />
+                    )}
+                  </SectionBox>
+                ),
+              },
+          ]
+        }
+      />
+    </KedaInstallCheck>
   );
 }
 
 export function BaseKedaAuthenticationList({ title, resourceType }: BaseKedaAuthenticationProps) {
-  const { isKedaInstalled, isKedaCheckLoading } = useKedaInstalled();
-
-  return isKedaInstalled ? (
-    <ResourceListView
-      title={title}
-      resourceClass={resourceType}
-      columns={[
-        'name',
-        ...(resourceType.isNamespaced
-          ? [
-              {
-                id: 'namespace',
-                label: 'Namespace',
-                getValue: null,
-                render: item => (
-                  <Link routeName="namespace" params={{ name: item.metadata.namespace }}>
-                    {item.metadata.namespace}
-                  </Link>
-                ),
-              },
-            ]
-          : []),
-        {
-          id: 'pod-identity',
-          label: 'Pod Identity',
-          getValue: item => item.podIdentity || '-',
-        },
-        {
-          id: 'secret',
-          label: 'Secret',
-          getValue: item => item.secretName || '-',
-        },
-        {
-          id: 'env',
-          label: 'Env',
-          getValue: item => item.envName || '-',
-        },
-        {
-          id: 'vault-address',
-          label: 'Vault Address',
-          getValue: item => item.vaultAddress || '-',
-        },
-        'age',
-      ]}
-    />
-  ) : (
-    <NotInstalledBanner isLoading={isKedaCheckLoading} />
+  return (
+    <KedaInstallCheck>
+      <ResourceListView
+        title={title}
+        resourceClass={resourceType}
+        columns={[
+          'name',
+          ...(resourceType.isNamespaced
+            ? [
+                {
+                  id: 'namespace',
+                  label: 'Namespace',
+                  getValue: null,
+                  render: item => (
+                    <Link routeName="namespace" params={{ name: item.metadata.namespace }}>
+                      {item.metadata.namespace}
+                    </Link>
+                  ),
+                },
+              ]
+            : []),
+          {
+            id: 'pod-identity',
+            label: 'Pod Identity',
+            getValue: item => item.podIdentity || '-',
+          },
+          {
+            id: 'secret',
+            label: 'Secret',
+            getValue: item => item.secretName || '-',
+          },
+          {
+            id: 'env',
+            label: 'Env',
+            getValue: item => item.envName || '-',
+          },
+          {
+            id: 'vault-address',
+            label: 'Vault Address',
+            getValue: item => item.vaultAddress || '-',
+          },
+          'age',
+        ]}
+      />
+    </KedaInstallCheck>
   );
 }
 
