@@ -18,7 +18,7 @@ export function nodeClassClass() {
 
   return class extendedNodeClass extends NodeClass {
     static get detailsRoute() {
-      return '/karpenter/nodeclass/:name';
+      return 'nodeclasses-detail';
     }
   };
 }

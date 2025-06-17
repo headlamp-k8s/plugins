@@ -21,26 +21,26 @@ registerSidebarEntry({
   parent: null,
   name: 'karpenter.k8s',
   label: 'Karpenter',
-  url: '/karpenter/nodeclass',
+  url: '/karpenter/ec2nodeclasses',
 });
 
 registerSidebarEntry({
   parent: 'karpenter.k8s',
   name: 'nodeclass',
   label: 'Node Class',
-  url: '/karpenter/nodeclass',
+  url: '/karpenter/ec2nodeclasses',
 });
 
 registerRoute({
-  path: '/karpenter/nodeclass',
+  path: '/karpenter/ec2nodeclasses',
   sidebar: 'nodeclass',
   component: NodeClasses,
-  name: 'nodeClass',
+  name: 'nodeclasses-list',
 });
 
 registerRoute({
-  path: '/karpenter/nodeclass/:name',
-  name: 'karpenter',
+  path: '/karpenter/details/ec2nodeclasses/:name',
   sidebar: 'nodeclass',
-  component: () => <NodeClassDetailView />,
+  component: NodeClassDetailView,
+  name: 'nodeclasses-detail',
 });

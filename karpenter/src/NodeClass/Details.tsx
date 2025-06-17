@@ -1,182 +1,127 @@
 import {
-  ConditionsTable,
-  MainInfoSection,
+  ConditionsSection,
+  DetailsGrid,
+  NameValueTable,
   SectionBox,
-  SimpleTable,
-  StatusLabel,
+  StatusLabel as NStausLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box } from '@mui/material';
-import React from 'react';
 import { useParams } from 'react-router-dom';
+import { StatusLabel } from '../common/StatusLabel';
 import { nodeClassClass } from './List';
 
-export function NodeClassDetailView(props: { name?: string; namespace?: string }) {
-  const params = useParams<{ name: string; namespace: string }>();
-  const name = props.name || params.name;
+export function NodeClassDetailView(props: { name?: string }) {
+  const params = useParams<{ name: string }>();
+  const { name = params.name } = props;
+  const NodeClass = nodeClassClass();
 
   return (
-    <>
-      <CustomResourceDetails name={name} />
-    </>
-  );
-}
-
-function CustomResourceDetails(props: { name: string }) {
-  const { name } = props;
-  const [cr, setCr] = React.useState<any>(null);
-
-  nodeClassClass().useApiGet(setCr, name);
-
-  function prepareExtraInfo() {
-    if (!cr) return [];
-
-    return [
-      {
-        name: 'Status',
-        value:
-          cr?.jsonData?.status?.conditions?.find((c: any) => c.type === 'Ready')?.status === 'True'
-            ? 'Ready'
-            : 'Not Ready',
-      },
-      {
-        name: 'Role',
-        value: cr?.jsonData?.spec?.role || '-',
-      },
-      {
-        name: 'Instance Profile',
-        value: cr?.jsonData?.status?.instanceProfile || '-',
-      },
-      {
-        name: 'AMI Family',
-        value: cr?.jsonData?.spec?.amiFamily || '-',
-      },
-      {
-        name: 'Subnet Selector',
-        value:
-          Object.entries(cr?.jsonData?.spec?.subnetSelector || {})
-            .map(([k, v]) => `${k}=${v}`)
-            .join(', ') || '-',
-      },
-    ];
-  }
-
-  return (
-    <>
-      {cr && <MainInfoSection resource={cr} extraInfo={prepareExtraInfo()} />}
-
-      <NodeClassSpecDetails spec={cr?.jsonData?.spec} />
-
-      <NodeClassStatus status={cr?.jsonData?.status} />
-
-      <SectionBox title="Conditions">
-        <ConditionsTable resource={cr?.jsonData} />
-      </SectionBox>
-    </>
-  );
-}
-
-export function NodeClassSpecDetails({ spec }: { spec: any }) {
-  const subnetTags = spec?.subnetSelectorTerms?.[0]?.tags || {};
-  const tagDisplay = Object.entries(subnetTags).map(([key, value]) => `${key}=${value}`);
-
-  const securityTags = spec?.securityGroupSelectorTerms?.[0]?.tags || {};
-  const display = Object.entries(securityTags).map(([key, value]) => `${key}=${value}`);
-
-  const specDetails = [
-    {
-      key: 'SecurityGroup Selector Tags',
-      value: display || '-',
-    },
-    {
-      key: 'Subnet Selector Tags',
-      value: tagDisplay || '-',
-    },
-  ];
-
-  return (
-    <SectionBox title="NodeClass Configuration" paddingTop={2}>
-      <SimpleTable
-        columns={[
+    <DetailsGrid
+      resourceType={NodeClass}
+      name={name}
+      withEvents
+      extraInfo={item =>
+        item && [
           {
-            label: 'Setting',
-            getter: (item: any) => <strong>{item.key}</strong>,
-            gridTemplate: '50%',
+            name: 'Status',
+            value: <StatusLabel item={item} />,
           },
           {
-            label: 'Value',
-            getter: (item: any) => (
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: '4px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                {item.value.length > 0
-                  ? item.value.map((value: string, index: number) => (
-                      <StatusLabel key={index} status="">
-                        {value}
-                      </StatusLabel>
-                    ))
-                  : '-'}
-              </Box>
+            name: 'IAM Role',
+            value: item.jsonData.spec?.role || '-',
+          },
+          {
+            name: 'Instance Profile',
+            value: item.jsonData.status?.instanceProfile || '-',
+          },
+          {
+            name: 'AMI Family',
+            value: item.jsonData.spec?.amiFamily || '-',
+          },
+        ]
+      }
+      extraSections={item =>
+        item && [
+          {
+            id: 'nodeclass-config',
+            section: (
+              <SectionBox title="NodeClass Configuration">
+                <NameValueTable
+                  rows={[
+                    {
+                      name: 'Subnet Selectors',
+                      value: renderSelectorTerms(item.jsonData.spec?.subnetSelectorTerms),
+                    },
+                    {
+                      name: 'Security Group Selectors',
+                      value: renderSelectorTerms(item.jsonData.spec?.securityGroupSelectorTerms),
+                    },
+                  ]}
+                />
+              </SectionBox>
             ),
-            gridTemplate: '50%',
           },
-        ]}
-        data={specDetails}
-      />
-    </SectionBox>
+          {
+            id: 'status',
+            section: (
+              <SectionBox title="Status">
+                <NameValueTable
+                  rows={[
+                    {
+                      name: 'Security Group IDs',
+                      value: renderStatusItems(
+                        item.jsonData.status?.securityGroups?.map(g => g.id)
+                      ),
+                    },
+                    {
+                      name: 'Subnet IDs',
+                      value: renderStatusItems(item.jsonData.status?.subnets?.map(s => s.id)),
+                    },
+                    {
+                      name: 'Availability Zones',
+                      value: renderStatusItems(item.jsonData.status?.subnets?.map(s => s.zone)),
+                    },
+                  ]}
+                />
+              </SectionBox>
+            ),
+          },
+          {
+            id: 'conditions',
+            section: <ConditionsSection resource={item.jsonData} />,
+          },
+        ]
+      }
+    />
   );
 }
 
-export function NodeClassStatus({ status }: { status: any }) {
-  const statusDetails = [
-    {
-      key: 'Security Group IDs',
-      values: status?.securityGroups?.map(g => g.id) || [],
-    },
-    {
-      key: 'Subnet IDs',
-      values: status?.subnets?.map(g => g.id) || [],
-    },
-    {
-      key: 'Zone',
-      values: status?.subnets?.map(g => g.zone) || [],
-    },
-  ];
+function renderStatusItems(items: string[] = []) {
+  if (!items || items.length === 0) return '-';
 
   return (
-    <SectionBox title="Status">
-      <SimpleTable
-        columns={[
-          {
-            label: 'Resource',
-            getter: (item: any) => <strong>{item.key}</strong>,
-            gridTemplate: '50%',
-          },
-          {
-            label: 'Value',
-            getter: (item: any) => (
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: '4px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                {item.values.length > 0
-                  ? item.values.map((value: string, index: number) => (
-                      <StatusLabel key={index}>{value}</StatusLabel>
-                    ))
-                  : '-'}
-              </Box>
-            ),
-            gridTemplate: '50%',
-          },
-        ]}
-        data={statusDetails}
-      />
-    </SectionBox>
+    <Box sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+      {items.map((item, index) => (
+        <NStausLabel key={index} status="">
+          {item}
+        </NStausLabel>
+      ))}
+    </Box>
+  );
+}
+
+function renderSelectorTerms(terms: any[] = []) {
+  if (!terms || terms.length === 0) return '-';
+
+  return (
+    <Box sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+      {terms.flatMap(term =>
+        Object.entries(term.tags || {}).map(([key, value]) => (
+          <NStausLabel key={`${key}=${value}`} status="">
+            {`${key}=${value}`}
+          </NStausLabel>
+        ))
+      )}
+    </Box>
   );
 }
