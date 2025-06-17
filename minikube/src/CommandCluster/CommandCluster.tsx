@@ -79,7 +79,14 @@ export default function CommandCluster(props: CommandClusterProps) {
       if (DEBUG) {
         console.log('runFunc', clusterName);
       }
-      const args = [command, '-p', clusterName];
+      const args = [command];
+      if (command === 'stop') {
+        // minikube removes the context from kubectl config when stopping by default
+        // so we ask it to not remove it
+        // "keep the kube-context active after cluster is stopped. Defaults to false."
+        args.push('--keep-context-active', 'true');
+      }
+      args.push('-p', clusterName);
       if (driver) {
         args.push('--driver', driver);
       }
