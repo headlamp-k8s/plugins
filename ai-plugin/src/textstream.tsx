@@ -2,11 +2,13 @@ import { Icon } from '@iconify/react';
 import { Alert, Box, CircularProgress, Fab, Typography } from '@mui/material';
 import { useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { useEffect, useRef,useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prompt } from './ai/manager';
+import YamlDisplay from './components/YamlDisplay';
 import EditorDialog from './editordialog';
+import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
 import YamlContentProcessor from './YamlContentProcessor';
 
 // Helper function to detect resource list results
@@ -29,7 +31,13 @@ const isResourceListResult = (content: string): boolean => {
 };
 
 // Markdown renderer component with proper width constraints
-const MarkdownRenderer = ({ content }: { content: string }) => {
+const MarkdownRenderer = ({
+  content,
+  onYamlDetected,
+}: {
+  content: string;
+  onYamlDetected?: (yaml: string, resourceType: string) => void;
+}) => {
   return (
     <Box sx={{ width: '100%', overflowWrap: 'break-word', wordWrap: 'break-word' }}>
       <ReactMarkdown
@@ -53,6 +61,29 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
           ),
           // Style for code blocks
           code: ({ className, children, ...props }: any) => {
+            // Check if this is a YAML code block
+            const isYamlBlock =
+              !props.inline &&
+              (className === 'language-yaml' ||
+                className === 'language-yml' ||
+                (typeof children === 'string' &&
+                  children.includes('apiVersion:') &&
+                  children.includes('kind:')));
+
+            if (isYamlBlock && onYamlDetected && typeof children === 'string') {
+              // Try to parse as Kubernetes YAML
+              const parsed = parseKubernetesYAML(children);
+              if (parsed.isValid) {
+                return (
+                  <YamlDisplay
+                    yaml={children}
+                    title={parsed.resourceType}
+                    onOpenInEditor={onYamlDetected}
+                  />
+                );
+              }
+            }
+
             // Match language if specified
             return !props.inline ? (
               <Box
@@ -352,7 +383,18 @@ export default function TextStreamContainer({
                     // First check if it's a resource list result
                     if (isResourceListResult(content)) {
                       // For resource lists, always use Markdown renderer
-                      return <MarkdownRenderer content={content} />;
+                      return (
+                        <MarkdownRenderer
+                          content={content}
+                          onYamlDetected={(yaml, resourceType) => {
+                            if (onYamlAction) {
+                              onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
+                            } else {
+                              handleYamlDetected(yaml, resourceType);
+                            }
+                          }}
+                        />
+                      );
                     }
 
                     // More precise YAML detection to avoid false positives
@@ -384,7 +426,18 @@ export default function TextStreamContainer({
                       );
                     } else {
                       // For regular content, render as Markdown
-                      return <MarkdownRenderer content={content} />;
+                      return (
+                        <MarkdownRenderer
+                          content={content}
+                          onYamlDetected={(yaml, resourceType) => {
+                            if (onYamlAction) {
+                              onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
+                            } else {
+                              handleYamlDetected(yaml, resourceType);
+                            }
+                          }}
+                        />
+                      );
                     }
                   })()}
                 </>
