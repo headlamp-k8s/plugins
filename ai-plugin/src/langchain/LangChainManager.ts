@@ -17,6 +17,7 @@ import { AzureChatOpenAI } from '@langchain/openai';
 import sanitizeHtml from 'sanitize-html';
 import { z } from 'zod';
 import AIManager, { Prompt } from '../ai/manager';
+import { basePrompt } from '../ai/prompts';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -254,9 +255,12 @@ export default class LangChainManager extends AIManager {
     const userPrompt: Prompt = { role: 'user', content: message };
     this.history.push(userPrompt);
 
-    const systemMessage = new SystemMessage(
-      `You are a Kubernetes assistant. ${this.formatContext()}`
-    );
+    const ctx = this.formatContext();
+    let sysMsg = basePrompt;
+    if (!!ctx) {
+      sysMsg += `\n\nC:\n${ctx}`;
+    }
+    const systemMessage = new SystemMessage(sysMsg);
 
     const messages = this.convertPromptsToMessages(this.history);
     messages.unshift(systemMessage);
