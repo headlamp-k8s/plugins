@@ -28,8 +28,6 @@ export default function EditorDialog({
   onSuccess,
 }: EditorDialogProps) {
   const [content, setContent] = useState(yamlContent);
-  const [resourceName, setResourceName] = useState('');
-  const [resourceNamespace, setResourceNamespace] = useState('');
   const { enqueueSnackbar } = useSnackbar();
   const themeName = localStorage.getItem('headlampThemePreference');
 
@@ -39,25 +37,6 @@ export default function EditorDialog({
       setContent(yamlContent);
     }
   }, [yamlContent, open]);
-
-  useEffect(() => {
-    // Extract name and namespace from YAML content
-    try {
-      if (yamlContent) {
-        const parsed = YAML.parse(yamlContent);
-        if (parsed && parsed.metadata) {
-          if (parsed.metadata.name) {
-            setResourceName(parsed.metadata.name);
-          }
-          if (parsed.metadata.namespace) {
-            setResourceNamespace(parsed.metadata.namespace);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error parsing YAML for resource details:', error);
-    }
-  }, [yamlContent, resourceType]);
 
   // Handle content changes from the editor
   const handleEditorChange = (value: string | undefined) => {
