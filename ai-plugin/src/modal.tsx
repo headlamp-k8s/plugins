@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import {
   Alert,
   Box,
@@ -148,6 +148,7 @@ export default function AIPrompt(props: {
   const [promptHistory, setPromptHistory] = React.useState<Prompt[]>([]);
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
   const selectedClusters = useSelectedClusters();
+  const clusters = useClustersConf() || {};
   const dynamicPrompts = useDynamicPrompts();
 
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
@@ -475,16 +476,17 @@ export default function AIPrompt(props: {
     const items = event?.items;
     const resource = event?.resource;
     const title = event?.title || event?.type;
-    const clusters = event?.clusters;
     const errors = event?.errors;
     const events = event?.objectEvent?.events;
     if (!!events) {
       const [contextId, warnings] = getWarningsContext(events);
       aiManager.addContext(contextId, warnings);
     }
-    if (!!clusters && !!errors) {
-      aiManager.addContext('clusters list and errors', {
-        clusters: clusters,
+
+    aiManager.addContext('configuredClusters', clusters);
+
+    if (!!errors) {
+      aiManager.addContext('errors', {
         errors: errors,
       });
     }
