@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import React, { useEffect, useMemo,useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
