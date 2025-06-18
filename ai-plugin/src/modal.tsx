@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import {
   Alert,
@@ -476,6 +477,8 @@ export default function AIPrompt(props: {
     const items = event?.items;
     const resource = event?.resource;
     const title = event?.title || event?.type;
+    const currentCluster = getCluster();
+    const currentClusterGroup = getClusterGroup();
     const errors = event?.errors;
     const events = event?.objectEvent?.events;
     if (!!events) {
@@ -484,6 +487,11 @@ export default function AIPrompt(props: {
     }
 
     aiManager.addContext('configuredClusters', clusters);
+    if (currentClusterGroup.length > 1) {
+      aiManager.addContext('currentlyInAClusterGroup', currentClusterGroup);
+    } else if (!!currentCluster) {
+      aiManager.addContext('currentCluster', currentCluster);
+    }
 
     if (!!errors) {
       aiManager.addContext('errors', {
