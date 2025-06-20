@@ -70,7 +70,7 @@ function registerClusterApiResource(config: ResourceRegistrationConfig) {
     path: `/cluster-api/${path}/${hasNamespace ? ':namespace/:name' : ':name'}`,
     sidebar: name,
     name: name.slice(0, -1), // Remove 's' from plural form
-    component: DetailComponent,
+    component: () => <DetailComponent />,
   });
 
   // Register list route
@@ -78,7 +78,7 @@ function registerClusterApiResource(config: ResourceRegistrationConfig) {
     path: `/cluster-api/${path}`,
     sidebar: name,
     name,
-    component: ListComponent,
+    component: () => <ListComponent />,
   });
 
   // Register icon for the resource kind
