@@ -16,6 +16,7 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import { NodeClassDetailView } from './NodeClass/Details';
 import { NodeClasses } from './NodeClass/List';
+import { NodePoolDetailView } from './NodePool/Details';
 import { NodePools } from './NodePool/List';
 
 registerSidebarEntry({
@@ -58,4 +59,11 @@ registerRoute({
   sidebar: 'nodepool',
   component: NodePools,
   name: 'nodepools-list',
+});
+
+registerRoute({
+  path: '/karpenter/details/nodepools/:name',
+  sidebar: 'nodepool',
+  component: NodePoolDetailView,
+  name: 'nodepools-detail',
 });
