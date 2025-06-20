@@ -26,7 +26,11 @@ export function nodePoolClass() {
     pluralName: 'nodepools',
   });
 
-  return NodePool;
+  return class extendedNodePoolClass extends NodePool {
+    static get detailsRoute() {
+      return 'nodepools-detail';
+    }
+  };
 }
 
 function NodePoolsList() {
