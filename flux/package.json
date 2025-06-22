@@ -51,5 +51,8 @@
   },
   "overrides": {
     "typescript": "5.6.2"
+  },
+  "resolutions": {
+    "rollup": "npm:@rollup/wasm-node@4.44.0"
   }
 }
