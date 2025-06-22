@@ -1,5 +1,7 @@
-# Use the official Node.js 18 image as the base image for building the plugins
-FROM node:18@sha256:d0bbfdbad0bff8253e6159dcbee42141db4fc309365d5b8bcfce46ed71569078 AS builder
+ARG BASE_IMAGE_VERSION=18
+ARG FINAL_IMAGE_VERSION=3.20.3
+ARG ENVIRONMENT=production
+FROM node:${BASE_IMAGE_VERSION} AS builder
 
 # Set the working directory inside the container
 WORKDIR /headlamp-plugins
@@ -22,7 +24,12 @@ COPY ${PLUGIN} /headlamp-plugins/${PLUGIN}
 # Install dependencies for the specified plugin
 RUN echo "Installing deps for plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
-    npm ci
+    echo "Installing $ENVIRONMENT dependencies..."; \
+    if [ "$ENVIRONMENT" = "production" ]; then \
+     npm ci --omit=dev; \
+    else \
+        npm ci; \
+    fi
 
 # Build the specified plugin
 RUN echo "Building plugin $PLUGIN..."; \
@@ -34,7 +41,7 @@ RUN echo "Extracting plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
     npx --no-install headlamp-plugin extract . /headlamp-plugins/build/${PLUGIN}
 
-FROM alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d
+FROM alpine:${FINAL_IMAGE_VERSION} AS final
 
 # Create a non-root user and group
 RUN addgroup -S headlamp && adduser -S headlamp -G headlamp
