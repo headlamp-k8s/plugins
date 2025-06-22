@@ -23,7 +23,7 @@ COPY ${PLUGIN} /headlamp-plugins/${PLUGIN}
 # Install dependencies for the specified plugin
 RUN echo "Installing deps for plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
-    npm ci
+    npm ci --omit=dev
 
 # Build the specified plugin
 RUN echo "Building plugin $PLUGIN..."; \
