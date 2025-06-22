@@ -37,7 +37,7 @@ jobs:
       packages: write # needed for publishing the container image
     strategy:
       matrix:
-        plugin: ${{ fromJson('["' + github.event.inputs.plugins.replace(',', '","') + '"]') }}
+        plugin: ${{ fromJson(github.event.inputs.plugins.split(',')) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
