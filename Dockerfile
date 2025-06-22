@@ -1,4 +1,5 @@
 ARG BASE_IMAGE_VERSION=18
+ARG FINAL_IMAGE_VERSION=3.20.3
 FROM node:${BASE_IMAGE_VERSION} AS builder
 
 # Set the working directory inside the container
@@ -34,7 +35,6 @@ RUN echo "Extracting plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
     npx --no-install headlamp-plugin extract . /headlamp-plugins/build/${PLUGIN}
 
-ARG FINAL_IMAGE_VERSION=3.20.3
 FROM alpine:${FINAL_IMAGE_VERSION} AS final
 
 # Create a non-root user and group
