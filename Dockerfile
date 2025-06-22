@@ -28,7 +28,7 @@ RUN echo "Installing deps for plugin $PLUGIN..."; \
     if [ "$ENVIRONMENT" = "production" ]; then \
      npm ci --omit=dev; \
     else \
-        npm ci \
+        npm ci; \
     fi
 
 # Build the specified plugin
