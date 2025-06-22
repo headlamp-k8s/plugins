@@ -38,9 +38,9 @@ jobs:
         run: |
           echo "Setting up matrix for plugins: ${{ github.event.inputs.plugins }}"
           # Convert comma-separated list to JSON array
-          PLUGINS_ARRAY=$(jq -R 'split(",")' <<< "${{ github.event.inputs.plugins }}")
+          PLUGINS_ARRAY=$(echo "${{ github.event.inputs.plugins }}" | jq -R 'split(",") | map(. | gsub("^\\s+|\\s+$"; ""))')
           echo "Matrix input: $PLUGINS_ARRAY"
-          echo "matrix_output=${PLUGINS_ARRAY}" >> $GITHUB_OUTPUT
+          echo "matrix_output=$PLUGINS_ARRAY" >> $GITHUB_OUTPUT
           
   build-and-publish:
     needs: setup_matrix
