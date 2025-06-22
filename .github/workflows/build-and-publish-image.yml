@@ -27,6 +27,8 @@ env:
   PLUGIN: ${{ github.event.inputs.plugin }}
   IMAGE_NAME: headlamp-plugin-${{ github.event.inputs.plugin }}
   ARCHITECTURES: ${{ github.event.inputs.architectures }}
+  NODE_VERSION: '20'
+  ALPINE_VERSION: '3.22.0'
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
@@ -47,7 +49,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Determine version
         id: determine_version
@@ -92,9 +94,13 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
             org.opencontainers.image.licenses=Apache-2.0
+          build-args: |
+            PLUGIN=${{ env.PLUGIN }}
+            BASE_IMAGE_VERSION=${{ env.NODE_VERSION }}
+            FINAL_IMAGE_VERSION=${{ env.ALPINE_VERSION }}
           provenance: true
-          build-args: PLUGIN=${{ env.PLUGIN }}
-          no-cache: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Summary
         run: |
