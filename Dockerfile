@@ -1,5 +1,6 @@
 ARG BASE_IMAGE_VERSION=18
 ARG FINAL_IMAGE_VERSION=3.20.3
+ARG ENVIRONMENT=production
 FROM node:${BASE_IMAGE_VERSION} AS builder
 
 # Set the working directory inside the container
@@ -23,7 +24,12 @@ COPY ${PLUGIN} /headlamp-plugins/${PLUGIN}
 # Install dependencies for the specified plugin
 RUN echo "Installing deps for plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
-    npm ci --omit=dev
+    echo "Installing $ENVIRONMENT dependencies..."; \
+    if [ "$ENVIRONMENT" = "production" ]; then \
+     npm ci --omit=dev; \
+    else \
+        npm ci \
+    fi
 
 # Build the specified plugin
 RUN echo "Building plugin $PLUGIN..."; \
