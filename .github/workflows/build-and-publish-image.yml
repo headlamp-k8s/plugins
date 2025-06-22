@@ -24,20 +24,32 @@ on:
 env:
   REGISTRY: ghcr.io
   ORG: ${{ github.repository_owner }}
-  PLUGIN: ${{ github.event.inputs.plugin }}
-  IMAGE_NAME: headlamp-plugin-${{ github.event.inputs.plugin }}
   ARCHITECTURES: ${{ github.event.inputs.architectures }}
   NODE_VERSION: '20'
   ALPINE_VERSION: '3.22.0'
 
 jobs:
+  setup_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.setup_matrix.outputs.matrix_output }}
+    steps:
+      - id: setup_matrix
+        run: |
+          echo "Setting up matrix for plugins: ${{ github.event.inputs.plugins }}"
+          # Convert comma-separated list to JSON array
+          PLUGINS_ARRAY=$(echo "${{ github.event.inputs.plugins }}" | tr ',' '\n' | jq -R . | jq -s .)
+          echo "Matrix input: $PLUGINS_ARRAY"
+          echo "matrix_output=${PLUGINS_ARRAY}" >> $GITHUB_OUTPUT
+          
   build-and-publish:
+    needs: setup_matrix
     runs-on: ubuntu-latest
     permissions:
       packages: write # needed for publishing the container image
     strategy:
       matrix:
-        plugin: ${{ fromJson(github.event.inputs.plugins) }}
+        plugin: ${{ fromJson(needs.setup_matrix.outputs.matrix) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
