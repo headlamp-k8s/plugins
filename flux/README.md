@@ -67,10 +67,15 @@ spec:
       - command:
           - /bin/sh
           - -c
-          - mkdir -p /build/plugins && cp -r /plugins/* /build/plugins/
+          - mkdir -p /build/plugins && cp -r /plugins/* /build/plugins/ && chown -R 100:101 /build
         image: ghcr.io/headlamp-k8s/headlamp-plugin-flux:latest
         imagePullPolicy: Always
         name: headlamp-plugins
+        securityContext:
+          runAsNonRoot: false
+          privileged: false
+          runAsUser: 0
+          runAsGroup: 0
         volumeMounts:
           - mountPath: /build/plugins
             name: headlamp-plugins
@@ -85,5 +90,5 @@ spec:
     volumes:
       - name: headlamp-plugins
         persistentVolumeClaim:
-          claimName: headlamp
+          claimName: headlamp # The name of the Helm release
 ```
