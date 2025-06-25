@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/kompose",
-  "version": "0.1.0-beta",
+  "version": "0.1.1-beta",
   "description": "Convert docker-compose manifests to Kubernetes manifests",
   "scripts": {
     "start": "headlamp-plugin start",
