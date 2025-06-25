@@ -20,6 +20,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [cert-manager](./cert-manager) | A UI for viewing and managing cert-manager. | |[@yolossn](https://github.com/yolossn)|
 | [minikube](./minikube) | A UI for minikube, for running Kubernetes locally. | |[@illume](https://github.com/illume)|
 | [keda](./keda) | A UI for viewing and managing KEDA resources | |[@adwait-godbole](https://github.com/adwait-godbole), [@yolossn](https://github.com/yolossn)|
+| [kaito](./kaito) | Enhances the KAITO AKS extension with a visual interface in Headlamp for model deployment and GPU provisioning. | |[@chloe608](https://github.com/chloe608), [@chewong](https://github.com/chewong)|
 
 ## External plugins
 
