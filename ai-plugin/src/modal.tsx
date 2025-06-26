@@ -23,6 +23,7 @@ import { handleActualApiRequest } from './helper/apihelper';
 import LangChainManager from './langchain/LangChainManager';
 import OpenAIManager from './openai/manager';
 import TextStreamContainer from './textstream';
+import { generateContextDescription } from './utils/contextGenerator';
 import { getSettingsURL, useGlobalState } from './utils';
 import { useDynamicPrompts } from './utils/promptGenerator';
 import {
@@ -30,105 +31,7 @@ import {
   getSavedConfigurations,
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
-const maxCharLimit = 3000;
-function summarizeKubeObject(obj) {
-  if (obj.kind === 'Event') {
-    return {
-      kind: obj.kind,
-      metadata: {
-        name: obj.metadata.name,
-        namespace: obj.metadata.namespace,
-      },
-      involvedObject: {
-        kind: obj.involvedObject.kind,
-        name: obj.involvedObject.name,
-        namespace: obj.involvedObject.namespace,
-      },
-      reason: obj.reason,
-    };
-  }
 
-  const summarizedObj = {
-    kind: obj.kind,
-    metadata: {
-      name: obj.metadata.name,
-      namespace: obj.metadata.namespace,
-    },
-  };
-
-  if (obj.metadata.namespace) {
-    summarizedObj.metadata['namespace'] = obj.metadata.namespace;
-  }
-
-  return summarizedObj;
-}
-
-function summarizeKubeObjectIfNeeded(obj) {
-  const objsData = {
-    object: obj,
-    summarized: false,
-  };
-  let objStr = JSON.stringify(obj);
-  // @todo: We should measure the number of tokens, but we count the chars for now which
-  // will "almost certainly" be less than the token count.
-  if (objStr.length < maxCharLimit) {
-    return objsData;
-  }
-
-  // Remove the annotations from this k8s object
-  let simplifiedObj = {
-    ...obj,
-  };
-  if (simplifiedObj.metadata?.annotations) {
-    delete simplifiedObj.metadata.annotations;
-  }
-  if (simplifiedObj.metadata?.managedFields) {
-    delete simplifiedObj.metadata.managedFields;
-  }
-
-  objStr = JSON.stringify(simplifiedObj);
-  if (objStr.length >= maxCharLimit) {
-    simplifiedObj = summarizeKubeObject(obj);
-    // If the very simplified object is under the limit, try including
-    // the spec (if it applies).
-    if (JSON.stringify(simplifiedObj).length < maxCharLimit) {
-      if (!!obj.spec) {
-        const simplifiedObjWithSpec = { ...simplifiedObj };
-        simplifiedObjWithSpec.spec = obj.spec;
-
-        if (JSON.stringify(simplifiedObjWithSpec).length < maxCharLimit) {
-          simplifiedObj = simplifiedObjWithSpec;
-        }
-      }
-    }
-  }
-
-  objsData.object = simplifiedObj;
-  objsData.summarized = true;
-  return objsData;
-}
-
-function summarizeKubeObjectListIfNeeded(objList) {
-  const objsListData = {
-    list: objList,
-    summarized: false,
-  };
-  const objListStr = JSON.stringify(objList);
-  // @todo: We should measure the number of tokens, but we count the chars for now which
-  // will "almost certainly" be less than the token count.
-  if (objListStr.length < maxCharLimit) {
-    return objsListData;
-  }
-
-  objsListData.list = objList.map(summarizeKubeObject);
-  objsListData.summarized = true;
-  return objsListData;
-}
-
-function getWarningsContext(events): [string, ReturnType<typeof summarizeKubeObjectListIfNeeded>] {
-  const warnings = events.filter(e => e.type === 'Warning').map(e => e.jsonData);
-  return ['clusterWarnings', summarizeKubeObjectListIfNeeded(warnings)];
-}
 
 export default function AIPrompt(props: {
   openPopup: boolean;
@@ -154,6 +57,7 @@ export default function AIPrompt(props: {
 
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
+  const [defaultProviderIndex, setDefaultProviderIndex] = useState<number | undefined>(undefined);
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -239,10 +143,10 @@ export default function AIPrompt(props: {
     const savedConfigs = getSavedConfigurations(pluginSettings);
     console.log('Saved configurations:', savedConfigs);
     setAvailableConfigs(savedConfigs.providers || []);
+    setDefaultProviderIndex(savedConfigs.defaultProviderIndex);
 
     // Always try to get the default provider first
-    const defaultConfig = savedConfigs.providers.find(p => p.isDefault);
-    const active = defaultConfig || getActiveConfig(savedConfigs);
+    const active = getActiveConfig(savedConfigs);
 
     if (active) {
       setActiveConfig(active);
@@ -471,46 +375,26 @@ export default function AIPrompt(props: {
     if (!aiManager) {
       return;
     }
-    const ctx = {};
 
     const event = _pluginSetting.event;
-    const items = event?.items;
-    const resource = event?.resource;
-    const title = event?.title || event?.type;
     const currentCluster = getCluster();
     const currentClusterGroup = getClusterGroup();
-    const errors = event?.errors;
-    const events = event?.objectEvent?.events;
-    if (!!events) {
-      const [contextId, warnings] = getWarningsContext(events);
-      aiManager.addContext(contextId, warnings);
+
+    // Generate a human-readable context description
+    const contextDescription = generateContextDescription(
+      event,
+      currentCluster,
+      clusters
+    );
+
+    // Add cluster group info if relevant
+    let fullContext = contextDescription;
+    if (currentClusterGroup && currentClusterGroup.length > 1) {
+      fullContext = `Part of cluster group with ${currentClusterGroup.length} clusters\n${fullContext}`;
     }
 
-    aiManager.addContext('configuredClusters', clusters);
-    if (currentClusterGroup.length > 1) {
-      aiManager.addContext('currentlyInAClusterGroup', currentClusterGroup);
-    } else if (!!currentCluster) {
-      aiManager.addContext('currentCluster', currentCluster);
-    }
-
-    if (!!errors) {
-      aiManager.addContext('errors', {
-        errors: errors,
-      });
-    }
-    if (!!items) {
-      const objList = summarizeKubeObjectListIfNeeded(items);
-      aiManager.addContext('resourceList', {
-        ...objList,
-        listKind: title,
-      });
-    }
-
-    if (!!resource) {
-      const resourceName = !!title ? `${title} details` : 'resource details';
-      ctx[resourceName] = resource;
-      aiManager.addContext('resourceDetails', summarizeKubeObjectIfNeeded(resource));
-    }
+    // Set the simplified context
+    aiManager.setContext(fullContext);
 
     // Configure AI manager with tools
     if (aiManager.configureTools) {
