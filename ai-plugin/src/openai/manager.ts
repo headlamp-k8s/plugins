@@ -283,13 +283,18 @@ export default class OpenAIManager extends AIManager {
     // Build messages including system context and history
     const messages = [];
 
-    // Add system message with context
+    // Create system message with context
+    let systemContent = `You are a Kubernetes assistant. Help with analyzing Kubernetes resources and providing explanations.
+        When you provide YAML examples, format them clearly with proper code blocks.
+        Always offer to apply resources through the interface rather than suggesting kubectl commands.`;
+
+    if (this.currentContext) {
+      systemContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
+    }
+
     messages.push({
       role: 'system',
-      content: `You are a Kubernetes assistant. Help with analyzing Kubernetes resources and providing explanations.
-        When you provide YAML examples, format them clearly with proper code blocks.
-        Always offer to apply resources through the interface rather than suggesting kubectl commands.
-        ${this.formatContext()}`,
+      content: systemContent,
     });
 
     // Add conversation history
@@ -319,9 +324,7 @@ export default class OpenAIManager extends AIManager {
 
   // Format context for the AI
   private formatContext() {
-    return Object.entries(this.contexts)
-      .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
-      .join('\n\n');
+    return this.currentContext || '';
   }
 
   // Other methods remain unchanged

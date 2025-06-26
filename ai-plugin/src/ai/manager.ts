@@ -11,15 +11,23 @@ export type Prompt = {
 
 export default abstract class AIManager {
   history: Prompt[] = [];
-  contexts: Record<string, any> = {};
+  currentContext: string = '';
 
-  addContext(id: string, context: any) {
-    this.contexts[id] = context;
+  setContext(contextDescription: string) {
+    this.currentContext = contextDescription;
+  }
+
+  addContextualInfo(info: string) {
+    if (this.currentContext) {
+      this.currentContext += '\n' + info;
+    } else {
+      this.currentContext = info;
+    }
   }
 
   reset() {
     this.history = [];
-    this.contexts = {};
+    this.currentContext = '';
   }
 
   // Abstract method that must be implemented
