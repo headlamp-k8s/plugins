@@ -842,7 +842,7 @@ export default function AIPrompt(props: {
                                 <Typography variant="body2">
                                   {config.displayName || providerInfo?.name || config.providerId}
                                 </Typography>
-                                {config.isDefault && (
+                                {defaultProviderIndex === index && (
                                   <Typography
                                     component="span"
                                     variant="caption"
