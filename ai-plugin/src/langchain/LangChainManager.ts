@@ -245,9 +245,7 @@ export default class LangChainManager extends AIManager {
   }
 
   private formatContext() {
-    return Object.entries(this.contexts)
-      .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
-      .join('\n\n');
+    return this.currentContext || '';
   }
 
   async userSend(message: string): Promise<Prompt> {
@@ -255,12 +253,12 @@ export default class LangChainManager extends AIManager {
     const userPrompt: Prompt = { role: 'user', content: message };
     this.history.push(userPrompt);
 
-    const ctx = this.formatContext();
-    let sysMsg = basePrompt;
-    if (!!ctx) {
-      sysMsg += `\n\nC:\n${ctx}`;
+    // Create system message with context if available
+    let systemPromptContent = basePrompt;
+    if (this.currentContext) {
+      systemPromptContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
     }
-    const systemMessage = new SystemMessage(sysMsg);
+    const systemMessage = new SystemMessage(systemPromptContent);
 
     const messages = this.convertPromptsToMessages(this.history);
     messages.unshift(systemMessage);
@@ -364,9 +362,11 @@ export default class LangChainManager extends AIManager {
   public async processToolResponses(): Promise<Prompt> {
     console.log('Processing tool responses...');
 
-    const systemMessage = new SystemMessage(
-      `You are a Kubernetes assistant. ${this.formatContext()}`
-    );
+    let systemPromptContent = basePrompt;
+    if (this.currentContext) {
+      systemPromptContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
+    }
+    const systemMessage = new SystemMessage(systemPromptContent);
 
     const messages: BaseMessage[] = [systemMessage];
 
