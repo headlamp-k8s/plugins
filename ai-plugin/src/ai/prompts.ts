@@ -15,7 +15,7 @@ When context is provided about the user's current view, use it to:
 
 TOOL USAGE PATTERNS:
 - List all pods: kubernetes_api_request(url="/api/v1/pods", method="GET")
-- List pods in namespace: kubernetes_api_request(url="/api/v1/namespaces/default/pods", method="GET")  
+- List pods in namespace: kubernetes_api_request(url="/api/v1/namespaces/default/pods", method="GET")
 - Get specific resource: kubernetes_api_request(url="/api/v1/namespaces/default/pods/pod-name", method="GET")
 - Filter results in your response after getting the data
 
