@@ -308,6 +308,6 @@ export function useDynamicPrompts(): string[] {
     }
 
     // Combine context-specific prompts first, then base prompts
-    return [...contextPrompts, ...basePrompts];
+    return [...contextPrompts, ...basePrompts].slice(0, 3);
   }, [location.pathname, event]);
 }
