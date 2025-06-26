@@ -640,9 +640,10 @@ export default function AIPrompt(props: {
                     <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
                       Try one of these safe Kubernetes questions instead:
                     </Typography>
-                    {getSafePromptSuggestions().map((prompt, i) => (
-                      <Box m={1} key={i}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {getSafePromptSuggestions().map((prompt, i) => (
                         <Chip
+                          key={i}
                           label={prompt}
                           size="small"
                           variant="outlined"
@@ -659,27 +660,28 @@ export default function AIPrompt(props: {
                           }}
                           deleteIcon={<Icon icon="mdi:send" width="20px" />}
                           sx={{
-                            maxWidth: '100%',
                             height: 'auto',
                             '& .MuiChip-label': {
                               whiteSpace: 'normal',
                               wordWrap: 'break-word',
                               textAlign: 'left',
-                              padding: '8px 12px',
                               display: 'block',
-                              minHeight: '24px',
+                              padding: '4px 8px',
+                              minHeight: '16px',
+                              fontSize: '0.92em',
                             },
                           }}
                         />
-                      </Box>
-                    ))}
+                      ))}
+                    </Box>
                   </>
                 ) : (
                   // Regular suggestions
-                  suggestions.map(prompt => {
-                    return (
-                      <Box m={1} key={prompt}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }} mb={1}>
+                    {suggestions.map(prompt => {
+                      return (
                         <Chip
+                          key={prompt}
                           label={prompt}
                           size="small"
                           variant="outlined"
@@ -694,21 +696,21 @@ export default function AIPrompt(props: {
                           }}
                           deleteIcon={<Icon icon="mdi:send" width="20px" />}
                           sx={{
-                            maxWidth: '100%',
                             height: 'auto',
                             '& .MuiChip-label': {
                               whiteSpace: 'normal',
                               wordWrap: 'break-word',
                               textAlign: 'left',
-                              padding: '8px 12px',
                               display: 'block',
-                              minHeight: '24px',
+                              padding: '4px 8px',
+                              minHeight: '16px',
+                              fontSize: '0.92em',
                             },
                           }}
                         />
-                      </Box>
-                    );
-                  })
+                      );
+                    })}
+                  </Box>
                 )}
               </Box>
             )}
