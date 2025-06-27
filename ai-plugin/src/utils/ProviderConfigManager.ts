@@ -32,46 +32,6 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
   // Create empty configuration if nothing is found
   const providers: StoredProviderConfig[] = [];
 
-  // Handle legacy format (convert to new format)
-  if (data.API_KEY) {
-    // Check if this is OpenAI or Azure OpenAI
-    if (data.API_TYPE === 'azure' && data.DEPLOYMENT_NAME && data.ENDPOINT) {
-      providers.push({
-        providerId: 'azure',
-        displayName: 'Azure OpenAI (Legacy)',
-        config: {
-          apiKey: data.API_KEY,
-          deploymentName: data.DEPLOYMENT_NAME,
-          endpoint: data.ENDPOINT,
-          model: data.GPT_MODEL || 'gpt-4',
-        },
-      });
-    } else if (data.GPT_MODEL) {
-      providers.push({
-        providerId: 'openai',
-        displayName: 'OpenAI (Legacy)',
-        config: {
-          apiKey: data.API_KEY,
-          model: data.GPT_MODEL,
-        },
-      });
-    }
-  }
-
-  // Check for "provider" and "config" format (intermediate format)
-  if (data.provider && data.config && typeof data.config === 'object') {
-    // Make sure it's not already added from legacy format
-    const alreadyAdded = providers.some(p => p.providerId === data.provider);
-
-    if (!alreadyAdded) {
-      providers.push({
-        providerId: data.provider,
-        displayName: `${data.provider} Config`,
-        config: { ...data.config },
-      });
-    }
-  }
-
   return {
     providers,
   };
