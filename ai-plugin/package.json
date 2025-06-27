@@ -33,8 +33,6 @@
     "@kinvolk/headlamp-plugin": "^0.12.0-alpha.0"
   },
   "dependencies": {
-    "@azure/identity": "^4.8.0",
-    "@azure/openai": "^2.0.0",
     "@langchain/anthropic": "^0.3.17",
     "@langchain/azure-openai": "^0.0.11",
     "@langchain/community": "^0.3.42",
@@ -49,7 +47,6 @@
     "js-yaml": "^4.1.0",
     "langchain": "^0.3.0",
     "notistack": "^3.0.1",
-    "openai": "^4.91.0",
     "prismjs": "^1.30.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

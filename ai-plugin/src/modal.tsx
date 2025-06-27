@@ -22,7 +22,6 @@ import EditorDialog from './editordialog';
 import { handleActualApiRequest } from './helper/apihelper';
 import { useClusterWarnings } from './hooks/useClusterWarnings';
 import LangChainManager from './langchain/LangChainManager';
-import OpenAIManager from './openai/manager';
 import TextStreamContainer from './textstream';
 import { generateContextDescription } from './utils/contextGenerator';
 import { getSettingsURL, useGlobalState } from './utils';
@@ -231,14 +230,8 @@ export default function AIPrompt(props: {
       console.log(
         'Initializing AI manager with settings:',
         JSON.stringify({
-          ...pluginSettings,
-          API_KEY: pluginSettings.API_KEY ? '[REDACTED]' : undefined,
-          config: pluginSettings.config
-            ? {
-                ...pluginSettings.config,
-                apiKey: pluginSettings.config.apiKey ? '[REDACTED]' : undefined,
-              }
-            : undefined,
+          activeConfig: activeConfig ? '[CONFIG_SET]' : undefined,
+          savedConfigs: savedConfigs.providers?.length ? `${savedConfigs.providers.length} providers` : 'none',
         })
       );
 
@@ -252,68 +245,6 @@ export default function AIPrompt(props: {
         } catch (error) {
           console.error('Error initializing LangChainManager with active config:', error);
           setApiError(`Failed to initialize AI model: ${error.message}`);
-        }
-      }
-
-      // Legacy support for OpenAI and Azure OpenAI
-      const { provider, config } = pluginSettings;
-
-      // If provider is set to langchain model
-      if (provider && config) {
-        try {
-          console.log(`Creating new LangChainManager with provider: ${provider}`);
-          // Make sure all required fields are present
-          const newManager = new LangChainManager(provider, config);
-          setAiManager(newManager);
-          return;
-        } catch (error) {
-          console.error('Error initializing LangChainManager:', error);
-          setApiError(
-            `Failed to initialize ${provider} model: ${error.message}. Please check your settings.`
-          );
-        }
-      }
-
-      // Legacy support for OpenAI and Azure OpenAI
-      if (pluginSettings.API_KEY) {
-        const isAzure = pluginSettings.API_TYPE === 'azure';
-        console.log(`Creating legacy OpenAIManager with isAzure=${isAzure}`);
-
-        if (isAzure && pluginSettings.DEPLOYMENT_NAME && pluginSettings.ENDPOINT) {
-          try {
-            setAiManager(
-              new OpenAIManager(
-                pluginSettings.API_KEY,
-                pluginSettings.GPT_MODEL,
-                pluginSettings.ENDPOINT,
-                pluginSettings.DEPLOYMENT_NAME
-              )
-            );
-          } catch (error) {
-            console.error('Error initializing OpenAIManager for Azure:', error);
-            setApiError(
-              `Failed to initialize Azure OpenAI model: ${error.message}. Please update your Azure OpenAI settings.`
-            );
-          }
-        } else if (!isAzure && pluginSettings.GPT_MODEL) {
-          try {
-            setAiManager(new OpenAIManager(pluginSettings.API_KEY, pluginSettings.GPT_MODEL));
-          } catch (error) {
-            console.error('Error initializing OpenAIManager:', error);
-            setApiError(
-              `Failed to initialize OpenAI model: ${error.message}. Please update your OpenAI settings.`
-            );
-          }
-        } else {
-          console.error(
-            'Incomplete OpenAI configuration:',
-            isAzure ? 'Missing DEPLOYMENT_NAME or ENDPOINT' : 'Missing GPT_MODEL'
-          );
-          setApiError(
-            isAzure
-              ? 'Missing Azure OpenAI configuration. Please check your settings and provide all required fields.'
-              : 'Missing OpenAI configuration. Please check your settings and provide all required fields.'
-          );
         }
       }
     }
@@ -520,16 +451,9 @@ export default function AIPrompt(props: {
   if (!openPopup) return null;
 
   // Check if we have any valid configuration
-  const hasLegacyConfig =
-    (pluginSettings?.API_TYPE === 'azure' &&
-      pluginSettings?.DEPLOYMENT_NAME &&
-      pluginSettings?.API_KEY &&
-      pluginSettings?.GPT_MODEL) ||
-    (pluginSettings?.API_TYPE !== 'azure' && pluginSettings?.API_KEY && pluginSettings?.GPT_MODEL);
-
   const savedConfigs = getSavedConfigurations(pluginSettings);
   const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
-  const hasValidConfig = hasLegacyConfig || hasAnyValidConfig;
+  const hasValidConfig = hasAnyValidConfig;
 
   // If no valid configuration, show setup message
   if (!hasValidConfig) {
