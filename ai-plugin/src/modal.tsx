@@ -495,6 +495,27 @@ export default function AIPrompt(props: {
     return currentURL === getSettingsURL();
   }, [location]);
 
+  // Helper function to check if we should show greeting
+  const shouldShowGreeting = () => {
+    // Only show greeting if we have a valid configuration
+    if (!hasValidConfig || !activeConfig) return false;
+
+    // Only show if history is empty or contains only system messages
+    const hasConversationMessages = promptHistory.some(msg =>
+      (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
+    );
+    return !hasConversationMessages && !loading;
+  };
+
+  // Generate greeting message
+  const getGreetingMessage = () => {
+    return {
+      role: 'assistant' as const,
+      content: `Hello! I'm your AI Assistant, ready to help you with Kubernetes operations. How can I assist you today?`,
+      isDisplayOnly: true // Mark this as display-only so it doesn't get sent to LLM
+    };
+  };
+
   // If panel is not open, don't render
   if (!openPopup) return null;
 
@@ -628,7 +649,7 @@ export default function AIPrompt(props: {
             )}
 
             <TextStreamContainer
-              history={promptHistory}
+              history={shouldShowGreeting() ? [getGreetingMessage(), ...promptHistory] : promptHistory}
               isLoading={loading}
               apiError={apiError}
               onOperationSuccess={handleOperationSuccess}

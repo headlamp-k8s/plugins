@@ -7,6 +7,7 @@ export type Prompt = {
   error?: boolean;
   contentFilterError?: boolean;
   alreadyDisplayed?: boolean;
+  isDisplayOnly?: boolean; // Mark messages that shouldn't be sent to LLM
 };
 
 export default abstract class AIManager {
