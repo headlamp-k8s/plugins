@@ -20,6 +20,7 @@ import ApiConfirmationDialog from './components/ApiConfirmationDialog';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
 import { handleActualApiRequest } from './helper/apihelper';
+import { useClusterWarnings } from './hooks/useClusterWarnings';
 import LangChainManager from './langchain/LangChainManager';
 import OpenAIManager from './openai/manager';
 import TextStreamContainer from './textstream';
@@ -54,6 +55,14 @@ export default function AIPrompt(props: {
   const selectedClusters = useSelectedClusters();
   const clusters = useClustersConf() || {};
   const dynamicPrompts = useDynamicPrompts();
+
+  // Get cluster names for warning lookup
+  const clusterNames = useMemo(() => {
+    return Object.keys(clusters);
+  }, [clusters]);
+
+  // Use the custom hook to get warnings for clusters
+  const clusterWarnings = useClusterWarnings(clusterNames);
 
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
@@ -384,7 +393,7 @@ export default function AIPrompt(props: {
     const contextDescription = generateContextDescription(
       event,
       currentCluster,
-      clusters
+      clusterWarnings
     );
 
     // Add cluster group info if relevant
@@ -455,7 +464,7 @@ export default function AIPrompt(props: {
         }
       );
     }
-  }, [_pluginSetting.event, aiManager]);
+  }, [_pluginSetting.event, aiManager, clusterWarnings]);
 
   useEffect(() => {
     if (openPopup && aiManager) {
