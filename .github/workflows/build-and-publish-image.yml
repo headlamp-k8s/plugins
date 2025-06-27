@@ -3,44 +3,67 @@ name: Build and publish plugin container image
 on:
   workflow_dispatch:
     inputs:
-      plugin:
-        description: 'The plugin name (e.g., flux)'
+      plugins:
+        description: 'Comma-separated list of plugin names to build (e.g., flux,cert-manager)'
         required: true
         type: string
       version:
         description: 'The plugin version (without a v prefix e.g., 0.1.0) - if not provided, will use version from package.json'
         required: false
         type: string
+      architectures:
+        description: 'Target architectures to build for'
+        required: true
+        type: choice
+        options:
+          - linux/amd64,linux/arm64
+          - linux/amd64
+          - linux/arm64
+        default: 'linux/amd64,linux/arm64'
 
 permissions:
   contents: read
 
 env:
   REGISTRY: ghcr.io
-  ORG: headlamp-k8s
-  PLUGIN: ${{ github.event.inputs.plugin }}
-  IMAGE_NAME: headlamp-plugin-${{ github.event.inputs.plugin }}
+  ORG: ${{ github.repository_owner }}
+  ARCHITECTURES: ${{ github.event.inputs.architectures }}
+  NODE_VERSION: '20'
+  ALPINE_VERSION: '3.22.0'
+
 jobs:
+  setup_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.setup_matrix.outputs.matrix_output }}
+    steps:
+      - id: setup_matrix
+        run: |
+          echo "Setting up matrix for plugins: ${{ github.event.inputs.plugins }}"
+          # Convert comma-separated list to JSON array
+          PLUGINS_ARRAY=$(jq -cR 'split(",")' <<< "${{ github.event.inputs.plugins }}")
+          echo "Matrix input: $PLUGINS_ARRAY"
+          echo "matrix_output=$PLUGINS_ARRAY" >> $GITHUB_OUTPUT
+          
   build-and-publish:
+    needs: setup_matrix
     runs-on: ubuntu-latest
     permissions:
       packages: write # needed for publishing the container image
+    strategy:
+      matrix:
+        plugin: ${{ fromJson(needs.setup_matrix.outputs.matrix) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # 4.1.7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.1
 
       - name: Verify plugin exists
         run: |
-          if [ ! -d "${{ env.PLUGIN }}" ]; then
-            echo "::error::Plugin directory '${{ env.PLUGIN }}' does not exist"
+          if [ ! -d "${{ matrix.plugin }}" ]; then
+            echo "::error::Plugin directory '${{ matrix.plugin }}' does not exist"
             exit 1
           fi
-          echo "Plugin directory '${{ env.PLUGIN }}' verified"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
-        with:
-          node-version: '20'
+          echo "Plugin directory '${{ matrix.plugin }}' verified"
 
       - name: Determine version
         id: determine_version
@@ -48,7 +71,7 @@ jobs:
           VERSION="${{ github.event.inputs.version }}"
           if [ -z "$VERSION" ]; then
             echo "Version not provided, extracting from package.json"
-            VERSION=$(node -p "require('./${{ env.PLUGIN }}/package.json').version")
+            VERSION=$(node -p "require('./${{ matrix.plugin }}/package.json').version")
             echo "Extracted version: $VERSION"
           fi
           # Remove leading 'v' if present
@@ -57,37 +80,46 @@ jobs:
           IMAGE_TAG_VERSION="v${VERSION}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "IMAGE_TAG_VERSION=$IMAGE_TAG_VERSION" >> $GITHUB_ENV
-          echo "FULL_IMAGE_NAME=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
+          echo "FULL_IMAGE_NAME=${{ env.REGISTRY }}/${{ env.ORG }}/headlamp-plugin-${{ matrix.plugin }}" >> $GITHUB_ENV
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+        with:
+          platforms: ${{ env.ARCHITECTURES }}
 
       - name: Log in to the Container registry
-        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2.2.0
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@0a97817b6ade9f46837855d676c4cca3a2471fc9 # v4.2.1
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           push: true
           pull: true
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.ARCHITECTURES }}
           tags: ${{ env.FULL_IMAGE_NAME }}:${{ env.IMAGE_TAG_VERSION }},${{ env.FULL_IMAGE_NAME }}:latest
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
             org.opencontainers.image.licenses=Apache-2.0
+          build-args: |
+            PLUGIN=${{ matrix.plugin }}
+            BASE_IMAGE_VERSION=${{ env.NODE_VERSION }}
+            FINAL_IMAGE_VERSION=${{ env.ALPINE_VERSION }}
           provenance: true
-          build-args: PLUGIN=${{ env.PLUGIN }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Summary
         run: |
           echo "## Container Image Published" >> $GITHUB_STEP_SUMMARY
-          echo "Plugin: ${{ env.PLUGIN }}" >> $GITHUB_STEP_SUMMARY
+          echo "Plugin: ${{ matrix.plugin }}" >> $GITHUB_STEP_SUMMARY
           echo "Version: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "Image: ${{ env.FULL_IMAGE_NAME }}:${{ env.IMAGE_TAG_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "Architectures: ${{ env.ARCHITECTURES }}" >> $GITHUB_STEP_SUMMARY
