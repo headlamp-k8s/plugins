@@ -15,7 +15,10 @@ export function helmReleaseClass() {
   const helmreleaseVersion = 'v2';
 
   return makeCustomResourceClass({
-    apiInfo: [{ group: helmreleaseGroup, version: helmreleaseVersion }],
+    apiInfo: [
+      { group: helmreleaseGroup, version: helmreleaseVersion },
+      { group: helmreleaseGroup, version: 'v2beta1' },
+    ],
     isNamespaced: true,
     singularName: 'HelmRelease',
     pluralName: 'helmreleases',
