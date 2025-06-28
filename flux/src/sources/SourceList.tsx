@@ -29,7 +29,10 @@ export function ociRepositoryClass() {
 
 export function bucketRepositoryClass() {
   return makeCustomResourceClass({
-    apiInfo: [{ group: sourceGroup, version: 'v1' }],
+    apiInfo: [
+      { group: sourceGroup, version: 'v1' },
+      { group: sourceGroup, version: 'v1beta2' },
+    ],
     isNamespaced: true,
     singularName: 'Bucket',
     pluralName: 'buckets',
@@ -38,7 +41,10 @@ export function bucketRepositoryClass() {
 
 export function helmRepositoryClass() {
   return makeCustomResourceClass({
-    apiInfo: [{ group: sourceGroup, version: 'v1' }],
+    apiInfo: [
+      { group: sourceGroup, version: 'v1' },
+      { group: sourceGroup, version: 'v1beta2' },
+    ],
     isNamespaced: true,
     singularName: 'HelmRepository',
     pluralName: 'helmrepositories',
@@ -47,7 +53,10 @@ export function helmRepositoryClass() {
 
 export function helmChartClass() {
   return makeCustomResourceClass({
-    apiInfo: [{ group: sourceGroup, version: 'v1' }],
+    apiInfo: [
+      { group: sourceGroup, version: 'v1' },
+      { group: sourceGroup, version: 'v1beta2' },
+    ],
     isNamespaced: true,
     singularName: 'HelmChart',
     pluralName: 'helmcharts',

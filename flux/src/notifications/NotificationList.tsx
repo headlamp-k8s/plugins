@@ -16,7 +16,10 @@ const notificationVersion = 'v1beta3';
 
 export function alertNotificationClass() {
   return makeCustomResourceClass({
-    apiInfo: [{ group: notificationGroup, version: notificationVersion }],
+    apiInfo: [
+      { group: notificationGroup, version: notificationVersion },
+      { group: notificationGroup, version: 'v1beta2' },
+    ],
     isNamespaced: true,
     singularName: 'Alert',
     pluralName: 'alerts',
@@ -25,7 +28,10 @@ export function alertNotificationClass() {
 
 export function providerNotificationClass() {
   return makeCustomResourceClass({
-    apiInfo: [{ group: notificationGroup, version: notificationVersion }],
+    apiInfo: [
+      { group: notificationGroup, version: notificationVersion },
+      { group: notificationGroup, version: 'v1beta2' },
+    ],
     isNamespaced: true,
     singularName: 'Provider',
     pluralName: 'providers',
@@ -34,7 +40,11 @@ export function providerNotificationClass() {
 
 export function receiverNotificationClass() {
   return makeCustomResourceClass({
-    apiInfo: [{ group: notificationGroup, version: notificationVersion }],
+    apiInfo: [
+      { group: notificationGroup, version: notificationVersion },
+      { group: notificationGroup, version: 'v1beta2' },
+      { group: notificationGroup, version: 'v1' },
+    ],
     isNamespaced: true,
     singularName: 'Receiver',
     pluralName: 'receivers',

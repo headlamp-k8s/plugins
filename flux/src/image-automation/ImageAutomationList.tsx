@@ -38,7 +38,10 @@ export function imagePolicyClass() {
 
 export function imageUpdateAutomationClass(): KubeObjectClass {
   return makeCustomResourceClass({
-    apiInfo: [{ group: imageGroup, version: imageVersion }],
+    apiInfo: [
+      { group: imageGroup, version: imageVersion },
+      { group: imageGroup, version: 'v1beta1' },
+    ],
     isNamespaced: true,
     singularName: 'ImageUpdateAutomation',
     pluralName: 'imageupdateautomations',
