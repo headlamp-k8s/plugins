@@ -1,4 +1,4 @@
-import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { MachineDeployment } from '../../resources/machinedeployment';
 
 export function MachineDeploymentsList() {
@@ -12,7 +12,18 @@ export function MachineDeploymentsList() {
         {
           id: 'cluster',
           label: 'Cluster',
-          getValue: deployment => deployment.spec?.clusterName,
+          getValue: null,
+          render: deployment => (
+            <Link
+              routeName="capicluster"
+              params={{
+                name: deployment.metadata?.labels?.['cluster.x-k8s.io/cluster-name'],
+                namespace: deployment.metadata?.namespace,
+              }}
+            >
+              {deployment.metadata?.labels?.['cluster.x-k8s.io/cluster-name']}
+            </Link>
+          ),
         },
         {
           id: 'replicas',

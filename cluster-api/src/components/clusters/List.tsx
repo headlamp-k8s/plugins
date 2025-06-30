@@ -1,4 +1,4 @@
-import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Cluster } from '../../resources/cluster';
 
 export function ClustersList() {
@@ -12,7 +12,18 @@ export function ClustersList() {
         {
           id: 'clusterclass',
           label: 'Cluster Class',
-          getValue: cluster => cluster.spec?.topology?.class,
+          getValue: null,
+          render: cluster => (
+            <Link
+              routeName="clusterclasse"
+              params={{
+                name: cluster.spec?.topology?.class,
+                namespace: cluster.metadata?.namespace,
+              }}
+            >
+              {cluster.spec?.topology?.class}
+            </Link>
+          ),
         },
         {
           id: 'phase',

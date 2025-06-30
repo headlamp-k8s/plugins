@@ -1,4 +1,4 @@
-import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeadmControlPlane } from '../../resources/kubeadmcontrolplane';
 
 export function KubeadmControlPlanesList() {
@@ -12,7 +12,18 @@ export function KubeadmControlPlanesList() {
         {
           id: 'cluster',
           label: 'Cluster',
-          getValue: kcp => kcp.metadata?.labels?.['cluster.x-k8s.io/cluster-name'],
+          getValue: null,
+          render: kcp => (
+            <Link
+              routeName="capicluster"
+              params={{
+                name: kcp.metadata?.labels?.['cluster.x-k8s.io/cluster-name'],
+                namespace: kcp.metadata?.namespace,
+              }}
+            >
+              {kcp.metadata?.labels?.['cluster.x-k8s.io/cluster-name']}
+            </Link>
+          ),
         },
         {
           id: 'initialized',

@@ -1,4 +1,4 @@
-import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { MachineSet } from '../../resources/machineset';
 
 export function MachineSetsList() {
@@ -12,7 +12,18 @@ export function MachineSetsList() {
         {
           id: 'cluster',
           label: 'Cluster',
-          getValue: machineset => machineset.spec.clusterName,
+          getValue: null,
+          render: machineset => (
+            <Link
+              routeName="capicluster"
+              params={{
+                name: machineset.metadata?.labels?.['cluster.x-k8s.io/cluster-name'],
+                namespace: machineset.metadata?.namespace,
+              }}
+            >
+              {machineset.metadata?.labels?.['cluster.x-k8s.io/cluster-name']}
+            </Link>
+          ),
         },
         {
           id: 'replicas',

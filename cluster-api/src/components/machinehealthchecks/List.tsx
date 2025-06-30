@@ -1,4 +1,4 @@
-import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { MachineHealthCheck } from '../../resources/machinehealthcheck';
 
 export function MachineHealthChecksList() {
@@ -12,7 +12,18 @@ export function MachineHealthChecksList() {
         {
           id: 'cluster',
           label: 'Cluster',
-          getValue: mhc => mhc.spec?.clusterName,
+          getValue: null,
+          render: mhc => (
+            <Link
+              routeName="capicluster"
+              params={{
+                name: mhc.metadata?.labels?.['cluster.x-k8s.io/cluster-name'],
+                namespace: mhc.metadata?.namespace,
+              }}
+            >
+              {mhc.metadata?.labels?.['cluster.x-k8s.io/cluster-name']}
+            </Link>
+          ),
         },
         {
           id: 'expectedMachines',
