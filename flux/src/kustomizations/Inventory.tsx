@@ -1,6 +1,6 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import type { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import React from 'react';
 import Table from '../common/Table';
@@ -124,15 +124,16 @@ function inventoryNameLink(item: KubeObject) {
   }
 
   const kind = item.kind;
+  const itemJsonData: KubeObjectInterface = item.jsonData;
   // remove version from apiVersion to get the groupName
-  const apiVersion = item.jsonData.apiVersion;
+  const apiVersion = itemJsonData.apiVersion;
   const slashIndex = apiVersion.lastIndexOf('/');
   const groupName = slashIndex > 0 ? apiVersion.substring(0, slashIndex) : apiVersion;
   const pluralName = PluralName(kind);
 
   // Flux types
   const allowedDomain = 'toolkit.fluxcd.io';
-  if (groupName === allowedDomain || groupName.endswith(`.${allowedDomain}`)) {
+  if (groupName === allowedDomain || groupName.endsWith(`.${allowedDomain}`)) {
     const routeName =
       groupName === allowedDomain ? 'toolkit' : groupName.substring(0, groupName.indexOf('.'));
 

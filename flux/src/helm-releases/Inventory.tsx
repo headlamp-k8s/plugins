@@ -1,6 +1,7 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
+import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { Base64 } from 'js-base64';
 import React from 'react';
 import Table from '../common/Table';
@@ -214,14 +215,18 @@ function parseHelmTemplate(template): {
  * @param {Array<{ kind: string, apiVersion: string, hasNamespace: boolean }>} resourceKinds - Array of resource kind objects containing kind, apiVersion, and hasNamespace properties.
  * @param {string} chartName - The name of the Helm chart.
  * @param {string} namespace - The namespace in which the Helm chart is deployed.
- * @returns {Promise<Array<Object>>} - A promise that resolves to an array of fetched resources with additional metadata.
+ * @returns {Promise<Array<HelmResourceKind>>} - A promise that resolves to an array of fetched resources with additional metadata.
  */
+
+interface HelmResourceKind extends KubeObjectInterface {
+  groupName: string;
+}
 
 async function fetchResources(
   resourceKinds,
   chartName: string,
   namespace: string
-): Promise<Array<Object>> {
+): Promise<Array<HelmResourceKind>> {
   const resources = [];
 
   const queryParams = new URLSearchParams();
@@ -263,16 +268,16 @@ async function fetchResources(
  * parameters depending on the resource's kind and group name.
  *
  * @param {Object} item - A Kubernetes resource object.
- * @returns {JSX.Element} - A link to the resource.
+ * @returns {React.ReactNode} - A link to the resource.
  */
-function inventoryNameLink(item): JSX.Element {
+function inventoryNameLink(item: HelmResourceKind): React.ReactNode {
   const kind = item.kind;
   const groupName = item.groupName;
   const pluralName = PluralName(kind);
 
   // Flux types
   const allowedDomain = 'toolkit.fluxcd.io';
-  if (groupName === allowedDomain || groupName.endswith(`.${allowedDomain}`)) {
+  if (groupName === allowedDomain || groupName.endsWith(`.${allowedDomain}`)) {
     const routeName =
       groupName === allowedDomain ? 'toolkit' : groupName.substring(0, groupName.indexOf('.'));
 
