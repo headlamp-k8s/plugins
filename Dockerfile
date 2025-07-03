@@ -27,7 +27,7 @@ RUN echo "Cleaning arch-dependent files for plugin $PLUGIN..."; \
 # Install dependencies for the specified plugin
 RUN echo "Installing deps for plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
-    npm install
+    npm ci
 
 # Build the specified plugin
 RUN echo "Building plugin $PLUGIN..."; \
