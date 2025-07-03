@@ -35,6 +35,7 @@ Please see [headlamp plugins on Artifact Hub](https://artifacthub.io/packages/se
 | [Kubescape](https://github.com/kubescape/headlamp-plugin) | The Kubescape Headlamp plugin provides views in Headlamp for configuration and vulnerabilities scanning, based on information delivered by the Kubescape operator. |  | [@mgalesloot](https://github.com/mgalesloot) |
 | [KubeVirt](https://github.com/buttahtoast/headlamp-plugins/tree/main/kubevirt) | A plugin for managing KubeVirt virtual machines within a Kubernetes cluster. |   | [@buttahtoast](https://github.com/buttahtoast) |
 | [Gatekeeper](https://github.com/sozercan/gatekeeper-headlamp-plugin) | A Headlamp plugin for managing [Gatekeeper](https://open-policy-agent.github.io/gatekeeper/) policies, violations, and a library of community-sourced policies. | | [@sozercan](https://github.com/sozercan) |
+| [KAITO](https://github.com/kaito-project/headlamp-kaito) | Enhances the KAITO AKS extension with a visual interface in Headlamp for model deployment and GPU provisioning. | |[@chloe608](https://github.com/chloe608), [@chewong](https://github.com/chewong)|
 
 
 
