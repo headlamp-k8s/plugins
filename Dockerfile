@@ -19,10 +19,15 @@ RUN mkdir -p /headlamp-plugins/build/${PLUGIN}
 # Copy the plugin source code into the container
 COPY ${PLUGIN} /headlamp-plugins/${PLUGIN}
 
+# Remove any existing node_modules and package-lock.json to avoid arch-specific conflicts
+RUN echo "Cleaning arch-dependent files for plugin $PLUGIN..."; \
+    cd /headlamp-plugins/$PLUGIN; \
+    rm -rf node_modules package-lock.json
+
 # Install dependencies for the specified plugin
 RUN echo "Installing deps for plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
-    npm ci
+    npm install
 
 # Build the specified plugin
 RUN echo "Building plugin $PLUGIN..."; \
