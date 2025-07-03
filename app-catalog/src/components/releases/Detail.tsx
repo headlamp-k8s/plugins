@@ -250,7 +250,11 @@ export default function ReleaseDetail() {
       {releaseHistory && (
         <SectionBox title="History">
           <SimpleTable
-            data={releaseHistory === null ? null : releaseHistory.releases}
+            data={
+              releaseHistory === null
+                ? null
+                : [...releaseHistory.releases].sort((a, b) => b.version - a.version)
+            }
             defaultSortingColumn={1}
             columns={[
               {
