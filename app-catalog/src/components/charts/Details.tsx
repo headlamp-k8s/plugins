@@ -13,6 +13,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import remarkGfm from 'remark-gfm';
 import { fetchChartDetailFromArtifact } from '../../api/charts';
 import { EditorDialog } from './EditorDialog';
+import { VANILLA_HELM_REPO } from './List';
 
 const { createRouteURL } = Router;
 export default function ChartDetails() {
@@ -31,6 +32,12 @@ export default function ChartDetails() {
   const [openEditor, setOpenEditor] = useState(false);
 
   useEffect(() => {
+    // Note: This path is not enabled for vanilla helm repo. Please check the following comment in charts/List.tsx
+    // TODO: The app-catalog using artifacthub.io loads the details about the chart with an option to install the chart
+    //
+    // An API to get details about a particular chart is required to achieve this. For example, take a look at the response
+    // from https://artifacthub.io/api/v1/packages/helm/grafana/grafana
+    // Easiest thing is to fetch index.yaml, get the details for chartName and fill the details
     fetchChartDetailFromArtifact(chartName, repoName).then(response => {
       setChart(response);
     });
@@ -81,12 +88,16 @@ export default function ChartDetails() {
                   <Box display="flex" alignItems="center">
                     {chart.logo_image_id && (
                       <Box mr={1}>
-                        <img
-                          src={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                          width="25"
-                          height="25"
-                          alt={chart.name}
-                        />
+                          {CHART_PROFILE === VANILLA_HELM_REPO ? (
+                              <img src={`${chart?.icon || ''}`} width="25" height="25" alt={chart.name} />
+                              ) : (
+                              <img
+                                  src={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                                  width="25"
+                                  height="25"
+                                  alt={chart.name}
+                              />
+                          )}
                       </Box>
                     )}
                     <Box>{chart.name}</Box>
