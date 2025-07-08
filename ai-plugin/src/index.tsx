@@ -5,13 +5,13 @@ import {
   registerPluginSettings,
   registerUIPanel,
 } from '@kinvolk/headlamp-plugin/lib';
-import { Box, Divider, ToggleButton, Tooltip, Typography } from '@mui/material';
+import { Box, Divider, FormControlLabel, Switch, ToggleButton, Tooltip, Typography } from '@mui/material';
 import React from 'react';
 import ModelSelector from './components/ModelSelector';
 import { getDefaultConfig, getProviderById } from './config/modelConfig';
 import AIPrompt from './modal';
 import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
-import { getActiveConfig } from './utils/ProviderConfigManager';
+import { getActiveConfig, SavedConfigurations } from './utils/ProviderConfigManager';
 
 // Register UI Panel component that uses the shared state to show/hide
 registerUIPanel({
@@ -202,12 +202,49 @@ function Settings() {
 
   const provider = getProviderById(activeConfiguration.providerId);
   console.log('Rendering Settings component with provider:', provider);
+
+  // Handle test mode toggle
+  const handleTestModeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const isTestMode = event.target.checked;
+    const currentConf = pluginStore.get() || {};
+    pluginStore.update({
+      ...currentConf,
+      testMode: isTestMode,
+    });
+  };
+
+  const isTestMode = savedConfigs?.testMode || false;
+
   return (
     <Box width={'80%'}>
       <Typography variant="body1" sx={{ mb: 3 }}>
         This plugin is in early development and is not yet ready for production use. Using it may
         incur in costs from the AI provider! Use at your own risk.
       </Typography>
+
+      <Divider sx={{ my: 3 }} />
+
+      <Box sx={{ mb: 3 }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={isTestMode}
+              onChange={handleTestModeChange}
+              color="primary"
+            />
+          }
+          label={
+            <Box>
+              <Typography variant="body1">
+                Test Mode
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Enable test mode to manually input AI responses and see how they render in the chat window
+              </Typography>
+            </Box>
+          }
+        />
+      </Box>
 
       <Divider sx={{ my: 3 }} />
 
