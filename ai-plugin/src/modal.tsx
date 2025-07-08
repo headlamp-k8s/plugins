@@ -17,6 +17,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
+import TestModeInput from './components/TestModeInput';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
 import { handleActualApiRequest } from './helper/apihelper';
@@ -66,6 +67,9 @@ export default function AIPrompt(props: {
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
   const [defaultProviderIndex, setDefaultProviderIndex] = useState<number | undefined>(undefined);
+
+  // Test mode detection
+  const isTestMode = pluginSettings?.testMode || false;
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -254,8 +258,32 @@ export default function AIPrompt(props: {
     setPromptHistory(aiManager?.history ?? []);
   }, [aiManager]);
 
+  // Function to handle test mode responses
+  const handleTestModeResponse = (content: string, type: 'assistant' | 'user', hasError?: boolean) => {
+    const newPrompt: Prompt = {
+      role: type,
+      content,
+      error: hasError || false,
+      ...(hasError && { contentFilterError: true }),
+    };
+
+    setPromptHistory(prev => [...prev, newPrompt]);
+    setOpenPopup(true);
+  };
+
   async function AnalyzeResourceBasedOnPrompt(prompt: string) {
     setOpenPopup(true);
+
+    // If in test mode, just add the user prompt to history and return
+    if (isTestMode) {
+      const userPrompt: Prompt = {
+        role: 'user',
+        content: prompt,
+      };
+      setPromptHistory(prev => [...prev, userPrompt]);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -510,7 +538,17 @@ export default function AIPrompt(props: {
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="h6">{getProviderDisplayName()} Assistant (beta)</Typography>
+            <Typography variant="h6">
+              {getProviderDisplayName()} Assistant (beta)
+              {isTestMode && (
+                <Chip
+                  label="TEST MODE"
+                  color="warning"
+                  size="small"
+                  sx={{ ml: 1, fontSize: '0.7rem' }}
+                />
+              )}
+            </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <ActionButton
@@ -669,6 +707,12 @@ export default function AIPrompt(props: {
               </Box>
             )}
             <Box>
+              {/* Test Mode Input Component */}
+              <TestModeInput
+                onAddTestResponse={handleTestModeResponse}
+                isTestMode={isTestMode}
+              />
+
               <TextField
                 id="deployment-ai-prompt"
                 onChange={event => {
@@ -688,7 +732,7 @@ export default function AIPrompt(props: {
                 }}
                 variant="outlined"
                 value={promptVal}
-                label="Ask AI"
+                label={isTestMode ? "Type user message (Test Mode)" : "Ask AI"}
                 multiline
                 fullWidth
                 minRows={2}
@@ -709,14 +753,18 @@ export default function AIPrompt(props: {
                   <ActionButton
                     description="Clear History"
                     onClick={() => {
-                      aiManager?.reset();
-                      updateHistory();
+                      if (isTestMode) {
+                        setPromptHistory([]);
+                      } else {
+                        aiManager?.reset();
+                        updateHistory();
+                      }
                     }}
                     icon="mdi:broom"
                   />
 
                   {/* Provider Selection Dropdown */}
-                  {availableConfigs.length > 1 && (
+                  {availableConfigs.length > 1 && !isTestMode && (
                     <Box ml={2} sx={{ display: 'flex', alignItems: 'center' }}>
                       <Select
                         value={(() => {
