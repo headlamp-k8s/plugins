@@ -26,7 +26,7 @@ export function NodePoolDetailView(props: { name?: string }) {
         item && [
           {
             id: 'Nodepool-config-editor',
-            action: () => <EditConfigButton resource={item} />,
+            action: () => <EditConfigButton resource={item} schema="Nodepool-schema" />,
           },
         ]
       }
