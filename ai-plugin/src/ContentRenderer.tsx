@@ -17,9 +17,9 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({ content, onYamlDetect
 
     // First, let's detect if this content has unformatted YAML (not in code blocks)
     // that needs special handling
-    const hasUnformattedYaml =
-      content.includes('apiVersion:') &&
-      content.includes('kind:') &&
+    const hasUnformattedYaml = 
+      content.includes('apiVersion:') && 
+      content.includes('kind:') && 
       content.includes('metadata:') &&
       !content.includes('```yaml') &&
       !content.includes('```yml');
@@ -212,9 +212,9 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({ content, onYamlDetect
       if (!trimmedPart) return;
 
       // Check if this part looks like YAML
-      const isYamlPart =
-        trimmedPart.includes('apiVersion:') &&
-        trimmedPart.includes('kind:') &&
+      const isYamlPart = 
+        trimmedPart.includes('apiVersion:') && 
+        trimmedPart.includes('kind:') && 
         trimmedPart.includes('metadata:');
 
       if (isYamlPart) {
