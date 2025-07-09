@@ -23,11 +23,12 @@ interface EditConfigButtonProps {
   options?: CallbackActionOptions;
   buttonStyle?: ButtonStyle;
   afterConfirm?: () => void;
+  schema: string;
 }
 
 export function EditConfigButton(props: EditConfigButtonProps) {
   const dispatch: AppDispatch = useDispatch();
-  const { resource, options = {}, buttonStyle, afterConfirm } = props;
+  const { resource, options = {}, buttonStyle, afterConfirm, schema } = props;
   const [diffOpen, setDiffOpen] = React.useState(false);
   const [originalYaml, setOriginalYaml] = React.useState('');
   const [modifiedYaml, setModifiedYaml] = React.useState('');
@@ -129,6 +130,7 @@ export function EditConfigButton(props: EditConfigButtonProps) {
         modifiedYaml={modifiedYaml}
         onSave={handleSave}
         errorMessage={errorMessage}
+        schema={schema}
       />
     </AuthVisible>
   );

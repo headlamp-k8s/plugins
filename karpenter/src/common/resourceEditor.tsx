@@ -6,10 +6,13 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { ConfirmButton, Dialog, DialogProps } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { DiffEditor } from '@monaco-editor/react';
-import { Button, DialogActions, DialogContent, Typography } from '@mui/material';
+import { Alert, Box, Button, DialogActions, DialogContent, Typography } from '@mui/material';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 import yaml from 'js-yaml';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
+import { KARPENTER_SCHEMAS } from '../schemas';
 
 export interface DiffEditorDialogProps extends DialogProps {
   resource: KubeObjectInterface;
@@ -22,6 +25,7 @@ export interface DiffEditorDialogProps extends DialogProps {
   errorMessage?: string;
   title?: string;
   actions?: React.ReactNode[];
+  schema: string;
 }
 
 export function DiffEditorDialog({
@@ -34,18 +38,65 @@ export function DiffEditorDialog({
   saveLabel,
   errorMessage,
   title,
+  schema,
   ...other
 }: DiffEditorDialogProps) {
   const [currentModifiedYaml, setCurrentModifiedYaml] = useState(modifiedYaml);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const theme = localStorage.getItem('headlampThemePreference');
   const dispatch = useDispatch();
+  const editorRef = useRef<any>(null);
+
+  const ajv = React.useMemo(() => {
+    const instance = new Ajv({ allErrors: true });
+    addFormats(instance);
+    return instance;
+  }, []);
+
+  const karpenterValidate = React.useMemo(() => {
+    return ajv.compile(KARPENTER_SCHEMAS[schema]);
+  }, [ajv, schema]);
 
   useEffect(() => {
     setCurrentModifiedYaml(modifiedYaml);
+    validateContent(modifiedYaml);
   }, [modifiedYaml, open]);
 
+  const validateContent = (yamlContent: string) => {
+    try {
+      const docs = yaml.loadAll(yamlContent);
+      const ajvErrors: string[] = [];
+
+      docs.forEach((doc: any, index: number) => {
+        if (!doc || typeof doc !== 'object') {
+          ajvErrors.push(`Document ${index + 1} is not a valid object.`);
+          return;
+        }
+
+        const valid = karpenterValidate(doc);
+        if (!valid && karpenterValidate.errors) {
+          karpenterValidate.errors.forEach(err => {
+            const path = err.instancePath || '/';
+            ajvErrors.push(`Document ${index + 1} [${path}]: ${err.message}`);
+          });
+        }
+      });
+
+      setValidationErrors(ajvErrors);
+      return ajvErrors.length === 0;
+    } catch (e) {
+      setValidationErrors([`Invalid YAML: ${(e as Error).message}`]);
+      return false;
+    }
+  };
+
   const handleSave = () => {
+    if (validationErrors.length > 0) {
+      setError('Please fix validation errors before saving');
+      return;
+    }
+
     if (typeof onSave === 'function') {
       onSave(currentModifiedYaml);
     } else if (onSave === 'default') {
@@ -73,7 +124,7 @@ export function DiffEditorDialog({
 
         onClose();
       } catch (e) {
-        setError(`Error parsing YAML: ${(e as Error).message}`);
+        setError(`Error applying configuration: ${(e as Error).message}`);
       }
     }
   };
@@ -95,7 +146,9 @@ export function DiffEditorDialog({
   };
 
   const handleEditorChange = (value: string | undefined) => {
-    setCurrentModifiedYaml(value || '');
+    const newValue = value || '';
+    setCurrentModifiedYaml(newValue);
+    validateContent(newValue);
   };
 
   const isReadOnly = () => onSave === null;
@@ -118,8 +171,22 @@ export function DiffEditorDialog({
       {...other}
     >
       <DialogContent sx={{ height: '80%', overflowY: 'hidden' }}>
+        {(validationErrors.length > 0 || error) && (
+          <Box sx={{ mb: 2 }}>
+            <Alert severity="error">
+              <Typography variant="subtitle2">Validation Issues:</Typography>
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {validationErrors.map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+                {error && !validationErrors.includes(error) && <li>{error}</li>}
+              </ul>
+            </Alert>
+          </Box>
+        )}
+
         <DiffEditor
-          height="80vh"
+          height="70vh"
           language="yaml"
           theme={theme === 'dark' ? 'vs-dark' : 'light'}
           original={originalYaml}
@@ -133,8 +200,10 @@ export function DiffEditorDialog({
             scrollBeyondLastLine: false,
             automaticLayout: true,
             diffWordWrap: 'on',
+            glyphMargin: true,
           }}
           onMount={editor => {
+            editorRef.current = editor;
             const modifiedModel = editor.getModel()?.modified;
             if (modifiedModel) {
               modifiedModel.onDidChangeContent(() => {
@@ -151,7 +220,10 @@ export function DiffEditorDialog({
             color="secondary"
             variant="contained"
             aria-label={'Undo'}
-            onConfirm={() => setCurrentModifiedYaml(modifiedYaml)}
+            onConfirm={() => {
+              setCurrentModifiedYaml(modifiedYaml);
+              validateContent(modifiedYaml);
+            }}
             confirmTitle={'Are you sure?'}
             confirmDescription={
               'This will discard your changes in the editor. Do you want to proceed ?'
@@ -161,7 +233,9 @@ export function DiffEditorDialog({
           </ConfirmButton>
         )}
         <div style={{ flex: '1 0 0' }} />
-        {(error || errorMessage) && <Typography color="error">{error || errorMessage}</Typography>}
+        {errorMessage && !validationErrors.includes(errorMessage) && (
+          <Typography color="error">{errorMessage}</Typography>
+        )}
         <div style={{ flex: '1 0 0' }} />
         <Button onClick={onClose} color="secondary" variant="contained">
           Close
@@ -171,7 +245,7 @@ export function DiffEditorDialog({
             onClick={handleSave}
             color="primary"
             variant="contained"
-            disabled={modifiedYaml === currentModifiedYaml || !!error}
+            disabled={modifiedYaml === currentModifiedYaml || validationErrors.length > 0}
           >
             {saveLabel || 'Save & Apply'}
           </Button>

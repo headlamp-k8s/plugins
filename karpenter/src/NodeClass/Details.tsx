@@ -25,7 +25,7 @@ export function NodeClassDetailView(props: { name?: string }) {
         item && [
           {
             id: 'Nodeclass-config-editor',
-            action: () => <EditConfigButton resource={item} />,
+            action: () => <EditConfigButton resource={item} schema="Nodeclass-schema" />,
           },
         ]
       }
