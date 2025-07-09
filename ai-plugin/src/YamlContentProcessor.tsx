@@ -1,7 +1,18 @@
 import { Box, Typography } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import YamlDisplay from './components/YamlDisplay';
 import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
+
+// Simple hash function for generating stable keys
+const simpleHash = (str: string): string => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(36);
+};
 
 interface YamlContentProcessorProps {
   content: string;
@@ -11,8 +22,8 @@ interface YamlContentProcessorProps {
 const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, onYamlDetected }) => {
   const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
 
-  // Helper function to convert text to paragraphs
-  const textToParagraphs = (text: string): React.ReactNode[] => {
+  // Helper function to convert text to paragraphs - memoized to prevent re-creation
+  const textToParagraphs = useCallback((text: string): React.ReactNode[] => {
     return text.split('\n\n').map((paragraph, idx) => {
       if (paragraph.trim().length === 0) return null;
 
@@ -45,10 +56,10 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
         </Typography>
       );
     });
-  };
+  }, []);
 
-  // Helper function to detect resource list results
-  const isResourceListResult = (content: string): boolean => {
+  // Helper function to detect resource list results - memoized to prevent re-creation
+  const isResourceListResult = useCallback((content: string): boolean => {
     if (!content) return false;
 
     // Check for common resource list result patterns
@@ -66,7 +77,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
       // "not found" messages are common in Kubernetes CLI responses
       (content.includes('not found') && !content.includes('```yaml'))
     );
-  };
+  }, []);
 
   useEffect(() => {
     // Process content to separate YAML blocks from markdown
@@ -75,6 +86,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
     let inYamlBlock = false;
     let currentYaml = '';
     let yamlSectionTitle = '';
+    let sectionIndex = 0; // Add a counter for unique keys
 
     // Skip processing if this is a resource list result
     if (isResourceListResult(content)) {
@@ -120,7 +132,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
 
         // Add the section title
         sections.push(
-          <Typography key={`title-${sections.length}`} variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+          <Typography key={`title-${simpleHash(line)}-${sectionIndex++}`} variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
             {line}
           </Typography>
         );
@@ -194,7 +206,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
             if (parsedYaml.isValid) {
               sections.push(
                 <YamlDisplay
-                  key={`yaml-${sections.length}`}
+                  key={`yaml-${simpleHash(currentYaml)}-${sectionIndex++}`}
                   yaml={currentYaml}
                   title={yamlSectionTitle || parsedYaml.resourceType}
                   onOpenInEditor={onYamlDetected}
@@ -205,7 +217,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
               sections.push(
                 <Box
                   component="pre"
-                  key={`code-${sections.length}`}
+                  key={`code-${simpleHash(currentYaml)}-${sectionIndex++}`}
                   sx={{
                     bgcolor: 'background.paper',
                     p: 2,
@@ -224,7 +236,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
             sections.push(
               <Box
                 component="pre"
-                key={`code-${sections.length}`}
+                key={`code-error-${simpleHash(currentYaml)}-${sectionIndex++}`}
                 sx={{
                   bgcolor: 'background.paper',
                   p: 2,
@@ -255,7 +267,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
               if (parsedYaml.isValid) {
                 sections.push(
                   <YamlDisplay
-                    key={`yaml-${sections.length}`}
+                    key={`yaml-sep-${simpleHash(currentYaml)}-${sectionIndex++}`}
                     yaml={currentYaml}
                     title={yamlSectionTitle || parsedYaml.resourceType}
                     onOpenInEditor={onYamlDetected}
@@ -266,7 +278,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
                 sections.push(
                   <Box
                     component="pre"
-                    key={`code-${sections.length}`}
+                    key={`code-sep-${simpleHash(currentYaml)}-${sectionIndex++}`}
                     sx={{
                       bgcolor: 'background.paper',
                       p: 2,
@@ -285,7 +297,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
               sections.push(
                 <Box
                   component="pre"
-                  key={`code-${sections.length}`}
+                  key={`code-sep-error-${simpleHash(currentYaml)}-${sectionIndex++}`}
                   sx={{
                     bgcolor: 'background.paper',
                     p: 2,
@@ -321,7 +333,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
         if (parsedYaml.isValid) {
           sections.push(
             <YamlDisplay
-              key={`yaml-${sections.length}`}
+              key={`yaml-final-${simpleHash(currentYaml)}-${sectionIndex++}`}
               yaml={currentYaml}
               title={yamlSectionTitle || parsedYaml.resourceType}
               onOpenInEditor={onYamlDetected}
@@ -332,7 +344,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
           sections.push(
             <Box
               component="pre"
-              key={`code-${sections.length}`}
+              key={`code-final-${simpleHash(currentYaml)}-${sectionIndex++}`}
               sx={{
                 bgcolor: 'background.paper',
                 p: 2,
@@ -351,7 +363,7 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
         sections.push(
           <Box
             component="pre"
-            key={`code-${sections.length}`}
+            key={`code-final-error-${simpleHash(currentYaml)}-${sectionIndex++}`}
             sx={{
               bgcolor: 'background.paper',
               p: 2,
@@ -366,11 +378,30 @@ const YamlContentProcessor: React.FC<YamlContentProcessorProps> = ({ content, on
         );
       }
     } else if (currentText.trim()) {
-      sections.push(...textToParagraphs(currentText));
+      // Process remaining text with stable keys
+      const textParagraphs = textToParagraphs(currentText);
+      textParagraphs.forEach((paragraph, idx) => {
+        if (paragraph) {
+          // Clone the paragraph with a stable key that includes content hash
+          const paragraphText = typeof paragraph === 'object' && 'props' in paragraph && paragraph.props.children
+            ? String(paragraph.props.children)
+            : String(idx);
+          sections.push(
+            React.cloneElement(paragraph as React.ReactElement, {
+              key: `text-final-${simpleHash(paragraphText)}-${sectionIndex++}`
+            })
+          );
+        }
+      });
     }
 
     setProcessedContent(sections);
-  }, [content, onYamlDetected]);
+  }, [content, textToParagraphs, isResourceListResult]); // Removed onYamlDetected from dependencies
+
+
+  useEffect(() => {
+    console.log('>>>>>>>>>>>>>>>>>>CONTEXT_CHANGED', content)
+  }, [content,textToParagraphs, isResourceListResult]);
 
   return <Box>{processedContent}</Box>;
 };
