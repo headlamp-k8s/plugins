@@ -2,7 +2,7 @@ import { Icon } from '@iconify/react';
 import { Alert, Box, CircularProgress, Fab, Typography } from '@mui/material';
 import { useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prompt } from './ai/manager';
@@ -237,7 +237,7 @@ export default function TextStreamContainer({
   const [showScrollButton, setShowScrollButton] = useState<boolean>(false);
 
   // Check if user is near bottom for auto-scrolling
-  const isNearBottom = () => {
+  const isNearBottom = useCallback(() => {
     if (!containerRef.current) return true;
 
     const container = containerRef.current;
@@ -246,9 +246,9 @@ export default function TextStreamContainer({
       container.scrollHeight - container.scrollTop - container.clientHeight;
 
     return distanceFromBottom <= threshold;
-  };
+  }, []);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       // Hide the button immediately after clicking it
@@ -257,23 +257,23 @@ export default function TextStreamContainer({
       // Fallback scrolling method if the ref isn't available
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  };
+  }, []);
 
-  const scrollToLastMessage = () => {
+  const scrollToLastMessage = useCallback(() => {
     if (!lastMessageRef.current) {
       return;
     }
 
     lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  }, []);
 
   // Handle container scroll event
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (containerRef.current) {
       const nearBottom = isNearBottom();
       setShowScrollButton(!nearBottom);
     }
-  };
+  }, [isNearBottom]);
 
   // Scroll to latest message when new messages appear, but only if already near bottom
   useEffect(() => {
@@ -286,7 +286,7 @@ export default function TextStreamContainer({
         setShowScrollButton(true);
       }
     }, 100);
-  }, [history, isLoading]);
+  }, [history, isLoading, isNearBottom, scrollToBottom]);
 
   // Additional effect for when loading finishes, to ensure we scroll to the final content
   useEffect(() => {
@@ -294,7 +294,7 @@ export default function TextStreamContainer({
       // Small delay to ensure content has rendered
       setTimeout(scrollToLastMessage, 200);
     }
-  }, [isLoading]);
+  }, [isLoading, history.length, scrollToLastMessage]);
 
   useEffect(() => {
     // Collect tool responses
@@ -311,16 +311,16 @@ export default function TextStreamContainer({
     });
   }, [history]);
 
-  const handleYamlDetected = (yaml: string, resourceType: string) => {
+  const handleYamlDetected = useCallback((yaml: string, resourceType: string) => {
     // Since we're removing the Delete button, we'll set isDelete to false always
     setEditorContent(yaml);
     setEditorTitle(`Apply ${resourceType}`);
     setResourceType(resourceType);
     setIsDelete(false); // Always false since we don't show delete button
     setShowEditor(true);
-  };
+  }, []);
 
-  const renderMessage = (prompt: Prompt, index: number) => {
+  const renderMessage = useCallback((prompt: Prompt, index: number) => {
     if (
       prompt.role === 'system' ||
       (prompt.role === 'tool' && typeof prompt.content !== 'string')
@@ -447,7 +447,7 @@ export default function TextStreamContainer({
         </Box>
       </Box>
     );
-  };
+  }, [history.length, theme.palette, onYamlAction, handleYamlDetected]);
 
   return (
     <Box sx={{ position: 'relative', height: '100%' }}>
