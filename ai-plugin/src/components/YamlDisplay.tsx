@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { parseKubernetesYAML } from '../utils/SampleYamlLibrary';
 
 interface YamlDisplayProps {
@@ -15,20 +15,18 @@ interface YamlDisplayProps {
 }
 
 const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }) => {
-  const [resourceType, setResourceType] = useState<string>('Resource');
-  const [resourceName, setResourceName] = useState<string>('');
-  const [processedYaml, setProcessedYaml] = useState<string>(yaml);
   const theme = useTheme();
 
-  const editorOptions = {
+  // Memoize editor options to prevent re-creation
+  const editorOptions = useMemo(() => ({
     readOnly: true,
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
     folding: true,
-  };
+  }), []);
 
-  // Function to properly format YAML indentation
-  const formatYaml = (yamlString: string): string => {
+  // Memoize YAML formatting function
+  const formatYaml = useCallback((yamlString: string): string => {
     // Clean up YAML content
     let cleanYaml = yamlString.trim();
 
@@ -61,27 +59,40 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
     return lines
       .map(line => (line.length > minIndent ? line.substring(minIndent) : line))
       .join('\n');
-  };
+  }, []);
 
-  useEffect(() => {
+  // Memoize processed YAML and resource info
+  const { processedYaml, parsedInfo } = useMemo(() => {
     try {
       const formattedYaml = formatYaml(yaml);
-      setProcessedYaml(formattedYaml);
-
-      // Parse YAML to get resource information
       const parsed = parseKubernetesYAML(formattedYaml);
-      if (parsed.isValid) {
-        setResourceType(parsed.resourceType || 'Resource');
-        setResourceName(parsed.name || '');
-      }
+
+      return {
+        processedYaml: formattedYaml,
+        parsedInfo: parsed.isValid ? {
+          resourceType: parsed.resourceType || 'Resource',
+          name: parsed.name || ''
+        } : {
+          resourceType: 'Resource',
+          name: ''
+        }
+      };
     } catch (e) {
       console.warn('Error parsing YAML:', e);
+      return {
+        processedYaml: yaml,
+        parsedInfo: {
+          resourceType: 'Resource',
+          name: ''
+        }
+      };
     }
-  }, [yaml]);
+  }, [yaml, formatYaml]);
 
-  const handleOpenInEditor = () => {
-    onOpenInEditor(processedYaml, resourceType, title || `Apply ${resourceType}`);
-  };
+  // Memoize the click handler
+  const handleOpenInEditor = useCallback(() => {
+    onOpenInEditor(processedYaml, parsedInfo.resourceType, title || `Apply ${parsedInfo.resourceType}`);
+  }, [onOpenInEditor, processedYaml, parsedInfo.resourceType, title]);
 
   return (
     <Box sx={{ my: 2 }}>
@@ -116,8 +127,8 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
           }}
         >
           <Typography variant="caption" fontWeight="bold">
-            {resourceType}
-            {resourceName ? `: ${resourceName}` : ''}
+            {parsedInfo.resourceType}
+            {parsedInfo.name ? `: ${parsedInfo.name}` : ''}
           </Typography>
 
           <Button
@@ -142,4 +153,16 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
   );
 };
 
-export default YamlDisplay;
+// Set display name for debugging
+YamlDisplay.displayName = 'YamlDisplay';
+
+// Custom comparison function for React.memo
+const arePropsEqual = (prevProps: YamlDisplayProps, nextProps: YamlDisplayProps) => {
+  return (
+    prevProps.yaml === nextProps.yaml &&
+    prevProps.title === nextProps.title &&
+    prevProps.onOpenInEditor === nextProps.onOpenInEditor
+  );
+};
+
+export default React.memo(YamlDisplay, arePropsEqual);
