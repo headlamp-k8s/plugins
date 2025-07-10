@@ -23,7 +23,7 @@ export function useClusterWarnings(clusterNames: string[]): EventsPerCluster {
     clusterNames.forEach(clusterName => {
       result[clusterName] = {
         warnings: warningsPerCluster[clusterName]?.warnings ?? [],
-        error: warningsPerCluster[clusterName]?.error ?? null
+        error: warningsPerCluster[clusterName]?.error ?? null,
       };
     });
 

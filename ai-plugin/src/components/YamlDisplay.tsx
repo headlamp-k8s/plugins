@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { parseKubernetesYAML } from '../utils/SampleYamlLibrary';
 
 interface YamlDisplayProps {
@@ -20,12 +20,16 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
   const [processedYaml, setProcessedYaml] = useState<string>(yaml);
   const theme = useTheme();
 
-  const editorOptions = {
-    readOnly: true,
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    folding: true,
-  };
+  // Memoize editor options to prevent re-creation
+  const editorOptions = useMemo(
+    () => ({
+      readOnly: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      folding: true,
+    }),
+    []
+  );
 
   // Function to properly format YAML indentation
   const formatYaml = (yamlString: string): string => {
