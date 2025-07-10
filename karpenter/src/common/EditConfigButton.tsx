@@ -18,11 +18,32 @@ import { useLocation } from 'react-router-dom';
 import { jsonToYAML } from '../helpers/jsonTOYAML';
 import { DiffEditorDialog } from './resourceEditor';
 
+/**
+ * Props for the EditConfigButton component.
+ */
 interface EditConfigButtonProps {
+  /**
+   * The Kubernetes resource object to edit.
+   * This should be an instance of KubeObject containing the resource's data.
+   */
   resource: KubeObject;
+  /**
+   * Optional action options for the cluster operation.
+   */
   options?: CallbackActionOptions;
+  /**
+   * Optional styling for the button component.
+   */
   buttonStyle?: ButtonStyle;
+  /**
+   * Optional callback function to execute after successful confirmation/save.
+   * Can be used to perform additional actions after the resource is updated.
+   */
   afterConfirm?: () => void;
+  /**
+   * The JSON schema used for validating the resource configuration.
+   * This schema ensures the edited configuration conforms to expected structure.
+   */
   schema: string;
 }
 
