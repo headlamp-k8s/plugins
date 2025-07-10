@@ -16,11 +16,6 @@ interface HeadlampEvent {
   };
 }
 
-interface ClusterInfo {
-  name?: string;
-  status?: string;
-}
-
 export function generateContextDescription(
   event: HeadlampEvent,
   currentCluster?: string,
@@ -73,7 +68,9 @@ export function generateContextDescription(
     const itemCount = event.items.length;
     if (itemCount > 0) {
       const resourceType = event.items[0]?.kind || 'resources';
-      contextParts.push(`Showing ${itemCount} ${resourceType.toLowerCase()}${itemCount !== 1 ? 's' : ''}`);
+      contextParts.push(
+        `Showing ${itemCount} ${resourceType.toLowerCase()}${itemCount !== 1 ? 's' : ''}`
+      );
 
       // Analyze list for common issues
       if (resourceType === 'Pod') {

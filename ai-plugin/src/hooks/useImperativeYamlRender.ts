@@ -14,53 +14,54 @@ interface UseImperativeYamlRenderOptions {
  * This completely bypasses React's re-rendering cycle for YAML editors,
  * ensuring that Monaco Editor state is preserved.
  */
-export const useImperativeYamlRender = ({ theme, onYamlDetected }: UseImperativeYamlRenderOptions) => {
-  const containerRegistry = useRef<Map<string, { container: HTMLDivElement; root: Root }>>(new Map());
-  const lastContentRegistry = useRef<Map<string, { yaml: string; resourceType: string }>>(new Map());
+export const useImperativeYamlRender = ({
+  theme,
+  onYamlDetected,
+}: UseImperativeYamlRenderOptions) => {
+  const containerRegistry = useRef<Map<string, { container: HTMLDivElement; root: Root }>>(
+    new Map()
+  );
+  const lastContentRegistry = useRef<Map<string, { yaml: string; resourceType: string }>>(
+    new Map()
+  );
 
-  const renderYamlImperatively = useCallback((
-    containerId: string,
-    yaml: string,
-    resourceType: string
-  ): HTMLDivElement => {
-    const lastContent = lastContentRegistry.current.get(containerId);
+  const renderYamlImperatively = useCallback(
+    (containerId: string, yaml: string, resourceType: string): HTMLDivElement => {
+      const lastContent = lastContentRegistry.current.get(containerId);
 
-    // Check if content actually changed
-    if (lastContent && lastContent.yaml === yaml && lastContent.resourceType === resourceType) {
-      // Return existing container without re-rendering
-      const existing = containerRegistry.current.get(containerId);
-      if (existing) {
-        return existing.container;
+      // Check if content actually changed
+      if (lastContent && lastContent.yaml === yaml && lastContent.resourceType === resourceType) {
+        // Return existing container without re-rendering
+        const existing = containerRegistry.current.get(containerId);
+        if (existing) {
+          return existing.container;
+        }
       }
-    }
 
-    // Get or create container
-    let entry = containerRegistry.current.get(containerId);
-    if (!entry) {
-      const container = document.createElement('div');
-      container.style.width = '100%';
-      container.style.height = 'auto';
-      const root = createRoot(container);
-      entry = { container, root };
-      containerRegistry.current.set(containerId, entry);
-    }
+      // Get or create container
+      let entry = containerRegistry.current.get(containerId);
+      if (!entry) {
+        const container = document.createElement('div');
+        container.style.width = '100%';
+        container.style.height = 'auto';
+        const root = createRoot(container);
+        entry = { container, root };
+        containerRegistry.current.set(containerId, entry);
+      }
+      // Render with new content
+      entry.root.render(
+        <ThemeProvider theme={theme}>
+          <YamlDisplay yaml={yaml} title={resourceType} onOpenInEditor={onYamlDetected} />
+        </ThemeProvider>
+      );
 
-    // Render with new content
-    entry.root.render(
-      <ThemeProvider theme={theme}>
-        <YamlDisplay
-          yaml={yaml}
-          title={resourceType}
-          onOpenInEditor={onYamlDetected}
-        />
-      </ThemeProvider>
-    );
+      // Update content registry
+      lastContentRegistry.current.set(containerId, { yaml, resourceType });
 
-    // Update content registry
-    lastContentRegistry.current.set(containerId, { yaml, resourceType });
-
-    return entry.container;
-  }, [theme, onYamlDetected]);
+      return entry.container;
+    },
+    [theme, onYamlDetected]
+  );
 
   const cleanupContainer = useCallback((containerId: string) => {
     const entry = containerRegistry.current.get(containerId);

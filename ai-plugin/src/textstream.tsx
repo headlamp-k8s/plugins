@@ -1,11 +1,10 @@
 import { Icon } from '@iconify/react';
 import { Alert, Box, CircularProgress, Fab, Typography } from '@mui/material';
 import { useTheme } from '@mui/material';
-import { alpha } from '@mui/material/styles';
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Prompt } from './ai/manager';
-import EditorDialog from './editordialog';
 import DirectMessageRenderer from './DirectMessageRenderer';
+import EditorDialog from './editordialog';
 
 export default function TextStreamContainer({
   history,
@@ -120,20 +119,26 @@ export default function TextStreamContainer({
   }, []);
 
   // Memoize the YAML detection handler to prevent re-renders
-  const handleContentYamlDetected = useCallback((yaml: string, resourceType: string) => {
-    if (onYamlAction) {
-      onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
-    } else {
-      handleYamlDetected(yaml, resourceType);
-    }
-  }, [onYamlAction, handleYamlDetected]);
+  const handleContentYamlDetected = useCallback(
+    (yaml: string, resourceType: string) => {
+      if (onYamlAction) {
+        onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
+      } else {
+        handleYamlDetected(yaml, resourceType);
+      }
+    },
+    [onYamlAction, handleYamlDetected]
+  );
 
   // Memoize theme colors to prevent re-renders
-  const themeColors = useMemo(() => ({
-    sidebarColor: theme.palette.sidebar.selectedBackground,
-    backgroundColor: theme.palette.background.paper,
-    contrastText: theme.palette.getContrastText(theme.palette.background.paper),
-  }), [theme.palette.sidebar.selectedBackground, theme.palette.background.paper]);
+  const themeColors = useMemo(
+    () => ({
+      sidebarColor: theme.palette.sidebar.selectedBackground,
+      backgroundColor: theme.palette.background.paper,
+      contrastText: theme.palette.getContrastText(theme.palette.background.paper),
+    }),
+    [theme.palette.sidebar.selectedBackground, theme.palette.background.paper]
+  );
 
   return (
     <Box sx={{ position: 'relative', height: '100%' }}>
@@ -163,7 +168,7 @@ export default function TextStreamContainer({
           onYamlDetected={handleContentYamlDetected}
           theme={theme}
           themeColors={themeColors}
-          onLastMessageRef={(element) => {
+          onLastMessageRef={element => {
             if (element) {
               (lastMessageRef as any).current = element;
             }

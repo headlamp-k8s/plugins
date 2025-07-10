@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { parseKubernetesYAML } from '../utils/SampleYamlLibrary';
 
 interface YamlDisplayProps {
@@ -18,12 +18,15 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
   const theme = useTheme();
 
   // Memoize editor options to prevent re-creation
-  const editorOptions = useMemo(() => ({
-    readOnly: true,
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    folding: true,
-  }), []);
+  const editorOptions = useMemo(
+    () => ({
+      readOnly: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      folding: true,
+    }),
+    []
+  );
 
   // Memoize YAML formatting function
   const formatYaml = useCallback((yamlString: string): string => {
@@ -69,13 +72,15 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
 
       return {
         processedYaml: formattedYaml,
-        parsedInfo: parsed.isValid ? {
-          resourceType: parsed.resourceType || 'Resource',
-          name: parsed.name || ''
-        } : {
-          resourceType: 'Resource',
-          name: ''
-        }
+        parsedInfo: parsed.isValid
+          ? {
+              resourceType: parsed.resourceType || 'Resource',
+              name: parsed.name || '',
+            }
+          : {
+              resourceType: 'Resource',
+              name: '',
+            },
       };
     } catch (e) {
       console.warn('Error parsing YAML:', e);
@@ -83,15 +88,19 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
         processedYaml: yaml,
         parsedInfo: {
           resourceType: 'Resource',
-          name: ''
-        }
+          name: '',
+        },
       };
     }
   }, [yaml, formatYaml]);
 
   // Memoize the click handler
   const handleOpenInEditor = useCallback(() => {
-    onOpenInEditor(processedYaml, parsedInfo.resourceType, title || `Apply ${parsedInfo.resourceType}`);
+    onOpenInEditor(
+      processedYaml,
+      parsedInfo.resourceType,
+      title || `Apply ${parsedInfo.resourceType}`
+    );
   }, [onOpenInEditor, processedYaml, parsedInfo.resourceType, title]);
 
   return (
