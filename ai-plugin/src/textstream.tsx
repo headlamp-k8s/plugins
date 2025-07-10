@@ -5,7 +5,6 @@ import { alpha } from '@mui/material/styles';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Prompt } from './ai/manager';
 import EditorDialog from './editordialog';
-import ContentRenderer from './ContentRenderer';
 
 export default function TextStreamContainer({
   history,
@@ -194,6 +193,27 @@ export default function TextStreamContainer({
       </Box>
     );
   }, [history.length, theme.palette, onYamlAction, handleYamlDetected]);
+  // Memoize the YAML detection handler to prevent re-renders
+  const handleContentYamlDetected = useCallback(
+    (yaml: string, resourceType: string) => {
+      if (onYamlAction) {
+        onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
+      } else {
+        handleYamlDetected(yaml, resourceType);
+      }
+    },
+    [onYamlAction, handleYamlDetected]
+  );
+
+  // Memoize theme colors to prevent re-renders
+  const themeColors = useMemo(
+    () => ({
+      sidebarColor: theme.palette.sidebar.selectedBackground,
+      backgroundColor: theme.palette.background.paper,
+      contrastText: theme.palette.getContrastText(theme.palette.background.paper),
+    }),
+    [theme.palette.sidebar.selectedBackground, theme.palette.background.paper]
+  );
 
   return (
     <Box sx={{ position: 'relative', height: '100%' }}>
