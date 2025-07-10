@@ -1,7 +1,7 @@
 import { Icon } from '@iconify/react';
 import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
 import {
   Alert,
   Box,
@@ -24,15 +24,14 @@ import { handleActualApiRequest } from './helper/apihelper';
 import { useClusterWarnings } from './hooks/useClusterWarnings';
 import LangChainManager from './langchain/LangChainManager';
 import TextStreamContainer from './textstream';
-import { generateContextDescription } from './utils/contextGenerator';
 import { getSettingsURL, useGlobalState } from './utils';
+import { generateContextDescription } from './utils/contextGenerator';
 import { useDynamicPrompts } from './utils/promptGenerator';
 import {
   getActiveConfig,
   getSavedConfigurations,
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
-
 
 export default function AIPrompt(props: {
   openPopup: boolean;
@@ -235,7 +234,9 @@ export default function AIPrompt(props: {
         'Initializing AI manager with settings:',
         JSON.stringify({
           activeConfig: activeConfig ? '[CONFIG_SET]' : undefined,
-          savedConfigs: savedConfigs.providers?.length ? `${savedConfigs.providers.length} providers` : 'none',
+          savedConfigs: savedConfigs.providers?.length
+            ? `${savedConfigs.providers.length} providers`
+            : 'none',
         })
       );
 
@@ -259,7 +260,11 @@ export default function AIPrompt(props: {
   }, [aiManager]);
 
   // Function to handle test mode responses
-  const handleTestModeResponse = (content: string, type: 'assistant' | 'user', hasError?: boolean) => {
+  const handleTestModeResponse = (
+    content: string,
+    type: 'assistant' | 'user',
+    hasError?: boolean
+  ) => {
     const newPrompt: Prompt = {
       role: type,
       content,
@@ -349,11 +354,7 @@ export default function AIPrompt(props: {
     const currentClusterGroup = getClusterGroup();
 
     // Generate a human-readable context description
-    const contextDescription = generateContextDescription(
-      event,
-      currentCluster,
-      clusterWarnings
-    );
+    const contextDescription = generateContextDescription(event, currentCluster, clusterWarnings);
 
     // Add cluster group info if relevant
     let fullContext = contextDescription;
@@ -460,8 +461,8 @@ export default function AIPrompt(props: {
     if (!hasValidConfig || !activeConfig) return false;
 
     // Only show if history is empty or contains only system messages
-    const hasConversationMessages = promptHistory.some(msg =>
-      (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
+    const hasConversationMessages = promptHistory.some(
+      msg => (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
     );
     return !hasConversationMessages && !loading;
   };
@@ -471,7 +472,7 @@ export default function AIPrompt(props: {
     return {
       role: 'assistant' as const,
       content: `Hello! I'm your AI Assistant, ready to help you with Kubernetes operations. How can I assist you today?`,
-      isDisplayOnly: true // Mark this as display-only so it doesn't get sent to LLM
+      isDisplayOnly: true, // Mark this as display-only so it doesn't get sent to LLM
     };
   };
 
@@ -611,7 +612,9 @@ export default function AIPrompt(props: {
             )}
 
             <TextStreamContainer
-              history={shouldShowGreeting() ? [getGreetingMessage(), ...promptHistory] : promptHistory}
+              history={
+                shouldShowGreeting() ? [getGreetingMessage(), ...promptHistory] : promptHistory
+              }
               isLoading={loading}
               apiError={apiError}
               onOperationSuccess={handleOperationSuccess}
@@ -708,10 +711,7 @@ export default function AIPrompt(props: {
             )}
             <Box>
               {/* Test Mode Input Component */}
-              <TestModeInput
-                onAddTestResponse={handleTestModeResponse}
-                isTestMode={isTestMode}
-              />
+              <TestModeInput onAddTestResponse={handleTestModeResponse} isTestMode={isTestMode} />
 
               <TextField
                 id="deployment-ai-prompt"
@@ -732,7 +732,7 @@ export default function AIPrompt(props: {
                 }}
                 variant="outlined"
                 value={promptVal}
-                label={isTestMode ? "Type user message (Test Mode)" : "Ask AI"}
+                label={isTestMode ? 'Type user message (Test Mode)' : 'Ask AI'}
                 multiline
                 fullWidth
                 minRows={2}

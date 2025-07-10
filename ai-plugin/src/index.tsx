@@ -5,7 +5,15 @@ import {
   registerPluginSettings,
   registerUIPanel,
 } from '@kinvolk/headlamp-plugin/lib';
-import { Box, Divider, FormControlLabel, Switch, ToggleButton, Tooltip, Typography } from '@mui/material';
+import {
+  Box,
+  Divider,
+  FormControlLabel,
+  Switch,
+  ToggleButton,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import React from 'react';
 import ModelSelector from './components/ModelSelector';
 import { getDefaultConfig, getProviderById } from './config/modelConfig';
@@ -226,20 +234,13 @@ function Settings() {
 
       <Box sx={{ mb: 3 }}>
         <FormControlLabel
-          control={
-            <Switch
-              checked={isTestMode}
-              onChange={handleTestModeChange}
-              color="primary"
-            />
-          }
+          control={<Switch checked={isTestMode} onChange={handleTestModeChange} color="primary" />}
           label={
             <Box>
-              <Typography variant="body1">
-                Test Mode
-              </Typography>
+              <Typography variant="body1">Test Mode</Typography>
               <Typography variant="caption" color="text.secondary">
-                Enable test mode to manually input AI responses and see how they render in the chat window
+                Enable test mode to manually input AI responses and see how they render in the chat
+                window
               </Typography>
             </Box>
           }
