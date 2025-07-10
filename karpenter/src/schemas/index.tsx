@@ -1,3 +1,30 @@
+/**
+ * Karpenter Schema Documentation
+ *
+ * This schema was derived from:
+ * 1. Official Karpenter Documentation:
+ *    - https://karpenter.sh/docs/getting-started/
+ *    - https://karpenter.sh/docs/getting-started/getting-started-with-karpenter/
+ *    - https://karpenter.sh/docs/concepts/nodeclasses/
+ *    - https://karpenter.sh/docs/concepts/nodepools/
+ *
+ * 2. Examining the actual CRD configurations and jsonData:
+ *    - EC2NodeClass CRD (karpenter.k8s.aws/v1)
+ *    - NodePool CRD (karpenter.sh/v1)
+ *
+ * 3. Actual CRD definitions:
+ *    - EC2NodeClass CRD: https://github.com/aws/karpenter-provider-aws/blob/main/pkg/apis/v1/ec2nodeclass.go
+ *
+ * Note: There is no official JSON schema documentation from Karpenter.
+ * The schema here represents our best understanding of the valid configurations
+ *
+ * To update this schema in the future:
+ * 1. Check the CRD definitions for any new/changed fields
+ * 2. Review any schema changes in new Karpenter releases:
+ *    - https://github.com/aws/karpenter-provider-aws/releases
+ *
+ */
+
 export const KARPENTER_SCHEMAS = {
   'Nodeclass-schema': {
     type: 'object',

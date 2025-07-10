@@ -14,17 +14,63 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { KARPENTER_SCHEMAS } from '../schemas';
 
+/**
+ * Props for the DiffEditorDialog component.
+ */
 export interface DiffEditorDialogProps extends DialogProps {
+  /**
+   * The Kubernetes resource object being edited.
+   * Contains the resource's metadata and specifications.
+   */
   resource: KubeObjectInterface;
+  /**
+   * The original YAML content before any edits.
+   * Used as the left side of the diff comparison.
+   */
   originalYaml: string;
+  /**
+   * The modified YAML content to compare against the original.
+   * Used as the right side of the diff comparison.
+   */
   modifiedYaml: string;
+  /**
+   * Controls the visibility of the dialog.
+   */
   open: boolean;
+  /**
+   * Callback function invoked when the dialog is closed.
+   */
   onClose: () => void;
+  /**
+   * Custom save handler function.
+   * Can be:
+   * - A function: Custom save logic
+   * - 'default': Use built-in save logic
+   * - null: Read-only mode
+   */
   onSave?: ((...args: any[]) => void) | 'default' | null;
+  /**
+   * Custom label for the save button.
+   * Defaults to 'Save & Apply' if not provided.
+   */
   saveLabel?: string;
+  /**
+   * Error message to display in the dialog.
+   * Typically shown when save operations fail.
+   */
   errorMessage?: string;
+  /**
+   * Custom title for the dialog.
+   * Defaults to "Config Editor: {resourceName}" if not provided.
+   */
   title?: string;
+  /**
+   * Custom actions to display in the dialog.
+   */
   actions?: React.ReactNode[];
+  /**
+   * JSON schema identifier for validation.
+   */
   schema: string;
 }
 
