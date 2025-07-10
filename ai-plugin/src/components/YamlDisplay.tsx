@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { parseKubernetesYAML } from '../utils/SampleYamlLibrary';
 
 interface YamlDisplayProps {
@@ -19,17 +19,68 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
   const [resourceName, setResourceName] = useState<string>('');
   const [processedYaml, setProcessedYaml] = useState<string>(yaml);
   const theme = useTheme();
+  const [editor, setEditor] = useState<any>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
+  const editorHeight = 250;
+
+  const handleEditorMount = useCallback((editorElem: any) => {
+    setEditor(editorElem);
+  }, []);
+
+  useEffect(() => {
+    if (!parentRef.current || !editor) {
+      return;
+    }
+
+    let currentResizingHandler: NodeJS.Timeout | null = null;
+    const resizeObserver = new window.ResizeObserver(() => {
+      let width = 0;
+      if (parentRef.current) {
+        width = parentRef.current.offsetWidth;
+        console.log('Parent width:', width);
+      }
+
+      if (editor) {
+        if (currentResizingHandler) {
+          clearTimeout(currentResizingHandler);
+          currentResizingHandler = null;
+        }
+        // Setting width to 0 is important, else this could trigger a
+        // resize of the window when resizing from wider to narrower which
+        // would have an effect of the editor slowly adapting to the size
+        // instead of in one go.
+        editor.layout({ width: 0, height: editorHeight });
+        currentResizingHandler = setTimeout(() => {
+          console.log('>>>>>>>>>>>>>>>>>>>>>>>RESIZE')
+          if (editor) {
+            // If we set the width to the same width as the parent, the editor
+            // will trigger a resize of the parent and this will hit race conditions
+            editor.layout({ width: width - 20, height: editorHeight });
+          }
+        }, 100);
+      }
+    });
+
+    resizeObserver.observe(parentRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [editor]);
 
   // Memoize editor options to prevent re-creation
-  const editorOptions = useMemo(
-    () => ({
-      readOnly: true,
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      folding: true,
-    }),
-    []
-  );
+  const editorOptions = useMemo(() => ({
+    readOnly: true,
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    folding: true,
+    wordWrap: 'on' as const,
+    automaticLayout: false,
+    scrollbar: {
+      horizontal: 'hidden' as const,
+      vertical: 'auto' as const,
+    },
+  }), []);
 
   // Function to properly format YAML indentation
   const formatYaml = (yamlString: string): string => {
@@ -103,6 +154,8 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
           overflow: 'hidden',
           borderLeft: '4px solid',
           borderColor: 'primary.main',
+          width: '100%',
+          maxWidth: '100%',
         }}
       >
         <Box
@@ -134,13 +187,38 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
           </Button>
         </Box>
 
-        <Editor
-          language="yaml"
-          theme={theme.palette.mode === 'dark' ? 'vs-dark' : 'light'}
-          value={processedYaml}
-          options={editorOptions}
-          height="250px"
-        />
+        <Box
+          sx={{
+            height: `${editorHeight}px`,
+            width: '100%',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            boxSizing: 'border-box',
+          }}
+          ref={parentRef}
+        >
+            <div style={{
+              height: `${editorHeight}px`,
+              width: '100%',
+              maxWidth: '100%',
+              position: 'relative',
+              overflow: 'hidden',
+              boxSizing: 'border-box',
+            }}>
+              <Editor
+                language="yaml"
+                theme={theme.palette.mode === 'dark' ? 'vs-dark' : 'light'}
+                value={processedYaml}
+                options={editorOptions}
+                height={editorHeight}
+                width="100%"
+                onMount={handleEditorMount}
+              />
+            </div>
+        </Box>
       </Paper>
     </Box>
   );
