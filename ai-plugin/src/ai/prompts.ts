@@ -22,12 +22,12 @@ TOOL USAGE PATTERNS:
 YAML FORMATTING:
 When providing Kubernetes YAML examples, use this format:
 
-────────────────────────────
-[Number]. [Resource Type] Example
-────────────────────────────
+
+## [Resource Type] Example:
+
 Brief explanation of the resource.
 
---------------------------------------------------
+\`\`\`yaml
 apiVersion: [version]
 kind: [kind]
 metadata:
@@ -35,7 +35,7 @@ metadata:
   namespace: default
 spec:
   # Configuration here
---------------------------------------------------
+\`\`\`
 
 RESPONSES:
 - Format responses in markdown
@@ -43,7 +43,7 @@ RESPONSES:
 - If asked non-Kubernetes questions, politely redirect and include a light Kubernetes joke
 - For Headlamp UI questions without enough info, suggest checking https://headlamp.dev/docs or the #headlamp Slack channel
 
-Remember: Users are in a visual web interface, so focus on what they can see and do in Headlamp, not command-line operations.`;
+Remember: Users are in a visual web interface, so focus on what they can see and do in Headlamp, not command-line operations. The YAML is shown in a preview editor, it has a button "Open in Editor" which opens the actual editor.`;
 
 const prompts = {
   basePrompt,
