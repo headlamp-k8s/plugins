@@ -162,7 +162,7 @@ All deployments are currently active in your cluster.`,
     }
   };
 
-  const handleSampleResponse = (sample: typeof sampleResponses[0]) => {
+  const handleSampleResponse = (sample: (typeof sampleResponses)[0]) => {
     onAddTestResponse(sample.content, sample.type, sample.hasError || false);
   };
 
@@ -212,7 +212,7 @@ All deployments are currently active in your cluster.`,
               <Select
                 value={responseType}
                 label="Response Type"
-                onChange={(e) => setResponseType(e.target.value as 'assistant' | 'user')}
+                onChange={e => setResponseType(e.target.value as 'assistant' | 'user')}
               >
                 <MenuItem value="assistant">AI Assistant Response</MenuItem>
                 <MenuItem value="user">User Message</MenuItem>
@@ -222,10 +222,7 @@ All deployments are currently active in your cluster.`,
             {responseType === 'assistant' && (
               <FormControlLabel
                 control={
-                  <Switch
-                    checked={hasError}
-                    onChange={(e) => setHasError(e.target.checked)}
-                  />
+                  <Switch checked={hasError} onChange={e => setHasError(e.target.checked)} />
                 }
                 label="Simulate Error Response"
               />
@@ -237,13 +234,14 @@ All deployments are currently active in your cluster.`,
               rows={12}
               fullWidth
               value={testContent}
-              onChange={(e) => setTestContent(e.target.value)}
+              onChange={e => setTestContent(e.target.value)}
               placeholder="Enter your test response here. You can use markdown, YAML code blocks, etc."
               variant="outlined"
             />
 
             <Typography variant="caption" color="text.secondary">
-              Tip: Use ```yaml code blocks to test YAML rendering, or include markdown for formatting tests.
+              Tip: Use ```yaml code blocks to test YAML rendering, or include markdown for
+              formatting tests.
             </Typography>
           </Box>
         </DialogContent>
