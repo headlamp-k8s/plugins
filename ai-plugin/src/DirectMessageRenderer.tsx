@@ -162,12 +162,12 @@ const DirectMessageRenderer: React.FC<DirectMessageRendererProps> = ({
     const lastHistory = lastHistoryRef.current;
 
     // Check if history has actually changed (content-wise)
-    const historyChanged = 
+    const historyChanged =
       currentHistory.length !== lastHistory.length ||
       currentHistory.some((prompt, index) => {
         const lastPrompt = lastHistory[index];
-        return !lastPrompt || 
-               prompt.content !== lastPrompt.content || 
+        return !lastPrompt ||
+               prompt.content !== lastPrompt.content ||
                prompt.role !== lastPrompt.role ||
                prompt.isDisplayOnly !== lastPrompt.isDisplayOnly;
       });
@@ -186,7 +186,7 @@ const DirectMessageRenderer: React.FC<DirectMessageRendererProps> = ({
     // Clear all existing messages and re-render everything
     // This ensures we handle cases where greeting messages are added/removed
     cleanupAllRoots();
-    
+
     // Use a small delay to ensure the container is ready
     requestAnimationFrame(() => {
       // Render all current messages
