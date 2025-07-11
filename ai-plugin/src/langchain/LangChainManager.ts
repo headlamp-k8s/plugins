@@ -1,5 +1,4 @@
 import { ChatAnthropic } from '@langchain/anthropic';
-import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
   AIMessage,
@@ -12,6 +11,7 @@ import {
 import { tool } from '@langchain/core/tools';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatMistralAI } from '@langchain/mistralai';
+import { ChatOllama } from '@langchain/ollama';
 import { ChatOpenAI } from '@langchain/openai';
 import { AzureChatOpenAI } from '@langchain/openai';
 import sanitizeHtml from 'sanitize-html';
