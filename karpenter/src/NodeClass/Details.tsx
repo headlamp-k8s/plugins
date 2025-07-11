@@ -7,6 +7,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box } from '@mui/material';
 import { useParams } from 'react-router-dom';
+import { EditConfigButton } from '../common/EditConfigButton';
 import { StatusLabel } from '../common/StatusLabel';
 import { nodeClassClass } from './List';
 
@@ -20,6 +21,14 @@ export function NodeClassDetailView(props: { name?: string }) {
       resourceType={NodeClass}
       name={name}
       withEvents
+      actions={item =>
+        item && [
+          {
+            id: 'Nodeclass-config-editor',
+            action: () => <EditConfigButton resource={item} schema="Nodeclass-schema" />,
+          },
+        ]
+      }
       extraInfo={item =>
         item && [
           {

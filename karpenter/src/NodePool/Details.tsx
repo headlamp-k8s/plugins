@@ -6,6 +6,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { getResourceStr } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { useParams } from 'react-router-dom';
+import { EditConfigButton } from '../common/EditConfigButton';
 import { renderInstanceRequirements } from '../helpers/instanceRequirements';
 import { parseRam } from '../helpers/parseRam';
 import { renderDisruptionBudgets } from '../helpers/renderBudgets';
@@ -21,6 +22,14 @@ export function NodePoolDetailView(props: { name?: string }) {
       resourceType={NodePoolClass}
       name={name}
       withEvents
+      actions={item =>
+        item && [
+          {
+            id: 'Nodepool-config-editor',
+            action: () => <EditConfigButton resource={item} schema="Nodepool-schema" />,
+          },
+        ]
+      }
       extraInfo={item => {
         const usedCPU = parseInt(item.jsonData.status?.resources?.cpu || '0');
         const CPUlimit = parseInt(item.jsonData.spec?.limits?.cpu || '0');
