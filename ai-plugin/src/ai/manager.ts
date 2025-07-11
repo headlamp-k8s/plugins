@@ -37,17 +37,8 @@ export default abstract class AIManager {
   // Changed from protected to public to allow external calling
   abstract processToolResponses(): Promise<Prompt>;
 
-  // Define configureTools method for tool configuration
-  configureTools?(
-    tools: any[],
-    handler: (
-      url: string,
-      method: string,
-      body?: string,
-      toolCallId?: string,
-      pendingPrompt?: Prompt
-    ) => Promise<any>
-  ): void;
+  // Define configureTools method for tool configuration - made generic to support different contexts
+  configureTools?(tools: any[], context: any): void;
 
   getPromptSuggestions(): string[] {
     return [
