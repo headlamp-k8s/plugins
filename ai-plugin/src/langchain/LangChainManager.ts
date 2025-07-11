@@ -8,34 +8,26 @@ import {
   HumanMessage,
   SystemMessage,
 } from '@langchain/core/messages';
-import { tool } from '@langchain/core/tools';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatMistralAI } from '@langchain/mistralai';
 import { ChatOllama } from '@langchain/ollama';
 import { ChatOpenAI } from '@langchain/openai';
 import { AzureChatOpenAI } from '@langchain/openai';
 import sanitizeHtml from 'sanitize-html';
-import { z } from 'zod';
 import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
+import { ToolManager, ToolResponse, KubernetesToolContext } from './tools';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
   private boundModel: BaseChatModel | null = null;
   private providerId: string;
-  private toolHandler:
-    | ((
-        url: string,
-        method: string,
-        body?: string,
-        toolCallId?: string,
-        pendingPrompt?: Prompt
-      ) => Promise<any>)
-    | null = null;
+  private toolManager: ToolManager;
 
   constructor(providerId: string, config: Record<string, any>) {
     super();
     this.providerId = providerId;
+    this.toolManager = new ToolManager(); // Initialize with empty config for now
     console.log(`Creating LangChainManager with provider: ${providerId}`, config);
     this.model = this.createModel(providerId, config);
   }
@@ -124,102 +116,13 @@ export default class LangChainManager extends AIManager {
 
   configureTools(
     tools: any[],
-    handler: (
-      url: string,
-      method: string,
-      body?: string,
-      toolCallId?: string,
-      pendingPrompt?: Prompt
-    ) => Promise<any>
+    kubernetesContext: KubernetesToolContext
   ): void {
-    // Store the handlers
-    this.toolHandler = handler;
+    // Configure the Kubernetes context for the KubernetesTool
+    this.toolManager.configureKubernetesContext(kubernetesContext);
 
-    // For local models, don't bind tools to avoid forcing tool calls
-    if (this.providerId === 'local') {
-      console.log('Local model detected - not binding tools to avoid forced tool calls');
-      this.boundModel = this.model;
-      return;
-    }
-
-    const kubernetesApiSchema = z.object({
-      url: z
-        .string()
-        .describe('URL to request, e.g., /api/v1/pods or /api/v1/namespaces/default/pods/pod-name'),
-      method: z.string().describe('HTTP method: GET, POST, PATCH, DELETE'),
-      body: z.string().optional().describe('Optional HTTP body'),
-    });
-
-    // Create tools array
-    const toolsArray = [];
-
-    // API Request tool
-    const kubeTool = tool(
-      async ({ url, method, body }) => {
-        try {
-          if (!this.toolHandler) {
-            throw new Error('Tool handler is not configured');
-          }
-
-          console.log(`Processing kubernetes_api_request tool: ${method} ${url}`);
-
-          // This is our placeholder response for non-GET requests - they will be prompted later
-          if (method.toUpperCase() !== 'GET') {
-            return JSON.stringify({
-              status: 'pending_confirmation',
-              message: `This ${method.toUpperCase()} request requires confirmation before proceeding.`,
-              request: {
-                method: method.toUpperCase(),
-                url: url,
-                body: body || null,
-              },
-              // Include full resource info for PATCH requests
-              fullResource: method.toUpperCase() === 'PATCH' && body,
-            });
-          }
-
-          // Only GET requests execute immediately
-          const response = await this.toolHandler(url, method, body);
-
-          // Include request metadata with the response
-          const enhancedResponse = {
-            request: {
-              method: method.toUpperCase(),
-              url: url,
-              body: body || null,
-            },
-            response: response,
-          };
-
-          return JSON.stringify(enhancedResponse);
-        } catch (error) {
-          console.error('Error in kubeTool:', error);
-          return JSON.stringify({
-            error: true,
-            message: error.message,
-            request: {
-              method: method.toUpperCase(),
-              url: url,
-              body: body || null,
-            },
-          });
-        }
-      },
-      {
-        name: 'kubernetes_api_request',
-        description:
-          'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
-        schema: kubernetesApiSchema,
-      }
-    );
-    toolsArray.push(kubeTool);
-
-    try {
-      this.boundModel = this.model.bindTools(toolsArray);
-    } catch (error) {
-      console.error(`Error binding tools to ${this.providerId} model:`, error);
-      this.boundModel = this.model;
-    }
+    // Bind all tools to the model
+    this.boundModel = this.toolManager.bindToModel(this.model, this.providerId);
   }
 
   private convertPromptsToMessages(prompts: Prompt[]): BaseMessage[] {
@@ -335,11 +238,10 @@ export default class LangChainManager extends AIManager {
         console.log('Local model analysis:', {
           userMessage: message,
           needsToolCall,
-          hasToolHandler: !!this.toolHandler,
           responseContentLength: responseContent.length,
         });
 
-        if (needsToolCall && this.toolHandler) {
+        if (needsToolCall) {
           // For local models, we'll manually construct a tool call if needed
           console.log('Local model response suggests tool usage needed, but tools not bound');
 
@@ -385,32 +287,32 @@ export default class LangChainManager extends AIManager {
         this.history.push(assistantPrompt);
 
         // Process each tool call
+        const toolResponses: Array<{ toolCall: any; response: ToolResponse }> = [];
+
         for (const toolCall of toolCalls) {
           const args = JSON.parse(toolCall.function.arguments);
           console.log('Processing tool call:', args);
 
           try {
-            // Execute the tool call
-            const result = await this.toolHandler?.(
-              args.url,
-              args.method,
-              args.body,
+            // Execute the tool call using ToolManager
+            const toolResponse = await this.toolManager.executeTool(
+              toolCall.function.name,
+              args,
               toolCall.id,
               assistantPrompt
             );
 
-            // Don't add tool response for non-GET methods - they'll be handled by confirmation dialog
-            if (args.method.toUpperCase() !== 'GET') {
-              continue;
-            }
+            toolResponses.push({ toolCall, response: toolResponse });
 
-            // Add response to history for GET requests
-            this.history.push({
-              role: 'tool',
-              content: typeof result === 'string' ? result : JSON.stringify(result),
-              toolCallId: toolCall.id,
-              name: toolCall.function.name,
-            });
+            // Only add to history if the tool response indicates we should
+            if (toolResponse.shouldAddToHistory) {
+              this.history.push({
+                role: 'tool',
+                content: toolResponse.content,
+                toolCallId: toolCall.id,
+                name: toolCall.function.name,
+              });
+            }
           } catch (error) {
             console.error('Error executing tool call:', error);
             this.history.push({
@@ -425,23 +327,13 @@ export default class LangChainManager extends AIManager {
           }
         }
 
-        // Only process follow-up for GET requests
-        if (
-          toolCalls.every(tc => {
-            const args = JSON.parse(tc.function.arguments);
-            return args.method.toUpperCase() === 'GET';
-          })
-        ) {
-          // Check if there are any tool responses in the history before calling processToolResponses
-          const hasToolResponses = this.history.some(
-            prompt => prompt.role === 'tool' && prompt.toolCallId
-          );
-          if (hasToolResponses) {
-            return await this.processToolResponses();
-          } else {
-            // If no tool responses, just return the assistant prompt
-            return assistantPrompt;
-          }
+        // Only process follow-up if all tool responses indicate we should
+        const shouldProcessFollowUp = toolResponses.every(({ response }) =>
+          response.shouldProcessFollowUp
+        );
+
+        if (shouldProcessFollowUp) {
+          return await this.processToolResponses();
         }
 
         return assistantPrompt;
