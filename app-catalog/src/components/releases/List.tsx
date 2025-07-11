@@ -31,13 +31,15 @@ export default function ReleaseList({ fetchReleases = listReleases }) {
             label: 'Name',
             getter: release => (
               <Box display="flex" alignItems="center">
-                <Box>
-                  <img
-                    width={50}
-                    src={release.chart.metadata.icon}
-                    alt={release.chart.metadata.name}
-                  />
-                </Box>
+                {release.chart.metadata.icon && (
+                  <Box>
+                    <img
+                      width={50}
+                      src={release.chart.metadata.icon}
+                      alt={release.chart.metadata.name}
+                    />
+                  </Box>
+                )}
                 <Box ml={1}>
                   <Link
                     routeName="/helm/:namespace/releases/:releaseName"
