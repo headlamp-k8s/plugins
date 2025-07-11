@@ -27,6 +27,7 @@ import TextStreamContainer from './textstream';
 import { getSettingsURL, useGlobalState } from './utils';
 import { generateContextDescription } from './utils/contextGenerator';
 import { useDynamicPrompts } from './utils/promptGenerator';
+import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import {
   getActiveConfig,
   getSavedConfigurations,
@@ -75,18 +76,9 @@ export default function AIPrompt(props: {
   const [editorTitle, setEditorTitle] = React.useState('');
   const [resourceType, setResourceType] = React.useState('');
   const [isDelete, setIsDelete] = React.useState(false);
-  const [showApiConfirmation, setShowApiConfirmation] = React.useState(false);
-  const [apiRequest, setApiRequest] = React.useState<{
-    url: string;
-    method: string;
-    body?: string;
-    cluster?: string;
-    toolCallId?: string;
-    pendingPrompt?: Prompt;
-  } | null>(null);
-  const [apiResponse, setApiResponse] = React.useState<any>(null);
-  const [apiLoading, setApiLoading] = React.useState(false);
-  const [apiRequestError, setApiRequestError] = React.useState<string | null>(null);
+
+  // Use the Kubernetes tool UI hook
+  const { state: kubernetesUI, callbacks: kubernetesCallbacks } = useKubernetesToolUI();
 
   const handleOperationSuccess = (response: any) => {
     // Add the response to the conversation
@@ -328,20 +320,20 @@ export default function AIPrompt(props: {
 
   // Function to handle API confirmation dialog confirmation
   const handleApiConfirmation = async (body, resourceInfo) => {
-    if (!apiRequest) return;
+    if (!kubernetesUI.apiRequest) return;
 
-    const { url, method } = apiRequest;
-    setApiRequest(null);
+    const { url, method } = kubernetesUI.apiRequest;
+    kubernetesCallbacks.setApiRequest(null);
 
-    await handleActualApiRequest(url, method, body, handleApiDialogClose, aiManager, resourceInfo);
+    await kubernetesCallbacks.handleActualApiRequest(url, method, body, handleApiDialogClose, aiManager, resourceInfo);
   };
 
   const handleApiDialogClose = () => {
-    setShowApiConfirmation(false);
-    setApiRequest(null);
-    setApiResponse(null);
-    setApiRequestError(null);
-    setApiLoading(false);
+    kubernetesCallbacks.setShowApiConfirmation(false);
+    kubernetesCallbacks.setApiRequest(null);
+    kubernetesCallbacks.setApiResponse(null);
+    kubernetesCallbacks.setApiRequestError(null);
+    kubernetesCallbacks.setApiLoading(false);
   };
 
   React.useEffect(() => {
@@ -367,64 +359,24 @@ export default function AIPrompt(props: {
 
     // Configure AI manager with tools
     if (aiManager.configureTools) {
+      // Create the Kubernetes tool context
+      const kubernetesContext = {
+        ui: kubernetesUI,
+        callbacks: {
+          ...kubernetesCallbacks,
+          handleActualApiRequest: (url, method, body, onClose, aiManagerParam, resourceInfo) =>
+            kubernetesCallbacks.handleActualApiRequest(url, method, body, onClose, aiManagerParam || aiManager, resourceInfo)
+        },
+        selectedClusters,
+        aiManager, // Add the AI manager to the context
+      };
+
       aiManager.configureTools(
-        [
-          {
-            type: 'function',
-            function: {
-              name: 'http_request',
-              description:
-                'HTTP Request to a kubernetes API server, kube-apiserver. Use for all operations including fetching pod logs and filtering resources. If cluster is not provided, the user will be prompted to select from available clusters.',
-              parameters: {
-                type: 'object',
-                properties: {
-                  url: {
-                    type: 'string',
-                    description:
-                      'URL to request. Examples:\n' +
-                      '- List all pods: /api/v1/pods\n' +
-                      '- List pods in namespace: /api/v1/namespaces/default/pods\n' +
-                      '- List pods with field selector: /api/v1/pods?fieldSelector=status.phase=Failed\n' +
-                      '- List pods with label selector: /api/v1/pods?labelSelector=app=nginx\n' +
-                      '- Get pod logs: /api/v1/namespaces/default/pods/podinfo-123/log?container=podinfod&tailLines=100\n' +
-                      '- List deployments: /apis/apps/v1/deployments\n' +
-                      '- List services: /api/v1/services',
-                  },
-                  method: {
-                    type: 'string',
-                    description: 'HTTP method to use. Common values: GET, POST, PATCH, DELETE',
-                    enum: ['GET', 'POST', 'PATCH', 'DELETE'],
-                  },
-                  body: {
-                    type: 'string',
-                    description: 'HTTP request body, required for POST/PATCH operations',
-                  },
-                  cluster: {
-                    type: 'string',
-                    description:
-                      'Kubernetes cluster identifier. Available clusters: ' +
-                      JSON.stringify(selectedClusters),
-                  },
-                },
-                required: ['url', 'method'],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        async (url, method, body = '', cluster = '') => {
-          if (!cluster) {
-            setApiError(
-              'Cluster not specified. Please choose one from: ' + JSON.stringify(selectedClusters)
-            );
-            return;
-          }
-          setApiRequest({ url, method, body, cluster });
-          setShowApiConfirmation(true);
-        }
+        [], // No longer need to pass the tool definitions manually
+        kubernetesContext
       );
     }
-  }, [_pluginSetting.event, aiManager, clusterWarnings]);
+  }, [_pluginSetting.event, aiManager, clusterWarnings, kubernetesUI, kubernetesCallbacks, selectedClusters]);
 
   useEffect(() => {
     if (openPopup && aiManager) {
@@ -902,15 +854,15 @@ export default function AIPrompt(props: {
 
       {/* API Confirmation Dialog */}
       <ApiConfirmationDialog
-        open={showApiConfirmation}
+        open={kubernetesUI.showApiConfirmation}
         onClose={handleApiDialogClose}
-        method={apiRequest?.method || ''}
-        url={apiRequest?.url || ''}
-        body={apiRequest?.body}
+        method={kubernetesUI.apiRequest?.method || ''}
+        url={kubernetesUI.apiRequest?.url || ''}
+        body={kubernetesUI.apiRequest?.body}
         onConfirm={handleApiConfirmation}
-        isLoading={apiLoading}
-        result={apiResponse}
-        error={apiRequestError}
+        isLoading={kubernetesUI.apiLoading}
+        result={kubernetesUI.apiResponse}
+        error={kubernetesUI.apiRequestError}
       />
     </div>
   );
