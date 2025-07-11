@@ -81,67 +81,63 @@ export function FluxOverview() {
     );
   }, [pods]);
 
+  // Collect all resource classes in an array with their display condition
+  const resourceClasses = [
+    kustomizationResourceClass,
+    helmReleaseResourceClass,
+    gitRepoResourceClass,
+    ociRepoResourceClass,
+    bucketRepoResourceClass,
+    helmRepoResourceClass,
+    helmChartResourceClass,
+    alertsResourceClass,
+    providersResourceClass,
+    receiversResourceClass,
+    imageRepositoryResourceClass,
+    imagePolicyResourceClass,
+    imageUpdateAutomationResourceClass,
+  ].filter(Boolean);
+
+  // Helper to get failed count for a resource class
+  function getFailedCount(resourceClass) {
+    // Use the same logic as in FluxOverviewChart
+    const [crds] = resourceClass.useList ? resourceClass.useList() : [];
+    if (!crds) return 0;
+    // getStatus is defined inside FluxOverviewChart, so redefine here
+    let failed = 0;
+    for (const resource of crds) {
+      if (!resource.jsonData.status) {
+        continue;
+      } else if (resource.jsonData.spec?.suspend) {
+        continue;
+      } else if (Array.isArray(resource.jsonData.status.conditions)) {
+        if (
+          !resource.jsonData.status.conditions.some(
+            condition => condition.type === 'Ready' && condition.status === 'True'
+          )
+        ) {
+          failed++;
+        }
+      }
+    }
+    return failed;
+  }
+
+  // Sort resource classes by failed count descending
+  const sortedResourceClasses = resourceClasses
+    .map(rc => ({ rc, failed: getFailedCount(rc) }))
+    .sort((a, b) => b.failed - a.failed)
+    .map(obj => obj.rc);
+
   return (
     <>
       <SectionBox title="Flux Overview">
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          sx={{
-            flexWrap: 'wrap',
-          }}
-        >
-          <Box width="300px" m={2}>
-            {kustomizationResourceClass && (
-              <FluxOverviewChart resourceClass={kustomizationResourceClass} />
-            )}
-          </Box>
-          <Box width="300px" m={2}>
-            {helmReleaseResourceClass && (
-              <FluxOverviewChart resourceClass={helmReleaseResourceClass} />
-            )}
-          </Box>
-          <Box width="300px" m={2}>
-            {gitRepoResourceClass && <FluxOverviewChart resourceClass={gitRepoResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {ociRepoResourceClass && <FluxOverviewChart resourceClass={ociRepoResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {bucketRepoResourceClass && (
-              <FluxOverviewChart resourceClass={bucketRepoResourceClass} />
-            )}
-          </Box>
-          <Box width="300px" m={2}>
-            {helmRepoResourceClass && <FluxOverviewChart resourceClass={helmRepoResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {helmChartResourceClass && <FluxOverviewChart resourceClass={helmChartResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {alertsResourceClass && <FluxOverviewChart resourceClass={alertsResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {providersResourceClass && <FluxOverviewChart resourceClass={providersResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {receiversResourceClass && <FluxOverviewChart resourceClass={receiversResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {imageRepositoryResourceClass && (
-              <FluxOverviewChart resourceClass={imageRepositoryResourceClass} />
-            )}
-          </Box>
-          <Box width="300px" m={2}>
-            {imagePolicyResourceClass && (
-              <FluxOverviewChart resourceClass={imagePolicyResourceClass} />
-            )}
-          </Box>
-          <Box width="300px" m={2}>
-            {imageUpdateAutomationResourceClass && (
-              <FluxOverviewChart resourceClass={imageUpdateAutomationResourceClass} />
-            )}
-          </Box>
+        <Box display="flex" justifyContent="space-between" sx={{ flexWrap: 'wrap' }}>
+          {sortedResourceClasses.map((resourceClass, idx) => (
+            <Box width="300px" m={2} key={resourceClass.apiName || idx}>
+              <FluxOverviewChart resourceClass={resourceClass} />
+            </Box>
+          ))}
         </Box>
       </SectionBox>
       <SectionBox title="Flux Checks">
@@ -334,52 +330,63 @@ function FluxOverviewChart({ resourceClass }) {
     let success: number = 0;
     let failed: number = 0;
     let suspended: number = 0;
+    let processing: number = 0;
 
     for (const resource of customResources) {
+      // If no status at all, treat as success (original logic)
       if (!resource.jsonData.status) {
         success++;
       } else if (resource.jsonData.spec?.suspend) {
         suspended++;
-      } else if (
-        resource.jsonData.status.conditions?.some(
-          condition => condition.type === 'Ready' && condition.status === 'True'
-        )
-      ) {
-        success++;
+      } else if (Array.isArray(resource.jsonData.status.conditions)) {
+        if (
+          resource.jsonData.status.conditions.some(
+            condition => condition.type === 'Ready' && condition.status === 'True'
+          )
+        ) {
+          success++;
+        } else {
+          failed++;
+        }
       } else {
-        failed++;
+        // status exists but no conditions array: treat as processing
+        processing++;
       }
     }
 
-    return [success, failed, suspended];
+    return [success, failed, suspended, processing];
   }
 
   function makeData() {
     if (crds) {
       const total = crds.length;
-      const [success, failed, suspended] = getStatus(crds);
+      const [success, failed, suspended, processing] = getStatus(crds);
 
       // Calculate actual percentages
-      // Use Math.round to ensure whole numbers
       const successPercent = total > 0 ? Math.round((success / total) * 100) : 0;
       const failedPercent = total > 0 ? Math.round((failed / total) * 100) : 0;
       const suspendedPercent = total > 0 ? Math.round((suspended / total) * 100) : 0;
+      const processingPercent = total > 0 ? Math.round((processing / total) * 100) : 0;
 
       // Ensure percentages add up to 100%
       let adjustedSuccessPercent = successPercent;
       let adjustedFailedPercent = failedPercent;
       let adjustedSuspendedPercent = suspendedPercent;
+      let adjustedProcessingPercent = processingPercent;
 
-      const sum = successPercent + failedPercent + suspendedPercent;
+      const sum = successPercent + failedPercent + suspendedPercent + processingPercent;
       if (sum !== 100 && total > 0) {
         const diff = 100 - sum;
         // Add the difference to the largest segment
-        if (successPercent >= failedPercent && successPercent >= suspendedPercent) {
+        const max = Math.max(successPercent, failedPercent, suspendedPercent, processingPercent);
+        if (max === successPercent) {
           adjustedSuccessPercent += diff;
-        } else if (failedPercent >= successPercent && failedPercent >= suspendedPercent) {
+        } else if (max === failedPercent) {
           adjustedFailedPercent += diff;
-        } else {
+        } else if (max === suspendedPercent) {
           adjustedSuspendedPercent += diff;
+        } else {
+          adjustedProcessingPercent += diff;
         }
       }
 
@@ -399,6 +406,11 @@ function FluxOverviewChart({ resourceClass }) {
           value: adjustedSuspendedPercent,
           fill: '#FDE100',
         },
+        {
+          name: 'processing',
+          value: adjustedProcessingPercent,
+          fill: '#2196F3',
+        },
       ];
     }
     return [];
@@ -407,7 +419,7 @@ function FluxOverviewChart({ resourceClass }) {
   function makeLegend() {
     if (crds) {
       const total = crds.length;
-      const [success, failed, suspended] = getStatus(crds);
+      const [success, failed, suspended, processing] = getStatus(crds);
 
       return (
         <Box>
@@ -427,9 +439,14 @@ function FluxOverviewChart({ resourceClass }) {
                 {failed}/{total} failed
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
               <Box>
                 {suspended}/{total} suspended
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box>
+                {processing}/{total} processing
               </Box>
             </Box>
           </Box>
