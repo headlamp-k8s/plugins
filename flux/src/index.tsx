@@ -228,6 +228,7 @@ registerKindIcon('Kustomization', {
   icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
   color: 'rgb(50, 108, 229)',
 });
+
 registerKindIcon('OCIRepository', {
   icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
   color: 'rgb(50, 108, 229)',
