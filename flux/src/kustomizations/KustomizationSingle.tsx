@@ -105,6 +105,10 @@ function KustomizationDetails(props) {
   }
 
   function prepareActions() {
+    if (!cr) {
+      return [];
+    }
+
     const actions = [];
     actions.push(<SyncWithSourceAction resource={cr} source={source} />);
     actions.push(<SyncWithoutSourceAction resource={cr} />);
