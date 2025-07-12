@@ -18,6 +18,7 @@ import { NodeClassDetailView } from './NodeClass/Details';
 import { NodeClasses } from './NodeClass/List';
 import { NodePoolDetailView } from './NodePool/Details';
 import { NodePools } from './NodePool/List';
+import { PendingPods } from './PendingPods';
 
 registerSidebarEntry({
   parent: null,
@@ -67,3 +68,17 @@ registerRoute({
   component: NodePoolDetailView,
   name: 'nodepools-detail',
 });
+
+registerSidebarEntry({
+  parent: 'karpenter.k8s',
+  name: 'pending-pods',
+  label: 'Pending Pods',
+  url: '/karpenter/pending-pods',
+});
+
+registerRoute({
+  path: '/karpenter/pending-pods',
+  sidebar: 'pending-pods',
+  component: PendingPods,
+  name: 'pending-pods-view'
+})
