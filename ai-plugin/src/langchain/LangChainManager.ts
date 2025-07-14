@@ -333,7 +333,14 @@ export default class LangChainManager extends AIManager {
             return args.method.toUpperCase() === 'GET';
           })
         ) {
-          return await this.processToolResponses();
+          // Check if there are any tool responses in the history before calling processToolResponses
+          const hasToolResponses = this.history.some(prompt => prompt.role === 'tool' && prompt.toolCallId);
+          if (hasToolResponses) {
+            return await this.processToolResponses();
+          } else {
+            // If no tool responses, just return the assistant prompt
+            return assistantPrompt;
+          }
         }
 
         return assistantPrompt;
@@ -362,6 +369,18 @@ export default class LangChainManager extends AIManager {
   public async processToolResponses(): Promise<Prompt> {
     console.log('Processing tool responses...');
 
+    // Check if there are any tool responses in the history
+    const hasToolResponses = this.history.some(prompt => prompt.role === 'tool' && prompt.toolCallId);
+    if (!hasToolResponses) {
+      console.log('No tool responses found, returning early');
+      // If no tool responses, return the last assistant message
+      const lastAssistantMessage = this.history.slice().reverse().find(prompt => prompt.role === 'assistant');
+      return lastAssistantMessage || {
+        role: 'assistant',
+        content: 'No tool responses to process.',
+      };
+    }
+
     let systemPromptContent = basePrompt;
     if (this.currentContext) {
       systemPromptContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
@@ -375,8 +394,23 @@ export default class LangChainManager extends AIManager {
     const MAX_RESPONSE_SIZE = 500000; // ~500KB limit for total responses
 
     try {
+      // Find the last assistant message that contains tool calls
+      let lastAssistantWithToolsIndex = -1;
+      for (let i = this.history.length - 1; i >= 0; i--) {
+        const prompt = this.history[i];
+        if (prompt.role === 'assistant' && prompt.toolCalls && prompt.toolCalls.length > 0) {
+          lastAssistantWithToolsIndex = i;
+          break;
+        }
+      }
+
       // Validate and sanitize tool responses before adding to messages
-      for (const prompt of this.history) {
+      // Only include messages up to the last assistant message with tool calls
+      const messagesToProcess = lastAssistantWithToolsIndex >= 0 
+        ? this.history.slice(0, lastAssistantWithToolsIndex + 1)
+        : this.history;
+
+      for (const prompt of messagesToProcess) {
         if (prompt.role === 'tool' && prompt.toolCallId) {
           // Validate the tool response
           if (!prompt.content) {
@@ -429,7 +463,9 @@ export default class LangChainManager extends AIManager {
               })
             );
           }
-        } else {
+        } else if (prompt.role !== 'assistant' || !prompt.toolCalls || prompt.toolCalls.length === 0) {
+          // Only include non-assistant messages or assistant messages without tool calls
+          // This ensures we don't include the assistant message that contains tool calls
           console.log('Adding non-tool prompt to messages:', {
             role: prompt.role,
             contentLength: prompt.content?.length || 0,
@@ -441,7 +477,8 @@ export default class LangChainManager extends AIManager {
       const modelToUse = this.boundModel || this.model;
       console.log(
         'Invoking model with messages:',
-        messages.map(m => ({
+        messages.map((m, index) => ({
+          index,
           type: m.constructor.name,
           // Safely access content without calling _getContent
           length:
@@ -452,6 +489,12 @@ export default class LangChainManager extends AIManager {
               : 0,
         }))
       );
+      
+      // Log the last message type to help debug message order issues
+      if (messages.length > 0) {
+        const lastMessage = messages[messages.length - 1];
+        console.log('Last message type:', lastMessage.constructor.name);
+      }
 
       try {
         // Add timeout for model invocation
@@ -564,6 +607,12 @@ export default class LangChainManager extends AIManager {
         };
 
         console.log('Assistant prompt created from response');
+
+        // Remove any existing assistant messages that come after the last tool call
+        // to prevent message order issues
+        if (lastAssistantWithToolsIndex >= 0) {
+          this.history = this.history.slice(0, lastAssistantWithToolsIndex + 1);
+        }
 
         this.history.push(assistantPrompt);
         return assistantPrompt;
