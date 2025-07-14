@@ -75,24 +75,25 @@ export default function TextStreamContainer({
 
   // Scroll to latest message when new messages appear, but only if already near bottom
   useEffect(() => {
-    // Small delay to ensure DOM is updated before scrolling
-    setTimeout(() => {
-      if (isNearBottom() || isLoading) {
+    // Only auto-scroll if user is already near bottom
+    if (isNearBottom()) {
+      // Small delay to ensure DOM is updated before scrolling
+      setTimeout(() => {
         scrollToBottom();
-      } else if (history.length > 0) {
-        // If not at bottom, show the scroll button
-        setShowScrollButton(true);
-      }
-    }, 100);
-  }, [history, isLoading, isNearBottom, scrollToBottom]);
-
-  // Additional effect for when loading finishes, to ensure we scroll to the final content
-  useEffect(() => {
-    if (!isLoading && history.length > 0) {
-      // Small delay to ensure content has rendered
-      setTimeout(scrollToLastMessage, 200);
+      }, 100);
+    } else if (history.length > 0) {
+      // If not at bottom, show the scroll button
+      setShowScrollButton(true);
     }
-  }, [isLoading, history.length, scrollToLastMessage]);
+  }, [history, isNearBottom, scrollToBottom]);
+
+  // Auto-scroll only when loading starts (not when it finishes)
+  useEffect(() => {
+    if (isLoading && isNearBottom()) {
+      // Small delay to ensure content has rendered
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [isLoading, isNearBottom, scrollToBottom]);
 
   useEffect(() => {
     // Collect tool responses
