@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef,useState } from 'react';
 import { parseKubernetesYAML } from '../utils/SampleYamlLibrary';
 
 interface YamlDisplayProps {
@@ -51,7 +51,7 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
         // instead of in one go.
         editor.layout({ width: 0, height: editorHeight });
         currentResizingHandler = setTimeout(() => {
-          console.log('>>>>>>>>>>>>>>>>>>>>>>>RESIZE')
+          console.log('>>>>>>>>>>>>>>>>>>>>>>>RESIZE');
           if (editor) {
             // If we set the width to the same width as the parent, the editor
             // will trigger a resize of the parent and this will hit race conditions
@@ -69,18 +69,21 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
   }, [editor]);
 
   // Memoize editor options to prevent re-creation
-  const editorOptions = useMemo(() => ({
-    readOnly: true,
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    folding: true,
-    wordWrap: 'on' as const,
-    automaticLayout: false,
-    scrollbar: {
-      horizontal: 'hidden' as const,
-      vertical: 'auto' as const,
-    },
-  }), []);
+  const editorOptions = useMemo(
+    () => ({
+      readOnly: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      folding: true,
+      wordWrap: 'on' as const,
+      automaticLayout: false,
+      scrollbar: {
+        horizontal: 'hidden' as const,
+        vertical: 'auto' as const,
+      },
+    }),
+    []
+  );
 
   // Function to properly format YAML indentation
   const formatYaml = (yamlString: string): string => {
@@ -200,24 +203,26 @@ const YamlDisplay: React.FC<YamlDisplayProps> = ({ yaml, title, onOpenInEditor }
           }}
           ref={parentRef}
         >
-            <div style={{
+          <div
+            style={{
               height: `${editorHeight}px`,
               width: '100%',
               maxWidth: '100%',
               position: 'relative',
               overflow: 'hidden',
               boxSizing: 'border-box',
-            }}>
-              <Editor
-                language="yaml"
-                theme={theme.palette.mode === 'dark' ? 'vs-dark' : 'light'}
-                value={processedYaml}
-                options={editorOptions}
-                height={editorHeight}
-                width="100%"
-                onMount={handleEditorMount}
-              />
-            </div>
+            }}
+          >
+            <Editor
+              language="yaml"
+              theme={theme.palette.mode === 'dark' ? 'vs-dark' : 'light'}
+              value={processedYaml}
+              options={editorOptions}
+              height={editorHeight}
+              width="100%"
+              onMount={handleEditorMount}
+            />
+          </div>
         </Box>
       </Paper>
     </Box>

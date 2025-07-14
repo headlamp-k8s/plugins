@@ -104,6 +104,10 @@ export default class LangChainManager extends AIManager {
           if (!config.baseUrl) {
             throw new Error('Base URL is required for local models');
           }
+          console.log('Creating ChatOllama with config:', {
+            baseUrl: config.baseUrl,
+            model: config.model,
+          });
           return new ChatOllama({
             baseUrl: config.baseUrl,
             model: config.model,
@@ -130,6 +134,13 @@ export default class LangChainManager extends AIManager {
   ): void {
     // Store the handlers
     this.toolHandler = handler;
+
+    // For local models, don't bind tools to avoid forcing tool calls
+    if (this.providerId === 'local') {
+      console.log('Local model detected - not binding tools to avoid forced tool calls');
+      this.boundModel = this.model;
+      return;
+    }
 
     const kubernetesApiSchema = z.object({
       url: z
@@ -264,9 +275,97 @@ export default class LangChainManager extends AIManager {
     messages.unshift(systemMessage);
     const modelToUse = this.boundModel || this.model;
 
+    // Log messages being sent to local models for debugging
+    if (this.providerId === 'local') {
+      console.log(
+        'Sending messages to local model:',
+        messages.map((msg, index) => ({
+          index,
+          type: msg.constructor.name,
+          content:
+            typeof msg.content === 'string'
+              ? msg.content.substring(0, 100) + '...'
+              : 'non-string content',
+        }))
+      );
+    }
+
     try {
-      const response = await modelToUse.invoke(messages);
+      // Add timeout for local models since they might be slower
+      let response;
+      if (this.providerId === 'local') {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Local model response timed out')), 120000); // 2 minute timeout for local models
+        });
+
+        const responsePromise = modelToUse.invoke(messages);
+        response = await Promise.race([responsePromise, timeoutPromise]);
+      } else {
+        response = await modelToUse.invoke(messages);
+      }
+
       console.log('Model response received:', response);
+
+      // For local models, handle responses differently
+      if (this.providerId === 'local') {
+        console.log('Local model response received:', {
+          content:
+            response.content?.substring(0, 200) + (response.content?.length > 200 ? '...' : ''),
+          contentLength: response.content?.length || 0,
+          hasToolCalls: !!response.tool_calls?.length,
+        });
+
+        // Ensure we have valid content
+        let responseContent = response.content || '';
+        if (typeof responseContent !== 'string') {
+          console.warn('Local model returned non-string content, converting to string');
+          responseContent = String(responseContent);
+        }
+
+        // If response is empty or very short, provide a fallback
+        if (!responseContent.trim()) {
+          console.warn('Local model returned empty response, providing fallback');
+          responseContent =
+            "I'm sorry, but I couldn't generate a response. Please try rephrasing your question or check if your local model is running properly.";
+        }
+
+        // Check if the response suggests tool usage is needed
+        const needsToolCall = this.shouldUseToolCall(message, responseContent);
+
+        console.log('Local model analysis:', {
+          userMessage: message,
+          needsToolCall,
+          hasToolHandler: !!this.toolHandler,
+          responseContentLength: responseContent.length,
+        });
+
+        if (needsToolCall && this.toolHandler) {
+          // For local models, we'll manually construct a tool call if needed
+          console.log('Local model response suggests tool usage needed, but tools not bound');
+
+          // Add a note to the response about using the API tool
+          const enhancedContent =
+            responseContent +
+            '\n\n*Note: To get actual cluster data, you can use the kubernetes_api_request tool in the interface.*';
+
+          const assistantPrompt: Prompt = {
+            role: 'assistant',
+            content: enhancedContent,
+          };
+          this.history.push(assistantPrompt);
+          console.log('Local model assistant prompt created:', assistantPrompt);
+          return assistantPrompt;
+        } else {
+          // Simple response, no tool calls needed
+          const assistantPrompt: Prompt = {
+            role: 'assistant',
+            content: responseContent,
+          };
+          this.history.push(assistantPrompt);
+          console.log('Local model simple response created:', assistantPrompt);
+          return assistantPrompt;
+        }
+      }
 
       if (response.tool_calls?.length) {
         const toolCalls = response.tool_calls.map(tc => ({
@@ -334,7 +433,9 @@ export default class LangChainManager extends AIManager {
           })
         ) {
           // Check if there are any tool responses in the history before calling processToolResponses
-          const hasToolResponses = this.history.some(prompt => prompt.role === 'tool' && prompt.toolCallId);
+          const hasToolResponses = this.history.some(
+            prompt => prompt.role === 'tool' && prompt.toolCallId
+          );
           if (hasToolResponses) {
             return await this.processToolResponses();
           } else {
@@ -355,6 +456,31 @@ export default class LangChainManager extends AIManager {
       return assistantPrompt;
     } catch (error) {
       console.error('Error in userSend:', error);
+
+      // Special handling for local model errors
+      if (this.providerId === 'local') {
+        let errorMessage = error.message;
+
+        if (error.message.includes('timed out')) {
+          errorMessage =
+            'Local model response timed out. Please check if your local model is running and try again.';
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          errorMessage =
+            'Unable to connect to local model. Please check if your local model server is running at the configured URL.';
+        } else if (error.message.includes('model')) {
+          errorMessage =
+            'Local model error. Please check if the specified model is available in your local model server.';
+        }
+
+        const errorPrompt: Prompt = {
+          role: 'assistant',
+          content: `Error: ${errorMessage}`,
+          error: true,
+        };
+        this.history.push(errorPrompt);
+        return errorPrompt;
+      }
+
       const errorPrompt: Prompt = {
         role: 'assistant',
         content: `Sorry, there was an error processing your request: ${error.message}`,
@@ -365,20 +491,69 @@ export default class LangChainManager extends AIManager {
     }
   }
 
+  // Helper method to determine if a tool call is needed for local models
+  private shouldUseToolCall(userMessage: string, responseContent: string): boolean {
+    const message = userMessage.toLowerCase();
+    const response = responseContent.toLowerCase();
+
+    // Keywords that suggest cluster data is needed
+    const clusterDataKeywords = [
+      'list',
+      'show',
+      'get',
+      'find',
+      'check',
+      'what',
+      'how many',
+      'status',
+      'pods',
+      'services',
+      'deployments',
+      'nodes',
+      'namespaces',
+      'configmaps',
+      'secrets',
+      'ingress',
+      'persistentvolumeclaims',
+      'events',
+      'logs',
+    ];
+
+    // Check if user is asking for cluster data
+    const askingForData = clusterDataKeywords.some(keyword => message.includes(keyword));
+
+    // Check if response suggests data is needed but not available
+    const needsData =
+      response.includes("i don't have access") ||
+      response.includes('i cannot see') ||
+      response.includes("i don't have the data") ||
+      response.includes('i would need to check') ||
+      response.includes('you would need to run');
+
+    return askingForData || needsData;
+  }
+
   // Change from 'protected' to 'public' to match the base class
   public async processToolResponses(): Promise<Prompt> {
     console.log('Processing tool responses...');
 
     // Check if there are any tool responses in the history
-    const hasToolResponses = this.history.some(prompt => prompt.role === 'tool' && prompt.toolCallId);
+    const hasToolResponses = this.history.some(
+      prompt => prompt.role === 'tool' && prompt.toolCallId
+    );
     if (!hasToolResponses) {
       console.log('No tool responses found, returning early');
       // If no tool responses, return the last assistant message
-      const lastAssistantMessage = this.history.slice().reverse().find(prompt => prompt.role === 'assistant');
-      return lastAssistantMessage || {
-        role: 'assistant',
-        content: 'No tool responses to process.',
-      };
+      const lastAssistantMessage = this.history
+        .slice()
+        .reverse()
+        .find(prompt => prompt.role === 'assistant');
+      return (
+        lastAssistantMessage || {
+          role: 'assistant',
+          content: 'No tool responses to process.',
+        }
+      );
     }
 
     let systemPromptContent = basePrompt;
@@ -406,9 +581,10 @@ export default class LangChainManager extends AIManager {
 
       // Validate and sanitize tool responses before adding to messages
       // Only include messages up to the last assistant message with tool calls
-      const messagesToProcess = lastAssistantWithToolsIndex >= 0 
-        ? this.history.slice(0, lastAssistantWithToolsIndex + 1)
-        : this.history;
+      const messagesToProcess =
+        lastAssistantWithToolsIndex >= 0
+          ? this.history.slice(0, lastAssistantWithToolsIndex + 1)
+          : this.history;
 
       for (const prompt of messagesToProcess) {
         if (prompt.role === 'tool' && prompt.toolCallId) {
@@ -463,7 +639,11 @@ export default class LangChainManager extends AIManager {
               })
             );
           }
-        } else if (prompt.role !== 'assistant' || !prompt.toolCalls || prompt.toolCalls.length === 0) {
+        } else if (
+          prompt.role !== 'assistant' ||
+          !prompt.toolCalls ||
+          prompt.toolCalls.length === 0
+        ) {
           // Only include non-assistant messages or assistant messages without tool calls
           // This ensures we don't include the assistant message that contains tool calls
           console.log('Adding non-tool prompt to messages:', {
@@ -489,7 +669,7 @@ export default class LangChainManager extends AIManager {
               : 0,
         }))
       );
-      
+
       // Log the last message type to help debug message order issues
       if (messages.length > 0) {
         const lastMessage = messages[messages.length - 1];
