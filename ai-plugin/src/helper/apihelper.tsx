@@ -4,6 +4,13 @@ import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
 import { isLogRequest, isSpecificResourceRequestHelper } from '.';
 
+
+const cleanUrl = (url: string) => {
+  const urlObj = new URL(url, 'http://dummy.com'); // Use dummy base for relative URLs
+  urlObj.searchParams.delete('allNamespaces');
+  return urlObj.pathname + urlObj.search;
+};
+
 // Function to handle the actual API request after confirmation
 export const handleActualApiRequest = async (
   url: string,
@@ -149,8 +156,10 @@ export const handleActualApiRequest = async (
 
   // For all other methods (e.g. GET)
   if (method.toUpperCase() === 'GET') {
+     const cleanedUrl = cleanUrl(url);
+    
     try {
-      const response = await clusterRequest(url, {
+      const response = await clusterRequest(cleanedUrl, {
         method,
         cluster,
         body: body === '' ? undefined : body,
@@ -160,7 +169,7 @@ export const handleActualApiRequest = async (
               'Content-Type':
                 method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
             }
-          : isSpecificResourceRequestHelper(url)
+          : isSpecificResourceRequestHelper(cleanedUrl)
           ? {
               'Content-Type':
                 method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
@@ -169,12 +178,12 @@ export const handleActualApiRequest = async (
           : {
               'Content-Type':
                 method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-              Accept: 'application/json;as=Table;g=meta.k8s.io;v=v1',
+              Accept: 'application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json',
             },
       });
 
       let formattedResponse = response;
-
+      console.log('Response from API request:', response);
       if (isLogRequest(url)) {
         if (
           typeof response === 'object' &&
@@ -184,124 +193,77 @@ export const handleActualApiRequest = async (
           formattedResponse = `Error fetching logs: ${response.message || 'Unknown error'}`;
         }
       } else if (response?.kind === 'Table') {
-        // Group rows by namespace
-        const rowsByNamespace = response.rows.reduce((acc: { [key: string]: any[] }, row: any) => {
-          const namespace = row.object.metadata.namespace;
-          if (!acc[namespace]) {
-            acc[namespace] = [];
-          }
-          acc[namespace].push(row);
-          return acc;
-        }, {});
+        // Extract resource kind from URL for list view link
+        const extractKindFromUrl = (url: string) => {
+          // Extract from URLs like /api/v1/pods, /apis/apps/v1/deployments, etc.
+          const match = url.match(/\/(?:api\/v1|apis\/[^\/]+\/[^\/]+)\/(?:namespaces\/[^\/]+\/)?([^\/\?]+)/);
+          return match ? match[1] : null;
+        };
+        
+        const resourceKind = extractKindFromUrl(url);
+        
+        // // Debug: Log the response structure to understand what columns we're getting
+        // console.log('Table columns:', response.columnDefinitions.map(col => col.name));
+        // console.log('First row data:', response.rows[0]?.cells);
+        // console.log('URL:', url);
+        
+        // Get column headers - limit to first 3 columns
+        const allColumnHeaders = response.columnDefinitions.map(col => col.name);
+        const columnHeaders = allColumnHeaders.slice(0, 3);
+        
+        // Create table header
+        const tableHeader = `| ${columnHeaders.join(' | ')} |`;
+        const tableSeparator = `|${columnHeaders.map(() => '---').join('|')}|`;
+        
+        // Limit to first 30 items
+        const maxItems = 30;
+        const itemsToShow = response.rows.slice(0, maxItems);
+        const totalItems = response.rows.length;
+        console.log("response is ",response)
 
-        // Create formatted output using small boxes instead of tables
-        const formattedRows = Object.entries(rowsByNamespace).map(
-          ([namespace, rows]: [string, any[]]) => {
-            const namespaceHeader = `\n### ${namespace} (${rows.length} items)`;
-            const resourceBoxes = rows.map((row: any) => {
-              // const name = row.cells[0] || '';
-              // Extract all available information from cells
-              const additionalInfo = [];
-              // console.log("name is ", name);
-              // // Always add name and namespace first
-              let boxContent = ``;
-              console.log('Row is ', row);
-              console.log('header is', response.columnDefinitions);
-              // Process each cell in the row to add relevant information
-              if (row.cells && row.cells.length > 1) {
-                // Get column headers to know what data we're displaying
-                const columnHeaders = response.columnDefinitions.map(col => col.name.toLowerCase());
-
-                // Add each cell's data if it has content and isn't already shown (name and namespace)
-                for (let i = 1; i < row.cells.length; i++) {
-                  const cellValue = row.cells[i];
-                  console.log('columnHeaders is ', columnHeaders);
-                  const header = columnHeaders[i] || `Field ${i + 1}`;
-                  console.log('Cell value is ', cellValue);
-                  console.log('Header is ', header);
-                  if (header === 'name' || header === 'namespace') {
-                    additionalInfo.push(
-                      `🔷 ${header.charAt(0).toUpperCase() + header.slice(1)}: ${cellValue}`
-                    );
-                    continue;
-                  }
-                  console.log('Processing cell:', { header, cellValue });
-                  // Skip empty values or already shown name/namespace
-                  // if (!cellValue || header === 'name' || header === 'namespace') continue;
-
-                  // Special treatment for common fields
-                  if (header === 'status') {
-                    const statusEmoji =
-                      cellValue.toLowerCase().includes('running') ||
-                      cellValue.toLowerCase().includes('active') ||
-                      cellValue.toLowerCase().includes('success')
-                        ? '✅'
-                        : '❌';
-                    additionalInfo.push(`🔶 Status: ${statusEmoji} ${cellValue}`);
-                  } else if (
-                    header.includes('cpu') ||
-                    header.includes('memory') ||
-                    header.includes('usage')
-                  ) {
-                    additionalInfo.push(
-                      `📊 ${header.charAt(0).toUpperCase() + header.slice(1)}: ${cellValue}`
-                    );
-                  } else if (header === 'age') {
-                    additionalInfo.push(`⏱️ Age: ${cellValue}`);
-                  } else if (header === 'ready') {
-                    additionalInfo.push(`🔄 Ready: ${cellValue}`);
-                  } else if (header === 'restarts') {
-                    additionalInfo.push(`🔁 Restarts: ${cellValue}`);
-                  } else if (header === 'message') {
-                    // For message fields, use a speech bubble emoji
-                    additionalInfo.push(`💬 Message: ${cellValue}`);
-                  } else {
-                    // For other fields, just capitalize the header
-                    additionalInfo.push(
-                      `⚙️ ${header.charAt(0).toUpperCase() + header.slice(1)}: ${cellValue}`
-                    );
-                  }
-                }
+        // Create table rows - only show first 3 columns and first 30 items
+        const tableRows = itemsToShow.map((row: any) => {
+          console.log("namespace is ", row.object?.metadata?.namespace);
+          const cells = row.cells || [];
+          const namespace = row.object?.metadata?.namespace;
+          
+          const paddedCells = columnHeaders.map((_, index) => {
+            let cellValue = cells[index] || '-';
+            
+            // For the name column (first column), create a special link marker
+            if (index === 0 && resourceKind && cellValue !== '-') {
+              const linkData = {
+                kind: resourceKind,
+                name: cellValue,
+                namespace: namespace
+              };
+              if(!namespace) {
+                cellValue = `[${linkData.name}](/c/${cluster}/${resourceKind}/${linkData.name})`;
+              } else {
+                cellValue = `[${linkData.name}](/c/${cluster}/${resourceKind}/${linkData.namespace}/${linkData.name})`;  
               }
-              console.log('Additional info is ', additionalInfo);
-              // Add any additional object metadata that might be useful
-              if (row.object && row.object.metadata) {
-                if (
-                  row.object.metadata.labels &&
-                  Object.keys(row.object.metadata.labels).length > 0
-                ) {
-                  const keyLabels = Object.entries(row.object.metadata.labels)
-                    .map(([key, value]) => `${key}=${value}`)
-                    .join(', ');
-                  additionalInfo.push(`🏷️ Labels: ${keyLabels}`);
-                }
-              }
+            }
+            
+            return cellValue;
+          });
+          return `| ${paddedCells.join(' | ')} |`;
+        });
+        
+        const tableContent = [
+          tableHeader,
+          tableSeparator,
+          ...tableRows,
+        ].join('\n');
 
-              // Combine all information
-              if (additionalInfo.length > 0) {
-                // sort additionalInfo such that name and namespace are first
-                additionalInfo.sort((a, b) => {
-                  if (a.includes('Name:') && !b.includes('Name:')) return -1;
-                  if (!a.includes('Name:') && b.includes('Name:')) return 1;
-                  if (a.includes('Namespace:') && !b.includes('Namespace:')) return -1;
-                  if (!a.includes('Namespace:') && b.includes('Namespace:')) return 1;
-                  return 0;
-                });
-                boxContent += '\n' + additionalInfo.join('\n');
-              }
-
-              return `\`\`\`\n${boxContent}\n\`\`\``;
-            });
-
-            return [namespaceHeader, ...resourceBoxes].join('\n');
-          }
-        );
+        // Add information about item limits and link to full list view
+        const limitInfo = totalItems > maxItems 
+          ? `\n\n*Showing ${maxItems} of ${totalItems} items. For the complete list, go to the [Headlamp ${resourceKind} list view](/c/${cluster}/${resourceKind}).*`
+          : '';
 
         formattedResponse = [
-          `Found ${response.rows.length} items across ${
-            Object.keys(rowsByNamespace).length
-          } namespaces:`,
-          ...formattedRows,
+          `Found ${totalItems} items:`,
+          tableContent,
+          limitInfo
         ].join('\n');
 
         // Always push to history, even if no items found
