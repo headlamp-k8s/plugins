@@ -80,5 +80,5 @@ registerRoute({
   path: '/karpenter/pending-pods',
   sidebar: 'pending-pods',
   component: PendingPods,
-  name: 'pending-pods-view'
-})
+  name: 'pending-pods-view',
+});

@@ -1,7 +1,7 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import { timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
-import {PendingPodsRenderer} from './List';
+import { PendingPodsRenderer } from './List';
 
 export interface PendingPod {
   id: string;
@@ -73,5 +73,5 @@ export const PodEvents = (props: { reason: string; kind: string; phase: string }
 
   const data = Array.from(podsWithEvents.values());
 
-  return <PendingPodsRenderer pods={data} />
+  return <PendingPodsRenderer pods={data} />;
 };
