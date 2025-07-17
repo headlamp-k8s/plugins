@@ -1,8 +1,8 @@
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Prompt } from '../../ai/manager';
-import { ToolBase, ToolResponse } from './ToolBase';
-import { AVAILABLE_TOOLS, getToolByName } from './registry';
 import { KubernetesTool, KubernetesToolContext } from './kubernetes';
+import { AVAILABLE_TOOLS, getToolByName } from './registry';
+import { ToolBase, ToolResponse } from './ToolBase';
 
 export class ToolManager {
   private tools: ToolBase[] = [];
@@ -91,8 +91,10 @@ export class ToolManager {
         return model;
       }
 
-      console.log(`Binding ${langChainTools.length} tools to ${providerId} model:`,
-        langChainTools.map(t => t.name));
+      console.log(
+        `Binding ${langChainTools.length} tools to ${providerId} model:`,
+        langChainTools.map(t => t.name)
+      );
 
       return model.bindTools(langChainTools);
     } catch (error) {
