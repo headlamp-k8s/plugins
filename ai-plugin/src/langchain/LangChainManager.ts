@@ -16,7 +16,7 @@ import { AzureChatOpenAI } from '@langchain/openai';
 import sanitizeHtml from 'sanitize-html';
 import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
-import { ToolManager, ToolResponse, KubernetesToolContext } from './tools';
+import { KubernetesToolContext, ToolManager, ToolResponse } from './tools';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -114,10 +114,7 @@ export default class LangChainManager extends AIManager {
     }
   }
 
-  configureTools(
-    tools: any[],
-    kubernetesContext: KubernetesToolContext
-  ): void {
+  configureTools(tools: any[], kubernetesContext: KubernetesToolContext): void {
     // Configure the Kubernetes context for the KubernetesTool
     this.toolManager.configureKubernetesContext(kubernetesContext);
 
@@ -328,8 +325,8 @@ export default class LangChainManager extends AIManager {
         }
 
         // Only process follow-up if all tool responses indicate we should
-        const shouldProcessFollowUp = toolResponses.every(({ response }) =>
-          response.shouldProcessFollowUp
+        const shouldProcessFollowUp = toolResponses.every(
+          ({ response }) => response.shouldProcessFollowUp
         );
 
         if (shouldProcessFollowUp) {

@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { Prompt } from '../../../ai/manager';
 import { ToolBase, ToolConfig, ToolHandler, ToolResponse } from '../ToolBase';
 import { KubernetesToolContext } from './types';
 
 export class KubernetesTool extends ToolBase {
   readonly config: ToolConfig = {
     name: 'kubernetes_api_request',
-    description: 'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
+    description:
+      'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
     schema: z.object({
       url: z
         .string()
@@ -29,7 +29,11 @@ export class KubernetesTool extends ToolBase {
     this.context = context;
   }
 
-  handler: ToolHandler = async ({ url, method, body }, toolCallId, pendingPrompt): Promise<ToolResponse> => {
+  handler: ToolHandler = async (
+    { url, method, body },
+    toolCallId,
+    pendingPrompt
+  ): Promise<ToolResponse> => {
     if (!this.context) {
       throw new Error('Kubernetes tool context not configured');
     }
