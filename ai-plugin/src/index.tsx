@@ -16,97 +16,101 @@ import {
 } from '@mui/material';
 import React from 'react';
 import ModelSelector from './components/ModelSelector';
-import { getDefaultConfig, getProviderById } from './config/modelConfig';
+import { getDefaultConfig } from './config/modelConfig';
 import AIPrompt from './modal';
 import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
 import { getActiveConfig, SavedConfigurations } from './utils/ProviderConfigManager';
+
+// Memoized UI Panel component to prevent unnecessary re-renders
+const AIPanelComponent = React.memo(() => {
+  const pluginState = useGlobalState();
+  const conf = usePluginConfig();
+  const [width, setWidth] = React.useState('35vw');
+  const [isResizing, setIsResizing] = React.useState(false);
+
+  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      // Calculate width based on mouse position
+      const newWidth = window.innerWidth - e.clientX;
+      // Set minimum and maximum width constraints
+      const constrainedWidth = Math.max(300, Math.min(newWidth, window.innerWidth * 0.8));
+      setWidth(`${constrainedWidth}px`);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Don't render anything if panel is closed
+  if (!pluginState.isUIPanelOpen) {
+    return null;
+  }
+  return (
+    <Box
+      flexShrink={0}
+      sx={{
+        height: '100%',
+        width: width,
+        border: '2px solid',
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: '-8px', // moved left to enlarge interactive area
+          bottom: 0,
+          width: '16px', // increased width for better accessibility
+          cursor: 'ew-resize',
+          zIndex: 1,
+        },
+      }}
+    >
+      <Box
+        onMouseDown={handleMouseDown}
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: '-8px', // adjust position to match pseudo-element
+          bottom: 0,
+          width: '16px', // increased interactive width
+          cursor: 'ew-resize',
+          zIndex: 10,
+        }}
+      />
+      <AIPrompt
+        openPopup={pluginState.isUIPanelOpen}
+        setOpenPopup={pluginState.setIsUIPanelOpen}
+        pluginSettings={conf}
+      />
+    </Box>
+  );
+});
+
+AIPanelComponent.displayName = 'AIPanelComponent';
 
 // Register UI Panel component that uses the shared state to show/hide
 registerUIPanel({
   id: 'headlamp-ai',
   side: 'right',
-  component: () => {
-    const pluginState = useGlobalState();
-    const conf = usePluginConfig();
-    const [width, setWidth] = React.useState('35vw');
-    const [isResizing, setIsResizing] = React.useState(false);
-
-    const handleMouseDown = (e: React.MouseEvent) => {
-      e.preventDefault();
-      setIsResizing(true);
-    };
-
-    React.useEffect(() => {
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isResizing) return;
-
-        // Calculate width based on mouse position
-        const newWidth = window.innerWidth - e.clientX;
-        // Set minimum and maximum width constraints
-        const constrainedWidth = Math.max(300, Math.min(newWidth, window.innerWidth * 0.8));
-        setWidth(`${constrainedWidth}px`);
-      };
-
-      const handleMouseUp = () => {
-        setIsResizing(false);
-      };
-
-      if (isResizing) {
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-      }
-
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }, [isResizing]);
-
-    // Don't render anything if panel is closed
-    if (!pluginState.isUIPanelOpen) {
-      return null;
-    }
-    console.log('Rendering AI panel with width:', width);
-    return (
-      <Box
-        flexShrink={0}
-        sx={{
-          height: '100%',
-          width: width,
-          border: '2px solid',
-          position: 'relative',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: '-8px', // moved left to enlarge interactive area
-            bottom: 0,
-            width: '16px', // increased width for better accessibility
-            cursor: 'ew-resize',
-            zIndex: 1,
-          },
-        }}
-      >
-        <Box
-          onMouseDown={handleMouseDown}
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: '-8px', // adjust position to match pseudo-element
-            bottom: 0,
-            width: '16px', // increased interactive width
-            cursor: 'ew-resize',
-            zIndex: 10,
-          }}
-        />
-        <AIPrompt
-          openPopup={pluginState.isUIPanelOpen}
-          setOpenPopup={pluginState.setIsUIPanelOpen}
-          pluginSettings={conf}
-        />
-      </Box>
-    );
-  },
+  component: AIPanelComponent,
 });
 
 function HeadlampAIPrompt() {
@@ -207,9 +211,6 @@ function Settings() {
       pluginStore.update(changes.savedConfigs);
     }
   };
-
-  const provider = getProviderById(activeConfiguration.providerId);
-  console.log('Rendering Settings component with provider:', provider);
 
   // Handle test mode toggle
   const handleTestModeChange = (event: React.ChangeEvent<HTMLInputElement>) => {

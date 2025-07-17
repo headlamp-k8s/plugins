@@ -24,8 +24,6 @@ export const handleActualApiRequest = async (
     return JSON.stringify({ error: true, message: 'No cluster selected' });
   }
 
-  console.log('Making Kubernetes API request:', { url, method, body });
-
   // For POST operations
   if (method.toUpperCase() === 'POST' && body) {
     try {
@@ -41,7 +39,6 @@ export const handleActualApiRequest = async (
       clusterAction(
         async () => {
           const response = await apply(resource, cluster);
-          console.log('Response from apply:', response);
           aiManager.history.push({
             role: 'tool',
             content: `${resource.kind || 'Resource'} ${
@@ -101,7 +98,6 @@ export const handleActualApiRequest = async (
 
   // For PATCH/PUT operations
   if ((method.toUpperCase() === 'PATCH' || method.toUpperCase() === 'PUT') && body) {
-    console.log('Processing PATCH/PUT request:', { url, method, body });
     try {
       let resource;
       try {
@@ -183,7 +179,6 @@ export const handleActualApiRequest = async (
       });
 
       let formattedResponse = response;
-      console.log('Response from API request:', response);
       if (isLogRequest(url)) {
         if (
           typeof response === 'object' &&
@@ -204,11 +199,6 @@ export const handleActualApiRequest = async (
 
         const resourceKind = extractKindFromUrl(url);
 
-        // // Debug: Log the response structure to understand what columns we're getting
-        // console.log('Table columns:', response.columnDefinitions.map(col => col.name));
-        // console.log('First row data:', response.rows[0]?.cells);
-        // console.log('URL:', url);
-
         // Get column headers - limit to first 3 columns
         const allColumnHeaders = response.columnDefinitions.map(col => col.name);
         const columnHeaders = allColumnHeaders.slice(0, 3);
@@ -219,11 +209,9 @@ export const handleActualApiRequest = async (
 
         const itemsToShow = response.rows;
         const totalItems = response.rows.length;
-        console.log('response is ', response);
 
         // Create table rows - only show first 3 columns
         const tableRows = itemsToShow.map((row: any) => {
-          console.log('namespace is ', row.object?.metadata?.namespace);
           const cells = row.cells || [];
           const namespace = row.object?.metadata?.namespace;
 
