@@ -78,62 +78,39 @@ export default function AIPrompt(props: {
   // Use the Kubernetes tool UI hook
   const { state: kubernetesUI, callbacks: kubernetesCallbacks } = useKubernetesToolUI();
 
-  const handleOperationSuccess = (response: any) => {
-    // Add the response to the conversation
-    const operationType = response.metadata?.deletionTimestamp ? 'deletion' : 'application';
+  const handleYamlAction = React.useCallback(
+    (yaml: string, title: string, type: string, isDeleteOp: boolean) => {
+      // If the title suggests this is a sample/example, don't allow deletion
+      const isSampleYaml =
+        title.toLowerCase().includes('sample') ||
+        title.toLowerCase().includes('example') ||
+        title.toLowerCase().includes('view');
 
-    const toolPrompt: Prompt = {
-      role: 'tool',
-      content: `Resource ${operationType} completed successfully: ${JSON.stringify(
-        {
-          kind: response.kind,
-          name: response.metadata.name,
-          namespace: response.metadata.namespace,
-          status: 'Success',
-        },
-        null,
-        2
-      )}`,
-      name: 'kubernetes_api_request',
-      toolCallId: `${operationType}-${Date.now()}`,
-    };
+      // Force isDelete to false for sample YAMLs
+      const actualDelete = isSampleYaml ? false : isDeleteOp;
 
-    if (aiManager) {
-      aiManager.history.push(toolPrompt);
-      updateHistory();
-    }
-  };
+      // Update the title if needed
+      let finalTitle = title;
+      if (
+        isSampleYaml &&
+        !finalTitle.toLowerCase().startsWith('view') &&
+        !finalTitle.toLowerCase().startsWith('sample')
+      ) {
+        finalTitle = `View ${title}`;
+      } else if (actualDelete) {
+        finalTitle = `Delete ${type}`;
+      } else if (!isSampleYaml && !actualDelete) {
+        finalTitle = `Apply ${type}`;
+      }
 
-  const handleYamlAction = (yaml: string, title: string, type: string, isDeleteOp: boolean) => {
-    // If the title suggests this is a sample/example, don't allow deletion
-    const isSampleYaml =
-      title.toLowerCase().includes('sample') ||
-      title.toLowerCase().includes('example') ||
-      title.toLowerCase().includes('view');
-
-    // Force isDelete to false for sample YAMLs
-    const actualDelete = isSampleYaml ? false : isDeleteOp;
-
-    // Update the title if needed
-    let finalTitle = title;
-    if (
-      isSampleYaml &&
-      !finalTitle.toLowerCase().startsWith('view') &&
-      !finalTitle.toLowerCase().startsWith('sample')
-    ) {
-      finalTitle = `View ${title}`;
-    } else if (actualDelete) {
-      finalTitle = `Delete ${type}`;
-    } else if (!isSampleYaml && !actualDelete) {
-      finalTitle = `Apply ${type}`;
-    }
-
-    setEditorContent(yaml);
-    setEditorTitle(finalTitle);
-    setResourceType(type);
-    setIsDelete(actualDelete);
-    setShowEditor(true);
-  };
+      setEditorContent(yaml);
+      setEditorTitle(finalTitle);
+      setResourceType(type);
+      setIsDelete(actualDelete);
+      setShowEditor(true);
+    },
+    []
+  );
 
   // Initialize active configuration from plugin settings
   useEffect(() => {
@@ -231,6 +208,35 @@ export default function AIPrompt(props: {
   const updateHistory = React.useCallback(() => {
     setPromptHistory(aiManager?.history ?? []);
   }, [aiManager]);
+
+  const handleOperationSuccess = React.useCallback(
+    (response: any) => {
+      // Add the response to the conversation
+      const operationType = response.metadata?.deletionTimestamp ? 'deletion' : 'application';
+
+      const toolPrompt: Prompt = {
+        role: 'tool',
+        content: `Resource ${operationType} completed successfully: ${JSON.stringify(
+          {
+            kind: response.kind,
+            name: response.metadata.name,
+            namespace: response.metadata.namespace,
+            status: 'Success',
+          },
+          null,
+          2
+        )}`,
+        name: 'kubernetes_api_request',
+        toolCallId: `${operationType}-${Date.now()}`,
+      };
+
+      if (aiManager) {
+        aiManager.history.push(toolPrompt);
+        updateHistory();
+      }
+    },
+    [aiManager, updateHistory]
+  );
 
   // Function to handle test mode responses
   const handleTestModeResponse = (

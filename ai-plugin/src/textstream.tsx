@@ -2,12 +2,12 @@ import { Icon } from '@iconify/react';
 import { Alert, Box, CircularProgress, Fab, Typography } from '@mui/material';
 import { useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Prompt } from './ai/manager';
 import ContentRenderer from './ContentRenderer';
 import EditorDialog from './editordialog';
 
-export default function TextStreamContainer({
+const TextStreamContainer = React.memo(function TextStreamContainer({
   history,
   isLoading,
   apiError,
@@ -66,13 +66,13 @@ export default function TextStreamContainer({
     }
   }, []);
 
-  const scrollToLastMessage = useCallback(() => {
-    if (!lastMessageRef.current) {
-      return;
-    }
+  // const scrollToLastMessage = useCallback(() => {
+  //   if (!lastMessageRef.current) {
+  //     return;
+  //   }
 
-    lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+  //   lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // }, []);
 
   // Handle container scroll event
   const handleScroll = useCallback(() => {
@@ -291,4 +291,6 @@ export default function TextStreamContainer({
       />
     </Box>
   );
-}
+});
+
+export default TextStreamContainer;
