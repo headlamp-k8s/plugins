@@ -1,6 +1,5 @@
 import { Icon } from '@iconify/react';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import Job from '@kinvolk/headlamp-plugin/lib/K8s/job';
 import { useMemo } from 'react';
 import { ClusterTriggerAuthenticationDetail } from './components/clustertriggerauthentication/Detail';
 import { ScaledJobDetail } from './components/scaledjobs/Detail';
@@ -187,7 +186,7 @@ const scaledJobSource = {
     const [scaledJobs] = ScaledJob.useList();
     const [triggerAuthentications] = TriggerAuthentication.useList();
     const [clusterTriggerAuthentications] = ClusterTriggerAuthentication.useList();
-    const [jobs] = Job.useList();
+    const [jobs] = K8s.ResourceClasses.Job.useList();
 
     return useMemo(() => {
       if (!scaledJobs) return null;
