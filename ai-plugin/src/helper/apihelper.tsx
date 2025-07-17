@@ -4,7 +4,6 @@ import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
 import { isLogRequest, isSpecificResourceRequestHelper } from '.';
 
-
 const cleanUrl = (url: string) => {
   const urlObj = new URL(url, 'http://dummy.com'); // Use dummy base for relative URLs
   urlObj.searchParams.delete('allNamespaces');
@@ -156,8 +155,8 @@ export const handleActualApiRequest = async (
 
   // For all other methods (e.g. GET)
   if (method.toUpperCase() === 'GET') {
-     const cleanedUrl = cleanUrl(url);
-    
+    const cleanedUrl = cleanUrl(url);
+
     try {
       const response = await clusterRequest(cleanedUrl, {
         method,
@@ -178,7 +177,8 @@ export const handleActualApiRequest = async (
           : {
               'Content-Type':
                 method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-              Accept: 'application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json',
+              Accept:
+                'application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json',
             },
       });
 
@@ -196,75 +196,62 @@ export const handleActualApiRequest = async (
         // Extract resource kind from URL for list view link
         const extractKindFromUrl = (url: string) => {
           // Extract from URLs like /api/v1/pods, /apis/apps/v1/deployments, etc.
-          const match = url.match(/\/(?:api\/v1|apis\/[^\/]+\/[^\/]+)\/(?:namespaces\/[^\/]+\/)?([^\/\?]+)/);
+          const match = url.match(
+            /\/(?:api\/v1|apis\/[^\/]+\/[^\/]+)\/(?:namespaces\/[^\/]+\/)?([^\/\?]+)/
+          );
           return match ? match[1] : null;
         };
-        
+
         const resourceKind = extractKindFromUrl(url);
-        
+
         // // Debug: Log the response structure to understand what columns we're getting
         // console.log('Table columns:', response.columnDefinitions.map(col => col.name));
         // console.log('First row data:', response.rows[0]?.cells);
         // console.log('URL:', url);
-        
+
         // Get column headers - limit to first 3 columns
         const allColumnHeaders = response.columnDefinitions.map(col => col.name);
         const columnHeaders = allColumnHeaders.slice(0, 3);
-        
+
         // Create table header
         const tableHeader = `| ${columnHeaders.join(' | ')} |`;
         const tableSeparator = `|${columnHeaders.map(() => '---').join('|')}|`;
-        
-        // Limit to first 30 items
-        const maxItems = 30;
-        const itemsToShow = response.rows.slice(0, maxItems);
-        const totalItems = response.rows.length;
-        console.log("response is ",response)
 
-        // Create table rows - only show first 3 columns and first 30 items
+        const itemsToShow = response.rows;
+        const totalItems = response.rows.length;
+        console.log('response is ', response);
+
+        // Create table rows - only show first 3 columns
         const tableRows = itemsToShow.map((row: any) => {
-          console.log("namespace is ", row.object?.metadata?.namespace);
+          console.log('namespace is ', row.object?.metadata?.namespace);
           const cells = row.cells || [];
           const namespace = row.object?.metadata?.namespace;
-          
+
           const paddedCells = columnHeaders.map((_, index) => {
             let cellValue = cells[index] || '-';
-            
+
             // For the name column (first column), create a special link marker
             if (index === 0 && resourceKind && cellValue !== '-') {
               const linkData = {
                 kind: resourceKind,
                 name: cellValue,
-                namespace: namespace
+                namespace: namespace,
               };
-              if(!namespace) {
+              if (!namespace) {
                 cellValue = `[${linkData.name}](/c/${cluster}/${resourceKind}/${linkData.name})`;
               } else {
-                cellValue = `[${linkData.name}](/c/${cluster}/${resourceKind}/${linkData.namespace}/${linkData.name})`;  
+                cellValue = `[${linkData.name}](/c/${cluster}/${resourceKind}/${linkData.namespace}/${linkData.name})`;
               }
             }
-            
+
             return cellValue;
           });
           return `| ${paddedCells.join(' | ')} |`;
         });
-        
-        const tableContent = [
-          tableHeader,
-          tableSeparator,
-          ...tableRows,
-        ].join('\n');
 
-        // Add information about item limits and link to full list view
-        const limitInfo = totalItems > maxItems 
-          ? `\n\n*Showing ${maxItems} of ${totalItems} items. For the complete list, go to the [Headlamp ${resourceKind} list view](/c/${cluster}/${resourceKind}).*`
-          : '';
+        const tableContent = [tableHeader, tableSeparator, ...tableRows].join('\n');
 
-        formattedResponse = [
-          `Found ${totalItems} items:`,
-          tableContent,
-          limitInfo
-        ].join('\n');
+        formattedResponse = [`Found ${totalItems} items:`, tableContent].join('\n');
 
         // Always push to history, even if no items found
         aiManager.history.push({

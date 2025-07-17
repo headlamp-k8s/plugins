@@ -16,11 +16,7 @@ export interface ToolResponse {
 }
 
 export interface ToolHandler {
-  (
-    args: Record<string, any>,
-    toolCallId?: string,
-    pendingPrompt?: Prompt
-  ): Promise<ToolResponse>;
+  (args: Record<string, any>, toolCallId?: string, pendingPrompt?: Prompt): Promise<ToolResponse>;
 }
 
 export abstract class ToolBase {
@@ -29,7 +25,7 @@ export abstract class ToolBase {
 
   createLangChainTool() {
     return tool(
-      async (args) => {
+      async args => {
         try {
           const response = await this.handler(args);
           // Return just the content for LangChain, metadata is handled by ToolManager

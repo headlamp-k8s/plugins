@@ -20,14 +20,13 @@ import ApiConfirmationDialog from './components/ApiConfirmationDialog';
 import TestModeInput from './components/TestModeInput';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
-import { handleActualApiRequest } from './helper/apihelper';
 import { useClusterWarnings } from './hooks/useClusterWarnings';
+import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import LangChainManager from './langchain/LangChainManager';
 import TextStreamContainer from './textstream';
 import { getSettingsURL, useGlobalState } from './utils';
 import { generateContextDescription } from './utils/contextGenerator';
 import { useDynamicPrompts } from './utils/promptGenerator';
-import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import {
   getActiveConfig,
   getSavedConfigurations,
@@ -40,7 +39,7 @@ export default function AIPrompt(props: {
   pluginSettings: any;
 }) {
   const { openPopup, setOpenPopup, pluginSettings } = props;
-
+  console.log('i am called');
   const history = useHistory();
   const location = useLocation();
   const [promptError] = React.useState(false);
@@ -325,7 +324,14 @@ export default function AIPrompt(props: {
     const { url, method } = kubernetesUI.apiRequest;
     kubernetesCallbacks.setApiRequest(null);
 
-    await kubernetesCallbacks.handleActualApiRequest(url, method, body, handleApiDialogClose, aiManager, resourceInfo);
+    await kubernetesCallbacks.handleActualApiRequest(
+      url,
+      method,
+      body,
+      handleApiDialogClose,
+      aiManager,
+      resourceInfo
+    );
   };
 
   const handleApiDialogClose = () => {
@@ -365,7 +371,14 @@ export default function AIPrompt(props: {
         callbacks: {
           ...kubernetesCallbacks,
           handleActualApiRequest: (url, method, body, onClose, aiManagerParam, resourceInfo) =>
-            kubernetesCallbacks.handleActualApiRequest(url, method, body, onClose, aiManagerParam || aiManager, resourceInfo)
+            kubernetesCallbacks.handleActualApiRequest(
+              url,
+              method,
+              body,
+              onClose,
+              aiManagerParam || aiManager,
+              resourceInfo
+            ),
         },
         selectedClusters,
         aiManager, // Add the AI manager to the context
@@ -376,7 +389,14 @@ export default function AIPrompt(props: {
         kubernetesContext
       );
     }
-  }, [_pluginSetting.event, aiManager, clusterWarnings, kubernetesUI, kubernetesCallbacks, selectedClusters]);
+  }, [
+    _pluginSetting.event,
+    aiManager,
+    clusterWarnings,
+    kubernetesUI,
+    kubernetesCallbacks,
+    selectedClusters,
+  ]);
 
   useEffect(() => {
     if (openPopup && aiManager) {
