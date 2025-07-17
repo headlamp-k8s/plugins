@@ -64,7 +64,6 @@ export default function EditorDialog({
       onClose();
       clusterAction(
         async () => {
-          console.log('Applying resource with content:', content);
           const response = await apply(resource, cluster);
           if (onSuccess) {
             onSuccess(response);

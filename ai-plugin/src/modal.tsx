@@ -39,7 +39,6 @@ export default function AIPrompt(props: {
   pluginSettings: any;
 }) {
   const { openPopup, setOpenPopup, pluginSettings } = props;
-  console.log('i am called');
   const history = useHistory();
   const location = useLocation();
   const [promptError] = React.useState(false);
@@ -143,7 +142,6 @@ export default function AIPrompt(props: {
     if (!pluginSettings) return;
 
     const savedConfigs = getSavedConfigurations(pluginSettings);
-    console.log('Saved configurations:', savedConfigs);
     setAvailableConfigs(savedConfigs.providers || []);
     setDefaultProviderIndex(savedConfigs.defaultProviderIndex);
 
@@ -170,10 +168,6 @@ export default function AIPrompt(props: {
       activeConfig.config.apiKey !== config.config.apiKey ||
       JSON.stringify(activeConfig.config) !== JSON.stringify(config.config)
     ) {
-      console.log(
-        `Switching provider from ${activeConfig?.providerId || 'none'} to ${config.providerId}`
-      );
-
       // Immediately clear prompt history for better UX
       setPromptHistory([]);
       setPromptVal('');
@@ -221,25 +215,13 @@ export default function AIPrompt(props: {
 
   React.useEffect(() => {
     if (!aiManager && pluginSettings) {
-      console.log(
-        'Initializing AI manager with settings:',
-        JSON.stringify({
-          activeConfig: activeConfig ? '[CONFIG_SET]' : undefined,
-          savedConfigs: savedConfigs.providers?.length
-            ? `${savedConfigs.providers.length} providers`
-            : 'none',
-        })
-      );
-
       // If we have an active config from the new format, use it
       if (activeConfig) {
         try {
-          console.log(`Creating new LangChainManager with provider: ${activeConfig.providerId}`);
           const newManager = new LangChainManager(activeConfig.providerId, activeConfig.config);
           setAiManager(newManager);
           return;
         } catch (error) {
-          console.error('Error initializing LangChainManager with active config:', error);
           setApiError(`Failed to initialize AI model: ${error.message}`);
         }
       }
@@ -427,26 +409,14 @@ export default function AIPrompt(props: {
     return currentURL === getSettingsURL();
   }, [location]);
 
-  // Helper function to check if we should show greeting
-  const shouldShowGreeting = () => {
-    // Only show greeting if we have a valid configuration
-    if (!hasValidConfig || !activeConfig) return false;
-
-    // Only show if history is empty or contains only system messages
-    const hasConversationMessages = promptHistory.some(
-      msg => (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
-    );
-    return !hasConversationMessages && !loading;
-  };
-
   // Generate greeting message
-  const getGreetingMessage = () => {
+  const getGreetingMessage = React.useMemo(() => {
     return {
       role: 'assistant' as const,
       content: `Hello! I'm your AI Assistant, ready to help you with Kubernetes operations. How can I assist you today?`,
       isDisplayOnly: true, // Mark this as display-only so it doesn't get sent to LLM
     };
-  };
+  }, []);
 
   // If panel is not open, don't render
   if (!openPopup) return null;
@@ -455,6 +425,26 @@ export default function AIPrompt(props: {
   const savedConfigs = getSavedConfigurations(pluginSettings);
   const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
   const hasValidConfig = hasAnyValidConfig;
+
+  // Helper function to check if we should show greeting - memoized for performance
+  const shouldShowGreeting = React.useMemo(() => {
+    // Only show greeting if we have a valid configuration
+    if (!hasValidConfig || !activeConfig) return false;
+
+    // Only show if history is empty or contains only system messages
+    const hasConversationMessages = promptHistory.some(
+      msg => (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
+    );
+    return !hasConversationMessages && !loading;
+  }, [hasValidConfig, activeConfig, promptHistory, loading]);
+
+  // Memoize the history array to prevent unnecessary re-renders of TextStreamContainer
+  const memoizedHistory = React.useMemo(() => {
+    if (shouldShowGreeting) {
+      return [getGreetingMessage, ...promptHistory];
+    }
+    return promptHistory;
+  }, [shouldShowGreeting, getGreetingMessage, promptHistory]);
 
   // If no valid configuration, show setup message
   if (!hasValidConfig) {
@@ -584,9 +574,7 @@ export default function AIPrompt(props: {
             )}
 
             <TextStreamContainer
-              history={
-                shouldShowGreeting() ? [getGreetingMessage(), ...promptHistory] : promptHistory
-              }
+              history={memoizedHistory}
               isLoading={loading}
               apiError={apiError}
               onOperationSuccess={handleOperationSuccess}
@@ -621,7 +609,6 @@ export default function AIPrompt(props: {
                           onDelete={() => {
                             setApiError(null);
                             AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                              console.log(error);
                               setApiError(error.message);
                             });
                           }}
@@ -657,7 +644,6 @@ export default function AIPrompt(props: {
                           }}
                           onDelete={() => {
                             AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                              console.log(error);
                               setApiError(error.message);
                             });
                           }}
@@ -697,7 +683,6 @@ export default function AIPrompt(props: {
                     setPromptVal('');
 
                     AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                      console.log(error);
                       setApiError(error.message);
                     });
                   }
