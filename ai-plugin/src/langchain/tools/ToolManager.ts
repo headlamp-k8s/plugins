@@ -91,11 +91,6 @@ export class ToolManager {
         return model;
       }
 
-      console.log(
-        `Binding ${langChainTools.length} tools to ${providerId} model:`,
-        langChainTools.map(t => t.name)
-      );
-
       return model.bindTools(langChainTools);
     } catch (error) {
       console.error(`Error binding tools to ${providerId} model:`, error);
