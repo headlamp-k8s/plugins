@@ -1,6 +1,6 @@
 {
   "name": "app-catalog",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "An app catalog for Headlamp",
   "scripts": {
     "start": "headlamp-plugin start",
@@ -11,6 +11,7 @@
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
     "test": "headlamp-plugin test",
+    "package": "headlamp-plugin package",
     "storybook-build": "headlamp-plugin storybook-build"
   },
   "keywords": [
