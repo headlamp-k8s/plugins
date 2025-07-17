@@ -1,5 +1,4 @@
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
-import { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { Conditions, KedaTrigger } from './common';
 
 export interface ScaleTargetRef {

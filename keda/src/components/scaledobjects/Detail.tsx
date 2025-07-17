@@ -1,3 +1,4 @@
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -6,8 +7,6 @@ import {
   OwnedPodsSection,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Deployment from '@kinvolk/headlamp-plugin/lib/k8s/deployment';
-import StatefulSet from '@kinvolk/headlamp-plugin/lib/k8s/statefulSet';
 import { useParams } from 'react-router-dom';
 import { ScaledObject, ScalingModifierMetricType } from '../../resources/scaledobject';
 import { KedaInstallCheck, TriggersSection } from '../common/CommonComponents';
@@ -20,13 +19,13 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
   const scaleTargetKind = scaledObject?.scaleTargetKind;
   const scaleTargetName = scaledObject?.scaleTargetName;
 
-  const [deploymentTarget] = Deployment.useGet(scaleTargetName, namespace);
-  const [statefulSetTarget] = StatefulSet.useGet(scaleTargetName, namespace);
+  const [deploymentTarget] = K8s.ResourceClasses.Deployment.useGet(scaleTargetName, namespace);
+  const [statefulSetTarget] = K8s.ResourceClasses.StatefulSet.useGet(scaleTargetName, namespace);
 
-  let scaleTarget: Deployment | StatefulSet = null;
-  if (scaleTargetKind === Deployment.kind) {
+  let scaleTarget: K8s.Deployment | K8s.StatefulSet = null;
+  if (scaleTargetKind === K8s.ResourceClasses.Deployment.kind) {
     scaleTarget = deploymentTarget;
-  } else if (scaleTargetKind === StatefulSet.kind) {
+  } else if (scaleTargetKind === K8s.ResourceClasses.StatefulSet.kind) {
     scaleTarget = statefulSetTarget;
   }
 
