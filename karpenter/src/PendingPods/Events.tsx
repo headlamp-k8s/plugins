@@ -3,17 +3,65 @@ import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import { timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { PendingPodsRenderer } from './List';
 
+/**
+ * Represents a pending Kubernetes pod with associated event information.
+ * This interface combines pod metadata with relevant event details that
+ * explain why the pod is in a pending state.
+ */
 export interface PendingPod {
+  /**
+   * The unique identifier of the pod (UID)
+   */
   id: string;
+
+  /**
+   * The name of the pod
+   */
   name: string;
+
+  /**
+   * The type of event associated with the pod
+   */
   type: string;
+
+  /**
+   * The component that generated the event
+   */
   source: string;
+
+  /**
+   * The namespace where the pod is located
+   */
   namespace: string;
+
+  /**
+   * The reason for the event
+   */
   reason: string;
+
+  /**
+   * Detailed message describing the event
+   */
   message: string;
+
+  /**
+   * How long the pod has been pending
+   */
   age: string;
+
+  /**
+   * Number of times this event has occurred
+   */
   count: number;
+
+  /**
+   * Timestamp of when the event last occurred
+   */
   lastOccurrence: any;
+
+  /**
+   * Timestamp of when the event first occurred
+   */
   firstOccurrence: any;
 }
 
