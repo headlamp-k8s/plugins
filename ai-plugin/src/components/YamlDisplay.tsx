@@ -24,11 +24,13 @@ const YamlDisplay: React.FC<YamlDisplayProps> = React.memo(
     const parentRef = useRef<HTMLDivElement>(null);
     const editorHeight = useMemo(() => 250, []); // Memoize to prevent recreation
 
+    // Memoize the editor mount handler to prevent recreation
     const handleEditorMount = useCallback((editorElem: any) => {
       setEditor(editorElem);
     }, []);
 
-    useEffect(() => {
+    // Memoize the resize observer setup to prevent recreation
+    const setupResizeObserver = useCallback(() => {
       if (!parentRef.current || !editor) {
         return;
       }
@@ -69,6 +71,11 @@ const YamlDisplay: React.FC<YamlDisplayProps> = React.memo(
         }
       };
     }, [editor, editorHeight]);
+
+    // Use the memoized setup function in useEffect
+    useEffect(() => {
+      return setupResizeObserver();
+    }, [setupResizeObserver]);
 
     // Memoize editor options to prevent re-creation
     const editorOptions = useMemo(
@@ -160,9 +167,35 @@ const YamlDisplay: React.FC<YamlDisplayProps> = React.memo(
       setResourceName(parsedInfo.resourceName);
     }, [formattedYaml, parsedInfo]);
 
+    // Memoize the onOpenInEditor callback to prevent unnecessary re-renders
+    const memoizedOnOpenInEditor = useCallback(
+      (yaml: string, resourceType: string, title?: string) => {
+        onOpenInEditor(yaml, resourceType, title);
+      },
+      [onOpenInEditor]
+    );
+
     const handleOpenInEditor = useCallback(() => {
-      onOpenInEditor(processedYaml, resourceType, title || `Apply ${resourceType}`);
-    }, [processedYaml, resourceType, title, onOpenInEditor]);
+      memoizedOnOpenInEditor(processedYaml, resourceType, title || `Apply ${resourceType}`);
+    }, [memoizedOnOpenInEditor, processedYaml, resourceType, title]);
+
+    // Memoize the theme value to prevent re-renders when theme object changes
+    const editorTheme = useMemo(() => {
+      return theme.palette.mode === 'dark' ? 'vs-dark' : 'light';
+    }, [theme.palette.mode]);
+
+    // Memoize editor container style to prevent re-creation
+    const editorContainerStyle = useMemo(
+      () => ({
+        height: `${editorHeight}px`,
+        width: '100%',
+        maxWidth: '100%',
+        position: 'relative' as const,
+        overflow: 'hidden' as const,
+        boxSizing: 'border-box' as const,
+      }),
+      [editorHeight]
+    );
 
     return (
       <Box sx={{ my: 2 }}>
@@ -226,19 +259,10 @@ const YamlDisplay: React.FC<YamlDisplayProps> = React.memo(
             }}
             ref={parentRef}
           >
-            <div
-              style={{
-                height: `${editorHeight}px`,
-                width: '100%',
-                maxWidth: '100%',
-                position: 'relative',
-                overflow: 'hidden',
-                boxSizing: 'border-box',
-              }}
-            >
+            <div style={editorContainerStyle}>
               <Editor
                 language="yaml"
-                theme={theme.palette.mode === 'dark' ? 'vs-dark' : 'light'}
+                theme={editorTheme}
                 value={processedYaml}
                 options={editorOptions}
                 height={editorHeight}
@@ -251,13 +275,11 @@ const YamlDisplay: React.FC<YamlDisplayProps> = React.memo(
       </Box>
     );
   },
+  // Improve memo comparison for better stability
   (prevProps, nextProps) => {
-    // Only re-render if yaml, title, or onOpenInEditor reference actually changed
-    return (
-      prevProps.yaml === nextProps.yaml &&
-      prevProps.title === nextProps.title &&
-      prevProps.onOpenInEditor === nextProps.onOpenInEditor
-    );
+    // Only re-render if yaml or title actually changed
+    // Don't compare onOpenInEditor function reference as it might change but be functionally equivalent
+    return prevProps.yaml === nextProps.yaml && prevProps.title === nextProps.title;
   }
 );
 
