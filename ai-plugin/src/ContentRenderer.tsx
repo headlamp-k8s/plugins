@@ -1,5 +1,5 @@
 import { Box, Button, Link as MuiLink, Typography } from '@mui/material';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link as RouterLink, useHistory } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
@@ -61,10 +61,214 @@ const TableWrapper: React.FC<{ children: React.ReactNode }> = React.memo(({ chil
   );
 });
 
+TableWrapper.displayName = 'TableWrapper';
+
+// Memoized markdown components to prevent remounting
+const markdownComponents = {
+  // Override h1 rendering
+  h1: React.memo(({ ...props }: any) => (
+    <Typography variant="h4" gutterBottom sx={{ overflowWrap: 'break-word' }} {...props} />
+  )),
+  // Override h2 rendering
+  h2: React.memo(({ ...props }: any) => (
+    <Typography variant="h5" gutterBottom sx={{ overflowWrap: 'break-word' }} {...props} />
+  )),
+  // Override h3 rendering
+  h3: React.memo(({ ...props }: any) => (
+    <Typography variant="h6" gutterBottom sx={{ overflowWrap: 'break-word' }} {...props} />
+  )),
+  // Override paragraph rendering
+  p: React.memo(({ ...props }: any) => (
+    <Typography variant="body1" paragraph sx={{ overflowWrap: 'break-word' }} {...props} />
+  )),
+  // Style for tables
+  table: React.memo(({ ...props }: any) => (
+    <TableWrapper>
+      <Box component="table" sx={{ minWidth: '400px', borderCollapse: 'collapse' }} {...props} />
+    </TableWrapper>
+  )),
+  // Style for table headers
+  th: React.memo(({ ...props }: any) => (
+    <Box
+      component="th"
+      sx={{
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        padding: '8px 16px',
+        textAlign: 'left',
+        fontWeight: 'bold',
+      }}
+      {...props}
+    />
+  )),
+  // Style for table cells
+  td: React.memo(({ ...props }: any) => (
+    <Box
+      component="td"
+      sx={{
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        padding: '8px 16px',
+        textAlign: 'left',
+      }}
+      {...props}
+    />
+  )),
+  // Style for lists
+  ul: React.memo(({ ...props }: any) => (
+    <Box component="ul" sx={{ pl: 2, mb: 2, overflowWrap: 'break-word' }} {...props} />
+  )),
+  ol: React.memo(({ ...props }: any) => (
+    <Box component="ol" sx={{ pl: 2, mb: 2, overflowWrap: 'break-word' }} {...props} />
+  )),
+  li: React.memo(({ ...props }: any) => (
+    <Box component="li" sx={{ mb: 1, overflowWrap: 'break-word' }} {...props} />
+  )),
+  // Style for blockquotes
+  blockquote: React.memo(({ ...props }: any) => (
+    <Box
+      component="blockquote"
+      sx={{
+        borderLeft: '4px solid',
+        borderColor: 'divider',
+        pl: 2,
+        my: 2,
+        color: 'text.secondary',
+        overflowWrap: 'break-word',
+      }}
+      {...props}
+    />
+  )),
+};
+
+// Add display names for better debugging
+markdownComponents.h1.displayName = 'MarkdownH1';
+markdownComponents.h2.displayName = 'MarkdownH2';
+markdownComponents.h3.displayName = 'MarkdownH3';
+markdownComponents.p.displayName = 'MarkdownP';
+markdownComponents.table.displayName = 'MarkdownTable';
+markdownComponents.th.displayName = 'MarkdownTh';
+markdownComponents.td.displayName = 'MarkdownTd';
+markdownComponents.ul.displayName = 'MarkdownUl';
+markdownComponents.ol.displayName = 'MarkdownOl';
+markdownComponents.li.displayName = 'MarkdownLi';
+markdownComponents.blockquote.displayName = 'MarkdownBlockquote';
+
 const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
   ({ content, onYamlDetected }) => {
     const history = useHistory();
+    useEffect(() => {
+      console.log('ContentRenderer mounted with content:', content);
 
+      return () => {
+        console.log('ContentRenderer unmounted');
+      };
+    }, [content]);
+
+    // Create code component that has access to onYamlDetected
+    const CodeComponent = React.useMemo(() => {
+      const component = React.memo(({ className, children, ...props }: any) => {
+        // Check if this is a YAML code block
+        const isYamlBlock =
+          !props.inline &&
+          (className === 'language-yaml' ||
+            className === 'language-yml' ||
+            (typeof children === 'string' &&
+              children.includes('apiVersion:') &&
+              children.includes('kind:')));
+
+        if (isYamlBlock && onYamlDetected && typeof children === 'string') {
+          // Try to parse as Kubernetes YAML
+          const parsed = parseKubernetesYAML(children);
+          if (parsed.isValid) {
+            return (
+              <YamlDisplay
+                yaml={children}
+                title={parsed.resourceType}
+                onOpenInEditor={onYamlDetected}
+              />
+            );
+          }
+        }
+
+        // Regular code block styling
+        return !props.inline ? (
+          <Box
+            component="pre"
+            sx={{
+              backgroundColor: theme => theme.palette.grey[100],
+              color: theme => theme.palette.grey[900],
+              padding: 2,
+              borderRadius: 1,
+              overflowX: 'auto',
+              '& code': {
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+              },
+            }}
+          >
+            <Box component="code" className={className} {...props}>
+              {children}
+            </Box>
+          </Box>
+        ) : (
+          <Box
+            component="code"
+            sx={{
+              backgroundColor: theme => theme.palette.grey[100],
+              color: theme => theme.palette.grey[900],
+              padding: '0.1em 0.3em',
+              borderRadius: '0.3em',
+              fontSize: '85%',
+              wordWrap: 'break-word',
+            }}
+            className={className}
+            {...props}
+          >
+            {children}
+          </Box>
+        );
+      });
+      component.displayName = 'MarkdownCode';
+      return component;
+    }, [onYamlDetected]);
+
+    // Create link component that has access to history
+    const LinkComponent = React.useMemo(() => {
+      const component = React.memo(({ ...props }: any) => {
+        if (props.href && props.href.startsWith('/c/')) {
+          return (
+            <MuiLink
+              component={RouterLink}
+              to={props.href}
+              onClick={(e: any) => {
+                e.preventDefault();
+                history.push(props.href);
+              }}
+            >
+              {props.children}
+            </MuiLink>
+          );
+        }
+        return (
+          <MuiLink href={props.href} target="_blank" rel="noopener noreferrer" {...props}>
+            {props.children}
+          </MuiLink>
+        );
+      });
+      component.displayName = 'MarkdownLink';
+      return component;
+    }, [history]);
+
+    // Combine all components
+    const allMarkdownComponents = React.useMemo(
+      () => ({
+        ...markdownComponents,
+        code: CodeComponent,
+        a: LinkComponent,
+      }),
+      [CodeComponent, LinkComponent]
+    );
     // Process content and detect standalone YAML blocks
     const processedContent = useMemo(() => {
       if (!content) return null;
@@ -85,195 +289,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
 
       // For regular markdown content, use ReactMarkdown
       return (
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            // Override h1 rendering
-            h1: ({ ...props }) => (
-              <Typography
-                variant="h4"
-                gutterBottom
-                sx={{ overflowWrap: 'break-word' }}
-                {...props}
-              />
-            ),
-            // Override h2 rendering
-            h2: ({ ...props }) => (
-              <Typography
-                variant="h5"
-                gutterBottom
-                sx={{ overflowWrap: 'break-word' }}
-                {...props}
-              />
-            ),
-            // Override h3 rendering
-            h3: ({ ...props }) => (
-              <Typography
-                variant="h6"
-                gutterBottom
-                sx={{ overflowWrap: 'break-word' }}
-                {...props}
-              />
-            ),
-            // Override paragraph rendering
-            p: ({ ...props }) => (
-              <Typography
-                variant="body1"
-                paragraph
-                sx={{ overflowWrap: 'break-word' }}
-                {...props}
-              />
-            ),
-            // Style for code blocks
-            code: ({ className, children, ...props }: any) => {
-              // Check if this is a YAML code block
-              const isYamlBlock =
-                !props.inline &&
-                (className === 'language-yaml' ||
-                  className === 'language-yml' ||
-                  (typeof children === 'string' &&
-                    children.includes('apiVersion:') &&
-                    children.includes('kind:')));
-
-              if (isYamlBlock && onYamlDetected && typeof children === 'string') {
-                // Try to parse as Kubernetes YAML
-                const parsed = parseKubernetesYAML(children);
-                if (parsed.isValid) {
-                  return (
-                    <YamlDisplay
-                      yaml={children}
-                      title={parsed.resourceType}
-                      onOpenInEditor={onYamlDetected}
-                    />
-                  );
-                }
-              }
-
-              // Regular code block styling
-              return !props.inline ? (
-                <Box
-                  component="pre"
-                  sx={{
-                    backgroundColor: theme => theme.palette.grey[100],
-                    color: theme => theme.palette.grey[900],
-                    padding: 2,
-                    borderRadius: 1,
-                    overflowX: 'auto',
-                    '& code': {
-                      whiteSpace: 'pre-wrap',
-                      wordWrap: 'break-word',
-                    },
-                  }}
-                >
-                  <Box component="code" className={className} {...props}>
-                    {children}
-                  </Box>
-                </Box>
-              ) : (
-                <Box
-                  component="code"
-                  sx={{
-                    backgroundColor: theme => theme.palette.grey[100],
-                    color: theme => theme.palette.grey[900],
-                    padding: '0.1em 0.3em',
-                    borderRadius: '0.3em',
-                    fontSize: '85%',
-                    wordWrap: 'break-word',
-                  }}
-                  className={className}
-                  {...props}
-                >
-                  {children}
-                </Box>
-              );
-            },
-            // Style for tables
-            table: ({ ...props }) => (
-              <TableWrapper>
-                <Box
-                  component="table"
-                  sx={{ minWidth: '400px', borderCollapse: 'collapse' }}
-                  {...props}
-                />
-              </TableWrapper>
-            ),
-            // Style for table headers
-            th: ({ ...props }) => (
-              <Box
-                component="th"
-                sx={{
-                  borderBottom: '1px solid',
-                  borderColor: 'divider',
-                  padding: '8px 16px',
-                  textAlign: 'left',
-                  fontWeight: 'bold',
-                }}
-                {...props}
-              />
-            ),
-            // Style for table cells
-            td: ({ ...props }) => (
-              <Box
-                component="td"
-                sx={{
-                  borderBottom: '1px solid',
-                  borderColor: 'divider',
-                  padding: '8px 16px',
-                  textAlign: 'left',
-                }}
-                {...props}
-              />
-            ),
-            // Style for lists
-            ul: ({ ...props }) => (
-              <Box component="ul" sx={{ pl: 2, mb: 2, overflowWrap: 'break-word' }} {...props} />
-            ),
-            ol: ({ ...props }) => (
-              <Box component="ol" sx={{ pl: 2, mb: 2, overflowWrap: 'break-word' }} {...props} />
-            ),
-            li: ({ ...props }) => (
-              <Box component="li" sx={{ mb: 1, overflowWrap: 'break-word' }} {...props} />
-            ),
-            // Style for links
-            a: ({ ...props }) => {
-              console.log(props.href);
-              if (props.href && props.href.startsWith('/c/')) {
-                return (
-                  <MuiLink
-                    component={RouterLink}
-                    to={props.href}
-                    onClick={e => {
-                      e.preventDefault();
-                      history.push(props.href);
-                    }}
-                  >
-                    {props.children}
-                  </MuiLink>
-                );
-              }
-              return (
-                <MuiLink href={props.href} target="_blank" rel="noopener noreferrer" {...props}>
-                  {props.children}
-                </MuiLink>
-              );
-            },
-            // Style for blockquotes
-            blockquote: ({ ...props }) => (
-              <Box
-                component="blockquote"
-                sx={{
-                  borderLeft: '4px solid',
-                  borderColor: 'divider',
-                  pl: 2,
-                  my: 2,
-                  color: 'text.secondary',
-                  overflowWrap: 'break-word',
-                }}
-                {...props}
-              />
-            ),
-          }}
-        >
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={allMarkdownComponents}>
           {content}
         </ReactMarkdown>
       );
@@ -331,61 +347,19 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
             );
           }
         } else {
-          // Regular text content - use ReactMarkdown
+          // Regular text content - use ReactMarkdown with simplified components
           sections.push(
             <ReactMarkdown
               key={`text-${index}-${sectionIndex++}`}
               remarkPlugins={[remarkGfm]}
               components={{
-                p: ({ ...props }) => (
-                  <Typography
-                    variant="body1"
-                    paragraph
-                    sx={{ overflowWrap: 'break-word' }}
-                    {...props}
-                  />
-                ),
-                h1: ({ ...props }) => (
-                  <Typography
-                    variant="h4"
-                    gutterBottom
-                    sx={{ overflowWrap: 'break-word' }}
-                    {...props}
-                  />
-                ),
-                h2: ({ ...props }) => (
-                  <Typography
-                    variant="h5"
-                    gutterBottom
-                    sx={{ overflowWrap: 'break-word' }}
-                    {...props}
-                  />
-                ),
-                h3: ({ ...props }) => (
-                  <Typography
-                    variant="h6"
-                    gutterBottom
-                    sx={{ overflowWrap: 'break-word' }}
-                    {...props}
-                  />
-                ),
-                ul: ({ ...props }) => (
-                  <Box
-                    component="ul"
-                    sx={{ pl: 2, mb: 2, overflowWrap: 'break-word' }}
-                    {...props}
-                  />
-                ),
-                ol: ({ ...props }) => (
-                  <Box
-                    component="ol"
-                    sx={{ pl: 2, mb: 2, overflowWrap: 'break-word' }}
-                    {...props}
-                  />
-                ),
-                li: ({ ...props }) => (
-                  <Box component="li" sx={{ mb: 1, overflowWrap: 'break-word' }} {...props} />
-                ),
+                p: markdownComponents.p,
+                h1: markdownComponents.h1,
+                h2: markdownComponents.h2,
+                h3: markdownComponents.h3,
+                ul: markdownComponents.ul,
+                ol: markdownComponents.ol,
+                li: markdownComponents.li,
               }}
             >
               {trimmedPart}

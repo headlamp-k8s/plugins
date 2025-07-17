@@ -13,7 +13,6 @@ export const isLogRequest = (url: string): boolean => {
 export const isSpecificResourceRequestHelper = (url: string): boolean => {
   // This matches patterns like /api/v1/namespaces/default/pods/my-pod
   // But doesn't match /api/v1/namespaces/default/pods
-  console.log('Checking if URL is a specific resource request:', url);
 
   // Check if this is a simple resource type URL (list endpoint)
   if (/\/(?:api|apis)\/.*?\/\w+\/?$/.test(url)) {
@@ -26,6 +25,5 @@ export const isSpecificResourceRequestHelper = (url: string): boolean => {
   const specificResourcePattern = /\/(?:namespaces\/[\w-]+\/)?[\w-]+\/[\w-]+\/?$/;
   const isSpecific = specificResourcePattern.test(url);
 
-  console.log('URL specific resource check result:', isSpecific);
   return isSpecific;
 };

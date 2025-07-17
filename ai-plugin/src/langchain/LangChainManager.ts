@@ -28,13 +28,11 @@ export default class LangChainManager extends AIManager {
     super();
     this.providerId = providerId;
     this.toolManager = new ToolManager(); // Initialize with empty config for now
-    console.log(`Creating LangChainManager with provider: ${providerId}`, config);
     this.model = this.createModel(providerId, config);
   }
 
   private createModel(providerId: string, config: Record<string, any>): BaseChatModel {
     try {
-      console.log(`Initializing ${providerId} model with config:`, config);
       switch (providerId) {
         case 'openai':
           if (!config.apiKey) {
@@ -96,10 +94,6 @@ export default class LangChainManager extends AIManager {
           if (!config.baseUrl) {
             throw new Error('Base URL is required for local models');
           }
-          console.log('Creating ChatOllama with config:', {
-            baseUrl: config.baseUrl,
-            model: config.model,
-          });
           return new ChatOllama({
             baseUrl: config.baseUrl,
             model: config.model,
@@ -160,7 +154,6 @@ export default class LangChainManager extends AIManager {
   }
 
   async userSend(message: string): Promise<Prompt> {
-    console.log('User message sent:', message);
     const userPrompt: Prompt = { role: 'user', content: message };
     this.history.push(userPrompt);
 
@@ -191,80 +184,18 @@ export default class LangChainManager extends AIManager {
     }
 
     try {
-      // Add timeout for local models since they might be slower
       let response;
       if (this.providerId === 'local') {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Local model response timed out')), 120000); // 2 minute timeout for local models
-        });
-
-        const responsePromise = modelToUse.invoke(messages);
-        response = await Promise.race([responsePromise, timeoutPromise]);
+        const finalMessages = [messages[0], messages[messages.length - 1]];
+        response = await modelToUse.invoke(finalMessages);
       } else {
         response = await modelToUse.invoke(messages);
       }
-
-      console.log('Model response received:', response);
-
-      // For local models, handle responses differently
-      if (this.providerId === 'local') {
-        console.log('Local model response received:', {
-          content:
-            response.content?.substring(0, 200) + (response.content?.length > 200 ? '...' : ''),
-          contentLength: response.content?.length || 0,
-          hasToolCalls: !!response.tool_calls?.length,
-        });
-
-        // Ensure we have valid content
-        let responseContent = response.content || '';
-        if (typeof responseContent !== 'string') {
-          console.warn('Local model returned non-string content, converting to string');
-          responseContent = String(responseContent);
-        }
-
-        // If response is empty or very short, provide a fallback
-        if (!responseContent.trim()) {
-          console.warn('Local model returned empty response, providing fallback');
-          responseContent =
-            "I'm sorry, but I couldn't generate a response. Please try rephrasing your question or check if your local model is running properly.";
-        }
-
-        // Check if the response suggests tool usage is needed
-        const needsToolCall = this.shouldUseToolCall(message, responseContent);
-
-        console.log('Local model analysis:', {
-          userMessage: message,
-          needsToolCall,
-          responseContentLength: responseContent.length,
-        });
-
-        if (needsToolCall) {
-          // For local models, we'll manually construct a tool call if needed
-          console.log('Local model response suggests tool usage needed, but tools not bound');
-
-          // Add a note to the response about using the API tool
-          const enhancedContent =
-            responseContent +
-            '\n\n*Note: To get actual cluster data, you can use the kubernetes_api_request tool in the interface.*';
-
-          const assistantPrompt: Prompt = {
-            role: 'assistant',
-            content: enhancedContent,
-          };
-          this.history.push(assistantPrompt);
-          console.log('Local model assistant prompt created:', assistantPrompt);
-          return assistantPrompt;
-        } else {
-          // Simple response, no tool calls needed
-          const assistantPrompt: Prompt = {
-            role: 'assistant',
-            content: responseContent,
-          };
-          this.history.push(assistantPrompt);
-          console.log('Local model simple response created:', assistantPrompt);
-          return assistantPrompt;
-        }
-      }
+      console.log('Model response received:', {
+        content:
+          response.content?.substring(0, 100) + (response.content?.length > 100 ? '...' : ''),
+        toolCalls: response.tool_calls,
+      });
 
       if (response.tool_calls?.length) {
         const toolCalls = response.tool_calls.map(tc => ({
