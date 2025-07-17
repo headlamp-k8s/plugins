@@ -30,12 +30,7 @@ RUN echo "Cleaning arch-dependent files for plugin $PLUGIN..."; \
 # Install dependencies for the specified plugin
 RUN echo "Installing deps for plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
-    echo "Installing $ENVIRONMENT dependencies..."; \
-    if [ "$ENVIRONMENT" = "production" ]; then \
-     npm ci --omit=dev; \
-    else \
-      npm ci; \
-    fi
+    npm install
 
 # Build the specified plugin
 RUN echo "Building plugin $PLUGIN..."; \
