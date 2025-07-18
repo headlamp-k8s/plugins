@@ -10,6 +10,8 @@ import { fetchChartDetailFromArtifact, fetchChartValues } from '../../api/charts
 import { createRelease, getActionStatus } from '../../api/releases';
 import { addRepository } from '../../api/repository';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
+import { APP_CATALOG_HELM_REPOSITORY,VANILLA_HELM_REPO } from './List';
+//import * as global from "global";
 
 type FieldType = {
   value: string;
@@ -53,8 +55,22 @@ export function EditorDialog(props: {
     }
   }, [selectedNamespace, namespaceNames]);
 
+  // Fetch chart values for a given package and version
+  function refreshChartValue(packageID: string, packageVersion: string) {
+    fetchChartValues(packageID, packageVersion)
+      .then((response: any) => {
+        setChartValues(response);
+        setDefaultChartValues(yamlToJSON(response));
+      })
+      .catch(error => {
+        enqueueSnackbar(`Error fetching chart values ${error}`, {
+          variant: 'error',
+        });
+      });
+  }
+
   function handleChartValueFetch(chart: any) {
-    const packageID = chart.package_id;
+    const packageID = globalThis.CHART_PROFILE === VANILLA_HELM_REPO ? chart.name : chart.package_id;
     const packageVersion = selectedVersion?.value ?? chart.version;
     setChartValuesLoading(true);
     fetchChartValues(packageID, packageVersion)
@@ -73,17 +89,22 @@ export function EditorDialog(props: {
   }
 
   useEffect(() => {
-    setChartInstallDescription(`${chart.name} deployment`);
-    fetchChartDetailFromArtifact(chart.name, chart.repository.name).then(response => {
-      if (response.available_versions) {
-        const availableVersions = response.available_versions.map(({ version }) => ({
-          title: version,
-          value: version,
-        }));
-        setVersions(availableVersions);
-        setSelectedVersion(availableVersions[0]);
-      }
-    });
+    if (globalThis.CHART_PROFILE === VANILLA_HELM_REPO) {
+      const versionsArray = AVAILABLE_VERSIONS.get(chart.name);
+      const availableVersions = versionsArray.map(({ version }) => ({ title: version, value: version }));
+      // @ts-ignore
+      setVersions(availableVersions);
+      setChartInstallDescription(`${chart.name} deployment`);
+      setSelectedVersion(availableVersions[0]);
+    } else {
+      fetchChartDetailFromArtifact(chart.name, chart.repository.name).then(response => {
+        if (response.available_versions) {
+          const availableVersions = response.available_versions.map(({ version }) => ({ title: version, value: version }));
+          setVersions(availableVersions);
+          setSelectedVersion(availableVersions[0]);
+        }
+      });
+    }
     handleChartValueFetch(chart);
   }, [chart]);
 
@@ -144,14 +165,20 @@ export function EditorDialog(props: {
       });
       return;
     }
-    const repoName = chart.repository.name;
-    const repoURL = chart.repository.url;
+
     const jsonChartValues = yamlToJSON(chartValues);
     const chartValuesDIFF = _.omitBy(jsonChartValues, (value, key) =>
       _.isEqual(defaultChartValues[key], value)
     );
     setInstallLoading(true);
 
+    // In case of profile: VANILLA_HELM_REPOSITORY, set the URL to access the index.yaml of the chart, as the repoURL.
+    // During the installation of an application, this URL will be added as a chart repository, and the list of available versions
+    // will be loaded during the upgrade from this repository.
+    const repoURL =
+      globalThis.CHART_PROFILE === VANILLA_HELM_REPO ? `${CHART_URL_PREFIX}/charts/` : chart.repository.url;
+    const repoName =
+        globalThis.CHART_PROFILE === VANILLA_HELM_REPO ? APP_CATALOG_HELM_REPOSITORY : chart.repository.name;
     addRepository(repoName, repoURL)
       .then(() => {
         createRelease(
@@ -264,6 +291,11 @@ export function EditorDialog(props: {
                 value={selectedVersion ?? versions[0]}
                 // @ts-ignore
                 onChange={(event, newValue: FieldType) => {
+                  if (globalThis.CHART_PROFILE === VANILLA_HELM_REPO && chart.version !== newValue.value) {
+                    console.log('Time to change');
+                    // Refresh values.yaml for a chart when the current version and new version differ
+                    refreshChartValue(chart.name, newValue.value);
+                  }
                   setSelectedVersion(newValue);
                 }}
                 renderInput={params => (
