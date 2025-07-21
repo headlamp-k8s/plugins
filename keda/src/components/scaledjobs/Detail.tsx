@@ -1,10 +1,10 @@
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
   NameValueTable,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Job from '@kinvolk/headlamp-plugin/lib/k8s/job';
 import { useParams } from 'react-router-dom';
 import { ScaledJob } from '../../resources/scaledjob';
 import {
@@ -26,7 +26,7 @@ export interface OwnedJobsSectionProps {
 export function OwnedJobsSection(props: OwnedJobsSectionProps) {
   const { scaledJob, hideColumns, noSearch } = props;
 
-  const { items: jobs, errors } = Job.useList({
+  const { items: jobs, errors } = K8s.ResourceClasses.Job.useList({
     namespace: scaledJob?.metadata?.namespace,
     labelSelector: `scaledjob.keda.sh/name=${scaledJob?.metadata?.name}`,
   });
