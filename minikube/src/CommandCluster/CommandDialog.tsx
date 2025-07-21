@@ -1,5 +1,5 @@
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/lib/k8s';
+import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { Card } from '@mui/material';
 import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
