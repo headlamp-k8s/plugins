@@ -29,6 +29,9 @@ interface CommandClusterProps {
   askClusterName?: boolean;
 }
 
+// This variable is given when the plugin is loaded
+declare const pluginPermissionSecrets: Record<string, number>;
+
 /**
  * Runs a command on a cluster, and shows the output in a dialog.
  */
@@ -90,7 +93,7 @@ export default function CommandCluster(props: CommandClusterProps) {
       if (driver) {
         args.push('--driver', driver);
       }
-      const minikube = runCommand('minikube', args, {});
+      const minikube = runCommand('minikube', args, {}, pluginPermissionSecrets);
       if (DEBUG) {
         console.log('runFunc after runCommand');
       }
