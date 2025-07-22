@@ -1,8 +1,8 @@
 import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
-import { apply, clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
+import { apply, clusterRequest, request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
-import { isLogRequest, isSpecificResourceRequestHelper } from '.';
+import { getAppUrl, isLogRequest, isSpecificResourceRequestHelper } from '.';
 
 const cleanUrl = (url: string) => {
   const urlObj = new URL(url, 'http://dummy.com'); // Use dummy base for relative URLs
@@ -148,51 +148,73 @@ export const handleActualApiRequest = async (
       });
     }
   }
-
+  
   // For all other methods (e.g. GET)
   if (method.toUpperCase() === 'GET') {
     const cleanedUrl = cleanUrl(url);
 
     try {
-      const response = await clusterRequest(cleanedUrl, {
+      const requestOptions: any = {
         method,
         cluster,
         body: body === '' ? undefined : body,
-        headers: isLogRequest(url)
-          ? {
-              Accept: 'application/json',
-              'Content-Type':
-                method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-            }
-          : isSpecificResourceRequestHelper(cleanedUrl)
-          ? {
-              'Content-Type':
-                method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-              Accept: 'application/json',
-            }
-          : {
-              'Content-Type':
-                method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
-              Accept:
-                'application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json',
-            },
-      });
-
+      };
+      if (isLogRequest(url)) {
+        // For logs, set Accept: */* and do not set Content-Type
+        requestOptions.headers = {
+          Accept: '*/*',
+        };
+      } else {
+        if (isSpecificResourceRequestHelper(cleanedUrl)) {
+          requestOptions.headers = {
+            'Content-Type': method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+            Accept: 'application/json',
+          };
+        } else {
+          requestOptions.headers = {
+            'Content-Type': method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+            Accept:
+              'application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json',
+          };
+        }
+      }
+      
+      let response;
+      if (isLogRequest(cleanedUrl)) {
+        console.log(getAppUrl() + `/clusters/${cluster}${cleanedUrl}`);
+        response = await fetch(getAppUrl() + `/clusters/${cluster}${cleanedUrl}`, {
+          headers: { Accept: '*/*' },
+          credentials: 'same-origin'
+        });
+      } else {
+        console.log('Fetching data for URL:', cleanedUrl);
+        response = await clusterRequest(cleanedUrl, requestOptions);
+      }
+      console.log('API response:', response);
+      console.log('API response:', response);
       let formattedResponse = response;
       if (isLogRequest(url)) {
-        if (
-          typeof response === 'object' &&
-          response.kind === 'Status' &&
-          response.status === 'Failure'
-        ) {
-          formattedResponse = `Error fetching logs: ${response.message || 'Unknown error'}`;
+        // Always treat as Response object and get text (logs are always ReadableStream)
+        if (response && typeof response.text === 'function') {
+          const logText = await response.text();
+          aiManager.history.push({
+            role: 'tool',
+            content: logText,
+          });
+          return logText;
         }
+        // Fallback: if not a Response object, treat as string
+        aiManager.history.push({
+          role: 'tool',
+          content: String(response),
+        });
+        return String(response);
       } else if (response?.kind === 'Table') {
-        // Extract resource kind from URL for list view link
+        // ...existing code...
         const extractKindFromUrl = (url: string) => {
           // Extract from URLs like /api/v1/pods, /apis/apps/v1/deployments, etc.
           const match = url.match(
-            /\/(?:api\/v1|apis\/[^\/]+\/[^\/]+)\/(?:namespaces\/[^\/]+\/)?([^\/\?]+)/
+            /\/(:?api\/v1|apis\/[^\/]+\/[^\/]+)\/(?:namespaces\/[^\/]+\/)?([^\/\?]+)/
           );
           return match ? match[1] : null;
         };
