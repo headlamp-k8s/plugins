@@ -107,6 +107,48 @@ export function generateContextDescription(
     }
   }
 
+  // --- Structured resource list for AI link accuracy ---
+  const structuredResources: string[] = [];
+
+  // Add main resource if present
+  if (event?.resource && event.resource.kind && event.resource.metadata?.name) {
+    structuredResources.push(
+      `- kind: ${event.resource.kind}, name: ${event.resource.metadata.name}, namespace: ${event.resource.metadata.namespace || 'default'}, cluster: ${currentCluster || '[unknown]'}`
+    );
+  }
+
+  // Add items if present (e.g., list views)
+  if (event?.items && Array.isArray(event.items)) {
+    for (const item of event.items) {
+      if (item.kind && item.metadata?.name) {
+        structuredResources.push(
+          `- kind: ${item.kind}, name: ${item.metadata.name}, namespace: ${item.metadata.namespace || 'default'}, cluster: ${currentCluster || '[unknown]'}`
+        );
+      }
+    }
+  }
+
+  // Add resources from clusterWarnings if possible (best effort, since warnings may not have full resource info)
+  for (const clusterName in clusterWarnings) {
+    const warnings = clusterWarnings[clusterName]?.warnings;
+    if (Array.isArray(warnings)) {
+      for (const warning of warnings) {
+        // Try to extract resource info from warning.involvedObject if present
+        const obj = warning.involvedObject;
+        if (obj && obj.kind && obj.name) {
+          structuredResources.push(
+            `- kind: ${obj.kind}, name: ${obj.name}, namespace: ${obj.namespace || 'default'}, cluster: ${clusterName}`
+          );
+        }
+      }
+    }
+  }
+
+  if (structuredResources.length > 0) {
+    contextParts.push('\nRESOURCES IN CONTEXT (use the resource name as the markdown link text):');
+    contextParts.push(...structuredResources);
+  }
+
   return contextParts.join('\n');
 }
 
