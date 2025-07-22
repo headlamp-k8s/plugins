@@ -22,6 +22,11 @@
     "kubernetes-debugging",
     "plugins"
   ],
+  "headlamp": {
+    "extraDist": {
+      "manage-minikube.js": "manage-minikube.js"
+    }
+  },
   "prettier": "@headlamp-k8s/eslint-config/prettier-config",
   "eslintConfig": {
     "extends": [
