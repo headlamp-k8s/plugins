@@ -33,6 +33,28 @@ import {
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
 
+// Utility function to parse suggestions from LLM response
+function parseSuggestionsFromResponse(content: string): { cleanContent: string; suggestions: string[] } {
+  const suggestionPattern = /SUGGESTIONS:\s*(.+?)(?:\n|$)/i;
+  const match = content.match(suggestionPattern);
+
+  if (match) {
+    const suggestionsText = match[1];
+    const suggestions = suggestionsText
+      .split('|')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+      .slice(0, 3); // Ensure max 3 suggestions
+
+    // Remove the suggestions line from the content
+    const cleanContent = content.replace(suggestionPattern, '').trim();
+
+    return { cleanContent, suggestions };
+  }
+
+  return { cleanContent: content, suggestions: [] };
+}
+
 export default function AIPrompt(props: {
   openPopup: boolean;
   setOpenPopup: (...args) => void;
@@ -287,7 +309,31 @@ export default function AIPrompt(props: {
   }, [pluginSettings, activeConfig]);
 
   const updateHistory = React.useCallback(() => {
-    setPromptHistory(aiManager?.history ?? []);
+    if (!aiManager?.history) {
+      setPromptHistory([]);
+      return;
+    }
+
+    // Process the history to extract suggestions and clean content
+    const processedHistory = aiManager.history.map((prompt, index) => {
+      if (prompt.role === 'assistant' && prompt.content && !prompt.error) {
+        const { cleanContent, suggestions } = parseSuggestionsFromResponse(prompt.content);
+
+        // Update suggestions if this is the latest assistant response
+        if (index === aiManager.history.length - 1 && suggestions.length > 0) {
+          setSuggestions(suggestions);
+        }
+
+        // Return the prompt with cleaned content (without the SUGGESTIONS line)
+        return {
+          ...prompt,
+          content: cleanContent
+        };
+      }
+      return prompt;
+    });
+
+    setPromptHistory(processedHistory);
   }, [aiManager]);
 
   const handleOperationSuccess = React.useCallback(
@@ -474,8 +520,12 @@ export default function AIPrompt(props: {
 
   useEffect(() => {
     if (openPopup && aiManager) {
-      // Use all context-aware prompts
-      setSuggestions(dynamicPrompts);
+      // Only use dynamic prompts as initial suggestions if there's no conversation history
+      // If there's conversation history, suggestions will be parsed from the latest AI response
+      const hasConversation = aiManager.history && aiManager.history.length > 0;
+      if (!hasConversation) {
+        setSuggestions(dynamicPrompts);
+      }
     }
   }, [openPopup, aiManager, dynamicPrompts, location.pathname]);
 

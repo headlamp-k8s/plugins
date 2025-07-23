@@ -57,7 +57,15 @@ RESPONSES:
 - For Headlamp UI questions without enough info, suggest checking https://headlamp.dev/docs or the #headlamp Slack channel
 - For local models: You can provide general guidance and explanations without always requiring tool calls
 
-Remember: Users are in a visual web interface, so focus on what they can see and do in Headlamp, not command-line operations. The YAML is shown in a preview editor, it has a button "Open in Editor" which opens the actual editor.`;
+Remember: Users are in a visual web interface, so focus on what they can see and do in Headlamp, not command-line operations. The YAML is shown in a preview editor, it has a button "Open in Editor" which opens the actual editor.
+
+SUGGESTION PROMPTS:
+- Always end your response with exactly 3 relevant follow-up question suggestions
+- Format them as: "SUGGESTIONS: [suggestion1] | [suggestion2] | [suggestion3]"
+- Base suggestions on the current conversation context and user's apparent needs
+- Make suggestions actionable and relevant to Kubernetes management
+- Keep suggestions concise (under 60 characters each)
+- Examples: "Show me pod logs", "How to scale this deployment?", "Check resource usage"`;
 
 const prompts = {
   basePrompt,
