@@ -27,4 +27,3 @@ export const isSpecificResourceRequestHelper = (url: string): boolean => {
 
   return isSpecific;
 };
-
