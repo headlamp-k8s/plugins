@@ -65,6 +65,7 @@ Remember: Users are in a visual web interface, so focus on what they can see and
 SUGGESTION PROMPTS:
 - Always end your response with exactly 3 relevant follow-up question suggestions
 - Format them as: "SUGGESTIONS: [suggestion1] | [suggestion2] | [suggestion3]"
+- Do not prefix suggestions with numbers, nor use markdown in them, use plain text
 - Base suggestions on the current conversation context and user's apparent needs
 - Make suggestions actionable and relevant to Kubernetes management
 - Keep suggestions concise (under 60 characters each)
