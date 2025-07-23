@@ -128,6 +128,15 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     setShowEditor(true);
   }, []);
 
+  // Memoize the onYamlDetected callback to prevent ContentRenderer from re-rendering
+  const memoizedOnYamlDetected = useCallback((yaml: string, resourceType: string) => {
+    if (onYamlAction) {
+      onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
+    } else {
+      handleYamlDetected(yaml, resourceType);
+    }
+  }, [onYamlAction, handleYamlDetected]);
+
   const renderMessage = useCallback(
     (prompt: Prompt, index: number) => {
       if (
@@ -188,13 +197,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                     {/* Use ContentRenderer for all assistant content */}
                     <ContentRenderer
                       content={prompt.content || ''}
-                      onYamlDetected={(yaml, resourceType) => {
-                        if (onYamlAction) {
-                          onYamlAction(yaml, `Apply ${resourceType}`, resourceType, false);
-                        } else {
-                          handleYamlDetected(yaml, resourceType);
-                        }
-                      }}
+                      onYamlDetected={memoizedOnYamlDetected}
                     />
                   </>
                 )}
