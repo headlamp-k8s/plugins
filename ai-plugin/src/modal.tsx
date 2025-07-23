@@ -53,11 +53,26 @@ export default function AIPrompt(props: {
   const selectedClusters = useSelectedClusters();
   const clusters = useClustersConf() || {};
   const dynamicPrompts = useDynamicPrompts();
-
-  // Get cluster names for warning lookup
+  // Get cluster names for warning lookup - use selected clusters or current cluster only
   const clusterNames = useMemo(() => {
+    const currentCluster = getCluster();
+    
+    // If there are selected clusters, use those
+    if (selectedClusters && selectedClusters.length > 0) {
+      console.log("Using selected clusters:", selectedClusters);
+      return selectedClusters;
+    }
+    
+    // Otherwise, use only the current cluster
+    if (currentCluster) {
+      console.log("Using current cluster:", currentCluster);
+      return [currentCluster];
+    }
+    
+    // Fallback to all clusters (shouldn't happen in normal usage)
+    console.log("Fallback to all clusters:", Object.keys(clusters));
     return Object.keys(clusters);
-  }, [clusters]);
+  }, [selectedClusters, clusters]);
 
   // Use the custom hook to get warnings for clusters
   const clusterWarnings = useClusterWarnings(clusterNames);
@@ -340,7 +355,12 @@ export default function AIPrompt(props: {
     const currentClusterGroup = getClusterGroup();
 
     // Generate a human-readable context description
-    const contextDescription = generateContextDescription(event, currentCluster, clusterWarnings);
+    const contextDescription = generateContextDescription(
+      event, 
+      currentCluster, 
+      clusterWarnings, 
+      selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
+    );
 
     // Add cluster group info if relevant
     let fullContext = contextDescription;
