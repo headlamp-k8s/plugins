@@ -129,7 +129,7 @@ Both resources are now ready to be applied to your cluster.`,
       type: 'assistant' as const,
     },
     {
-      label: 'Resource List Result',
+      label: 'Resource Table Result',
       content: `Found 3 items across 2 namespaces:
 
 | NAME | NAMESPACE | STATUS | AGE |
