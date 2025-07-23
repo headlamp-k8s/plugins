@@ -129,6 +129,23 @@ Both resources are now ready to be applied to your cluster.`,
       type: 'assistant' as const,
     },
     {
+      label: 'Cluster Issue Summary',
+      content: `The \`test-trivy-trivy-operator-6f995dffb8-knb9h\` pod in the \`default\` namespace is in an unusual state in your \`ig-hl-cluster\` cluster. It may require your attention.
+
+Additionally, there are warnings related to this cluster:
+
+- There are 9 IRQs with affinity to 1 CPU.
+- Out of 4 nodes, none are available due to the following issues:
+  - The \`persistentvolumeclaim "test-trivy-trivy-operator-trivy-cache"\` is not found.
+  - Preemption is not helping with scheduling, as 0 out of 4 nodes are available.
+- A \`SealedSecret\` resource named \`flux-system/slack-url\` in the \`flux-system\` namespace has failed its dry-run with the error \`no matches for kind "SealedSecret" in version "bitnami.com/v1alpha1"\`.
+
+- Check the IRQ and CPU affinity: [9 IRQs with affinity to 1 CPUs](/c/ig-hl-cluster/irqs/default)
+- Examine the node issues: [nodes unavailability](/c/ig-hl-cluster/nodes/default)
+- Investigate the sealed secret issue: [SealedSecret/flux-system/slack-url](/c/ig-hl-cluster/sealedsecrets/flux-system/slack-url)`,
+      type: 'assistant' as const,
+    },
+    {
       label: 'Resource Table Result',
       content: `Found 3 items across 2 namespaces:
 
