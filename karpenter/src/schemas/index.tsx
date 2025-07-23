@@ -70,10 +70,10 @@ export const KARPENTER_SCHEMAS = {
           metadataOptions: {
             type: 'object',
             properties: {
-              httpEndpoint: { enum: ['enabled', 'disabled'] },
-              httpProtocolIPv6: { enum: ['enabled', 'disabled'] },
+              httpEndpoint: { type: 'string' },
+              httpProtocolIPv6: { type: 'string' },
               httpPutResponseHopLimit: { type: 'integer', minimum: 1 },
-              httpTokens: { enum: ['required', 'optional'] },
+              httpTokens: { type: 'string' },
             },
           },
           role: { type: 'string' },
@@ -140,7 +140,6 @@ export const KARPENTER_SCHEMAS = {
                       key: { type: 'string' },
                       operator: {
                         type: 'string',
-                        enum: ['In', 'Exists', 'DoesNotExist'],
                       },
                       values: {
                         type: 'array',
@@ -161,18 +160,9 @@ export const KARPENTER_SCHEMAS = {
               properties: {
                 type: {
                   type: 'string',
-                  enum: [
-                    'AMIsReady',
-                    'SubnetsReady',
-                    'SecurityGroupsReady',
-                    'InstanceProfileReady',
-                    'ValidationSucceeded',
-                    'Ready',
-                  ],
                 },
                 status: {
                   type: 'string',
-                  enum: ['True', 'False', 'Unknown'],
                 },
                 lastTransitionTime: { type: 'string', format: 'date-time' },
                 message: { type: 'string' },
@@ -226,7 +216,7 @@ export const KARPENTER_SCHEMAS = {
                 pattern: '^[0-9]+(s|m|h)$',
               },
               consolidationPolicy: {
-                enum: ['WhenEmpty', 'WhenUnderutilized', 'WhenEmptyOrUnderutilized'],
+                type: 'string',
               },
             },
           },
@@ -266,7 +256,7 @@ export const KARPENTER_SCHEMAS = {
                       properties: {
                         key: { type: 'string' },
                         operator: {
-                          enum: ['In', 'NotIn', 'Exists', 'DoesNotExist', 'Gt', 'Lt'],
+                          type: 'string',
                         },
                         values: {
                           type: 'array',
@@ -291,14 +281,9 @@ export const KARPENTER_SCHEMAS = {
               required: ['type', 'status'],
               properties: {
                 type: {
-                  enum: [
-                    'ValidationSucceeded',
-                    'NodeRegistrationHealthy',
-                    'NodeClassReady',
-                    'Ready',
-                  ],
+                  type: 'string',
                 },
-                status: { enum: ['True', 'False', 'Unknown'] },
+                status: { type: 'string' },
                 lastTransitionTime: { type: 'string', format: 'date-time' },
                 message: { type: 'string' },
                 reason: { type: 'string' },
