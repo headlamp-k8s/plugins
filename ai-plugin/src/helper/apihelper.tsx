@@ -148,7 +148,7 @@ export const handleActualApiRequest = async (
       });
     }
   }
-  
+
   // For all other methods (e.g. GET)
   if (method.toUpperCase() === 'GET') {
     const cleanedUrl = cleanUrl(url);
@@ -167,23 +167,25 @@ export const handleActualApiRequest = async (
       } else {
         if (isSpecificResourceRequestHelper(cleanedUrl)) {
           requestOptions.headers = {
-            'Content-Type': method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+            'Content-Type':
+              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
             Accept: 'application/json',
           };
         } else {
           requestOptions.headers = {
-            'Content-Type': method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+            'Content-Type':
+              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
             Accept:
               'application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json',
           };
         }
       }
-      
+
       const response = await clusterRequest(cleanedUrl, {
         ...requestOptions,
-        isJSON: isLogRequest(cleanedUrl)
+        isJSON: isLogRequest(cleanedUrl),
       });
-      
+
       console.log('API response:', response);
       console.log('API response:', response);
       let formattedResponse = response;
