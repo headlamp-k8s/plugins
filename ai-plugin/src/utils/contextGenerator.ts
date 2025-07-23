@@ -19,12 +19,19 @@ interface HeadlampEvent {
 export function generateContextDescription(
   event: HeadlampEvent,
   currentCluster?: string,
-  clusterWarnings?: Record<string, { warnings: Event[]; error?: Error | null }>
+  clusterWarnings?: Record<string, { warnings: Event[]; error?: Error | null }>,
+  selectedClusters?: string[]
 ): string {
   const contextParts: string[] = [];
 
-  // Add cluster context
-  if (currentCluster) {
+  // Add cluster context - be clear about what clusters are in scope
+  if (selectedClusters && selectedClusters.length > 0) {
+    if (selectedClusters.length === 1) {
+      contextParts.push(`You are viewing cluster: ${selectedClusters[0]}`);
+    } else {
+      contextParts.push(`You are viewing selected clusters: ${selectedClusters.join(', ')}`);
+    }
+  } else if (currentCluster) {
     contextParts.push(`You are viewing cluster: ${currentCluster}`);
   }
 
@@ -86,12 +93,17 @@ export function generateContextDescription(
     }
   }
 
-  if (Object.keys(clusterWarnings).length > 0) {
-    contextParts.push('Cluster configured, with respective warnings and errors:');
+  if (Object.keys(clusterWarnings || {}).length > 0) {
+    const clusterCount = Object.keys(clusterWarnings).length;
+    if (clusterCount === 1) {
+      contextParts.push('Cluster status and warnings:');
+    } else {
+      contextParts.push(`Status and warnings for ${clusterCount} selected clusters:`);
+    }
   }
 
-  // Add events context (warnings/errors)
-  for (const clusterName in clusterWarnings) {
+  // Add events context (warnings/errors) - only for selected/current clusters
+  for (const clusterName in (clusterWarnings || {})) {
     const warnings = clusterWarnings[clusterName]?.warnings;
     const error = clusterWarnings[clusterName]?.error;
 
@@ -129,7 +141,7 @@ export function generateContextDescription(
   }
 
   // Add resources from clusterWarnings if possible (best effort, since warnings may not have full resource info)
-  for (const clusterName in clusterWarnings) {
+  for (const clusterName in (clusterWarnings || {})) {
     const warnings = clusterWarnings[clusterName]?.warnings;
     if (Array.isArray(warnings)) {
       for (const warning of warnings) {

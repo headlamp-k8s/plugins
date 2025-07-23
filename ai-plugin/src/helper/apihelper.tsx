@@ -2,7 +2,7 @@ import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
 import { apply, clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
-import { getAppUrl, isLogRequest, isSpecificResourceRequestHelper } from '.';
+import { isLogRequest, isSpecificResourceRequestHelper } from '.';
 
 const cleanUrl = (url: string) => {
   const urlObj = new URL(url, 'http://dummy.com'); // Use dummy base for relative URLs
@@ -179,17 +179,11 @@ export const handleActualApiRequest = async (
         }
       }
       
-      let response;
-      if (isLogRequest(cleanedUrl)) {
-        console.log(getAppUrl() + `/clusters/${cluster}${cleanedUrl}`);
-        response = await fetch(getAppUrl() + `/clusters/${cluster}${cleanedUrl}`, {
-          headers: { Accept: '*/*' },
-          credentials: 'same-origin'
-        });
-      } else {
-        console.log('Fetching data for URL:', cleanedUrl);
-        response = await clusterRequest(cleanedUrl, requestOptions);
-      }
+      const response = await clusterRequest(cleanedUrl, {
+        ...requestOptions,
+        isJSON: isLogRequest(cleanedUrl)
+      });
+      
       console.log('API response:', response);
       console.log('API response:', response);
       let formattedResponse = response;
