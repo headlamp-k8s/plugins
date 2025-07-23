@@ -103,7 +103,7 @@ export function generateContextDescription(
   }
 
   // Add events context (warnings/errors) - only for selected/current clusters
-  for (const clusterName in (clusterWarnings || {})) {
+  for (const clusterName in clusterWarnings || {}) {
     const warnings = clusterWarnings[clusterName]?.warnings;
     const error = clusterWarnings[clusterName]?.error;
 
@@ -125,7 +125,9 @@ export function generateContextDescription(
   // Add main resource if present
   if (event?.resource && event.resource.kind && event.resource.metadata?.name) {
     structuredResources.push(
-      `- kind: ${event.resource.kind}, name: ${event.resource.metadata.name}, namespace: ${event.resource.metadata.namespace || 'default'}, cluster: ${currentCluster || '[unknown]'}`
+      `- kind: ${event.resource.kind}, name: ${event.resource.metadata.name}, namespace: ${
+        event.resource.metadata.namespace || 'default'
+      }, cluster: ${currentCluster || '[unknown]'}`
     );
   }
 
@@ -134,14 +136,16 @@ export function generateContextDescription(
     for (const item of event.items) {
       if (item.kind && item.metadata?.name) {
         structuredResources.push(
-          `- kind: ${item.kind}, name: ${item.metadata.name}, namespace: ${item.metadata.namespace || 'default'}, cluster: ${currentCluster || '[unknown]'}`
+          `- kind: ${item.kind}, name: ${item.metadata.name}, namespace: ${
+            item.metadata.namespace || 'default'
+          }, cluster: ${currentCluster || '[unknown]'}`
         );
       }
     }
   }
 
   // Add resources from clusterWarnings if possible (best effort, since warnings may not have full resource info)
-  for (const clusterName in (clusterWarnings || {})) {
+  for (const clusterName in clusterWarnings || {}) {
     const warnings = clusterWarnings[clusterName]?.warnings;
     if (Array.isArray(warnings)) {
       for (const warning of warnings) {
@@ -149,7 +153,9 @@ export function generateContextDescription(
         const obj = warning.involvedObject;
         if (obj && obj.kind && obj.name) {
           structuredResources.push(
-            `- kind: ${obj.kind}, name: ${obj.name}, namespace: ${obj.namespace || 'default'}, cluster: ${clusterName}`
+            `- kind: ${obj.kind}, name: ${obj.name}, namespace: ${
+              obj.namespace || 'default'
+            }, cluster: ${clusterName}`
           );
         }
       }

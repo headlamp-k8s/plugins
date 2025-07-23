@@ -56,21 +56,21 @@ export default function AIPrompt(props: {
   // Get cluster names for warning lookup - use selected clusters or current cluster only
   const clusterNames = useMemo(() => {
     const currentCluster = getCluster();
-    
+
     // If there are selected clusters, use those
     if (selectedClusters && selectedClusters.length > 0) {
-      console.log("Using selected clusters:", selectedClusters);
+      console.log('Using selected clusters:', selectedClusters);
       return selectedClusters;
     }
-    
+
     // Otherwise, use only the current cluster
     if (currentCluster) {
-      console.log("Using current cluster:", currentCluster);
+      console.log('Using current cluster:', currentCluster);
       return [currentCluster];
     }
-    
+
     // Fallback to all clusters (shouldn't happen in normal usage)
-    console.log("Fallback to all clusters:", Object.keys(clusters));
+    console.log('Fallback to all clusters:', Object.keys(clusters));
     return Object.keys(clusters);
   }, [selectedClusters, clusters]);
 
@@ -148,6 +148,72 @@ export default function AIPrompt(props: {
       _pluginSetting.setActiveProvider(active);
     }
   }, [pluginSettings]);
+
+  // React to configuration changes (like provider deletion)
+  useEffect(() => {
+    if (!pluginSettings) return;
+
+    const savedConfigs = getSavedConfigurations(pluginSettings);
+    const newProviders = savedConfigs.providers || [];
+
+    // Update available configs
+    setAvailableConfigs(newProviders);
+    setDefaultProviderIndex(savedConfigs.defaultProviderIndex);
+
+    // Check if the current active config still exists
+    if (activeConfig) {
+      const stillExists = newProviders.find(
+        p =>
+          p.providerId === activeConfig.providerId && p.config.apiKey === activeConfig.config.apiKey
+      );
+
+      if (!stillExists) {
+        // Active provider was deleted, switch to a new one or clear
+        const newActive = getActiveConfig(savedConfigs);
+
+        if (newActive) {
+          // Switch to the new default provider
+          setActiveConfig(newActive);
+          _pluginSetting.setActiveProvider(newActive);
+
+          // Clear history and show provider change message
+          setPromptHistory([]);
+          setPromptVal('');
+          setApiError(null);
+
+          if (aiManager) {
+            aiManager.reset();
+            setAiManager(null);
+          }
+
+          const providerName =
+            newActive.displayName ||
+            getProviderById(newActive.providerId)?.name ||
+            newActive.providerId;
+
+          setTimeout(() => {
+            setPromptHistory([
+              {
+                role: 'system',
+                content: `Previous provider was removed. Switched to ${providerName}.`,
+              },
+            ]);
+          }, 100);
+        } else {
+          // No providers available, clear everything
+          setActiveConfig(null);
+          setPromptHistory([]);
+          setPromptVal('');
+          setApiError(null);
+
+          if (aiManager) {
+            aiManager.reset();
+            setAiManager(null);
+          }
+        }
+      }
+    }
+  }, [pluginSettings, activeConfig, aiManager]);
 
   // Handle changing the active configuration
   const handleChangeConfig = (config: StoredProviderConfig) => {
@@ -356,9 +422,9 @@ export default function AIPrompt(props: {
 
     // Generate a human-readable context description
     const contextDescription = generateContextDescription(
-      event, 
-      currentCluster, 
-      clusterWarnings, 
+      event,
+      currentCluster,
+      clusterWarnings,
       selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
     );
 
