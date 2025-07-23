@@ -29,8 +29,8 @@ interface CommandClusterProps {
   askClusterName?: boolean;
 }
 
-// This variable is given when the plugin is loaded
-declare const pluginPermissionSecrets: Record<string, number>;
+// Declare a global function with the same type as runCommand
+declare const pluginRunCommand: typeof runCommand;
 
 /**
  * Runs a command on a cluster, and shows the output in a dialog.
@@ -93,7 +93,7 @@ export default function CommandCluster(props: CommandClusterProps) {
       if (driver) {
         args.push('--driver', driver);
       }
-      const minikube = runCommand('minikube', args, {}, pluginPermissionSecrets);
+      const minikube = pluginRunCommand('minikube', args, {});
       if (DEBUG) {
         console.log('runFunc after runCommand');
       }
