@@ -1,3 +1,5 @@
+import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Link as MuiLink, Typography } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -5,6 +7,7 @@ import { Link as RouterLink, useHistory } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
 import YamlDisplay from './components/YamlDisplay';
 import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
+import { getHeadlampLink } from './utils/promptLinkHelper';
 
 interface ContentRendererProps {
   content: string;
@@ -243,23 +246,40 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
 
     // Create link component that has access to history
     const LinkComponent = React.useMemo(() => {
-      const component = React.memo(({ ...props }: any) => {
-        if (props.href && props.href.startsWith('/c/')) {
+      const component = React.memo(({ href, ...props }: any) => {
+        // Check if it's a resource details link
+        const headlampLinkDetails = getHeadlampLink(href);
+        if (headlampLinkDetails.isHeadlampLink) {
+          const { kubeObject } = headlampLinkDetails;
+          if (kubeObject) {
+            return (
+              <Link kubeObject={kubeObject} />
+            );
+          }
+          // In case it's a Headlamp processed link but no kube object
+          if (headlampLinkDetails.url) {
+            return (
+              <MuiLink
+                to={headlampLinkDetails.url}
+                component={RouterLink}
+                onClick={(e: any) => {
+                  e.preventDefault();
+                  history.push(headlampLinkDetails.url);
+                }}
+              >
+                {props.children}
+              </MuiLink>
+            );
+          }
+
+          // The link is not supported in Headlamp so likely the LLM made it up
           return (
-            <MuiLink
-              component={RouterLink}
-              to={props.href}
-              onClick={(e: any) => {
-                e.preventDefault();
-                history.push(props.href);
-              }}
-            >
-              {props.children}
-            </MuiLink>
+            <em>{props.children}</em>
           );
         }
+
         return (
-          <MuiLink href={props.href} target="_blank" rel="noopener noreferrer" {...props}>
+          <MuiLink href={href} target="_blank" rel="noopener noreferrer" {...props}>
             {props.children}
           </MuiLink>
         );
@@ -368,6 +388,8 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 ul: markdownComponents.ul,
                 ol: markdownComponents.ol,
                 li: markdownComponents.li,
+                a: LinkComponent,
+                code: CodeComponent,
               }}
             >
               {trimmedPart}

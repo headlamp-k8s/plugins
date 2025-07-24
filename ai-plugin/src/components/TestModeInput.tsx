@@ -146,6 +146,15 @@ Additionally, there are warnings related to this cluster:
       type: 'assistant' as const,
     },
     {
+      label: 'Headlamp Link',
+      content: `You can view the resource details in Headlamp by clicking the link below:
+
+- [nginx-deployment](https://headlamp/resource-details?cluster=ig-hl-cluster&kind=Deployment&resource=nginx-deployment&ns=default)
+- [unsupported-resource](https://headlamp/resource-details?cluster=ig-hl-cluster&kind=UnsupportedKind&resource=unsupported-resource)
+- [external-link](https://headlamp.dev/docs)`,
+      type: 'assistant' as const,
+    },
+    {
       label: 'Resource Table Result',
       content: `Found 3 items across 2 namespaces:
 
