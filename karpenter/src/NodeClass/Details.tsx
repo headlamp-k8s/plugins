@@ -1,3 +1,4 @@
+import { AppDispatch } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -5,30 +6,88 @@ import {
   SectionBox,
   StatusLabel as NStausLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
 import { Box } from '@mui/material';
+import React from 'react';
+import { useDispatch } from 'react-redux';
 import { useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { EditConfigButton } from '../common/EditConfigButton';
+import { DiffEditorDialog } from '../common/resourceEditor';
 import { StatusLabel } from '../common/StatusLabel';
+import { handleShowDiff } from '../helpers/handleDiff';
+import { getHandleSaveHelper } from '../helpers/handleSave';
 import { nodeClassClass } from './List';
 
 export function NodeClassDetailView(props: { name?: string }) {
   const params = useParams<{ name: string }>();
   const { name = params.name } = props;
+  const [currentResource, setCurrentResource] = React.useState<KubeObject | null>(null);
+  const [originalYaml, setOriginalYaml] = React.useState('');
+  const [modifiedYaml, setModifiedYaml] = React.useState('');
+  const [isEditorOpen, setIsEditorOpen] = React.useState(false);
   const NodeClass = nodeClassClass();
+  const location = useLocation();
+
+  const dispatch: AppDispatch = useDispatch();
+
+  const getHandleSave = React.useCallback(() => {
+    if (!currentResource) {
+      return () => console.error('No resource available for saving');
+    }
+
+    return getHandleSaveHelper({
+      dispatch,
+      currentResource,
+      cancelUrl: location.pathname,
+      closeDialog: () => setIsEditorOpen(false),
+    });
+  }, [currentResource, dispatch]);
+
+  const actions = () => {
+    return (item: KubeObject) =>
+      item
+        ? [
+            {
+              id: 'Nodeclass-config-editor',
+              action: (
+                <>
+                  <EditConfigButton
+                    resource={item}
+                    handleClick={() =>
+                      handleShowDiff(
+                        item,
+                        setCurrentResource,
+                        setOriginalYaml,
+                        setModifiedYaml,
+                        setIsEditorOpen
+                      )
+                    }
+                  />
+                  {isEditorOpen && currentResource && (
+                    <DiffEditorDialog
+                      open={isEditorOpen}
+                      onClose={() => setIsEditorOpen(false)}
+                      schema="Nodeclass-schema"
+                      originalYaml={originalYaml}
+                      modifiedYaml={modifiedYaml}
+                      onSave={getHandleSave()}
+                      resource={currentResource}
+                    />
+                  )}
+                </>
+              ),
+            },
+          ]
+        : [];
+  };
 
   return (
     <DetailsGrid
       resourceType={NodeClass}
       name={name}
       withEvents
-      actions={item =>
-        item && [
-          {
-            id: 'Nodeclass-config-editor',
-            action: () => <EditConfigButton resource={item} schema="Nodeclass-schema" />,
-          },
-        ]
-      }
+      actions={actions()}
       extraInfo={item =>
         item && [
           {
