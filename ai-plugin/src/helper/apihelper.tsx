@@ -183,11 +183,9 @@ export const handleActualApiRequest = async (
 
       const response = await clusterRequest(cleanedUrl, {
         ...requestOptions,
-        isJSON: isLogRequest(cleanedUrl),
+        isJSON: !isLogRequest(cleanedUrl),
       });
 
-      console.log('API response:', response);
-      console.log('API response:', response);
       let formattedResponse = response;
       if (isLogRequest(url)) {
         // Always treat as Response object and get text (logs are always ReadableStream)

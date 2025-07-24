@@ -181,7 +181,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
           <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
             {prompt.role === 'user' ? 'You' : 'AI Assistant'}
           </Typography>
-          <Box sx={{ whiteSpace: 'pre-wrap' }}>
+          <Box sx={{ whiteSpace: 'unset' }}>
             {prompt.role === 'user' ? (
               prompt.content
             ) : (
