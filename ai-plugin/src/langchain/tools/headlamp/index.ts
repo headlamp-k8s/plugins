@@ -1,1 +1,0 @@
-export { HeadlampTool } from './HeadlampTool';
