@@ -3,8 +3,10 @@ import {
   registerClusterProviderDialog,
   registerClusterProviderMenuItem,
   registerRoute,
+  runCommand,
+  registerAppBarAction,
 } from '@kinvolk/headlamp-plugin/lib';
-import { ListItemText, MenuItem } from '@mui/material';
+import { Button, ListItemText, MenuItem } from '@mui/material';
 import React from 'react';
 import CommandCluster from './CommandCluster/CommandCluster';
 import CreateClusterPage from './CreateClusterPage';
@@ -169,7 +171,8 @@ registerClusterProviderDialog(({ cluster, openConfirmDialog, setOpenConfirmDialo
     />
   );
 });
-
+// alert(import.meta.env.HEADLAMP_APP_PLUGIN_PACKAGE_PATH);
+// alert(import.meta.env.VITE_PLUGIN_PACKAGE_PATH);
 // For the add cluster page, add a section for minikube
 registerAddClusterProvider({
   title: 'Minikube',
@@ -178,3 +181,38 @@ registerAddClusterProvider({
     'Minikube is a lightweight tool that simplifies the process of setting up a Kubernetes environment on your local PC. It provides a localStorage, single-node Kubernetes cluster that you can use for learning, development, and testing purposes.',
   url: '/create-cluster-minikube',
 });
+
+
+// Declare a global function with the same type as runCommand
+declare const pluginRunCommand: typeof runCommand;
+declare const pluginPath: string;
+const packagePath = pluginPath.startsWith('plugins/')
+  ? pluginPath.substring(8)
+  : pluginPath;
+
+function Command() {
+  function handleClick() {
+    console.log('Running manage-minikube.js script with package path:', packagePath);
+    const scriptjs = pluginRunCommand(
+      //@ts-ignore
+      'scriptjs',
+      [`${packagePath}/manage-minikube.js`],
+      {},
+    );
+    scriptjs.stdout.on('data', data => {
+      console.log('scriptjs stdout:', data);
+    });
+    scriptjs.stderr.on('data', data => {
+      console.log('scriptjs stderr:', data);
+    });
+    scriptjs.on('exit', code => {
+      console.log('scriptjs exit code:', code);
+    });
+  }
+  return (
+    <Button variant="contained" color="primary" onClick={handleClick}>
+      script
+    </Button>
+  );
+}
+registerAppBarAction(Command);
