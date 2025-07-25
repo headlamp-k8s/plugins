@@ -9,7 +9,6 @@ import { Box } from '@mui/material';
 import React from 'react';
 import { NotSupported } from '../checkflux';
 import Table from '../common/Table';
-import { NameLink } from '../helpers';
 
 const notificationGroup = 'notification.toolkit.fluxcd.io';
 const notificationVersion = 'v1beta3';
@@ -77,7 +76,22 @@ function Alerts() {
       <Table
         data={resources}
         columns={[
-          NameLink(alertNotificationClass()),
+          {
+            header: 'Name',
+            accessorKey: 'metadata.name',
+            Cell: ({ row: { original: item } }) => (
+              <Link
+                routeName="notification"
+                params={{
+                  name: item.metadata.name,
+                  namespace: item.metadata.namespace,
+                  pluralName: 'alerts',
+                }}
+              >
+                {item?.jsonData?.metadata.name}
+              </Link>
+            ),
+          },
           'namespace',
           {
             header: 'Severity',
