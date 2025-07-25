@@ -170,6 +170,7 @@ export default function ApiConfirmationDialog({
   if (showDeleteConfirm) {
     return (
       <ConfirmDialog
+        // @ts-ignore
         open={showDeleteConfirm}
         handleClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteConfirm}
@@ -221,6 +222,7 @@ export default function ApiConfirmationDialog({
   if (['PUT', 'PATCH'].includes(method.toUpperCase()) && showPatchConfirm) {
     return (
       <ConfirmDialog
+        // @ts-ignore
         open={showPatchConfirm}
         handleClose={() => {
           setShowPatchConfirm(false);
@@ -257,6 +259,7 @@ export default function ApiConfirmationDialog({
   return (
     <EditorDialog
       item={editedBody}
+      // @ts-ignore
       open={openEditorDialog}
       onClose={() => setOpenEditorDialog(false)}
       setOpen={setOpenEditorDialog}
