@@ -77,13 +77,6 @@ export default class LangChainManager extends AIManager {
           if (!config.apiKey) {
             throw new Error('API key is required for Google Gemini');
           }
-          if (
-            !['gemini-pro', 'gemini-1.0-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'].includes(
-              config.model
-            )
-          ) {
-            throw new Error(`Invalid Gemini model: ${config.model}`);
-          }
           return new ChatGoogleGenerativeAI({
             apiKey: config.apiKey,
             model: config.model,
