@@ -5,14 +5,14 @@ const HEADLAMP_LINK_HOST = 'headlamp';
 const HEADLAMP_RESOURCE_DETAILS_LINK = 'resource-details';
 const HEADLAMP_CLUSTER_LINK = 'cluster';
 
-export const promptLinksInstructions = `- Whenever you mention a Kubernetes resource (such as a Pod, Deployment, Service, etc.) in your response, format the resource name as a markdown link using this pattern:
+export const promptLinksInstructions = `RESOURCE LINKING:
+- When you mention a Kubernetes resource (such as a Pod, Deployment, Service, etc.) in your response, ALWAYS format the resource name as a markdown link using this pattern:
   \[RESOURCE_NAME\]\(https://${HEADLAMP_LINK_HOST}/${HEADLAMP_RESOURCE_DETAILS_LINK}?cluster=CLUSTER&kind=KIND&resource=RESOURCE_NAME&ns=NAMESPACE\)
  - Always use the resource name as the markdown link text, not the cluster, namespace, or kind.
 - Replace RESOURCE_NAME, CLUSTER, KIND, and NAMESPACE (only for namespaced resources) with the actual values for the resource.
-- If the CLUSTER, KIND, or NAMESPACE (when needed) is not known, do not use a link, just use \`RESOURCE_NAME\`.
-- Whenever you mention an existing cluster, format the cluster name as a markdown link using this pattern:
+- NEVER surround links with backquotes (\`)!
+- When you mention an existing cluster, ALWAYS format the cluster name as a markdown link using this pattern:
   \[CLUSTER_NAME\]\(https://${HEADLAMP_LINK_HOST}/${HEADLAMP_CLUSTER_LINK}?cluster=CLUSTER\)
-- If you mention a resource that is not supported by Headlamp, do not format it as a link, just use the resource name as plain text.
 `;
 
 export function getHeadlampLink(link: string) {
