@@ -149,8 +149,13 @@ Additionally, there are warnings related to this cluster:
       label: 'Headlamp Link',
       content: `You can view the resource details in Headlamp by clicking the link below:
 
-- [nginx-deployment](https://headlamp/resource-details?cluster=ig-hl-cluster&kind=Deployment&resource=nginx-deployment&ns=default)
+- [deployment-link](https://headlamp/resource-details?cluster=ig-hl-cluster&kind=Deployment&resource=nginx-deployment&ns=default)
+- [cluster-link](https://headlamp/cluster?cluster=ig-hl-cluster)
+- [missing-details-link](https://headlamp/resource-details?cluster=ig-hl-cluster&kind=Deployment)
 - [unsupported-resource](https://headlamp/resource-details?cluster=ig-hl-cluster&kind=UnsupportedKind&resource=unsupported-resource)
+- \`[some-backquoted-link](https://headlamp/resource-details?cluster=ig-hl-cluster&kind=Deployment&resource=nginx-deployment&ns=default)\`
+- [https://headlamp/cluster?cluster=ig-hl-cluster]
+- [https://headlamp/unsupported-link?cluster=ig-hl-cluster&kind=Deployment]
 - [external-link](https://headlamp.dev/docs)`,
       type: 'assistant' as const,
     },
