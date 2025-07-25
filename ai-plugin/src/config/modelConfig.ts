@@ -16,7 +16,7 @@ export interface ModelProvider {
   name: string;
   icon: string;
   fields: ModelField[];
-  models: string[];
+  models?: string[];
   description?: string;
 }
 
@@ -52,16 +52,6 @@ export const modelProviders: ModelProvider[] = [
         ],
         default: 'gpt-4o',
       },
-    ],
-    models: [
-      'gpt-4o',
-      'gpt-4o-mini',
-      'o1-mini',
-      'o1',
-      'o1-preview',
-      'gpt-4-turbo',
-      'gpt-4',
-      'gpt-3.5-turbo',
     ],
   },
   {
@@ -133,13 +123,6 @@ export const modelProviders: ModelProvider[] = [
         default: 'claude-3-opus-20240229',
       },
     ],
-    models: [
-      'claude-3-opus-20240229',
-      'claude-3-sonnet-20240229',
-      'claude-3-haiku-20240307',
-      'claude-2.1',
-      'claude-instant-1.2',
-    ],
   },
   {
     id: 'mistral',
@@ -202,7 +185,6 @@ export const modelProviders: ModelProvider[] = [
         default: 'gemini-2.0-flash',
       },
     ],
-    models: ['gemini-pro', 'gemini-1.0-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'],
   },
   {
     id: 'local',
