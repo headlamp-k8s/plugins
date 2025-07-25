@@ -34,7 +34,10 @@ import {
 } from './utils/ProviderConfigManager';
 
 // Utility function to parse suggestions from LLM response
-function parseSuggestionsFromResponse(content: string): { cleanContent: string; suggestions: string[] } {
+function parseSuggestionsFromResponse(content: string): {
+  cleanContent: string;
+  suggestions: string[];
+} {
   const suggestionPattern = /SUGGESTIONS:\s*(.+?)(?:\n|$)/i;
   const match = content.match(suggestionPattern);
 
@@ -327,7 +330,7 @@ export default function AIPrompt(props: {
         // Return the prompt with cleaned content (without the SUGGESTIONS line)
         return {
           ...prompt,
-          content: cleanContent
+          content: cleanContent,
         };
       }
       return prompt;

@@ -1,4 +1,3 @@
-import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Link as MuiLink, Typography } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -6,8 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import { Link as RouterLink, useHistory } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
 import YamlDisplay from './components/YamlDisplay';
-import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
 import { getHeadlampLink } from './utils/promptLinkHelper';
+import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
 
 interface ContentRendererProps {
   content: string;
@@ -197,9 +196,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
         // Check if it's just one line of code
         if (typeof children === 'string' && !children.trim().includes('\n')) {
           // Display inline
-          return (
-            <em>{children}</em>
-          );
+          return <em>{children}</em>;
         }
 
         // Regular code block styling
@@ -252,9 +249,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
         if (headlampLinkDetails.isHeadlampLink) {
           const { kubeObject } = headlampLinkDetails;
           if (kubeObject) {
-            return (
-              <Link kubeObject={kubeObject} />
-            );
+            return <Link kubeObject={kubeObject} />;
           }
           // In case it's a Headlamp processed link but no kube object
           if (headlampLinkDetails.url) {
@@ -273,9 +268,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           }
 
           // The link is not supported in Headlamp so likely the LLM made it up
-          return (
-            <em>{props.children}</em>
-          );
+          return <em>{props.children}</em>;
         }
 
         return (
