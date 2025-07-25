@@ -86,7 +86,7 @@ export default class LangChainManager extends AIManager {
           }
           return new ChatGoogleGenerativeAI({
             apiKey: config.apiKey,
-            modelName: config.model,
+            model: config.model,
             dangerouslyAllowBrowser: true,
           });
         }
