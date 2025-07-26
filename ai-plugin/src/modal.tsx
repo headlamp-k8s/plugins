@@ -34,30 +34,32 @@ import {
 } from './utils/ProviderConfigManager';
 
 function markdownToPlainText(markdown: string): string {
-  return markdown
-    // Remove headers
-    .replace(/^#{1,6}\s+/gm, '')
-    // Remove bold/italic
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/__(.*?)__/g, '$1')
-    .replace(/_(.*?)_/g, '$1')
-    // Remove links but keep text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Remove inline code
-    .replace(/`([^`]+)`/g, '$1')
-    // Remove strikethrough
-    .replace(/~~(.*?)~~/g, '$1')
-    // Clean up extra whitespace
-    .replace(/\s+/g, ' ')
-    // Remove list markers
-    .replace(/^\s*[-*+]\s+/gm, '')
-    .replace(/^\s*\d+\.\s+/gm, '')
-    // Remove blockquotes
-    .replace(/^\s*>+\s+/gm, '')
-    // Remove horizontal rules
-    .replace(/^-{3,}\s*$/gm, '')
-    .trim();
+  return (
+    markdown
+      // Remove headers
+      .replace(/^#{1,6}\s+/gm, '')
+      // Remove bold/italic
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/__(.*?)__/g, '$1')
+      .replace(/_(.*?)_/g, '$1')
+      // Remove links but keep text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Remove inline code
+      .replace(/`([^`]+)`/g, '$1')
+      // Remove strikethrough
+      .replace(/~~(.*?)~~/g, '$1')
+      // Clean up extra whitespace
+      .replace(/\s+/g, ' ')
+      // Remove list markers
+      .replace(/^\s*[-*+]\s+/gm, '')
+      .replace(/^\s*\d+\.\s+/gm, '')
+      // Remove blockquotes
+      .replace(/^\s*>+\s+/gm, '')
+      // Remove horizontal rules
+      .replace(/^-{3,}\s*$/gm, '')
+      .trim()
+  );
 }
 
 // Utility function to parse suggestions from LLM response

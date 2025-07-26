@@ -40,7 +40,12 @@ export function getHeadlampLink(link: string) {
 
       // @todo: Add support for CRDs
       const resourceClass = ResourceClasses[kind];
-      if (resourceClass && resource && cluster && (resourceClass.isNamespaced ? !!namespace : true)) {
+      if (
+        resourceClass &&
+        resource &&
+        cluster &&
+        (resourceClass.isNamespaced ? !!namespace : true)
+      ) {
         // Create an instance
         const instance = new resourceClass(
           {
