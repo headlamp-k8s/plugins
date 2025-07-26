@@ -1,5 +1,5 @@
-import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/K8s/crd';
 import { ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/K8s/crd';
 
 export function nodeClaimClass() {
   const nodeClaimGroup = 'karpenter.sh';
@@ -33,21 +33,12 @@ export function NodeClaimList() {
       title={'Node Claims'}
       resourceClass={nodeClaimClass()}
       columns={[
-        {
-          id: 'name',
-          label: 'Name',
-          getValue: item => item.jsonData.metadata.name,
-          render: item => {
-            console.log(item);
-
-            return item.jsonData.metadata.name;
-          },
-        },
+        'name',
         {
           id: 'node-name',
           label: 'Node Name',
           getValue: item => item.jsonData.status?.nodeName,
-          render: item => item.jsonData.status?.nodeName,
+          render: item => item.jsonData.status?.nodeName || '-',
         },
         {
           id: 'status',
@@ -57,7 +48,7 @@ export function NodeClaimList() {
             const finalCondition = item.jsonData?.status?.conditions?.length;
             return (
               <StatusLabel>
-                {item.jsonData?.status?.conditions[finalCondition - 1]?.reason}
+                {item.jsonData?.status?.conditions[finalCondition - 1]?.reason || '-'}
               </StatusLabel>
             );
           },
@@ -67,7 +58,8 @@ export function NodeClaimList() {
           label: 'Instance Type',
           getValue: item => item.jsonData?.metadata?.labels['node.kubernetes.io/instance-type'],
           render: item => {
-            return item.jsonData?.metadata?.labels['node.kubernetes.io/instance-type'];
+            console.log(item);
+            return item.jsonData?.metadata?.labels['node.kubernetes.io/instance-type'] || '-';
           },
         },
         {
@@ -75,7 +67,7 @@ export function NodeClaimList() {
           label: 'CPU',
           getValue: item => item.jsonData.spec?.resources?.requests?.cpu,
           render: item => {
-            return item.jsonData.spec?.resources?.requests?.cpu;
+            return item.jsonData.spec?.resources?.requests?.cpu || '-';
           },
         },
         {
@@ -83,7 +75,7 @@ export function NodeClaimList() {
           label: 'Zone',
           getValue: item => item.jsonData.metadata?.labels['topology.kubernetes.io/zone'],
           render: item => {
-            return item.jsonData.metadata?.labels['topology.kubernetes.io/zone'];
+            return item.jsonData.metadata?.labels['topology.kubernetes.io/zone'] || '-';
           },
         },
         'age',
