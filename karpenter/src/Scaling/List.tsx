@@ -1,4 +1,4 @@
-import { ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { ResourceListView, StatusLabel, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/K8s/crd';
 
 export function nodeClaimClass() {
@@ -27,19 +27,13 @@ export function NodeClaimList() {
   return (
     <ResourceListView
       defaultSortingColumn={{
-        id: 'name',
+        id: 'age',
         desc: false,
       }}
       title={'Node Claims'}
       resourceClass={nodeClaimClass()}
       columns={[
         'name',
-        {
-          id: 'node-name',
-          label: 'Node Name',
-          getValue: item => item.jsonData.status?.nodeName,
-          render: item => item.jsonData.status?.nodeName || '-',
-        },
         {
           id: 'status',
           label: 'Status',
@@ -58,7 +52,6 @@ export function NodeClaimList() {
           label: 'Instance Type',
           getValue: item => item.jsonData?.metadata?.labels['node.kubernetes.io/instance-type'],
           render: item => {
-            console.log(item);
             return item.jsonData?.metadata?.labels['node.kubernetes.io/instance-type'] || '-';
           },
         },
