@@ -12,6 +12,7 @@ import {
   Select,
   TextField,
   Typography,
+  ListSubheader,
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -196,6 +197,9 @@ export default function AIPrompt(props: {
 
     if (active) {
       setActiveConfig(active);
+      // Set the default model for the active provider
+      const defaultModel = getProviderModels(active)[0] || 'default';
+      setSelectedModel(defaultModel);
 
       // Update global state with all providers and active one
       _pluginSetting.setSavedProviders(savedConfigs.providers || []);
@@ -217,8 +221,9 @@ export default function AIPrompt(props: {
     // Check if the current active config still exists
     if (activeConfig) {
       const stillExists = newProviders.find(
-        p =>
-          p.providerId === activeConfig.providerId && p.config.apiKey === activeConfig.config.apiKey
+        (p) =>
+          p.providerId === activeConfig.providerId &&
+          p.config.apiKey === activeConfig.config.apiKey
       );
 
       if (!stillExists) {
@@ -229,6 +234,10 @@ export default function AIPrompt(props: {
           // Switch to the new default provider
           setActiveConfig(newActive);
           _pluginSetting.setActiveProvider(newActive);
+
+          // Set the default model for the new provider
+          const defaultModel = getProviderModels(newActive)[0] || 'default';
+          setSelectedModel(defaultModel);
 
           // Clear history and show provider change message
           setPromptHistory([]);
@@ -256,6 +265,7 @@ export default function AIPrompt(props: {
         } else {
           // No providers available, clear everything
           setActiveConfig(null);
+          setSelectedModel('default');
           setPromptHistory([]);
           setPromptVal('');
           setApiError(null);
@@ -270,55 +280,41 @@ export default function AIPrompt(props: {
   }, [pluginSettings, activeConfig, aiManager]);
 
   // Handle changing the active configuration
-  const handleChangeConfig = (config: StoredProviderConfig) => {
-    if (!config) return;
+  const [selectedModel, setSelectedModel] = useState<string>('default');
 
-    // Only reset if we're actually changing the configuration
+  const handleChangeConfig = (config: StoredProviderConfig, model?: string) => {
+    if (!config) return;
     if (
       !activeConfig ||
       activeConfig.providerId !== config.providerId ||
       activeConfig.config.apiKey !== config.config.apiKey ||
-      JSON.stringify(activeConfig.config) !== JSON.stringify(config.config)
+      JSON.stringify(activeConfig.config) !== JSON.stringify(config.config) ||
+      selectedModel !== model
     ) {
-      // Immediately clear prompt history for better UX
       setPromptHistory([]);
       setPromptVal('');
-
-      // Clear any errors when changing provider
       setApiError(null);
-
-      // Update active config
       setActiveConfig(config);
-
-      // Update the global state with the active provider
+      setSelectedModel(model || (getProviderModels(config)[0] || 'default'));
       _pluginSetting.setActiveProvider(config);
-
-      // Reset the AI manager to reinitialize with new settings
       if (aiManager) {
         aiManager.reset();
         setAiManager(null);
-
-        // Add a system message indicating the provider change
         setTimeout(() => {
-          const providerName =
-            config.displayName || getProviderById(config.providerId)?.name || config.providerId;
-
+          const providerName = config.displayName || getProviderById(config.providerId)?.name || config.providerId;
           setPromptHistory([
             {
               role: 'system',
-              content: `Switched to ${providerName}. History has been cleared.`,
+              content: `Switched to ${providerName}${model ? ' / ' + model : ''}. History has been cleared.`,
             },
           ]);
         }, 100);
       } else {
-        // Even if there's no AI manager yet, still show the provider change message
-        const providerName =
-          config.displayName || getProviderById(config.providerId)?.name || config.providerId;
-
+        const providerName = config.displayName || getProviderById(config.providerId)?.name || config.providerId;
         setPromptHistory([
           {
             role: 'system',
-            content: `Using ${providerName}.`,
+            content: `Using ${providerName}${model ? ' / ' + model : ''}.`,
           },
         ]);
       }
@@ -330,7 +326,12 @@ export default function AIPrompt(props: {
       // If we have an active config from the new format, use it
       if (activeConfig) {
         try {
-          const newManager = new LangChainManager(activeConfig.providerId, activeConfig.config);
+          // Create config with selected model
+          const configWithModel = {
+            ...activeConfig.config,
+            model: selectedModel
+          };
+          const newManager = new LangChainManager(activeConfig.providerId, configWithModel);
           setAiManager(newManager);
           return;
         } catch (error) {
@@ -338,7 +339,7 @@ export default function AIPrompt(props: {
         }
       }
     }
-  }, [pluginSettings, activeConfig]);
+  }, [pluginSettings, activeConfig, selectedModel]);
 
   const updateHistory = React.useCallback(() => {
     if (!aiManager?.history) {
@@ -895,100 +896,85 @@ export default function AIPrompt(props: {
                   />
 
                   {/* Provider Selection Dropdown */}
-                  {availableConfigs.length > 1 && !isTestMode && (
+                  {availableConfigs.length > 0 && !isTestMode && (
                     <Box ml={2} sx={{ display: 'flex', alignItems: 'center' }}>
                       <Select
                         value={(() => {
-                          if (!activeConfig) return 0;
-                          const index = availableConfigs.findIndex(
-                            c =>
-                              c.providerId === activeConfig.providerId &&
-                              c.config.apiKey === activeConfig.config.apiKey
-                          );
-                          return index >= 0 ? index : 0;
+                          if (!activeConfig) return 'default-default';
+                          const providerId = activeConfig.providerId;
+                          const modelName = selectedModel;
+                          return `${providerId}-${modelName}`;
                         })()}
                         onChange={e => {
-                          // Get configuration by index
-                          const configIndex = e.target.value as number;
-                          const newConfig = availableConfigs[configIndex];
-                          if (newConfig) handleChangeConfig(newConfig);
+                          const [providerId, ...modelNameParts] = String(e.target.value).split('-');
+                          const modelName = modelNameParts.join('-');
+                          const newConfig = availableConfigs.find(c => c.providerId === providerId);
+                          if (newConfig) {
+                            setActiveConfig(newConfig);
+                            setSelectedModel(modelName);
+                            handleChangeConfig(newConfig, modelName);
+                          }
                         }}
                         size="small"
-                        sx={{ minWidth: 120, height: 32 }}
+                        sx={{ minWidth: 180, height: 32 }}
                         variant="outlined"
                         renderValue={selected => {
-                          const selectedIndex = selected as number;
-                          // Safety check to ensure the index is valid
-                          if (selectedIndex < 0 || selectedIndex >= availableConfigs.length) {
-                            return (
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Icon
-                                  icon="mdi:robot"
-                                  width="16px"
-                                  height="16px"
-                                  style={{ marginRight: 4 }}
-                                />
-                                <Typography variant="body2" noWrap>
-                                  Select Provider
-                                </Typography>
-                              </Box>
-                            );
-                          }
-
-                          const selectedConfig = availableConfigs[selectedIndex];
-                          const providerInfo = getProviderById(selectedConfig.providerId);
+                          const [providerId, ...modelNameParts] = String(selected).split('-');
+                          const modelName = modelNameParts.join('-');
+                          const selectedConfig = availableConfigs.find(c => c.providerId === providerId);
+                          const providerInfo = selectedConfig ? getProviderById(selectedConfig.providerId) : null;
                           return (
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Icon
-                                icon={providerInfo?.icon || 'mdi:robot'}
-                                width="16px"
-                                height="16px"
-                                style={{ marginRight: 4 }}
-                              />
+                              {providerInfo && (
+                                <Icon icon={providerInfo.icon || 'mdi:robot'} width="16px" height="16px" style={{ marginRight: 4 }} />
+                              )}
                               <Typography variant="body2" noWrap>
-                                {selectedConfig.displayName ||
-                                  providerInfo?.name ||
-                                  selectedConfig.providerId}
+                                {getModelDisplayName(modelName)}
                               </Typography>
                             </Box>
                           );
                         }}
+                        MenuProps={{
+                          PaperProps: {
+                            style: {
+                              maxHeight: 320,
+                            },
+                          },
+                        }}
                       >
-                        {availableConfigs.map((config, index) => {
-                          // Find provider info for icon
+                        {availableConfigs.map((config) => {
                           const providerInfo = getProviderById(config.providerId);
-
-                          return (
-                            <MenuItem
-                              key={index}
-                              value={index}
-                              selected={
-                                activeConfig?.providerId === config.providerId &&
-                                activeConfig?.config.apiKey === config.config.apiKey
-                              }
+                          const models = getProviderModels(config);
+                          return [
+                            <ListSubheader key={`provider-header-${config.providerId}`}
+                              sx={{ display: 'flex', alignItems: 'center', paddingLeft: 1 }}
                             >
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Icon
-                                  icon={providerInfo?.icon || 'mdi:robot'}
-                                  width="16px"
-                                  height="16px"
-                                  style={{ marginRight: 8 }}
-                                />
+                              <Icon icon={providerInfo?.icon || 'mdi:robot'} width="16px" height="16px" style={{ marginRight: 8 }} />
+                              {config.displayName || providerInfo?.name || config.providerId}
+                            </ListSubheader>,
+                            ...models.map(model => (
+                              <MenuItem
+                                key={`${config.providerId}-${model}`}
+                                value={`${config.providerId}-${model}`}
+                                selected={
+                                  activeConfig?.providerId === config.providerId &&
+                                  selectedModel === model
+                                }
+                                sx={{ paddingLeft: 2 }}
+                              >
                                 <Typography variant="body2">
-                                  {config.displayName || providerInfo?.name || config.providerId}
+                                  {getModelDisplayName(model)}
                                 </Typography>
-                                {defaultProviderIndex === index && (
-                                  <Typography
-                                    component="span"
-                                    variant="caption"
-                                    sx={{ ml: 1, color: 'primary.main' }}
-                                  >
-                                    (Default)
-                                  </Typography>
-                                )}
-                              </Box>
-                            </MenuItem>
-                          );
+                                {defaultProviderIndex !== undefined &&
+                                  availableConfigs[defaultProviderIndex]?.providerId === config.providerId &&
+                                  model === (getProviderModels(config)[0] || 'default') && (
+                                    <Typography component="span" variant="caption" sx={{ ml: 1, color: 'primary.main' }}>
+                                      (Default)
+                                    </Typography>
+                                  )}
+                              </MenuItem>
+                            ))
+                          ];
                         })}
                       </Select>
                     </Box>
@@ -1046,3 +1032,27 @@ export default function AIPrompt(props: {
     </div>
   );
 }
+
+// Helper to get all models for a provider
+const getProviderModels = (providerConfig: StoredProviderConfig) => {
+  const providerInfo = getProviderById(providerConfig.providerId);
+
+  // First try to use the models field, then fall back to options from the model field
+  if (providerInfo?.models && providerInfo.models.length > 0) {
+    return providerInfo.models;
+  }
+
+  // Fall back to options from the model field configuration
+  const modelField = providerInfo?.fields?.find(field => field.name === 'model');
+  if (modelField?.options && modelField.options.length > 0) {
+    return modelField.options;
+  }
+
+  return ['default'];
+};
+
+// Helper to get display name for a model
+const getModelDisplayName = (model: string) => {
+  // You can customize this if you want more user-friendly names
+  return model;
+};
