@@ -1,4 +1,4 @@
-import { ResourceListView, StatusLabel, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/K8s/crd';
 
 export function nodeClaimClass() {
@@ -33,7 +33,21 @@ export function NodeClaimList() {
       title={'Node Claims'}
       resourceClass={nodeClaimClass()}
       columns={[
-        'name',
+        {
+          id: 'name',
+          label: 'Name',
+          getValue: item => item?.jsonData?.metadata?.name || 'Unnamed',
+          render: item => (
+            <Link
+              routeName={'nodeclaims-detail'}
+              params={{
+                name: item?.jsonData?.metadata?.name || '',
+              }}
+            >
+              {item?.jsonData?.metadata?.name || 'Unnamed'}
+            </Link>
+          ),
+        },
         {
           id: 'status',
           label: 'Status',

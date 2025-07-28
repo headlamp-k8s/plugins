@@ -7,8 +7,8 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useParams } from 'react-router-dom';
-import { nodeClaimClass } from './List';
 import CustomObjectEventList from '../common/EventList';
+import { nodeClaimClass } from './List';
 
 export function ScalingDetailView(props: { name: string }) {
   const params = useParams<{ name: string }>();
