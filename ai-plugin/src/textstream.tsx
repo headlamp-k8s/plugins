@@ -187,7 +187,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
             ) : (
               <>
                 {isContentFilterError || hasError ? (
-                  <Alert severity="error" sx={{ mb: 1 }}>
+                  <Alert severity="error" sx={{ mb: 1, overflowWrap: 'anywhere' }}>
                     {prompt.content}
                     {isContentFilterError && (
                       <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
@@ -228,7 +228,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       >
         {/* Content filter guidance when errors are detected */}
         {contentFilterErrors && (
-          <Alert severity="info" sx={{ mb: 2 }}>
+          <Alert severity="info" sx={{ mb: 2, overflowWrap: 'anywhere' }}>
             <Typography variant="body2">
               Some requests have been blocked by content filters. Please ensure your questions focus
               only on Kubernetes tasks.
