@@ -59,6 +59,8 @@ function markdownToPlainText(markdown: string): string {
       .replace(/^\s*>+\s+/gm, '')
       // Remove horizontal rules
       .replace(/^-{3,}\s*$/gm, '')
+      // Remove surrounding square brackets
+      .replace(/^\[|\]$/g, '')
       .trim()
   );
 }
