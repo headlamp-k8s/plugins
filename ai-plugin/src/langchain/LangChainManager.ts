@@ -304,48 +304,6 @@ export default class LangChainManager extends AIManager {
     }
   }
 
-  // Helper method to determine if a tool call is needed for local models
-  private shouldUseToolCall(userMessage: string, responseContent: string): boolean {
-    const message = userMessage.toLowerCase();
-    const response = responseContent.toLowerCase();
-
-    // Keywords that suggest cluster data is needed
-    const clusterDataKeywords = [
-      'list',
-      'show',
-      'get',
-      'find',
-      'check',
-      'what',
-      'how many',
-      'status',
-      'pods',
-      'services',
-      'deployments',
-      'nodes',
-      'namespaces',
-      'configmaps',
-      'secrets',
-      'ingress',
-      'persistentvolumeclaims',
-      'events',
-      'logs',
-    ];
-
-    // Check if user is asking for cluster data
-    const askingForData = clusterDataKeywords.some(keyword => message.includes(keyword));
-
-    // Check if response suggests data is needed but not available
-    const needsData =
-      response.includes("i don't have access") ||
-      response.includes('i cannot see') ||
-      response.includes("i don't have the data") ||
-      response.includes('i would need to check') ||
-      response.includes('you would need to run');
-
-    return askingForData || needsData;
-  }
-
   // Change from 'protected' to 'public' to match the base class
   public async processToolResponses(): Promise<Prompt> {
     console.log('Processing tool responses...');
