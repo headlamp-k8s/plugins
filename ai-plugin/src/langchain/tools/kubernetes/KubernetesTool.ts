@@ -29,6 +29,30 @@ export class KubernetesTool extends ToolBase {
     this.context = context;
   }
 
+  /**
+   * Check if the tool has a context configured
+   */
+  hasContext(): boolean {
+    return this.context !== null;
+  }
+
+  /**
+   * Check if the provided context is different from the current one
+   * We do a shallow comparison of key properties to avoid unnecessary reconfigurations
+   */
+  isContextDifferent(newContext: KubernetesToolContext): boolean {
+    if (!this.context) {
+      return true; // No context set yet, so it's different
+    }
+
+    const clustersChanged = JSON.stringify(this.context.selectedClusters) !== JSON.stringify(newContext.selectedClusters);
+    
+    // For UI and callbacks, we only care if they're significantly different
+    // Since these objects are recreated on each render, we'll be less strict
+    // and only reconfigure if clusters changed or if context was null before
+    return clustersChanged;
+  }
+
   handler: ToolHandler = async (
     { url, method, body },
     toolCallId,

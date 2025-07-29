@@ -35,8 +35,11 @@ export class ToolManager {
   configureKubernetesContext(context: KubernetesToolContext): void {
     const kubeTool = getToolByName('kubernetes_api_request', this.tools) as KubernetesTool;
     if (kubeTool) {
-      kubeTool.setContext(context);
-      console.log('Kubernetes context configured for KubernetesTool', context);
+      // Only set context and log if the tool context has actually changed
+      if (!kubeTool.hasContext() || kubeTool.isContextDifferent(context)) {
+        kubeTool.setContext(context);
+        console.log('Kubernetes context configured for KubernetesTool');
+      }
     } else {
       console.warn('KubernetesTool not found, cannot configure context');
     }
