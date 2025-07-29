@@ -448,17 +448,20 @@ export default function AIPrompt(props: {
     } catch (error) {
       console.error('Error analyzing resource:', error);
 
-      // Add the error as an assistant message in the history
-      const errorPrompt: Prompt = {
-        role: 'assistant',
-        content: `Error: ${error.message || 'An unknown error occurred'}`,
-        error: true,
-      };
+      // Don't add error to history if it was an abort error (user stopped the request)
+      if (error.name !== 'AbortError') {
+        // Add the error as an assistant message in the history
+        const errorPrompt: Prompt = {
+          role: 'assistant',
+          content: `Error: ${error.message || 'An unknown error occurred'}`,
+          error: true,
+        };
 
-      // Add to history so it appears with the specific request
-      aiManager.history.push(errorPrompt);
-      setAiManager(aiManager);
-      updateHistory();
+        // Add to history so it appears with the specific request
+        aiManager.history.push(errorPrompt);
+        setAiManager(aiManager);
+        updateHistory();
+      }
 
       // Keep API error null since we're handling it in the prompt
       setApiError(null);
@@ -466,6 +469,14 @@ export default function AIPrompt(props: {
       setLoading(false);
     }
   }
+
+  // Function to stop the current request
+  const handleStopRequest = () => {
+    if (aiManager && loading) {
+      aiManager.abort();
+      setLoading(false);
+    }
+  };
 
   // Function to handle API confirmation dialog confirmation
   const handleApiConfirmation = async (body, resourceInfo) => {
@@ -984,22 +995,34 @@ export default function AIPrompt(props: {
                 </Grid>
 
                 <Grid item>
-                  <Button
-                    variant="contained"
-                    endIcon={<Icon icon="mdi:send" width="20px" />}
-                    onClick={() => {
-                      updateHistory();
-                      setPromptVal('');
-                      const prompt = promptVal;
-                      AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                        setApiError(error.message);
-                      });
-                    }}
-                    size="small"
-                    disabled={loading || !promptVal}
-                  >
-                    Send
-                  </Button>
+                  {loading ? (
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      endIcon={<Icon icon="mdi:stop" width="20px" />}
+                      onClick={handleStopRequest}
+                      size="small"
+                    >
+                      Stop
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      endIcon={<Icon icon="mdi:send" width="20px" />}
+                      onClick={() => {
+                        updateHistory();
+                        setPromptVal('');
+                        const prompt = promptVal;
+                        AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
+                          setApiError(error.message);
+                        });
+                      }}
+                      size="small"
+                      disabled={loading || !promptVal}
+                    >
+                      Send
+                    </Button>
+                  )}
                 </Grid>
               </Grid>
             </Box>

@@ -23,12 +23,21 @@ export default class LangChainManager extends AIManager {
   private boundModel: BaseChatModel | null = null;
   private providerId: string;
   private toolManager: ToolManager;
+  private currentAbortController: AbortController | null = null;
 
   constructor(providerId: string, config: Record<string, any>) {
     super();
     this.providerId = providerId;
     this.toolManager = new ToolManager(); // Initialize with empty config for now
     this.model = this.createModel(providerId, config);
+  }
+
+  // Method to abort current request
+  abort() {
+    if (this.currentAbortController) {
+      this.currentAbortController.abort();
+      this.currentAbortController = null;
+    }
   }
 
   private createModel(providerId: string, config: Record<string, any>): BaseChatModel {
@@ -150,6 +159,9 @@ export default class LangChainManager extends AIManager {
     const userPrompt: Prompt = { role: 'user', content: message };
     this.history.push(userPrompt);
 
+    // Create abort controller for this request
+    this.currentAbortController = new AbortController();
+
     // Create system message with context if available
     let systemPromptContent = basePrompt;
     if (this.currentContext) {
@@ -180,10 +192,18 @@ export default class LangChainManager extends AIManager {
       let response;
       if (this.providerId === 'local') {
         const finalMessages = [messages[0], messages[messages.length - 1]];
-        response = await modelToUse.invoke(finalMessages);
+        response = await modelToUse.invoke(finalMessages, {
+          signal: this.currentAbortController.signal
+        });
       } else {
-        response = await modelToUse.invoke(messages);
+        response = await modelToUse.invoke(messages, {
+          signal: this.currentAbortController.signal
+        });
       }
+
+      // Clear abort controller after successful completion
+      this.currentAbortController = null;
+
       console.log('Model response received:', {
         content:
           response.content?.substring(0, 100) + (response.content?.length > 100 ? '...' : ''),
@@ -268,7 +288,21 @@ export default class LangChainManager extends AIManager {
       this.history.push(assistantPrompt);
       return assistantPrompt;
     } catch (error) {
+      // Clear abort controller in case of error
+      this.currentAbortController = null;
+
       console.error('Error in userSend:', error);
+
+      // Handle abort errors
+      if (error.message === 'AbortError') {
+        const errorPrompt: Prompt = {
+          role: 'assistant',
+          content: 'Request cancelled.',
+          error: true,
+        };
+        this.history.push(errorPrompt);
+        return errorPrompt;
+      }
 
       // Special handling for local model errors
       if (this.providerId === 'local') {

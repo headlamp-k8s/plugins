@@ -37,6 +37,9 @@ export default abstract class AIManager {
   // Changed from protected to public to allow external calling
   abstract processToolResponses(): Promise<Prompt>;
 
+  // Abstract method to abort current request
+  abstract abort(): void;
+
   // Define configureTools method for tool configuration - made generic to support different contexts
   configureTools?(tools: any[], context: any): void;
 
