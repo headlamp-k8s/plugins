@@ -1,8 +1,8 @@
 import chalk from 'chalk';
 import path from 'path';
 import inquirer from 'inquirer';
-import { getPluginPath, getPluginInfo, findTarball } from '../utils/plugin';
-import { sanitizeVersion, validateVersion } from '../utils/version';
+import { getPluginPath, getPluginInfo, findTarball } from '../utils/plugin.js';
+import { sanitizeVersion, validateVersion } from '../utils/version.js';
 import {
   getChangelogForPlugin,
   getVersionBumpCommit,
@@ -10,7 +10,7 @@ import {
   isCommitPushedToRemote,
   createTagIfNotExists,
   pushTagIfNotOnRemote
-} from '../utils/git';
+} from '../utils/git.js';
 import {
   getRelease,
   getReleaseByName,
@@ -18,7 +18,7 @@ import {
   uploadAssetToRelease,
   getOwnerAndRepo,
   publishRelease
-} from '../utils/github';
+} from '../utils/github.js';
 
 interface ReleaseOptions {
   tarball?: string;

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Tool for Headlamp plugin release management",
   "main": "dist/index.js",
+  "type": "module",
   "bin": {
     "plugin-releaser": "./dist/index.js"
   },
@@ -12,7 +13,7 @@
     "dev": "ts-node src/index.ts"
   },
   "dependencies": {
-    "@octokit/rest": "^19.0.13",
+    "@octokit/rest": "^22.0.0",
     "@types/js-yaml": "^4.0.9",
     "chalk": "^4.1.2",
     "commander": "^11.1.0",

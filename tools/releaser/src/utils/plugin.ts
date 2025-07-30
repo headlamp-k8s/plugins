@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
-import { getRepoRoot } from './git';
+import { getRepoRoot } from './git.js';
 
 export function getPluginPath(pluginName: string): string {
   const repoRoot = getRepoRoot();

@@ -1,12 +1,12 @@
 import chalk from 'chalk';
-import { getPluginPath, getPluginInfo, findTarball } from '../utils/plugin';
-import { sanitizeVersion, validateVersion } from '../utils/version';
-import { checkGitStatus, commitArtifactHubChange } from '../utils/git';
+import { getPluginPath, getPluginInfo, findTarball } from '../utils/plugin.js';
+import { sanitizeVersion, validateVersion } from '../utils/version.js';
+import { checkGitStatus, commitArtifactHubChange } from '../utils/git.js';
 import {
   hasArtifactHubFile,
   updateArtifactHubConfig,
   createArtifactHubTemplate
-} from '../utils/artifacthub';
+} from '../utils/artifacthub.js';
 
 interface UpdateArtifactHubOptions {
   tarball?: string;

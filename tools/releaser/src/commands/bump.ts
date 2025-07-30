@@ -2,9 +2,9 @@ import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { getPluginPath } from '../utils/plugin';
-import { sanitizeVersion, validateVersion } from '../utils/version';
-import { commitPluginVersionChange, checkGitStatus } from '../utils/git';
+import { getPluginPath } from '../utils/plugin.js';
+import { sanitizeVersion, validateVersion } from '../utils/version.js';
+import { commitPluginVersionChange, checkGitStatus } from '../utils/git.js';
 
 interface BumpOptions {
   skipInstall?: boolean;

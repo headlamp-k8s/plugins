@@ -3,8 +3,8 @@ import path from 'path';
 import crypto from 'crypto';
 import chalk from 'chalk';
 import * as yaml from 'js-yaml';
-import { getPluginPath, getPluginInfo } from './plugin';
-import { getOwnerAndRepo } from './github';
+import { getPluginPath, getPluginInfo } from './plugin.js';
+import { getOwnerAndRepo } from './github.js';
 
 interface ArtifactHubConfig {
   version: string;
