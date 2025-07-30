@@ -508,19 +508,27 @@ export default function AIPrompt(props: {
     ui: kubernetesUI,
     callbacks: {
       ...kubernetesCallbacks,
-      handleActualApiRequest: (url, method, body, onClose, aiManagerParam, resourceInfo) =>
-        kubernetesCallbacks.handleActualApiRequest(
+      handleActualApiRequest: (url, method, body, onClose, aiManagerParam, resourceInfo, targetCluster) => {
+        // If no specific cluster is provided, use the first available cluster
+        const clusterToUse = targetCluster || 
+          (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : null) ||
+          getCluster() ||
+          (Object.keys(clusters).length > 0 ? Object.keys(clusters)[0] : null);
+        
+        return kubernetesCallbacks.handleActualApiRequest(
           url,
           method,
           body,
           onClose,
           aiManagerParam || aiManager,
-          resourceInfo
-        ),
+          resourceInfo,
+          clusterToUse
+        );
+      },
     },
     selectedClusters,
     aiManager, // Add the AI manager to the context
-  }), [kubernetesUI, kubernetesCallbacks, selectedClusters, aiManager]);
+  }), [kubernetesUI, kubernetesCallbacks, selectedClusters, aiManager, clusters]);
 
   React.useEffect(() => {
     if (!aiManager) {

@@ -17,11 +17,20 @@ export const handleActualApiRequest = async (
   body: string = '',
   dialogClose: () => void,
   aiManager: any,
-  resourceInfo: string
+  resourceInfo: string,
+  targetCluster?: string // Allow specifying a specific cluster
 ) => {
-  const cluster = getCluster();
+  const cluster = targetCluster || getCluster();
+  
+  // If no cluster is provided and no current cluster, try to get any available cluster
   if (!cluster) {
-    return JSON.stringify({ error: true, message: 'No cluster selected' });
+    // This is a fallback - ideally the cluster should be provided through the context
+    console.warn('No cluster available for API request');
+    return JSON.stringify({ 
+      error: true, 
+      message: 'No cluster available for API request. Please ensure you are in a cluster context or have clusters configured.',
+      suggestion: 'Try navigating to a specific cluster view or check your cluster configuration.'
+    });
   }
 
   // For POST operations
