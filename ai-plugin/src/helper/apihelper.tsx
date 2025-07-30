@@ -298,10 +298,11 @@ export const handleActualApiRequest = async (
                 name: cellValue,
                 namespace: namespace,
               };
+              // Use the proper Headlamp link format
               if (!namespace) {
-                cellValue = `[${linkData.name}](/c/${cluster}/${resourceKind}/${linkData.name})`;
+                cellValue = `[${linkData.name}](https://headlamp/resource-details?cluster=${cluster}&kind=${linkData.kind}&resource=${linkData.name})`;
               } else {
-                cellValue = `[${linkData.name}](/c/${cluster}/${resourceKind}/${linkData.namespace}/${linkData.name})`;
+                cellValue = `[${linkData.name}](https://headlamp/resource-details?cluster=${cluster}&kind=${linkData.kind}&resource=${linkData.name}&ns=${linkData.namespace})`;
               }
             }
 
