@@ -34,6 +34,8 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   const containerRef = useRef<HTMLDivElement>(null);
   // State to track if user has scrolled up
   const [showScrollButton, setShowScrollButton] = useState<boolean>(false);
+  // Track the last user message count for detecting new user messages
+  const lastUserMessageCountRef = useRef<number>(0);
 
   useEffect(() => {
     console.log('textstream mounted');
@@ -84,9 +86,21 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
 
   // Scroll to latest message when new messages appear, but only if already near bottom
   useEffect(() => {
-    // Only auto-scroll if user is already near bottom
-    if (isNearBottom()) {
-      // Small delay to ensure DOM is updated before scrolling
+    // Count current user messages
+    const currentUserMessageCount = history.filter(prompt => prompt.role === 'user').length;
+
+    // Check if there's a new user message
+    const hasNewUserMessage = currentUserMessageCount > lastUserMessageCountRef.current;
+
+    if (hasNewUserMessage) {
+      // Always scroll to bottom when there's a new user message
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      // Update the ref with current count
+      lastUserMessageCountRef.current = currentUserMessageCount;
+    } else if (isNearBottom()) {
+      // Only auto-scroll if user is already near bottom for other message types
       setTimeout(() => {
         scrollToBottom();
       }, 100);
