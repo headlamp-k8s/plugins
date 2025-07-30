@@ -128,12 +128,7 @@ export default class LangChainManager extends AIManager {
         case 'assistant':
           return new AIMessage({
             content: prompt.content,
-            additional_kwargs:
-              this.providerId === 'azure'
-                ? {}
-                : {
-                    tool_calls: prompt.toolCalls || [],
-                  },
+            additional_kwargs: {}
           });
         case 'tool':
           if (this.providerId === 'azure') {
@@ -256,12 +251,22 @@ export default class LangChainManager extends AIManager {
             }
           } catch (error) {
             console.error('Error executing tool call:', error);
-            this.history.push({
-              role: 'tool',
+            
+            const errorToolResponse: ToolResponse = {
               content: JSON.stringify({
                 error: true,
                 message: error.message,
               }),
+              shouldAddToHistory: true, 
+              shouldProcessFollowUp: true,
+            };
+
+            toolResponses.push({ toolCall, response: errorToolResponse });
+
+            // ✅ Always add error responses to maintain alignment
+            this.history.push({
+              role: 'tool',
+              content: errorToolResponse.content,
               toolCallId: toolCall.id,
               name: toolCall.function.name,
             });
@@ -304,29 +309,6 @@ export default class LangChainManager extends AIManager {
         return errorPrompt;
       }
 
-      // Special handling for local model errors
-      if (this.providerId === 'local') {
-        let errorMessage = error.message;
-
-        if (error.message.includes('timed out')) {
-          errorMessage =
-            'Local model response timed out. Please check if your local model is running and try again.';
-        } else if (error.message.includes('fetch') || error.message.includes('network')) {
-          errorMessage =
-            'Unable to connect to local model. Please check if your local model server is running at the configured URL.';
-        } else if (error.message.includes('model')) {
-          errorMessage =
-            'Local model error. Please check if the specified model is available in your local model server.';
-        }
-
-        const errorPrompt: Prompt = {
-          role: 'assistant',
-          content: `Error: ${errorMessage}`,
-          error: true,
-        };
-        this.history.push(errorPrompt);
-        return errorPrompt;
-      }
 
       const errorPrompt: Prompt = {
         role: 'assistant',
@@ -359,6 +341,41 @@ export default class LangChainManager extends AIManager {
           content: 'No tool responses to process.',
         }
       );
+    }
+
+    const lastAssistantMessage = this.history
+      .slice()
+      .reverse()
+      .find(prompt => prompt.role === 'assistant' && prompt.toolCalls?.length);
+
+    if (lastAssistantMessage?.toolCalls) {
+      const expectedToolCallIds = lastAssistantMessage.toolCalls.map(tc => tc.id);
+      const actualToolResponses = this.history.filter(
+        prompt => prompt.role === 'tool' && 
+        expectedToolCallIds.includes(prompt.toolCallId)
+      );
+
+      if (expectedToolCallIds.length !== actualToolResponses.length) {
+        console.error('Tool call/response mismatch detected', {
+          expectedIds: expectedToolCallIds,
+          actualResponses: actualToolResponses.map(r => r.toolCallId)
+        });
+        
+        // Add missing tool responses
+        for (const expectedId of expectedToolCallIds) {
+          if (!actualToolResponses.find(r => r.toolCallId === expectedId)) {
+            this.history.push({
+              role: 'tool',
+              content: JSON.stringify({
+                error: true,
+                message: 'Tool execution failed - no response recorded'
+              }),
+              toolCallId: expectedId,
+              name: 'kubernetes_api_request',
+            });
+          }
+        }
+      }
     }
 
     let systemPromptContent = basePrompt;
