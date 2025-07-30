@@ -503,6 +503,25 @@ export default function AIPrompt(props: {
     kubernetesCallbacks.setApiLoading(false);
   };
 
+  // Memoize the kubernetesContext to avoid unnecessary re-creation
+  const kubernetesContext = useMemo(() => ({
+    ui: kubernetesUI,
+    callbacks: {
+      ...kubernetesCallbacks,
+      handleActualApiRequest: (url, method, body, onClose, aiManagerParam, resourceInfo) =>
+        kubernetesCallbacks.handleActualApiRequest(
+          url,
+          method,
+          body,
+          onClose,
+          aiManagerParam || aiManager,
+          resourceInfo
+        ),
+    },
+    selectedClusters,
+    aiManager, // Add the AI manager to the context
+  }), [kubernetesUI, kubernetesCallbacks, selectedClusters, aiManager]);
+
   React.useEffect(() => {
     if (!aiManager) {
       return;
@@ -531,25 +550,6 @@ export default function AIPrompt(props: {
 
     // Configure AI manager with tools
     if (aiManager.configureTools) {
-      // Create the Kubernetes tool context
-      const kubernetesContext = {
-        ui: kubernetesUI,
-        callbacks: {
-          ...kubernetesCallbacks,
-          handleActualApiRequest: (url, method, body, onClose, aiManagerParam, resourceInfo) =>
-            kubernetesCallbacks.handleActualApiRequest(
-              url,
-              method,
-              body,
-              onClose,
-              aiManagerParam || aiManager,
-              resourceInfo
-            ),
-        },
-        selectedClusters,
-        aiManager, // Add the AI manager to the context
-      };
-
       aiManager.configureTools(
         [], // No longer need to pass the tool definitions manually
         kubernetesContext
@@ -559,9 +559,8 @@ export default function AIPrompt(props: {
     _pluginSetting.event,
     aiManager,
     clusterWarnings,
-    kubernetesUI,
-    kubernetesCallbacks,
     selectedClusters,
+    kubernetesContext,
   ]);
 
   useEffect(() => {

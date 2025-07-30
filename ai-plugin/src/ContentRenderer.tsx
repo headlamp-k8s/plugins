@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link as RouterLink, useHistory } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
+import LogsButton from './components/LogsButton';
 import YamlDisplay from './components/YamlDisplay';
 import { getHeadlampLink } from './utils/promptLinkHelper';
 import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
@@ -290,9 +291,72 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
       }),
       [CodeComponent, LinkComponent]
     );
-    // Process content and detect standalone YAML blocks
+    // Process content and detect standalone YAML blocks and logs buttons
     const processedContent = useMemo(() => {
       if (!content) return null;
+
+      // Check for logs button format
+      if (content.includes('LOGS_BUTTON:')) {
+        const logsButtonIndex = content.indexOf('LOGS_BUTTON:');
+        if (logsButtonIndex !== -1) {
+          try {
+            // Find the start of the JSON object
+            const jsonStart = logsButtonIndex + 'LOGS_BUTTON:'.length;
+            let jsonString = '';
+            let braceCount = 0;
+            let foundFirstBrace = false;
+            
+            // Parse character by character to find the complete JSON object
+            for (let i = jsonStart; i < content.length; i++) {
+              const char = content[i];
+              if (char === '{') {
+                foundFirstBrace = true;
+                braceCount++;
+              } else if (char === '}') {
+                braceCount--;
+              }
+              
+              if (foundFirstBrace) {
+                jsonString += char;
+                if (braceCount === 0) {
+                  break;
+                }
+              }
+            }
+            
+            if (jsonString) {
+              const logsData = JSON.parse(jsonString);
+              const beforeButton = content.substring(0, logsButtonIndex);
+              const afterButtonIndex = logsButtonIndex + 'LOGS_BUTTON:'.length + jsonString.length;
+              const afterButton = content.substring(afterButtonIndex);
+              
+              return (
+                <Box>
+                  {beforeButton.trim() && (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={allMarkdownComponents}>
+                      {beforeButton.trim()}
+                    </ReactMarkdown>
+                  )}
+                  <LogsButton
+                    logs={logsData.data.logs}
+                    resourceName={logsData.data.resourceName}
+                    resourceType={logsData.data.resourceType}
+                    namespace={logsData.data.namespace}
+                  />
+                  {afterButton.trim() && (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={allMarkdownComponents}>
+                      {afterButton.trim()}
+                    </ReactMarkdown>
+                  )}
+                </Box>
+              );
+            }
+          } catch (e) {
+            console.error('Failed to parse logs data:', e);
+            // Fall through to render as regular content
+          }
+        }
+      }
 
       // First, let's detect if this content has unformatted YAML (not in code blocks)
       // that needs special handling
