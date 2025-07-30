@@ -20,14 +20,29 @@ export function useKubernetesToolUI(): {
     apiRequestError,
   }), [showApiConfirmation, apiRequest, apiResponse, apiLoading, apiRequestError]);
 
+  // Create a wrapper for handleActualApiRequest that will be bound to the context later
+  const handleActualApiRequestCallback = useMemo(() => {
+    return async (
+      url: string,
+      method: string,
+      body: string = '',
+      onClose: () => void = () => {},
+      aiManager?: any,
+      resourceInfo?: any,
+      targetCluster?: string
+    ) => {
+      return handleActualApiRequest(url, method, body, onClose, aiManager, resourceInfo, targetCluster);
+    };
+  }, []);
+
   const callbacks: KubernetesToolUICallbacks = useMemo(() => ({
     setShowApiConfirmation,
     setApiRequest,
     setApiResponse,
     setApiLoading,
     setApiRequestError,
-    handleActualApiRequest,
-  }), []);
+    handleActualApiRequest: handleActualApiRequestCallback,
+  }), [handleActualApiRequestCallback]);
 
   return { state, callbacks };
 }
