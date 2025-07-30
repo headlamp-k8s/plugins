@@ -68,6 +68,77 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     }
   }, []);
 
+  const scrollToShowNewMessage = useCallback(() => {
+    if (containerRef.current && history.length > 0) {
+      const container = containerRef.current;
+
+      // Find the most recent user message
+      let lastUserMessageIndex = -1;
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i].role === 'user') {
+          lastUserMessageIndex = i;
+          break;
+        }
+      }
+
+      if (lastUserMessageIndex >= 0) {
+        // Count non-user messages after the last user message
+        const nonUserMessagesAfterUser = history.length - 1 - lastUserMessageIndex;
+
+        if (nonUserMessagesAfterUser === 1) {
+          // Only one non-user message after user - show the user message
+          const messageElements = container.querySelectorAll('[data-message-index]');
+          const userMessageElement = Array.from(messageElements).find(
+            el => el.getAttribute('data-message-index') === lastUserMessageIndex.toString()
+          ) as HTMLElement;
+
+          if (userMessageElement) {
+            // Get the position of the user message relative to the container
+            const messageRect = userMessageElement.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const messageTop = messageRect.top - containerRect.top + container.scrollTop;
+
+            // Check if the user message is larger than the viewport
+            const containerHeight = containerRect.height;
+            const messageHeight = messageRect.height;
+
+            if (messageHeight > containerHeight) {
+              // If user message is larger than viewport, show the bottom of it
+              const targetScrollPosition = messageTop + messageHeight - containerHeight;
+              container.scrollTo({
+                top: Math.max(0, targetScrollPosition),
+                behavior: 'smooth'
+              });
+            } else {
+              // Show the user message at the top of the viewport
+              container.scrollTo({
+                top: Math.max(0, messageTop),
+                behavior: 'smooth'
+              });
+            }
+          }
+        } else {
+          // Multiple non-user messages after user - show half of the last message
+          if (lastMessageRef.current) {
+            const lastMessageElement = lastMessageRef.current;
+            const messageRect = lastMessageElement.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const messageTop = messageRect.top - containerRect.top + container.scrollTop;
+
+            // Scroll to show half of the last message
+            container.scrollTo({
+              top: messageTop,
+              behavior: 'smooth'
+            });
+          }
+        }
+      } else {
+        // Fallback: scroll to bottom if no user message found
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }, [history]);
+
   // const scrollToLastMessage = useCallback(() => {
   //   if (!lastMessageRef.current) {
   //     return;
@@ -100,23 +171,24 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       // Update the ref with current count
       lastUserMessageCountRef.current = currentUserMessageCount;
     } else if (isNearBottom()) {
-      // Only auto-scroll if user is already near bottom for other message types
+      // For non-user messages when near bottom, scroll to show at least 60% of new message
       setTimeout(() => {
-        scrollToBottom();
+        scrollToShowNewMessage();
       }, 100);
     } else if (history.length > 0) {
       // If not at bottom, show the scroll button
       setShowScrollButton(true);
+      scrollToShowNewMessage()
     }
-  }, [history, isNearBottom, scrollToBottom]);
+  }, [history, isNearBottom, scrollToBottom, scrollToShowNewMessage]);
 
   // Auto-scroll only when loading starts (not when it finishes)
   useEffect(() => {
     if (isLoading && isNearBottom()) {
       // Small delay to ensure content has rendered
-      setTimeout(scrollToBottom, 100);
+      setTimeout(scrollToShowNewMessage, 100);
     }
-  }, [isLoading, isNearBottom, scrollToBottom]);
+  }, [isLoading, isNearBottom, scrollToShowNewMessage]);
 
   useEffect(() => {
     // Collect tool responses
@@ -172,6 +244,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       return (
         <Box
           ref={history.length === index + 1 ? lastMessageRef : null}
+          data-message-index={index}
           key={index}
           sx={{
             mb: 2,
