@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { handleActualApiRequest } from '../helper/apihelper';
 import { KubernetesToolUICallbacks, KubernetesToolUIState } from '../langchain/tools/kubernetes';
 
@@ -12,22 +12,22 @@ export function useKubernetesToolUI(): {
   const [apiLoading, setApiLoading] = useState(false);
   const [apiRequestError, setApiRequestError] = useState<string | null>(null);
 
-  const state: KubernetesToolUIState = {
+  const state: KubernetesToolUIState = useMemo(() => ({
     showApiConfirmation,
     apiRequest,
     apiResponse,
     apiLoading,
     apiRequestError,
-  };
+  }), [showApiConfirmation, apiRequest, apiResponse, apiLoading, apiRequestError]);
 
-  const callbacks: KubernetesToolUICallbacks = {
+  const callbacks: KubernetesToolUICallbacks = useMemo(() => ({
     setShowApiConfirmation,
     setApiRequest,
     setApiResponse,
     setApiLoading,
     setApiRequestError,
     handleActualApiRequest,
-  };
+  }), []);
 
   return { state, callbacks };
 }

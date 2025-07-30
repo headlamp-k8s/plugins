@@ -189,20 +189,68 @@ export const handleActualApiRequest = async (
       let formattedResponse = response;
       if (isLogRequest(url)) {
         // Always treat as Response object and get text (logs are always ReadableStream)
+        let logText = '';
         if (response && typeof response.text === 'function') {
-          const logText = await response.text();
-          aiManager.history.push({
-            role: 'tool',
-            content: logText,
-          });
-          return logText;
+          logText = await response.text();
+        } else {
+          // Fallback: if not a Response object, treat as string
+          logText = String(response);
         }
-        // Fallback: if not a Response object, treat as string
+
+        // Extract resource information from URL for better log button display
+        const extractResourceFromUrl = (url: string) => {
+          // Match patterns like:
+          // /api/v1/namespaces/default/pods/my-pod/log
+          // /apis/apps/v1/namespaces/default/deployments/my-deployment/log
+          const match = url.match(/\/namespaces\/([^\/]+)\/([^\/]+)\/([^\/]+)\/log/);
+          if (match) {
+            return {
+              namespace: match[1],
+              resourceType: match[2],
+              resourceName: match[3],
+            };
+          }
+          
+          // Try to extract resource type and name from URL
+          const fallbackMatch = url.match(/\/([^\/]+)\/([^\/]+)\/log/);
+          if (fallbackMatch) {
+            return {
+              resourceType: fallbackMatch[1],
+              resourceName: fallbackMatch[2],
+            };
+          }
+
+          return {
+            resourceType: 'resource',
+            resourceName: 'logs',
+          };
+        };
+
+        const resourceInfo = extractResourceFromUrl(url);
+
+        // Create a special logs response format that can be detected by the content renderer
+        const logsResponse = {
+          type: 'logs',
+          data: {
+            logs: logText,
+            resourceName: resourceInfo.resourceName,
+            resourceType: resourceInfo.resourceType,
+            namespace: resourceInfo.namespace,
+            url: url,
+          },
+        };
+
+        // Add a user-friendly message to chat history instead of raw logs
+        const logSummary = logText ? 
+          `Logs retrieved for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''}. ${logText.split('\n').filter(line => line.trim()).length} log lines available.` :
+          `No logs available for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''}.`;
+
         aiManager.history.push({
           role: 'tool',
-          content: String(response),
+          content: `LOGS_BUTTON:${JSON.stringify(logsResponse)}\n\n${logSummary}`,
         });
-        return String(response);
+
+        return logSummary;
       } else if (response?.kind === 'Table') {
         // ...existing code...
         const extractKindFromUrl = (url: string) => {
