@@ -69,7 +69,7 @@ const AIPanelComponent = React.memo(() => {
       sx={{
         height: '100%',
         width: width,
-        border: '2px solid',
+        borderLeft: '2px solid',
         position: 'relative',
         '&::before': {
           content: '""',
