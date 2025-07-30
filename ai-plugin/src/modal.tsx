@@ -420,19 +420,19 @@ export default function AIPrompt(props: {
   async function AnalyzeResourceBasedOnPrompt(prompt: string) {
     setOpenPopup(true);
 
-    // If in test mode, just add the user prompt to history and return
+    // Always add user message to promptHistory immediately so it shows up right away
+    const userPrompt: Prompt = {
+      role: 'user',
+      content: prompt,
+    };
+    setPromptHistory(prev => [...prev, userPrompt]);
+
+    // If in test mode, just return after adding the prompt
     if (isTestMode) {
-      const userPrompt: Prompt = {
-        role: 'user',
-        content: prompt,
-      };
-      setPromptHistory(prev => [...prev, userPrompt]);
       return;
     }
 
-    setLoading(true);
-
-    try {
+    setLoading(true);    try {
       const promptResponse = await aiManager.userSend(prompt);
       if (promptResponse.error) {
         // Clear the global API error since errors are now handled at the prompt level
@@ -442,7 +442,8 @@ export default function AIPrompt(props: {
         setApiError(null);
       }
 
-      // Update history
+      // Update history from AI manager - this will replace our immediate user message
+      // but should include the same user message plus the AI response
       setAiManager(aiManager);
       updateHistory();
     } catch (error) {
@@ -510,11 +511,11 @@ export default function AIPrompt(props: {
       ...kubernetesCallbacks,
       handleActualApiRequest: (url, method, body, onClose, aiManagerParam, resourceInfo, targetCluster) => {
         // If no specific cluster is provided, use the first available cluster
-        const clusterToUse = targetCluster || 
+        const clusterToUse = targetCluster ||
           (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : null) ||
           getCluster() ||
           (Object.keys(clusters).length > 0 ? Object.keys(clusters)[0] : null);
-        
+
         return kubernetesCallbacks.handleActualApiRequest(
           url,
           method,
@@ -630,8 +631,8 @@ export default function AIPrompt(props: {
     const hasConversationMessages = promptHistory.some(
       msg => (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
     );
-    return !hasConversationMessages && !loading;
-  }, [hasValidConfig, activeConfig, promptHistory, loading]);
+    return !hasConversationMessages; // Removed dependency on loading state
+  }, [hasValidConfig, activeConfig, promptHistory]); // Removed loading from dependencies
 
   // Memoize the history array to prevent unnecessary re-renders of TextStreamContainer
   const memoizedHistory = React.useMemo(() => {
@@ -1017,9 +1018,8 @@ export default function AIPrompt(props: {
                       variant="contained"
                       endIcon={<Icon icon="mdi:send" width="20px" />}
                       onClick={() => {
-                        updateHistory();
-                        setPromptVal('');
                         const prompt = promptVal;
+                        setPromptVal('');
                         AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
                           setApiError(error.message);
                         });
