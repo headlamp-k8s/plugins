@@ -185,7 +185,14 @@ registerAddClusterProvider({
 // Declare a global function with the same type as runCommand
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
-const packagePath = pluginPath.startsWith('plugins/') ? pluginPath.substring(8) : pluginPath;
+const packagePath =
+  pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
+    ? pluginPath.substring(8)
+    : pluginPath.startsWith('user-plugins/') || pluginPath.startsWith('user-plugins\\')
+    ? pluginPath.substring(13)
+    : pluginPath.startsWith('static-plugins/') || pluginPath.startsWith('static-plugins\\')
+    ? pluginPath.substring(15)
+    : pluginPath;
 
 function Command() {
   function handleClick() {
@@ -193,7 +200,7 @@ function Command() {
     const scriptjs = pluginRunCommand(
       //@ts-ignore
       'scriptjs',
-      [`${packagePath}/manage-minikube.js`, 'asdfasdf'],
+      [`${packagePath}/manage-minikube.js`, 'info'],
       {}
     );
     scriptjs.stdout.on('data', data => {
