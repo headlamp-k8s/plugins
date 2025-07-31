@@ -37,14 +37,6 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   // Track the last user message count for detecting new user messages
   const lastUserMessageCountRef = useRef<number>(0);
 
-  useEffect(() => {
-    console.log('textstream mounted');
-
-    return () => {
-      console.log('textstream unmounted');
-      // Cleanup any resources if needed
-    };
-  }, []);
   // Check if user is near bottom for auto-scrolling
   const isNearBottom = useCallback(() => {
     if (!containerRef.current) return true;

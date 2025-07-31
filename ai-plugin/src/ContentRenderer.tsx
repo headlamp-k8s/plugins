@@ -1,6 +1,6 @@
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Link as MuiLink, Typography } from '@mui/material';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link as RouterLink, useHistory } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
@@ -160,14 +160,6 @@ markdownComponents.blockquote.displayName = 'MarkdownBlockquote';
 const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
   ({ content, onYamlDetected }) => {
     const history = useHistory();
-    useEffect(() => {
-      console.log('ContentRenderer mounted with content:', content);
-
-      return () => {
-        console.log('ContentRenderer unmounted');
-      };
-    }, [content]);
-
     // Create code component that has access to onYamlDetected
     const CodeComponent = React.useMemo(() => {
       const component = React.memo(({ className, children, ...props }: any) => {

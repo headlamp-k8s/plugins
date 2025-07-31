@@ -16,7 +16,6 @@ export const isSpecificResourceRequestHelper = (url: string): boolean => {
 
   // Check if this is a simple resource type URL (list endpoint)
   if (/\/(?:api|apis)\/.*?\/\w+\/?$/.test(url)) {
-    console.log('URL is a list endpoint:', url);
     return false;
   }
 

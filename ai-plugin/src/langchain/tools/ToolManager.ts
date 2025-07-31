@@ -25,21 +25,20 @@ export class ToolManager {
       try {
         const tool = tempTool;
         this.addTool(tool);
-        console.log(`Loaded tool: ${tool.config.name}`);
       } catch (error) {
         console.error(`Failed to load tool ${ToolClass.name}:`, error);
       }
     }
-    console.log(`ToolManager initialized with ${this.tools.length} tools:`, this.getToolNames());
   }
-
   /**
    * Configure external dependencies for tools that need them
    */
   configureKubernetesContext(context: KubernetesToolContext): void {
     // Only configure if the tool is enabled and present
     if (!this.hasTool('kubernetes_api_request')) {
-      console.warn('AI Assistant: KubernetesTool is disabled or not present, skipping context configuration');
+      console.warn(
+        'AI Assistant: KubernetesTool is disabled or not present, skipping context configuration'
+      );
       return;
     }
     const kubeTool = getToolByName('kubernetes_api_request', this.tools) as KubernetesTool;
@@ -47,7 +46,6 @@ export class ToolManager {
       // Only set context and log if the tool context has actually changed
       if (!kubeTool.hasContext() || kubeTool.isContextDifferent(context)) {
         kubeTool.setContext(context);
-        console.log('Kubernetes context configured for KubernetesTool');
       }
     } else {
       console.warn('KubernetesTool not found, cannot configure context');

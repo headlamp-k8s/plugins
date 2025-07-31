@@ -73,6 +73,4 @@ const prompts = {
   basePrompt,
 };
 
-console.log('AI Plugin prompts initialized', basePrompt);
-
 export default prompts;

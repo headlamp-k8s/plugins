@@ -251,9 +251,7 @@ export function extractYamlContent(
           resourceType: parsed.kind,
         });
       }
-    } catch (e) {
-      console.log('Error parsing YAML code block:', e);
-    }
+    } catch (e) {}
   };
 
   let match;
@@ -294,10 +292,7 @@ export function extractYamlContent(
               title: possibleTitle.length > 0 ? possibleTitle : `Sample ${parsed.kind}`,
             });
           }
-        } catch (e) {
-          // Not valid YAML, continue
-          console.log('Error parsing dashed YAML section:', e);
-        }
+        } catch (e) {}
       }
     }
 
