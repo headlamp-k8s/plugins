@@ -3,7 +3,7 @@ import React from 'react';
 import { Prompt } from 'react-router-dom';
 import CommandDialog from './CommandDialog';
 
-const DEBUG = true;
+const DEBUG = false;
 
 interface CommandClusterProps {
   /**
@@ -31,7 +31,6 @@ interface CommandClusterProps {
 
 // Declare a global function with the same type as runCommand
 declare const pluginRunCommand: typeof runCommand;
-
 
 // const runningCommand = {
 //   clusterName : null,
@@ -71,8 +70,6 @@ type RunningCommandContextType = {
 
 const commandsRunning = [];
 
-
-
 /**
  * Runs a command on a cluster, and shows the output in a dialog.
  */
@@ -96,7 +93,12 @@ export default function CommandCluster(props: CommandClusterProps) {
   const [runningCommand, setRunningCommand] = React.useState<RunningCommandType | null>(null);
 
   if (DEBUG) {
-    console.log('CommandCluster 1 runningCommand props:', props, runningCommandsRef.current, runningCommand);
+    console.log(
+      'CommandCluster 1 runningCommand props:',
+      props,
+      runningCommandsRef.current,
+      runningCommand
+    );
   }
 
   React.useEffect(function updateRunningLines() {
@@ -110,7 +112,7 @@ export default function CommandCluster(props: CommandClusterProps) {
       }
       // last one on the list
       const runningCommand = runningCommandsRef.current[runningCommandsRef.current.length - 1];
-      const lines = [...runningCommand?.allData || []];
+      const lines = [...(runningCommand?.allData || [])];
       // if (DEBUG) {
       //   console.log('CommandCluster updateRunningLines 3, runningCommand:', runningCommand, lines);
       // }
@@ -124,15 +126,19 @@ export default function CommandCluster(props: CommandClusterProps) {
   React.useEffect(() => {
     if (runningCommandsRef.current.length > 0) {
       if (DEBUG) {
-        console.log('CommandCluster runningCommandsRef useEffect 4, setting running command', runningCommandsRef.current);
+        console.log(
+          'CommandCluster runningCommandsRef useEffect 4, setting running command',
+          runningCommandsRef.current
+        );
       }
 
       // Set the runningCommand to the last one in the list that has the same command.
-      const runningCommand = runningCommandsRef.current.find(
-        (cmd) => cmd.props.command === command
-      );
+      const runningCommand = runningCommandsRef.current.find(cmd => cmd.props.command === command);
       if (DEBUG) {
-        console.log('CommandCluster runningCommandsRef useEffect 4.1, runningCommand', runningCommand);
+        console.log(
+          'CommandCluster runningCommandsRef useEffect 4.1, runningCommand',
+          runningCommand
+        );
       }
       if (runningCommand) {
         setRunningCommand(runningCommand);
@@ -144,10 +150,12 @@ export default function CommandCluster(props: CommandClusterProps) {
           setCommandDone(false);
           setTheCluster(runningCommand.clusterName);
           if (DEBUG) {
-            console.log('CommandCluster runningCommandsRef useEffect 4.2, runningCommand', runningCommand);
+            console.log(
+              'CommandCluster runningCommandsRef useEffect 4.2, runningCommand',
+              runningCommand
+            );
           }
         } else {
-
           // The command has finished, but we should still show the dialog
           // so the user can see the output, and let them press the close button.
           setOpenDialog(true);
@@ -155,11 +163,14 @@ export default function CommandCluster(props: CommandClusterProps) {
           setRunning(false);
           setCommandDone(true);
           setTheCluster(runningCommand.clusterName);
-          const lines = [...runningCommand?.allData || []];
+          const lines = [...(runningCommand?.allData || [])];
           setRunningLines(lines);
 
           if (DEBUG) {
-            console.log('CommandCluster runningCommandsRef useEffect 4.3, runningCommand', runningCommand);
+            console.log(
+              'CommandCluster runningCommandsRef useEffect 4.3, runningCommand',
+              runningCommand
+            );
           }
         }
       }
@@ -172,15 +183,14 @@ export default function CommandCluster(props: CommandClusterProps) {
     }
   }, [startOpen]);
 
-  // React.useEffect(() => {
-  //   if (runningCommand && runningCommand.exitCode !== null) {
-  //     if (DEBUG) {
-  //       console.log('CommandCluster runningCommand?.exitCode 6, setting command done');
-  //     }
-  //     setCommandDone(true);
-  //   }
-  // }, [runningCommand?.exitCode]);
-
+  React.useEffect(() => {
+    if (runningCommand && runningCommand.exitCode !== null) {
+      if (DEBUG) {
+        console.log('CommandCluster runningCommand?.exitCode 6, setting command done');
+      }
+      setCommandDone(true);
+    }
+  }, [runningCommand?.exitCode]);
 
   // // get all commands that haven't exited yet from commandsRunning where exitCode is null
   // const runningCommands = commandsRunning.filter(cmd => cmd.exitCode === null);
@@ -190,7 +200,6 @@ export default function CommandCluster(props: CommandClusterProps) {
   // React.useEffect(() => {
   //   allDataRef.current = allLines;
   // }, [allLines]);
-
 
   // When we load, we want to see if there is a command running already
   // and if so, we want to show the dialog with the output of that command
@@ -319,18 +328,20 @@ export default function CommandCluster(props: CommandClusterProps) {
       },
     });
   }
-  const askClusterName = runningCommand ? runningCommand.props.askClusterName : props.askClusterName;
+  const askClusterName = runningCommand
+    ? runningCommand.props.askClusterName
+    : props.askClusterName;
 
-  // if (DEBUG) {
-  //   console.log('CommandCluster 18, ', {
-  //     runningCommand,
-  //     command,
-  //     theCluster,
-  //     acting,
-  //     running,
-  //     commandDone,
-  //   });
-  // }
+  if (DEBUG) {
+    console.log('CommandCluster 18, ', {
+      runningCommand,
+      command,
+      theCluster,
+      acting,
+      running,
+      commandDone,
+    });
+  }
 
   return (
     <>
@@ -355,7 +366,9 @@ may keep running in the background. Leave?"
             if (DEBUG) {
               console.log('CommandCluster onClose 18, removing running command', runningCommand);
             }
-            runningCommandsRef.current = runningCommandsRef.current.filter(cmd => cmd !== runningCommand);
+            runningCommandsRef.current = runningCommandsRef.current.filter(
+              cmd => cmd !== runningCommand
+            );
           }
         }}
         onConfirm={({ clusterName, driver }) => handleRunCommand({ clusterName, driver })}
@@ -366,8 +379,8 @@ may keep running in the background. Leave?"
               ? `Creating Minikube Cluster ${theCluster}...`
               : 'Create a New Minikube Cluster'
             : acting
-              ? `Running "${command}" on Minikube Cluster`
-              : `Running "${command}" on Minikube Cluster`
+            ? `Running "${command}" on Minikube Cluster`
+            : `Running "${command}" on Minikube Cluster`
         }
         acting={acting}
         running={running}
