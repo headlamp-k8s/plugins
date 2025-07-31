@@ -70,7 +70,7 @@ interface DriverSelectProps {
 export default function DriverSelect({ setDriver, driver }: DriverSelectProps) {
   const drivers = driverLists[detectOS()];
 
-  function handleChange(event: SelectChangeEvent<{ value: string }>) {
+  function handleChange(event: SelectChangeEvent<string>) {
     setDriver(event.target.value as string);
   }
 
@@ -84,7 +84,7 @@ export default function DriverSelect({ setDriver, driver }: DriverSelectProps) {
           <Select
             labelId="driver-select-label"
             id="driver-select"
-            value={{ value: driver }}
+            value={driver}
             label="Driver"
             displayEmpty
             onChange={handleChange}
