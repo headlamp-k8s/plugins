@@ -17,6 +17,7 @@ import sanitizeHtml from 'sanitize-html';
 import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
 import { KubernetesToolContext, ToolManager, ToolResponse } from './tools';
+import { getEnabledToolIds } from '../utils/ToolConfigManager';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -25,10 +26,11 @@ export default class LangChainManager extends AIManager {
   private toolManager: ToolManager;
   private currentAbortController: AbortController | null = null;
 
-  constructor(providerId: string, config: Record<string, any>) {
+  constructor(providerId: string, config: Record<string, any>, pluginSettings?: any) {
     super();
     this.providerId = providerId;
-    this.toolManager = new ToolManager(); // Initialize with empty config for now
+    const enabledToolIds = pluginSettings ? getEnabledToolIds(pluginSettings) : undefined;
+    this.toolManager = new ToolManager(enabledToolIds); // Only enabled tools
     this.model = this.createModel(providerId, config);
   }
 
@@ -206,14 +208,28 @@ export default class LangChainManager extends AIManager {
       });
 
       if (response.tool_calls?.length) {
-        const toolCalls = response.tool_calls.map(tc => ({
-          type: 'function',
-          id: tc.id,
-          function: {
-            name: tc.name || 'kubernetes_api_request',
-            arguments: JSON.stringify(tc.args || {}),
-          },
-        }));
+        // Filter out tool calls for disabled tools
+        const enabledToolIds = this.toolManager.getToolNames();
+        const toolCalls = response.tool_calls
+          .filter(tc => enabledToolIds.includes(tc.name))
+          .map(tc => ({
+            type: 'function',
+            id: tc.id,
+            function: {
+              name: tc.name,
+              arguments: JSON.stringify(tc.args || {}),
+            },
+          }));
+
+        if (toolCalls.length === 0) {
+          // No enabled tool calls, just return the assistant prompt
+          const assistantPrompt: Prompt = {
+            role: 'assistant',
+            content: response.content || '',
+          };
+          this.history.push(assistantPrompt);
+          return assistantPrompt;
+        }
 
         const assistantPrompt: Prompt = {
           role: 'assistant',
