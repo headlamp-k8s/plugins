@@ -181,11 +181,18 @@ function startMinikubeHyperV(args) {
   runPrivilegedCommand(mainCommand);
 }
 
+function info() {
+  console.log('{"ram": 20000}')
+  console.log("argv", process.argv)
+  process.exit(0)
+}
+
 const commands = {
   // 'ask-restart-windows': askRestartWindows,
   // 'setup-hyperV-windows-networking': setupHyperVWindowsNetworking,
   // 'ask-restart-libvirt-ubuntu24': askRestartLibvirtUbuntu24,
   'start-minikube-hyperv': startMinikubeHyperV,
+  'info': info,
 };
 
 /**
