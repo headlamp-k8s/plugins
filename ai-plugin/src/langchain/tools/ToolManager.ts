@@ -8,24 +8,28 @@ export class ToolManager {
   private tools: ToolBase[] = [];
   private toolHandlers: Map<string, ToolBase> = new Map();
 
-  constructor() {
-    this.initializeTools();
+  constructor(enabledToolIds?: string[]) {
+    this.initializeTools(enabledToolIds);
   }
 
   /**
-   * Initialize all available tools from the registry
+   * Initialize only enabled tools from the registry
    */
-  private initializeTools(): void {
+  private initializeTools(enabledToolIds?: string[]): void {
     for (const ToolClass of AVAILABLE_TOOLS) {
+      const tempTool = new ToolClass();
+      if (enabledToolIds && !enabledToolIds.includes(tempTool.config.name)) {
+        console.log('AI Assistant: Skipping tool (disabled)', tempTool.config.name);
+        continue; // Skip tools not enabled
+      }
       try {
-        const tool = new ToolClass();
+        const tool = tempTool;
         this.addTool(tool);
         console.log(`Loaded tool: ${tool.config.name}`);
       } catch (error) {
         console.error(`Failed to load tool ${ToolClass.name}:`, error);
       }
     }
-
     console.log(`ToolManager initialized with ${this.tools.length} tools:`, this.getToolNames());
   }
 
@@ -33,6 +37,11 @@ export class ToolManager {
    * Configure external dependencies for tools that need them
    */
   configureKubernetesContext(context: KubernetesToolContext): void {
+    // Only configure if the tool is enabled and present
+    if (!this.hasTool('kubernetes_api_request')) {
+      console.warn('AI Assistant: KubernetesTool is disabled or not present, skipping context configuration');
+      return;
+    }
     const kubeTool = getToolByName('kubernetes_api_request', this.tools) as KubernetesTool;
     if (kubeTool) {
       // Only set context and log if the tool context has actually changed
@@ -75,6 +84,17 @@ export class ToolManager {
     toolCallId?: string,
     pendingPrompt?: Prompt
   ): Promise<ToolResponse> {
+    if (!this.hasTool(toolName)) {
+      return {
+        content: JSON.stringify({
+          error: true,
+          message: `Tool '${toolName}' is disabled or not available.`,
+        }),
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: false,
+        metadata: { error: 'tool_disabled', toolName },
+      };
+    }
     const tool = this.toolHandlers.get(toolName);
     if (!tool) {
       throw new Error(`Tool ${toolName} not found`);

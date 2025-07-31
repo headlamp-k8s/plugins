@@ -18,8 +18,21 @@ import React from 'react';
 import ModelSelector from './components/ModelSelector';
 import { getDefaultConfig } from './config/modelConfig';
 import AIPrompt from './modal';
-import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
-import { getActiveConfig, SavedConfigurations } from './utils/ProviderConfigManager';
+import {
+  PLUGIN_NAME,
+  pluginStore,
+  useGlobalState,
+  usePluginConfig,
+} from './utils';
+import {
+  getActiveConfig,
+  SavedConfigurations,
+} from './utils/ProviderConfigManager';
+import {
+  getAllAvailableTools,
+  isToolEnabled,
+  toggleTool,
+} from './utils/ToolConfigManager';
 
 // Memoized UI Panel component to prevent unnecessary re-renders
 const AIPanelComponent = React.memo(() => {
@@ -224,6 +237,14 @@ function Settings() {
 
   const isTestMode = savedConfigs?.testMode || false;
 
+  const toolsList = getAllAvailableTools();
+  const pluginSettings = savedConfigs;
+
+  const handleToolToggle = (toolId: string) => {
+    const updatedSettings = toggleTool(pluginSettings, toolId);
+    pluginStore.update(updatedSettings);
+  };
+
   return (
     <Box width={'80%'}>
       <Typography variant="body1" sx={{ mb: 3 }}>
@@ -258,6 +279,37 @@ function Settings() {
         isConfigView
         onChange={handleModelSelectorChange}
       />
+      {/* AI Tools Section */}
+      <Divider sx={{ my: 3 }} />
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        AI Tools
+      </Typography>
+      <Box>
+        {toolsList.map((tool) => (
+          <Box
+            key={tool.id}
+            sx={{ display: 'flex', alignItems: 'center', mb: 2 }}
+          >
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isToolEnabled(pluginSettings, tool.id)}
+                  onChange={() => handleToolToggle(tool.id)}
+                  color="primary"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body1">{tool.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {tool.description}
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
+        ))}
+      </Box>
     </Box>
   );
 }
