@@ -256,10 +256,20 @@ export default function CommandCluster(props: CommandClusterProps) {
         args.push('--keep-context-active', 'true');
       }
       args.push('-p', clusterName);
-      if (driver) {
-        args.push('--driver', driver);
+      let minikube = null;
+      if (driver === 'hyperv') {
+        minikube = pluginRunCommand(
+          // @ts-ignore
+          'scriptjs',
+          ['start-minikube-hyperv', ...args],
+          {}
+        );
+      } else {
+        if (driver) {
+          args.push('--driver', driver);
+        }
+        minikube = pluginRunCommand('minikube', args, {});
       }
-      const minikube = pluginRunCommand('minikube', args, {});
 
       const commandInfo: RunningCommandType = {
         clusterName,
