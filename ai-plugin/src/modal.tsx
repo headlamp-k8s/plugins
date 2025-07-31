@@ -116,18 +116,14 @@ export default function AIPrompt(props: {
 
     // If there are selected clusters, use those
     if (selectedClusters && selectedClusters.length > 0) {
-      console.log('Using selected clusters:', selectedClusters);
       return selectedClusters;
     }
 
     // Otherwise, use only the current cluster
     if (currentCluster) {
-      console.log('Using current cluster:', currentCluster);
       return [currentCluster];
     }
 
-    // Fallback to all clusters (shouldn't happen in normal usage)
-    console.log('Fallback to all clusters:', Object.keys(clusters));
     return Object.keys(clusters);
   }, [selectedClusters, clusters]);
 

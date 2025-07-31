@@ -16,8 +16,8 @@ import { AzureChatOpenAI } from '@langchain/openai';
 import sanitizeHtml from 'sanitize-html';
 import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
-import { KubernetesToolContext, ToolManager, ToolResponse } from './tools';
 import { getEnabledToolIds } from '../utils/ToolConfigManager';
+import { KubernetesToolContext, ToolManager, ToolResponse } from './tools';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -170,21 +170,6 @@ export default class LangChainManager extends AIManager {
     messages.unshift(systemMessage);
     const modelToUse = this.boundModel || this.model;
 
-    // Log messages being sent to local models for debugging
-    if (this.providerId === 'local') {
-      console.log(
-        'Sending messages to local model:',
-        messages.map((msg, index) => ({
-          index,
-          type: msg.constructor.name,
-          content:
-            typeof msg.content === 'string'
-              ? msg.content.substring(0, 100) + '...'
-              : 'non-string content',
-        }))
-      );
-    }
-
     try {
       let response;
       if (this.providerId === 'local') {
@@ -200,12 +185,6 @@ export default class LangChainManager extends AIManager {
 
       // Clear abort controller after successful completion
       this.currentAbortController = null;
-
-      console.log('Model response received:', {
-        content:
-          response.content?.substring(0, 100) + (response.content?.length > 100 ? '...' : ''),
-        toolCalls: response.tool_calls,
-      });
 
       if (response.tool_calls?.length) {
         // Filter out tool calls for disabled tools
@@ -243,7 +222,6 @@ export default class LangChainManager extends AIManager {
 
         for (const toolCall of toolCalls) {
           const args = JSON.parse(toolCall.function.arguments);
-          console.log('Processing tool call:', args);
 
           try {
             // Execute the tool call using ToolManager
@@ -337,14 +315,11 @@ export default class LangChainManager extends AIManager {
 
   // Change from 'protected' to 'public' to match the base class
   public async processToolResponses(): Promise<Prompt> {
-    console.log('Processing tool responses...');
-
     // Check if there are any tool responses in the history
     const hasToolResponses = this.history.some(
       prompt => prompt.role === 'tool' && prompt.toolCallId
     );
     if (!hasToolResponses) {
-      console.log('No tool responses found, returning early');
       // If no tool responses, return the last assistant message
       const lastAssistantMessage = this.history
         .slice()
@@ -456,12 +431,6 @@ export default class LangChainManager extends AIManager {
           // This helps prevent potential XSS or script injection if displayed in UI
           const sanitizedContent = this.sanitizeContent(prompt.content);
 
-          console.log('Adding validated tool response to messages:', {
-            toolCallId: prompt.toolCallId,
-            contentLength: sanitizedContent.length,
-            name: prompt.name,
-          });
-
           if (this.providerId === 'azure') {
             messages.push(
               new AIMessage(`Tool Response (${prompt.toolCallId}): ${sanitizedContent}`)
@@ -482,35 +451,11 @@ export default class LangChainManager extends AIManager {
         ) {
           // Only include non-assistant messages or assistant messages without tool calls
           // This ensures we don't include the assistant message that contains tool calls
-          console.log('Adding non-tool prompt to messages:', {
-            role: prompt.role,
-            contentLength: prompt.content?.length || 0,
-          });
           messages.push(...this.convertPromptsToMessages([prompt]));
         }
       }
 
       const modelToUse = this.boundModel || this.model;
-      console.log(
-        'Invoking model with messages:',
-        messages.map((m, index) => ({
-          index,
-          type: m.constructor.name,
-          // Safely access content without calling _getContent
-          length:
-            typeof m.content === 'string'
-              ? m.content.length
-              : m.content
-              ? JSON.stringify(m.content).length
-              : 0,
-        }))
-      );
-
-      // Log the last message type to help debug message order issues
-      if (messages.length > 0) {
-        const lastMessage = messages[messages.length - 1];
-        console.log('Last message type:', lastMessage.constructor.name);
-      }
 
       try {
         // Add timeout for model invocation
@@ -550,12 +495,6 @@ export default class LangChainManager extends AIManager {
 
         console.log(`${providerName} - Estimated tokens: ${estimatedTokens}`);
 
-        console.log('Model response received:', {
-          content:
-            response.content?.substring(0, 100) + (response.content?.length > 100 ? '...' : ''),
-          toolCallsCount: response.tool_calls?.length || 0,
-        });
-
         // Add this to the formatResponse method after getting a tool response
         if (response && typeof response === 'string' && response.includes('"items":')) {
           try {
@@ -565,9 +504,7 @@ export default class LangChainManager extends AIManager {
               note: 'Remember to use the kubernetes_api_request tool for all operations rather than suggesting kubectl commands.',
             };
             response = JSON.stringify(enhancedResponse);
-          } catch (e) {
-            // Keep original response if parsing fails
-          }
+          } catch (e) {}
         }
 
         // Analyze the response content to detect if it might be suggesting kubectl

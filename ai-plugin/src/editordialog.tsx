@@ -75,9 +75,6 @@ export default function EditorDialog({
           cancelledMessage: `Cancelled applying ${displayResourceType} to cluster.`,
           successMessage: `${displayResourceType} applied successfully.`,
           errorMessage: `Failed to apply ${displayResourceType}.`,
-          successCallback: () => {
-            onClose();
-          },
         }
       );
     } catch (error) {

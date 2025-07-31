@@ -18,21 +18,9 @@ import React from 'react';
 import ModelSelector from './components/ModelSelector';
 import { getDefaultConfig } from './config/modelConfig';
 import AIPrompt from './modal';
-import {
-  PLUGIN_NAME,
-  pluginStore,
-  useGlobalState,
-  usePluginConfig,
-} from './utils';
-import {
-  getActiveConfig,
-  SavedConfigurations,
-} from './utils/ProviderConfigManager';
-import {
-  getAllAvailableTools,
-  isToolEnabled,
-  toggleTool,
-} from './utils/ToolConfigManager';
+import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
+import { getActiveConfig, SavedConfigurations } from './utils/ProviderConfigManager';
+import { getAllAvailableTools, isToolEnabled, toggleTool } from './utils/ToolConfigManager';
 
 // Memoized UI Panel component to prevent unnecessary re-renders
 const AIPanelComponent = React.memo(() => {
@@ -123,7 +111,7 @@ AIPanelComponent.displayName = 'AIPanelComponent';
 registerUIPanel({
   id: 'headlamp-ai',
   side: 'right',
-  component: AIPanelComponent,
+  component: () => <AIPanelComponent />,
 });
 
 function HeadlampAIPrompt() {
@@ -156,8 +144,8 @@ registerAppBarAction(() => {
     if (event.type === 'headlamp.home-page-loaded') {
       _pluginState.setEvent({
         ..._pluginState.event,
-        clusters: event.data.clusters,
-        errors: event.data.errors,
+        clusters: (event.data as any).clusters,
+        errors: (event.data as any).errors,
       });
     }
     if (event.type === 'headlamp.object-events') {
@@ -169,8 +157,8 @@ registerAppBarAction(() => {
 
     if (event.type === 'headlamp.details-view') {
       _pluginState.setEvent({
-        title: event.data.title,
-        resource: event.data.resource,
+        title: (event.data as any).title,
+        resource: (event.data as any).resource,
         objectEvent: _pluginState?.event?.objectEvent,
       });
     }
@@ -285,11 +273,8 @@ function Settings() {
         AI Tools
       </Typography>
       <Box>
-        {toolsList.map((tool) => (
-          <Box
-            key={tool.id}
-            sx={{ display: 'flex', alignItems: 'center', mb: 2 }}
-          >
+        {toolsList.map(tool => (
+          <Box key={tool.id} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <FormControlLabel
               control={
                 <Switch

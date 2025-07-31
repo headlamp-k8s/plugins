@@ -12,7 +12,8 @@ const AVAILABLE_TOOLS: ToolInfo[] = [
   {
     id: 'kubernetes_api_request',
     name: 'Kubernetes API Request',
-    description: 'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
+    description:
+      'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
   },
   // Add more tools here as needed
 ];
@@ -49,7 +50,5 @@ export function toggleTool(pluginSettings: any, toolId: string): any {
 // Returns a list of enabled tool IDs from plugin settings
 export function getEnabledToolIds(pluginSettings: any): string[] {
   const allTools = getAllAvailableTools();
-  return allTools
-    .map(tool => tool.id)
-    .filter(toolId => isToolEnabled(pluginSettings, toolId));
+  return allTools.map(tool => tool.id).filter(toolId => isToolEnabled(pluginSettings, toolId));
 }
