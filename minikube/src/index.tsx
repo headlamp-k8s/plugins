@@ -196,7 +196,7 @@ function Command() {
     const scriptjs = pluginRunCommand(
       //@ts-ignore
       'scriptjs',
-      [`${packagePath}/manage-minikube.js`],
+      [`${packagePath}/manage-minikube.js`, 'asdfasdf'],
       {},
     );
     scriptjs.stdout.on('data', data => {
