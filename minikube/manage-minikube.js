@@ -15,9 +15,7 @@ import { platform } from 'node:process';
 
 // @ts-check
 
-
 // enable typescript checking of a js file
-
 
 const DEBUG = false;
 
@@ -25,13 +23,16 @@ const DEBUG = false;
  * Requests a system restart on Windows with elevated privileges.
  */
 function askRestartWindows() {
-  exec('powershell -Command "Start-Process shutdown -ArgumentList \'/r /t 0\' -Verb RunAs"', (error) => {
-    if (error) {
-      console.error('Failed to request restart:', error.message);
-    } else {
-      console.log('Restart requested with elevation.');
+  exec(
+    'powershell -Command "Start-Process shutdown -ArgumentList \'/r /t 0\' -Verb RunAs"',
+    error => {
+      if (error) {
+        console.error('Failed to request restart:', error.message);
+      } else {
+        console.log('Restart requested with elevation.');
+      }
     }
-  });
+  );
 }
 
 // Start minikube with elevated privs.
@@ -39,7 +40,6 @@ function askRestartWindows() {
 // powershell -Command "Start-Process 'minikube' -ArgumentList 'start --driver=hyperv' -Verb RunAs"
 // Start-Process "cmd.exe" -ArgumentList "/c minikube start --driver=hyperv > C:\temp\log.txt 2>&1" -Verb RunAs -WindowStyle Hidden
 // powershell -Command "Start-Process 'cmd.exe' -ArgumentList '/c minikube start --driver=hyperv > C:\temp\log.txt 2>&1' -Verb RunAs -WindowStyle Hidden"
-
 
 /**
  * For Hyper-V Windows networking setup.
@@ -78,18 +78,17 @@ function askRestartLibvirtUbuntu24() {
   }
 }
 
-
 /**
- * This is designed to run a command (specifically `minikube start`) 
+ * This is designed to run a command (specifically `minikube start`)
  * in an **elevated** (administrator) context
- * while keeping the command window **hidden** in the background. 
- * 
+ * while keeping the command window **hidden** in the background.
+ *
  * This is necessary because:
  *
  * - `minikube` with the Hyper-V driver often requires administrative privileges.
  * - Running `cmd.exe` with `Start-Process -Verb RunAs` elevates the process,
  *   but detaches it from the parent process.
- * - To capture the output (stdout, stderr) and exit code from the elevated process, 
+ * - To capture the output (stdout, stderr) and exit code from the elevated process,
  *   we use **named pipes**.
  *
  * - Creates three named pipes for stdout, stderr, and exit code.
@@ -98,12 +97,12 @@ function askRestartLibvirtUbuntu24() {
  * - Writes stdout and stderr to the Node.js process's own output streams.
  * - Exits the Node.js process with the same exit code as the `minikube` command.
  *
- * This approach allows for elevated execution with full output capture, 
+ * This approach allows for elevated execution with full output capture,
  * without showing a visible command window.
- * 
- * Additionally the UAC screen shows cmd by Microsoft, and the user can 
- * see the command being run with privileges. 
- * 
+ *
+ * Additionally the UAC screen shows cmd by Microsoft, and the user can
+ * see the command being run with privileges.
+ *
  * For example it shows the user on the UAC screen:
  * `cmd.exe /c minikube start --driver=hyperv > \\.\pipe\minikube-123456-stdout 2> \\.\pipe\minikube-123456-stderr & echo %ERRORLEVEL% > \\.\pipe\minikube-123456-exit`
  * Not:
@@ -114,15 +113,15 @@ function runPrivilegedCommand(mainCommand) {
   const pipes = {
     stdout: `${pipeBase}-stdout`,
     stderr: `${pipeBase}-stderr`,
-    exit: `${pipeBase}-exit`
+    exit: `${pipeBase}-exit`,
   };
 
   let exitCode = null;
 
   // Create named pipe servers
   const createPipeServer = (name, outputStream, onClose) => {
-    const server = createServer((stream) => {
-      stream.on('data', (data) => {
+    const server = createServer(stream => {
+      stream.on('data', data => {
         outputStream.write(data.toString());
       });
       stream.on('end', () => {
@@ -151,14 +150,18 @@ function runPrivilegedCommand(mainCommand) {
   // Start pipe servers
   createPipeServer(pipes.stdout, process.stdout, onPipeClosed);
   createPipeServer(pipes.stderr, process.stderr, onPipeClosed);
-  createPipeServer(pipes.exit, {
-    write: (data) => {
-      const code = parseInt(data.toString().trim(), 10);
-      if (!isNaN(code)) {
-        exitCode = code;
-      }
-    }
-  }, onPipeClosed);
+  createPipeServer(
+    pipes.exit,
+    {
+      write: data => {
+        const code = parseInt(data.toString().trim(), 10);
+        if (!isNaN(code)) {
+          exitCode = code;
+        }
+      },
+    },
+    onPipeClosed
+  );
 
   // PowerShell command to run cmd.exe with redirection to named pipes
   const psCommand = `
@@ -168,23 +171,155 @@ function runPrivilegedCommand(mainCommand) {
   // Launch PowerShell to run the command
   spawn('powershell.exe', ['-Command', psCommand], {
     stdio: 'ignore',
-    windowsHide: true
+    windowsHide: true,
   });
 }
 
 /**
- * 
+ *
  * @param {string[]} args extra arguments to pass to minikube start
  */
 function startMinikubeHyperV(args) {
-  const mainCommand = "minikube start --driver=hyperv" + (args.length > 0 ? " " + args.join(' ') : "");
+  const mainCommand =
+    'minikube start --driver=hyperv' + (args.length > 0 ? ' ' + args.join(' ') : '');
   runPrivilegedCommand(mainCommand);
 }
 
 function info() {
-  console.log('{"ram": 20000}')
-  console.log("argv", process.argv)
-  process.exit(0)
+  /**
+   * Checks to see if services like Hyper-V are running, and other system info.
+   * On mac/win/linux.
+   *
+   * {"diskFree":"720.47","dockerRunning":true,"hyperVRunning":true,"ram":"15.42"}
+   */
+  function detectIfHyperVRunning() {
+    try {
+      const output = execSync('sc query vmms').toString();
+      if (output.includes('RUNNING')) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function detectIfDockerRunning() {
+    try {
+      const output = execSync('docker info', { stdio: ['ignore', 'pipe', 'pipe'] });
+      const stdout = output.toString();
+      return stdout.includes('Server Version');
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function getRamWindows() {
+    try {
+      const output = execSync('wmic computersystem get TotalPhysicalMemory').toString();
+      const ramInBytes = parseInt(output.split('\n')[1].trim(), 10);
+      // Convert to GB, 2 decimals
+      return (ramInBytes / (1024 * 1024 * 1024)).toFixed(2);
+    } catch (error) {
+      console.error('Failed to get RAM:', error.message);
+      return null;
+    }
+  }
+
+  function getRamMac() {
+    try {
+      const output = execSync('sysctl -n hw.memsize').toString();
+      const ramInBytes = parseInt(output.trim(), 10);
+      // Convert to GB, 2 decimals
+      return (ramInBytes / (1024 * 1024 * 1024)).toFixed(2);
+    } catch (error) {
+      console.error('Failed to get RAM:', error.message);
+      return null;
+    }
+  }
+
+  function getRamLinux() {
+    try {
+      const output = execSync("free -m | awk 'NR==2{print $2}'").toString();
+      const ramMb = parseInt(output.trim(), 10);
+      if (isNaN(ramMb)) return null;
+      // Convert MB to GB, 2 decimals
+      return (ramMb / 1024).toFixed(2);
+    } catch (error) {
+      console.error('Failed to get RAM:', error.message);
+      return null;
+    }
+  }
+
+  function getDiskFreeLinux() {
+    try {
+      const output = execSync("df -k / | tail -n 1 | awk '{print $4}'").toString();
+      const freeKb = parseInt(output.trim(), 10);
+      if (isNaN(freeKb)) return null;
+      // Convert KB to GB, 2 decimals
+      return (freeKb / (1024 * 1024)).toFixed(2);
+    } catch (error) {
+      console.error('Failed to get disk space:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * @returns gigabytes of free disk space on macOS as a number
+   */
+  function getDiskFreeMac() {
+    try {
+      const output = execSync("df -k / | tail -n 1 | awk '{print $4}'").toString();
+      const freeKb = parseInt(output.trim(), 10);
+      if (isNaN(freeKb)) return null;
+      // Convert KB to GB, 2 decimals
+      return (freeKb / (1024 * 1024)).toFixed(2);
+    } catch (error) {
+      console.error('Failed to get disk space:', error.message);
+      return null;
+    }
+  }
+
+  function getDiskFreeWindows() {
+    try {
+      const output = execSync('wmic logicaldisk get size,freespace,caption').toString();
+      const lines = output.split('\n').filter(line => line.trim() !== '');
+      if (lines.length < 2) return null;
+      const diskInfo = lines[1].split(/\s+/);
+      const freeSpace = parseInt(diskInfo[1], 10);
+      if (isNaN(freeSpace)) return null;
+      // Return GB as number, 2 decimals
+      return (freeSpace / (1024 * 1024 * 1024)).toFixed(2);
+    } catch (error) {
+      console.error('Failed to get disk space:', error.message);
+      return null;
+    }
+  }
+
+  const info = {};
+
+  if (platform === 'win32') {
+    info.diskFree = getDiskFreeWindows();
+    info.dockerRunning = detectIfDockerRunning();
+    info.hyperVRunning = detectIfHyperVRunning();
+    info.ram = getRamWindows();
+  }
+
+  if (platform === 'darwin') {
+    info.diskFree = getDiskFreeMac();
+    info.dockerRunning = detectIfDockerRunning();
+    info.ram = getRamMac();
+  }
+
+  if (platform === 'linux') {
+    info.diskFree = getDiskFreeLinux();
+    info.dockerRunning = detectIfDockerRunning();
+    info.ram = getRamLinux();
+  }
+
+  console.log(JSON.stringify(info));
+  process.exit(0);
 }
 
 const commands = {
@@ -192,12 +327,12 @@ const commands = {
   // 'setup-hyperV-windows-networking': setupHyperVWindowsNetworking,
   // 'ask-restart-libvirt-ubuntu24': askRestartLibvirtUbuntu24,
   'start-minikube-hyperv': startMinikubeHyperV,
-  'info': info,
+  info: info,
 };
 
 /**
  * @returns the command and the rest of the args.
- * 
+ *
  * We do basic command line parsing without any libraries.
  * Because this script can't use third party libraries without bundling them.
  */
