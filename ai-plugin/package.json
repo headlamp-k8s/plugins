@@ -30,7 +30,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.12.0-alpha.0"
+    "@kinvolk/headlamp-plugin": "^0.12.0"
   },
   "dependencies": {
     "@langchain/anthropic": "^0.3.17",
