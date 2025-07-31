@@ -22,7 +22,7 @@ const driverLists = {
     { value: 'vmwarefusion', label: 'VMware Fusion (VM)' },
     { value: 'qemu', label: 'QEMU (VM)' },
     { value: 'podman', label: 'Podman (VM + Container, experimental)' },
-    { value: 'vfkit', label: 'VFkit (VM, experimental)' },
+    { value: 'vfkit', label: 'VFkit' },
     { value: 'ssh', label: 'SSH (remote ssh)' },
   ],
   windows: [
