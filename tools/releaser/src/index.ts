@@ -2,13 +2,17 @@
 
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
-import { join } from 'path';
-import { bumpPlugin } from './commands/bump';
-import { packagePlugin } from './commands/package';
-import { releasePlugin } from './commands/release';
-import { listPlugins } from './commands/list';
-import { tagPlugin } from './commands/tag';
-import { updateArtifactHub } from './commands/artifacthub';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { bumpPlugin } from './commands/bump.js';
+import { packagePlugin } from './commands/package.js';
+import { releasePlugin } from './commands/release.js';
+import { listPlugins } from './commands/list.js';
+import { tagPlugin } from './commands/tag.js';
+import { updateArtifactHub } from './commands/artifacthub.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename)
 
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));

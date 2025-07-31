@@ -1,7 +1,7 @@
 import chalk from 'chalk';
-import { getPluginPath, getPluginInfo } from '../utils/plugin';
-import { sanitizeVersion, validateVersion } from '../utils/version';
-import { createTag } from '../utils/github';
+import { getPluginPath, getPluginInfo } from '../utils/plugin.js';
+import { sanitizeVersion, validateVersion } from '../utils/version.js';
+import { createTag } from '../utils/github.js';
 
 export function tagPlugin(
   pluginName: string,

@@ -2,7 +2,7 @@ import { Octokit } from '@octokit/rest';
 import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
-import { createReleaseTag } from './git';
+import { createReleaseTag } from './git.js';
 
 const OWNER = 'headlamp-k8s';
 const REPO = 'plugins';

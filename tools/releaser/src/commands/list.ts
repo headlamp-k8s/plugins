@@ -1,10 +1,10 @@
 import chalk from 'chalk';
-import { getAllPlugins, getPluginInfo, getPluginPath } from '../utils/plugin';
+import { getAllPlugins, getPluginInfo, getPluginPath } from '../utils/plugin.js';
 import {
   getLatestTagForPlugin,
   hasChangesInPluginSinceLatestTag,
   getCommitsSinceTag
-} from '../utils/git';
+} from '../utils/git.js';
 
 interface ListOptions {
   changed?: boolean;

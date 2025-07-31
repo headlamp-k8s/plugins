@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
-import { getPluginPath, getPluginInfo } from '../utils/plugin';
+import { getPluginPath, getPluginInfo } from '../utils/plugin.js';
 
 interface PackageOptions {
   outputDir?: string;
