@@ -20,12 +20,19 @@ const packagePath =
     ? pluginPath.substring(8)
     : pluginPath;
 
+interface DriverInfo {
+  diskFree: string;
+  dockerRunning: boolean;
+  hyperVRunning: boolean;
+  ram: string;
+}
+
 /**
  *
  * @returns {diskFree: '339.65', dockerRunning: false, hyperVRunning: true, ram: '24.00'}
  */
-function useInfo() {
-  const [info, setInfo] = React.useState<any | null>(null);
+function useInfo(): DriverInfo | null {
+  const [info, setInfo] = React.useState<DriverInfo | null>(null);
 
   React.useEffect(() => {
     let stdoutData = '';
@@ -138,10 +145,16 @@ interface DriverSelectProps {
  *
  * With some logic to detect things and move drivers to top of list.
  */
-function useDrivers() {
+function useDrivers(): { value: string; label: string }[] | null {
   const info = useInfo();
   const os = detectOS();
   const drivers = driverLists[os];
+  const isInfoAvailable = info !== null;
+  console.log('info, isInfoAvailable:', info, isInfoAvailable);
+
+  if (!isInfoAvailable) {
+    return null;
+  }
 
   if (os === 'macos') {
     const macOSVersion = getMacOSVersion();
@@ -186,11 +199,13 @@ function useDrivers() {
 
 export default function DriverSelect({ setDriver, driver }: DriverSelectProps) {
   const drivers = useDrivers();
+  console.log('Drivers:', drivers);
 
   // Only set to the first driver if driver is '' and it's the initial mount.
   const initialMount = React.useRef(true);
   React.useEffect(() => {
-    if (initialMount.current && driver === '') {
+    // Also wait for driver to be available (not null)
+    if (initialMount.current && driver === '' && drivers && drivers.length > 0) {
       setDriver(drivers[0].value);
       initialMount.current = false;
     }
@@ -198,6 +213,15 @@ export default function DriverSelect({ setDriver, driver }: DriverSelectProps) {
 
   function handleChange(event: SelectChangeEvent<string>) {
     setDriver(event.target.value as string);
+  }
+
+  if (!drivers) {
+    return (
+      <Box sx={{ mt: 2 }} display="flex" alignItems="center">
+        <InputLabel id="driver-select-label">Driver</InputLabel>
+        <Box ml={2}>Detecting drivers...</Box>
+      </Box>
+    );
   }
 
   return (
