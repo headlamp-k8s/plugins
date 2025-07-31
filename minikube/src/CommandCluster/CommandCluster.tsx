@@ -3,7 +3,7 @@ import React from 'react';
 import { Prompt } from 'react-router-dom';
 import CommandDialog from './CommandDialog';
 
-const DEBUG = true;
+const DEBUG = false;
 
 interface CommandClusterProps {
   /**
@@ -177,14 +177,14 @@ export default function CommandCluster(props: CommandClusterProps) {
     }
   }, [startOpen]);
 
-  // React.useEffect(() => {
-  //   if (runningCommand && runningCommand.exitCode !== null) {
-  //     if (DEBUG) {
-  //       console.log('CommandCluster runningCommand?.exitCode 6, setting command done');
-  //     }
-  //     setCommandDone(true);
-  //   }
-  // }, [runningCommand?.exitCode]);
+  React.useEffect(() => {
+    if (runningCommand && runningCommand.exitCode !== null) {
+      if (DEBUG) {
+        console.log('CommandCluster runningCommand?.exitCode 6, setting command done');
+      }
+      setCommandDone(true);
+    }
+  }, [runningCommand?.exitCode]);
 
   // // get all commands that haven't exited yet from commandsRunning where exitCode is null
   // const runningCommands = commandsRunning.filter(cmd => cmd.exitCode === null);
@@ -326,16 +326,16 @@ export default function CommandCluster(props: CommandClusterProps) {
     ? runningCommand.props.askClusterName
     : props.askClusterName;
 
-  // if (DEBUG) {
-  //   console.log('CommandCluster 18, ', {
-  //     runningCommand,
-  //     command,
-  //     theCluster,
-  //     acting,
-  //     running,
-  //     commandDone,
-  //   });
-  // }
+  if (DEBUG) {
+    console.log('CommandCluster 18, ', {
+      runningCommand,
+      command,
+      theCluster,
+      acting,
+      running,
+      commandDone,
+    });
+  }
 
   return (
     <>
