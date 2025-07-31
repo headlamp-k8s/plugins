@@ -7,11 +7,10 @@
  * manage-minikube.js setup-hyperV-windows-networking
  * manage-minikube.js ask-restart-libvirt-ubuntu24
  */
-import { exec, execSync } from 'node:child_process';
-import { spawn } from 'node:child_process';
-import { unlinkSync } from 'node:fs';
-import { createServer } from 'node:net';
-import { platform } from 'node:process';
+const { exec, execSync, spawn } = require('child_process');
+const { unlinkSync } = require('fs');
+const { createServer } = require('net');
+const { platform } = process;
 
 // @ts-check
 
