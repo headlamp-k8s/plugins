@@ -172,7 +172,10 @@ export default function ApiConfirmationDialog({
       <ConfirmDialog
         // @ts-ignore
         open={showDeleteConfirm}
-        handleClose={() => setShowDeleteConfirm(false)}
+        handleClose={() => {
+          setShowDeleteConfirm(false);
+          onClose();
+        }}
         onConfirm={handleDeleteConfirm}
         title={`Delete ${resourceInfo?.kind || 'Resource'}`}
         description={
