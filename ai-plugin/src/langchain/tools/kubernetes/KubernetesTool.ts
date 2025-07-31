@@ -45,8 +45,9 @@ export class KubernetesTool extends ToolBase {
       return true; // No context set yet, so it's different
     }
 
-    const clustersChanged = JSON.stringify(this.context.selectedClusters) !== JSON.stringify(newContext.selectedClusters);
-    
+    const clustersChanged =
+      JSON.stringify(this.context.selectedClusters) !== JSON.stringify(newContext.selectedClusters);
+
     // For UI and callbacks, we only care if they're significantly different
     // Since these objects are recreated on each render, we'll be less strict
     // and only reconfigure if clusters changed or if context was null before

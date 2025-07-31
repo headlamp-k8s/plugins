@@ -128,7 +128,7 @@ export default class LangChainManager extends AIManager {
         case 'assistant':
           return new AIMessage({
             content: prompt.content,
-            additional_kwargs: {}
+            additional_kwargs: {},
           });
         case 'tool':
           if (this.providerId === 'azure') {
@@ -188,11 +188,11 @@ export default class LangChainManager extends AIManager {
       if (this.providerId === 'local') {
         const finalMessages = [messages[0], messages[messages.length - 1]];
         response = await modelToUse.invoke(finalMessages, {
-          signal: this.currentAbortController.signal
+          signal: this.currentAbortController.signal,
         });
       } else {
         response = await modelToUse.invoke(messages, {
-          signal: this.currentAbortController.signal
+          signal: this.currentAbortController.signal,
         });
       }
 
@@ -251,13 +251,13 @@ export default class LangChainManager extends AIManager {
             }
           } catch (error) {
             console.error('Error executing tool call:', error);
-            
+
             const errorToolResponse: ToolResponse = {
               content: JSON.stringify({
                 error: true,
                 message: error.message,
               }),
-              shouldAddToHistory: true, 
+              shouldAddToHistory: true,
               shouldProcessFollowUp: true,
             };
 
@@ -309,7 +309,6 @@ export default class LangChainManager extends AIManager {
         return errorPrompt;
       }
 
-
       const errorPrompt: Prompt = {
         role: 'assistant',
         content: `Sorry, there was an error processing your request: ${error.message}`,
@@ -351,16 +350,15 @@ export default class LangChainManager extends AIManager {
     if (lastAssistantMessage?.toolCalls) {
       const expectedToolCallIds = lastAssistantMessage.toolCalls.map(tc => tc.id);
       const actualToolResponses = this.history.filter(
-        prompt => prompt.role === 'tool' && 
-        expectedToolCallIds.includes(prompt.toolCallId)
+        prompt => prompt.role === 'tool' && expectedToolCallIds.includes(prompt.toolCallId)
       );
 
       if (expectedToolCallIds.length !== actualToolResponses.length) {
         console.error('Tool call/response mismatch detected', {
           expectedIds: expectedToolCallIds,
-          actualResponses: actualToolResponses.map(r => r.toolCallId)
+          actualResponses: actualToolResponses.map(r => r.toolCallId),
         });
-        
+
         // Add missing tool responses
         for (const expectedId of expectedToolCallIds) {
           if (!actualToolResponses.find(r => r.toolCallId === expectedId)) {
@@ -368,7 +366,7 @@ export default class LangChainManager extends AIManager {
               role: 'tool',
               content: JSON.stringify({
                 error: true,
-                message: 'Tool execution failed - no response recorded'
+                message: 'Tool execution failed - no response recorded',
               }),
               toolCallId: expectedId,
               name: 'kubernetes_api_request',

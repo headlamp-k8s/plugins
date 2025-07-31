@@ -10,11 +10,11 @@ interface LogsButtonProps {
   namespace?: string;
 }
 
-const LogsButton: React.FC<LogsButtonProps> = ({ 
-  logs, 
-  resourceName = 'resource', 
+const LogsButton: React.FC<LogsButtonProps> = ({
+  logs,
+  resourceName = 'resource',
   resourceType = 'Resource',
-  namespace 
+  namespace,
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -37,15 +37,16 @@ const LogsButton: React.FC<LogsButtonProps> = ({
 
   return (
     <>
-      <Paper 
-        elevation={1} 
-        sx={{ 
-          p: 2, 
-          my: 1, 
+      <Paper
+        elevation={1}
+        sx={{
+          p: 2,
+          my: 1,
           border: '1px solid',
           borderColor: 'primary.main',
           borderRadius: 1,
-          backgroundColor: theme => theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)'
+          backgroundColor: theme =>
+            theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
         }}
       >
         <Box display="flex" alignItems="center" justifyContent="space-between">

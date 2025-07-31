@@ -305,7 +305,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
             let jsonString = '';
             let braceCount = 0;
             let foundFirstBrace = false;
-            
+
             // Parse character by character to find the complete JSON object
             for (let i = jsonStart; i < content.length; i++) {
               const char = content[i];
@@ -315,7 +315,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
               } else if (char === '}') {
                 braceCount--;
               }
-              
+
               if (foundFirstBrace) {
                 jsonString += char;
                 if (braceCount === 0) {
@@ -323,13 +323,13 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 }
               }
             }
-            
+
             if (jsonString) {
               const logsData = JSON.parse(jsonString);
               const beforeButton = content.substring(0, logsButtonIndex);
               const afterButtonIndex = logsButtonIndex + 'LOGS_BUTTON:'.length + jsonString.length;
               const afterButton = content.substring(afterButtonIndex);
-              
+
               return (
                 <Box>
                   {beforeButton.trim() && (

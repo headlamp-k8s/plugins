@@ -12,13 +12,16 @@ export function useKubernetesToolUI(): {
   const [apiLoading, setApiLoading] = useState(false);
   const [apiRequestError, setApiRequestError] = useState<string | null>(null);
 
-  const state: KubernetesToolUIState = useMemo(() => ({
-    showApiConfirmation,
-    apiRequest,
-    apiResponse,
-    apiLoading,
-    apiRequestError,
-  }), [showApiConfirmation, apiRequest, apiResponse, apiLoading, apiRequestError]);
+  const state: KubernetesToolUIState = useMemo(
+    () => ({
+      showApiConfirmation,
+      apiRequest,
+      apiResponse,
+      apiLoading,
+      apiRequestError,
+    }),
+    [showApiConfirmation, apiRequest, apiResponse, apiLoading, apiRequestError]
+  );
 
   // Create a wrapper for handleActualApiRequest that will be bound to the context later
   const handleActualApiRequestCallback = useMemo(() => {
@@ -31,18 +34,29 @@ export function useKubernetesToolUI(): {
       resourceInfo?: any,
       targetCluster?: string
     ) => {
-      return handleActualApiRequest(url, method, body, onClose, aiManager, resourceInfo, targetCluster);
+      return handleActualApiRequest(
+        url,
+        method,
+        body,
+        onClose,
+        aiManager,
+        resourceInfo,
+        targetCluster
+      );
     };
   }, []);
 
-  const callbacks: KubernetesToolUICallbacks = useMemo(() => ({
-    setShowApiConfirmation,
-    setApiRequest,
-    setApiResponse,
-    setApiLoading,
-    setApiRequestError,
-    handleActualApiRequest: handleActualApiRequestCallback,
-  }), [handleActualApiRequestCallback]);
+  const callbacks: KubernetesToolUICallbacks = useMemo(
+    () => ({
+      setShowApiConfirmation,
+      setApiRequest,
+      setApiResponse,
+      setApiLoading,
+      setApiRequestError,
+      handleActualApiRequest: handleActualApiRequestCallback,
+    }),
+    [handleActualApiRequestCallback]
+  );
 
   return { state, callbacks };
 }
