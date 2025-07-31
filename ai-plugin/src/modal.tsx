@@ -8,11 +8,11 @@ import {
   Button,
   Chip,
   Grid,
+  ListSubheader,
   MenuItem,
   Select,
   TextField,
   Typography,
-  ListSubheader,
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -223,9 +223,8 @@ export default function AIPrompt(props: {
     // Check if the current active config still exists
     if (activeConfig) {
       const stillExists = newProviders.find(
-        (p) =>
-          p.providerId === activeConfig.providerId &&
-          p.config.apiKey === activeConfig.config.apiKey
+        p =>
+          p.providerId === activeConfig.providerId && p.config.apiKey === activeConfig.config.apiKey
       );
 
       if (!stillExists) {
@@ -297,22 +296,26 @@ export default function AIPrompt(props: {
       setPromptVal('');
       setApiError(null);
       setActiveConfig(config);
-      setSelectedModel(model || (getProviderModels(config)[0] || 'default'));
+      setSelectedModel(model || getProviderModels(config)[0] || 'default');
       _pluginSetting.setActiveProvider(config);
       if (aiManager) {
         aiManager.reset();
         setAiManager(null);
         setTimeout(() => {
-          const providerName = config.displayName || getProviderById(config.providerId)?.name || config.providerId;
+          const providerName =
+            config.displayName || getProviderById(config.providerId)?.name || config.providerId;
           setPromptHistory([
             {
               role: 'system',
-              content: `Switched to ${providerName}${model ? ' / ' + model : ''}. History has been cleared.`,
+              content: `Switched to ${providerName}${
+                model ? ' / ' + model : ''
+              }. History has been cleared.`,
             },
           ]);
         }, 100);
       } else {
-        const providerName = config.displayName || getProviderById(config.providerId)?.name || config.providerId;
+        const providerName =
+          config.displayName || getProviderById(config.providerId)?.name || config.providerId;
         setPromptHistory([
           {
             role: 'system',
@@ -331,7 +334,7 @@ export default function AIPrompt(props: {
           // Create config with selected model
           const configWithModel = {
             ...activeConfig.config,
-            model: selectedModel
+            model: selectedModel,
           };
           const newManager = new LangChainManager(activeConfig.providerId, configWithModel);
           setAiManager(newManager);
@@ -432,7 +435,8 @@ export default function AIPrompt(props: {
       return;
     }
 
-    setLoading(true);    try {
+    setLoading(true);
+    try {
       const promptResponse = await aiManager.userSend(prompt);
       if (promptResponse.error) {
         // Clear the global API error since errors are now handled at the prompt level
@@ -505,31 +509,43 @@ export default function AIPrompt(props: {
   };
 
   // Memoize the kubernetesContext to avoid unnecessary re-creation
-  const kubernetesContext = useMemo(() => ({
-    ui: kubernetesUI,
-    callbacks: {
-      ...kubernetesCallbacks,
-      handleActualApiRequest: (url, method, body, onClose, aiManagerParam, resourceInfo, targetCluster) => {
-        // If no specific cluster is provided, use the first available cluster
-        const clusterToUse = targetCluster ||
-          (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : null) ||
-          getCluster() ||
-          (Object.keys(clusters).length > 0 ? Object.keys(clusters)[0] : null);
-
-        return kubernetesCallbacks.handleActualApiRequest(
+  const kubernetesContext = useMemo(
+    () => ({
+      ui: kubernetesUI,
+      callbacks: {
+        ...kubernetesCallbacks,
+        handleActualApiRequest: (
           url,
           method,
           body,
           onClose,
-          aiManagerParam || aiManager,
+          aiManagerParam,
           resourceInfo,
-          clusterToUse
-        );
+          targetCluster
+        ) => {
+          // If no specific cluster is provided, use the first available cluster
+          const clusterToUse =
+            targetCluster ||
+            (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : null) ||
+            getCluster() ||
+            (Object.keys(clusters).length > 0 ? Object.keys(clusters)[0] : null);
+
+          return kubernetesCallbacks.handleActualApiRequest(
+            url,
+            method,
+            body,
+            onClose,
+            aiManagerParam || aiManager,
+            resourceInfo,
+            clusterToUse
+          );
+        },
       },
-    },
-    selectedClusters,
-    aiManager, // Add the AI manager to the context
-  }), [kubernetesUI, kubernetesCallbacks, selectedClusters, aiManager, clusters]);
+      selectedClusters,
+      aiManager, // Add the AI manager to the context
+    }),
+    [kubernetesUI, kubernetesCallbacks, selectedClusters, aiManager, clusters]
+  );
 
   React.useEffect(() => {
     if (!aiManager) {
@@ -564,13 +580,7 @@ export default function AIPrompt(props: {
         kubernetesContext
       );
     }
-  }, [
-    _pluginSetting.event,
-    aiManager,
-    clusterWarnings,
-    selectedClusters,
-    kubernetesContext,
-  ]);
+  }, [_pluginSetting.event, aiManager, clusterWarnings, selectedClusters, kubernetesContext]);
 
   useEffect(() => {
     if (openPopup && aiManager) {
@@ -942,12 +952,21 @@ export default function AIPrompt(props: {
                         renderValue={selected => {
                           const [providerId, ...modelNameParts] = String(selected).split('-');
                           const modelName = modelNameParts.join('-');
-                          const selectedConfig = availableConfigs.find(c => c.providerId === providerId);
-                          const providerInfo = selectedConfig ? getProviderById(selectedConfig.providerId) : null;
+                          const selectedConfig = availableConfigs.find(
+                            c => c.providerId === providerId
+                          );
+                          const providerInfo = selectedConfig
+                            ? getProviderById(selectedConfig.providerId)
+                            : null;
                           return (
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               {providerInfo && (
-                                <Icon icon={providerInfo.icon || 'mdi:robot'} width="16px" height="16px" style={{ marginRight: 4 }} />
+                                <Icon
+                                  icon={providerInfo.icon || 'mdi:robot'}
+                                  width="16px"
+                                  height="16px"
+                                  style={{ marginRight: 4 }}
+                                />
                               )}
                               <Typography variant="body2" noWrap>
                                 {getModelDisplayName(modelName)}
@@ -963,14 +982,20 @@ export default function AIPrompt(props: {
                           },
                         }}
                       >
-                        {availableConfigs.map((config) => {
+                        {availableConfigs.map(config => {
                           const providerInfo = getProviderById(config.providerId);
                           const models = getProviderModels(config);
                           return [
-                            <ListSubheader key={`provider-header-${config.providerId}`}
+                            <ListSubheader
+                              key={`provider-header-${config.providerId}`}
                               sx={{ display: 'flex', alignItems: 'center', paddingLeft: 1 }}
                             >
-                              <Icon icon={providerInfo?.icon || 'mdi:robot'} width="16px" height="16px" style={{ marginRight: 8 }} />
+                              <Icon
+                                icon={providerInfo?.icon || 'mdi:robot'}
+                                width="16px"
+                                height="16px"
+                                style={{ marginRight: 8 }}
+                              />
                               {config.displayName || providerInfo?.name || config.providerId}
                             </ListSubheader>,
                             ...models.map(model => (
@@ -987,14 +1012,19 @@ export default function AIPrompt(props: {
                                   {getModelDisplayName(model)}
                                 </Typography>
                                 {defaultProviderIndex !== undefined &&
-                                  availableConfigs[defaultProviderIndex]?.providerId === config.providerId &&
+                                  availableConfigs[defaultProviderIndex]?.providerId ===
+                                    config.providerId &&
                                   model === (getProviderModels(config)[0] || 'default') && (
-                                    <Typography component="span" variant="caption" sx={{ ml: 1, color: 'primary.main' }}>
+                                    <Typography
+                                      component="span"
+                                      variant="caption"
+                                      sx={{ ml: 1, color: 'primary.main' }}
+                                    >
                                       (Default)
                                     </Typography>
                                   )}
                               </MenuItem>
-                            ))
+                            )),
                           ];
                         })}
                       </Select>

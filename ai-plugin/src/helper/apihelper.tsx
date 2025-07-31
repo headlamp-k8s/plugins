@@ -21,15 +21,16 @@ export const handleActualApiRequest = async (
   targetCluster?: string // Allow specifying a specific cluster
 ) => {
   const cluster = targetCluster || getCluster();
-  
+
   // If no cluster is provided and no current cluster, try to get any available cluster
   if (!cluster) {
     // This is a fallback - ideally the cluster should be provided through the context
     console.warn('No cluster available for API request');
-    return JSON.stringify({ 
-      error: true, 
-      message: 'No cluster available for API request. Please ensure you are in a cluster context or have clusters configured.',
-      suggestion: 'Try navigating to a specific cluster view or check your cluster configuration.'
+    return JSON.stringify({
+      error: true,
+      message:
+        'No cluster available for API request. Please ensure you are in a cluster context or have clusters configured.',
+      suggestion: 'Try navigating to a specific cluster view or check your cluster configuration.',
     });
   }
 
@@ -219,7 +220,7 @@ export const handleActualApiRequest = async (
               resourceName: match[3],
             };
           }
-          
+
           // Try to extract resource type and name from URL
           const fallbackMatch = url.match(/\/([^\/]+)\/([^\/]+)\/log/);
           if (fallbackMatch) {
@@ -250,9 +251,13 @@ export const handleActualApiRequest = async (
         };
 
         // Add a user-friendly message to chat history instead of raw logs
-        const logSummary = logText ? 
-          `Logs retrieved for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''}. ${logText.split('\n').filter(line => line.trim()).length} log lines available.` :
-          `No logs available for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''}.`;
+        const logSummary = logText
+          ? `Logs retrieved for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${
+              resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
+            }. ${logText.split('\n').filter(line => line.trim()).length} log lines available.`
+          : `No logs available for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${
+              resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
+            }.`;
 
         aiManager.history.push({
           role: 'tool',

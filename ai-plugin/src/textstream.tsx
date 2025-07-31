@@ -107,13 +107,13 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
               const targetScrollPosition = messageTop + messageHeight - containerHeight;
               container.scrollTo({
                 top: Math.max(0, targetScrollPosition),
-                behavior: 'smooth'
+                behavior: 'smooth',
               });
             } else {
               // Show the user message at the top of the viewport
               container.scrollTo({
                 top: Math.max(0, messageTop),
-                behavior: 'smooth'
+                behavior: 'smooth',
               });
             }
           }
@@ -128,7 +128,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
             // Scroll to show half of the last message
             container.scrollTo({
               top: messageTop,
-              behavior: 'smooth'
+              behavior: 'smooth',
             });
           }
         }
@@ -178,7 +178,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     } else if (history.length > 0) {
       // If not at bottom, show the scroll button
       setShowScrollButton(true);
-      scrollToShowNewMessage()
+      scrollToShowNewMessage();
     }
   }, [history, isNearBottom, scrollToBottom, scrollToShowNewMessage]);
 

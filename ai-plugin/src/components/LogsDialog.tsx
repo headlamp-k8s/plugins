@@ -2,7 +2,7 @@ import { Icon } from '@iconify/react';
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import React, {useRef } from 'react';
+import React, { useRef } from 'react';
 
 interface LogsDialogProps {
   open: boolean;
@@ -37,13 +37,7 @@ const LogsDialog: React.FC<LogsDialogProps> = ({ open, onClose, logs, title, res
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="lg"
-      fullWidth
-      withFullScreen
-    >
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth withFullScreen>
       <DialogTitle>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="h6">{title}</Typography>
@@ -74,7 +68,8 @@ const LogsDialog: React.FC<LogsDialogProps> = ({ open, onClose, logs, title, res
             height: '100%',
             backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f8f9fa',
             color: theme.palette.mode === 'dark' ? '#d4d4d4' : '#212529',
-            fontFamily: 'Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace',
+            fontFamily:
+              'Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace',
             fontSize: '13px',
             lineHeight: 1.4,
             padding: theme.spacing(2),
