@@ -59,7 +59,7 @@ export default function CommandDialog({
   initialClusterName,
   askClusterName,
 }: CommandDialogProps) {
-  const [clusterName, setClusterName] = React.useState(initialClusterName);
+  const [clusterName, setClusterName] = React.useState(initialClusterName || '');
   const [driver, setDriver] = React.useState('');
   const [nameTaken, setNameTaken] = React.useState(false);
 
