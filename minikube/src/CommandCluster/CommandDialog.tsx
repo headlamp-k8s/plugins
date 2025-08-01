@@ -60,7 +60,7 @@ export default function CommandDialog({
   askClusterName,
 }: CommandDialogProps) {
   const [clusterName, setClusterName] = React.useState(initialClusterName || '');
-  const [driver, setDriver] = React.useState('');
+  const [driver, setDriver] = React.useState<string | null>(null);
   const [nameTaken, setNameTaken] = React.useState(false);
 
   const history = useHistory();
@@ -139,9 +139,12 @@ export default function CommandDialog({
     </>
   );
 
+  const waitForDriver = command === 'start' && askClusterName ? driver === null : false;
+
   const buttons = (
     <>
-      {!acting && (
+      {waitForDriver && <Loader title={`Detecting drivers...`} />}
+      {!acting && !waitForDriver && (
         <>
           {!useGrid && <Button onClick={onClose}>Cancel</Button>}
           <Button
