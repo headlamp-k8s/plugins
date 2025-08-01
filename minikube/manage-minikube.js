@@ -317,14 +317,16 @@ function info() {
     info.ram = getRamLinux();
   }
 
-  // // do a setTimeout and in 5 seconds exit with code 0
-  // setTimeout(() => {
-  //   console.log(JSON.stringify(info));
-  //   process.exit(0);
-  // }, 5000);
-
-  console.log(JSON.stringify(info));
-  process.exit(0);
+  const simulateSlowComputer = true;
+  if (simulateSlowComputer) {
+    setTimeout(() => {
+      console.log(JSON.stringify(info));
+      process.exit(0);
+    }, 1000);
+  } else {
+    console.log(JSON.stringify(info));
+    process.exit(0);
+  }
 }
 
 const commands = {
