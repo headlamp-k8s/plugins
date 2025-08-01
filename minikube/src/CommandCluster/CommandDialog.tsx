@@ -143,7 +143,7 @@ export default function CommandDialog({
 
   const buttons = (
     <>
-      {waitForDriver && <Loader title={`Detecting drivers...`} />}
+      {!acting && waitForDriver && <Loader title={`Detecting drivers...`} />}
       {!acting && !waitForDriver && (
         <>
           {!useGrid && <Button onClick={onClose}>Cancel</Button>}
