@@ -16,7 +16,6 @@ import { AzureChatOpenAI } from '@langchain/openai';
 import sanitizeHtml from 'sanitize-html';
 import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
-import { getEnabledToolIds } from '../utils/ToolConfigManager';
 import { KubernetesToolContext, ToolManager, ToolResponse } from './tools';
 
 export default class LangChainManager extends AIManager {

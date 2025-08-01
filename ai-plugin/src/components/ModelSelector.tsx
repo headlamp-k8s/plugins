@@ -18,6 +18,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { Autocomplete } from '@mui/material';
 import { useEffect, useState } from 'react';
 import {
   getDefaultConfig,
@@ -186,7 +187,6 @@ function ConfigurationDialog({
               {fields.map(field => (
                 <Grid item xs={12} md={6} key={field.name}>
                   {field.type === 'select' && field.name === 'model' ? (
-                    // Special handling for model field - allow custom input
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" sx={{ mb: 0.5 }}>
                         {field.label}
@@ -197,68 +197,48 @@ function ConfigurationDialog({
                           </Box>
                         )}
                       </Typography>
-                      <Select
-                        value={
-                          field.options?.includes(config[field.name])
-                            ? config[field.name]
-                            : 'custom'
-                        }
-                        onChange={e => {
-                          if (e.target.value === 'custom') {
-                            // Clear the model field to show the custom input
-                            handleFieldChange(field.name, '');
-                            return;
-                          }
-                          handleFieldChange(field.name, e.target.value);
+                      <Autocomplete
+                        freeSolo
+                        options={field.options || []}
+                        value={config[field.name] || ''}
+                        onChange={(_, newValue) => {
+                          handleFieldChange(field.name, newValue || '');
                         }}
-                        fullWidth
-                        size="small"
-                        displayEmpty
-                      >
-                        <MenuItem value="" disabled>
-                          <em>Select {field.label}</em>
-                        </MenuItem>
-                        {field.options?.map(option => (
-                          <MenuItem key={option} value={option}>
-                            {option}
-                          </MenuItem>
-                        ))}
-                        <MenuItem value="custom">
-                          <em>Custom Model...</em>
-                        </MenuItem>
-                      </Select>
-
-                      {/* Custom model input field - show when no predefined model is selected */}
-                      {!field.options?.includes(config[field.name]) && (
-                        <Box sx={{ mt: 1 }}>
+                        onInputChange={(_, newInputValue) => {
+                          handleFieldChange(field.name, newInputValue);
+                        }}
+                        renderInput={params => (
                           <TextField
-                            value={config[field.name] || ''}
-                            onChange={e => handleFieldChange(field.name, e.target.value)}
+                            {...params}
                             fullWidth
                             size="small"
-                            placeholder="Enter custom model name (e.g., gpt-4-custom, claude-3-opus-custom)"
+                            placeholder="Enter or select model name (e.g., gpt-4, claude-3-opus, custom-model)"
                             helperText={
                               config[field.name]
-                                ? `Using custom model: ${config[field.name]}`
-                                : 'Enter a custom model name or select from the dropdown above'
+                                ? field.options?.includes(config[field.name])
+                                  ? `Using model: ${config[field.name]}`
+                                  : `Using custom model: ${config[field.name]}`
+                                : 'Enter a model name or select from the dropdown'
                             }
                             InputProps={{
-                              startAdornment: config[field.name] ? (
-                                <Box sx={{ mr: 1 }}>
-                                  <Chip
-                                    label="Custom"
-                                    size="small"
-                                    color="primary"
-                                    variant="outlined"
-                                    sx={{ fontSize: '0.7rem', height: '20px' }}
-                                  />
-                                </Box>
-                              ) : null,
+                              ...params.InputProps,
+                              startAdornment:
+                                config[field.name] &&
+                                !field.options?.includes(config[field.name]) ? (
+                                  <Box sx={{ mr: 1 }}>
+                                    <Chip
+                                      label="Custom"
+                                      size="small"
+                                      color="primary"
+                                      variant="outlined"
+                                      sx={{ fontSize: '0.7rem', height: '20px' }}
+                                    />
+                                  </Box>
+                                ) : null,
                               endAdornment: config[field.name] ? (
                                 <IconButton
                                   size="small"
                                   onClick={() => {
-                                    // Reset to default model
                                     const defaultModel = field.default || field.options?.[0] || '';
                                     handleFieldChange(field.name, defaultModel);
                                   }}
@@ -269,9 +249,8 @@ function ConfigurationDialog({
                               ) : null,
                             }}
                           />
-                        </Box>
-                      )}
-
+                        )}
+                      />
                       {field.description && <FormHelperText>{field.description}</FormHelperText>}
                     </Box>
                   ) : field.type === 'select' ? (

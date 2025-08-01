@@ -3,7 +3,7 @@ import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 /**
  * Context Generator - Creates human-readable context descriptions for the AI
  * This replaces the complex JSON context system with simple, natural language descriptions
- * 
+ *
  * Supports multiple resource sources:
  * - event.resource: Single resource
  * - event.items: Array of resources (e.g., list views)
@@ -29,7 +29,7 @@ interface HeadlampEvent {
  */
 function minimizeResourceData(resource: any) {
   if (!resource) return null;
-  
+
   return {
     kind: resource.kind || resource.jsonData?.kind,
     metadata: {
@@ -46,7 +46,7 @@ function minimizeResourceData(resource: any) {
  */
 export function minimizeResourceList(resources: any[]): any[] {
   if (!Array.isArray(resources)) return [];
-  
+
   return resources.map(minimizeResourceData).filter(Boolean);
 }
 
@@ -57,7 +57,7 @@ export function generateContextDescription(
   selectedClusters?: string[]
 ): string {
   const contextParts: string[] = [];
-  console.log("event is ", event)
+  console.log('event is ', event);
   // Add cluster context - be clear about what clusters are in scope
   if (selectedClusters && selectedClusters.length > 0) {
     if (selectedClusters.length === 1) {
@@ -131,7 +131,11 @@ export function generateContextDescription(
   if (event?.resources && Array.isArray(event.resources)) {
     const resourceCount = event.resources.length;
     if (resourceCount > 0) {
-      const resourceType = event.resourceKind || event.resources[0]?.kind || event.resources[0]?.jsonData?.kind || 'resources';
+      const resourceType =
+        event.resourceKind ||
+        event.resources[0]?.kind ||
+        event.resources[0]?.jsonData?.kind ||
+        'resources';
       contextParts.push(
         `Showing ${resourceCount} ${resourceType.toLowerCase()}${resourceCount !== 1 ? 's' : ''}`
       );

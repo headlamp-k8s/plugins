@@ -1,4 +1,3 @@
-import { isEqual } from 'lodash';
 import { Icon } from '@iconify/react';
 import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
@@ -15,6 +14,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AIManager, { Prompt } from './ai/manager';
@@ -136,7 +136,9 @@ export default function AIPrompt(props: {
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
   const [defaultProviderIndex, setDefaultProviderIndex] = useState<number | undefined>(undefined);
 
-  const [enabledTools, setEnabledTools] = React.useState<string[]>(getEnabledToolIds(pluginSettings));
+  const [enabledTools, setEnabledTools] = React.useState<string[]>(
+    getEnabledToolIds(pluginSettings)
+  );
 
   // Test mode detection
   const isTestMode = pluginSettings?.testMode || false;
@@ -358,7 +360,7 @@ export default function AIPrompt(props: {
       }
       return newEnabledTools;
     });
-  }, [pluginSettings])
+  }, [pluginSettings]);
 
   const updateHistory = React.useCallback(() => {
     if (!aiManager?.history) {
