@@ -569,7 +569,6 @@ export default function AIPrompt(props: {
     const event = _pluginSetting.event;
     const currentCluster = getCluster();
     const currentClusterGroup = getClusterGroup();
-
     // Generate a human-readable context description
     const contextDescription = generateContextDescription(
       event,
@@ -577,7 +576,6 @@ export default function AIPrompt(props: {
       clusterWarnings,
       selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
     );
-
     // Add cluster group info if relevant
     let fullContext = contextDescription;
     if (currentClusterGroup && currentClusterGroup.length > 1) {
