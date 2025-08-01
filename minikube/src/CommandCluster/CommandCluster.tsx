@@ -149,14 +149,14 @@ function useMinikubeProfileList() {
   const [profiles, setProfiles] = React.useState<any | null>(null);
   React.useEffect(() => {
     let stdoutData = '';
-    const scriptjs = pluginRunCommand('minikube', ['profile', 'list', '--output=json'], {});
-    scriptjs.stdout.on('data', data => {
+    const minikube = pluginRunCommand('minikube', ['profile', 'list', '--output=json'], {});
+    minikube.stdout.on('data', data => {
       stdoutData += data.toString();
     });
-    scriptjs.stderr.on('data', data => {
+    minikube.stderr.on('data', data => {
       console.error('Error fetching minikube profiles:', data.toString());
     });
-    scriptjs.on('exit', code => {
+    minikube.on('exit', code => {
       if (code === 0) {
         try {
           console.log("Minikube profiles: ", stdoutData);
@@ -472,6 +472,10 @@ export default function CommandCluster(props: CommandClusterProps) {
         if (DEBUG) {
           console.log('runFunc 13, stdout:', data);
         }
+
+        data = data.replace(/^\s*App starting\.\.\.\s*[\r\n]+/m, '');
+        data = data.replace(/^\s*Check for updates:\s+true\s*[\r\n]+/m, '');
+
         commandInfo.stdoutData.push(data);
         commandInfo.allData.push(data);
 

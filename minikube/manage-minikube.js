@@ -181,7 +181,11 @@ function runPrivilegedCommand(mainCommand) {
 function startMinikubeHyperV(args) {
   const mainCommand =
     'minikube start --driver=hyperv' + (args.length > 0 ? ' ' + args.join(' ') : '');
-  runPrivilegedCommand(mainCommand);
+
+  setImmediate(() => {
+    runPrivilegedCommand(mainCommand);
+  });
+  throw new Error('Expected error.');
 }
 
 function info() {
@@ -318,8 +322,13 @@ function info() {
   }
 
 
-  console.log(JSON.stringify(info));
-  process.exit(0);
+  setImmediate(() => {
+    // execSync('sleep 10');
+    console.log(JSON.stringify(info));
+    process.exit(0);
+  });
+  throw new Error('Expected error.');
+  return;
 }
 
 const commands = {
@@ -346,6 +355,19 @@ function parseCommandLineArgs() {
 
 function main() {
   const [command, args] = parseCommandLineArgs();
+
+  // // override console.log and console.info to avoid printing to the console
+  // // if they start with "App starting..." or "Check for updates"
+  // const originalLog = console.log;
+  // console.log = function (...messages) {
+  //   if (messages.length > 0) {
+  //     const message = messages.join(' ');
+  //     if (!message.startsWith('App starting...') && !message.startsWith('Check for updates')) {
+  //       originalLog.apply(console, messages);
+  //     }
+  //   }
+  // };
+  // console.info = console.log;
 
   if (!command || !commands[command]) {
     console.error(command ? `Unknown command: ${command}` : 'No command provided');
