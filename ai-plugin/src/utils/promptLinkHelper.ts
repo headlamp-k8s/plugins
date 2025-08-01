@@ -39,7 +39,18 @@ export function getHeadlampLink(link: string) {
       const namespace = searchParams.get('ns');
 
       // @todo: Add support for CRDs
-      const resourceClass = ResourceClasses[kind];
+      let resourceClass = ResourceClasses[kind];
+      // If we couldn't match it like this, iterate and try to match it from the API name
+      if (!resourceClass) {
+        for (const className in ResourceClasses) {
+          const rc = ResourceClasses[className];
+          if (rc.apiName === kind) {
+            resourceClass = rc;
+            break;
+          }
+        }
+      }
+
       if (
         resourceClass &&
         resource &&

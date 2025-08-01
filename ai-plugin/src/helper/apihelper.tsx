@@ -268,11 +268,18 @@ export const handleActualApiRequest = async (
       } else if (response?.kind === 'Table') {
         // ...existing code...
         const extractKindFromUrl = (url: string) => {
-          // Extract from URLs like /api/v1/pods, /apis/apps/v1/deployments, etc.
-          const match = url.match(
-            /\/(:?api\/v1|apis\/[^\/]+\/[^\/]+)\/(?:namespaces\/[^\/]+\/)?([^\/\?]+)/
-          );
-          return match ? match[1] : null;
+            // Extract from URLs like /api/v1/pods, /apis/apps/v1/deployments, etc.
+            const match = url.match(
+            /\/(api\/v1\/[^\/]+|apis\/[^\/]+\/[^\/]+\/[^\/]+)/
+            );
+          const kind = match ? match[1] : null;
+          if (kind?.length > 1) {
+            const kindParts = kind.split('/');
+            if (kindParts.length > 1) {
+              return kindParts[kindParts.length - 1]; // Return the last part as the kind
+            }
+          }
+          return kind;
         };
 
         const resourceKind = extractKindFromUrl(url);
