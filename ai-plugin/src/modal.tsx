@@ -616,11 +616,6 @@ export default function AIPrompt(props: {
     ];
   };
 
-  // Get provider display name from the active configuration
-  const getProviderDisplayName = () => {
-    return 'AI';
-  };
-
   const disableSettingsButton = useMemo(() => {
     // Compensate the @ symbol not getting encoded in the history's URL
     const currentURL = location.pathname.replace(/@/g, '%40');
@@ -720,7 +715,7 @@ export default function AIPrompt(props: {
         >
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="h6">
-              {getProviderDisplayName()} Assistant (beta)
+              AI Assistant (alpha)
               {isTestMode && (
                 <Chip
                   label="TEST MODE"
