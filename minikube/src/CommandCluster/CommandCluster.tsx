@@ -159,13 +159,16 @@ function useMinikubeProfileList() {
     scriptjs.on('exit', code => {
       if (code === 0) {
         try {
+          console.log("Minikube profiles: ", stdoutData);
+          stdoutData = stdoutData.replace(/^(App starting\.\.\.\r?\n)?(Check for updates:\s+true\r?\n)?/m, '');
+
           setProfiles(JSON.parse(stdoutData));
         } catch (e) {
-          console.error('Failed to parse minikube profiles JSON:', e);
+          console.error('Failed to parse minikube profiles JSON:', e, stdoutData);
           setProfiles(null);
         }
       } else {
-        console.error('Failed to fetch minikube profiles, exit code:', code);
+        console.error('Failed to fetch minikube profiles, exit code:', code, stdoutData);
         setProfiles(null);
       }
     });

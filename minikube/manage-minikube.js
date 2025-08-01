@@ -317,6 +317,7 @@ function info() {
     info.ram = getRamLinux();
   }
 
+
   console.log(JSON.stringify(info));
   process.exit(0);
 }
@@ -336,7 +337,11 @@ const commands = {
  * Because this script can't use third party libraries without bundling them.
  */
 function parseCommandLineArgs() {
-  return [process.argv[2], process.argv.slice(3)];
+  let args = process.argv.slice(2);
+  if (args[0] === '-headless') {
+    args = args.slice(1);
+  }
+  return [args[0], args.slice(1)];
 }
 
 function main() {

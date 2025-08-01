@@ -196,7 +196,7 @@ function Command() {
     const scriptjs = pluginRunCommand(
       //@ts-ignore
       'scriptjs',
-      [`${packagePath}/manage-minikube.js`, 'info'],
+      [`${packagePath}/manage-minikube.js`, '-headless', 'info'],
       {}
     );
     scriptjs.stdout.on('data', data => {
