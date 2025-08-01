@@ -39,7 +39,7 @@ function useInfo(): DriverInfo | null {
     const scriptjs = pluginRunCommand(
       //@ts-ignore
       'scriptjs',
-      [`${packagePath}/manage-minikube.js`, 'info'],
+      [`${packagePath}/manage-minikube.js`, '-headless', 'info'],
       {}
     );
     scriptjs.stdout.on('data', data => {
@@ -58,7 +58,14 @@ function useInfo(): DriverInfo | null {
           // "App starting..."
           // "Check for updates:  true"
           // Remove both lines if present, regardless of line ending (\n or \r\n)
-          stdoutData = stdoutData.replace(/^(App starting\.\.\.\r?\n)?(Check for updates:\s+true\r?\n)?/m, '');
+          stdoutData = stdoutData.replace(/^\s*App starting\.\.\.\s*[\r\n]+/m, '');
+          stdoutData = stdoutData.replace(/^\s*Check for updates:\s+true\s*[\r\n]+/m, '');
+
+          // find first "{"
+          const firstCurly = stdoutData.indexOf('{');
+          if (firstCurly !== -1) {
+            stdoutData = stdoutData.substring(firstCurly);
+          }
           console.log('Parsed minikube info:', stdoutData);
           setInfo(JSON.parse(stdoutData));
         } catch (e) {
