@@ -283,6 +283,85 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
       }),
       [CodeComponent, LinkComponent]
     );
+
+    // Helper function to process content with unformatted YAML
+    const processUnformattedYaml = React.useCallback((content: string) => {
+      const sections: React.ReactNode[] = [];
+      let sectionIndex = 0;
+
+      // Split content by YAML document separators or detect YAML blocks
+      const yamlSeparatorRegex = /^---+$/gm;
+      const parts = content.split(yamlSeparatorRegex);
+
+      parts.forEach((part, index) => {
+        const trimmedPart = part.trim();
+        if (!trimmedPart) return;
+
+        // Check if this part looks like YAML
+        const isYamlPart =
+          trimmedPart.includes('apiVersion:') &&
+          trimmedPart.includes('kind:') &&
+          trimmedPart.includes('metadata:');
+
+        if (isYamlPart) {
+          // Try to parse as Kubernetes YAML
+          const parsed = parseKubernetesYAML(trimmedPart);
+          if (parsed.isValid) {
+            sections.push(
+              <YamlDisplay
+                key={`yaml-${index}-${sectionIndex++}`}
+                yaml={trimmedPart}
+                title={parsed.resourceType}
+                onOpenInEditor={onYamlDetected}
+              />
+            );
+          } else {
+            // Not valid YAML, display as code
+            sections.push(
+              <Box
+                component="pre"
+                key={`code-${index}-${sectionIndex++}`}
+                sx={{
+                  backgroundColor: theme => theme.palette.grey[100],
+                  color: theme => theme.palette.grey[900],
+                  padding: 2,
+                  borderRadius: 1,
+                  overflowX: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  fontSize: '0.85rem',
+                }}
+              >
+                {trimmedPart}
+              </Box>
+            );
+          }
+        } else {
+          // Regular text content - use ReactMarkdown with simplified components
+          sections.push(
+            <ReactMarkdown
+              key={`text-${index}-${sectionIndex++}`}
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: markdownComponents.p,
+                h1: markdownComponents.h1,
+                h2: markdownComponents.h2,
+                h3: markdownComponents.h3,
+                ul: markdownComponents.ul,
+                ol: markdownComponents.ol,
+                li: markdownComponents.li,
+                a: LinkComponent,
+                code: CodeComponent,
+              }}
+            >
+              {trimmedPart}
+            </ReactMarkdown>
+          );
+        }
+      });
+
+      return <Box>{sections}</Box>;
+    }, [onYamlDetected, LinkComponent, CodeComponent]);
+
     // Process content and detect standalone YAML blocks and logs buttons
     const processedContent = useMemo(() => {
       if (!content) return null;
@@ -370,85 +449,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           {content}
         </ReactMarkdown>
       );
-    }, [content, onYamlDetected]);
-
-    // Helper function to process content with unformatted YAML
-    const processUnformattedYaml = (content: string) => {
-      const sections: React.ReactNode[] = [];
-      let sectionIndex = 0;
-
-      // Split content by YAML document separators or detect YAML blocks
-      const yamlSeparatorRegex = /^---+$/gm;
-      const parts = content.split(yamlSeparatorRegex);
-
-      parts.forEach((part, index) => {
-        const trimmedPart = part.trim();
-        if (!trimmedPart) return;
-
-        // Check if this part looks like YAML
-        const isYamlPart =
-          trimmedPart.includes('apiVersion:') &&
-          trimmedPart.includes('kind:') &&
-          trimmedPart.includes('metadata:');
-
-        if (isYamlPart) {
-          // Try to parse as Kubernetes YAML
-          const parsed = parseKubernetesYAML(trimmedPart);
-          if (parsed.isValid) {
-            sections.push(
-              <YamlDisplay
-                key={`yaml-${index}-${sectionIndex++}`}
-                yaml={trimmedPart}
-                title={parsed.resourceType}
-                onOpenInEditor={onYamlDetected}
-              />
-            );
-          } else {
-            // Not valid YAML, display as code
-            sections.push(
-              <Box
-                component="pre"
-                key={`code-${index}-${sectionIndex++}`}
-                sx={{
-                  backgroundColor: theme => theme.palette.grey[100],
-                  color: theme => theme.palette.grey[900],
-                  padding: 2,
-                  borderRadius: 1,
-                  overflowX: 'auto',
-                  whiteSpace: 'pre-wrap',
-                  fontSize: '0.85rem',
-                }}
-              >
-                {trimmedPart}
-              </Box>
-            );
-          }
-        } else {
-          // Regular text content - use ReactMarkdown with simplified components
-          sections.push(
-            <ReactMarkdown
-              key={`text-${index}-${sectionIndex++}`}
-              remarkPlugins={[remarkGfm]}
-              components={{
-                p: markdownComponents.p,
-                h1: markdownComponents.h1,
-                h2: markdownComponents.h2,
-                h3: markdownComponents.h3,
-                ul: markdownComponents.ul,
-                ol: markdownComponents.ol,
-                li: markdownComponents.li,
-                a: LinkComponent,
-                code: CodeComponent,
-              }}
-            >
-              {trimmedPart}
-            </ReactMarkdown>
-          );
-        }
-      });
-
-      return <Box>{sections}</Box>;
-    };
+    }, [content, onYamlDetected, processUnformattedYaml]);
 
     return (
       <Box sx={{ width: '100%', overflowWrap: 'break-word', wordWrap: 'break-word' }}>

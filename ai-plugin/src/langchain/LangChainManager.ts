@@ -148,10 +148,6 @@ export default class LangChainManager extends AIManager {
     });
   }
 
-  private formatContext() {
-    return this.currentContext || '';
-  }
-
   async userSend(message: string): Promise<Prompt> {
     const userPrompt: Prompt = { role: 'user', content: message };
     this.history.push(userPrompt);
@@ -185,30 +181,20 @@ export default class LangChainManager extends AIManager {
 
       // Clear abort controller after successful completion
       this.currentAbortController = null;
+      const enabledToolIds = this.toolManager.getToolNames();
+        
+      if (response.tool_calls?.length && enabledToolIds.length > 0) {
+        
+        // If no tools are enabled but LLM is returning tool calls, this indicates a bug
 
-      if (response.tool_calls?.length) {
-        // Filter out tool calls for disabled tools
-        const enabledToolIds = this.toolManager.getToolNames();
-        const toolCalls = response.tool_calls
-          .filter(tc => enabledToolIds.includes(tc.name))
-          .map(tc => ({
-            type: 'function',
-            id: tc.id,
-            function: {
-              name: tc.name,
-              arguments: JSON.stringify(tc.args || {}),
-            },
-          }));
-
-        if (toolCalls.length === 0) {
-          // No enabled tool calls, just return the assistant prompt
-          const assistantPrompt: Prompt = {
-            role: 'assistant',
-            content: response.content || '',
-          };
-          this.history.push(assistantPrompt);
-          return assistantPrompt;
-        }
+        const toolCalls = response.tool_calls.map(tc => ({
+          type: 'function',
+          id: tc.id,
+          function: {
+            name: tc.name,
+            arguments: JSON.stringify(tc.args || {}),
+          },
+        }));
 
         const assistantPrompt: Prompt = {
           role: 'assistant',
