@@ -3,7 +3,7 @@ import React from 'react';
 import { Prompt } from 'react-router-dom';
 import CommandDialog from './CommandDialog';
 
-const DEBUG = true;
+const DEBUG = false;
 
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
@@ -159,9 +159,9 @@ function useMinikubeProfileList() {
     minikube.on('exit', code => {
       if (code === 0) {
         try {
-          console.log("Minikube profiles: ", stdoutData);
-          stdoutData = stdoutData.replace(/^(App starting\.\.\.\r?\n)?(Check for updates:\s+true\r?\n)?/m, '');
-
+          if (DEBUG) {
+            console.log('CommandCluster useMinikubeProfileList:', stdoutData);
+          }
           setProfiles(JSON.parse(stdoutData));
         } catch (e) {
           console.error('Failed to parse minikube profiles JSON:', e, stdoutData);
@@ -199,8 +199,6 @@ interface CommandClusterProps {
   onConfirm: () => void;
   /** Command to run (stop, start, delete, etc) */
   command: string;
-  /** Text to look for in the output to determine if the command is finished */
-  finishedText: string;
   /** Ask for the cluster name. Otherwise the initialClusterName is used. */
   askClusterName?: boolean;
 }
@@ -235,12 +233,6 @@ type RunningCommandType = {
   props: CommandClusterProps;
 };
 
-// Define a type for the context
-type RunningCommandContextType = {
-  runningCommand: RunningCommandType | null;
-  setRunningCommand: React.Dispatch<React.SetStateAction<RunningCommandType | null>>;
-};
-
 const commandsRunning = [];
 
 /**
@@ -254,7 +246,6 @@ export default function CommandCluster(props: CommandClusterProps) {
     handleClose,
     onConfirm,
     command,
-    finishedText,
   } = props;
   const [openDialog, setOpenDialog] = React.useState(false);
   const [acting, setActing] = React.useState(false);
@@ -325,8 +316,6 @@ export default function CommandCluster(props: CommandClusterProps) {
         );
       }
 
-
-
       if (runningCommand) {
         setRunningCommand(runningCommand);
         if (runningCommand.exitCode === null) {
@@ -378,50 +367,6 @@ export default function CommandCluster(props: CommandClusterProps) {
       setCommandDone(true);
     }
   }, [runningCommand?.exitCode]);
-
-  // // get all commands that haven't exited yet from commandsRunning where exitCode is null
-  // const runningCommands = commandsRunning.filter(cmd => cmd.exitCode === null);
-  // const lastRunningCommand = runningCommands.length > 0 ? runningCommands[runningCommands.length - 1] : null;
-  // const allLines = lastRunningCommand ? lastRunningCommand.allData : [];
-
-  // React.useEffect(() => {
-  //   allDataRef.current = allLines;
-  // }, [allLines]);
-
-  // When we load, we want to see if there is a command running already
-  // and if so, we want to show the dialog with the output of that command
-  // if it matches the command we are about to run. Where finishedText and command are the same.
-  // The runningCommands array is used to keep track of the commands that are running.
-  // So react
-
-  // React.useEffect(() => {
-  //   if (DEBUG) {
-  //     console.log('CommandCluster setting state 7, runningCommand', runningCommand);
-  //   }
-  //   if (runningCommand && runningCommand.command && runningCommand.props.command === command) {
-  //     setRunningCommand(runningCommand);
-  //     setOpenDialog(true);
-  //     setActing(true);
-  //     setRunning(true);
-  //     setCommandDone(false);
-  //     setTheCluster(runningCommand.clusterName);
-  //     if (DEBUG) {
-  //       console.log('CommandCluster setting state 8, runningCommand', runningCommand);
-  //     }
-
-  //   } else {
-  //     // If there is no running command, we reset the state
-  //     setOpenDialog(false);
-  //     setActing(false);
-  //     setRunning(false);
-  //     setCommandDone(false);
-  //     setTheCluster(null);
-  //     if (DEBUG) {
-  //       console.log('CommandCluster setting state 9, runningCommand', runningCommand);
-  //     }
-  //     // runningCommandsRef.current = runningCommandsRef.current.filter(cmd => cmd !== runningCommand);
-  //   }
-  // }, [runningCommand, command, onCommandStarted, setRunningCommand]);
 
   function handleRunCommand({ clusterName, driver }: { clusterName: string; driver: string }) {
     if (DEBUG) {
@@ -486,15 +431,8 @@ export default function CommandCluster(props: CommandClusterProps) {
           console.log('runFunc 13, stdout:', data);
         }
 
-        data = data.replace(/^\s*App starting\.\.\.\s*[\r\n]+/m, '');
-        data = data.replace(/^\s*Check for updates:\s+true\s*[\r\n]+/m, '');
-
         commandInfo.stdoutData.push(data);
         commandInfo.allData.push(data);
-
-        // if (data.includes(finishedText)) {
-        //   setCommandDone(true);
-        // }
       });
       minikube.stderr.on('data', (data: string) => {
         if (DEBUG) {

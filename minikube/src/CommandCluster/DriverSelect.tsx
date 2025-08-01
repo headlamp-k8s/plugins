@@ -13,6 +13,8 @@ import {
 } from '@mui/material';
 import React from 'react';
 
+const DEBUG = false;
+
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
 const packagePath =
@@ -28,7 +30,6 @@ interface DriverInfo {
 }
 
 /**
- *
  * @returns {diskFree: '339.65', dockerRunning: false, hyperVRunning: true, ram: '24.00'}
  */
 function useInfo(): DriverInfo | null {
@@ -43,7 +44,9 @@ function useInfo(): DriverInfo | null {
       {}
     );
     scriptjs.stdout.on('data', data => {
-      console.log('Data from minikube info script:', data.toString());
+      if (DEBUG) {
+        console.log('useInfo on data:', data.toString());
+      }
       stdoutData += data.toString();
     });
     scriptjs.stderr.on('data', data => {
@@ -53,20 +56,10 @@ function useInfo(): DriverInfo | null {
     scriptjs.on('exit', code => {
       if (code === 0) {
         try {
-          console.log('Minikube info:', stdoutData);
-          // Has these two lines we need to strip out from the beginning if they exist:
-          // "App starting..."
-          // "Check for updates:  true"
-          // Remove both lines if present, regardless of line ending (\n or \r\n)
-          stdoutData = stdoutData.replace(/^\s*App starting\.\.\.\s*[\r\n]+/m, '');
-          stdoutData = stdoutData.replace(/^\s*Check for updates:\s+true\s*[\r\n]+/m, '');
-
-          // find first "{"
-          const firstCurly = stdoutData.indexOf('{');
-          if (firstCurly !== -1) {
-            stdoutData = stdoutData.substring(firstCurly);
+          if (DEBUG) {
+            console.log('useInfo, on exit stdoutData:', stdoutData);
           }
-          console.log('Parsed minikube info:', stdoutData);
+
           setInfo(JSON.parse(stdoutData));
         } catch (e) {
           console.error('Failed to parse minikube info JSON:', e, stdoutData);
