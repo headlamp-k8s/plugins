@@ -153,7 +153,7 @@ interface DriverSelectProps {
    */
   setDriver: (driver: string) => void;
   /** The selected driver value. */
-  driver: string;
+  driver: string | null;
 }
 
 /**
@@ -221,7 +221,7 @@ export default function DriverSelect({ setDriver, driver }: DriverSelectProps) {
   const initialMount = React.useRef(true);
   React.useEffect(() => {
     // Also wait for driver to be available (not null)
-    if (initialMount.current && driver === '' && drivers && drivers.length > 0) {
+    if (initialMount.current && driver === null && drivers && drivers.length > 0) {
       setDriver(drivers[0].value);
       initialMount.current = false;
     }
