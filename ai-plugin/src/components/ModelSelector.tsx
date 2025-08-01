@@ -185,7 +185,94 @@ function ConfigurationDialog({
             <Grid container spacing={2}>
               {fields.map(field => (
                 <Grid item xs={12} md={6} key={field.name}>
-                  {field.type === 'select' ? (
+                  {field.type === 'select' && field.name === 'model' ? (
+                    // Special handling for model field - allow custom input
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        {field.label}
+                        {field.required && (
+                          <Box component="span" sx={{ color: 'error.main' }}>
+                            {' '}
+                            *
+                          </Box>
+                        )}
+                      </Typography>
+                      <Select
+                        value={
+                          field.options?.includes(config[field.name]) ? config[field.name] : 'custom'
+                        }
+                        onChange={e => {
+                          if (e.target.value === 'custom') {
+                            // Clear the model field to show the custom input
+                            handleFieldChange(field.name, '');
+                            return;
+                          }
+                          handleFieldChange(field.name, e.target.value);
+                        }}
+                        fullWidth
+                        size="small"
+                        displayEmpty
+                      >
+                        <MenuItem value="" disabled>
+                          <em>Select {field.label}</em>
+                        </MenuItem>
+                        {field.options?.map(option => (
+                          <MenuItem key={option} value={option}>
+                            {option}
+                          </MenuItem>
+                        ))}
+                        <MenuItem value="custom">
+                          <em>Custom Model...</em>
+                        </MenuItem>
+                      </Select>
+                      
+                      {/* Custom model input field - show when no predefined model is selected */}
+                      {(!field.options?.includes(config[field.name])) && (
+                        <Box sx={{ mt: 1 }}>
+                          <TextField
+                            value={config[field.name] || ''}
+                            onChange={e => handleFieldChange(field.name, e.target.value)}
+                            fullWidth
+                            size="small"
+                            placeholder="Enter custom model name (e.g., gpt-4-custom, claude-3-opus-custom)"
+                            helperText={
+                              config[field.name] 
+                                ? `Using custom model: ${config[field.name]}` 
+                                : "Enter a custom model name or select from the dropdown above"
+                            }
+                            InputProps={{
+                              startAdornment: config[field.name] ? (
+                                <Box sx={{ mr: 1 }}>
+                                  <Chip 
+                                    label="Custom" 
+                                    size="small" 
+                                    color="primary" 
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.7rem', height: '20px' }}
+                                  />
+                                </Box>
+                              ) : null,
+                              endAdornment: config[field.name] ? (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    // Reset to default model
+                                    const defaultModel = field.default || field.options?.[0] || '';
+                                    handleFieldChange(field.name, defaultModel);
+                                  }}
+                                  title="Reset to default model"
+                                >
+                                  <Icon icon="mdi:restore" width="16px" />
+                                </IconButton>
+                              ) : null,
+                            }}
+                          />
+                        </Box>
+                      )}
+                      
+                      {field.description && <FormHelperText>{field.description}</FormHelperText>}
+                    </Box>
+                  ) : field.type === 'select' ? (
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" sx={{ mb: 0.5 }}>
                         {field.label}
@@ -734,11 +821,29 @@ export default function ModelSelector({
                       {savedConfig.displayName || savedProvider?.name || savedConfig.providerId}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" align="center">
-                      {savedConfig.config.model || savedConfig.config.deploymentName
-                        ? savedConfig.config.model
-                          ? savedConfig.config.model
-                          : savedConfig.config.deploymentName
-                        : 'Configuration'}
+                      {savedConfig.config.model || savedConfig.config.deploymentName ? (
+                        <Box component="span">
+                          {savedConfig.config.model || savedConfig.config.deploymentName}
+                          {/* Show indicator for custom models */}
+                          {(() => {
+                            const modelName = savedConfig.config.model || savedConfig.config.deploymentName;
+                            const provider = getProviderById(savedConfig.providerId);
+                            const modelField = provider?.fields.find(f => f.name === 'model');
+                            const isCustomModel = modelField?.options && !modelField.options.includes(modelName);
+                            
+                            return isCustomModel ? (
+                              <Chip 
+                                label="Custom" 
+                                size="small" 
+                                variant="outlined" 
+                                sx={{ ml: 0.5, fontSize: '0.6rem', height: '16px' }} 
+                              />
+                            ) : null;
+                          })()}
+                        </Box>
+                      ) : (
+                        'Configuration'
+                      )}
                       {/* Count similar configs to indicate multiple instances of the same provider */}
                       {(() => {
                         const similarConfigs = savedConfigs?.providers?.filter(
