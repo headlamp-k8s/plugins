@@ -3,7 +3,7 @@ import React from 'react';
 import { Prompt } from 'react-router-dom';
 import CommandDialog from './CommandDialog';
 
-const DEBUG = false;
+const DEBUG = true;
 
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
@@ -275,6 +275,16 @@ export default function CommandCluster(props: CommandClusterProps) {
     });
   }
 
+  // on initial mount, we want to see if there is a command running already
+  // If there is a command running in runningCommandsRef.current with exit code not null,
+  // then we remove it from runningCommandsRef.current
+  React.useEffect(() => {
+    const runningCommand = runningCommandsRef.current.find(cmd => cmd.exitCode !== null);
+    if (runningCommand) {
+      runningCommandsRef.current = runningCommandsRef.current.filter(cmd => cmd !== runningCommand);
+    }
+  }, []);
+
   React.useEffect(function updateRunningLines() {
     // Make sure react gets notified of the changes to the array
     const intervalId = setInterval(() => {
@@ -314,6 +324,9 @@ export default function CommandCluster(props: CommandClusterProps) {
           runningCommand
         );
       }
+
+
+
       if (runningCommand) {
         setRunningCommand(runningCommand);
         if (runningCommand.exitCode === null) {
