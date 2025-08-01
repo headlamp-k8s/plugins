@@ -323,21 +323,24 @@ export default function AIPrompt(props: {
   };
 
   React.useEffect(() => {
-    if (!aiManager && pluginSettings) {
-      // If we have an active config from the new format, use it
-      if (activeConfig) {
-        try {
-          // Create config with selected model
-          const configWithModel = {
-            ...activeConfig.config,
-            model: selectedModel,
-          };
-          const newManager = new LangChainManager(activeConfig.providerId, configWithModel);
-          setAiManager(newManager);
-          return;
-        } catch (error) {
-          setApiError(`Failed to initialize AI model: ${error.message}`);
-        }
+    // Recreate the manager whenever pluginSettings change (including tool settings)
+    // or when activeConfig/selectedModel changes
+    if (pluginSettings && activeConfig) {
+      try {
+        // Create config with selected model
+        const configWithModel = {
+          ...activeConfig.config,
+          model: selectedModel,
+        };
+        const newManager = new LangChainManager(
+          activeConfig.providerId,
+          configWithModel,
+          pluginSettings
+        );
+        setAiManager(newManager);
+        return;
+      } catch (error) {
+        setApiError(`Failed to initialize AI model: ${error.message}`);
       }
     }
   }, [pluginSettings, activeConfig, selectedModel]);

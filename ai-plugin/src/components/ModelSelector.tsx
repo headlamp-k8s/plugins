@@ -199,7 +199,9 @@ function ConfigurationDialog({
                       </Typography>
                       <Select
                         value={
-                          field.options?.includes(config[field.name]) ? config[field.name] : 'custom'
+                          field.options?.includes(config[field.name])
+                            ? config[field.name]
+                            : 'custom'
                         }
                         onChange={e => {
                           if (e.target.value === 'custom') {
@@ -225,9 +227,9 @@ function ConfigurationDialog({
                           <em>Custom Model...</em>
                         </MenuItem>
                       </Select>
-                      
+
                       {/* Custom model input field - show when no predefined model is selected */}
-                      {(!field.options?.includes(config[field.name])) && (
+                      {!field.options?.includes(config[field.name]) && (
                         <Box sx={{ mt: 1 }}>
                           <TextField
                             value={config[field.name] || ''}
@@ -236,17 +238,17 @@ function ConfigurationDialog({
                             size="small"
                             placeholder="Enter custom model name (e.g., gpt-4-custom, claude-3-opus-custom)"
                             helperText={
-                              config[field.name] 
-                                ? `Using custom model: ${config[field.name]}` 
-                                : "Enter a custom model name or select from the dropdown above"
+                              config[field.name]
+                                ? `Using custom model: ${config[field.name]}`
+                                : 'Enter a custom model name or select from the dropdown above'
                             }
                             InputProps={{
                               startAdornment: config[field.name] ? (
                                 <Box sx={{ mr: 1 }}>
-                                  <Chip 
-                                    label="Custom" 
-                                    size="small" 
-                                    color="primary" 
+                                  <Chip
+                                    label="Custom"
+                                    size="small"
+                                    color="primary"
                                     variant="outlined"
                                     sx={{ fontSize: '0.7rem', height: '20px' }}
                                   />
@@ -269,7 +271,7 @@ function ConfigurationDialog({
                           />
                         </Box>
                       )}
-                      
+
                       {field.description && <FormHelperText>{field.description}</FormHelperText>}
                     </Box>
                   ) : field.type === 'select' ? (
@@ -826,17 +828,19 @@ export default function ModelSelector({
                           {savedConfig.config.model || savedConfig.config.deploymentName}
                           {/* Show indicator for custom models */}
                           {(() => {
-                            const modelName = savedConfig.config.model || savedConfig.config.deploymentName;
+                            const modelName =
+                              savedConfig.config.model || savedConfig.config.deploymentName;
                             const provider = getProviderById(savedConfig.providerId);
                             const modelField = provider?.fields.find(f => f.name === 'model');
-                            const isCustomModel = modelField?.options && !modelField.options.includes(modelName);
-                            
+                            const isCustomModel =
+                              modelField?.options && !modelField.options.includes(modelName);
+
                             return isCustomModel ? (
-                              <Chip 
-                                label="Custom" 
-                                size="small" 
-                                variant="outlined" 
-                                sx={{ ml: 0.5, fontSize: '0.6rem', height: '16px' }} 
+                              <Chip
+                                label="Custom"
+                                size="small"
+                                variant="outlined"
+                                sx={{ ml: 0.5, fontSize: '0.6rem', height: '16px' }}
                               />
                             ) : null;
                           })()}

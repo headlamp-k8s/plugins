@@ -30,6 +30,10 @@ export default class LangChainManager extends AIManager {
     super();
     this.providerId = providerId;
     const enabledToolIds = pluginSettings ? getEnabledToolIds(pluginSettings) : undefined;
+    console.log(
+      'AI Assistant: Initializing with enabled tools:',
+      enabledToolIds || 'all tools enabled'
+    );
     this.toolManager = new ToolManager(enabledToolIds); // Only enabled tools
     this.model = this.createModel(providerId, config);
   }
@@ -181,11 +185,30 @@ export default class LangChainManager extends AIManager {
 
       // Clear abort controller after successful completion
       this.currentAbortController = null;
-      const enabledToolIds = this.toolManager.getToolNames();
-        
-      if (response.tool_calls?.length && enabledToolIds.length > 0) {
-        
+
+      if (response.tool_calls?.length) {
+        const enabledToolIds = this.toolManager.getToolNames();
+
         // If no tools are enabled but LLM is returning tool calls, this indicates a bug
+        if (enabledToolIds.length === 0) {
+          console.warn(
+            'LLM returned tool calls but no tools are enabled. This should not happen.',
+            {
+              toolCalls: response.tool_calls,
+              modelUsed: this.boundModel === this.model ? 'original' : 'bound',
+            }
+          );
+
+          // Treat as regular response since no tools should be available
+          const assistantPrompt: Prompt = {
+            role: 'assistant',
+            content:
+              response.content ||
+              'I apologize, but I cannot use tools as they have been disabled in your settings.',
+          };
+          this.history.push(assistantPrompt);
+          return assistantPrompt;
+        }
 
         const toolCalls = response.tool_calls.map(tc => ({
           type: 'function',
