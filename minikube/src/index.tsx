@@ -129,7 +129,6 @@ registerClusterProviderDialog(({ cluster, openConfirmDialog, setOpenConfirmDialo
         setOpenConfirmDialog('');
       }}
       command={'start'}
-      finishedText={'Done! kubectl is now configured'}
     />
   );
 });
@@ -148,7 +147,6 @@ registerClusterProviderDialog(({ cluster, openConfirmDialog, setOpenConfirmDialo
         setOpenConfirmDialog('');
       }}
       command={'stop'}
-      finishedText={'node stopped.'}
     />
   );
 });
@@ -167,7 +165,6 @@ registerClusterProviderDialog(({ cluster, openConfirmDialog, setOpenConfirmDialo
         setOpenConfirmDialog('');
       }}
       command={'delete'}
-      finishedText={'Removed all traces of the'}
     />
   );
 });
