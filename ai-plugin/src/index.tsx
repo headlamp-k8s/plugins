@@ -248,7 +248,7 @@ function Settings() {
 
       <Divider sx={{ my: 3 }} />
 
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 3, ml: 2 }}>
         <FormControlLabel
           control={<Switch checked={isTestMode} onChange={handleTestModeChange} color="primary" />}
           label={
@@ -280,7 +280,7 @@ function Settings() {
       </Typography>
       <Box>
         {toolsList.map(tool => (
-          <Box key={tool.id} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Box key={tool.id} sx={{ display: 'flex', alignItems: 'center', mb: 2, ml: 2 }}>
             <FormControlLabel
               control={
                 <Switch
