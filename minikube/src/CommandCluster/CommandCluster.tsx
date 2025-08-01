@@ -220,8 +220,9 @@ interface CommandClusterProps {
 
 type RunningCommandType = {
   clusterName: string | null;
+  command: string;
   driver: string | null;
-  command: {
+  runCommand: {
     stdout: {
       on: (event: string, listener: (chunk: any) => void) => void;
     };
@@ -275,8 +276,14 @@ export default function CommandCluster(props: CommandClusterProps) {
   // then we remove it from runningCommandsRef.current
   React.useEffect(() => {
     const runningCommand = runningCommandsRef.current.find(cmd => cmd.exitCode !== null);
+    if (DEBUG) {
+      console.log('CommandCluster 1.2, runningCommand:', runningCommand);
+    }
     if (runningCommand) {
       runningCommandsRef.current = runningCommandsRef.current.filter(cmd => cmd !== runningCommand);
+    }
+    if (DEBUG) {
+      console.log('CommandCluster 1.3, runningCommandsRef.current:', runningCommandsRef.current);
     }
   }, []);
 
@@ -414,8 +421,9 @@ export default function CommandCluster(props: CommandClusterProps) {
 
       const commandInfo: RunningCommandType = {
         clusterName,
+        command,
         driver,
-        command: minikube,
+        runCommand: minikube,
         exitCode: null,
         stdoutData: [],
         errorData: [],
