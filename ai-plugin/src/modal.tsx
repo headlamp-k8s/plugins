@@ -1,3 +1,4 @@
+import { isEqual } from 'lodash';
 import { Icon } from '@iconify/react';
 import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
@@ -33,6 +34,7 @@ import {
   getSavedConfigurations,
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
+import { getEnabledToolIds } from './utils/ToolConfigManager';
 
 function markdownToPlainText(markdown: string): string {
   return (
@@ -133,6 +135,8 @@ export default function AIPrompt(props: {
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
   const [defaultProviderIndex, setDefaultProviderIndex] = useState<number | undefined>(undefined);
+
+  const [enabledTools, setEnabledTools] = React.useState<string[]>(getEnabledToolIds(pluginSettings));
 
   // Test mode detection
   const isTestMode = pluginSettings?.testMode || false;
@@ -325,7 +329,7 @@ export default function AIPrompt(props: {
   React.useEffect(() => {
     // Recreate the manager whenever pluginSettings change (including tool settings)
     // or when activeConfig/selectedModel changes
-    if (pluginSettings && activeConfig) {
+    if (activeConfig) {
       try {
         // Create config with selected model
         const configWithModel = {
@@ -335,7 +339,7 @@ export default function AIPrompt(props: {
         const newManager = new LangChainManager(
           activeConfig.providerId,
           configWithModel,
-          pluginSettings
+          enabledTools
         );
         setAiManager(newManager);
         return;
@@ -343,7 +347,18 @@ export default function AIPrompt(props: {
         setApiError(`Failed to initialize AI model: ${error.message}`);
       }
     }
-  }, [pluginSettings, activeConfig, selectedModel]);
+  }, [enabledTools, activeConfig, selectedModel]);
+
+  React.useEffect(() => {
+    // Only set if different
+    setEnabledTools(currentlyEnabledTools => {
+      const newEnabledTools = getEnabledToolIds(pluginSettings);
+      if (isEqual(currentlyEnabledTools, newEnabledTools)) {
+        return currentlyEnabledTools;
+      }
+      return newEnabledTools;
+    });
+  }, [pluginSettings])
 
   const updateHistory = React.useCallback(() => {
     if (!aiManager?.history) {
