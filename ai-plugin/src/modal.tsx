@@ -1107,17 +1107,28 @@ const getProviderModels = (providerConfig: StoredProviderConfig) => {
   const providerInfo = getProviderById(providerConfig.providerId);
 
   // First try to use the models field, then fall back to options from the model field
+  let models: string[] = [];
   if (providerInfo?.models && providerInfo.models.length > 0) {
-    return providerInfo.models;
+    models = providerInfo.models;
+  } else {
+    const modelField = providerInfo?.fields?.find(field => field.name === 'model');
+    if (modelField?.options && modelField.options.length > 0) {
+      models = modelField.options;
+    } else {
+      models = ['default'];
+    }
   }
 
-  // Fall back to options from the model field configuration
-  const modelField = providerInfo?.fields?.find(field => field.name === 'model');
-  if (modelField?.options && modelField.options.length > 0) {
-    return modelField.options;
+  // Add custom model from config if not already present
+  if (
+    providerConfig.config &&
+    providerConfig.config.model &&
+    !models.includes(providerConfig.config.model)
+  ) {
+    models = [...models, providerConfig.config.model];
   }
 
-  return ['default'];
+  return models;
 };
 
 // Helper to get display name for a model
