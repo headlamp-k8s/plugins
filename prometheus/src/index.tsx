@@ -11,6 +11,7 @@ import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import { ChartEnabledKinds, PLUGIN_NAME } from './util';
+import { KarpenterChart } from "../src/components/Chart/KarpenterChart/KarpenterChart"
 
 function PrometheusMetrics(resource: DetailsViewSectionProps) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
@@ -84,6 +85,18 @@ function PrometheusMetrics(resource: DetailsViewSectionProps) {
       />
     );
   }
+
+  if (resource.kind === 'NodePool') {
+  const name = resource.jsonData.metadata.name;
+
+  return (
+    <KarpenterChart
+      usageQuery={`karpenter_nodepools_usage{nodepool='${name}'}`}
+      limitQuery={`karpenter_nodepools_limit{nodepool='${name}'}`}
+      activeNodesQuery={`count(karpenter_nodes_allocatable{nodepool='${name}'})`}
+    />
+  );
+}
 }
 
 registerPluginSettings(PLUGIN_NAME, Settings, true);
