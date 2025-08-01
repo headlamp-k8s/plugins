@@ -26,10 +26,10 @@ export default class LangChainManager extends AIManager {
   private toolManager: ToolManager;
   private currentAbortController: AbortController | null = null;
 
-  constructor(providerId: string, config: Record<string, any>, pluginSettings?: any) {
+  constructor(providerId: string, config: Record<string, any>, enabledTools?: string[]) {
     super();
     this.providerId = providerId;
-    const enabledToolIds = pluginSettings ? getEnabledToolIds(pluginSettings) : undefined;
+    const enabledToolIds = enabledTools ?? [];
     console.log(
       'AI Assistant: Initializing with enabled tools:',
       enabledToolIds || 'all tools enabled'
