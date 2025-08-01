@@ -32,9 +32,9 @@ RUN echo "Installing deps for plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
     echo "Installing $ENVIRONMENT dependencies..."; \
     if [ "$ENVIRONMENT" = "production" ]; then \
-     npm ci --omit=dev; \
+     npm install --omit=dev; \
     else \
-      npm ci; \
+      npm install; \
     fi
 
 # Build the specified plugin
