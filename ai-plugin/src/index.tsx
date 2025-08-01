@@ -154,13 +154,19 @@ registerAppBarAction(() => {
         objectEvent: event.data,
       });
     }
-
+    
     if (event.type === 'headlamp.details-view') {
       _pluginState.setEvent({
         title: (event.data as any).title,
         resource: (event.data as any).resource,
         objectEvent: _pluginState?.event?.objectEvent,
       });
+    }
+    if(event.type === 'headlamp.list-view') {
+      _pluginState.setEvent({
+       resources: event.data.resources,
+       resourceKind: event.data.resourceKind
+      })
     }
     return null;
   });

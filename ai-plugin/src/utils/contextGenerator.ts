@@ -3,6 +3,12 @@ import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 /**
  * Context Generator - Creates human-readable context descriptions for the AI
  * This replaces the complex JSON context system with simple, natural language descriptions
+ * 
+ * Supports multiple resource sources:
+ * - event.resource: Single resource
+ * - event.items: Array of resources (e.g., list views)
+ * - event.resources: Array of full resource objects (automatically minimized)
+ * - event.resourceKind: Type of resources in event.resources
  */
 
 interface HeadlampEvent {
@@ -10,10 +16,38 @@ interface HeadlampEvent {
   title?: string;
   resource?: any;
   items?: any[];
+  resources?: any[];
+  resourceKind?: string;
   errors?: any[];
   objectEvent?: {
     events?: any[];
   };
+}
+
+/**
+ * Minimizes resource data to only include essential fields
+ */
+function minimizeResourceData(resource: any) {
+  if (!resource) return null;
+  
+  return {
+    kind: resource.kind || resource.jsonData?.kind,
+    metadata: {
+      name: resource.metadata?.name || resource.jsonData?.metadata?.name,
+      namespace: resource.metadata?.namespace || resource.jsonData?.metadata?.namespace,
+    },
+    status: resource.status || resource.jsonData?.status,
+    _clusterName: resource._clusterName,
+  };
+}
+
+/**
+ * Preprocesses and minimizes an array of resources
+ */
+export function minimizeResourceList(resources: any[]): any[] {
+  if (!Array.isArray(resources)) return [];
+  
+  return resources.map(minimizeResourceData).filter(Boolean);
 }
 
 export function generateContextDescription(
@@ -23,7 +57,7 @@ export function generateContextDescription(
   selectedClusters?: string[]
 ): string {
   const contextParts: string[] = [];
-
+  console.log("event is ", event)
   // Add cluster context - be clear about what clusters are in scope
   if (selectedClusters && selectedClusters.length > 0) {
     if (selectedClusters.length === 1) {
@@ -93,6 +127,40 @@ export function generateContextDescription(
     }
   }
 
+  // Add event.resources context (minimized data)
+  if (event?.resources && Array.isArray(event.resources)) {
+    const resourceCount = event.resources.length;
+    if (resourceCount > 0) {
+      const resourceType = event.resourceKind || event.resources[0]?.kind || event.resources[0]?.jsonData?.kind || 'resources';
+      contextParts.push(
+        `Showing ${resourceCount} ${resourceType.toLowerCase()}${resourceCount !== 1 ? 's' : ''}`
+      );
+
+      // Analyze resources for common issues
+      if (resourceType === 'Pod') {
+        const unhealthyPods = event.resources.filter(resource => {
+          const phase = resource.status?.phase || resource.jsonData?.status?.phase;
+          return phase !== 'Running' && phase !== 'Succeeded';
+        });
+
+        if (unhealthyPods.length > 0) {
+          contextParts.push(`⚠️ ${unhealthyPods.length} pod(s) may need attention`);
+        }
+      } else if (resourceType === 'Deployment') {
+        const unhealthyDeployments = event.resources.filter(resource => {
+          const status = resource.status || resource.jsonData?.status;
+          const ready = status?.readyReplicas || 0;
+          const desired = status?.replicas || 0;
+          return ready < desired;
+        });
+
+        if (unhealthyDeployments.length > 0) {
+          contextParts.push(`⚠️ ${unhealthyDeployments.length} deployment(s) may need attention`);
+        }
+      }
+    }
+  }
+
   if (Object.keys(clusterWarnings || {}).length > 0) {
     const clusterCount = Object.keys(clusterWarnings).length;
     if (clusterCount === 1) {
@@ -139,6 +207,21 @@ export function generateContextDescription(
           `- kind: ${item.kind}, name: ${item.metadata.name}, namespace: ${
             item.metadata.namespace || 'default'
           }, cluster: ${currentCluster || '[unknown]'}`
+        );
+      }
+    }
+  }
+
+  // Add minimized resources from event.resources
+  if (event?.resources && Array.isArray(event.resources)) {
+    for (const resource of event.resources) {
+      const minimized = minimizeResourceData(resource);
+      if (minimized && minimized.kind && minimized.metadata?.name) {
+        const clusterName = minimized._clusterName || currentCluster || '[unknown]';
+        structuredResources.push(
+          `- kind: ${minimized.kind}, name: ${minimized.metadata.name}, namespace: ${
+            minimized.metadata.namespace || 'default'
+          }, cluster: ${clusterName}`
         );
       }
     }
