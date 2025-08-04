@@ -1,5 +1,5 @@
-import React from 'react';
 import { runCommand } from '@kinvolk/headlamp-plugin/lib';
+import React from 'react';
 
 const DEBUG = false;
 
