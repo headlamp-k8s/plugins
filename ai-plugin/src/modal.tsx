@@ -134,7 +134,6 @@ export default function AIPrompt(props: {
 
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
-  const [defaultProviderIndex, setDefaultProviderIndex] = useState<number | undefined>(undefined);
 
   const [enabledTools, setEnabledTools] = React.useState<string[]>(
     getEnabledToolIds(pluginSettings)
@@ -194,7 +193,6 @@ export default function AIPrompt(props: {
 
     const savedConfigs = getSavedConfigurations(pluginSettings);
     setAvailableConfigs(savedConfigs.providers || []);
-    setDefaultProviderIndex(savedConfigs.defaultProviderIndex);
 
     // Always try to get the default provider first
     const active = getActiveConfig(savedConfigs);
@@ -220,7 +218,6 @@ export default function AIPrompt(props: {
 
     // Update available configs
     setAvailableConfigs(newProviders);
-    setDefaultProviderIndex(savedConfigs.defaultProviderIndex);
 
     // Check if the current active config still exists
     if (activeConfig) {
@@ -993,7 +990,7 @@ export default function AIPrompt(props: {
                       >
                         {availableConfigs.map(config => {
                           const providerInfo = getProviderById(config.providerId);
-                          const models = getProviderModels(config);
+                          const models = getProviderModelsForChat(config, availableConfigs);
                           return [
                             <ListSubheader
                               key={`provider-header-${config.providerId}`}
@@ -1020,10 +1017,8 @@ export default function AIPrompt(props: {
                                 <Typography variant="body2">
                                   {getModelDisplayName(model)}
                                 </Typography>
-                                {defaultProviderIndex !== undefined &&
-                                  availableConfigs[defaultProviderIndex]?.providerId ===
-                                    config.providerId &&
-                                  model === (getProviderModels(config)[0] || 'default') && (
+                                {activeConfig?.providerId === config.providerId &&
+                                  selectedModel === model && (
                                     <Typography
                                       component="span"
                                       variant="caption"
@@ -1131,6 +1126,24 @@ const getProviderModels = (providerConfig: StoredProviderConfig) => {
   }
 
   return models;
+};
+
+// Helper to get models for display in chat selector (respects showOnlyThisModel setting)
+const getProviderModelsForChat = (
+  providerConfig: StoredProviderConfig,
+  allConfigs: StoredProviderConfig[]
+) => {
+  // Check if any config for this provider has showOnlyThisModel enabled
+  const configsForProvider = allConfigs.filter(c => c.providerId === providerConfig.providerId);
+  const restrictedConfig = configsForProvider.find(c => c.config?.showOnlyThisModel);
+
+  if (restrictedConfig) {
+    // If there's a config with showOnlyThisModel enabled, only return that model
+    return restrictedConfig.config?.model ? [restrictedConfig.config.model] : ['default'];
+  }
+
+  // Otherwise, return all models for this provider
+  return getProviderModels(providerConfig);
 };
 
 // Helper to get display name for a model

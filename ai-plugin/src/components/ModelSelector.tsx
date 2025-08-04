@@ -8,6 +8,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   FormHelperText,
   Grid,
   IconButton,
@@ -15,6 +16,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material';
@@ -329,6 +331,46 @@ function ConfigurationDialog({
                 </Grid>
               ))}
             </Grid>
+
+            {/* Show only this model switch - only show if multiple models are available */}
+            {(() => {
+              // Get all available models for this provider
+              const modelField = fields.find(field => field.name === 'model');
+              const availableModels = modelField?.options || [];
+              const hasCustomModel = config.model && !availableModels.includes(config.model);
+              const totalModels = availableModels.length + (hasCustomModel ? 1 : 0);
+
+              // Only show the switch if there are multiple models available
+              if (totalModels > 1) {
+                return (
+                  <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={config.showOnlyThisModel || false}
+                          onChange={e => {
+                            handleFieldChange('showOnlyThisModel', e.target.checked);
+                          }}
+                          size="small"
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2">
+                            Show only this model in chat window
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            When enabled, only this specific model will appear in the chat selector,
+                            hiding other models from this provider.
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </Box>
+                );
+              }
+              return null;
+            })()}
           </Box>
         )}
       </DialogContent>
@@ -803,25 +845,20 @@ export default function ModelSelector({
                     </Typography>
                     <Typography variant="caption" color="text.secondary" align="center">
                       {savedConfig.config.model || savedConfig.config.deploymentName ? (
-                        <Box component="span">
+                        <Box>
                           {savedConfig.config.model || savedConfig.config.deploymentName}
+                          {savedConfig.config.showOnlyThisModel && (
+                            <Box
+                              component="span"
+                              sx={{ color: 'primary.main', fontWeight: 'medium' }}
+                            >
+                              {' • Only this model'}
+                            </Box>
+                          )}
                         </Box>
                       ) : (
                         'Configuration'
                       )}
-                      {/* Count similar configs to indicate multiple instances of the same provider */}
-                      {(() => {
-                        const similarConfigs = savedConfigs?.providers?.filter(
-                          c =>
-                            c.providerId === savedConfig.providerId &&
-                            c !== savedConfig &&
-                            (c.displayName === savedConfig.displayName ||
-                              (!c.displayName && !savedConfig.displayName))
-                        );
-                        return similarConfigs.length > 0
-                          ? ` (${savedConfigs?.providers?.indexOf(savedConfig) + 1})`
-                          : '';
-                      })()}
                     </Typography>
 
                     <Menu
