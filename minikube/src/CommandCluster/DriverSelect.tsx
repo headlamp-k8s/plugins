@@ -1,5 +1,4 @@
 import { Icon } from '@iconify/react';
-import { runCommand } from '@kinvolk/headlamp-plugin/lib';
 import {
   Box,
   FormControl,
@@ -12,72 +11,9 @@ import {
   Tooltip,
 } from '@mui/material';
 import React from 'react';
+import { DriverInfo } from './useInfo';
 
 const DEBUG = false;
-
-declare const pluginRunCommand: typeof runCommand;
-declare const pluginPath: string;
-const packagePath =
-  pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
-    ? pluginPath.substring(8)
-    : pluginPath;
-
-interface DriverInfo {
-  diskFree: string;
-  dockerRunning: boolean;
-  hyperVRunning: boolean;
-  ram: string;
-}
-
-/**
- * @returns {diskFree: '339.65', dockerRunning: false, hyperVRunning: true, ram: '24.00'}
- */
-function useInfo(): DriverInfo | null {
-  const [info, setInfo] = React.useState<DriverInfo | null>(null);
-
-  React.useEffect(() => {
-    let stdoutData = '';
-    const scriptjs = pluginRunCommand(
-      //@ts-ignore
-      'scriptjs',
-      [`${packagePath}/manage-minikube.js`, '-headless', 'info'],
-      {}
-    );
-    scriptjs.stdout.on('data', data => {
-      if (DEBUG) {
-        console.log('useInfo on data:', data.toString());
-      }
-      stdoutData += data.toString();
-    });
-    scriptjs.stderr.on('data', data => {
-      console.error('Error from minikube info script:', data.toString());
-      console.error('Error fetching minikube info:', data.toString());
-    });
-    scriptjs.on('exit', code => {
-      if (code === 0) {
-        try {
-          if (DEBUG) {
-            console.log('useInfo, on exit stdoutData:', stdoutData);
-          }
-
-          setInfo(JSON.parse(stdoutData));
-        } catch (e) {
-          console.error('Failed to parse minikube info JSON:', e, stdoutData);
-          setInfo(null);
-        }
-      } else {
-        console.error('Failed to fetch minikube info, exit code:', code, stdoutData);
-        setInfo(null);
-      }
-    });
-
-    return () => {
-      // Cleanup if needed
-    };
-  }, []);
-
-  return info;
-}
 
 const driverLists = {
   macos: [
@@ -147,6 +83,12 @@ interface DriverSelectProps {
   setDriver: (driver: string) => void;
   /** The selected driver value. */
   driver: string | null;
+  /**
+   * Driver information, such as disk space, RAM, etc.
+   * This is used to determine which drivers to show first.
+   * If null, the drivers will be shown in the default order.
+   */
+  info: DriverInfo | null;
 }
 
 /**
@@ -154,12 +96,13 @@ interface DriverSelectProps {
  *
  * With some logic to detect things and move drivers to top of list.
  */
-function useDrivers(): { value: string; label: string }[] | null {
-  const info = useInfo();
+function useDrivers(info: DriverInfo | null): { value: string; label: string }[] | null {
   const os = detectOS();
   const drivers = driverLists[os];
   const isInfoAvailable = info !== null;
-  console.log('info, isInfoAvailable:', info, isInfoAvailable);
+  if (DEBUG) {
+    console.log('info, isInfoAvailable:', info, isInfoAvailable);
+  }
 
   if (!isInfoAvailable) {
     return null;
@@ -206,9 +149,11 @@ function useDrivers(): { value: string; label: string }[] | null {
   return drivers;
 }
 
-export default function DriverSelect({ setDriver, driver }: DriverSelectProps) {
-  const drivers = useDrivers();
-  console.log('Drivers:', drivers);
+export default function DriverSelect({ setDriver, driver, info }: DriverSelectProps) {
+  const drivers = useDrivers(info);
+  if (DEBUG) {
+    console.log('Drivers:', drivers);
+  }
 
   // Only set to the first driver if driver is '' and it's the initial mount.
   const initialMount = React.useRef(true);
