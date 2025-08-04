@@ -1,17 +1,10 @@
 import { Icon } from '@iconify/react';
-import { ActionButton, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
 import {
-  Alert,
   Box,
   Button,
-  Chip,
   Grid,
-  ListSubheader,
-  MenuItem,
-  Select,
-  TextField,
   Typography,
 } from '@mui/material';
 import { isEqual } from 'lodash';
@@ -19,15 +12,21 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AIManager, { Prompt } from './ai/manager';
 import ApiConfirmationDialog from './components/ApiConfirmationDialog';
-import TestModeInput from './components/TestModeInput';
+import AIAssistantHeader from './components/AIAssistantHeader';
+import AIChatContent from './components/AIChatContent';
+import { AIInputSection } from './components/AIInputSection';
+import { PromptSuggestions } from './components/PromptSuggestions';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
 import { useClusterWarnings } from './hooks/useClusterWarnings';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import LangChainManager from './langchain/LangChainManager';
-import TextStreamContainer from './textstream';
 import { getSettingsURL, useGlobalState } from './utils';
 import { generateContextDescription } from './utils/contextGenerator';
+import {
+  getProviderModels,
+  parseSuggestionsFromResponse
+} from './utils/modalUtils';
 import { useDynamicPrompts } from './utils/promptGenerator';
 import {
   getActiveConfig,
@@ -35,62 +34,6 @@ import {
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
 import { getEnabledToolIds } from './utils/ToolConfigManager';
-
-function markdownToPlainText(markdown: string): string {
-  return (
-    markdown
-      // Remove headers
-      .replace(/^#{1,6}\s+/gm, '')
-      // Remove bold/italic
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/__(.*?)__/g, '$1')
-      .replace(/_(.*?)_/g, '$1')
-      // Remove links but keep text
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      // Remove inline code
-      .replace(/`([^`]+)`/g, '$1')
-      // Remove strikethrough
-      .replace(/~~(.*?)~~/g, '$1')
-      // Clean up extra whitespace
-      .replace(/\s+/g, ' ')
-      // Remove list markers
-      .replace(/^\s*[-*+]\s+/gm, '')
-      .replace(/^\s*\d+\.\s+/gm, '')
-      // Remove blockquotes
-      .replace(/^\s*>+\s+/gm, '')
-      // Remove horizontal rules
-      .replace(/^-{3,}\s*$/gm, '')
-      // Remove surrounding square brackets
-      .replace(/^\[|\]$/g, '')
-      .trim()
-  );
-}
-
-// Utility function to parse suggestions from LLM response
-function parseSuggestionsFromResponse(content: string): {
-  cleanContent: string;
-  suggestions: string[];
-} {
-  const suggestionPattern = /SUGGESTIONS:\s*(.+?)(?:\n|$)/i;
-  const match = content.match(suggestionPattern);
-
-  if (match) {
-    const suggestionsText = match[1];
-    const suggestions = suggestionsText
-      .split('|')
-      .map(s => markdownToPlainText(s.trim()))
-      .filter(s => s.length > 0)
-      .slice(0, 3); // Ensure max 3 suggestions
-
-    // Remove the suggestions line from the content
-    const cleanContent = content.replace(suggestionPattern, '').trim();
-
-    return { cleanContent, suggestions };
-  }
-
-  return { cleanContent: content, suggestions: [] };
-}
 
 export default function AIPrompt(props: {
   openPopup: boolean;
@@ -100,7 +43,6 @@ export default function AIPrompt(props: {
   const { openPopup, setOpenPopup, pluginSettings } = props;
   const history = useHistory();
   const location = useLocation();
-  const [promptError] = React.useState(false);
   const rootRef = React.useRef(null);
   const [promptVal, setPromptVal] = React.useState('');
   const [loading, setLoading] = React.useState(false);
@@ -604,16 +546,12 @@ export default function AIPrompt(props: {
     }
   }, [openPopup, aiManager, dynamicPrompts, location.pathname]);
 
-  // Helper function to suggest safe Kubernetes prompts when content filters are triggered
-  const getSafePromptSuggestions = () => {
-    return [
-      "How do I troubleshoot a Pod that's in CrashLoopBackOff state?",
-      'Explain Kubernetes resource limits and requests',
-      'How do I set up an Ingress controller for my application?',
-      "What's the difference between a Deployment and a StatefulSet?",
-      'Show me an example of a ConfigMap',
-    ];
-  };
+  // Set suggestions to dynamic prompts when there's a content filter error
+  useEffect(() => {
+    if (apiError && apiError.includes('content filter')) {
+      setSuggestions(dynamicPrompts);
+    }
+  }, [apiError, dynamicPrompts]);
 
   const disableSettingsButton = useMemo(() => {
     // Compensate the @ symbol not getting encoded in the history's URL
@@ -650,7 +588,7 @@ export default function AIPrompt(props: {
     return !hasConversationMessages; // Removed dependency on loading state
   }, [hasValidConfig, activeConfig, promptHistory]); // Removed loading from dependencies
 
-  // Memoize the history array to prevent unnecessary re-renders of TextStreamContainer
+  // Memoize the history array to prevent unnecessary re-renders of AIChatContent
   const memoizedHistory = React.useMemo(() => {
     if (shouldShowGreeting) {
       return [getGreetingMessage, ...promptHistory];
@@ -702,49 +640,11 @@ export default function AIPrompt(props: {
           flexDirection: 'column',
         }}
       >
-        <Box
-          sx={{
-            padding: 1,
-            borderBottom: 1,
-            borderColor: 'divider',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="h6">
-              AI Assistant (alpha)
-              {isTestMode && (
-                <Chip
-                  label="TEST MODE"
-                  color="warning"
-                  size="small"
-                  sx={{ ml: 1, fontSize: '0.7rem' }}
-                />
-              )}
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <ActionButton
-              description="Settings"
-              onClick={() => {
-                history.push(getSettingsURL());
-              }}
-              icon="mdi:settings"
-              iconButtonProps={{
-                disabled: disableSettingsButton,
-              }}
-            />
-            <ActionButton
-              description="Close"
-              onClick={() => {
-                setOpenPopup(false);
-              }}
-              icon="mdi:close"
-            />
-          </Box>
-        </Box>
+        <AIAssistantHeader
+          isTestMode={isTestMode}
+          disableSettingsButton={disableSettingsButton}
+          onClose={() => setOpenPopup(false)}
+        />
 
         <Grid
           container
@@ -764,28 +664,7 @@ export default function AIPrompt(props: {
               overflowY: 'auto',
             }}
           >
-            {apiError && (
-              <Alert
-                severity="error"
-                sx={{ mb: 2 }}
-                action={
-                  <Button color="inherit" size="small">
-                    <Link
-                      routeName="pluginDetails"
-                      params={{
-                        name: '@headlamp-k8s/headlamp-ai',
-                      }}
-                    >
-                      Settings
-                    </Link>
-                  </Button>
-                }
-              >
-                {apiError}
-              </Alert>
-            )}
-
-            <TextStreamContainer
+            <AIChatContent
               history={memoizedHistory}
               isLoading={loading}
               apiError={apiError}
@@ -799,274 +678,47 @@ export default function AIPrompt(props: {
               paddingY: 1,
             }}
           >
-            {!loading && (
-              <Box>
-                {/* Show safe suggestions when there was a content filter error */}
-                {apiError && apiError.includes('content filter') ? (
-                  <>
-                    <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
-                      Try one of these safe Kubernetes questions instead:
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      {getSafePromptSuggestions().map((prompt, i) => (
-                        <Chip
-                          key={i}
-                          label={prompt}
-                          size="small"
-                          variant="outlined"
-                          color="primary"
-                          onClick={() => {
-                            setPromptVal(prompt);
-                          }}
-                          onDelete={() => {
-                            setApiError(null);
-                            AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                              setApiError(error.message);
-                            });
-                          }}
-                          deleteIcon={<Icon icon="mdi:send" width="20px" />}
-                          sx={{
-                            height: 'auto',
-                            '& .MuiChip-label': {
-                              whiteSpace: 'normal',
-                              wordWrap: 'break-word',
-                              textAlign: 'left',
-                              display: 'block',
-                              padding: '4px 8px',
-                              minHeight: '16px',
-                              fontSize: '0.92em',
-                            },
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  </>
-                ) : (
-                  // Regular suggestions
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }} mb={1}>
-                    {suggestions.map(prompt => {
-                      return (
-                        <Chip
-                          key={prompt}
-                          label={prompt}
-                          size="small"
-                          variant="outlined"
-                          onClick={() => {
-                            setPromptVal(prompt);
-                          }}
-                          onDelete={() => {
-                            AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                              setApiError(error.message);
-                            });
-                          }}
-                          deleteIcon={<Icon icon="mdi:send" width="20px" />}
-                          sx={{
-                            height: 'auto',
-                            '& .MuiChip-label': {
-                              whiteSpace: 'normal',
-                              wordWrap: 'break-word',
-                              textAlign: 'left',
-                              display: 'block',
-                              padding: '4px 8px',
-                              minHeight: '16px',
-                              fontSize: '0.92em',
-                            },
-                          }}
-                        />
-                      );
-                    })}
-                  </Box>
-                )}
-              </Box>
-            )}
-            <Box>
-              {/* Test Mode Input Component */}
-              <TestModeInput onAddTestResponse={handleTestModeResponse} isTestMode={isTestMode} />
-
-              <TextField
-                id="deployment-ai-prompt"
-                onChange={event => {
-                  setPromptVal(event.target.value);
-                }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    const prompt = promptVal;
-                    setPromptVal('');
-
-                    AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                      setApiError(error.message);
-                    });
-                  }
-                }}
-                variant="outlined"
-                value={promptVal}
-                label={isTestMode ? 'Type user message (Test Mode)' : 'Ask AI'}
-                multiline
-                fullWidth
-                minRows={2}
-                sx={{
-                  width: '100%',
-                  '& .MuiInputBase-root': {
-                    wordWrap: 'break-word',
-                    overflowX: 'hidden',
-                  },
-                }}
-                error={promptError}
-                helperText={
-                  promptError ? 'Please select from one of the provided prompts above' : ''
+            <PromptSuggestions
+              suggestions={suggestions}
+              apiError={apiError}
+              loading={loading}
+              onPromptSelect={(prompt) => setPromptVal(prompt)}
+              onPromptSend={(prompt) => {
+                AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
+                  setApiError(error.message);
+                });
+              }}
+              onErrorClear={() => setApiError(null)}
+            />
+            <AIInputSection
+              promptVal={promptVal}
+              setPromptVal={setPromptVal}
+              loading={loading}
+              isTestMode={isTestMode}
+              activeConfig={activeConfig}
+              availableConfigs={availableConfigs}
+              selectedModel={selectedModel}
+              onSend={(prompt) => {
+                AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
+                  setApiError(error.message);
+                });
+              }}
+              onStop={handleStopRequest}
+              onClearHistory={() => {
+                if (isTestMode) {
+                  setPromptHistory([]);
+                } else {
+                  aiManager?.reset();
+                  updateHistory();
                 }
-              />
-              <Grid container justifyContent="space-between" alignItems="center">
-                <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
-                  <ActionButton
-                    description="Clear History"
-                    onClick={() => {
-                      if (isTestMode) {
-                        setPromptHistory([]);
-                      } else {
-                        aiManager?.reset();
-                        updateHistory();
-                      }
-                    }}
-                    icon="mdi:broom"
-                  />
-
-                  {/* Provider Selection Dropdown */}
-                  {availableConfigs.length > 0 && !isTestMode && (
-                    <Box ml={2} sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Select
-                        value={(() => {
-                          if (!activeConfig) return 'default-default';
-                          const providerId = activeConfig.providerId;
-                          const modelName = selectedModel;
-                          return `${providerId}-${modelName}`;
-                        })()}
-                        onChange={e => {
-                          const [providerId, ...modelNameParts] = String(e.target.value).split('-');
-                          const modelName = modelNameParts.join('-');
-                          const newConfig = availableConfigs.find(c => c.providerId === providerId);
-                          if (newConfig) {
-                            setActiveConfig(newConfig);
-                            setSelectedModel(modelName);
-                            handleChangeConfig(newConfig, modelName);
-                          }
-                        }}
-                        size="small"
-                        sx={{ minWidth: 180, height: 32 }}
-                        variant="outlined"
-                        renderValue={selected => {
-                          const [providerId, ...modelNameParts] = String(selected).split('-');
-                          const modelName = modelNameParts.join('-');
-                          const selectedConfig = availableConfigs.find(
-                            c => c.providerId === providerId
-                          );
-                          const providerInfo = selectedConfig
-                            ? getProviderById(selectedConfig.providerId)
-                            : null;
-                          return (
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              {providerInfo && (
-                                <Icon
-                                  icon={providerInfo.icon || 'mdi:robot'}
-                                  width="16px"
-                                  height="16px"
-                                  style={{ marginRight: 4 }}
-                                />
-                              )}
-                              <Typography variant="body2" noWrap>
-                                {getModelDisplayName(modelName)}
-                              </Typography>
-                            </Box>
-                          );
-                        }}
-                        MenuProps={{
-                          PaperProps: {
-                            style: {
-                              maxHeight: 320,
-                            },
-                          },
-                        }}
-                      >
-                        {availableConfigs.map(config => {
-                          const providerInfo = getProviderById(config.providerId);
-                          const models = getProviderModelsForChat(config, availableConfigs);
-                          return [
-                            <ListSubheader
-                              key={`provider-header-${config.providerId}`}
-                              sx={{ display: 'flex', alignItems: 'center', paddingLeft: 1 }}
-                            >
-                              <Icon
-                                icon={providerInfo?.icon || 'mdi:robot'}
-                                width="16px"
-                                height="16px"
-                                style={{ marginRight: 8 }}
-                              />
-                              {config.displayName || providerInfo?.name || config.providerId}
-                            </ListSubheader>,
-                            ...models.map(model => (
-                              <MenuItem
-                                key={`${config.providerId}-${model}`}
-                                value={`${config.providerId}-${model}`}
-                                selected={
-                                  activeConfig?.providerId === config.providerId &&
-                                  selectedModel === model
-                                }
-                                sx={{ paddingLeft: 2 }}
-                              >
-                                <Typography variant="body2">
-                                  {getModelDisplayName(model)}
-                                </Typography>
-                                {activeConfig?.providerId === config.providerId &&
-                                  selectedModel === model && (
-                                    <Typography
-                                      component="span"
-                                      variant="caption"
-                                      sx={{ ml: 1, color: 'primary.main' }}
-                                    >
-                                      (Default)
-                                    </Typography>
-                                  )}
-                              </MenuItem>
-                            )),
-                          ];
-                        })}
-                      </Select>
-                    </Box>
-                  )}
-                </Grid>
-
-                <Grid item>
-                  {loading ? (
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      endIcon={<Icon icon="mdi:stop" width="20px" />}
-                      onClick={handleStopRequest}
-                      size="small"
-                    >
-                      Stop
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="contained"
-                      endIcon={<Icon icon="mdi:send" width="20px" />}
-                      onClick={() => {
-                        const prompt = promptVal;
-                        setPromptVal('');
-                        AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                          setApiError(error.message);
-                        });
-                      }}
-                      size="small"
-                      disabled={loading || !promptVal}
-                    >
-                      Send
-                    </Button>
-                  )}
-                </Grid>
-              </Grid>
-            </Box>
+              }}
+              onConfigChange={(config, model) => {
+                setActiveConfig(config);
+                setSelectedModel(model);
+                handleChangeConfig(config, model);
+              }}
+              onTestModeResponse={handleTestModeResponse}
+            />
           </Grid>
         </Grid>
       </Box>
@@ -1098,56 +750,3 @@ export default function AIPrompt(props: {
     </div>
   );
 }
-
-// Helper to get all models for a provider
-const getProviderModels = (providerConfig: StoredProviderConfig) => {
-  const providerInfo = getProviderById(providerConfig.providerId);
-
-  // First try to use the models field, then fall back to options from the model field
-  let models: string[] = [];
-  if (providerInfo?.models && providerInfo.models.length > 0) {
-    models = providerInfo.models;
-  } else {
-    const modelField = providerInfo?.fields?.find(field => field.name === 'model');
-    if (modelField?.options && modelField.options.length > 0) {
-      models = modelField.options;
-    } else {
-      models = ['default'];
-    }
-  }
-
-  // Add custom model from config if not already present
-  if (
-    providerConfig.config &&
-    providerConfig.config.model &&
-    !models.includes(providerConfig.config.model)
-  ) {
-    models = [...models, providerConfig.config.model];
-  }
-
-  return models;
-};
-
-// Helper to get models for display in chat selector (respects showOnlyThisModel setting)
-const getProviderModelsForChat = (
-  providerConfig: StoredProviderConfig,
-  allConfigs: StoredProviderConfig[]
-) => {
-  // Check if any config for this provider has showOnlyThisModel enabled
-  const configsForProvider = allConfigs.filter(c => c.providerId === providerConfig.providerId);
-  const restrictedConfig = configsForProvider.find(c => c.config?.showOnlyThisModel);
-
-  if (restrictedConfig) {
-    // If there's a config with showOnlyThisModel enabled, only return that model
-    return restrictedConfig.config?.model ? [restrictedConfig.config.model] : ['default'];
-  }
-
-  // Otherwise, return all models for this provider
-  return getProviderModels(providerConfig);
-};
-
-// Helper to get display name for a model
-const getModelDisplayName = (model: string) => {
-  // You can customize this if you want more user-friendly names
-  return model;
-};

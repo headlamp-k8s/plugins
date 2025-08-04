@@ -57,7 +57,6 @@ export function generateContextDescription(
   selectedClusters?: string[]
 ): string {
   const contextParts: string[] = [];
-  console.log('event is ', event);
   // Add cluster context - be clear about what clusters are in scope
   if (selectedClusters && selectedClusters.length > 0) {
     if (selectedClusters.length === 1) {
