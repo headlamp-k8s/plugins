@@ -12,7 +12,8 @@
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
-    "test": "headlamp-plugin test"
+    "test": "headlamp-plugin test",
+    "testplugins": "rsync -av src/ ../../testplugins/minikube/src && rsync -av manage-minikube.js ../../testplugins/minikube/"
   },
   "keywords": [
     "headlamp",
