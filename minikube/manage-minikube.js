@@ -225,6 +225,18 @@ function info() {
     }
   }
 
+  function getFreeRamWindows() {
+    try {
+      const output = execSync('wmic OS get FreePhysicalMemory').toString();
+      const freeMemInKB = parseInt(output.split('\n')[1].trim(), 10);
+      // Convert to GB, 2 decimals
+      return (freeMemInKB / (1024 * 1024)).toFixed(2);
+    } catch (error) {
+      console.error('Failed to get free RAM:', error.message);
+      return null;
+    }
+  }
+
   function getRamMac() {
     try {
       const output = execSync('sysctl -n hw.memsize').toString();
@@ -233,6 +245,42 @@ function info() {
       return (ramInBytes / (1024 * 1024 * 1024)).toFixed(2);
     } catch (error) {
       console.error('Failed to get RAM:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Parses the output of the `top` command on macOS to find free RAM.
+   * @param {string} output - The output of the `top` command.
+   * @returns {string|null} - The amount of free RAM in GB, or null if not found.
+   *
+   * @example
+   * parseFreeRamMac("PhysMem: 22G used (2516M wired, 5835M compressor), 1111M unused.") -> 1.1
+   * parseFreeRamMac("PhysMem: 16G used (1234M wired), 2048M unused.") -> 2.0
+   */
+  function parseFreeRamMac(output) {
+    const match = output.match(/(\d+\.?\d*)[MG] unused/);
+    if (!match) return null;
+    let free = match[1];
+    if (output.includes('unused.')) {
+      // Determine if it's in M or G
+      if (output.match(/(\d+\.?\d*)G unused/)) {
+        // Already in GB
+        return parseFloat(free).toFixed(2);
+      } else {
+        // In MB, convert to GB
+        return (parseFloat(free) / 1024).toFixed(2);
+      }
+    }
+    return null;
+  }
+
+  function getFreeRamMac() {
+    try {
+      const output = execSync('top -l 1 -s 0 | grep PhysMem').toString();
+      return parseFreeRamMac(output);
+    } catch (error) {
+      console.error('Failed to get free RAM:', error.message);
       return null;
     }
   }
@@ -246,6 +294,19 @@ function info() {
       return (ramMb / 1024).toFixed(2);
     } catch (error) {
       console.error('Failed to get RAM:', error.message);
+      return null;
+    }
+  }
+
+  function getFreeRamLinux() {
+    try {
+      const output = execSync("free -m | awk 'NR==2{print $4}'").toString();
+      const freeMb = parseInt(output.trim(), 10);
+      if (isNaN(freeMb)) return null;
+      // Convert MB to GB, 2 decimals
+      return (freeMb / 1024).toFixed(2);
+    } catch (error) {
+      console.error('Failed to get free RAM:', error.message);
       return null;
     }
   }
@@ -302,18 +363,21 @@ function info() {
     info.dockerRunning = detectIfDockerRunning();
     info.hyperVRunning = detectIfHyperVRunning();
     info.ram = getRamWindows();
+    info.freeRam = getFreeRamWindows();
   }
 
   if (platform === 'darwin') {
     info.diskFree = getDiskFreeMac();
     info.dockerRunning = detectIfDockerRunning();
     info.ram = getRamMac();
+    info.freeRam = getFreeRamMac();
   }
 
   if (platform === 'linux') {
     info.diskFree = getDiskFreeLinux();
     info.dockerRunning = detectIfDockerRunning();
     info.ram = getRamLinux();
+    info.freeRam = getFreeRamLinux();
   }
 
   const simulateSlowComputer = true;
@@ -413,7 +477,7 @@ function startMinikubeVFKit(args) {
         env: {
           ...process.env,
         }
-       });
+      });
     } catch (error) {
       console.error('Failed to start minikube with vfkit:', error.message);
     }
