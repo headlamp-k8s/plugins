@@ -19,6 +19,8 @@ import { NodeClasses } from './NodeClass/List';
 import { NodePoolDetailView } from './NodePool/Details';
 import { NodePools } from './NodePool/List';
 import { PendingPods } from './PendingPods';
+import { ScalingDetailView } from './Scaling/Details';
+import { ScalingView } from './Scaling/List';
 
 registerSidebarEntry({
   parent: null,
@@ -81,4 +83,25 @@ registerRoute({
   sidebar: 'pending-pods',
   component: PendingPods,
   name: 'pending-pods-view',
+});
+
+registerSidebarEntry({
+  parent: 'karpenter.k8s',
+  name: 'scaling-view',
+  label: 'Scaling View',
+  url: '/karpenter/scaling',
+});
+
+registerRoute({
+  path: '/karpenter/scaling',
+  sidebar: 'scaling-view',
+  component: ScalingView,
+  name: 'scaling-view',
+});
+
+registerRoute({
+  path: '/karpenter/details/scaling/:name',
+  sidebar: 'scaling-view',
+  component: ScalingDetailView,
+  name: 'nodeclaims-detail',
 });
