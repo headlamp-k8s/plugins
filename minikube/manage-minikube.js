@@ -8,7 +8,6 @@
  * manage-minikube.js ask-restart-libvirt-ubuntu24
  */
 const { exec, execSync, spawn, spawnSync } = require('child_process');
-const { unlinkSync } = require('fs');
 const { createServer } = require('net');
 const { platform } = process;
 
@@ -405,7 +404,6 @@ function startMinikubeVFKit(args) {
   if (ensureVfkit()) {
     console.log('Starting minikube with vfkit...');
     try {
-      const { spawnSync } = require('child_process');
       // Build the minikube command with arguments for zsh -l -c
       const minikubeCmd = ['minikube', ...allArgs].map(arg => `'${arg.replace(/'/g, `'\\''`)}'`).join(' ');
       const zshArgs = [...shellArgs, minikubeCmd];
@@ -427,7 +425,10 @@ function startMinikubeVFKit(args) {
   }
 }
 
-
+/**
+ * Runs minikube profile command with the given arguments.
+ * @param {string[]} args extra arguments to pass to minikube profile
+ */
 function minikubeProfile(args) {
   const allArgs = ['profile', ...args];
 
@@ -436,9 +437,8 @@ function minikubeProfile(args) {
       stdio: 'inherit',
       shell: true,
     });
-  }
-  catch (error) {
-    console.log('{}');
+  } catch (error) {
+    console.log('Failed to run minikube profile command:', error.message);
   }
   process.exit(0);
 }
