@@ -805,24 +805,6 @@ export default function ModelSelector({
                       {savedConfig.config.model || savedConfig.config.deploymentName ? (
                         <Box component="span">
                           {savedConfig.config.model || savedConfig.config.deploymentName}
-                          {/* Show indicator for custom models */}
-                          {(() => {
-                            const modelName =
-                              savedConfig.config.model || savedConfig.config.deploymentName;
-                            const provider = getProviderById(savedConfig.providerId);
-                            const modelField = provider?.fields.find(f => f.name === 'model');
-                            const isCustomModel =
-                              modelField?.options && !modelField.options.includes(modelName);
-
-                            return isCustomModel ? (
-                              <Chip
-                                label="Custom"
-                                size="small"
-                                variant="outlined"
-                                sx={{ ml: 0.5, fontSize: '0.6rem', height: '16px' }}
-                              />
-                            ) : null;
-                          })()}
                         </Box>
                       ) : (
                         'Configuration'
