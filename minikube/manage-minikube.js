@@ -7,7 +7,7 @@
  * manage-minikube.js setup-hyperV-windows-networking
  * manage-minikube.js ask-restart-libvirt-ubuntu24
  */
-const { exec, execSync, spawn } = require('child_process');
+const { exec, execSync, spawn, spawnSync } = require('child_process');
 const { unlinkSync } = require('fs');
 const { createServer } = require('net');
 const { platform } = process;
@@ -329,11 +329,129 @@ function info() {
   }
 }
 
+function isBrewInstalled() {
+  const shell = process.env.SHELL.includes('zsh') ? 'zsh -l -c' : 'bash -c';
+  const cmd = `${shell} "brew --version"`;
+  try {
+    execSync(cmd, { stdio: 'ignore' });
+    console.log('Brew is installed.');
+    return true;
+  } catch (error) {
+    console.log('Brew is not installed.');
+    return false;
+  }
+};
+
+function installVfkitManually() {
+  console.log('Brew is not installed, need to install vfkit manually...');
+  throw new Error('Manual installation of vfkit is not implemented yet.');
+}
+
+/**
+ * Checks if vfkit is installed on macOS.
+ * First check with if vfkit is installed.
+ * If not, see if brew is installed.
+ * If brew is installed, then install vfkit with brew.
+ * If brew is not installed, then we download vfkit and install it manually.
+ */
+function ensureVfkit() {
+  // get the users login shell, on macos this is different to what an electron app uses
+
+  // if process.env.SHELL is zsh, then we use zsh -l -c to run the command
+  // if process.env.SHELL is bash, then we use bash -c to run the command
+  const shell = process.env.SHELL.includes('zsh') ? 'zsh -l -c' : 'bash -c';
+
+  try {
+    const output = execSync(`${shell} "vfkit --version"`, {
+      encoding: 'utf8'
+    }).toString();
+    if (output.includes('vfkit version')) {
+      return true;
+    }
+  } catch (error) {
+    // log the error, but continue
+    console.error('vfkit is not installed:', error.message);
+  }
+  // Check if brew is installed
+
+  if (isBrewInstalled()) {
+    // If brew is installed, install vfkit with brew
+    console.log('Installing vfkit with brew...');
+    try {
+      execSync(`${shell} "brew install vfkit"`, { stdio: 'inherit' });
+    } catch (error) {
+      console.error('Failed to install vfkit with brew:', error.message);
+      return false;
+    }
+    console.log('vfkit installed successfully with brew.');
+    return true;
+  }
+
+  // If brew is not installed, we need to download and install vfkit manually
+  try {
+    installVfkitManually();
+    return true;
+  } catch (error) {
+    console.error('Failed to install vfkit manually:', error.message);
+    return false;
+  }
+}
+
+function startMinikubeVFKit(args) {
+  const allArgs = ['start', '--driver=vfkit', ...args];
+  const shellArgs = process.env.SHELL.includes('zsh') ? ['-l', '-c'] : ['-c'];
+  const shell = process.env.SHELL.includes('zsh') ? 'zsh' : 'bash';
+
+  if (ensureVfkit()) {
+    console.log('Starting minikube with vfkit...');
+    try {
+      const { spawnSync } = require('child_process');
+      // Build the minikube command with arguments for zsh -l -c
+      const minikubeCmd = ['minikube', ...allArgs].map(arg => `'${arg.replace(/'/g, `'\\''`)}'`).join(' ');
+      const zshArgs = [...shellArgs, minikubeCmd];
+      console.log("process.env:", process.env.PATH);
+      spawnSync(shell, zshArgs, {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+        }
+       });
+    } catch (error) {
+      console.error('Failed to start minikube with vfkit:', error.message);
+    }
+
+    process.exit(0);
+  } else {
+    console.error('Failed to ensure vfkit is installed. Try a different driver or install vfkit manually.');
+    process.exit(1);
+  }
+}
+
+
+function minikubeProfile(args) {
+  const allArgs = ['profile', ...args];
+
+  try {
+    spawnSync('minikube', allArgs, {
+      stdio: 'inherit',
+      shell: true,
+    });
+  }
+  catch (error) {
+    console.log('{}');
+  }
+  process.exit(0);
+}
+
+
 const commands = {
   // 'ask-restart-windows': askRestartWindows,
   // 'setup-hyperV-windows-networking': setupHyperVWindowsNetworking,
   // 'ask-restart-libvirt-ubuntu24': askRestartLibvirtUbuntu24,
   'start-minikube-hyperv': startMinikubeHyperV,
+  'start-minikube-vfkit': startMinikubeVFKit,
+  'minikube-profile': minikubeProfile,
+  'is-brew-installed': isBrewInstalled,
   info: info,
 };
 

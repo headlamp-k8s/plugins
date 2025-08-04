@@ -149,7 +149,14 @@ function useMinikubeProfileList() {
   const [profiles, setProfiles] = React.useState<any | null>(null);
   React.useEffect(() => {
     let stdoutData = '';
-    const minikube = pluginRunCommand('minikube', ['profile', 'list', '--output=json'], {});
+    // const minikube = pluginRunCommand('minikube', ['profile', 'list', '--output=json'], {});
+    const minikube = pluginRunCommand(
+      //@ts-ignore
+      'scriptjs',
+      ['minikube-profile'],
+      {}
+    );
+
     minikube.stdout.on('data', data => {
       stdoutData += data.toString();
     });
@@ -400,6 +407,7 @@ export default function CommandCluster(props: CommandClusterProps) {
       // minikubeProfiles
       const existingProfile = minikubeProfiles?.valid.find(profile => profile.Name === clusterName);
       const isHyperV = driver === 'hyperv' || existingProfile?.Config?.Driver === 'hyperv';
+      const isVfkit = driver === 'vfkit' || existingProfile?.Config?.Driver === 'vfkit';
 
       if (isHyperV) {
         // If hyperv, we use the scriptjs to run the command because it needs to run with admin rights
@@ -412,14 +420,20 @@ export default function CommandCluster(props: CommandClusterProps) {
           [`${packagePath}/manage-minikube.js`, 'start-minikube-hyperv', ...args],
           {}
         );
+      } else if (isVfkit) {
+        if (command === 'start') {
+          args.push('--cni=calico');
+          args.push('--container-runtime=containerd');
+        }
+        minikube = pluginRunCommand(
+          // @ts-ignore
+          'scriptjs',
+          [`${packagePath}/manage-minikube.js`, 'start-minikube-vfkit', ...args],
+          {}
+        );
       } else {
         if (driver) {
           args.push('--driver', driver);
-        }
-
-        if (command === 'start' && driver === 'vfkit') {
-          args.push('--cni=calico');
-          args.push('--container-runtime=containerd');
         }
 
         minikube = pluginRunCommand('minikube', args, {});
