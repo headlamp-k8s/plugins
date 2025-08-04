@@ -402,6 +402,10 @@ export default function CommandCluster(props: CommandClusterProps) {
       const isHyperV = driver === 'hyperv' || existingProfile?.Config?.Driver === 'hyperv';
 
       if (isHyperV) {
+        // If hyperv, we use the scriptjs to run the command because it needs to run with admin rights
+        if (command === 'start') {
+          args.push('--cni=calico');
+        }
         minikube = pluginRunCommand(
           // @ts-ignore
           'scriptjs',
@@ -412,6 +416,12 @@ export default function CommandCluster(props: CommandClusterProps) {
         if (driver) {
           args.push('--driver', driver);
         }
+
+        if (command === 'start' && driver === 'vfkit') {
+          args.push('--cni=calico');
+          args.push('--container-runtime=containerd');
+        }
+
         minikube = pluginRunCommand('minikube', args, {});
       }
 
