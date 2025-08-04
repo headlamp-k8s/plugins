@@ -1,6 +1,6 @@
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
-import { Card } from '@mui/material';
+import { Alert, Card } from '@mui/material';
 import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -14,6 +14,7 @@ import TextField from '@mui/material/TextField';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import DriverSelect from './DriverSelect';
+import { useInfo } from './useInfo';
 
 export interface CommandDialogProps {
   /** Is the dialog open? */
@@ -62,6 +63,7 @@ export default function CommandDialog({
   const [clusterName, setClusterName] = React.useState(initialClusterName || '');
   const [driver, setDriver] = React.useState<string | null>(null);
   const [nameTaken, setNameTaken] = React.useState(false);
+  const info = useInfo();
 
   const history = useHistory();
   const clusters = useClustersConf() || {};
@@ -123,7 +125,22 @@ export default function CommandDialog({
               />
             </Box>
           </FormControl>
-          <DriverSelect driver={driver} setDriver={setDriver} />
+          <DriverSelect driver={driver} setDriver={setDriver} info={info} />
+          {info && parseFloat(info.freeRam) < 2 && (
+            <Alert severity="warning">
+              {`Warning: You have less than 2GB of free Memory available. This may affect performance.`}
+            </Alert>
+          )}
+          {info && parseFloat(info.ram) <= 8 && (
+            <Alert severity="warning">
+              {`Warning: We recommend more than 8GB of Memory Total. This may affect performance.`}
+            </Alert>
+          )}
+          {info && parseFloat(info.diskFree) < 22 && (
+            <Alert severity="warning">
+              {`Warning: You have less than 22GB of free Disk available. This may affect performance.`}
+            </Alert>
+          )}
         </>
       )}
       {acting && actingLines && Array.isArray(actingLines) && actingLines.length > 0 && (
