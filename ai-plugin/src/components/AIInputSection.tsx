@@ -1,4 +1,3 @@
-import React from 'react';
 import { Icon } from '@iconify/react';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
@@ -11,8 +10,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import React from 'react';
 import { getProviderById } from '../config/modelConfig';
-import { getProviderModelsForChat, getModelDisplayName } from '../utils/modalUtils';
+import { getModelDisplayName, getProviderModelsForChat } from '../utils/modalUtils';
 import { StoredProviderConfig } from '../utils/ProviderConfigManager';
 import TestModeInput from './TestModeInput';
 
@@ -125,11 +125,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
 
       <Grid container justifyContent="space-between" alignItems="center">
         <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
-          <ActionButton
-            description="Clear History"
-            onClick={onClearHistory}
-            icon="mdi:broom"
-          />
+          <ActionButton description="Clear History" onClick={onClearHistory} icon="mdi:broom" />
 
           {/* Provider Selection Dropdown */}
           {availableConfigs.length > 0 && !isTestMode && (
@@ -170,14 +166,11 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
                         key={`${config.providerId}-${model}`}
                         value={`${config.providerId}-${model}`}
                         selected={
-                          activeConfig?.providerId === config.providerId &&
-                          selectedModel === model
+                          activeConfig?.providerId === config.providerId && selectedModel === model
                         }
                         sx={{ paddingLeft: 2 }}
                       >
-                        <Typography variant="body2">
-                          {getModelDisplayName(model)}
-                        </Typography>
+                        <Typography variant="body2">{getModelDisplayName(model)}</Typography>
                         {activeConfig?.providerId === config.providerId &&
                           selectedModel === model && (
                             <Typography

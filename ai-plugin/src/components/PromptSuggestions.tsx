@@ -1,6 +1,6 @@
-import React from 'react';
-import { Box, Chip, Typography } from '@mui/material';
 import { Icon } from '@iconify/react';
+import { Box, Chip, Typography } from '@mui/material';
+import React from 'react';
 
 interface PromptSuggestionsProps {
   suggestions: string[];

@@ -1,20 +1,15 @@
 import { Icon } from '@iconify/react';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
-import {
-  Box,
-  Button,
-  Grid,
-  Typography,
-} from '@mui/material';
+import { Box, Button, Grid, Typography } from '@mui/material';
 import { isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AIManager, { Prompt } from './ai/manager';
-import ApiConfirmationDialog from './components/ApiConfirmationDialog';
 import AIAssistantHeader from './components/AIAssistantHeader';
 import AIChatContent from './components/AIChatContent';
 import { AIInputSection } from './components/AIInputSection';
+import ApiConfirmationDialog from './components/ApiConfirmationDialog';
 import { PromptSuggestions } from './components/PromptSuggestions';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
@@ -23,10 +18,7 @@ import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import LangChainManager from './langchain/LangChainManager';
 import { getSettingsURL, useGlobalState } from './utils';
 import { generateContextDescription } from './utils/contextGenerator';
-import {
-  getProviderModels,
-  parseSuggestionsFromResponse
-} from './utils/modalUtils';
+import { getProviderModels, parseSuggestionsFromResponse } from './utils/modalUtils';
 import { useDynamicPrompts } from './utils/promptGenerator';
 import {
   getActiveConfig,
@@ -682,8 +674,8 @@ export default function AIPrompt(props: {
               suggestions={suggestions}
               apiError={apiError}
               loading={loading}
-              onPromptSelect={(prompt) => setPromptVal(prompt)}
-              onPromptSend={(prompt) => {
+              onPromptSelect={prompt => setPromptVal(prompt)}
+              onPromptSend={prompt => {
                 AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
                   setApiError(error.message);
                 });
@@ -698,7 +690,7 @@ export default function AIPrompt(props: {
               activeConfig={activeConfig}
               availableConfigs={availableConfigs}
               selectedModel={selectedModel}
-              onSend={(prompt) => {
+              onSend={prompt => {
                 AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
                   setApiError(error.message);
                 });

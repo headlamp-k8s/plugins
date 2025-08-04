@@ -52,11 +52,7 @@ export default function AIAssistantHeader({
             disabled: disableSettingsButton,
           }}
         />
-        <ActionButton
-          description="Close"
-          onClick={onClose}
-          icon="mdi:close"
-        />
+        <ActionButton description="Close" onClick={onClose} icon="mdi:close" />
       </Box>
     </Box>
   );
