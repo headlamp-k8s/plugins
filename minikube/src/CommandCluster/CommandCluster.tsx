@@ -157,7 +157,7 @@ function useMinikubeProfileList() {
     const minikube = pluginRunCommand(
       //@ts-ignore
       'scriptjs',
-      ['minikube-profile'],
+      ['minikube-profile', 'list', '--output=json'],
       {}
     );
 
