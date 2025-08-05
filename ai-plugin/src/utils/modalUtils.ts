@@ -32,12 +32,32 @@ export function markdownToPlainText(markdown: string): string {
   );
 }
 
-export function parseSuggestionsFromResponse(content: string): {
+export function parseSuggestionsFromResponse(content: string | any): {
   cleanContent: string;
   suggestions: string[];
 } {
+  // Ensure content is a string
+  let processedContent: string;
+
+  if (typeof content !== 'string') {
+    console.warn('parseSuggestionsFromResponse: content is not a string', typeof content, content);
+    // Try to extract text from non-string content
+    if (Array.isArray(content)) {
+      processedContent = content
+        .filter((item: any) => item && typeof item === 'object' && item.type === 'text')
+        .map((item: any) => item.text || '')
+        .join('');
+    } else if (content && typeof content === 'object' && (content as any).text) {
+      processedContent = (content as any).text;
+    } else {
+      processedContent = String(content || '');
+    }
+  } else {
+    processedContent = content;
+  }
+
   const suggestionPattern = /SUGGESTIONS:\s*(.+?)(?:\n|$)/i;
-  const match = content.match(suggestionPattern);
+  const match = processedContent.match(suggestionPattern);
 
   if (match) {
     const suggestionsText = match[1];
@@ -48,12 +68,12 @@ export function parseSuggestionsFromResponse(content: string): {
       .slice(0, 3); // Ensure max 3 suggestions
 
     // Remove the suggestions line from the content
-    const cleanContent = content.replace(suggestionPattern, '').trim();
+    const cleanContent = processedContent.replace(suggestionPattern, '').trim();
 
     return { cleanContent, suggestions };
   }
 
-  return { cleanContent: content, suggestions: [] };
+  return { cleanContent: processedContent, suggestions: [] };
 }
 
 export function getProviderModels(providerConfig: StoredProviderConfig): string[] {

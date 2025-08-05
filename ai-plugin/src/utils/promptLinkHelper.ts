@@ -15,7 +15,7 @@ export const promptLinksInstructions = `RESOURCE LINKING:
   \[CLUSTER_NAME\]\(https://${HEADLAMP_LINK_HOST}/${HEADLAMP_CLUSTER_LINK}?cluster=CLUSTER\)
 `;
 
-export function getHeadlampLink(link: string) {
+export function getHeadlampLink(link: string | null | undefined) {
   const linkResult: {
     isHeadlampLink: boolean;
     url: string;
@@ -25,7 +25,20 @@ export function getHeadlampLink(link: string) {
     url: '',
     kubeObject: null,
   };
-  const url = link ? new URL(link, window.location.origin) : null;
+
+  // Early return if link is falsy
+  if (!link || typeof link !== 'string') {
+    return linkResult;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(link, window.location.origin);
+  } catch (error) {
+    console.warn('Invalid URL provided to getHeadlampLink:', link, error);
+    return linkResult;
+  }
+
   // Check if it's a resource details link
   if (url.host === HEADLAMP_LINK_HOST) {
     linkResult.isHeadlampLink = true;

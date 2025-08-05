@@ -8,6 +8,9 @@ import {
   HumanMessage,
   SystemMessage,
 } from '@langchain/core/messages';
+import { StringOutputParser } from '@langchain/core/output_parsers';
+import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
+import { RunnablePassthrough, RunnableSequence } from '@langchain/core/runnables';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatMistralAI } from '@langchain/mistralai';
 import { ChatOllama } from '@langchain/ollama';
@@ -16,7 +19,7 @@ import { AzureChatOpenAI } from '@langchain/openai';
 import sanitizeHtml from 'sanitize-html';
 import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
-import { KubernetesToolContext, ToolManager, ToolResponse } from './tools';
+import { KubernetesToolContext, ToolManager } from './tools';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -24,6 +27,8 @@ export default class LangChainManager extends AIManager {
   private providerId: string;
   private toolManager: ToolManager;
   private currentAbortController: AbortController | null = null;
+  private promptTemplate: ChatPromptTemplate;
+  private outputParser: StringOutputParser;
 
   constructor(providerId: string, config: Record<string, any>, enabledTools?: string[]) {
     super();
@@ -35,6 +40,43 @@ export default class LangChainManager extends AIManager {
     );
     this.toolManager = new ToolManager(enabledToolIds); // Only enabled tools
     this.model = this.createModel(providerId, config);
+
+    // Initialize prompt template and output parser
+    this.promptTemplate = this.createPromptTemplate();
+    this.outputParser = new StringOutputParser();
+  }
+
+  // Helper method to extract text content from different response formats
+  private extractTextContent(content: any): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    // Handle Gemini's array format: [{ type: 'text', text: '...' }, ...]
+    if (Array.isArray(content)) {
+      return content
+        .filter(item => item && typeof item === 'object' && item.type === 'text')
+        .map(item => item.text || '')
+        .join('');
+    }
+
+    // Handle object format with text property
+    if (content && typeof content === 'object') {
+      if (content.text) {
+        return content.text;
+      }
+      if (content.content) {
+        return this.extractTextContent(content.content);
+      }
+    }
+
+    // Fallback: try to stringify
+    try {
+      return String(content || '');
+    } catch (error) {
+      console.warn('Error extracting text content:', error);
+      return '';
+    }
   }
 
   // Method to abort current request
@@ -43,6 +85,21 @@ export default class LangChainManager extends AIManager {
       this.currentAbortController.abort();
       this.currentAbortController = null;
     }
+  }
+
+  // Create a reusable prompt template
+  private createPromptTemplate(): ChatPromptTemplate {
+    return ChatPromptTemplate.fromMessages([
+      ['system', '{systemPrompt}'],
+      new MessagesPlaceholder('chatHistory'),
+      ['human', '{input}'],
+    ]);
+  }
+
+  // Create a simple chain for basic responses
+  private createBasicChain() {
+    const modelToUse = this.boundModel || this.model;
+    return this.promptTemplate.pipe(modelToUse).pipe(this.outputParser);
   }
 
   private createModel(providerId: string, config: Record<string, any>): BaseChatModel {
@@ -129,6 +186,20 @@ export default class LangChainManager extends AIManager {
     this.boundModel = this.toolManager.bindToModel(this.model, this.providerId);
   }
 
+  // Helper method to prepare chat history for prompt template
+  private prepareChatHistory(): BaseMessage[] {
+    return this.convertPromptsToMessages(this.history);
+  }
+
+  // Helper method to create system prompt with context
+  private createSystemPrompt(): string {
+    let systemPromptContent = basePrompt;
+    if (this.currentContext) {
+      systemPromptContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
+    }
+    return systemPromptContent;
+  }
+
   private convertPromptsToMessages(prompts: Prompt[]): BaseMessage[] {
     return prompts.map(prompt => {
       switch (prompt.role) {
@@ -164,189 +235,307 @@ export default class LangChainManager extends AIManager {
     // Create abort controller for this request
     this.currentAbortController = new AbortController();
 
-    // Create system message with context if available
-    let systemPromptContent = basePrompt;
-    if (this.currentContext) {
-      systemPromptContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
-    }
-    const systemMessage = new SystemMessage(systemPromptContent);
-
-    const messages = this.convertPromptsToMessages(this.history);
-    messages.unshift(systemMessage);
-    const modelToUse = this.boundModel || this.model;
-
     try {
-      let response;
+      const modelToUse = this.boundModel || this.model;
+
+      // For local models, use simplified approach
       if (this.providerId === 'local') {
-        const finalMessages = [messages[0], messages[messages.length - 1]];
-        response = await modelToUse.invoke(finalMessages, {
-          signal: this.currentAbortController.signal,
-        });
-      } else {
-        response = await modelToUse.invoke(messages, {
-          signal: this.currentAbortController.signal,
-        });
+        return await this.handleLocalModelRequest(message, modelToUse);
       }
 
-      // Clear abort controller after successful completion
-      this.currentAbortController = null;
+      // Use chain-based approach for other models
+      return await this.handleChainBasedRequest(message, modelToUse);
+    } catch (error) {
+      return this.handleUserSendError(error);
+    }
+  }
 
-      if (response.tool_calls?.length) {
-        const enabledToolIds = this.toolManager.getToolNames();
+  // Handle requests for local models (simplified)
+  private async handleLocalModelRequest(message: string, model: BaseChatModel): Promise<Prompt> {
+    const systemMessage = new SystemMessage(this.createSystemPrompt());
+    const userMessage = new HumanMessage(message);
+    const messages = [systemMessage, userMessage];
 
-        // If no tools are enabled but LLM is returning tool calls, this indicates a bug
-        if (enabledToolIds.length === 0) {
-          console.warn(
-            'LLM returned tool calls but no tools are enabled. This should not happen.',
-            {
-              toolCalls: response.tool_calls,
-              modelUsed: this.boundModel === this.model ? 'original' : 'bound',
-            }
-          );
+    const response = await model.invoke(messages, {
+      signal: this.currentAbortController.signal,
+    });
 
-          // Treat as regular response since no tools should be available
-          const assistantPrompt: Prompt = {
-            role: 'assistant',
-            content:
-              response.content ||
-              'I apologize, but I cannot use tools as they have been disabled in your settings.',
-          };
-          this.history.push(assistantPrompt);
-          return assistantPrompt;
-        }
+    this.currentAbortController = null;
 
-        const toolCalls = response.tool_calls.map(tc => ({
-          type: 'function',
-          id: tc.id,
-          function: {
-            name: tc.name,
-            arguments: JSON.stringify(tc.args || {}),
-          },
-        }));
+    const assistantPrompt: Prompt = {
+      role: 'assistant',
+      content: this.extractTextContent(response.content),
+    };
+    this.history.push(assistantPrompt);
+    return assistantPrompt;
+  }
 
-        const assistantPrompt: Prompt = {
-          role: 'assistant',
-          content: response.content || '',
-          toolCalls: toolCalls,
-        };
-        this.history.push(assistantPrompt);
+  // Handle requests using chain-based approach
+  private async handleChainBasedRequest(message: string, model: BaseChatModel): Promise<Prompt> {
+    // Prepare input for the chain
+    const chainInput = {
+      systemPrompt: this.createSystemPrompt(),
+      chatHistory: this.prepareChatHistory(),
+      input: message,
+    };
 
-        // Process each tool call
-        const toolResponses: Array<{ toolCall: any; response: ToolResponse }> = [];
+    // For models with tools, use direct invocation to handle tool calls
+    if (this.boundModel) {
+      return await this.handleToolEnabledRequest(chainInput, model);
+    }
 
-        for (const toolCall of toolCalls) {
-          const args = JSON.parse(toolCall.function.arguments);
+    // For simple requests without tools, use the chain
+    const chain = this.createBasicChain();
+    const response = await chain.invoke(chainInput, {
+      signal: this.currentAbortController.signal,
+    });
 
-          try {
-            // Execute the tool call using ToolManager
-            const toolResponse = await this.toolManager.executeTool(
-              toolCall.function.name,
-              args,
-              toolCall.id,
-              assistantPrompt
-            );
+    this.currentAbortController = null;
 
-            toolResponses.push({ toolCall, response: toolResponse });
+    const assistantPrompt: Prompt = {
+      role: 'assistant',
+      content: this.extractTextContent(response),
+    };
+    this.history.push(assistantPrompt);
+    return assistantPrompt;
+  }
 
-            // Only add to history if the tool response indicates we should
-            if (toolResponse.shouldAddToHistory) {
-              this.history.push({
-                role: 'tool',
-                content: toolResponse.content,
-                toolCallId: toolCall.id,
-                name: toolCall.function.name,
-              });
-            }
-          } catch (error) {
-            console.error('Error executing tool call:', error);
+  // Handle requests for models with tools enabled
+  private async handleToolEnabledRequest(chainInput: any, model: BaseChatModel): Promise<Prompt> {
+    // Convert chain input to messages for tool-enabled models
+    const messages = [
+      new SystemMessage(chainInput.systemPrompt),
+      ...chainInput.chatHistory,
+      new HumanMessage(chainInput.input),
+    ];
 
-            const errorToolResponse: ToolResponse = {
-              content: JSON.stringify({
-                error: true,
-                message: error.message,
-              }),
-              shouldAddToHistory: true,
-              shouldProcessFollowUp: true,
-            };
+    const response = await model.invoke(messages, {
+      signal: this.currentAbortController.signal,
+    });
 
-            toolResponses.push({ toolCall, response: errorToolResponse });
+    this.currentAbortController = null;
 
-            // ✅ Always add error responses to maintain alignment
-            this.history.push({
-              role: 'tool',
-              content: errorToolResponse.content,
-              toolCallId: toolCall.id,
-              name: toolCall.function.name,
-            });
-          }
-        }
+    // Handle tool calls if present
+    if (response.tool_calls?.length) {
+      return await this.handleToolCalls(response);
+    }
 
-        // Only process follow-up if all tool responses indicate we should
-        const shouldProcessFollowUp = toolResponses.every(
-          ({ response }) => response.shouldProcessFollowUp
-        );
+    // Handle regular response
+    const assistantPrompt: Prompt = {
+      role: 'assistant',
+      content: this.extractTextContent(response.content),
+    };
+    this.history.push(assistantPrompt);
+    return assistantPrompt;
+  }
 
-        if (shouldProcessFollowUp) {
-          return await this.processToolResponses();
-        }
+  // Extract tool call handling into separate method
+  private async handleToolCalls(response: any): Promise<Prompt> {
+    const enabledToolIds = this.toolManager.getToolNames();
 
-        return assistantPrompt;
-      }
+    // If no tools are enabled but LLM is returning tool calls, this indicates a bug
+    if (enabledToolIds.length === 0) {
+      console.warn('LLM returned tool calls but no tools are enabled. This should not happen.', {
+        toolCalls: response.tool_calls,
+        modelUsed: this.boundModel === this.model ? 'original' : 'bound',
+      });
 
-      // Handle regular response
+      // Treat as regular response since no tools should be available
       const assistantPrompt: Prompt = {
         role: 'assistant',
-        content: response.content || '',
+        content:
+          this.extractTextContent(response.content) ||
+          'I apologize, but I cannot use tools as they have been disabled in your settings.',
       };
       this.history.push(assistantPrompt);
       return assistantPrompt;
-    } catch (error) {
-      // Clear abort controller in case of error
-      this.currentAbortController = null;
+    }
 
-      console.error('Error in userSend:', error);
+    const toolCalls = response.tool_calls.map(tc => ({
+      type: 'function',
+      id: tc.id,
+      function: {
+        name: tc.name,
+        arguments: JSON.stringify(tc.args || {}),
+      },
+    }));
 
-      // Handle abort errors
-      if (error.message === 'AbortError') {
-        const errorPrompt: Prompt = {
-          role: 'assistant',
-          content: 'Request cancelled.',
-          error: true,
-        };
-        this.history.push(errorPrompt);
-        return errorPrompt;
+    const assistantPrompt: Prompt = {
+      role: 'assistant',
+      content: this.extractTextContent(response.content),
+      toolCalls: toolCalls,
+    };
+    this.history.push(assistantPrompt);
+
+    // Process tool calls
+    await this.processToolCalls(toolCalls, assistantPrompt);
+
+    // Check if we should process follow-up
+    const toolResponses = this.history.filter(
+      prompt => prompt.role === 'tool' && toolCalls.some(tc => tc.id === prompt.toolCallId)
+    );
+
+    const shouldProcessFollowUp = toolResponses.every(response => {
+      try {
+        const parsed = JSON.parse(response.content);
+        return parsed.shouldProcessFollowUp !== false;
+      } catch {
+        return true; // Default to processing follow-up if can't parse
       }
+    });
 
+    if (shouldProcessFollowUp) {
+      return await this.processToolResponses();
+    }
+
+    return assistantPrompt;
+  }
+
+  // Extract tool call processing logic
+  private async processToolCalls(toolCalls: any[], assistantPrompt: Prompt): Promise<void> {
+    for (const toolCall of toolCalls) {
+      const args = JSON.parse(toolCall.function.arguments);
+
+      try {
+        // Execute the tool call using ToolManager
+        const toolResponse = await this.toolManager.executeTool(
+          toolCall.function.name,
+          args,
+          toolCall.id,
+          assistantPrompt
+        );
+
+        // Only add to history if the tool response indicates we should
+        if (toolResponse.shouldAddToHistory) {
+          this.history.push({
+            role: 'tool',
+            content: toolResponse.content,
+            toolCallId: toolCall.id,
+            name: toolCall.function.name,
+          });
+        }
+      } catch (error) {
+        console.error('Error executing tool call:', error);
+
+        const errorToolResponse = {
+          content: JSON.stringify({
+            error: true,
+            message: error.message,
+          }),
+          shouldAddToHistory: true,
+          shouldProcessFollowUp: true,
+        };
+
+        // Always add error responses to maintain alignment
+        this.history.push({
+          role: 'tool',
+          content: errorToolResponse.content,
+          toolCallId: toolCall.id,
+          name: toolCall.function.name,
+        });
+      }
+    }
+  }
+
+  // Handle errors in userSend method
+  private handleUserSendError(error: any): Prompt {
+    // Clear abort controller in case of error
+    this.currentAbortController = null;
+
+    console.error('Error in userSend:', error);
+
+    // Handle abort errors
+    if (error.message === 'AbortError') {
       const errorPrompt: Prompt = {
         role: 'assistant',
-        content: `Sorry, there was an error processing your request: ${error.message}`,
+        content: 'Request cancelled.',
         error: true,
       };
       this.history.push(errorPrompt);
       return errorPrompt;
     }
+
+    const errorPrompt: Prompt = {
+      role: 'assistant',
+      content: `Sorry, there was an error processing your request: ${error.message}`,
+      error: true,
+    };
+    this.history.push(errorPrompt);
+    return errorPrompt;
   }
 
   // Change from 'protected' to 'public' to match the base class
   public async processToolResponses(): Promise<Prompt> {
     // Check if there are any tool responses in the history
-    const hasToolResponses = this.history.some(
-      prompt => prompt.role === 'tool' && prompt.toolCallId
-    );
-    if (!hasToolResponses) {
-      // If no tool responses, return the last assistant message
-      const lastAssistantMessage = this.history
-        .slice()
-        .reverse()
-        .find(prompt => prompt.role === 'assistant');
-      return (
-        lastAssistantMessage || {
-          role: 'assistant',
-          content: 'No tool responses to process.',
-        }
-      );
+    if (!this.hasToolResponses()) {
+      return this.getLastAssistantMessage();
     }
 
+    // Validate tool call/response alignment
+    this.validateToolCallAlignment();
+
+    try {
+      // Prepare messages using a more structured approach
+      const messages = this.prepareMessagesForToolResponse();
+
+      // Create a chain for tool response processing
+      const chain = this.createToolResponseChain();
+
+      // Process the response
+      const response = await chain.invoke({
+        messages: messages.slice(1), // Exclude system message for the chain
+        systemPrompt: this.createSystemPrompt(),
+      });
+
+      return this.handleToolResponseResult(response);
+    } catch (error) {
+      return this.handleToolResponseError(error);
+    }
+  }
+
+  // Helper method to check if there are tool responses
+  private hasToolResponses(): boolean {
+    return this.history.some(prompt => prompt.role === 'tool' && prompt.toolCallId);
+  }
+
+  // Helper method to get the last assistant message
+  private getLastAssistantMessage(): Prompt {
+    const lastAssistantMessage = this.history
+      .slice()
+      .reverse()
+      .find(prompt => prompt.role === 'assistant');
+    return (
+      lastAssistantMessage || {
+        role: 'assistant',
+        content: 'No tool responses to process.',
+      }
+    );
+  }
+
+  // Create a specialized chain for tool response processing
+  private createToolResponseChain() {
+    const modelToUse = this.boundModel || this.model;
+
+    // Create a runnable sequence for tool response processing
+    return RunnableSequence.from([
+      // Transform input to the expected format
+      RunnablePassthrough.assign({
+        formattedMessages: (input: any) => {
+          const systemMessage = new SystemMessage(input.systemPrompt);
+          return [systemMessage, ...input.messages];
+        },
+      }),
+      // Invoke the model
+      {
+        formattedMessages: (input: any) => modelToUse.invoke(input.formattedMessages),
+      },
+      // Parse the output
+      (input: any) => input.formattedMessages,
+    ]);
+  }
+
+  // Validate tool call/response alignment
+  private validateToolCallAlignment(): void {
     const lastAssistantMessage = this.history
       .slice()
       .reverse()
@@ -365,248 +554,240 @@ export default class LangChainManager extends AIManager {
         });
 
         // Add missing tool responses
-        for (const expectedId of expectedToolCallIds) {
-          if (!actualToolResponses.find(r => r.toolCallId === expectedId)) {
-            this.history.push({
-              role: 'tool',
-              content: JSON.stringify({
-                error: true,
-                message: 'Tool execution failed - no response recorded',
-              }),
-              toolCallId: expectedId,
-              name: 'kubernetes_api_request',
-            });
-          }
-        }
+        this.addMissingToolResponses(expectedToolCallIds, actualToolResponses);
       }
     }
+  }
 
-    let systemPromptContent = basePrompt;
-    if (this.currentContext) {
-      systemPromptContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
+  // Add missing tool responses
+  private addMissingToolResponses(expectedIds: string[], actualResponses: any[]): void {
+    for (const expectedId of expectedIds) {
+      if (!actualResponses.find(r => r.toolCallId === expectedId)) {
+        this.history.push({
+          role: 'tool',
+          content: JSON.stringify({
+            error: true,
+            message: 'Tool execution failed - no response recorded',
+          }),
+          toolCallId: expectedId,
+          name: 'kubernetes_api_request',
+        });
+      }
     }
-    const systemMessage = new SystemMessage(systemPromptContent);
+  }
 
+  // Prepare messages for tool response processing
+  private prepareMessagesForToolResponse(): BaseMessage[] {
+    const systemMessage = new SystemMessage(this.createSystemPrompt());
     const messages: BaseMessage[] = [systemMessage];
 
-    // Track tool response sizes
+    // Find the last assistant message that contains tool calls
+    const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();
+
+    // Process messages up to the last assistant message with tool calls
+    const messagesToProcess =
+      lastAssistantWithToolsIndex >= 0
+        ? this.history.slice(0, lastAssistantWithToolsIndex + 1)
+        : this.history;
+
+    // Track response sizes to prevent memory issues
     let totalResponseSize = 0;
-    const MAX_RESPONSE_SIZE = 500000; // ~500KB limit for total responses
+    const MAX_RESPONSE_SIZE = 500000; // ~500KB limit
 
-    try {
-      // Find the last assistant message that contains tool calls
-      let lastAssistantWithToolsIndex = -1;
-      for (let i = this.history.length - 1; i >= 0; i--) {
-        const prompt = this.history[i];
-        if (prompt.role === 'assistant' && prompt.toolCalls && prompt.toolCalls.length > 0) {
-          lastAssistantWithToolsIndex = i;
-          break;
-        }
-      }
+    for (const prompt of messagesToProcess) {
+      if (prompt.role === 'tool' && prompt.toolCallId) {
+        const processedContent = this.processToolContent(
+          prompt,
+          totalResponseSize,
+          MAX_RESPONSE_SIZE
+        );
 
-      // Validate and sanitize tool responses before adding to messages
-      // Only include messages up to the last assistant message with tool calls
-      const messagesToProcess =
-        lastAssistantWithToolsIndex >= 0
-          ? this.history.slice(0, lastAssistantWithToolsIndex + 1)
-          : this.history;
-
-      for (const prompt of messagesToProcess) {
-        if (prompt.role === 'tool' && prompt.toolCallId) {
-          // Validate the tool response
-          if (!prompt.content) {
-            // Use a safe placeholder instead of empty content
-            continue;
-          }
-          if (!prompt.content || typeof prompt.content !== 'string') {
-            console.warn(`Invalid tool response format for ${prompt.toolCallId}`, prompt);
-            // Use a safe placeholder instead of potentially unsafe content
-            prompt.content = JSON.stringify({
-              error: true,
-              message: 'Invalid tool response format',
-            });
-          }
-
-          // Check response size to prevent memory issues
-          const responseSize = prompt.content.length;
-          totalResponseSize += responseSize;
-
-          if (totalResponseSize > MAX_RESPONSE_SIZE) {
-            console.warn(
-              `Tool response size exceeds limit (${totalResponseSize}/${MAX_RESPONSE_SIZE})`
-            );
-            // Truncate and indicate truncation
-            prompt.content =
-              prompt.content.substring(0, 100) +
-              `... [Response truncated, exceeded size limit of ${MAX_RESPONSE_SIZE} bytes]`;
-          }
-
-          // Sanitize response content (basic HTML/script tag removal)
-          // This helps prevent potential XSS or script injection if displayed in UI
-          const sanitizedContent = this.sanitizeContent(prompt.content);
+        if (processedContent) {
+          totalResponseSize += processedContent.length;
 
           if (this.providerId === 'azure') {
             messages.push(
-              new AIMessage(`Tool Response (${prompt.toolCallId}): ${sanitizedContent}`)
+              new AIMessage(`Tool Response (${prompt.toolCallId}): ${processedContent}`)
             );
           } else {
             messages.push(
               new FunctionMessage({
                 name: prompt.name || 'kubernetes_api_request',
-                content: sanitizedContent,
+                content: processedContent,
                 tool_call_id: prompt.toolCallId,
               })
             );
           }
-        } else if (
-          prompt.role !== 'assistant' ||
-          !prompt.toolCalls ||
-          prompt.toolCalls.length === 0
-        ) {
-          // Only include non-assistant messages or assistant messages without tool calls
-          // This ensures we don't include the assistant message that contains tool calls
-          messages.push(...this.convertPromptsToMessages([prompt]));
         }
+      } else if (
+        prompt.role !== 'assistant' ||
+        !prompt.toolCalls ||
+        prompt.toolCalls.length === 0
+      ) {
+        messages.push(...this.convertPromptsToMessages([prompt]));
       }
-
-      const modelToUse = this.boundModel || this.model;
-
-      try {
-        // Add timeout for model invocation
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Model invocation timed out')), 60000); // 60 second timeout
-        });
-
-        const responsePromise = modelToUse.invoke(messages);
-        let response = await Promise.race([responsePromise, timeoutPromise]);
-
-        // Track usage after tool processing with consistent provider naming
-        let providerName = 'AI Service';
-        let estimatedTokens = 0;
-
-        // Estimate tokens based on messages and response length
-        const messagesLength = messages.reduce(
-          (acc, msg) => acc + (typeof msg.content === 'string' ? msg.content.length : 0),
-          0
-        );
-        const outputLength = response.content?.length || 0;
-        estimatedTokens = Math.ceil((messagesLength + outputLength) / 4);
-
-        switch (this.providerId) {
-          case 'openai':
-            providerName = 'OpenAI';
-            break;
-          case 'azure':
-            providerName = 'Azure OpenAI'; // Ensure consistent naming
-            break;
-          case 'anthropic':
-            providerName = 'Anthropic';
-            break;
-          case 'local':
-            providerName = 'Local Model';
-            break;
-        }
-
-        console.log(`${providerName} - Estimated tokens: ${estimatedTokens}`);
-
-        // Add this to the formatResponse method after getting a tool response
-        if (response && typeof response === 'string' && response.includes('"items":')) {
-          try {
-            // This looks like a list response - add a note not to suggest kubectl
-            const enhancedResponse = {
-              ...JSON.parse(response),
-              note: 'Remember to use the kubernetes_api_request tool for all operations rather than suggesting kubectl commands.',
-            };
-            response = JSON.stringify(enhancedResponse);
-          } catch (e) {}
-        }
-
-        // Analyze the response content to detect if it might be suggesting kubectl
-        if (response.content && typeof response.content === 'string') {
-          const lowercaseContent = response.content.toLowerCase();
-
-          // Check for kubectl suggestion indicators
-          const hasKubectlSuggestion =
-            lowercaseContent.includes('kubectl') ||
-            lowercaseContent.includes('run the command') ||
-            lowercaseContent.includes('command line') ||
-            lowercaseContent.includes('terminal') ||
-            lowercaseContent.includes('shell');
-
-          // If it looks like kubectl is being suggested, add a corrective system message
-          if (hasKubectlSuggestion) {
-            this.history.push({
-              role: 'system',
-              content:
-                'REMINDER: Never suggest kubectl or command line tools. Always use the kubernetes_api_request tool or explain UI actions. The user is using a web dashboard and cannot access the command line.',
-            });
-
-            // Request a correction from the model
-            const correctionPrompt = new SystemMessage(
-              'Your last response suggested using kubectl or command line, which is not available to the user. Please revise your response to use the kubernetes_api_request tool instead.'
-            );
-
-            messages.push(correctionPrompt);
-
-            // Try to get a corrected response
-            try {
-              const correctedResponse = await modelToUse.invoke(messages);
-              response = correctedResponse; // Replace with the corrected response
-            } catch (error) {
-              console.error('Error getting corrected response:', error);
-              // Continue with original response if correction fails
-            }
-          }
-        }
-
-        const assistantPrompt: Prompt = {
-          role: 'assistant',
-          content: response.content || '',
-          toolCalls:
-            response.tool_calls?.map(tc => ({
-              id: tc.id,
-              type: 'function',
-              function: {
-                name: tc.name || 'kubernetes_api_request',
-                arguments: JSON.stringify(tc.args || {}),
-              },
-            })) || [],
-        };
-
-        console.log('Assistant prompt created from response');
-
-        // Remove any existing assistant messages that come after the last tool call
-        // to prevent message order issues
-        if (lastAssistantWithToolsIndex >= 0) {
-          this.history = this.history.slice(0, lastAssistantWithToolsIndex + 1);
-        }
-
-        this.history.push(assistantPrompt);
-        return assistantPrompt;
-      } catch (error) {
-        console.error('Error during model invocation in processToolResponses:', error);
-
-        const errorPrompt: Prompt = {
-          role: 'assistant',
-          content: `Sorry, there was an error processing the tool responses: ${error.message}`,
-          error: true,
-        };
-
-        this.history.push(errorPrompt);
-        return errorPrompt;
-      }
-    } catch (error) {
-      console.error('Error preparing messages for model in processToolResponses:', error);
-
-      const errorPrompt: Prompt = {
-        role: 'assistant',
-        content: `Sorry, there was an error processing your request: ${error.message}`,
-        error: true,
-      };
-
-      this.history.push(errorPrompt);
-      return errorPrompt;
     }
+
+    return messages;
+  }
+
+  // Process tool content with size limits and sanitization
+  private processToolContent(prompt: any, currentSize: number, maxSize: number): string | null {
+    // Validate the tool response
+    if (!prompt.content || typeof prompt.content !== 'string') {
+      console.warn(`Invalid tool response format for ${prompt.toolCallId}`, prompt);
+      return JSON.stringify({
+        error: true,
+        message: 'Invalid tool response format',
+      });
+    }
+
+    // Check response size
+    const responseSize = prompt.content.length;
+    if (currentSize + responseSize > maxSize) {
+      console.warn(`Tool response size exceeds limit (${currentSize + responseSize}/${maxSize})`);
+      return (
+        prompt.content.substring(0, 100) +
+        `... [Response truncated, exceeded size limit of ${maxSize} bytes]`
+      );
+    }
+
+    // Sanitize content
+    return this.sanitizeContent(prompt.content);
+  }
+
+  // Find the last assistant message with tool calls
+  private findLastAssistantWithTools(): number {
+    let lastAssistantWithToolsIndex = -1;
+    for (let i = this.history.length - 1; i >= 0; i--) {
+      const prompt = this.history[i];
+      if (prompt.role === 'assistant' && prompt.toolCalls && prompt.toolCalls.length > 0) {
+        lastAssistantWithToolsIndex = i;
+        break;
+      }
+    }
+    return lastAssistantWithToolsIndex;
+  }
+
+  // Handle the result of tool response processing
+  private async handleToolResponseResult(response: any): Promise<Prompt> {
+    // Track usage after tool processing
+    this.logUsageInfo(response);
+
+    // Analyze and potentially correct kubectl suggestions
+    const correctedResponse = await this.analyzeAndCorrectResponse(response);
+
+    const assistantPrompt: Prompt = {
+      role: 'assistant',
+      content: this.extractTextContent(correctedResponse.content),
+      toolCalls:
+        correctedResponse.tool_calls?.map(tc => ({
+          id: tc.id,
+          type: 'function',
+          function: {
+            name: tc.name || 'kubernetes_api_request',
+            arguments: JSON.stringify(tc.args || {}),
+          },
+        })) || [],
+    };
+
+    console.log('Assistant prompt created from response');
+
+    // Clean up history to prevent message order issues
+    const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();
+    if (lastAssistantWithToolsIndex >= 0) {
+      this.history = this.history.slice(0, lastAssistantWithToolsIndex + 1);
+    }
+
+    this.history.push(assistantPrompt);
+    return assistantPrompt;
+  }
+
+  // Log usage information
+  private logUsageInfo(response: any): void {
+    let providerName = 'AI Service';
+    let estimatedTokens = 0;
+
+    // Estimate tokens
+    const outputLength = this.extractTextContent(response.content).length || 0;
+    estimatedTokens = Math.ceil(outputLength / 4);
+
+    switch (this.providerId) {
+      case 'openai':
+        providerName = 'OpenAI';
+        break;
+      case 'azure':
+        providerName = 'Azure OpenAI';
+        break;
+      case 'anthropic':
+        providerName = 'Anthropic';
+        break;
+      case 'local':
+        providerName = 'Local Model';
+        break;
+    }
+
+    console.log(`${providerName} - Estimated tokens: ${estimatedTokens}`);
+  }
+
+  // Analyze response and correct kubectl suggestions
+  private async analyzeAndCorrectResponse(response: any): Promise<any> {
+    const responseContent = this.extractTextContent(response.content);
+    if (responseContent) {
+      const lowercaseContent = responseContent.toLowerCase();
+
+      // Check for kubectl suggestion indicators
+      const hasKubectlSuggestion =
+        lowercaseContent.includes('kubectl') ||
+        lowercaseContent.includes('run the command') ||
+        lowercaseContent.includes('command line') ||
+        lowercaseContent.includes('terminal') ||
+        lowercaseContent.includes('shell');
+
+      // If kubectl is being suggested, try to get a correction
+      if (hasKubectlSuggestion) {
+        return await this.getCorrectedResponse(response);
+      }
+    }
+
+    return response;
+  }
+
+  // Get corrected response for kubectl suggestions
+  private async getCorrectedResponse(originalResponse: any): Promise<any> {
+    this.history.push({
+      role: 'system',
+      content:
+        'REMINDER: Never suggest kubectl or command line tools. Always use the kubernetes_api_request tool or explain UI actions. The user is using a web dashboard and cannot access the command line.',
+    });
+
+    try {
+      const modelToUse = this.boundModel || this.model;
+      const correctionPrompt = new SystemMessage(
+        'Your last response suggested using kubectl or command line, which is not available to the user. Please revise your response to use the kubernetes_api_request tool instead.'
+      );
+
+      const messages = [correctionPrompt];
+      const correctedResponse = await modelToUse.invoke(messages);
+      return correctedResponse;
+    } catch (error) {
+      console.error('Error getting corrected response:', error);
+      return originalResponse; // Return original if correction fails
+    }
+  }
+
+  // Handle errors in tool response processing
+  private handleToolResponseError(error: any): Prompt {
+    console.error('Error during tool response processing:', error);
+
+    const errorPrompt: Prompt = {
+      role: 'assistant',
+      content: `Sorry, there was an error processing the tool responses: ${error.message}`,
+      error: true,
+    };
+
+    this.history.push(errorPrompt);
+    return errorPrompt;
   }
 
   // Helper method to sanitize content
