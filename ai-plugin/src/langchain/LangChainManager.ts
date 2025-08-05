@@ -19,6 +19,7 @@ import { AzureChatOpenAI } from '@langchain/openai';
 import sanitizeHtml from 'sanitize-html';
 import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
+import { apiErrorPromptTemplate, toolFailurePromptTemplate } from './PromptTemplates';
 import { KubernetesToolContext, ToolManager } from './tools';
 
 export default class LangChainManager extends AIManager {
@@ -182,7 +183,7 @@ export default class LangChainManager extends AIManager {
     // Configure the Kubernetes context for the KubernetesTool
     this.toolManager.configureKubernetesContext(kubernetesContext);
 
-    // Bind all tools to the model
+    // Bind all tools to the model for compatible providers (OpenAI, Azure, etc.)
     this.boundModel = this.toolManager.bindToModel(this.model, this.providerId);
   }
 
@@ -213,15 +214,8 @@ export default class LangChainManager extends AIManager {
             additional_kwargs: {},
           });
         case 'tool':
-          if (this.providerId === 'azure') {
-            return new AIMessage(`Tool Response (${prompt.toolCallId}): ${prompt.content}`);
-          } else {
-            return new FunctionMessage({
-              content: prompt.content,
-              name: prompt.name || 'kubernetes_api_request',
-              tool_call_id: prompt.toolCallId,
-            });
-          }
+          return new AIMessage(`Tool Response (${prompt.toolCallId}): ${prompt.content}`);
+
         default:
           return new ChatMessage(prompt.content, prompt.role);
       }
@@ -393,6 +387,8 @@ export default class LangChainManager extends AIManager {
 
   // Extract tool call processing logic
   private async processToolCalls(toolCalls: any[], assistantPrompt: Prompt): Promise<void> {
+    const failedOperations: string[] = [];
+
     for (const toolCall of toolCalls) {
       const args = JSON.parse(toolCall.function.arguments);
 
@@ -404,6 +400,26 @@ export default class LangChainManager extends AIManager {
           toolCall.id,
           assistantPrompt
         );
+
+        // Check if the response indicates an error even if the tool didn't throw
+        let isErrorResponse = false;
+        try {
+          const parsedContent = JSON.parse(toolResponse.content);
+          isErrorResponse = parsedContent.error === true;
+
+          if (isErrorResponse) {
+            const toolName = toolCall.function.name || 'unknown tool';
+            const errorMsg = parsedContent.message || 'Unknown error';
+            failedOperations.push(`${toolName}: ${errorMsg}`);
+          }
+        } catch (parseError) {
+          // If content isn't JSON, check for error indicators
+          const contentLower = toolResponse.content.toLowerCase();
+          if (contentLower.includes('error') || contentLower.includes('failed')) {
+            const toolName = toolCall.function.name || 'unknown tool';
+            failedOperations.push(`${toolName}: ${toolResponse.content}`);
+          }
+        }
 
         // Only add to history if the tool response indicates we should
         if (toolResponse.shouldAddToHistory) {
@@ -417,10 +433,17 @@ export default class LangChainManager extends AIManager {
       } catch (error) {
         console.error('Error executing tool call:', error);
 
+        const toolName = toolCall.function.name || 'unknown tool';
+        const errorMessage = error?.message || 'Unknown error occurred';
+        failedOperations.push(`${toolName}: ${errorMessage}`);
+
         const errorToolResponse = {
           content: JSON.stringify({
             error: true,
-            message: error.message,
+            message: errorMessage,
+            toolName: toolName,
+            request: args,
+            userFriendlyMessage: `Failed to execute ${toolName}: ${errorMessage}`,
           }),
           shouldAddToHistory: true,
           shouldProcessFollowUp: true,
@@ -435,10 +458,56 @@ export default class LangChainManager extends AIManager {
         });
       }
     }
+
+    // If there were any failed operations, use the specialized template to ensure the AI addresses them properly
+    if (failedOperations.length > 0) {
+      try {
+        // Use the tool failure template to generate clear error communication
+        const toolErrorPrompt = await toolFailurePromptTemplate.format({
+          failed_operations: failedOperations.join('\n'),
+          operation_count: failedOperations.length.toString(),
+          context: 'Tool execution during user request',
+        });
+
+        const errorSystemMessage = {
+          role: 'system' as const,
+          content: toolErrorPrompt,
+          toolCallId: 'system-error-alert',
+          name: 'error_handler',
+        };
+
+        this.history.push(errorSystemMessage);
+
+        console.warn('Tool execution failures detected:', failedOperations);
+      } catch (templateError) {
+        console.error('Error using tool failure template:', templateError);
+
+        // Fallback to basic error message
+        const errorSystemMessage = {
+          role: 'system' as const,
+          content: `CRITICAL: The following operations failed and must be reported to the user:
+
+${failedOperations.map(op => `- ${op}`).join('\n')}
+
+You MUST:
+1. Clearly inform the user that these operations failed
+2. Explain what went wrong in simple terms  
+3. Provide specific next steps or alternatives
+4. Do not ignore or minimize these errors
+
+Format your response to make the errors prominent and actionable.`,
+          toolCallId: 'system-error-alert',
+          name: 'error_handler',
+        };
+
+        this.history.push(errorSystemMessage);
+        console.warn('Tool execution failures detected:', failedOperations);
+      }
+    }
   }
 
   // Handle errors in userSend method
-  private handleUserSendError(error: any): Prompt {
+  private async handleUserSendError(error: any): Promise<Prompt> {
     // Clear abort controller in case of error
     this.currentAbortController = null;
 
@@ -455,13 +524,122 @@ export default class LangChainManager extends AIManager {
       return errorPrompt;
     }
 
+    // For API-related errors, use specialized error template to ensure visibility
+    const isApiError =
+      error.message?.toLowerCase().includes('api') ||
+      error.message?.toLowerCase().includes('request') ||
+      error.message?.toLowerCase().includes('network') ||
+      error.message?.toLowerCase().includes('fetch') ||
+      error.message?.toLowerCase().includes('timeout');
+
+    if (isApiError) {
+      try {
+        // Use the API error template to generate a clear, visible error response
+        const errorTemplatePrompt = await apiErrorPromptTemplate.format({
+          error_message: this.createUserFriendlyErrorMessage(error),
+          error_details: error.message || 'Unknown error',
+          context: 'API request processing',
+        });
+
+        // Generate a user-friendly response using the AI model
+        const errorResponse = await this.model.invoke([
+          { role: 'system', content: errorTemplatePrompt },
+          { role: 'user', content: 'Please explain this error clearly and suggest next steps.' },
+        ]);
+
+        const errorText = this.extractTextContent(errorResponse);
+
+        const apiErrorPrompt: Prompt = {
+          role: 'assistant',
+          content: errorText,
+          error: true,
+        };
+
+        this.history.push(apiErrorPrompt);
+        return apiErrorPrompt;
+      } catch (templateError) {
+        console.error('Error using API error template:', templateError);
+        // Fall through to standard error handling
+      }
+    }
+
+    // Standard error handling for non-API errors
     const errorPrompt: Prompt = {
       role: 'assistant',
-      content: `Sorry, there was an error processing your request: ${error.message}`,
+      content: `Sorry, there was an error processing your request: ${this.createUserFriendlyErrorMessage(
+        error
+      )}`,
       error: true,
     };
     this.history.push(errorPrompt);
     return errorPrompt;
+  }
+
+  // Helper method to create user-friendly error messages
+  private createUserFriendlyErrorMessage(error: any): string {
+    if (!error) return 'Unknown error occurred';
+
+    const errorMessage = error.message || error.toString();
+
+    // Common error patterns and their user-friendly equivalents
+    const errorMappings = [
+      {
+        pattern: /network.*error|fetch.*failed|connection.*refused/i,
+        message: 'Network connection error. Please check your internet connection and try again.',
+      },
+      {
+        pattern: /timeout|timed out/i,
+        message: 'Request timed out. The operation took too long to complete.',
+      },
+      {
+        pattern: /unauthorized|401/i,
+        message: 'Authentication error. Please check your credentials.',
+      },
+      {
+        pattern: /forbidden|403/i,
+        message: 'Access denied. You may not have permission for this operation.',
+      },
+      { pattern: /not found|404/i, message: 'The requested resource was not found.' },
+      {
+        pattern: /rate limit|429/i,
+        message: 'Too many requests. Please wait a moment and try again.',
+      },
+      { pattern: /internal server error|500/i, message: 'Server error. Please try again later.' },
+      {
+        pattern: /bad gateway|502/i,
+        message: 'Gateway error. The server is temporarily unavailable.',
+      },
+      {
+        pattern: /service unavailable|503/i,
+        message: 'Service temporarily unavailable. Please try again later.',
+      },
+      {
+        pattern: /gateway timeout|504/i,
+        message: 'Gateway timeout. The request took too long to process.',
+      },
+      {
+        pattern: /parse|json/i,
+        message: 'Data format error. The response was not in the expected format.',
+      },
+      { pattern: /abort|cancel/i, message: 'Operation was cancelled.' },
+    ];
+
+    // Find matching error pattern
+    for (const mapping of errorMappings) {
+      if (mapping.pattern.test(errorMessage)) {
+        return mapping.message;
+      }
+    }
+
+    // If no pattern matches, return a simplified version of the original message
+    const cleanMessage = errorMessage
+      .replace(/^Error:\s*/i, '')
+      .replace(/^TypeError:\s*/i, '')
+      .replace(/^ReferenceError:\s*/i, '')
+      .replace(/^SyntaxError:\s*/i, '')
+      .trim();
+
+    return cleanMessage || 'An unexpected error occurred. Please try again.';
   }
 
   // Change from 'protected' to 'public' to match the base class
@@ -605,7 +783,8 @@ export default class LangChainManager extends AIManager {
         if (processedContent) {
           totalResponseSize += processedContent.length;
 
-          if (this.providerId === 'azure') {
+          // Claude (Anthropic) and Azure don't support FunctionMessage
+          if (this.providerId === 'azure' || this.providerId === 'anthropic') {
             messages.push(
               new AIMessage(`Tool Response (${prompt.toolCallId}): ${processedContent}`)
             );
