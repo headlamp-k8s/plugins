@@ -11,9 +11,9 @@ import {
   Typography,
 } from '@mui/material';
 import React from 'react';
-import { getProviderById } from '../config/modelConfig';
-import { getModelDisplayName, getProviderModelsForChat } from '../utils/modalUtils';
-import { StoredProviderConfig } from '../utils/ProviderConfigManager';
+import { getProviderById } from '../../config/modelConfig';
+import { getModelDisplayName, getProviderModelsForChat } from '../../utils/modalUtils';
+import { StoredProviderConfig } from '../../utils/ProviderConfigManager';
 import TestModeInput from './TestModeInput';
 
 interface AIInputSectionProps {

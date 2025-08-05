@@ -4,8 +4,7 @@ import React, { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link as RouterLink, useHistory } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
-import LogsButton from './components/LogsButton';
-import YamlDisplay from './components/YamlDisplay';
+import { LogsButton, YamlDisplay } from './components';
 import { getHeadlampLink } from './utils/promptLinkHelper';
 import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
 

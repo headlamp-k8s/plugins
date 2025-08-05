@@ -15,7 +15,7 @@ import {
   Typography,
 } from '@mui/material';
 import React from 'react';
-import ModelSelector from './components/ModelSelector';
+import { ModelSelector } from './components';
 import { getDefaultConfig } from './config/modelConfig';
 import AIPrompt from './modal';
 import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';

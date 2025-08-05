@@ -6,11 +6,13 @@ import { isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AIManager, { Prompt } from './ai/manager';
-import AIAssistantHeader from './components/AIAssistantHeader';
-import AIChatContent from './components/AIChatContent';
-import { AIInputSection } from './components/AIInputSection';
-import ApiConfirmationDialog from './components/ApiConfirmationDialog';
-import { PromptSuggestions } from './components/PromptSuggestions';
+import {
+  AIAssistantHeader,
+  AIChatContent,
+  AIInputSection,
+  ApiConfirmationDialog,
+  PromptSuggestions,
+} from './components';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
 import { useClusterWarnings } from './hooks/useClusterWarnings';

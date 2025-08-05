@@ -27,14 +27,14 @@ import {
   getProviderById,
   getProviderFields,
   modelProviders,
-} from '../config/modelConfig';
+} from '../../config/modelConfig';
 import {
   deleteProviderConfig,
   getActiveConfig,
   SavedConfigurations,
   saveProviderConfig,
   StoredProviderConfig,
-} from '../utils/ProviderConfigManager';
+} from '../../utils/ProviderConfigManager';
 
 interface ProviderSelectionDialogProps {
   open: boolean;

@@ -2,7 +2,7 @@ import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Chip, Typography } from '@mui/material';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
-import { getSettingsURL } from '../utils';
+import { getSettingsURL } from '../../utils';
 
 interface AIAssistantHeaderProps {
   isTestMode: boolean;
