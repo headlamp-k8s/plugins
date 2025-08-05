@@ -56,6 +56,7 @@ export default class LangChainManager extends AIManager {
             apiKey: config.apiKey,
             modelName: config.model,
             dangerouslyAllowBrowser: true,
+            verbose: true,
           });
         case 'azure':
           if (!config.apiKey || !config.endpoint || !config.deploymentName) {
@@ -68,6 +69,7 @@ export default class LangChainManager extends AIManager {
             azureOpenAIApiVersion: '2024-12-01-preview',
             modelName: config.model,
             dangerouslyAllowBrowser: true,
+            verbose: true,
           });
         case 'anthropic':
           if (!config.apiKey) {
@@ -77,6 +79,7 @@ export default class LangChainManager extends AIManager {
             apiKey: config.apiKey,
             modelName: config.model,
             dangerouslyAllowBrowser: true,
+            verbose: true,
           });
         case 'mistral':
           if (!config.apiKey) {
@@ -86,6 +89,7 @@ export default class LangChainManager extends AIManager {
             apiKey: config.apiKey,
             modelName: config.model,
             dangerouslyAllowBrowser: true,
+            verbose: true,
           });
         case 'gemini': {
           if (!config.apiKey) {
@@ -95,6 +99,7 @@ export default class LangChainManager extends AIManager {
             apiKey: config.apiKey,
             model: config.model,
             dangerouslyAllowBrowser: true,
+            verbose: true,
           });
         }
         case 'local':
@@ -105,6 +110,7 @@ export default class LangChainManager extends AIManager {
             baseUrl: config.baseUrl,
             model: config.model,
             dangerouslyAllowBrowser: true,
+            verbose: true,
           });
         default:
           throw new Error(`Unsupported provider: ${providerId}`);
