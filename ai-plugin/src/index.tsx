@@ -130,7 +130,7 @@ function HeadlampAIPrompt() {
           selected={pluginState.isUIPanelOpen}
           size="small"
         >
-          <Icon icon="mdi:sparkles" width="24px" />
+          <Icon icon="ai-assistant:logo" width="24px" />
         </ToggleButton>
       </Tooltip>
     </Box>
