@@ -17,6 +17,7 @@ import {
 import React from 'react';
 import { ModelSelector } from './components';
 import { getDefaultConfig } from './config/modelConfig';
+import { isDevMode } from './helper';
 import AIPrompt from './modal';
 import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
 import { getActiveConfig, SavedConfigurations } from './utils/ProviderConfigManager';
@@ -229,7 +230,7 @@ function Settings() {
     });
   };
 
-  const isTestMode = savedConfigs?.testMode || false;
+  const isTestMode = isDevMode();
 
   const toolsList = getAllAvailableTools();
   const pluginSettings = savedConfigs;
@@ -247,24 +248,28 @@ function Settings() {
       </Typography>
 
       <Divider sx={{ my: 3 }} />
+      {isTestMode && (
+        <>
+          <Box sx={{ mb: 3, ml: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch checked={isTestMode} onChange={handleTestModeChange} color="primary" />
+              }
+              label={
+                <Box>
+                  <Typography variant="body1">Test Mode</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Enable test mode to manually input AI responses and see how they render in the
+                    chat window
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
 
-      <Box sx={{ mb: 3, ml: 2 }}>
-        <FormControlLabel
-          control={<Switch checked={isTestMode} onChange={handleTestModeChange} color="primary" />}
-          label={
-            <Box>
-              <Typography variant="body1">Test Mode</Typography>
-              <Typography variant="caption" color="text.secondary">
-                Enable test mode to manually input AI responses and see how they render in the chat
-                window
-              </Typography>
-            </Box>
-          }
-        />
-      </Box>
-
-      <Divider sx={{ my: 3 }} />
-
+          <Divider sx={{ my: 3 }} />
+        </>
+      )}
       <ModelSelector
         selectedProvider={activeConfiguration.providerId}
         config={activeConfiguration.config}

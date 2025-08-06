@@ -26,3 +26,8 @@ export const isSpecificResourceRequestHelper = (url: string): boolean => {
 
   return isSpecific;
 };
+
+export function isDevMode() {
+  // @ts-ignore
+  return import.meta.env.DEV;
+}

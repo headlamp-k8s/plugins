@@ -15,6 +15,7 @@ import {
 } from './components';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
+import { isDevMode } from './helper';
 import { useClusterWarnings } from './hooks/useClusterWarnings';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import LangChainManager from './langchain/LangChainManager';
@@ -76,7 +77,7 @@ export default function AIPrompt(props: {
   );
 
   // Test mode detection
-  const isTestMode = pluginSettings?.testMode || false;
+  const isTestMode = isDevMode();
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
