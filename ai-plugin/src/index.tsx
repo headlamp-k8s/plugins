@@ -9,18 +9,22 @@ import {
   Box,
   Divider,
   FormControlLabel,
+  Popover,
   Switch,
   ToggleButton,
   Tooltip,
   Typography,
+  Button,
+  IconButton,
 } from '@mui/material';
 import React from 'react';
+import { useHistory } from 'react-router-dom';
 import { ModelSelector } from './components';
 import { getDefaultConfig } from './config/modelConfig';
-import { isDevMode } from './helper';
+import { isTestModeCheck } from './helper';
 import AIPrompt from './modal';
-import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
-import { getActiveConfig, SavedConfigurations } from './utils/ProviderConfigManager';
+import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig, getSettingsURL } from './utils';
+import { getActiveConfig, SavedConfigurations, getSavedConfigurations } from './utils/ProviderConfigManager';
 import { getAllAvailableTools, isToolEnabled, toggleTool } from './utils/ToolConfigManager';
 
 // Memoized UI Panel component to prevent unnecessary re-renders
@@ -117,11 +121,71 @@ registerUIPanel({
 
 function HeadlampAIPrompt() {
   const pluginState = useGlobalState();
+  const savedConfigs = usePluginConfig();
+  const history = useHistory();
+  const [popoverAnchor, setPopoverAnchor] = React.useState<HTMLElement | null>(null);
+  const [showPopover, setShowPopover] = React.useState(false);
+
+  const hasShownPopover = savedConfigs?.configPopoverShown || false;
+
+  const savedConfigData = React.useMemo(() => {
+    return getSavedConfigurations(savedConfigs);
+  }, [savedConfigs]);
+
+  const hasAnyValidConfig = savedConfigData.providers && savedConfigData.providers.length > 0;
+
+  // Reset popover shown state when configurations change from none to some
+  React.useEffect(() => {
+    if (hasAnyValidConfig && hasShownPopover) {
+      // User now has configurations, reset the popover shown state
+      // so it can show again if they remove all configurations later
+      const currentConf = pluginStore.get() || {};
+      pluginStore.update({
+        ...currentConf,
+        configPopoverShown: false,
+      });
+    }
+  }, [hasAnyValidConfig, hasShownPopover]);
+
+  // Show popover automatically if no configurations and hasn't been shown before
+  React.useEffect(() => {
+    if (!hasAnyValidConfig && !hasShownPopover && !pluginState.isUIPanelOpen) {
+      // Show popover after a short delay to ensure component is mounted
+      const timer = setTimeout(() => {
+        if (!!popoverAnchor) {
+          setShowPopover(true);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      // Close popover if conditions are not met
+      setShowPopover(false);
+    }
+  }, [hasAnyValidConfig, popoverAnchor, hasShownPopover, pluginState.isUIPanelOpen]);
+
+  const handleClosePopover = () => {
+    setShowPopover(false);
+    // Save the popover shown state to plugin settings
+    const currentConf = pluginStore.get() || {};
+    pluginStore.update({
+      ...currentConf,
+      configPopoverShown: true,
+    });
+  };
+
+  const handleConfigureClick = () => {
+    handleClosePopover();
+    // Navigate to settings page
+    history.push(getSettingsURL());
+  };
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
       <Tooltip title="AI Assistant">
         <ToggleButton
+          ref={(el) => {
+            setPopoverAnchor(el);
+          }}
           aria-label={'AI Assistant'}
           onClick={() => {
             // Toggle the UI panel state
@@ -133,6 +197,53 @@ function HeadlampAIPrompt() {
           <Icon icon="ai-assistant:logo" width="24px" />
         </ToggleButton>
       </Tooltip>
+
+      <Popover
+        open={showPopover}
+        anchorEl={popoverAnchor}
+        onClose={handleClosePopover}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+        slotProps={{
+          paper: {
+            sx: {
+              p: 2,
+              maxWidth: 300,
+              mt: 1,
+            },
+          },
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            Configure AI Assistant
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={handleClosePopover}
+            sx={{ ml: 1, mt: -0.5 }}
+          >
+            <Icon icon="mdi:close" />
+          </IconButton>
+        </Box>
+        <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+          To use the AI Assistant, you need to configure at least one AI model provider in the settings.
+        </Typography>
+        <Button
+          variant="contained"
+          size="small"
+          onClick={handleConfigureClick}
+          fullWidth
+        >
+          Open Settings
+        </Button>
+      </Popover>
     </Box>
   );
 }
@@ -230,7 +341,16 @@ function Settings() {
     });
   };
 
-  const isTestMode = isDevMode();
+  const handleResetPopover = () => {
+    const currentConf = pluginStore.get() || {};
+    pluginStore.update({
+      ...currentConf,
+      configPopoverShown: false,
+    });
+  };
+
+  const isTestMode = isTestModeCheck();
+  const hasShownConfigPopover = savedConfigs?.configPopoverShown || false;
 
   const toolsList = getAllAvailableTools();
   const pluginSettings = savedConfigs;
@@ -252,19 +372,39 @@ function Settings() {
         <>
           <Box sx={{ mb: 3, ml: 2 }}>
             <FormControlLabel
-              control={
-                <Switch checked={isTestMode} onChange={handleTestModeChange} color="primary" />
-              }
+              control={<Switch checked={isTestMode} onChange={handleTestModeChange} color="primary" />}
               label={
                 <Box>
                   <Typography variant="body1">Test Mode</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Enable test mode to manually input AI responses and see how they render in the
-                    chat window
+                    Enable test mode to manually input AI responses and see how they render in the chat
+                    window
                   </Typography>
                 </Box>
               }
             />
+          </Box>
+
+          <Box sx={{ mb: 3, ml: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box>
+                <Typography variant="body1">Configuration Popover</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {hasShownConfigPopover
+                    ? 'The configuration popover has been shown and dismissed'
+                    : 'The configuration popover will show when no AI providers are configured'
+                  }
+                </Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleResetPopover}
+                disabled={!hasShownConfigPopover}
+              >
+                Reset
+              </Button>
+            </Box>
           </Box>
 
           <Divider sx={{ my: 3 }} />
