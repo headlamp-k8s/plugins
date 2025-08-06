@@ -1,6 +1,6 @@
 {
-  "name": "@headlamp-k8s/headlamp-ai",
-  "version": "0.1.0-beta",
+  "name": "@headlamp-k8s/ai-assistant",
+  "version": "0.1.0-alpha",
   "description": "Your Headlamp plugin",
   "scripts": {
     "start": "headlamp-plugin start",

@@ -35,7 +35,7 @@ export default function AIChatContent({
               <Link
                 routeName="pluginDetails"
                 params={{
-                  name: '@headlamp-k8s/headlamp-ai',
+                  name: '@headlamp-k8s/ai-assistant',
                 }}
               >
                 Settings

@@ -3,7 +3,7 @@ import React from 'react';
 import { useBetween } from 'use-between';
 import { StoredProviderConfig } from './utils/ProviderConfigManager';
 
-export const PLUGIN_NAME = '@headlamp-k8s/headlamp-ai';
+export const PLUGIN_NAME = '@headlamp-k8s/ai-assistant';
 export const getSettingsURL = () => `/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`;
 
 export const pluginStore = new ConfigStore(PLUGIN_NAME);
