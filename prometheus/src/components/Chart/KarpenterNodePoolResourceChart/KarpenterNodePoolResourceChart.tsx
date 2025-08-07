@@ -1,8 +1,8 @@
-import Chart from "../Chart/Chart";
-import { createDataProcessor, createTickTimestampFormatter } from '../../../util';
-import { alpha, useTheme } from '@mui/material/styles';
 import { blue, red } from '@mui/material/colors';
-import { fetchMetrics } from "../../../request";
+import { alpha, useTheme } from '@mui/material/styles';
+import { fetchMetrics } from '../../../request';
+import { createDataProcessor, createTickTimestampFormatter } from '../../../util';
+import Chart from '../Chart/Chart';
 
 interface KarpenterNodePoolResourceChartProps {
   refresh: boolean;
@@ -12,11 +12,10 @@ interface KarpenterNodePoolResourceChartProps {
   usageQuery: string;
   limitQuery: string;
   timespan: string;
-  NodePoolTooltip
+  NodePoolTooltip;
 }
 
 export const KarpenterNodePoolResourceChart = (props: KarpenterNodePoolResourceChartProps) => {
-
   const xTickFormatter = createTickTimestampFormatter(props.timespan);
   const theme = useTheme();
 
@@ -34,7 +33,7 @@ export const KarpenterNodePoolResourceChart = (props: KarpenterNodePoolResourceC
       strokeColor: alpha(red[600], 0.8),
       fillColor: alpha(red[400], 0.1),
       dataProcessor: createDataProcessor(0),
-    }
+    },
   ];
 
   const xAxisProps = {
@@ -43,7 +42,7 @@ export const KarpenterNodePoolResourceChart = (props: KarpenterNodePoolResourceC
     tick: (tickProps: any) => {
       const value = xTickFormatter(tickProps.payload.value);
       if (!value) return null;
-      
+
       return (
         <g
           transform={`translate(${tickProps.x},${tickProps.y})`}

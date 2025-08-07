@@ -4,24 +4,24 @@ import { fetchMetrics } from '../../../request';
 import { createDataProcessor, createTickTimestampFormatter } from '../../../util';
 import Chart from '../Chart/Chart';
 
-interface KarpenterDisruptionChartProps {
+interface KarpenterPendingPodsProps {
   refresh: boolean;
   prometheusPrefix: string;
   resolution: string;
   subPath: string;
-  activeNodesQuery: string;
+  pendingPodsQuery: string;
   timespan: string;
   NodePoolTooltip;
 }
 
-export const KarpenterDisruptionChart = (props: KarpenterDisruptionChartProps) => {
+export const KarpenterPendingPods = (props: KarpenterPendingPodsProps) => {
   const xTickFormatter = createTickTimestampFormatter(props.timespan);
   const theme = useTheme();
 
   const plots = [
     {
-      query: props.activeNodesQuery,
-      name: 'Allowed Disruptions',
+      query: props.pendingPodsQuery,
+      name: 'Pending Pods',
       strokeColor: alpha(green[600], 0.8),
       fillColor: alpha(green[400], 0.1),
       dataProcessor: createDataProcessor(0),

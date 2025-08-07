@@ -5,14 +5,14 @@ import {
   registerDetailsViewSectionsProcessor,
   registerPluginSettings,
 } from '@kinvolk/headlamp-plugin/lib';
+import { KarpenterChart } from '../src/components/Chart/KarpenterChart/KarpenterChart';
 import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import { ChartEnabledKinds, PLUGIN_NAME } from './util';
-import { KarpenterChart } from "../src/components/Chart/KarpenterChart/KarpenterChart"
-import { getNodePoolChartConfigs, getNodeClaimChartConfigs } from './util';
+import { getNodeClaimChartConfigs, getNodePoolChartConfigs } from './util';
 
 function PrometheusMetrics(resource: DetailsViewSectionProps) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
@@ -88,20 +88,15 @@ function PrometheusMetrics(resource: DetailsViewSectionProps) {
   }
 
   if (resource.kind === 'NodePool') {
-  const name = resource.jsonData.metadata.name;
-
-  return (
-    <KarpenterChart
-        chartConfigs={getNodePoolChartConfigs(name)}
-        defaultChart="usage"
-      />
-  );
-}
-
-   if (resource.kind === 'NodeClaim') {
     const name = resource.jsonData.metadata.name;
 
-    const nodepool = resource.jsonData.metadata.labels['karpenter.sh/nodepool']
+    return <KarpenterChart chartConfigs={getNodePoolChartConfigs(name)} defaultChart="usage" />;
+  }
+
+  if (resource.kind === 'NodeClaim') {
+    const name = resource.jsonData.metadata.name;
+
+    const nodepool = resource.jsonData.metadata.labels['karpenter.sh/nodepool'];
 
     return (
       <KarpenterChart

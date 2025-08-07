@@ -1,8 +1,8 @@
-import Chart from "../Chart/Chart";
-import { createDataProcessor, createTickTimestampFormatter } from '../../../util';
-import { alpha, useTheme } from '@mui/material/styles';
 import { green } from '@mui/material/colors';
-import { fetchMetrics } from "../../../request";
+import { alpha, useTheme } from '@mui/material/styles';
+import { fetchMetrics } from '../../../request';
+import { createDataProcessor, createTickTimestampFormatter } from '../../../util';
+import Chart from '../Chart/Chart';
 
 interface NodeClaimCreationChartProps {
   refresh: boolean;
@@ -11,13 +11,13 @@ interface NodeClaimCreationChartProps {
   subPath: string;
   nodeClaimCreationQuery: string;
   timespan: string;
-  NodePoolTooltip
+  NodePoolTooltip;
 }
 
 export const NodeClaimCreationChart = (props: NodeClaimCreationChartProps) => {
   const xTickFormatter = createTickTimestampFormatter(props.timespan);
   const theme = useTheme();
-  
+
   const plots = [
     {
       query: props.nodeClaimCreationQuery,
@@ -25,7 +25,7 @@ export const NodeClaimCreationChart = (props: NodeClaimCreationChartProps) => {
       strokeColor: alpha(green[600], 0.8),
       fillColor: alpha(green[400], 0.1),
       dataProcessor: createDataProcessor(0),
-    }
+    },
   ];
 
   const xAxisProps = {

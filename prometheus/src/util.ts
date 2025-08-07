@@ -1,10 +1,10 @@
 import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
-import { isPrometheusInstalled, KubernetesType } from './request';
-import { KarpenterNodePoolResourceChart } from './components/Chart/NodePoolChart/NodePoolChart';
 import { KarpenterDisruptionChart } from './components/Chart/KarpenterDisruptionChart/KarpenterDisruptionChart';
-import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/KarpenterPendingPods';
 import { NodeClaimCreationChart } from './components/Chart/KarpenterNodeClaimCreationChart/KarpenterNodeClaimCreationChart';
 import { KarpenterNodeClaimsProvisionChart } from './components/Chart/KarpenterNodeClaimProvisionChart/KarpenterNodeClaimProvisionChart';
+import { KarpenterNodePoolResourceChart } from './components/Chart/KarpenterNodePoolResourceChart/KarpenterNodePoolResourceChart';
+import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/KarpenterPendingPods';
+import { isPrometheusInstalled, KubernetesType } from './request';
 
 export const PLUGIN_NAME = 'prometheus';
 
@@ -166,7 +166,7 @@ export const ChartEnabledKinds = [
   'ScaledObject',
   'ScaledJob',
   'NodePool',
-  'NodeClaim'
+  'NodeClaim',
 ];
 
 /**
@@ -415,7 +415,9 @@ export const getNodeClaimChartConfigs = (name: string, nodepool?: string) => [
     label: 'Creation Rate',
     icon: 'mdi:chart-line-variant',
     queries: {
-      nodeClaimCreationQuery: `sum(rate(karpenter_nodeclaims_created_total{nodepool="${nodepool || 'all'}"}[5m]))`,
+      nodeClaimCreationQuery: `sum(rate(karpenter_nodeclaims_created_total{nodepool="${
+        nodepool || 'all'
+      }"}[5m]))`,
     },
     component: NodeClaimCreationChart,
   },

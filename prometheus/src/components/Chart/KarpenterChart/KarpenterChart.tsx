@@ -9,6 +9,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import { useTheme } from '@mui/material/styles';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useEffect, useState } from 'react';
 import {
   getConfigStore,
@@ -17,9 +18,8 @@ import {
   getPrometheusResolution,
   getPrometheusSubPath,
 } from '../../../util';
-import { PrometheusNotFoundBanner } from '../common';
 import { createTickTimestampFormatter } from '../../../util';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import { PrometheusNotFoundBanner } from '../common';
 import { CustomToggleButton } from '../GenericMetricsChart/GenericMetricsChart';
 
 interface ChartConfig {

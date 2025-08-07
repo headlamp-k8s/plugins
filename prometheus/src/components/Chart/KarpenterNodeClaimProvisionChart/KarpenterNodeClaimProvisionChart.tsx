@@ -1,10 +1,10 @@
-import Chart from "../Chart/Chart";
-import { createDataProcessor, createTickTimestampFormatter } from '../../../util';
-import { alpha, useTheme } from '@mui/material/styles';
 import { orange } from '@mui/material/colors';
-import { fetchMetrics } from "../../../request";
+import { alpha, useTheme } from '@mui/material/styles';
+import { fetchMetrics } from '../../../request';
+import { createDataProcessor, createTickTimestampFormatter } from '../../../util';
+import Chart from '../Chart/Chart';
 
-interface KarpenterNodeClaimsProvisionChart {
+interface KarpenterNodeClaimsProvisionChartProps {
   refresh: boolean;
   prometheusPrefix: string;
   resolution: string;
@@ -14,8 +14,9 @@ interface KarpenterNodeClaimsProvisionChart {
   NodePoolTooltip;
 }
 
-export const KarpenterNodeClaimsProvisionChart = (props: KarpenterNodeClaimsProvisionChart) => {
-
+export const KarpenterNodeClaimsProvisionChart = (
+  props: KarpenterNodeClaimsProvisionChartProps
+) => {
   const xTickFormatter = createTickTimestampFormatter(props.timespan);
   const theme = useTheme();
 
@@ -26,7 +27,7 @@ export const KarpenterNodeClaimsProvisionChart = (props: KarpenterNodeClaimsProv
       strokeColor: alpha(orange[600], 0.8),
       fillColor: alpha(orange[400], 0.1),
       dataProcessor: createDataProcessor(0),
-    }
+    },
   ];
 
   const xAxisProps = {
@@ -36,7 +37,10 @@ export const KarpenterNodeClaimsProvisionChart = (props: KarpenterNodeClaimsProv
       const value = xTickFormatter(tickProps.payload.value);
       if (!value) return null;
       return (
-        <g transform={`translate(${tickProps.x},${tickProps.y})`} fill={theme.palette.chartStyles.labelColor}>
+        <g
+          transform={`translate(${tickProps.x},${tickProps.y})`}
+          fill={theme.palette.chartStyles.labelColor}
+        >
           <text x={0} y={10} dy={0} textAnchor="middle">
             {value}
           </text>
