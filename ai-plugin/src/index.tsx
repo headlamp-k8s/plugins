@@ -7,15 +7,15 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import {
   Box,
+  Button,
   Divider,
   FormControlLabel,
+  IconButton,
   Popover,
   Switch,
   ToggleButton,
   Tooltip,
   Typography,
-  Button,
-  IconButton,
 } from '@mui/material';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
@@ -23,8 +23,12 @@ import { ModelSelector } from './components';
 import { getDefaultConfig } from './config/modelConfig';
 import { isTestModeCheck } from './helper';
 import AIPrompt from './modal';
-import { PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig, getSettingsURL } from './utils';
-import { getActiveConfig, SavedConfigurations, getSavedConfigurations } from './utils/ProviderConfigManager';
+import { getSettingsURL, PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
+import {
+  getActiveConfig,
+  getSavedConfigurations,
+  SavedConfigurations,
+} from './utils/ProviderConfigManager';
 import { getAllAvailableTools, isToolEnabled, toggleTool } from './utils/ToolConfigManager';
 
 // Memoized UI Panel component to prevent unnecessary re-renders
@@ -183,7 +187,7 @@ function HeadlampAIPrompt() {
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
       <Tooltip title="AI Assistant">
         <ToggleButton
-          ref={(el) => {
+          ref={el => {
             setPopoverAnchor(el);
           }}
           aria-label={'AI Assistant'}
@@ -220,27 +224,21 @@ function HeadlampAIPrompt() {
           },
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}
+        >
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
             Configure AI Assistant
           </Typography>
-          <IconButton
-            size="small"
-            onClick={handleClosePopover}
-            sx={{ ml: 1, mt: -0.5 }}
-          >
+          <IconButton size="small" onClick={handleClosePopover} sx={{ ml: 1, mt: -0.5 }}>
             <Icon icon="mdi:close" />
           </IconButton>
         </Box>
         <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-          To use the AI Assistant, you need to configure at least one AI model provider in the settings.
+          To use the AI Assistant, you need to configure at least one AI model provider in the
+          settings.
         </Typography>
-        <Button
-          variant="contained"
-          size="small"
-          onClick={handleConfigureClick}
-          fullWidth
-        >
+        <Button variant="contained" size="small" onClick={handleConfigureClick} fullWidth>
           Open Settings
         </Button>
       </Popover>
@@ -372,13 +370,15 @@ function Settings() {
         <>
           <Box sx={{ mb: 3, ml: 2 }}>
             <FormControlLabel
-              control={<Switch checked={isTestMode} onChange={handleTestModeChange} color="primary" />}
+              control={
+                <Switch checked={isTestMode} onChange={handleTestModeChange} color="primary" />
+              }
               label={
                 <Box>
                   <Typography variant="body1">Test Mode</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Enable test mode to manually input AI responses and see how they render in the chat
-                    window
+                    Enable test mode to manually input AI responses and see how they render in the
+                    chat window
                   </Typography>
                 </Box>
               }
@@ -392,8 +392,7 @@ function Settings() {
                 <Typography variant="caption" color="text.secondary">
                   {hasShownConfigPopover
                     ? 'The configuration popover has been shown and dismissed'
-                    : 'The configuration popover will show when no AI providers are configured'
-                  }
+                    : 'The configuration popover will show when no AI providers are configured'}
                 </Typography>
               </Box>
               <Button

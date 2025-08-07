@@ -254,7 +254,7 @@ export const handleActualApiRequest = async (
         const logSummary = logText
           ? `Logs retrieved for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${
               resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
-            }. ${logText.split('\n').filter(line => line.trim()).length} log lines available.`
+            }. ${logText.split('\n')}`
           : `No logs available for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${
               resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
             }.`;

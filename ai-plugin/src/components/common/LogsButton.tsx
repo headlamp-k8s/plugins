@@ -30,11 +30,6 @@ const LogsButton: React.FC<LogsButtonProps> = ({
     return parts.join(' ');
   };
 
-  const getLogLineCount = () => {
-    if (!logs) return 0;
-    return logs.split('\n').filter(line => line.trim().length > 0).length;
-  };
-
   return (
     <>
       <Paper
@@ -54,17 +49,14 @@ const LogsButton: React.FC<LogsButtonProps> = ({
             <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
               {getTitle()}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {getLogLineCount()} log lines available
-            </Typography>
           </Box>
           <Button
             variant="contained"
-            startIcon={<Icon icon="mdi:text-box-outline" />}
+            startIcon={<Icon icon="mdi:code-braces" />}
             onClick={() => setDialogOpen(true)}
             size="small"
           >
-            View Logs
+            View in Editor
           </Button>
         </Box>
       </Paper>

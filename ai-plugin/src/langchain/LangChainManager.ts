@@ -180,11 +180,19 @@ export default class LangChainManager extends AIManager {
   }
 
   configureTools(tools: any[], kubernetesContext: KubernetesToolContext): void {
+    console.log('🔧 Configuring tools for LangChain with context:', {
+      toolCount: tools.length,
+      selectedClusters: kubernetesContext.selectedClusters,
+      providerId: this.providerId,
+    });
+
     // Configure the Kubernetes context for the KubernetesTool
     this.toolManager.configureKubernetesContext(kubernetesContext);
 
     // Bind all tools to the model for compatible providers (OpenAI, Azure, etc.)
     this.boundModel = this.toolManager.bindToModel(this.model, this.providerId);
+
+    console.log('🔧 Tools bound to model successfully, boundModel exists:', !!this.boundModel);
   }
 
   // Helper method to prepare chat history for prompt template
@@ -303,7 +311,15 @@ export default class LangChainManager extends AIManager {
       new HumanMessage(chainInput.input),
     ];
 
-    const response = await model.invoke(messages, {
+    // IMPORTANT: Use the boundModel (which has tools) instead of the original model
+    const modelToUse = this.boundModel || model;
+    console.log('🔧 Using model for tool-enabled request:', {
+      usingBoundModel: !!this.boundModel,
+      modelHasBindTools: typeof modelToUse.bindTools === 'function',
+      toolsAvailable: this.toolManager.getToolNames(),
+    });
+
+    const response = await modelToUse.invoke(messages, {
       signal: this.currentAbortController.signal,
     });
 
@@ -311,7 +327,17 @@ export default class LangChainManager extends AIManager {
 
     // Handle tool calls if present
     if (response.tool_calls?.length) {
+      console.log(
+        '🔧 Tool calls detected:',
+        response.tool_calls.length,
+        response.tool_calls.map(tc => ({
+          name: tc.name,
+          args: tc.args,
+        }))
+      );
       return await this.handleToolCalls(response);
+    } else {
+      console.log('💬 No tool calls detected in response, treating as regular message');
     }
 
     // Handle regular response

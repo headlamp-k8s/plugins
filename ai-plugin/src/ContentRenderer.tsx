@@ -71,14 +71,14 @@ const convertJsonToYaml = (content: string): string => {
   try {
     // First, try to parse as JSON
     const parsed = JSON.parse(content.trim());
-    
+
     // Check if it's a Kubernetes resource (has apiVersion and kind)
     if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
       // Convert to YAML format
-      return YAML.stringify(parsed, { 
+      return YAML.stringify(parsed, {
         sortMapEntries: false,
         lineWidth: 0,
-        minContentWidth: 0
+        minContentWidth: 0,
       });
     }
   } catch (error) {
@@ -94,7 +94,7 @@ const isJsonKubernetesResource = (content: string): boolean => {
     if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
       return false;
     }
-    
+
     const parsed = JSON.parse(trimmed);
     return !!(parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind);
   } catch (error) {
@@ -209,7 +209,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
               children.includes('kind:')));
 
         // Check if this is a JSON code block with Kubernetes resource
-        const isJsonKubernetesBlock = 
+        const isJsonKubernetesBlock =
           !props.inline &&
           typeof children === 'string' &&
           (className === 'language-json' || isJsonKubernetesResource(children));
@@ -530,7 +530,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
         !content.includes('```yaml') &&
         !content.includes('```yml');
 
-      const hasJsonKubernetesResource = 
+      const hasJsonKubernetesResource =
         content.includes('"apiVersion":') &&
         content.includes('"kind":') &&
         content.includes('"metadata":');
