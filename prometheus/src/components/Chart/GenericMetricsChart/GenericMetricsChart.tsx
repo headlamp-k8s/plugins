@@ -248,7 +248,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
   );
 }
 
-function CustomToggleButton({
+export function CustomToggleButton({
   label,
   icon,
   value,
