@@ -11,11 +11,13 @@ import {
   Divider,
   FormControlLabel,
   IconButton,
-  Popover,
+  Paper,
+  Popper,
   Switch,
   ToggleButton,
   Tooltip,
   Typography,
+  useTheme
 } from '@mui/material';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
@@ -129,6 +131,7 @@ function HeadlampAIPrompt() {
   const history = useHistory();
   const [popoverAnchor, setPopoverAnchor] = React.useState<HTMLElement | null>(null);
   const [showPopover, setShowPopover] = React.useState(false);
+  const theme = useTheme();
 
   const hasShownPopover = savedConfigs?.configPopoverShown || false;
 
@@ -202,28 +205,31 @@ function HeadlampAIPrompt() {
         </ToggleButton>
       </Tooltip>
 
-      <Popover
+      <Popper
         open={showPopover}
         anchorEl={popoverAnchor}
-        onClose={handleClosePopover}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'center',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'center',
-        }}
-        slotProps={{
-          paper: {
-            sx: {
-              p: 2,
-              maxWidth: 300,
-              mt: 1,
+        placement="bottom"
+        modifiers={[
+          {
+            name: 'offset',
+            options: {
+              offset: [0, 8],
             },
           },
+        ]}
+        sx={{
+          zIndex: theme.zIndex.modal,
         }}
       >
+        <Paper
+          elevation={8}
+          sx={{
+            p: 2,
+            maxWidth: 300,
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
         <Box
           sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}
         >
@@ -241,7 +247,8 @@ function HeadlampAIPrompt() {
         <Button variant="contained" size="small" onClick={handleConfigureClick} fullWidth>
           Open Settings
         </Button>
-      </Popover>
+        </Paper>
+      </Popper>
     </Box>
   );
 }
