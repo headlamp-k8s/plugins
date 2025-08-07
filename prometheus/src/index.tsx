@@ -12,6 +12,7 @@ import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import { ChartEnabledKinds, PLUGIN_NAME } from './util';
 import { KarpenterChart } from "../src/components/Chart/KarpenterChart/KarpenterChart"
+import { getNodePoolChartConfigs, getNodeClaimChartConfigs } from './util';
 
 function PrometheusMetrics(resource: DetailsViewSectionProps) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
@@ -91,12 +92,24 @@ function PrometheusMetrics(resource: DetailsViewSectionProps) {
 
   return (
     <KarpenterChart
-      usageQuery={`karpenter_nodepools_usage{nodepool='${name}'}`}
-      limitQuery={`karpenter_nodepools_limit{nodepool='${name}'}`}
-      activeNodesQuery={`count(karpenter_nodes_allocatable{nodepool='${name}'})`}
-    />
+        chartConfigs={getNodePoolChartConfigs(name)}
+        defaultChart="usage"
+      />
   );
 }
+
+   if (resource.kind === 'NodeClaim') {
+    const name = resource.jsonData.metadata.name;
+
+    const nodepool = resource.jsonData.metadata.labels['karpenter.sh/nodepool']
+
+    return (
+      <KarpenterChart
+        chartConfigs={getNodeClaimChartConfigs(name, nodepool)}
+        defaultChart="creation-rate"
+      />
+    );
+  }
 }
 
 registerPluginSettings(PLUGIN_NAME, Settings, true);
