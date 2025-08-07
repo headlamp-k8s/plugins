@@ -11,6 +11,7 @@ export interface StoredProviderConfig {
 export interface SavedConfigurations {
   providers: StoredProviderConfig[];
   defaultProviderIndex?: number;
+  termsAccepted?: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
     return {
       providers: data.providers,
       defaultProviderIndex: data.defaultProviderIndex,
+      termsAccepted: data.termsAccepted || false,
     };
   }
 
@@ -34,6 +36,7 @@ export function getSavedConfigurations(data: any): SavedConfigurations {
 
   return {
     providers,
+    termsAccepted: false,
   };
 }
 
@@ -150,6 +153,7 @@ export function saveProviderConfig(
   return {
     providers,
     defaultProviderIndex,
+    termsAccepted: safeConfigs.termsAccepted || false,
   };
 }
 
@@ -191,5 +195,20 @@ export function deleteProviderConfig(
   return {
     providers,
     defaultProviderIndex,
+    termsAccepted: safeConfigs.termsAccepted || false,
+  };
+}
+
+/**
+ * Saves the terms acceptance status
+ */
+export function saveTermsAcceptance(
+  savedConfigs: SavedConfigurations | null | undefined
+): SavedConfigurations {
+  const safeConfigs = savedConfigs || { providers: [] };
+
+  return {
+    ...safeConfigs,
+    termsAccepted: true,
   };
 }

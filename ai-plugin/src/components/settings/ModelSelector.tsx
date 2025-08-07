@@ -3,6 +3,7 @@ import { ConfirmDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -12,6 +13,10 @@ import {
   FormHelperText,
   Grid,
   IconButton,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
   Menu,
   MenuItem,
   Paper,
@@ -33,8 +38,10 @@ import {
   getActiveConfig,
   SavedConfigurations,
   saveProviderConfig,
+  saveTermsAcceptance,
   StoredProviderConfig,
 } from '../../utils/ProviderConfigManager';
+import TermsDialog from './TermsDialog';
 
 interface ProviderSelectionDialogProps {
   open: boolean;
@@ -408,6 +415,7 @@ interface ModelSelectorProps {
     displayName: string;
     savedConfigs?: SavedConfigurations;
   }) => void;
+  onTermsAccept?: (updatedConfigs: SavedConfigurations) => void;
 }
 
 export default function ModelSelector({
@@ -417,6 +425,7 @@ export default function ModelSelector({
   configName = '',
   isConfigView = false,
   onChange,
+  onTermsAccept,
 }: ModelSelectorProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogProviderId, setDialogProviderId] = useState('');
@@ -427,10 +436,26 @@ export default function ModelSelector({
   // New state for provider selection dialog
   const [providerSelectionOpen, setProviderSelectionOpen] = useState(false);
 
+  // State for terms dialog
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
+
   // State for the 3-dot menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedConfigIndex, setSelectedConfigIndex] = useState<number | null>(null);
   const openMenu = Boolean(anchorEl);
+
+  // Check if terms have been accepted
+  const hasAcceptedTerms = () => {
+    return savedConfigs?.termsAccepted || false;
+  };
+
+  // Save terms acceptance
+  const acceptTerms = () => {
+    if (onTermsAccept) {
+      const updatedConfigs = saveTermsAcceptance(savedConfigs);
+      onTermsAccept(updatedConfigs);
+    }
+  };
 
   // Compare two configuration objects to see if they're essentially the same
   function areConfigsSimilar(config1: Record<string, any>, config2: Record<string, any>): boolean {
@@ -601,6 +626,27 @@ export default function ModelSelector({
     handleOpenDialog(providerId, true);
   };
 
+  const handleAddProviderClick = () => {
+    // Check if this is the first provider and terms haven't been accepted
+    const isFirstProvider = !savedConfigs?.providers?.length;
+
+    if (isFirstProvider && !hasAcceptedTerms()) {
+      setTermsDialogOpen(true);
+    } else {
+      setProviderSelectionOpen(true);
+    }
+  };
+
+  const handleTermsAccept = () => {
+    acceptTerms();
+    setTermsDialogOpen(false);
+    setProviderSelectionOpen(true);
+  };
+
+  const handleTermsClose = () => {
+    setTermsDialogOpen(false);
+  };
+
   const handleCloseMenu = () => {
     setAnchorEl(null);
   };
@@ -740,7 +786,7 @@ export default function ModelSelector({
             variant="contained"
             color="primary"
             startIcon={<Icon icon="mdi:plus-circle" />}
-            onClick={() => setProviderSelectionOpen(true)}
+            onClick={handleAddProviderClick}
           >
             Add Provider
           </Button>
@@ -940,6 +986,13 @@ export default function ModelSelector({
           </Grid>
         )}
       </Box>
+
+      {/* Terms Dialog */}
+      <TermsDialog
+        open={termsDialogOpen}
+        onClose={handleTermsClose}
+        onAccept={handleTermsAccept}
+      />
 
       {/* Provider Selection Dialog */}
       <ProviderSelectionDialog

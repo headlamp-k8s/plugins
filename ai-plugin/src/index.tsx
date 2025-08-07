@@ -416,6 +416,9 @@ function Settings() {
         configName={activeConfiguration.displayName}
         isConfigView
         onChange={handleModelSelectorChange}
+        onTermsAccept={(updatedConfigs) => {
+          pluginStore.update(updatedConfigs);
+        }}
       />
       {/* AI Tools Section */}
       <Divider sx={{ my: 3 }} />
