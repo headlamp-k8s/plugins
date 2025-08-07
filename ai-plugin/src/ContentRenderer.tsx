@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link as RouterLink, useHistory } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
+import YAML from 'yaml';
 import { LogsButton, YamlDisplay } from './components';
 import { getHeadlampLink } from './utils/promptLinkHelper';
 import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
@@ -64,6 +65,42 @@ const TableWrapper: React.FC<{ children: React.ReactNode }> = React.memo(({ chil
 });
 
 TableWrapper.displayName = 'TableWrapper';
+
+// Helper function to detect and convert JSON Kubernetes resources to YAML
+const convertJsonToYaml = (content: string): string => {
+  try {
+    // First, try to parse as JSON
+    const parsed = JSON.parse(content.trim());
+    
+    // Check if it's a Kubernetes resource (has apiVersion and kind)
+    if (parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind) {
+      // Convert to YAML format
+      return YAML.stringify(parsed, { 
+        sortMapEntries: false,
+        lineWidth: 0,
+        minContentWidth: 0
+      });
+    }
+  } catch (error) {
+    // Not valid JSON, return original content
+  }
+  return content;
+};
+
+// Helper function to detect if content is a JSON Kubernetes resource
+const isJsonKubernetesResource = (content: string): boolean => {
+  try {
+    const trimmed = content.trim();
+    if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+      return false;
+    }
+    
+    const parsed = JSON.parse(trimmed);
+    return !!(parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind);
+  } catch (error) {
+    return false;
+  }
+};
 
 // Memoized markdown components to prevent remounting
 const markdownComponents = {
@@ -171,6 +208,12 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
               children.includes('apiVersion:') &&
               children.includes('kind:')));
 
+        // Check if this is a JSON code block with Kubernetes resource
+        const isJsonKubernetesBlock = 
+          !props.inline &&
+          typeof children === 'string' &&
+          (className === 'language-json' || isJsonKubernetesResource(children));
+
         if (isYamlBlock && onYamlDetected && typeof children === 'string') {
           // Try to parse as Kubernetes YAML
           const parsed = parseKubernetesYAML(children);
@@ -178,6 +221,21 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
             return (
               <YamlDisplay
                 yaml={children}
+                title={parsed.resourceType}
+                onOpenInEditor={onYamlDetected}
+              />
+            );
+          }
+        }
+
+        if (isJsonKubernetesBlock && onYamlDetected && typeof children === 'string') {
+          // Convert JSON to YAML and display
+          const yamlContent = convertJsonToYaml(children);
+          const parsed = parseKubernetesYAML(yamlContent);
+          if (parsed.isValid) {
+            return (
+              <YamlDisplay
+                yaml={yamlContent}
                 title={parsed.resourceType}
                 onOpenInEditor={onYamlDetected}
               />
@@ -297,6 +355,23 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           const trimmedPart = part.trim();
           if (!trimmedPart) return;
 
+          // Check if this part is a JSON Kubernetes resource
+          if (isJsonKubernetesResource(trimmedPart)) {
+            const yamlContent = convertJsonToYaml(trimmedPart);
+            const parsed = parseKubernetesYAML(yamlContent);
+            if (parsed.isValid) {
+              sections.push(
+                <YamlDisplay
+                  key={`json-yaml-${index}-${sectionIndex++}`}
+                  yaml={yamlContent}
+                  title={parsed.resourceType}
+                  onOpenInEditor={onYamlDetected}
+                />
+              );
+              return;
+            }
+          }
+
           // Check if this part looks like YAML
           const isYamlPart =
             trimmedPart.includes('apiVersion:') &&
@@ -368,6 +443,21 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
     const processedContent = useMemo(() => {
       if (!content) return null;
 
+      // Check if the entire content is a JSON Kubernetes resource
+      if (isJsonKubernetesResource(content)) {
+        const yamlContent = convertJsonToYaml(content);
+        const parsed = parseKubernetesYAML(yamlContent);
+        if (parsed.isValid) {
+          return (
+            <YamlDisplay
+              yaml={yamlContent}
+              title={parsed.resourceType}
+              onOpenInEditor={onYamlDetected}
+            />
+          );
+        }
+      }
+
       // Check for logs button format
       if (content.includes('LOGS_BUTTON:')) {
         const logsButtonIndex = content.indexOf('LOGS_BUTTON:');
@@ -432,7 +522,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
       }
 
       // First, let's detect if this content has unformatted YAML (not in code blocks)
-      // that needs special handling
+      // or JSON Kubernetes resources that need special handling
       const hasUnformattedYaml =
         content.includes('apiVersion:') &&
         content.includes('kind:') &&
@@ -440,8 +530,13 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
         !content.includes('```yaml') &&
         !content.includes('```yml');
 
-      if (hasUnformattedYaml) {
-        // Handle content with unformatted YAML
+      const hasJsonKubernetesResource = 
+        content.includes('"apiVersion":') &&
+        content.includes('"kind":') &&
+        content.includes('"metadata":');
+
+      if (hasUnformattedYaml || hasJsonKubernetesResource) {
+        // Handle content with unformatted YAML or JSON resources
         return processUnformattedYaml(content);
       }
 
