@@ -1,5 +1,10 @@
 import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
 import { isPrometheusInstalled, KubernetesType } from './request';
+import { KarpenterNodePoolResourceChart } from './components/Chart/NodePoolChart/NodePoolChart';
+import { KarpenterDisruptionChart } from './components/Chart/KarpenterDisruptionChart/KarpenterDisruptionChart';
+import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/KarpenterPendingPods';
+import { NodeClaimCreationChart } from './components/Chart/KarpenterNodeClaimCreationChart/KarpenterNodeClaimCreationChart';
+import { KarpenterNodeClaimsProvisionChart } from './components/Chart/KarpenterNodeClaimProvisionChart/KarpenterNodeClaimProvisionChart';
 
 export const PLUGIN_NAME = 'prometheus';
 
@@ -160,6 +165,8 @@ export const ChartEnabledKinds = [
   'PersistentVolumeClaim',
   'ScaledObject',
   'ScaledJob',
+  'NodePool',
+  'NodeClaim'
 ];
 
 /**
@@ -370,3 +377,56 @@ export function getTimeRangeAndStepSize(
 
   return { from, to, step };
 }
+
+export const getNodePoolChartConfigs = (name: string) => [
+  {
+    key: 'usage',
+    label: 'Resource Usage',
+    icon: 'mdi:chart-bar',
+    queries: {
+      usageQuery: `karpenter_nodepools_usage{nodepool='${name}'}`,
+      limitQuery: `karpenter_nodepools_limit{nodepool='${name}'}`,
+    },
+    component: KarpenterNodePoolResourceChart,
+  },
+  {
+    key: 'nodes',
+    label: 'Allowed Disruptions',
+    icon: 'mdi:chip',
+    queries: {
+      activeNodesQuery: `karpenter_nodepools_allowed_disruptions{nodepool='${name}'}`,
+    },
+    component: KarpenterDisruptionChart,
+  },
+  {
+    key: 'pending-pods',
+    label: 'Pending Pods',
+    icon: 'mdi:clock-outline',
+    queries: {
+      pendingPodsQuery: `sum(karpenter_pods_state{phase='Pending'}) by (reason)`,
+    },
+    component: KarpenterPendingPods,
+  },
+];
+
+export const getNodeClaimChartConfigs = (name: string, nodepool?: string) => [
+  {
+    key: 'creation-rate',
+    label: 'Creation Rate',
+    icon: 'mdi:chart-line-variant',
+    queries: {
+      nodeClaimCreationQuery: `sum(rate(karpenter_nodeclaims_created_total{nodepool="${nodepool || 'all'}"}[5m]))`,
+    },
+    component: NodeClaimCreationChart,
+  },
+  {
+    key: 'provisioning-duration',
+    label: 'Provisioning Duration',
+    icon: 'mdi:clock-time-four',
+    queries: {
+      provisioningDurationQuery: `avg(rate(operator_nodeclaim_status_condition_transition_seconds_sum[5m])) / 
+avg(rate(operator_nodeclaim_status_condition_transition_seconds_count[5m]))`,
+    },
+    component: KarpenterNodeClaimsProvisionChart,
+  },
+];
