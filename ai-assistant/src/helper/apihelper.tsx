@@ -4,6 +4,34 @@ import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
 import { isLogRequest, isSpecificResourceRequestHelper } from '.';
 
+// Deep merge function to merge patch with current resource
+function deepMerge(target: any, source: any): any {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (source[key] === null) {
+      // If source value is null, remove the property
+      delete result[key];
+    } else if (source[key] !== undefined) {
+      if (Array.isArray(source[key])) {
+        // For arrays, replace entirely
+        result[key] = [...source[key]];
+      } else if (typeof source[key] === 'object' && source[key] !== null) {
+        // For objects, recursively merge
+        result[key] =
+          target[key] && typeof target[key] === 'object'
+            ? deepMerge(target[key], source[key])
+            : { ...source[key] };
+      } else {
+        // For primitive values, replace
+        result[key] = source[key];
+      }
+    }
+  }
+
+  return result;
+}
+
 const cleanUrl = (url: string) => {
   const urlObj = new URL(url, 'http://dummy.com'); // Use dummy base for relative URLs
   urlObj.searchParams.delete('allNamespaces');
@@ -65,9 +93,16 @@ export const handleActualApiRequest = async (
         }
       );
     } catch (error) {
+      aiManager.history.push({
+        error: true,
+        role: 'assistant',
+        content: `Error creating resource: ${error.message}`,
+      });
+
       return JSON.stringify({
         error: true,
-        message: `Error creating resource: ${error.message}`,
+        role: 'assistant',
+        content: `Error creating resource: ${error.message}`,
       });
     }
   }
@@ -76,85 +111,118 @@ export const handleActualApiRequest = async (
   if (method.toUpperCase() === 'DELETE' && body) {
     try {
       const resourceIdentifier = JSON.parse(body);
-
       dialogClose();
-      clusterRequest(url, {
+      await clusterRequest(url, {
         method: 'DELETE',
         cluster,
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-      })
-        .then(() => {
-          aiManager.history.push({
-            role: 'tool',
-            content: `${resourceIdentifier.kind} ${resourceIdentifier.name} deleted successfully.`,
-          });
-        })
-        .catch(error => {
-          aiManager.history.push({
-            role: 'assistant',
-            content: `Error deleting resource: ${error.message}`,
-          });
-        });
+      });
+      aiManager.history.push({
+        role: 'tool',
+        success: true,
+        content: `${resourceIdentifier.kind} ${resourceIdentifier.name} deleted successfully.`,
+      });
+
+      return JSON.stringify({
+        success: true,
+        role: 'tool',
+        content: `${resourceIdentifier.kind} ${resourceIdentifier.name} deleted successfully.`,
+      });
     } catch (error) {
       aiManager.history.push({
+        error: true,
+        role: 'assistant',
+        content: `Error deleting resource: ${error.message}`,
+      });
+      return JSON.stringify({
+        error: true,
         role: 'assistant',
         content: `Error deleting resource: ${error.message}`,
       });
     }
   }
 
-  // For PATCH/PUT operations
-  if ((method.toUpperCase() === 'PATCH' || method.toUpperCase() === 'PUT') && body) {
+  // For PUT operations only - no PATCH support
+  if (method.toUpperCase() === 'PUT' && body) {
     try {
-      let resource;
+      let patch;
       try {
-        resource = YAML.parse(body);
+        patch = YAML.parse(body);
       } catch (e) {
-        resource = JSON.parse(body);
+        patch = JSON.parse(body);
       }
 
       const parsedResourceInfo = JSON.parse(resourceInfo);
       const resourceIdentifier = `${parsedResourceInfo.kind} ${parsedResourceInfo.name}`;
 
-      // Ensure the resource has the required fields
-
-      const processedBody = JSON.stringify(resource);
-
       dialogClose();
+
       clusterAction(
         async () => {
+          // First, get the current resource
+          const currentResource = await clusterRequest(url, {
+            method: 'GET',
+            cluster,
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+          });
+
+          // Deep merge the patch with the current resource
+          const mergedResource = deepMerge(currentResource, patch);
+
+          // Now make the PUT request with the merged resource
           const headers = {
-            'Content-Type':
-              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+            'Content-Type': 'application/json',
             Accept: 'application/json',
           };
+
           const response = await clusterRequest(url, {
-            method,
+            method: 'PUT',
             cluster,
-            body: processedBody,
+            body: JSON.stringify(mergedResource),
             headers,
           });
 
           aiManager.history.push({
+            success: true,
             role: 'tool',
-            content: `${resourceIdentifier} updated successfully.`,
+            content: `${resourceIdentifier} updated successfully with patch applied.`,
           });
+
           return response;
         },
         {
-          startMessage: `Updating ${resourceIdentifier}...`,
+          startMessage: `Applying patch to ${resourceIdentifier}...`,
           cancelledMessage: `Cancelled updating ${resourceIdentifier}.`,
           successMessage: `${resourceIdentifier} updated successfully.`,
           errorMessage: `Failed to update ${resourceIdentifier}.`,
         }
       );
+
+      // Return success response immediately after dispatching the action
+      return JSON.stringify({
+        success: true,
+        role: 'tool',
+        content: `${resourceIdentifier} patch application initiated.`,
+      });
     } catch (error) {
+      console.error('Error updating resource:', error);
+      const errorMessage = `Error updating resource: ${error.message}`;
       aiManager.history.push({
+        error: true,
         role: 'assistant',
-        content: `Error updating resource: ${error.message}`,
+        content: errorMessage,
+      });
+
+      return JSON.stringify({
+        error: true,
+        role: 'assistant',
+        content: errorMessage,
       });
     }
   }
@@ -190,11 +258,25 @@ export const handleActualApiRequest = async (
           };
         }
       }
-
-      const response = await clusterRequest(cleanedUrl, {
-        ...requestOptions,
-        isJSON: !isLogRequest(cleanedUrl),
-      });
+      let response;
+      try {
+        response = await clusterRequest(cleanedUrl, {
+          ...requestOptions,
+          isJSON: !isLogRequest(cleanedUrl),
+        });
+      } catch (error) {
+        console.log('Error in clusterRequest:', error);
+        aiManager.history.push({
+          error: true,
+          role: 'assistant',
+          content: `Error in API call to ${cleanedUrl}: ${error.message}`,
+        });
+        return JSON.stringify({
+          error: true,
+          role: 'assistant',
+          content: `Error in API call to ${cleanedUrl}: ${error.message}`,
+        });
+      }
 
       let formattedResponse = response;
       if (isLogRequest(url)) {
@@ -260,11 +342,12 @@ export const handleActualApiRequest = async (
             }.`;
 
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: `LOGS_BUTTON:${JSON.stringify(logsResponse)}\n\n${logSummary}`,
         });
 
-        return logSummary;
+        return '';
       } else if (response?.kind === 'Table') {
         // ...existing code...
         const extractKindFromUrl = (url: string) => {
@@ -327,18 +410,21 @@ export const handleActualApiRequest = async (
 
         // Always push to history, even if no items found
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: formattedResponse,
         });
       } else if (typeof response === 'object') {
         formattedResponse = JSON.stringify(response, null, 2);
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: formattedResponse,
         });
       } else if (typeof response === 'string') {
         formattedResponse = response;
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: formattedResponse,
         });
@@ -346,6 +432,7 @@ export const handleActualApiRequest = async (
         // Handle empty or null response
         formattedResponse = 'No data found';
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: formattedResponse,
         });
@@ -353,11 +440,17 @@ export const handleActualApiRequest = async (
 
       return formattedResponse ?? 'ok';
     } catch (error) {
+      console.log(error);
       aiManager.history.push({
+        error: true,
         role: 'assistant',
         content: `Error in API call to ${url}: ${error.message}`,
       });
-      throw error;
+      return JSON.stringify({
+        error: true,
+        role: 'assistant',
+        content: `Error in API call to ${url}: ${error.message}`,
+      });
     }
   }
 };
