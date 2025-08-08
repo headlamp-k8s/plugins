@@ -9,6 +9,7 @@ interface AIChatContentProps {
   isLoading: boolean;
   apiError: string | null;
   onOperationSuccess: (response: any) => void;
+  onOperationFailure: (error: any, operationType: string, resourceInfo?: any) => void;
   onYamlAction: (yaml: string, title: string, type: string, isDeleteOp: boolean) => void;
 }
 
@@ -17,6 +18,7 @@ export default function AIChatContent({
   isLoading,
   apiError,
   onOperationSuccess,
+  onOperationFailure,
   onYamlAction,
 }: AIChatContentProps) {
   return (
@@ -52,6 +54,7 @@ export default function AIChatContent({
         isLoading={isLoading}
         apiError={apiError}
         onOperationSuccess={onOperationSuccess}
+        onOperationFailure={onOperationFailure}
         onYamlAction={onYamlAction}
       />
     </Box>

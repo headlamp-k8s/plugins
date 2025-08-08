@@ -5,14 +5,32 @@ import { KubernetesToolContext } from './types';
 export class KubernetesTool extends ToolBase {
   readonly config: ToolConfig = {
     name: 'kubernetes_api_request',
-    description:
-      'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
+    description: `Make requests to the Kubernetes API server to fetch, create, update or delete resources.
+
+RESOURCE UPDATE GUIDELINES:
+- For UPDATE/MODIFY/CHANGE operations: Use PUT method with ONLY the specific fields to change
+- Provide patch objects that will be merged with existing resources
+- Use null values to remove fields (e.g., {"spec": {"livenessProbe": null}})
+- The system automatically merges patches with current resources before making PUT requests`,
     schema: z.object({
       url: z
         .string()
         .describe('URL to request, e.g., /api/v1/pods or /api/v1/namespaces/default/pods/pod-name'),
-      method: z.string().describe('HTTP method: GET, POST, PATCH, DELETE'),
-      body: z.string().optional().describe('Optional HTTP body'),
+      method: z
+        .string()
+        .describe(
+          'HTTP method: GET, POST, PUT, DELETE. Use PUT for updating specific fields of existing resources.'
+        ),
+      body: z
+        .string()
+        .optional()
+        .describe(
+          `Optional HTTP Request body:
+- For PUT: Provide ONLY the fields to change as a JSON patch (e.g., {"spec": {"replicas": 3}})
+- Use null to remove fields (e.g., {"spec": {"livenessProbe": null}})
+- For POST: Provide the complete resource definition
+- The system will automatically merge PUT patches with existing resources`
+        ),
     }),
   };
 
@@ -79,7 +97,9 @@ export class KubernetesTool extends ToolBase {
           body || '',
           () => {}, // No-op onClose for GET requests
           this.context.aiManager, // Use aiManager from context
-          '' // No resource info needed for GET requests
+          '', // No resource info needed for GET requests
+          undefined, // No target cluster specified
+          undefined // No failure callback for GET requests (they're read-only)
         );
 
         // The handleActualApiRequest already adds to history, so we return a simple response
@@ -172,7 +192,9 @@ export class KubernetesTool extends ToolBase {
       body,
       this.handleApiDialogClose.bind(this),
       this.context.aiManager, // Use aiManager from context
-      resourceInfo
+      resourceInfo,
+      undefined, // No target cluster specified
+      undefined // No failure callback needed here as it's handled by the main flow
     );
   }
 

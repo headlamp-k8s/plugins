@@ -40,7 +40,7 @@ export default function ApiConfirmationDialog({
   // const cluster = getCluster();
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [openEditorDialog, setOpenEditorDialog] = React.useState(true);
-  const [showPatchConfirm, setShowPatchConfirm] = React.useState(false);
+  const [showUpdateConfirm, setShowUpdateConfirm] = React.useState(false);
 
   React.useEffect(() => {
     if (method.toUpperCase() === 'DELETE') {
@@ -115,7 +115,7 @@ export default function ApiConfirmationDialog({
   }, [url, resourceInfo]);
 
   React.useEffect(() => {
-    if (open && ['PUT', 'PATCH'].includes(method.toUpperCase()) && body && resourceInfo) {
+    if (open && method.toUpperCase() === 'PUT' && body && resourceInfo) {
       const processedBody = cleanYamlContent(body);
       try {
         const parsed = YAML.parse(processedBody);
@@ -124,7 +124,7 @@ export default function ApiConfirmationDialog({
       } catch (e) {
         setEditedBody(processedBody);
       }
-      setShowPatchConfirm(true);
+      setShowUpdateConfirm(true);
     }
   }, [open, method, body, resourceInfo]);
 
@@ -134,8 +134,8 @@ export default function ApiConfirmationDialog({
     onClose();
   };
 
-  const handlePatchConfirm = () => {
-    setShowPatchConfirm(false);
+  const handleUpdateConfirm = () => {
+    setShowUpdateConfirm(false);
     onConfirm(editedBody, JSON.stringify(resourceInfo));
     onClose();
   };
@@ -222,29 +222,30 @@ export default function ApiConfirmationDialog({
     );
   }
 
-  if (['PUT', 'PATCH'].includes(method.toUpperCase()) && showPatchConfirm) {
+  if (method.toUpperCase() === 'PUT' && showUpdateConfirm) {
     return (
       <ConfirmDialog
         // @ts-ignore
-        open={showPatchConfirm}
+        open={showUpdateConfirm}
         handleClose={() => {
-          setShowPatchConfirm(false);
+          setShowUpdateConfirm(false);
           onClose();
         }}
-        onConfirm={handlePatchConfirm}
-        title={`Apply Patch for ${
+        onConfirm={handleUpdateConfirm}
+        title={`Apply Patch to ${
           resourceInfo ? `${resourceInfo.kind}: ${resourceInfo.name}` : 'Resource'
         }`}
         description={
           <Box>
             <Typography variant="body1" sx={{ mb: 2 }}>
-              The following patch will be applied:
+              The following patch will be applied to the resource:
             </Typography>
             <Box sx={{ p: 2, border: '1px solid #ccc', borderRadius: 1 }}>
               <pre>{editedBody}</pre>
             </Box>
             <Typography variant="body2" sx={{ mt: 2 }}>
-              Are you sure you want to apply these changes?
+              Are you sure you want to apply this patch? The system will merge this patch with the
+              current resource and update it.
             </Typography>
           </Box>
         }

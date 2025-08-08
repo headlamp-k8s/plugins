@@ -1,5 +1,5 @@
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Button, Link as MuiLink, Typography } from '@mui/material';
+import { Alert, Box, Button, Link as MuiLink, Typography } from '@mui/material';
 import React, { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link as RouterLink, useHistory } from 'react-router-dom';
@@ -8,6 +8,81 @@ import YAML from 'yaml';
 import { LogsButton, YamlDisplay } from './components';
 import { getHeadlampLink } from './utils/promptLinkHelper';
 import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
+
+// Helper types for error handling
+interface ParseResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+// Helper function to safely parse JSON content
+const parseJsonContent = (content: string): ParseResult<any> => {
+  try {
+    const parsed = JSON.parse(content);
+    return { success: true, data: parsed };
+  } catch (error) {
+    console.debug(
+      'Content is not valid JSON:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    return {
+      success: false,
+      error: `Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
+  }
+};
+
+// Helper function to safely parse logs button data
+const parseLogsButtonData = (content: string, logsButtonIndex: number): ParseResult<any> => {
+  try {
+    // Find the start of the JSON object
+    const jsonStart = logsButtonIndex + 'LOGS_BUTTON:'.length;
+    let jsonString = '';
+    let braceCount = 0;
+    let foundFirstBrace = false;
+
+    // Parse character by character to find the complete JSON object
+    for (let i = jsonStart; i < content.length; i++) {
+      const char = content[i];
+      if (char === '{') {
+        foundFirstBrace = true;
+        braceCount++;
+      } else if (char === '}') {
+        braceCount--;
+      }
+
+      if (foundFirstBrace) {
+        jsonString += char;
+        if (braceCount === 0) {
+          break;
+        }
+      }
+    }
+
+    if (!jsonString) {
+      return { success: false, error: 'No JSON object found after LOGS_BUTTON:' };
+    }
+
+    const logsData = JSON.parse(jsonString);
+
+    // Validate required fields
+    if (!logsData.data || !logsData.data.logs) {
+      return { success: false, error: 'Invalid logs data structure: missing required fields' };
+    }
+
+    return { success: true, data: logsData };
+  } catch (error) {
+    console.error(
+      'Failed to parse logs JSON data:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    return {
+      success: false,
+      error: `Invalid logs JSON: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
+  }
+};
 
 interface ContentRendererProps {
   content: string;
@@ -82,7 +157,10 @@ const convertJsonToYaml = (content: string): string => {
       });
     }
   } catch (error) {
-    // Not valid JSON, return original content
+    console.debug(
+      'Content is not valid JSON, cannot convert to YAML:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
   return content;
 };
@@ -98,6 +176,10 @@ const isJsonKubernetesResource = (content: string): boolean => {
     const parsed = JSON.parse(trimmed);
     return !!(parsed && typeof parsed === 'object' && parsed.apiVersion && parsed.kind);
   } catch (error) {
+    console.debug(
+      'Content is not valid JSON when checking for Kubernetes resource:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return false;
   }
 };
@@ -443,6 +525,53 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
     const processedContent = useMemo(() => {
       if (!content) return null;
 
+      // First, check if content is a JSON response with error or success keys
+      const jsonParseResult = parseJsonContent(content.trim());
+      if (jsonParseResult.success) {
+        const parsedContent = jsonParseResult.data;
+
+        // Check if it's an error response
+        if (parsedContent.error === true && parsedContent.content) {
+          return (
+            <Alert severity="error" sx={{ mb: 1, overflowWrap: 'anywhere' }}>
+              <Typography variant="body2">{parsedContent.content}</Typography>
+            </Alert>
+          );
+        }
+
+        // Check if it's a success response
+        if (parsedContent.success === true && parsedContent.content) {
+          return (
+            <Alert severity="success" sx={{ mb: 1, overflowWrap: 'anywhere' }}>
+              <Typography variant="body2">{parsedContent.content}</Typography>
+            </Alert>
+          );
+        }
+
+        // If it's a JSON response but not error/success, continue with normal processing
+        // unless it's a Kubernetes resource, then fall through to regular content processing
+        if (!isJsonKubernetesResource(content)) {
+          // For other JSON responses that aren't Kubernetes resources,
+          // render as formatted JSON
+          return (
+            <Box
+              component="pre"
+              sx={{
+                backgroundColor: theme => theme.palette.grey[100],
+                color: theme => theme.palette.grey[900],
+                padding: 2,
+                borderRadius: 1,
+                overflowX: 'auto',
+                whiteSpace: 'pre-wrap',
+                fontSize: '0.85rem',
+              }}
+            >
+              {JSON.stringify(parsedContent, null, 2)}
+            </Box>
+          );
+        }
+      }
+
       // Check if the entire content is a JSON Kubernetes resource
       if (isJsonKubernetesResource(content)) {
         const yamlContent = convertJsonToYaml(content);
@@ -462,61 +591,20 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
       if (content.includes('LOGS_BUTTON:')) {
         const logsButtonIndex = content.indexOf('LOGS_BUTTON:');
         if (logsButtonIndex !== -1) {
-          try {
-            // Find the start of the JSON object
-            const jsonStart = logsButtonIndex + 'LOGS_BUTTON:'.length;
-            let jsonString = '';
-            let braceCount = 0;
-            let foundFirstBrace = false;
-
-            // Parse character by character to find the complete JSON object
-            for (let i = jsonStart; i < content.length; i++) {
-              const char = content[i];
-              if (char === '{') {
-                foundFirstBrace = true;
-                braceCount++;
-              } else if (char === '}') {
-                braceCount--;
-              }
-
-              if (foundFirstBrace) {
-                jsonString += char;
-                if (braceCount === 0) {
-                  break;
-                }
-              }
-            }
-
-            if (jsonString) {
-              const logsData = JSON.parse(jsonString);
-              const beforeButton = content.substring(0, logsButtonIndex);
-              const afterButtonIndex = logsButtonIndex + 'LOGS_BUTTON:'.length + jsonString.length;
-              const afterButton = content.substring(afterButtonIndex);
-
-              return (
-                <Box>
-                  {beforeButton.trim() && (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={allMarkdownComponents}>
-                      {beforeButton.trim()}
-                    </ReactMarkdown>
-                  )}
-                  <LogsButton
-                    logs={logsData.data.logs}
-                    resourceName={logsData.data.resourceName}
-                    resourceType={logsData.data.resourceType}
-                    namespace={logsData.data.namespace}
-                  />
-                  {afterButton.trim() && (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={allMarkdownComponents}>
-                      {afterButton.trim()}
-                    </ReactMarkdown>
-                  )}
-                </Box>
-              );
-            }
-          } catch (e) {
-            console.error('Failed to parse logs data:', e);
-            // Fall through to render as regular content
+          const logsResult = parseLogsButtonData(content, logsButtonIndex);
+          if (logsResult.success) {
+            const logsData = logsResult.data;
+            return (
+              <Box>
+                <LogsButton
+                  logs={logsData.data.logs}
+                  resourceName={logsData.data.resourceName}
+                  resourceType={logsData.data.resourceType}
+                  namespace={logsData.data.namespace}
+                  containerName={logsData.data.containerName}
+                />
+              </Box>
+            );
           }
         }
       }

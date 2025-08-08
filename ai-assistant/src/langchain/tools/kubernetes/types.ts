@@ -26,7 +26,9 @@ export interface KubernetesToolUICallbacks {
     onClose?: () => void,
     aiManager?: any,
     resourceInfo?: any,
-    targetCluster?: string
+    targetCluster?: string,
+    onFailure?: (error: any, operationType: string, resourceInfo?: any) => void,
+    onSuccess?: (response: any, operationType: string, resourceInfo?: any) => void
   ) => Promise<void>;
 }
 
