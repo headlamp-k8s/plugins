@@ -12,12 +12,14 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   isLoading,
   apiError,
   onOperationSuccess,
+  onOperationFailure,
   onYamlAction,
 }: {
   history: Prompt[];
   isLoading: boolean;
   apiError: string | null;
   onOperationSuccess?: (response: any) => void;
+  onOperationFailure?: (error: any, operationType: string, resourceInfo?: any) => void;
   onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
 }) {
   const [showEditor, setShowEditor] = useState(false);
@@ -230,6 +232,8 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       // Check if this is a content filter error or if the prompt has its own error
       const isContentFilterError = prompt.role === 'assistant' && prompt.contentFilterError;
       const hasError = prompt.error === true;
+      const isJsonError = prompt.error;
+      const isJsonSuccess = prompt.success;
 
       if (prompt.content === '' && prompt.role === 'user') return null;
       if (prompt.content === '' && prompt.role === 'assistant') return null;
@@ -247,7 +251,12 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                 ? alpha(theme.palette.sidebar.selectedBackground, 0.75)
                 : theme.palette.background.paper,
             border: '1px solid',
-            borderColor: isContentFilterError || hasError ? 'error.main' : 'divider',
+            borderColor:
+              isContentFilterError || hasError || isJsonError
+                ? 'error.main'
+                : isJsonSuccess
+                ? 'success.main'
+                : 'divider',
             color: theme.palette.getContrastText(
               prompt.role === 'user'
                 ? alpha(theme.palette.sidebar.selectedBackground, 0.75)
@@ -289,7 +298,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         </Box>
       );
     },
-    [history.length, theme.palette, onYamlAction, handleYamlDetected]
+    [history.length, theme.palette, memoizedOnYamlDetected]
   );
 
   return (
@@ -371,6 +380,11 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         onSuccess={response => {
           if (onOperationSuccess) {
             onOperationSuccess(response);
+          }
+        }}
+        onFailure={(error, operationType, resourceInfo) => {
+          if (onOperationFailure) {
+            onOperationFailure(error, operationType, resourceInfo);
           }
         }}
       />
