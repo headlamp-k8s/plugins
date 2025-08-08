@@ -322,7 +322,7 @@ export default function AIPrompt(props: {
     });
 
     setPromptHistory(processedHistory);
-  }, [aiManager]);
+  }, [aiManager?.history]);
 
   const handleOperationSuccess = React.useCallback(
     (response: any) => {
