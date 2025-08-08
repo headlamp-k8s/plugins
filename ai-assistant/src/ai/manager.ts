@@ -5,6 +5,7 @@ export type Prompt = {
   toolCallId?: string;
   name?: string;
   error?: boolean;
+  success?: boolean;
   contentFilterError?: boolean;
   alreadyDisplayed?: boolean;
   isDisplayOnly?: boolean; // Mark messages that shouldn't be sent to LLM

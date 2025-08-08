@@ -6,13 +6,22 @@ export class KubernetesTool extends ToolBase {
   readonly config: ToolConfig = {
     name: 'kubernetes_api_request',
     description:
-      'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
+      'Make requests to the Kubernetes API server to fetch, create, update or delete resources. For PATCH operations, provide only the specific fields that need to be changed, not the full resource. Use merge patch format with null values to remove fields.',
     schema: z.object({
       url: z
         .string()
         .describe('URL to request, e.g., /api/v1/pods or /api/v1/namespaces/default/pods/pod-name'),
-      method: z.string().describe('HTTP method: GET, POST, PATCH, DELETE'),
-      body: z.string().optional().describe('Optional HTTP body'),
+      method: z
+        .string()
+        .describe(
+          'HTTP method: GET, POST, PUT, DELETE. Use PUT for updating specific fields of existing resources.'
+        ),
+      body: z
+        .string()
+        .optional()
+        .describe(
+          'Optional HTTP body. For PUT: include only fields to change, use null to remove fields. For POST: full resource definition.'
+        ),
     }),
   };
 
