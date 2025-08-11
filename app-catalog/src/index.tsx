@@ -3,11 +3,18 @@ import {
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
+import {
+  ARTIFACTHUB_PROTOCOL,
+  CommunityChartList,
+  HELM_PROTOCOL,
+  HelmChartList,
+} from './api/catalogs';
 import { AppCatalogSettings } from '../src/components/settings/AppCatalogSettings';
 import ChartDetails from './components/charts/Details';
 import { ChartsList } from './components/charts/List';
 import ReleaseDetail from './components/releases/Detail';
 import ReleaseList from './components/releases/List';
+import { CatalogLists } from './helpers/catalog';
 
 export function isElectron(): boolean {
   // Renderer process
@@ -64,23 +71,80 @@ if (isElectron()) {
     parent: 'Helm',
     label: 'Installed',
   });
+} else {
+  // Iterate the list of c, to register the sidebar and the respective routes
+  CatalogLists().then(chart => {
+    for (let i = 0; i < chart.length; i++) {
+      // Register the sidebar for Apps, with the URL pointing to the first chart returned
+      if (i === 0) {
+        registerSidebarEntry({
+          name: 'Helm',
+          url: '/apps/' + chart[i].name,
+          icon: 'mdi:apps-box',
+          parent: '',
+          label: 'Apps',
+        });
+      }
 
-  registerRoute({
-    path: '/apps/installed',
-    sidebar: 'Releases',
-    name: 'Releases',
-    exact: true,
-    component: () => <ReleaseList />,
+      // Register the sidebars for the catalogs, as returned by the API
+      registerSidebarEntry({
+        name: 'Charts ' + chart[i].name,
+        url: '/apps/' + chart[i].name,
+        icon: '',
+        parent: 'Helm',
+        label: chart[i].displayName,
+      });
+
+      // Register the sidebar with label - Installed, as the last entry under Apps
+      if (i === chart.length - 1) {
+        registerSidebarEntry({
+          name: 'Releases',
+          url: '/apps/installed',
+          icon: '',
+          parent: 'Helm',
+          label: 'Installed',
+        });
+      }
+
+      if (chart[i].protocol === HELM_PROTOCOL) {
+        registerRoute({
+          path: '/apps/' + chart[i].name,
+          sidebar: 'Charts ' + chart[i].name,
+          name: 'Charts ' + chart[i].name,
+          exact: true,
+          component: () => HelmChartList(chart[i].metadataName, chart[i].namespace, chart[i].uri),
+        });
+      } else if (chart[i].protocol === ARTIFACTHUB_PROTOCOL) {
+        registerRoute({
+          path: '/apps/' + chart[i].name,
+          sidebar: 'Charts ' + chart[i].name,
+          name: 'Charts ' + chart[i].name,
+          exact: true,
+          component: () =>
+            CommunityChartList(chart[i].metadataName, chart[i].namespace, chart[i].uri),
+        });
+      }
+    }
   });
+}
 
-  registerRoute({
-    path: '/helm/:namespace/releases/:releaseName',
-    sidebar: 'Releases',
-    name: 'Release Detail',
-    exact: true,
-    component: () => <ReleaseDetail />,
-  });
+registerRoute({
+  path: '/apps/installed',
+  sidebar: 'Releases',
+  name: 'Releases',
+  exact: true,
+  component: () => <ReleaseList />,
+});
 
+registerRoute({
+  path: '/helm/:namespace/releases/:releaseName',
+  sidebar: 'Releases',
+  name: 'Release Detail',
+  exact: true,
+  component: () => <ReleaseDetail />,
+});
+
+if (isElectron()) {
   registerRoute({
     path: '/apps/catalog',
     sidebar: 'Charts',
@@ -88,22 +152,22 @@ if (isElectron()) {
     exact: true,
     component: () => <ChartsList />,
   });
-
-  registerRoute({
-    path: '/helm/:repoName/charts/:chartName',
-    sidebar: 'Charts',
-    name: 'Charts',
-    exact: true,
-    component: () => <ChartDetails />,
-  });
-
-  registerRoute({
-    path: '/settings/plugins/app-catalog',
-    sidebar: 'Charts',
-    name: 'App Catalog',
-    exact: true,
-    component: () => <AppCatalogSettings />,
-  });
 }
+
+registerRoute({
+  path: '/helm/:repoName/charts/:chartName',
+  sidebar: 'Charts',
+  name: 'Charts',
+  exact: true,
+  component: () => <ChartDetails />,
+});
+
+registerRoute({
+  path: '/settings/plugins/app-catalog',
+  sidebar: 'Charts',
+  name: 'App Catalog',
+  exact: true,
+  component: () => <AppCatalogSettings />,
+});
 
 registerPluginSettings('app-catalog', AppCatalogSettings, false);
