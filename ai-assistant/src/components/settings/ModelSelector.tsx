@@ -431,6 +431,9 @@ export default function ModelSelector({
   // New state for provider selection dialog
   const [providerSelectionOpen, setProviderSelectionOpen] = useState(false);
 
+  // State to track if we need to open provider selection after terms acceptance
+  const [shouldOpenProviderSelection, setShouldOpenProviderSelection] = useState(false);
+
   // State for terms dialog
   const [termsDialogOpen, setTermsDialogOpen] = useState(false);
 
@@ -443,6 +446,14 @@ export default function ModelSelector({
   const hasAcceptedTerms = () => {
     return savedConfigs?.termsAccepted || false;
   };
+
+  // Effect to handle opening provider selection after terms acceptance
+  useEffect(() => {
+    if (shouldOpenProviderSelection && hasAcceptedTerms()) {
+      setProviderSelectionOpen(true);
+      setShouldOpenProviderSelection(false);
+    }
+  }, [savedConfigs?.termsAccepted, shouldOpenProviderSelection]);
 
   // Save terms acceptance
   const acceptTerms = () => {
@@ -635,7 +646,8 @@ export default function ModelSelector({
   const handleTermsAccept = () => {
     acceptTerms();
     setTermsDialogOpen(false);
-    setProviderSelectionOpen(true);
+    // Set flag to open provider selection after terms are accepted and state is updated
+    setShouldOpenProviderSelection(true);
   };
 
   const handleTermsClose = () => {

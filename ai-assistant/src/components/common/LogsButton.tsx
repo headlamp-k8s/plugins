@@ -29,7 +29,6 @@ const LogsButton: React.FC<LogsButtonProps> = ({
     parts.push('Logs');
     return parts.join(' ');
   };
-
   return (
     <>
       <Paper
@@ -61,13 +60,15 @@ const LogsButton: React.FC<LogsButtonProps> = ({
         </Box>
       </Paper>
 
-      <LogsDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        logs={logs}
-        title={getTitle()}
-        resourceName={resourceName}
-      />
+      {dialogOpen && (
+        <LogsDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          logs={logs}
+          title={getTitle()}
+          resourceName={resourceName}
+        />
+      )}
     </>
   );
 };
