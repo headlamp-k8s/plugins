@@ -25,7 +25,7 @@ const LoadingButton = (props: LoadingButtonProps) => {
         textTransform: 'none',
       }}
     >
-      <CircularProgress color="secondary" value={props.progress} size={20} />
+      <CircularProgress color="primary" value={props.progress} size={20} />
     </Button>
   );
   if (props.progress > 0 && props.progress < 100) {
