@@ -413,6 +413,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         // If hyperv, we use the scriptjs to run the command because it needs to run with admin rights
         if (command === 'start') {
           args.push('--cni=calico');
+          args.push('--addons=metallb,ingress-dns');
         }
         minikube = pluginRunCommand(
           // @ts-ignore
@@ -424,6 +425,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         if (command === 'start') {
           args.push('--cni=calico');
           args.push('--container-runtime=containerd');
+          args.push('--addons=metallb,ingress-dns');
         }
         minikube = pluginRunCommand(
           // @ts-ignore
