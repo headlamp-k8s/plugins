@@ -209,6 +209,21 @@ function info() {
     }
   }
 
+  /**
+   * Checks if Hyper-V is enabled on Windows by verifying if the vmms service exists.
+   * This does not require admin privileges.
+   * @returns {boolean} true if Hyper-V (vmms service) exists, false otherwise.
+   */
+  function detectIfHyperVEnabled() {
+    try {
+      const output = execSync('sc query type= service state= all | findstr /I "vmms"').toString();
+      // If output contains "SERVICE_NAME: vmms", Hyper-V is enabled
+      return output.toLowerCase().includes('vmms');
+    } catch (error) {
+      return false;
+    }
+  }
+
   function detectIfDockerRunning() {
     try {
       const output = execSync('docker info', { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -368,6 +383,7 @@ function info() {
     info.diskFree = getDiskFreeWindows();
     info.dockerRunning = detectIfDockerRunning();
     info.hyperVRunning = detectIfHyperVRunning();
+    info.hyperVEnabled = detectIfHyperVEnabled();
     info.ram = getRamWindows();
     info.freeRam = getFreeRamWindows();
   }

@@ -126,6 +126,11 @@ export default function CommandDialog({
             </Box>
           </FormControl>
           <DriverSelect driver={driver} setDriver={setDriver} info={info} />
+          {info.hyperVEnabled === false && (
+            <Alert severity="warning">
+              {`Warning: HyperV is not enabled. You can either enable it or use another driver.`}
+            </Alert>
+          )}
           {info && parseFloat(info.freeRam) < 2 && (
             <Alert severity="warning">
               {`Warning: You have less than 2GB of free Memory available. This may affect performance.`}

@@ -136,8 +136,8 @@ function useDrivers(info: DriverInfo | null): { value: string; label: string }[]
         const dockerDriver = drivers.splice(dockerIndex, 1)[0];
         drivers.unshift(dockerDriver);
       }
-    } else if (info && info.hyperVRunning) {
-      // If hyperv is running, make hyperv the first option
+    } else if (info && info.hyperVEnabled) {
+      // If hyperv is enabled, make hyperv the first option
       const hypervIndex = drivers.findIndex(driver => driver.value === 'hyperv');
       if (hypervIndex !== -1) {
         const hypervDriver = drivers.splice(hypervIndex, 1)[0];

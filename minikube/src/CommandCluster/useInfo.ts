@@ -1,5 +1,5 @@
-import React from 'react';
 import { runCommand } from '@kinvolk/headlamp-plugin/lib';
+import React from 'react';
 
 const DEBUG = false;
 
@@ -7,6 +7,7 @@ export interface DriverInfo {
   diskFree: string;
   dockerRunning: boolean;
   hyperVRunning: boolean;
+  hyperVEnabled: boolean;
   ram: string;
   freeRam: string;
 }
@@ -19,7 +20,7 @@ const packagePath =
     : pluginPath;
 
 /**
- * @returns {diskFree: '339.65', dockerRunning: false, hyperVRunning: true, ram: '24.00'}
+ * @returns {diskFree: '339.65', dockerRunning: false, hyperVRunning: true, hyperVEnabled: true, ram: '24.00'}
  */
 export function useInfo(): DriverInfo | null {
   const [info, setInfo] = React.useState<DriverInfo | null>(null);
