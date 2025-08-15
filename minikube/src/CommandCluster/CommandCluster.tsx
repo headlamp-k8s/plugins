@@ -418,6 +418,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         if (command === 'start') {
           args.push('--cni=calico');
           args.push('--addons=metallb,ingress-dns');
+          args.push('--memory=3072');
         }
         minikube = pluginRunCommand(
           // @ts-ignore
@@ -429,6 +430,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         if (command === 'start') {
           args.push('--cni=calico');
           args.push('--container-runtime=containerd');
+          args.push('--memory=3072');
           args.push('--addons=metallb,ingress-dns');
         }
         minikube = pluginRunCommand(
