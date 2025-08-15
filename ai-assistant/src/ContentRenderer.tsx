@@ -215,16 +215,43 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           (className === 'language-json' || isJsonKubernetesResource(children));
 
         if (isYamlBlock && onYamlDetected && typeof children === 'string') {
-          // Try to parse as Kubernetes YAML
-          const parsed = parseKubernetesYAML(children);
-          if (parsed.isValid) {
+          // Handle multi-document YAML (documents separated by ---)
+          const yamlDocuments = children.split(/^---+$/m).filter(doc => doc.trim());
+
+          if (yamlDocuments.length > 1) {
+            // Multiple YAML documents - render each separately
             return (
-              <YamlDisplay
-                yaml={children}
-                title={parsed.resourceType}
-                onOpenInEditor={onYamlDetected}
-              />
+              <Box>
+                {yamlDocuments.map((doc, index) => {
+                  const trimmedDoc = doc.trim();
+                  const parsed = parseKubernetesYAML(trimmedDoc);
+                  if (parsed.isValid) {
+                    return (
+                      <Box key={index} sx={{ mb: 2 }}>
+                        <YamlDisplay
+                          yaml={trimmedDoc}
+                          title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
+                          onOpenInEditor={onYamlDetected}
+                        />
+                      </Box>
+                    );
+                  }
+                  return null;
+                })}
+              </Box>
             );
+          } else {
+            // Single YAML document
+            const parsed = parseKubernetesYAML(children);
+            if (parsed.isValid) {
+              return (
+                <YamlDisplay
+                  yaml={children}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
+                  onOpenInEditor={onYamlDetected}
+                />
+              );
+            }
           }
         }
 
@@ -236,7 +263,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
             return (
               <YamlDisplay
                 yaml={yamlContent}
-                title={parsed.resourceType}
+                title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                 onOpenInEditor={onYamlDetected}
               />
             );
@@ -364,7 +391,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 <YamlDisplay
                   key={`json-yaml-${index}-${sectionIndex++}`}
                   yaml={yamlContent}
-                  title={parsed.resourceType}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
                 />
               );
@@ -386,7 +413,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 <YamlDisplay
                   key={`yaml-${index}-${sectionIndex++}`}
                   yaml={trimmedPart}
-                  title={parsed.resourceType}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
                 />
               );
@@ -499,7 +526,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           return (
             <YamlDisplay
               yaml={yamlContent}
-              title={parsed.resourceType}
+              title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
               onOpenInEditor={onYamlDetected}
             />
           );
@@ -544,6 +571,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                     resourceName={logsData.data.resourceName}
                     resourceType={logsData.data.resourceType}
                     namespace={logsData.data.namespace}
+                    containerName={logsData.data.containerName}
                   />
                 </Box>
               );
