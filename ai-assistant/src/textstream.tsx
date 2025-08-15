@@ -12,12 +12,14 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   isLoading,
   apiError,
   onOperationSuccess,
+  onOperationFailure,
   onYamlAction,
 }: {
   history: Prompt[];
   isLoading: boolean;
   apiError: string | null;
   onOperationSuccess?: (response: any) => void;
+  onOperationFailure?: (error: any, operationType: string, resourceInfo?: any) => void;
   onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
 }) {
   const [showEditor, setShowEditor] = useState(false);
@@ -378,6 +380,11 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         onSuccess={response => {
           if (onOperationSuccess) {
             onOperationSuccess(response);
+          }
+        }}
+        onFailure={(error, operationType, resourceInfo) => {
+          if (onOperationFailure) {
+            onOperationFailure(error, operationType, resourceInfo);
           }
         }}
       />

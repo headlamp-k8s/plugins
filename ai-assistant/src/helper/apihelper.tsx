@@ -47,10 +47,10 @@ export const handleActualApiRequest = async (
   dialogClose: () => void,
   aiManager: any,
   resourceInfo: string,
-  targetCluster?: string // Allow specifying a specific cluster
+  targetCluster?: string, // Allow specifying a specific cluster
+  onFailure?: (error: any, operationType: string, resourceInfo?: any) => void, // Optional failure callback
+  onSuccess?: (response: any, operationType: string, resourceInfo?: any) => void // Optional success callback
 ) => {
-  console.log('url', 'method');
-  console.log(url, method, body, resourceInfo);
   const cluster = targetCluster || getCluster();
 
   // If no cluster is provided and no current cluster, try to get any available cluster
@@ -77,25 +77,64 @@ export const handleActualApiRequest = async (
       }
 
       dialogClose();
-      clusterAction(
-        async () => {
-          const response = await apply(resource, cluster);
-          aiManager.history.push({
-            role: 'tool',
-            content: `${resource.kind || 'Resource'} ${
-              response.metadata.name
-            } created successfully.`,
-          });
-          return response;
-        },
-        {
-          startMessage: `Creating ${resource.kind || 'resource'} in cluster ${cluster}...`,
-          cancelledMessage: `Cancelled creating resource in cluster.`,
-          successMessage: `${resource.kind || 'Resource'} created successfully.`,
-          errorMessage: `Failed to create resource.`,
-        }
-      );
+      const response = await new Promise(resolve => {
+        clusterAction(
+          async () => {
+            try {
+              const response = await apply(resource, cluster);
+              aiManager.history.push({
+                role: 'tool',
+                content: `${resource.kind || 'Resource'} ${
+                  response.metadata.name
+                } created successfully.`,
+              });
+
+              // Call the success callback if provided
+              if (onSuccess) {
+                const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+                onSuccess(response, 'POST', parsedResourceInfo);
+              }
+
+              resolve(
+                JSON.stringify({
+                  role: 'tool',
+                  content: `${resource.kind || 'Resource'} ${
+                    response.metadata.name
+                  } created successfully.`,
+                })
+              );
+            } catch (error) {
+              // Call the failure callback if provided
+              if (onFailure) {
+                const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+                onFailure(error, 'POST', parsedResourceInfo);
+              }
+
+              resolve(
+                JSON.stringify({
+                  error: true,
+                  message: `Failed to create ${resource.kind || 'resource'}: ${error.message}`,
+                })
+              );
+            }
+          },
+          {
+            startMessage: `Creating ${resource.kind || 'resource'} in cluster ${cluster}...`,
+            cancelledMessage: `Cancelled creating resource in cluster.`,
+            successMessage: `${resource.kind || 'Resource'} created successfully.`,
+            errorMessage: `Failed to create resource.`,
+          }
+        );
+      });
+      console.log('response from creation is', response);
+      return response;
     } catch (error) {
+      // Call the failure callback if provided
+      if (onFailure) {
+        const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+        onFailure(error, 'POST', parsedResourceInfo);
+      }
+
       aiManager.history.push({
         error: true,
         role: 'assistant',
@@ -129,12 +168,23 @@ export const handleActualApiRequest = async (
         content: `${resourceIdentifier.kind} ${resourceIdentifier.name} deleted successfully.`,
       });
 
+      // Call the success callback if provided
+      if (onSuccess) {
+        onSuccess(resourceIdentifier, 'DELETE', resourceIdentifier);
+      }
+
       return JSON.stringify({
         success: true,
         role: 'tool',
         content: `${resourceIdentifier.kind} ${resourceIdentifier.name} deleted successfully.`,
       });
     } catch (error) {
+      // Call the failure callback if provided
+      if (onFailure) {
+        const resourceIdentifier = body ? JSON.parse(body) : {};
+        onFailure(error, 'DELETE', resourceIdentifier);
+      }
+
       aiManager.history.push({
         error: true,
         role: 'assistant',
@@ -197,6 +247,12 @@ export const handleActualApiRequest = async (
             content: `${resourceIdentifier} updated successfully with patch applied.`,
           });
 
+          // Call the success callback if provided
+          if (onSuccess) {
+            const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+            onSuccess(response, 'PUT', parsedResourceInfo);
+          }
+
           return response;
         },
         {
@@ -214,6 +270,12 @@ export const handleActualApiRequest = async (
         content: `${resourceIdentifier} patch application initiated.`,
       });
     } catch (error) {
+      // Call the failure callback if provided
+      if (onFailure) {
+        const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+        onFailure(error, 'PUT', parsedResourceInfo);
+      }
+
       console.error('Error updating resource:', error);
       const errorMessage = `Error updating resource: ${error.message}`;
       aiManager.history.push({
@@ -269,6 +331,39 @@ export const handleActualApiRequest = async (
         });
       } catch (error) {
         console.log('Error in clusterRequest:', error);
+
+        // Check if this is a multi-container pod logs error
+        if (
+          isLogRequest(cleanedUrl) &&
+          error.message &&
+          error.message.includes('a container name must be specified')
+        ) {
+          // Extract pod name and available containers from error message
+          const podMatch = error.message.match(/for pod ([^,]+)/);
+          const containersMatch = error.message.match(/choose one of: \[([^\]]+)\]/);
+
+          if (podMatch && containersMatch) {
+            const podName = podMatch[1];
+            const containers = containersMatch[1].split(' ').map(c => c.trim());
+
+            const errorContent = `The pod "${podName}" has multiple containers. Please specify which container you want logs from:\n\nAvailable containers: ${containers.join(
+              ', '
+            )}\n\nTo get logs from a specific container, ask: "get logs from ${podName} container [container-name]"`;
+
+            aiManager.history.push({
+              error: false,
+              role: 'assistant',
+              content: errorContent,
+            });
+
+            return JSON.stringify({
+              error: false,
+              role: 'assistant',
+              content: errorContent,
+            });
+          }
+        }
+
         aiManager.history.push({
           error: true,
           role: 'assistant',
@@ -294,8 +389,13 @@ export const handleActualApiRequest = async (
 
         // Extract resource information from URL for better log button display
         const extractResourceFromUrl = (url: string) => {
+          // Extract container name from query parameters if present
+          const containerMatch = url.match(/[?&]container=([^&]+)/);
+          const containerName = containerMatch ? containerMatch[1] : null;
+
           // Match patterns like:
           // /api/v1/namespaces/default/pods/my-pod/log
+          // /api/v1/namespaces/default/pods/my-pod/log?container=container-name
           // /apis/apps/v1/namespaces/default/deployments/my-deployment/log
           const match = url.match(/\/namespaces\/([^\/]+)\/([^\/]+)\/([^\/]+)\/log/);
           if (match) {
@@ -303,6 +403,7 @@ export const handleActualApiRequest = async (
               namespace: match[1],
               resourceType: match[2],
               resourceName: match[3],
+              containerName: containerName,
             };
           }
 
@@ -312,12 +413,14 @@ export const handleActualApiRequest = async (
             return {
               resourceType: fallbackMatch[1],
               resourceName: fallbackMatch[2],
+              containerName: containerName,
             };
           }
 
           return {
             resourceType: 'resource',
             resourceName: 'logs',
+            containerName: containerName,
           };
         };
 
@@ -331,24 +434,33 @@ export const handleActualApiRequest = async (
             resourceName: resourceInfo.resourceName,
             resourceType: resourceInfo.resourceType,
             namespace: resourceInfo.namespace,
+            containerName: resourceInfo.containerName,
             url: url,
           },
         };
 
         // Add a user-friendly message to chat history instead of raw logs
+        const containerInfo = resourceInfo.containerName
+          ? ` (container: ${resourceInfo.containerName})`
+          : '';
         const logSummary = logText
           ? `Logs retrieved for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${
               resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
-            }. ${logText.split('\n')}`
+            }${containerInfo}. ${logText.split('\n')}`
           : `No logs available for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${
               resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
-            }.`;
+            }${containerInfo}.`;
 
         aiManager.history.push({
           success: true,
           role: 'tool',
           content: `LOGS_BUTTON:${JSON.stringify(logsResponse)}\n\n${logSummary}`,
         });
+
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(logsResponse, 'GET', { type: 'logs', ...resourceInfo });
+        }
 
         return '';
       } else if (response?.kind === 'Table') {
@@ -417,6 +529,11 @@ export const handleActualApiRequest = async (
           role: 'tool',
           content: formattedResponse,
         });
+
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(response, 'GET', { type: 'table', resourceKind, totalItems });
+        }
       } else if (typeof response === 'object') {
         formattedResponse = JSON.stringify(response, null, 2);
         aiManager.history.push({
@@ -424,6 +541,11 @@ export const handleActualApiRequest = async (
           role: 'tool',
           content: formattedResponse,
         });
+
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(response, 'GET', { type: 'object' });
+        }
       } else if (typeof response === 'string') {
         formattedResponse = response;
         aiManager.history.push({
@@ -431,6 +553,11 @@ export const handleActualApiRequest = async (
           role: 'tool',
           content: formattedResponse,
         });
+
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(response, 'GET', { type: 'string' });
+        }
       } else {
         // Handle empty or null response
         formattedResponse = 'No data found';
@@ -439,11 +566,22 @@ export const handleActualApiRequest = async (
           role: 'tool',
           content: formattedResponse,
         });
+
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(response, 'GET', { type: 'empty' });
+        }
       }
 
       return formattedResponse ?? 'ok';
     } catch (error) {
       console.log(error);
+
+      // Call the failure callback if provided
+      if (onFailure) {
+        onFailure(error, 'GET', { type: 'api_error' });
+      }
+
       aiManager.history.push({
         error: true,
         role: 'assistant',

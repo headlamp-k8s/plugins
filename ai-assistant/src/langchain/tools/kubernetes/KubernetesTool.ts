@@ -88,7 +88,9 @@ export class KubernetesTool extends ToolBase {
           body || '',
           () => {}, // No-op onClose for GET requests
           this.context.aiManager, // Use aiManager from context
-          '' // No resource info needed for GET requests
+          '', // No resource info needed for GET requests
+          undefined, // No target cluster specified
+          undefined // No failure callback for GET requests (they're read-only)
         );
 
         // The handleActualApiRequest already adds to history, so we return a simple response
@@ -181,7 +183,9 @@ export class KubernetesTool extends ToolBase {
       body,
       this.handleApiDialogClose.bind(this),
       this.context.aiManager, // Use aiManager from context
-      resourceInfo
+      resourceInfo,
+      undefined, // No target cluster specified
+      undefined // No failure callback needed here as it's handled by the main flow
     );
   }
 
