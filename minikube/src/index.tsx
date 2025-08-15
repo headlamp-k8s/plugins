@@ -177,7 +177,7 @@ registerClusterProviderDialog(({ cluster, openConfirmDialog, setOpenConfirmDialo
 // alert(import.meta.env.VITE_PLUGIN_PACKAGE_PATH);
 // For the add cluster page, add a section for minikube
 registerAddClusterProvider({
-  title: 'Minikube',
+  title: 'Create Local Cluster',
   icon: MinikubeIcon,
   description:
     'Minikube is a lightweight tool that simplifies the process of setting up a Kubernetes environment on your local PC. It provides a localStorage, single-node Kubernetes cluster that you can use for learning, development, and testing purposes.',
