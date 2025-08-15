@@ -196,7 +196,11 @@ export default class LangChainManager extends AIManager {
 
   // Helper method to prepare chat history for prompt template
   private prepareChatHistory(): BaseMessage[] {
-    return this.convertPromptsToMessages(this.history);
+    // Filter out system messages and display-only messages to avoid conflicts with the system message in the prompt template
+    const filteredHistory = this.history.filter(
+      prompt => prompt.role !== 'system' && !prompt.isDisplayOnly
+    );
+    return this.convertPromptsToMessages(filteredHistory);
   }
 
   // Helper method to create system prompt with context
@@ -499,6 +503,7 @@ export default class LangChainManager extends AIManager {
           content: toolErrorPrompt,
           toolCallId: 'system-error-alert',
           name: 'error_handler',
+          isDisplayOnly: true, // Mark as display-only to prevent sending to LLM
         };
 
         this.history.push(errorSystemMessage);
@@ -523,6 +528,7 @@ You MUST:
 Format your response to make the errors prominent and actionable.`,
           toolCallId: 'system-error-alert',
           name: 'error_handler',
+          isDisplayOnly: true, // Mark as display-only to prevent sending to LLM
         };
 
         this.history.push(errorSystemMessage);
@@ -828,7 +834,10 @@ Format your response to make the errors prominent and actionable.`,
         !prompt.toolCalls ||
         prompt.toolCalls.length === 0
       ) {
-        messages.push(...this.convertPromptsToMessages([prompt]));
+        // Skip system messages and display-only messages to avoid ordering issues - system message is already added at the beginning
+        if (prompt.role !== 'system' && !prompt.isDisplayOnly) {
+          messages.push(...this.convertPromptsToMessages([prompt]));
+        }
       }
     }
 
@@ -963,6 +972,7 @@ Format your response to make the errors prominent and actionable.`,
       role: 'system',
       content:
         'REMINDER: Never suggest kubectl or command line tools. Always use the kubernetes_api_request tool or explain UI actions. The user is using a web dashboard and cannot access the command line.',
+      isDisplayOnly: true, // Mark as display-only to prevent sending to LLM
     });
 
     try {

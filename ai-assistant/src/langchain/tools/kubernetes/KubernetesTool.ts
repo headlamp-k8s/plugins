@@ -6,13 +6,22 @@ export class KubernetesTool extends ToolBase {
   readonly config: ToolConfig = {
     name: 'kubernetes_api_request',
     description:
-      'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
+      'Make requests to the Kubernetes API server to fetch, create, update or delete resources. For PATCH operations, provide only the specific fields that need to be changed, not the full resource. Use merge patch format with null values to remove fields.',
     schema: z.object({
       url: z
         .string()
         .describe('URL to request, e.g., /api/v1/pods or /api/v1/namespaces/default/pods/pod-name'),
-      method: z.string().describe('HTTP method: GET, POST, PATCH, DELETE'),
-      body: z.string().optional().describe('Optional HTTP body'),
+      method: z
+        .string()
+        .describe(
+          'HTTP method: GET, POST, PUT, DELETE. Use PUT for updating specific fields of existing resources.'
+        ),
+      body: z
+        .string()
+        .optional()
+        .describe(
+          'Optional HTTP body. For PUT: include only fields to change, use null to remove fields. For POST: full resource definition.'
+        ),
     }),
   };
 
@@ -79,7 +88,9 @@ export class KubernetesTool extends ToolBase {
           body || '',
           () => {}, // No-op onClose for GET requests
           this.context.aiManager, // Use aiManager from context
-          '' // No resource info needed for GET requests
+          '', // No resource info needed for GET requests
+          undefined, // No target cluster specified
+          undefined // No failure callback for GET requests (they're read-only)
         );
 
         // The handleActualApiRequest already adds to history, so we return a simple response
@@ -172,7 +183,9 @@ export class KubernetesTool extends ToolBase {
       body,
       this.handleApiDialogClose.bind(this),
       this.context.aiManager, // Use aiManager from context
-      resourceInfo
+      resourceInfo,
+      undefined, // No target cluster specified
+      undefined // No failure callback needed here as it's handled by the main flow
     );
   }
 

@@ -118,7 +118,7 @@ const YamlDisplay: React.FC<YamlDisplayProps> = React.memo(
       // Remove any common leading spaces
       const minIndent =
         lines
-          .filter(line => line.trim().length > 0)
+          .filter(line => line?.trim().length > 0)
           .reduce((min, line) => {
             const leadingSpaces = line.match(/^\s*/)[0].length;
             return leadingSpaces < min ? leadingSpaces : min;

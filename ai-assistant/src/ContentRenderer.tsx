@@ -1,5 +1,5 @@
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Button, Link as MuiLink, Typography } from '@mui/material';
+import { Alert, Box, Button, Link as MuiLink, Typography } from '@mui/material';
 import React, { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link as RouterLink, useHistory } from 'react-router-dom';
@@ -215,16 +215,43 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           (className === 'language-json' || isJsonKubernetesResource(children));
 
         if (isYamlBlock && onYamlDetected && typeof children === 'string') {
-          // Try to parse as Kubernetes YAML
-          const parsed = parseKubernetesYAML(children);
-          if (parsed.isValid) {
+          // Handle multi-document YAML (documents separated by ---)
+          const yamlDocuments = children.split(/^---+$/m).filter(doc => doc.trim());
+
+          if (yamlDocuments.length > 1) {
+            // Multiple YAML documents - render each separately
             return (
-              <YamlDisplay
-                yaml={children}
-                title={parsed.resourceType}
-                onOpenInEditor={onYamlDetected}
-              />
+              <Box>
+                {yamlDocuments.map((doc, index) => {
+                  const trimmedDoc = doc.trim();
+                  const parsed = parseKubernetesYAML(trimmedDoc);
+                  if (parsed.isValid) {
+                    return (
+                      <Box key={index} sx={{ mb: 2 }}>
+                        <YamlDisplay
+                          yaml={trimmedDoc}
+                          title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
+                          onOpenInEditor={onYamlDetected}
+                        />
+                      </Box>
+                    );
+                  }
+                  return null;
+                })}
+              </Box>
             );
+          } else {
+            // Single YAML document
+            const parsed = parseKubernetesYAML(children);
+            if (parsed.isValid) {
+              return (
+                <YamlDisplay
+                  yaml={children}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
+                  onOpenInEditor={onYamlDetected}
+                />
+              );
+            }
           }
         }
 
@@ -236,7 +263,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
             return (
               <YamlDisplay
                 yaml={yamlContent}
-                title={parsed.resourceType}
+                title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                 onOpenInEditor={onYamlDetected}
               />
             );
@@ -364,7 +391,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 <YamlDisplay
                   key={`json-yaml-${index}-${sectionIndex++}`}
                   yaml={yamlContent}
-                  title={parsed.resourceType}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
                 />
               );
@@ -386,7 +413,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 <YamlDisplay
                   key={`yaml-${index}-${sectionIndex++}`}
                   yaml={trimmedPart}
-                  title={parsed.resourceType}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
                 />
               );
@@ -443,6 +470,54 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
     const processedContent = useMemo(() => {
       if (!content) return null;
 
+      // First, check if content is a JSON response with error or success keys
+      try {
+        const parsedContent = JSON.parse(content.trim());
+
+        // Check if it's an error response
+        if (parsedContent.error === true && parsedContent.content) {
+          return (
+            <Alert severity="error" sx={{ mb: 1, overflowWrap: 'anywhere' }}>
+              <Typography variant="body2">{parsedContent.content}</Typography>
+            </Alert>
+          );
+        }
+
+        // Check if it's a success response
+        if (parsedContent.success === true && parsedContent.content) {
+          return (
+            <Alert severity="success" sx={{ mb: 1, overflowWrap: 'anywhere' }}>
+              <Typography variant="body2">{parsedContent.content}</Typography>
+            </Alert>
+          );
+        }
+
+        // If it's a JSON response but not error/success, continue with normal processing
+        // unless it's a Kubernetes resource, then fall through to regular content processing
+        if (!isJsonKubernetesResource(content)) {
+          // For other JSON responses that aren't Kubernetes resources,
+          // render as formatted JSON
+          return (
+            <Box
+              component="pre"
+              sx={{
+                backgroundColor: theme => theme.palette.grey[100],
+                color: theme => theme.palette.grey[900],
+                padding: 2,
+                borderRadius: 1,
+                overflowX: 'auto',
+                whiteSpace: 'pre-wrap',
+                fontSize: '0.85rem',
+              }}
+            >
+              {JSON.stringify(parsedContent, null, 2)}
+            </Box>
+          );
+        }
+      } catch (e) {
+        // Not a JSON response, continue with regular content processing
+      }
+
       // Check if the entire content is a JSON Kubernetes resource
       if (isJsonKubernetesResource(content)) {
         const yamlContent = convertJsonToYaml(content);
@@ -451,7 +526,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           return (
             <YamlDisplay
               yaml={yamlContent}
-              title={parsed.resourceType}
+              title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
               onOpenInEditor={onYamlDetected}
             />
           );
@@ -489,28 +564,15 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
 
             if (jsonString) {
               const logsData = JSON.parse(jsonString);
-              const beforeButton = content.substring(0, logsButtonIndex);
-              const afterButtonIndex = logsButtonIndex + 'LOGS_BUTTON:'.length + jsonString.length;
-              const afterButton = content.substring(afterButtonIndex);
-
               return (
                 <Box>
-                  {beforeButton.trim() && (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={allMarkdownComponents}>
-                      {beforeButton.trim()}
-                    </ReactMarkdown>
-                  )}
                   <LogsButton
                     logs={logsData.data.logs}
                     resourceName={logsData.data.resourceName}
                     resourceType={logsData.data.resourceType}
                     namespace={logsData.data.namespace}
+                    containerName={logsData.data.containerName}
                   />
-                  {afterButton.trim() && (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={allMarkdownComponents}>
-                      {afterButton.trim()}
-                    </ReactMarkdown>
-                  )}
                 </Box>
               );
             }

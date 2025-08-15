@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { handleActualApiRequest } from '../helper/apihelper';
 import { KubernetesToolUICallbacks, KubernetesToolUIState } from '../langchain/tools/kubernetes';
 
-export function useKubernetesToolUI(): {
+export function useKubernetesToolUI(updateHistory?: () => void): {
   state: KubernetesToolUIState;
   callbacks: KubernetesToolUICallbacks;
 } {
@@ -32,8 +32,33 @@ export function useKubernetesToolUI(): {
       onClose: () => void = () => {},
       aiManager?: any,
       resourceInfo?: any,
-      targetCluster?: string
+      targetCluster?: string,
+      onFailure?: (error: any, operationType: string, resourceInfo?: any) => void,
+      onSuccess?: (response: any, operationType: string, resourceInfo?: any) => void
     ) => {
+      // Create wrapped callbacks that also call updateHistory
+      const wrappedOnSuccess = onSuccess
+        ? (response: any, operationType: string, resourceInfo?: any) => {
+            onSuccess(response, operationType, resourceInfo);
+            if (updateHistory) {
+              updateHistory();
+            }
+          }
+        : updateHistory
+        ? () => updateHistory()
+        : undefined;
+
+      const wrappedOnFailure = onFailure
+        ? (error: any, operationType: string, resourceInfo?: any) => {
+            onFailure(error, operationType, resourceInfo);
+            if (updateHistory) {
+              updateHistory();
+            }
+          }
+        : updateHistory
+        ? () => updateHistory()
+        : undefined;
+
       return handleActualApiRequest(
         url,
         method,
@@ -41,10 +66,12 @@ export function useKubernetesToolUI(): {
         onClose,
         aiManager,
         resourceInfo,
-        targetCluster
+        targetCluster,
+        wrappedOnFailure,
+        wrappedOnSuccess
       );
     };
-  }, []);
+  }, [updateHistory]);
 
   const callbacks: KubernetesToolUICallbacks = useMemo(
     () => ({

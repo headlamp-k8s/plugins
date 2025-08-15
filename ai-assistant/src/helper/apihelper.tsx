@@ -4,6 +4,35 @@ import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
 import { isLogRequest, isSpecificResourceRequestHelper } from '.';
 
+// Deep merge function to merge patch with current resource
+function deepMerge(target: any, source: any): any {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (source[key] === null) {
+      // If source value is null, remove the property
+      delete result[key];
+    } else if (source[key] !== undefined) {
+      if (Array.isArray(source[key])) {
+        // For arrays, replace entirely
+        result[key] = [...source[key]];
+      } else if (typeof source[key] === 'object' && source[key] !== null) {
+        // For objects, recursively merge
+        // Initialize target[key] as empty object if it doesn't exist or isn't an object
+        if (!result[key] || typeof result[key] !== 'object' || Array.isArray(result[key])) {
+          result[key] = {};
+        }
+        result[key] = deepMerge(result[key], source[key]);
+      } else {
+        // For primitive values, replace
+        result[key] = source[key];
+      }
+    }
+  }
+
+  return result;
+}
+
 const cleanUrl = (url: string) => {
   const urlObj = new URL(url, 'http://dummy.com'); // Use dummy base for relative URLs
   urlObj.searchParams.delete('allNamespaces');
@@ -18,7 +47,9 @@ export const handleActualApiRequest = async (
   dialogClose: () => void,
   aiManager: any,
   resourceInfo: string,
-  targetCluster?: string // Allow specifying a specific cluster
+  targetCluster?: string, // Allow specifying a specific cluster
+  onFailure?: (error: any, operationType: string, resourceInfo?: any) => void, // Optional failure callback
+  onSuccess?: (response: any, operationType: string, resourceInfo?: any) => void // Optional success callback
 ) => {
   const cluster = targetCluster || getCluster();
 
@@ -46,28 +77,74 @@ export const handleActualApiRequest = async (
       }
 
       dialogClose();
-      clusterAction(
-        async () => {
-          const response = await apply(resource, cluster);
-          aiManager.history.push({
-            role: 'tool',
-            content: `${resource.kind || 'Resource'} ${
-              response.metadata.name
-            } created successfully.`,
-          });
-          return response;
-        },
-        {
-          startMessage: `Creating ${resource.kind || 'resource'} in cluster ${cluster}...`,
-          cancelledMessage: `Cancelled creating resource in cluster.`,
-          successMessage: `${resource.kind || 'Resource'} created successfully.`,
-          errorMessage: `Failed to create resource.`,
-        }
-      );
+      const response = await new Promise(resolve => {
+        clusterAction(
+          async () => {
+            try {
+              const response = await apply(resource, cluster);
+              aiManager.history.push({
+                role: 'tool',
+                content: `${resource.kind || 'Resource'} ${
+                  response.metadata.name
+                } created successfully.`,
+              });
+
+              // Call the success callback if provided
+              if (onSuccess) {
+                const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+                onSuccess(response, 'POST', parsedResourceInfo);
+              }
+
+              resolve(
+                JSON.stringify({
+                  role: 'tool',
+                  content: `${resource.kind || 'Resource'} ${
+                    response.metadata.name
+                  } created successfully.`,
+                })
+              );
+            } catch (error) {
+              // Call the failure callback if provided
+              if (onFailure) {
+                const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+                onFailure(error, 'POST', parsedResourceInfo);
+              }
+
+              resolve(
+                JSON.stringify({
+                  error: true,
+                  message: `Failed to create ${resource.kind || 'resource'}: ${error.message}`,
+                })
+              );
+            }
+          },
+          {
+            startMessage: `Creating ${resource.kind || 'resource'} in cluster ${cluster}...`,
+            cancelledMessage: `Cancelled creating resource in cluster.`,
+            successMessage: `${resource.kind || 'Resource'} created successfully.`,
+            errorMessage: `Failed to create resource.`,
+          }
+        );
+      });
+      console.log('response from creation is', response);
+      return response;
     } catch (error) {
+      // Call the failure callback if provided
+      if (onFailure) {
+        const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+        onFailure(error, 'POST', parsedResourceInfo);
+      }
+
+      aiManager.history.push({
+        error: true,
+        role: 'assistant',
+        content: `Error creating resource: ${error.message}`,
+      });
+
       return JSON.stringify({
         error: true,
-        message: `Error creating resource: ${error.message}`,
+        role: 'assistant',
+        content: `Error creating resource: ${error.message}`,
       });
     }
   }
@@ -76,85 +153,141 @@ export const handleActualApiRequest = async (
   if (method.toUpperCase() === 'DELETE' && body) {
     try {
       const resourceIdentifier = JSON.parse(body);
-
       dialogClose();
-      clusterRequest(url, {
+      await clusterRequest(url, {
         method: 'DELETE',
         cluster,
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-      })
-        .then(() => {
-          aiManager.history.push({
-            role: 'tool',
-            content: `${resourceIdentifier.kind} ${resourceIdentifier.name} deleted successfully.`,
-          });
-        })
-        .catch(error => {
-          aiManager.history.push({
-            role: 'assistant',
-            content: `Error deleting resource: ${error.message}`,
-          });
-        });
-    } catch (error) {
+      });
       aiManager.history.push({
+        role: 'tool',
+        success: true,
+        content: `${resourceIdentifier.kind} ${resourceIdentifier.name} deleted successfully.`,
+      });
+
+      // Call the success callback if provided
+      if (onSuccess) {
+        onSuccess(resourceIdentifier, 'DELETE', resourceIdentifier);
+      }
+
+      return JSON.stringify({
+        success: true,
+        role: 'tool',
+        content: `${resourceIdentifier.kind} ${resourceIdentifier.name} deleted successfully.`,
+      });
+    } catch (error) {
+      // Call the failure callback if provided
+      if (onFailure) {
+        const resourceIdentifier = body ? JSON.parse(body) : {};
+        onFailure(error, 'DELETE', resourceIdentifier);
+      }
+
+      aiManager.history.push({
+        error: true,
+        role: 'assistant',
+        content: `Error deleting resource: ${error.message}`,
+      });
+      return JSON.stringify({
+        error: true,
         role: 'assistant',
         content: `Error deleting resource: ${error.message}`,
       });
     }
   }
 
-  // For PATCH/PUT operations
-  if ((method.toUpperCase() === 'PATCH' || method.toUpperCase() === 'PUT') && body) {
+  // For PUT operations only - no PATCH support
+  if (method.toUpperCase() === 'PUT' && body) {
     try {
-      let resource;
+      let patch;
       try {
-        resource = YAML.parse(body);
+        patch = YAML.parse(body);
       } catch (e) {
-        resource = JSON.parse(body);
+        patch = JSON.parse(body);
       }
 
       const parsedResourceInfo = JSON.parse(resourceInfo);
       const resourceIdentifier = `${parsedResourceInfo.kind} ${parsedResourceInfo.name}`;
 
-      // Ensure the resource has the required fields
-
-      const processedBody = JSON.stringify(resource);
-
       dialogClose();
+
       clusterAction(
         async () => {
+          // First, get the current resource
+          const currentResource = await clusterRequest(url, {
+            method: 'GET',
+            cluster,
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+          });
+
+          // Deep merge the patch with the current resource
+          const mergedResource = deepMerge(currentResource, patch);
+
+          // Now make the PUT request with the merged resource
           const headers = {
-            'Content-Type':
-              method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+            'Content-Type': 'application/json',
             Accept: 'application/json',
           };
+
           const response = await clusterRequest(url, {
-            method,
+            method: 'PUT',
             cluster,
-            body: processedBody,
+            body: JSON.stringify(mergedResource),
             headers,
           });
 
           aiManager.history.push({
+            success: true,
             role: 'tool',
-            content: `${resourceIdentifier} updated successfully.`,
+            content: `${resourceIdentifier} updated successfully with patch applied.`,
           });
+
+          // Call the success callback if provided
+          if (onSuccess) {
+            const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+            onSuccess(response, 'PUT', parsedResourceInfo);
+          }
+
           return response;
         },
         {
-          startMessage: `Updating ${resourceIdentifier}...`,
+          startMessage: `Applying patch to ${resourceIdentifier}...`,
           cancelledMessage: `Cancelled updating ${resourceIdentifier}.`,
           successMessage: `${resourceIdentifier} updated successfully.`,
           errorMessage: `Failed to update ${resourceIdentifier}.`,
         }
       );
+
+      // Return success response immediately after dispatching the action
+      return JSON.stringify({
+        success: true,
+        role: 'tool',
+        content: `${resourceIdentifier} patch application initiated.`,
+      });
     } catch (error) {
+      // Call the failure callback if provided
+      if (onFailure) {
+        const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
+        onFailure(error, 'PUT', parsedResourceInfo);
+      }
+
+      console.error('Error updating resource:', error);
+      const errorMessage = `Error updating resource: ${error.message}`;
       aiManager.history.push({
+        error: true,
         role: 'assistant',
-        content: `Error updating resource: ${error.message}`,
+        content: errorMessage,
+      });
+
+      return JSON.stringify({
+        error: true,
+        role: 'assistant',
+        content: errorMessage,
       });
     }
   }
@@ -190,11 +323,58 @@ export const handleActualApiRequest = async (
           };
         }
       }
+      let response;
+      try {
+        response = await clusterRequest(cleanedUrl, {
+          ...requestOptions,
+          isJSON: !isLogRequest(cleanedUrl),
+        });
+      } catch (error) {
+        console.log('Error in clusterRequest:', error);
 
-      const response = await clusterRequest(cleanedUrl, {
-        ...requestOptions,
-        isJSON: !isLogRequest(cleanedUrl),
-      });
+        // Check if this is a multi-container pod logs error
+        if (
+          isLogRequest(cleanedUrl) &&
+          error.message &&
+          error.message.includes('a container name must be specified')
+        ) {
+          // Extract pod name and available containers from error message
+          const podMatch = error.message.match(/for pod ([^,]+)/);
+          const containersMatch = error.message.match(/choose one of: \[([^\]]+)\]/);
+
+          if (podMatch && containersMatch) {
+            const podName = podMatch[1];
+            const containers = containersMatch[1].split(' ').map(c => c.trim());
+
+            const errorContent = `The pod "${podName}" has multiple containers. Please specify which container you want logs from:\n\nAvailable containers: ${containers.join(
+              ', '
+            )}\n\nTo get logs from a specific container, ask: "get logs from ${podName} container [container-name]"`;
+
+            aiManager.history.push({
+              error: false,
+              role: 'assistant',
+              content: errorContent,
+            });
+
+            return JSON.stringify({
+              error: false,
+              role: 'assistant',
+              content: errorContent,
+            });
+          }
+        }
+
+        aiManager.history.push({
+          error: true,
+          role: 'assistant',
+          content: `Error in API call to ${cleanedUrl}: ${error.message}`,
+        });
+        return JSON.stringify({
+          error: true,
+          role: 'assistant',
+          content: `Error in API call to ${cleanedUrl}: ${error.message}`,
+        });
+      }
 
       let formattedResponse = response;
       if (isLogRequest(url)) {
@@ -209,8 +389,13 @@ export const handleActualApiRequest = async (
 
         // Extract resource information from URL for better log button display
         const extractResourceFromUrl = (url: string) => {
+          // Extract container name from query parameters if present
+          const containerMatch = url.match(/[?&]container=([^&]+)/);
+          const containerName = containerMatch ? containerMatch[1] : null;
+
           // Match patterns like:
           // /api/v1/namespaces/default/pods/my-pod/log
+          // /api/v1/namespaces/default/pods/my-pod/log?container=container-name
           // /apis/apps/v1/namespaces/default/deployments/my-deployment/log
           const match = url.match(/\/namespaces\/([^\/]+)\/([^\/]+)\/([^\/]+)\/log/);
           if (match) {
@@ -218,6 +403,7 @@ export const handleActualApiRequest = async (
               namespace: match[1],
               resourceType: match[2],
               resourceName: match[3],
+              containerName: containerName,
             };
           }
 
@@ -227,12 +413,14 @@ export const handleActualApiRequest = async (
             return {
               resourceType: fallbackMatch[1],
               resourceName: fallbackMatch[2],
+              containerName: containerName,
             };
           }
 
           return {
             resourceType: 'resource',
             resourceName: 'logs',
+            containerName: containerName,
           };
         };
 
@@ -246,25 +434,35 @@ export const handleActualApiRequest = async (
             resourceName: resourceInfo.resourceName,
             resourceType: resourceInfo.resourceType,
             namespace: resourceInfo.namespace,
+            containerName: resourceInfo.containerName,
             url: url,
           },
         };
 
         // Add a user-friendly message to chat history instead of raw logs
+        const containerInfo = resourceInfo.containerName
+          ? ` (container: ${resourceInfo.containerName})`
+          : '';
         const logSummary = logText
           ? `Logs retrieved for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${
               resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
-            }. ${logText.split('\n')}`
+            }${containerInfo}. ${logText.split('\n')}`
           : `No logs available for ${resourceInfo.resourceType} "${resourceInfo.resourceName}"${
               resourceInfo.namespace ? ` in namespace "${resourceInfo.namespace}"` : ''
-            }.`;
+            }${containerInfo}.`;
 
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: `LOGS_BUTTON:${JSON.stringify(logsResponse)}\n\n${logSummary}`,
         });
 
-        return logSummary;
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(logsResponse, 'GET', { type: 'logs', ...resourceInfo });
+        }
+
+        return '';
       } else if (response?.kind === 'Table') {
         // ...existing code...
         const extractKindFromUrl = (url: string) => {
@@ -327,37 +525,73 @@ export const handleActualApiRequest = async (
 
         // Always push to history, even if no items found
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: formattedResponse,
         });
+
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(response, 'GET', { type: 'table', resourceKind, totalItems });
+        }
       } else if (typeof response === 'object') {
         formattedResponse = JSON.stringify(response, null, 2);
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: formattedResponse,
         });
+
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(response, 'GET', { type: 'object' });
+        }
       } else if (typeof response === 'string') {
         formattedResponse = response;
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: formattedResponse,
         });
+
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(response, 'GET', { type: 'string' });
+        }
       } else {
         // Handle empty or null response
         formattedResponse = 'No data found';
         aiManager.history.push({
+          success: true,
           role: 'tool',
           content: formattedResponse,
         });
+
+        // Call the success callback if provided
+        if (onSuccess) {
+          onSuccess(response, 'GET', { type: 'empty' });
+        }
       }
 
       return formattedResponse ?? 'ok';
     } catch (error) {
+      console.log(error);
+
+      // Call the failure callback if provided
+      if (onFailure) {
+        onFailure(error, 'GET', { type: 'api_error' });
+      }
+
       aiManager.history.push({
+        error: true,
         role: 'assistant',
         content: `Error in API call to ${url}: ${error.message}`,
       });
-      throw error;
+      return JSON.stringify({
+        error: true,
+        role: 'assistant',
+        content: `Error in API call to ${url}: ${error.message}`,
+      });
     }
   }
 };
