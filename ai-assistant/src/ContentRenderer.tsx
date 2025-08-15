@@ -297,7 +297,6 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           (className === 'language-json' || isJsonKubernetesResource(children));
 
         if (isYamlBlock && onYamlDetected && typeof children === 'string') {
-          // Try to parse as Kubernetes YAML
           const parsed = parseKubernetesYAML(children);
           if (parsed.isValid) {
             return (
@@ -318,7 +317,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
             return (
               <YamlDisplay
                 yaml={yamlContent}
-                title={parsed.resourceType}
+                title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                 onOpenInEditor={onYamlDetected}
               />
             );
@@ -446,7 +445,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 <YamlDisplay
                   key={`json-yaml-${index}-${sectionIndex++}`}
                   yaml={yamlContent}
-                  title={parsed.resourceType}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
                 />
               );
@@ -468,7 +467,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 <YamlDisplay
                   key={`yaml-${index}-${sectionIndex++}`}
                   yaml={trimmedPart}
-                  title={parsed.resourceType}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
                 />
               );
@@ -580,7 +579,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           return (
             <YamlDisplay
               yaml={yamlContent}
-              title={parsed.resourceType}
+              title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
               onOpenInEditor={onYamlDetected}
             />
           );
