@@ -15,6 +15,8 @@ import CommandCluster from './CommandCluster/CommandCluster';
 import CreateClusterPage from './CreateClusterPage';
 import MinikubeIcon from './minikube.svg';
 
+const DEBUG = false;
+
 export function isElectron(): boolean {
   // Renderer process
   if (
@@ -219,7 +221,10 @@ function Command() {
     </Button>
   );
 }
-registerAppBarAction(Command);
+
+if (DEBUG) {
+  registerAppBarAction(Command);
+}
 
 if (registerClusterStatus) {
   registerClusterStatus(({ cluster, error }) => {
