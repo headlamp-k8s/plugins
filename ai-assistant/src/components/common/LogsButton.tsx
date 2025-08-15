@@ -8,6 +8,7 @@ interface LogsButtonProps {
   resourceName?: string;
   resourceType?: string;
   namespace?: string;
+  containerName?: string;
 }
 
 const LogsButton: React.FC<LogsButtonProps> = ({
@@ -15,6 +16,7 @@ const LogsButton: React.FC<LogsButtonProps> = ({
   resourceName = 'resource',
   resourceType = 'Resource',
   namespace,
+  containerName,
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -23,7 +25,9 @@ const LogsButton: React.FC<LogsButtonProps> = ({
     if (resourceName) {
       parts.push(resourceName);
     }
-    if (namespace) {
+    if (containerName) {
+      parts.push(`(container: ${containerName})`);
+    } else if (namespace) {
       parts.push(`(${namespace})`);
     }
     parts.push('Logs');
