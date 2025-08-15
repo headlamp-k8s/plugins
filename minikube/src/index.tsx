@@ -3,11 +3,14 @@ import {
   registerAppBarAction,
   registerClusterProviderDialog,
   registerClusterProviderMenuItem,
+  // @ts-ignore
+  registerClusterStatus,
   registerRoute,
   runCommand,
 } from '@kinvolk/headlamp-plugin/lib';
 import { Button, ListItemText, MenuItem } from '@mui/material';
 import React from 'react';
+import ClusterStatus from './ClusterStatus';
 import CommandCluster from './CommandCluster/CommandCluster';
 import CreateClusterPage from './CreateClusterPage';
 import MinikubeIcon from './minikube.svg';
@@ -213,3 +216,12 @@ function Command() {
   );
 }
 registerAppBarAction(Command);
+
+if (registerClusterStatus) {
+  registerClusterStatus(({ cluster, error }) => {
+    if (!isElectron() || !isMinikube(cluster)) {
+      return null;
+    }
+    return <ClusterStatus cluster={cluster} error={error} />;
+  });
+}
