@@ -215,7 +215,6 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           (className === 'language-json' || isJsonKubernetesResource(children));
 
         if (isYamlBlock && onYamlDetected && typeof children === 'string') {
-          // Try to parse as Kubernetes YAML
           const parsed = parseKubernetesYAML(children);
           if (parsed.isValid) {
             return (
@@ -227,7 +226,6 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
             );
           }
         }
-
         if (isJsonKubernetesBlock && onYamlDetected && typeof children === 'string') {
           // Convert JSON to YAML and display
           const yamlContent = convertJsonToYaml(children);
@@ -236,7 +234,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
             return (
               <YamlDisplay
                 yaml={yamlContent}
-                title={parsed.resourceType}
+                title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                 onOpenInEditor={onYamlDetected}
               />
             );
@@ -364,7 +362,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 <YamlDisplay
                   key={`json-yaml-${index}-${sectionIndex++}`}
                   yaml={yamlContent}
-                  title={parsed.resourceType}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
                 />
               );
@@ -386,7 +384,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 <YamlDisplay
                   key={`yaml-${index}-${sectionIndex++}`}
                   yaml={trimmedPart}
-                  title={parsed.resourceType}
+                  title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
                 />
               );
@@ -499,7 +497,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           return (
             <YamlDisplay
               yaml={yamlContent}
-              title={parsed.resourceType}
+              title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
               onOpenInEditor={onYamlDetected}
             />
           );
@@ -544,6 +542,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                     resourceName={logsData.data.resourceName}
                     resourceType={logsData.data.resourceType}
                     namespace={logsData.data.namespace}
+                    containerName={logsData.data.containerName}
                   />
                 </Box>
               );
