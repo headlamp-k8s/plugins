@@ -178,6 +178,12 @@ function runPrivilegedCommand(mainCommand) {
  * @param {string[]} args extra arguments to pass to minikube start
  */
 function startMinikubeHyperV(args) {
+  if (!detectIfHyperVRunning()) {
+    console.error('Hyper-V is not running. Starting Hyper-V service...');
+    runPrivilegedCommand(
+      'powershell -Command "Start-Service vmms"'
+    );
+  }
   const mainCommand =
     'minikube start --driver=hyperv' + (args.length > 0 ? ' ' + args.join(' ') : '');
   runPrivilegedCommand(mainCommand);
