@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { registerRoute, registerSidebarEntry, registerMapSource } from '@kinvolk/headlamp-plugin/lib';
 import { NodeClassDetailView } from './NodeClass/Details';
 import { NodeClasses } from './NodeClass/List';
 import { NodePoolDetailView } from './NodePool/Details';
@@ -22,6 +22,7 @@ import { NodePools } from './NodePool/List';
 import { PendingPods } from './PendingPods';
 import { ScalingDetailView } from './Scaling/Details';
 import { ScalingView } from './Scaling/List';
+import { karpenterSource } from './mapView';
 
 addIcon('simple-icons:karpenter', {
   body: `<svg viewBox="0 0 500 443" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
@@ -115,3 +116,5 @@ registerRoute({
   component: ScalingDetailView,
   name: 'nodeclaims-detail',
 });
+
+registerMapSource(karpenterSource)
