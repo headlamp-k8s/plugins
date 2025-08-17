@@ -1,7 +1,39 @@
 import { Icon } from '@iconify/react';
 import { useMemo } from 'react';
 import { NodeClassDetailView } from './NodeClass/Details';
+import { NodePoolDetailView } from './NodePool/Details';
 import { nodeClassClass } from './NodeClass/List';
+import { nodePoolClass } from './NodePool/List';
+
+const makeKubeToKubeEdge = (from: any, to: any): any => ({
+  id: `${from.metadata.uid}-${to.metadata.uid}`,
+  source: from.metadata.uid,
+  target: to.metadata.uid,
+});
+
+class NodePool extends nodePoolClass(){}
+
+class NodeClass extends nodeClassClass(){}
+
+
+const findNodeClassEdges = (
+  nodePools: NodePool[],
+  nodeClasses: NodeClass[]
+) => {
+  const edges = [];
+
+  nodePools?.forEach(nodePool => {
+    const nodeClassName = nodePool.jsonData.spec.template.spec.nodeClassRef?.name;
+    if (nodeClassName) {
+      const nodeClass = nodeClasses?.find(nc => nc.metadata.name === nodeClassName);
+      if (nodeClass) {
+        edges.push(makeKubeToKubeEdge(nodePool, nodeClass));
+      }
+    }
+  });
+
+  return edges;
+};
 
 const nodeClassSource = {
   id: 'karpenter-node-classes',
@@ -29,12 +61,43 @@ const nodeClassSource = {
   },
 };
 
+const nodePoolSource = {
+  id: 'karpenter-node-pools',
+  label: 'nodepools',
+  icon: <Icon icon="mdi:server-network" width="100%" height="100%" color="rgb(50, 108, 229)" />,
+  useData() {
+    const [nodePools] = nodePoolClass().useList();
+    const [nodeClasses] = nodeClassClass().useList();
+
+    return useMemo(() => {
+      if (!nodePools) return null;
+
+      const nodes = nodePools?.map(it => ({
+        id: it.metadata.uid,
+        kubeObject: it,
+        weight: 2000,
+        detailsComponent: ({ node }) => (
+          <NodePoolDetailView name={node.kubeObject.jsonData.metadata.name} />
+        ),
+      }));
+
+      const edges = findNodeClassEdges(nodePools, nodeClasses);
+
+      return {
+        nodes,
+        edges,
+      };
+    }, [nodePools, nodeClasses]);
+  },
+};
+
 
 export const karpenterSource = {
   id: 'karpenter',
   label: 'Karpenter',
   icon: <Icon icon="mdi:server" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   sources: [
+    nodePoolSource,
     nodeClassSource,
   ],
 };
