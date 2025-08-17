@@ -101,18 +101,18 @@ function NodePoolsList() {
           render: nodePool => {
             const used = parseRam(nodePool.jsonData.status?.resources?.memory || '0');
             const limit = parseRam(nodePool.jsonData.spec?.limits?.memory || '0');
+
             const data: ChartDataPoint[] = [
               {
                 name: 'Memory',
-                value: used,
+                value: limit > 0 ? used : 0,
               },
             ];
-            const effectiveLimit = limit > 0 ? limit : used || 1;
 
             return (
               <PercentageBar
                 data={data}
-                total={effectiveLimit}
+                total={limit > 0 ? limit : 1}
                 tooltipFunc={() => Memorytooltip(used, limit)}
               />
             );
