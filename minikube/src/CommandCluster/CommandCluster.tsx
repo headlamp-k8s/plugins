@@ -157,7 +157,7 @@ function useMinikubeProfileList() {
     const minikube = pluginRunCommand(
       //@ts-ignore
       'scriptjs',
-      ['minikube-profile', 'list', '--output=json'],
+      [`${packagePath}/manage-minikube.js`, 'minikube-profile', 'list', '--output=json'],
       {}
     );
 
@@ -412,9 +412,11 @@ export default function CommandCluster(props: CommandClusterProps) {
       const existingProfile = minikubeProfiles?.valid.find(profile => profile.Name === clusterName);
       const isHyperV = driver === 'hyperv' || existingProfile?.Config?.Driver === 'hyperv';
       const isVfkit = driver === 'vfkit' || existingProfile?.Config?.Driver === 'vfkit';
+      console.log({ minikubeProfiles, isHyperV, isVfkit, driver, existingProfile });
 
       if (isHyperV) {
         // If hyperv, we use the scriptjs to run the command because it needs to run with admin rights
+        const commandHyperV = `${command}-minikube-hyperv`;
         if (command === 'start') {
           args.push('--cni=calico');
           args.push('--addons=metallb,ingress-dns');
@@ -423,7 +425,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         minikube = pluginRunCommand(
           // @ts-ignore
           'scriptjs',
-          [`${packagePath}/manage-minikube.js`, 'start-minikube-hyperv', ...args],
+          [`${packagePath}/manage-minikube.js`, commandHyperV, ...args],
           {}
         );
       } else if (isVfkit) {
@@ -432,13 +434,15 @@ export default function CommandCluster(props: CommandClusterProps) {
           args.push('--container-runtime=containerd');
           args.push('--memory=3072');
           args.push('--addons=metallb,ingress-dns');
+          minikube = pluginRunCommand(
+            // @ts-ignore
+            'scriptjs',
+            [`${packagePath}/manage-minikube.js`, 'start-minikube-vfkit', ...args],
+            {}
+          );
+        } else {
+          minikube = pluginRunCommand('minikube', args, {});
         }
-        minikube = pluginRunCommand(
-          // @ts-ignore
-          'scriptjs',
-          [`${packagePath}/manage-minikube.js`, 'start-minikube-vfkit', ...args],
-          {}
-        );
       } else {
         if (driver) {
           args.push('--driver', driver);
