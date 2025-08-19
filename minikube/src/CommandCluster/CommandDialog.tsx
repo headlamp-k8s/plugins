@@ -14,7 +14,7 @@ import TextField from '@mui/material/TextField';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import DriverSelect from './DriverSelect';
-import { useInfo } from './useInfo';
+import { DriverInfo, useInfo } from './useInfo';
 
 export interface CommandDialogProps {
   /** Is the dialog open? */
@@ -41,6 +41,7 @@ export interface CommandDialogProps {
   initialClusterName?: string;
   /** Ask for the cluster name. Otherwise the initialClusterName is used. */
   askClusterName?: boolean;
+  info: DriverInfo | null;
 }
 
 /**
@@ -59,11 +60,11 @@ export default function CommandDialog({
   useGrid,
   initialClusterName,
   askClusterName,
+  info,
 }: CommandDialogProps) {
   const [clusterName, setClusterName] = React.useState(initialClusterName || '');
   const [driver, setDriver] = React.useState<string | null>(null);
   const [nameTaken, setNameTaken] = React.useState(false);
-  const info = useInfo();
 
   const history = useHistory();
   const clusters = useClustersConf() || {};
@@ -126,7 +127,7 @@ export default function CommandDialog({
             </Box>
           </FormControl>
           <DriverSelect driver={driver} setDriver={setDriver} info={info} />
-          {info.hyperVEnabled === false && (
+          {info && info.hyperVEnabled === false && (
             <Alert severity="warning">
               {`Warning: HyperV is not enabled. You can either enable it or use another driver.`}
             </Alert>
@@ -165,8 +166,9 @@ export default function CommandDialog({
 
   const buttons = (
     <>
-      {!acting && waitForDriver && <Loader title={`Detecting drivers...`} />}
-      {!acting && !waitForDriver && (
+      {!acting && waitForDriver && !info && <Loader title={`Detecting drivers...`} />}
+      {!info && !waitForDriver && <Loader title={`Loading cluster info...`} />}
+      {!acting && !waitForDriver && info && (
         <>
           {!useGrid && <Button onClick={onClose}>Cancel</Button>}
           <Button

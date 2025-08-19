@@ -2,6 +2,7 @@ import { clusterAction, runCommand } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
 import { Prompt } from 'react-router-dom';
 import CommandDialog from './CommandDialog';
+import { useInfo } from './useInfo';
 
 const DEBUG = false;
 
@@ -11,182 +12,6 @@ const packagePath =
   pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
     ? pluginPath.substring(8)
     : pluginPath;
-
-// minikube profile list --output=json
-/**
- *
- * @returns
- * {
- *     "invalid": [],
- *     "valid": [
- *         {
- *             "Name": "minikube-1",
- *             "Status": "OK",
- *             "Config": {
- *                 "Name": "minikube-1",
- *                 "KeepContext": false,
- *                 "EmbedCerts": false,
- *                 "MinikubeISO": "https://storage.googleapis.com/minikube/iso/minikube-v1.36.0-arm64.iso",
- *                 "KicBaseImage": "gcr.io/k8s-minikube/kicbase:v0.0.47@sha256:6ed579c9292b4370177b7ef3c42cc4b4a6dcd0735a1814916cbc22c8bf38412b",
- *                 "Memory": 6000,
- *                 "CPUs": 2,
- *                 "DiskSize": 20000,
- *                 "Driver": "vfkit",
- *                 "HyperkitVpnKitSock": "",
- *                 "HyperkitVSockPorts": [],
- *                 "DockerEnv": null,
- *                 "ContainerVolumeMounts": null,
- *                 "InsecureRegistry": null,
- *                 "RegistryMirror": [],
- *                 "HostOnlyCIDR": "192.168.59.1/24",
- *                 "HypervVirtualSwitch": "",
- *                 "HypervUseExternalSwitch": false,
- *                 "HypervExternalAdapter": "",
- *                 "KVMNetwork": "default",
- *                 "KVMQemuURI": "qemu:///system",
- *                 "KVMGPU": false,
- *                 "KVMHidden": false,
- *                 "KVMNUMACount": 1,
- *                 "APIServerPort": 8443,
- *                 "DockerOpt": null,
- *                 "DisableDriverMounts": false,
- *                 "NFSShare": [],
- *                 "NFSSharesRoot": "/nfsshares",
- *                 "UUID": "",
- *                 "NoVTXCheck": false,
- *                 "DNSProxy": false,
- *                 "HostDNSResolver": true,
- *                 "HostOnlyNicType": "virtio",
- *                 "NatNicType": "virtio",
- *                 "SSHIPAddress": "",
- *                 "SSHUser": "root",
- *                 "SSHKey": "",
- *                 "SSHPort": 22,
- *                 "KubernetesConfig": {
- *                     "KubernetesVersion": "v1.33.1",
- *                     "ClusterName": "minikube-1",
- *                     "Namespace": "default",
- *                     "APIServerHAVIP": "",
- *                     "APIServerName": "minikubeCA",
- *                     "APIServerNames": null,
- *                     "APIServerIPs": null,
- *                     "DNSDomain": "cluster.local",
- *                     "ContainerRuntime": "docker",
- *                     "CRISocket": "",
- *                     "NetworkPlugin": "cni",
- *                     "FeatureGates": "",
- *                     "ServiceCIDR": "10.96.0.0/12",
- *                     "ImageRepository": "",
- *                     "LoadBalancerStartIP": "",
- *                     "LoadBalancerEndIP": "",
- *                     "CustomIngressCert": "",
- *                     "RegistryAliases": "",
- *                     "ExtraOptions": null,
- *                     "ShouldLoadCachedImages": true,
- *                     "EnableDefaultCNI": false,
- *                     "CNI": ""
- *                 },
- *                 "Nodes": [
- *                     {
- *                         "Name": "",
- *                         "IP": "192.168.64.48",
- *                         "Port": 8443,
- *                         "KubernetesVersion": "v1.33.1",
- *                         "ContainerRuntime": "docker",
- *                         "ControlPlane": true,
- *                         "Worker": true
- *                     }
- *                 ],
- *                 "Addons": {
- *                     "default-storageclass": true,
- *                     "storage-provisioner": true
- *                 },
- *                 "CustomAddonImages": null,
- *                 "CustomAddonRegistries": null,
- *                 "VerifyComponents": {
- *                     "apiserver": true,
- *                     "system_pods": true
- *                 },
- *                 "StartHostTimeout": 360000000000,
- *                 "ScheduledStop": null,
- *                 "ExposedPorts": [],
- *                 "ListenAddress": "",
- *                 "Network": "nat",
- *                 "Subnet": "",
- *                 "MultiNodeRequested": false,
- *                 "ExtraDisks": 0,
- *                 "CertExpiration": 94608000000000000,
- *                 "Mount": false,
- *                 "MountString": "/Users:/minikube-host",
- *                 "Mount9PVersion": "9p2000.L",
- *                 "MountGID": "docker",
- *                 "MountIP": "",
- *                 "MountMSize": 262144,
- *                 "MountOptions": [],
- *                 "MountPort": 0,
- *                 "MountType": "9p",
- *                 "MountUID": "docker",
- *                 "BinaryMirror": "",
- *                 "DisableOptimizations": false,
- *                 "DisableMetrics": false,
- *                 "CustomQemuFirmwarePath": "",
- *                 "SocketVMnetClientPath": "",
- *                 "SocketVMnetPath": "",
- *                 "StaticIP": "",
- *                 "SSHAuthSock": "",
- *                 "SSHAgentPID": 0,
- *                 "GPUs": "",
- *                 "AutoPauseInterval": 60000000000
- *             },
- *             "Active": false,
- *             "ActiveKubeContext": true
- *         }
- *     ]
- * }
- *
- */
-function useMinikubeProfileList() {
-  const [profiles, setProfiles] = React.useState<any | null>(null);
-  React.useEffect(() => {
-    let stdoutData = '';
-    // const minikube = pluginRunCommand('minikube', ['profile', 'list', '--output=json'], {});
-    const minikube = pluginRunCommand(
-      //@ts-ignore
-      'scriptjs',
-      [`${packagePath}/manage-minikube.js`, 'minikube-profile', 'list', '--output=json'],
-      {}
-    );
-
-    minikube.stdout.on('data', data => {
-      stdoutData += data.toString();
-    });
-    minikube.stderr.on('data', data => {
-      console.error('Error fetching minikube profiles:', data.toString());
-    });
-    minikube.on('exit', code => {
-      if (code === 0) {
-        try {
-          if (DEBUG) {
-            console.log('CommandCluster useMinikubeProfileList:', stdoutData);
-          }
-          setProfiles(JSON.parse(stdoutData));
-        } catch (e) {
-          console.error('Failed to parse minikube profiles JSON:', e, stdoutData);
-          setProfiles(null);
-        }
-      } else {
-        console.error('Failed to fetch minikube profiles, exit code:', code, stdoutData);
-        setProfiles(null);
-      }
-    });
-
-    return () => {
-      // Cleanup if needed
-    };
-  }, []);
-
-  return profiles;
-}
 
 interface CommandClusterProps {
   /**
@@ -263,7 +88,8 @@ export default function CommandCluster(props: CommandClusterProps) {
   const [theCluster, setTheCluster] = React.useState<string | null>(null);
   const runningCommandsRef = React.useRef<RunningCommandType[]>(commandsRunning);
   const [runningCommand, setRunningCommand] = React.useState<RunningCommandType | null>(null);
-  const minikubeProfiles = useMinikubeProfileList();
+  const info = useInfo();
+  const minikubeProfiles = info ? info.minikubeProfiles : null;
 
   if (DEBUG) {
     console.log('CommandCluster 1', {
@@ -401,15 +227,25 @@ export default function CommandCluster(props: CommandClusterProps) {
         // "keep the kube-context active after cluster is stopped. Defaults to false."
         args.push('--keep-context-active', 'true');
       }
+
+      if (command !== 'start') {
+        // remove "--driver=xxx" if it exists. eg --driver=docker or "--driver=hyperv"
+        const driverIndex = args.findIndex(arg => arg.startsWith('--driver='));
+        if (driverIndex !== -1) {
+          args.splice(driverIndex, 1);
+        }
+      }
+
       args.push('-p', clusterName);
       let minikube = null;
 
-      // minikubeProfiles
-      const existingProfile = minikubeProfiles?.valid.find(profile => profile.Name === clusterName);
+      const existingProfile = minikubeProfiles?.valid?.find(profile => profile.Name === clusterName);
       const isHyperV = driver === 'hyperv' || existingProfile?.Config?.Driver === 'hyperv';
       const isVfkit = driver === 'vfkit' || existingProfile?.Config?.Driver === 'vfkit';
-      console.log({minikubeProfiles, isHyperV, isVfkit, driver, existingProfile});
- 
+      if (DEBUG) {
+        console.log({ minikubeProfiles, isHyperV, isVfkit, driver, existingProfile });
+      }
+
       if (isHyperV) {
         // If hyperv, we use the scriptjs to run the command because it needs to run with admin rights
         const commandHyperV = `${command}-minikube-hyperv`;
@@ -418,14 +254,27 @@ export default function CommandCluster(props: CommandClusterProps) {
           args.push('--addons=metallb,ingress-dns');
           args.push('--memory=3072');
         }
+
+        // remove the first argument, and put the commandHyperV as the first argument
+        args.shift();
+        args.unshift(commandHyperV);
+        if (DEBUG) {
+          console.log('runFunc 11.1, running commandHyperV:', commandHyperV, args);
+        }
         minikube = pluginRunCommand(
           // @ts-ignore
           'scriptjs',
-          [`${packagePath}/manage-minikube.js`, commandHyperV, ...args],
+          [`${packagePath}/manage-minikube.js`, ...args],
           {}
         );
       } else if (isVfkit) {
         if (command === 'start') {
+          // remove the first argument, and put the 'start-minikube-vfkit' as the first argument
+          args.shift();
+          args.unshift('start-minikube-vfkit');
+          if (DEBUG) {
+            console.log('runFunc 11.2, running start-minikube-vfkit:', args);
+          }
           args.push('--cni=calico');
           args.push('--container-runtime=containerd');
           args.push('--memory=3072');
@@ -433,7 +282,7 @@ export default function CommandCluster(props: CommandClusterProps) {
           minikube = pluginRunCommand(
             // @ts-ignore
             'scriptjs',
-            [`${packagePath}/manage-minikube.js`, 'start-minikube-vfkit', ...args],
+            [`${packagePath}/manage-minikube.js`, ...args],
             {}
           );
         } else {
@@ -573,6 +422,7 @@ may keep running in the background. Leave?"
         useGrid={props.useGrid}
         initialClusterName={initialClusterName}
         askClusterName={askClusterName}
+        info={info}
       />
     </>
   );
