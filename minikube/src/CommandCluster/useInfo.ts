@@ -10,6 +10,13 @@ export interface DriverInfo {
   hyperVEnabled: boolean;
   ram: string;
   freeRam: string;
+  /**
+   * from minikube profiles list --output=json
+   */
+  minikubeProfiles: {
+    invalid: Array<{ Name: string; Status: string; Config: any }>;
+    valid: Array<{ Name: string; Status: string; Config: any }>;
+  };
 }
 
 declare const pluginRunCommand: typeof runCommand;

@@ -401,7 +401,18 @@ function info() {
     }
   }
 
+  function getMinikubeProfileList() {
+    try {
+      const output = execSync('minikube profile list --output=json').toString();
+      return JSON.parse(output);
+    } catch (error) {
+      console.error('Failed to get minikube profiles:', error.message);
+      return {};
+    }
+  }
+
   const info = {};
+  info.minikubeProfiles = getMinikubeProfileList();
 
   if (platform === 'win32') {
     info.diskFree = getDiskFreeWindows();
