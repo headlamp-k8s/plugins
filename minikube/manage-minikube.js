@@ -197,7 +197,7 @@ function stopMinikubeHyperV(args) {
     );
   }
   const mainCommand =
-    'minikube stop --driver=hyperv' + (args.length > 0 ? ' ' + args.join(' ') : '');
+    'minikube stop' + (args.length > 0 ? ' ' + args.join(' ') : '');
   runPrivilegedCommand(mainCommand);
 }
 
@@ -209,7 +209,7 @@ function deleteMinikubeHyperV(args) {
     );
   }
   const mainCommand =
-    'minikube delete --driver=hyperv' + (args.length > 0 ? ' ' + args.join(' ') : '');
+    'minikube delete' + (args.length > 0 ? ' ' + args.join(' ') : '');
   runPrivilegedCommand(mainCommand);
 }
 
