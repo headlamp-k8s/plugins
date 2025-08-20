@@ -1,14 +1,16 @@
 import { fetchCatalogs } from '../api/catalogs';
 
-const ANNOTATION_URI = 'catalog.ocne.io/uri';
-const ANNOTATION_NAME = 'catalog.ocne.io/name';
-const ANNOTATION_PROTOCOL = 'catalog.ocne.io/protocol';
-const ANNOTATION_DISPLAY_NAME = 'catalog.ocne.io/displayName';
+const ANNOTATION_URI = 'catalog.headlamp.dev/uri';
+const ANNOTATION_NAME = 'catalog.headlamp.dev/name';
+const ANNOTATION_PROTOCOL = 'catalog.headlamp.dev/protocol';
+const ANNOTATION_DISPLAY_NAME = 'catalog.headlamp.dev/displayName';
 
 const DEFAULT_CATALOG_NAME = 'app-catalog';
-const DEFAULT_CATALOG_NAMESPACE = 'ocne-system';
+const DEFAULT_CATALOG_NAMESPACE = 'headlamp-system';
 
-// Catalog interface, containing information relevant to register a catalog in the sidebar
+/**
+ * Catalog interface, containing information relevant to register a catalog in the sidebar
+ */
 interface Catalog {
   name: string;
   displayName: string;
@@ -24,6 +26,11 @@ interface ComponentVersions {
 }
 
 // Fetch the list of catalogs installed
+/**
+ * Retrieves a list of catalogs installed by fetching catalog data and processing the response.
+ *
+ * @returns  A promise that resolves to an array of Catalog objects.
+ */
 export function CatalogLists() {
   return fetchCatalogs().then(function (response) {
     const catalogList: Array<Catalog> = new Array<Catalog>();
@@ -41,12 +48,17 @@ export function CatalogLists() {
       }
 
       let catalogDisplayName = '';
-      if (ANNOTATION_DISPLAY_NAME in metadata.annotations && metadata.annotations[ANNOTATION_DISPLAY_NAME] != '') {
-        catalogDisplayName = metadata.annotations[ANNOTATION_DISPLAY_NAME]
+      if (
+        ANNOTATION_DISPLAY_NAME in metadata.annotations &&
+        metadata.annotations[ANNOTATION_DISPLAY_NAME] !== ''
+      ) {
+        catalogDisplayName = metadata.annotations[ANNOTATION_DISPLAY_NAME];
       } else {
-        catalogDisplayName = metadata.annotations[ANNOTATION_NAME]
+        catalogDisplayName =
+          ANNOTATION_NAME in metadata.annotations ? metadata.annotations[ANNOTATION_NAME] : '';
       }
 
+      // Represents a catalog with its metadata and URI.
       const catalog: Catalog = {
         name: metadata.name + '-' + metadata.namespace,
         // If there are 2 catalogs deployed with same name, the sidebar will be same. If we use the namespace,
@@ -72,7 +84,12 @@ export function CatalogLists() {
   });
 }
 
-// Return a map with component as the key and an array of versions as the value
+/**
+ * Retrieves available component versions from chart entries.
+ * @param chartEntries
+ * @param  chartEntries - An object with component name as key and array of versions as values.
+ * @returns A map of component versions, where each key is a component name and its corresponding value is an array of available versions.
+ */
 export function AvailableComponentVersions(chartEntries: any[]) {
   const compVersions = new Map<any, any[]>();
   for (const [key, value] of Object.entries(chartEntries)) {
