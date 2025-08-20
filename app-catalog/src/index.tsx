@@ -3,17 +3,13 @@ import {
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
-import {
-  ARTIFACTHUB_PROTOCOL,
-  CommunityChartList,
-  HELM_PROTOCOL,
-  HelmChartList,
-} from './api/catalogs';
 import { AppCatalogSettings } from '../src/components/settings/AppCatalogSettings';
+import { CommunityChartList, HelmChartList } from './api/catalogs';
 import ChartDetails from './components/charts/Details';
 import { ChartsList } from './components/charts/List';
 import ReleaseDetail from './components/releases/Detail';
 import ReleaseList from './components/releases/List';
+import { ARTIFACTHUB_PROTOCOL, HELM_PROTOCOL, VANILLA_HELM_REPO } from './constants/catalog';
 import { CatalogLists } from './helpers/catalog';
 
 export function isElectron(): boolean {
@@ -72,7 +68,7 @@ if (isElectron()) {
     label: 'Installed',
   });
 } else {
-  // Iterate the list of c, to register the sidebar and the respective routes
+  // Iterate the list of catalogs to register the sidebar and the respective routes
   CatalogLists().then(chart => {
     for (let i = 0; i < chart.length; i++) {
       // Register the sidebar for Apps, with the URL pointing to the first chart returned
@@ -159,7 +155,7 @@ registerRoute({
   sidebar: 'Charts',
   name: 'Charts',
   exact: true,
-  component: () => <ChartDetails />,
+  component: () => <ChartDetails vanillaHelmRepo={VANILLA_HELM_REPO} />,
 });
 
 registerRoute({
