@@ -233,33 +233,33 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                                     // may be an external icon URL, so, just use as is
                                     iconUrls[iconURL] = iconURL
                                 } else {
-                                    const p = await fetchChartIcon(iconURL)
-                                        .then((response: any) =>  {
-                                            const contentType = response.headers.get('Content-Type');
-                                            if (contentType.includes('image/svg+xml') || contentType.includes('text/xml') || contentType.includes('text/plain')) {
-                                                response.text()
-                                                    .then((txt) =>
-                                                        new Promise((resolve, reject) => {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => reader.result
-                                                            reader.onerror = reject;
-                                                            iconUrls[iconURL] = `data:image/svg+xml;utf8,${encodeURIComponent(txt)}`;
-                                                        })
-                                                    );
-                                            } else if (contentType.includes('image/')) {
-                                                response.blob()
-                                                    .then((blob) =>
-                                                        new Promise((resolve, reject) => {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => reader.result
-                                                            reader.onerror = reject;
-                                                            reader.readAsDataURL(blob);
-                                                            iconUrls[iconURL] = URL.createObjectURL(blob);
-                                                        })
-                                                    );
-                                            }
-                                        })
-                                        .catch(error => console.error("failed to fetch icon:", error))
+                                    const p = (async () => {
+                                        try {
+                                            const response = await fetchChartIcon(iconURL);
+	                                            const contentType = response.headers.get('Content-Type');
+	                                            if (contentType.includes('image/svg+xml') || contentType.includes('text/xml') || contentType.includes('text/plain')) {
+	                                                const txt = await response.text();
+	                                                const reader = new FileReader();
+                                                    const result = await new Promise((resolve, reject) => {
+	                                                    reader.onloadend = () => resolve(reader.result);
+	                                                    reader.onerror = reject;
+	                                                    reader.readAsText(new Blob([txt], { type: 'text/plain' }));
+	                                                });
+                                                    iconUrls[iconURL] = `data:image/svg+xml;utf8,${encodeURIComponent(txt)}`;
+	                                            } else if (contentType.includes('image/')) {
+	                                                const blob = await response.blob();
+	                                                const reader = new FileReader();
+	                                                const result = await new Promise((resolve, reject) => {
+	                                                    reader.onloadend = () => resolve(reader.result);
+	                                                    reader.onerror = reject;
+	                                                    reader.readAsDataURL(blob);
+	                                                });
+                                                    iconUrls[iconURL] = result as string;
+	                                            }
+	                                        } catch (error) {
+	                                            console.error("failed to fetch icon:", error);
+	                                        }
+	                                    })();
                                 }
                         })
                     );
@@ -322,7 +322,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                 // Filter out the charts meeting the value entered for search field and display only the matching charts
                 Object.keys(
                   Object.keys(charts)
-                    .filter(key => key.match(search))
+                    .filter(key => key.includes(search))
                     .reduce((obj, key) => {
                       return Object.assign(obj, {
                         [key]: charts[key],
@@ -332,7 +332,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                   // When a chart contains multiple versions, only display the first version
                   return charts[chartName].slice(0, 1).map(chart => {
                 return (
-                    <Card key={chart.icon}
+                    <Card key={`${chart.name}-${chart.version}`}
                           sx={{
                             margin: '1rem',
                             display: 'flex',

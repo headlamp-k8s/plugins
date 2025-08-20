@@ -36,7 +36,9 @@ export async function fetchChartsFromArtifact(
       //  .then(response => response.text())
       //  .then(yamlResponse => yamlToJSON(yamlResponse));
       const dataResponse = await request(url, { isJSON: false }, true, true, {});
-      const total=0;
+      const yamlResponse = await dataResponse.text();
+	  const jsonResponse = yamlToJSON(yamlResponse);
+      const total = Object.keys(jsonResponse.entries || {}).length;
       return { dataResponse, total };
     } else if (CHART_PROFILE === COMMUNITY_REPO) {
       let requestParam = '';

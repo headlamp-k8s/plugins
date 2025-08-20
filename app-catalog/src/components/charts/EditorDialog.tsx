@@ -292,7 +292,6 @@ export function EditorDialog(props: {
                 // @ts-ignore
                 onChange={(event, newValue: FieldType) => {
                   if (globalThis.CHART_PROFILE === VANILLA_HELM_REPO && chart.version !== newValue.value) {
-                    console.log('Time to change');
                     // Refresh values.yaml for a chart when the current version and new version differ
                     refreshChartValue(chart.name, newValue.value);
                   }
