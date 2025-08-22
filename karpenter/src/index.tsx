@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry, registerMapSource } from '@kinvolk/headlamp-plugin/lib';
+import { Icon } from '@iconify/react';
+import {
+  registerKindIcon,
+  registerMapSource,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
+import { karpenterSource } from './mapView';
 import { NodeClassDetailView } from './NodeClass/Details';
 import { NodeClasses } from './NodeClass/List';
 import { NodePoolDetailView } from './NodePool/Details';
@@ -22,7 +29,6 @@ import { NodePools } from './NodePool/List';
 import { PendingPods } from './PendingPods';
 import { ScalingDetailView } from './Scaling/Details';
 import { ScalingView } from './Scaling/List';
-import { karpenterSource } from './mapView';
 
 addIcon('simple-icons:karpenter', {
   body: `<svg viewBox="0 0 500 443" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
@@ -117,4 +123,19 @@ registerRoute({
   name: 'nodeclaims-detail',
 });
 
-registerMapSource(karpenterSource)
+registerMapSource(karpenterSource);
+
+registerKindIcon('NodePool', {
+  icon: <Icon icon="mdi:pool" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
+
+registerKindIcon('EC2NodeClass', {
+  icon: <Icon icon="mdi:file-cog" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
+
+registerKindIcon('NodeClaim', {
+  icon: <Icon icon="mdi:hand-extended" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
