@@ -67,9 +67,7 @@ const findNodeClaimToNodeEdges = (
   nodeClaims?.forEach(nodeClaim => {
     // Finding nodes that are managed by this NodeClaim
     const relatedNode = nodes?.find(node => {
-
-      const ownerRefs = node.metadata.ownerReferences || [];
-
+      const ownerRefs = node.metadata?.ownerReferences || [];
       return ownerRefs.some(ref => 
         ref.kind === 'NodeClaim' && 
         ref.name === nodeClaim.metadata.name
@@ -82,6 +80,46 @@ const findNodeClaimToNodeEdges = (
   });
 
   return edges;
+};
+
+const findNodeToPodEdges = (
+  nodes: any[],
+  pods: any[]
+) => {
+  const edges = [];
+
+  pods?.forEach(pod => {
+    const nodeName = pod.spec?.nodeName;
+    if (nodeName) {
+      const node = nodes?.find(n => n.metadata.name === nodeName);
+      if (node) {
+        edges.push(makeKubeToKubeEdge(node, pod));
+      }
+    }
+  });
+
+  return edges;
+};
+
+const filterKarpenterManagedPods = (
+  pods: any[],
+  nodes: any[]
+) => {
+  const karpenterNodeNames = new Set(
+    nodes?.filter(node => {
+      const labels = node.metadata?.labels || {};
+      const annotations = node.metadata?.annotations || {};
+      return (
+        labels['karpenter.sh/nodepool'] ||
+        labels['node.kubernetes.io/instance-type'] ||
+        annotations['karpenter.sh/nodepool']
+      );
+    }).map(node => node.metadata.name)
+  );
+
+  return pods?.filter(pod => 
+    pod.spec?.nodeName && karpenterNodeNames.has(pod.spec.nodeName)
+  );
 };
 
 const nodeClassSource = {
@@ -97,7 +135,7 @@ const nodeClassSource = {
       const nodes = nodeClasses?.map(it => ({
         id: it.metadata.uid,
         kubeObject: it,
-        weight: 6000,
+        weight: 5000,
         detailsComponent: ({ node }) => (
           <NodeClassDetailView name={node.kubeObject.jsonData.metadata.name} />
         ),
@@ -124,7 +162,7 @@ const nodePoolSource = {
       const nodes = nodePools?.map(it => ({
         id: it.metadata.uid,
         kubeObject: it,
-        weight: 2000,
+        weight: 4500,
         detailsComponent: ({ node }) => (
           <NodePoolDetailView name={node.kubeObject.jsonData.metadata.name} />
         ),
@@ -154,7 +192,7 @@ const nodeClaimSource = {
       const nodes = nodeClaims?.map(it => ({
         id: it.metadata.uid,
         kubeObject: it,
-        weight: 1500,
+        weight: 4000,
         detailsComponent: ({ node }) => (
           <ScalingDetailView
             name={node.kubeObject.jsonData.metadata.name}
@@ -180,11 +218,10 @@ const karpenterNodesSource = {
     const [nodes] = K8s.ResourceClasses.Node.useList();
     const [nodeClaims] = NodeClaim.useList();
 
-    console.log("node claims " , nodeClaims)
-
     return useMemo(() => {
       if (!nodes) return null;
-      // Nodes that are managed by Karpenter
+
+      // Filtering nodes that are managed by Karpenter
       const karpenterNodes = nodes?.filter(node => {
         const labels = node.metadata?.labels || {};
         const annotations = node.metadata?.annotations || {};
@@ -202,7 +239,7 @@ const karpenterNodesSource = {
       const nodesList = karpenterNodes?.map(it => ({
         id: it.metadata.uid,
         kubeObject: it,
-        weight: 3000,
+        weight: 2000,
       }));
 
       const edges = findNodeClaimToNodeEdges(nodeClaims, karpenterNodes);
@@ -215,6 +252,46 @@ const karpenterNodesSource = {
   },
 };
 
+const karpenterPodsSource = {
+  id: 'karpenter-pods',
+  label: 'pods',
+  icon: <Icon icon="mdi:cube" width="100%" height="100%" color="rgb(50, 108, 229)" />,
+  useData() {
+    const [pods] = K8s.ResourceClasses.Pod.useList();
+    const [nodes] = K8s.ResourceClasses.Node.useList();
+
+    return useMemo(() => {
+      if (!pods || !nodes) return null;
+
+      // Filter nodes managed by Karpenter
+      const karpenterNodes = nodes?.filter(node => {
+        const labels = node.metadata?.labels || {};
+        const annotations = node.metadata?.annotations || {};
+        return (
+          labels['karpenter.sh/nodepool'] ||
+          labels['node.kubernetes.io/instance-type'] ||
+          annotations['karpenter.sh/nodepool']
+        );
+      });
+
+      const karpenterPods = filterKarpenterManagedPods(pods, karpenterNodes);
+
+      const podNodes = karpenterPods?.map(it => ({
+        id: it.metadata.uid,
+        kubeObject: it,
+        weight: 1000,
+      }));
+
+      const edges = findNodeToPodEdges(karpenterNodes, karpenterPods);
+
+      return {
+        nodes: podNodes,
+        edges,
+      };
+    }, [pods, nodes]);
+  },
+};
+
 export const karpenterSource = {
   id: 'karpenter',
   label: 'Karpenter',
@@ -224,5 +301,6 @@ export const karpenterSource = {
     nodeClaimSource,
     nodeClassSource,
     karpenterNodesSource,
+    karpenterPodsSource,
   ],
 };
