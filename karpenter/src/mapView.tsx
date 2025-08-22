@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { useMemo } from 'react';
 import { NodeClassDetailView } from './NodeClass/Details';
 import { NodePoolDetailView } from './NodePool/Details';
@@ -14,9 +15,7 @@ const makeKubeToKubeEdge = (from: any, to: any): any => ({
 });
 
 class NodePool extends nodePoolClass(){}
-
 class NodeClass extends nodeClassClass(){}
-
 class NodeClaim extends nodeClaimClass(){}
 
 const findNodePoolEdges = (
@@ -40,7 +39,6 @@ const findNodePoolEdges = (
   return edges;
 };
 
-
 const findNodeClassEdges = (
   nodePools: NodePool[],
   nodeClasses: NodeClass[]
@@ -60,6 +58,32 @@ const findNodeClassEdges = (
   return edges;
 };
 
+const findNodeClaimToNodeEdges = (
+  nodeClaims: NodeClaim[],
+  nodes: any[]
+) => {
+  const edges = [];
+
+  nodeClaims?.forEach(nodeClaim => {
+    // Finding nodes that are managed by this NodeClaim
+    const relatedNode = nodes?.find(node => {
+
+      const ownerRefs = node.metadata.ownerReferences || [];
+
+      return ownerRefs.some(ref => 
+        ref.kind === 'NodeClaim' && 
+        ref.name === nodeClaim.metadata.name
+      );
+    });
+
+    if (relatedNode) {
+      edges.push(makeKubeToKubeEdge(nodeClaim, relatedNode));
+    }
+  });
+
+  return edges;
+};
+
 const nodeClassSource = {
   id: 'karpenter-node-classes',
   label: 'nodeclasses',
@@ -73,7 +97,7 @@ const nodeClassSource = {
       const nodes = nodeClasses?.map(it => ({
         id: it.metadata.uid,
         kubeObject: it,
-        weight: 1000,
+        weight: 6000,
         detailsComponent: ({ node }) => (
           <NodeClassDetailView name={node.kubeObject.jsonData.metadata.name} />
         ),
@@ -148,6 +172,49 @@ const nodeClaimSource = {
   },
 };
 
+const karpenterNodesSource = {
+  id: 'karpenter-nodes',
+  label: 'nodes',
+  icon: <Icon icon="mdi:desktop-tower" width="100%" height="100%" color="rgb(50, 108, 229)" />,
+  useData() {
+    const [nodes] = K8s.ResourceClasses.Node.useList();
+    const [nodeClaims] = NodeClaim.useList();
+
+    console.log("node claims " , nodeClaims)
+
+    return useMemo(() => {
+      if (!nodes) return null;
+      // Nodes that are managed by Karpenter
+      const karpenterNodes = nodes?.filter(node => {
+        const labels = node.metadata?.labels || {};
+        const annotations = node.metadata?.annotations || {};
+        return (
+          labels['karpenter.sh/nodepool'] ||
+          labels['node.kubernetes.io/instance-type'] ||
+          annotations['karpenter.sh/nodepool'] ||
+
+          nodeClaims?.some(nc => 
+            nc.jsonData.status?.nodeName === node.metadata.name
+          )
+        );
+      });
+
+      const nodesList = karpenterNodes?.map(it => ({
+        id: it.metadata.uid,
+        kubeObject: it,
+        weight: 3000,
+      }));
+
+      const edges = findNodeClaimToNodeEdges(nodeClaims, karpenterNodes);
+
+      return {
+        nodes: nodesList,
+        edges,
+      };
+    }, [nodes, nodeClaims]);
+  },
+};
+
 export const karpenterSource = {
   id: 'karpenter',
   label: 'Karpenter',
@@ -156,5 +223,6 @@ export const karpenterSource = {
     nodePoolSource,
     nodeClaimSource,
     nodeClassSource,
+    karpenterNodesSource,
   ],
 };
