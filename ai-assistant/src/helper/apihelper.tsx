@@ -18,10 +18,11 @@ function deepMerge(target: any, source: any): any {
         result[key] = [...source[key]];
       } else if (typeof source[key] === 'object' && source[key] !== null) {
         // For objects, recursively merge
-        result[key] =
-          target[key] && typeof target[key] === 'object'
-            ? deepMerge(target[key], source[key])
-            : { ...source[key] };
+        // Initialize target[key] as empty object if it doesn't exist or isn't an object
+        if (!result[key] || typeof result[key] !== 'object' || Array.isArray(result[key])) {
+          result[key] = {};
+        }
+        result[key] = deepMerge(result[key], source[key]);
       } else {
         // For primitive values, replace
         result[key] = source[key];
