@@ -12,7 +12,7 @@ MANDATORY TOOL USAGE:
 - If a user asks for current data from the cluster (pods, deployments, services, etc.), you MUST call kubernetes_api_request
 - Example: "show me pods" → MUST call kubernetes_api_request(url="/api/v1/pods", method="GET")
 - Example: "list pods in default namespace" → MUST call kubernetes_api_request(url="/api/v1/namespaces/default/pods", method="GET")
-- Example: "get logs for pod-name" → MUST call kubernetes_api_request(url="/api/v1/namespaces/default/pods/pod-name/log", method="GET")
+- Example: "get logs for pod-name" → First get pod details to check containers, then fetch logs with container parameter if needed
 - Do NOT just say "I'll fetch the data" - actually call the tool immediately
 
 RESOURCE CREATION GUIDELINES:
