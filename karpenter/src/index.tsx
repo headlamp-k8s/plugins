@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { Icon } from '@iconify/react';
+import {
+  registerKindIcon,
+  registerMapSource,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
+import { karpenterSource } from './mapView';
 import { NodeClassDetailView } from './NodeClass/Details';
 import { NodeClasses } from './NodeClass/List';
 import { NodePoolDetailView } from './NodePool/Details';
@@ -114,4 +121,21 @@ registerRoute({
   sidebar: 'scaling-view',
   component: ScalingDetailView,
   name: 'nodeclaims-detail',
+});
+
+registerMapSource(karpenterSource);
+
+registerKindIcon('NodePool', {
+  icon: <Icon icon="mdi:pool" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
+
+registerKindIcon('EC2NodeClass', {
+  icon: <Icon icon="mdi:file-cog" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
+
+registerKindIcon('NodeClaim', {
+  icon: <Icon icon="mdi:hand-extended" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
 });
