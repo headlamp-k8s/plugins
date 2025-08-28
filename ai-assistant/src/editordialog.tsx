@@ -16,6 +16,7 @@ type EditorDialogProps = {
   resourceType?: string;
   isDelete?: boolean;
   onSuccess?: (response: any) => void;
+  onFailure?: (error: any, operationType: string, resourceInfo?: any) => void;
 };
 
 export default function EditorDialog({
@@ -26,6 +27,7 @@ export default function EditorDialog({
   resourceType = 'Resource',
   isDelete = false,
   onSuccess,
+  onFailure,
 }: EditorDialogProps) {
   const [content, setContent] = useState(yamlContent);
   const { enqueueSnackbar } = useSnackbar();
@@ -64,11 +66,24 @@ export default function EditorDialog({
       onClose();
       clusterAction(
         async () => {
-          const response = await apply(resource, cluster);
-          if (onSuccess) {
-            onSuccess(response);
+          try {
+            const response = await apply(resource, cluster);
+            if (onSuccess) {
+              onSuccess(response);
+            }
+            return response;
+          } catch (error) {
+            // Call onFailure if the API request fails
+            if (onFailure) {
+              const resourceInfo = {
+                kind: resource.kind,
+                name: resource.metadata?.name,
+                namespace: resource.metadata?.namespace,
+              };
+              onFailure(error, 'PUT', resourceInfo);
+            }
+            throw error; // Re-throw to let clusterAction handle UI notifications
           }
-          return response;
         },
         {
           startMessage: `Applying ${displayResourceType} to cluster ${cluster}...`,

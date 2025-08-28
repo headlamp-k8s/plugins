@@ -23,6 +23,14 @@ import { getSettingsURL, useGlobalState } from './utils';
 import { generateContextDescription } from './utils/contextGenerator';
 import { getProviderModels, parseSuggestionsFromResponse } from './utils/modalUtils';
 import { useDynamicPrompts } from './utils/promptGenerator';
+
+// Operation type constants for translation
+const OPERATION_TYPES = {
+  CREATION: 'creation',
+  UPDATE: 'update',
+  DELETION: 'deletion',
+  GENERIC: 'operation',
+} as const;
 import {
   getActiveConfig,
   getSavedConfigurations,
@@ -84,9 +92,6 @@ export default function AIPrompt(props: {
   const [editorTitle, setEditorTitle] = React.useState('');
   const [resourceType, setResourceType] = React.useState('');
   const [isDelete, setIsDelete] = React.useState(false);
-
-  // Use the Kubernetes tool UI hook
-  const { state: kubernetesUI, callbacks: kubernetesCallbacks } = useKubernetesToolUI();
 
   const handleYamlAction = React.useCallback(
     (yaml: string, title: string, type: string, isDeleteOp: boolean) => {
@@ -322,7 +327,11 @@ export default function AIPrompt(props: {
     });
 
     setPromptHistory(processedHistory);
-  }, [aiManager]);
+  }, [aiManager?.history]);
+
+  // Use the Kubernetes tool UI hook (must be after updateHistory is defined)
+  const { state: kubernetesUI, callbacks: kubernetesCallbacks } =
+    useKubernetesToolUI(updateHistory);
 
   const handleOperationSuccess = React.useCallback(
     (response: any) => {
@@ -343,6 +352,66 @@ export default function AIPrompt(props: {
         )}`,
         name: 'kubernetes_api_request',
         toolCallId: `${operationType}-${Date.now()}`,
+      };
+
+      if (aiManager) {
+        aiManager.history.push(toolPrompt);
+        updateHistory();
+      }
+    },
+    [aiManager, updateHistory]
+  );
+
+  const handleOperationFailure = React.useCallback(
+    (error: any, operationType: string, resourceInfo?: any) => {
+      // Determine the operation type from the error or method
+      let operation: string;
+      if (operationType) {
+        switch (operationType.toLowerCase()) {
+          case 'post':
+            operation = OPERATION_TYPES.CREATION;
+            break;
+          case 'put':
+          case 'patch':
+            operation = OPERATION_TYPES.UPDATE;
+            break;
+          case 'delete':
+            operation = OPERATION_TYPES.DELETION;
+            break;
+          default:
+            operation = OPERATION_TYPES.GENERIC;
+        }
+      }
+
+      // Extract error details
+      const errorMessage = error?.message || error?.error || 'Unknown error occurred';
+      const statusCode = error?.status || error?.statusCode;
+
+      // Build error content
+      let errorContent = `Resource ${operation} failed: ${errorMessage}`;
+
+      if (resourceInfo) {
+        errorContent += `\n\nResource Details: ${JSON.stringify(
+          {
+            kind: resourceInfo.kind,
+            name: resourceInfo.name,
+            namespace: resourceInfo.namespace,
+            status: 'Failed',
+            ...(statusCode && { statusCode }),
+          },
+          null,
+          2
+        )}`;
+      } else if (statusCode) {
+        errorContent += `\n\nStatus Code: ${statusCode}`;
+      }
+
+      const toolPrompt: Prompt = {
+        role: 'tool',
+        content: errorContent,
+        name: 'kubernetes_api_request',
+        toolCallId: `${operation}-error-${Date.now()}`,
+        error: true,
       };
 
       if (aiManager) {
@@ -446,7 +515,9 @@ export default function AIPrompt(props: {
       body,
       handleApiDialogClose,
       aiManager,
-      resourceInfo
+      resourceInfo,
+      undefined, // targetCluster
+      handleOperationFailure
     );
   };
 
@@ -487,7 +558,8 @@ export default function AIPrompt(props: {
             onClose,
             aiManagerParam || aiManager,
             resourceInfo,
-            clusterToUse
+            clusterToUse,
+            handleOperationFailure
           );
         },
       },
@@ -664,6 +736,7 @@ export default function AIPrompt(props: {
               isLoading={loading}
               apiError={apiError}
               onOperationSuccess={handleOperationSuccess}
+              onOperationFailure={handleOperationFailure}
               onYamlAction={handleYamlAction}
             />
           </Grid>
@@ -727,6 +800,7 @@ export default function AIPrompt(props: {
           title={editorTitle}
           resourceType={resourceType}
           onSuccess={handleOperationSuccess}
+          onFailure={handleOperationFailure}
         />
       )}
 

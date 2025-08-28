@@ -6,7 +6,7 @@ export const formatString = function (a: string, ...args: any) {
 
 // Helper function to check if a URL is requesting logs
 export const isLogRequest = (url: string): boolean => {
-  return url.includes('/log?') || url.endsWith('/log');
+  return url.includes('/log?') || url.endsWith('/log') || url.includes('/log&');
 };
 
 // Helper function to check if a URL is requesting a specific resource
