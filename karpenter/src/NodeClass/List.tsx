@@ -1,61 +1,45 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
+import { useCloudProviderDetection } from '../hook/useCloudProviderDetection';
+import { CLOUD_PROVIDERS } from '../common/cloudProviders';
+import { createNodeClassClass } from '../helpers/createNodeClassClass';
 
 export function NodeClasses() {
-  return <NodeClassesList />;
+  const { cloudProvider, loading, error } = useCloudProviderDetection();
+
+  if (loading) {
+    return <div>Detecting cloud provider...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
+  if (!cloudProvider) {
+    return <div>No supported NodeClass found</div>;
+  }
+
+  return <NodeClassesList cloudProvider={cloudProvider} />;
 }
 
-export function nodeClassClass() {
-  const nodeClassGroup = 'karpenter.k8s.aws';
-  const nodeClassVersion = 'v1';
+function NodeClassesList({ cloudProvider }) {
+  const config = CLOUD_PROVIDERS[cloudProvider];
+  const NodeClassClass = createNodeClassClass(config);
 
-  const NodeClass = makeCustomResourceClass({
-    apiInfo: [{ group: nodeClassGroup, version: nodeClassVersion }],
-    isNamespaced: false,
-    singularName: 'EC2NodeClass',
-    pluralName: 'ec2nodeclasses',
-  });
-
-  return class extendedNodeClass extends NodeClass {
-    static get detailsRoute() {
-      return 'nodeclasses-detail';
-    }
-  };
-}
-
-function NodeClassesList() {
   return (
     <ResourceListView
-      title="EC2 NodeClasses"
-      resourceClass={nodeClassClass()}
-      columns={[
-        'name',
-        {
-          id: 'nodeclass-cluster',
-          label: 'Cluster',
-          getValue: nodeClass => nodeClass._clusterName || '',
-        },
-        {
-          id: 'nodeclass-instanceProfile',
-          label: 'Instance Profile',
-          getValue: nodeClass => nodeClass.jsonData?.status?.instanceProfile || '-',
-        },
-        {
-          id: 'nodeclass-status',
-          label: 'Status',
-          getValue: nodeClass => {
-            const conditions = nodeClass.jsonData?.status?.conditions || [];
-            const readyCondition = conditions.find(c => c.type === 'Ready');
-            return readyCondition?.status === 'True' ? 'Ready' : 'Not Ready';
-          },
-        },
-        {
-          id: 'nodeclass-role',
-          label: 'IAM Role',
-          getValue: nodeClass => nodeClass.jsonData?.spec?.role || '-',
-        },
-        'age',
-      ]}
+      title={config.displayName}
+      resourceClass={NodeClassClass}
+      columns={config.columns}
     />
   );
+}
+
+export function awsNodeClassClass() {
+  const config = CLOUD_PROVIDERS.AWS;
+  return createNodeClassClass(config);
+}
+
+export function azureNodeClassClass() {
+  const config = CLOUD_PROVIDERS.AZURE;
+  return createNodeClassClass(config);
 }
