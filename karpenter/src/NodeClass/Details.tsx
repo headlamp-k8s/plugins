@@ -1,23 +1,25 @@
+import React from 'react';
 import { AppDispatch } from '@kinvolk/headlamp-plugin/lib';
 import {
+  Loader,
   ConditionsSection,
   DetailsGrid,
   NameValueTable,
   SectionBox,
-  StatusLabel as NStausLabel,
+  StatusLabel as NStatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
 import { Box } from '@mui/material';
-import React from 'react';
 import { useDispatch } from 'react-redux';
-import { useParams } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { EditConfigButton } from '../common/EditConfigButton';
 import { DiffEditorDialog } from '../common/resourceEditor';
 import { StatusLabel } from '../common/StatusLabel';
 import { handleShowDiff } from '../helpers/handleDiff';
 import { getHandleSaveHelper } from '../helpers/handleSave';
-import { nodeClassClass } from './List';
+import { useCloudProviderDetection } from '../hook/useCloudProviderDetection';
+import { CLOUD_PROVIDERS } from '../common/cloudProviders';
+import { createNodeClassClass } from '../helpers/createNodeClassClass';
 
 export function NodeClassDetailView(props: { name?: string }) {
   const params = useParams<{ name: string }>();
@@ -26,10 +28,10 @@ export function NodeClassDetailView(props: { name?: string }) {
   const [originalYaml, setOriginalYaml] = React.useState('');
   const [modifiedYaml, setModifiedYaml] = React.useState('');
   const [isEditorOpen, setIsEditorOpen] = React.useState(false);
-  const NodeClass = nodeClassClass();
   const location = useLocation();
-
   const dispatch: AppDispatch = useDispatch();
+
+  const { cloudProvider, loading, error } = useCloudProviderDetection();
 
   const getHandleSave = React.useCallback(() => {
     if (!currentResource) {
@@ -42,7 +44,22 @@ export function NodeClassDetailView(props: { name?: string }) {
       cancelUrl: location.pathname,
       closeDialog: () => setIsEditorOpen(false),
     });
-  }, [currentResource, dispatch]);
+  }, [currentResource, dispatch, location.pathname]);
+
+  if (loading) {
+    return <Loader title="" />;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
+  if (!cloudProvider) {
+    return <div>No supported NodeClass found</div>;
+  }
+
+  const config = CLOUD_PROVIDERS[cloudProvider];
+  const NodeClass = createNodeClassClass(config);
 
   const actions = () => {
     return (item: KubeObject) =>
@@ -82,84 +99,208 @@ export function NodeClassDetailView(props: { name?: string }) {
         : [];
   };
 
+  const getExtraInfo = (item: KubeObject) => {
+    if (!item) return [];
+
+    const commonInfo = [
+      {
+        name: 'Status',
+        value: <StatusLabel item={item} />,
+      },
+    ];
+
+    if (cloudProvider === 'AWS') {
+      return [
+        ...commonInfo,
+        {
+          name: 'IAM Role',
+          value: item.jsonData.spec?.role || '-',
+        },
+        {
+          name: 'Instance Profile',
+          value: item.jsonData.status?.instanceProfile || '-',
+        },
+        {
+          name: 'AMI Family',
+          value: item.jsonData.spec?.amiFamily || '-',
+        },
+      ];
+    } else if (cloudProvider === 'AZURE') {
+      return [
+        ...commonInfo,
+        {
+          name: 'Image Family',
+          value: item.jsonData.spec?.imageFamily || '-',
+        },
+        {
+          name: 'Max Pods',
+          value: item.jsonData.spec?.maxPods || '-',
+        },
+        {
+          name: 'OS Disk Size (GB)',
+          value: item.jsonData.spec?.osDiskSizeGB || '-',
+        },
+      ];
+    }
+
+    return commonInfo;
+  };
+
+  const getExtraSections = (item: KubeObject) => {
+    if (!item) return [];
+
+    const commonSections = [
+      {
+        id: 'conditions',
+        section: <ConditionsSection resource={item.jsonData} />,
+      },
+    ];
+
+    if (cloudProvider === 'AWS') {
+      return [
+        {
+          id: 'nodeclass-config',
+          section: (
+            <SectionBox title="NodeClass Configuration">
+              <NameValueTable
+                rows={[
+                  {
+                    name: 'Subnet Selectors',
+                    value: renderSelectorTerms(item.jsonData.spec?.subnetSelectorTerms),
+                  },
+                  {
+                    name: 'Security Group Selectors',
+                    value: renderSelectorTerms(item.jsonData.spec?.securityGroupSelectorTerms),
+                  },
+                ]}
+              />
+            </SectionBox>
+          ),
+        },
+        {
+          id: 'status',
+          section: (
+            <SectionBox title="Status">
+              <NameValueTable
+                rows={[
+                  {
+                    name: 'Security Group IDs',
+                    value: renderStatusItems(
+                      item.jsonData.status?.securityGroups?.map(g => g.id)
+                    ),
+                  },
+                  {
+                    name: 'Subnet IDs',
+                    value: renderStatusItems(item.jsonData.status?.subnets?.map(s => s.id)),
+                  },
+                  {
+                    name: 'Availability Zones',
+                    value: renderStatusItems(item.jsonData.status?.subnets?.map(s => s.zone)),
+                  },
+                ]}
+              />
+            </SectionBox>
+          ),
+        },
+        ...commonSections,
+      ];
+    } else if (cloudProvider === 'AZURE') {
+      return [
+        {
+          id: 'nodeclass-config',
+          section: (
+            <SectionBox title="NodeClass Configuration">
+              <NameValueTable
+                rows={[
+                  {
+                    name: 'Image Family',
+                    value: item.jsonData.spec?.imageFamily || '-',
+                  },
+                  {
+                    name: 'OS Disk Size (GB)',
+                    value: item.jsonData.spec?.osDiskSizeGB || '-',
+                  },
+                  {
+                    name: 'Max Pods',
+                    value: item.jsonData.spec?.maxPods || '-',
+                  },
+                  {
+                    name: 'Tags',
+                    value: renderAzureTags(item.jsonData.spec?.tags),
+                  },
+                ]}
+              />
+            </SectionBox>
+          ),
+        },
+        {
+          id: 'status',
+          section: (
+            <SectionBox title="Status">
+              <NameValueTable
+                rows={[
+                  {
+                    name: 'Kubernetes Version',
+                    value: item.jsonData.status?.kubernetesVersion || '-',
+                  },
+                  {
+                    name: 'Available Images',
+                    value: `${item.jsonData.status?.images?.length || 0} image(s) available`,
+                  },
+                ]}
+              />
+            </SectionBox>
+          ),
+        },
+        {
+          id: 'images-detail',
+          section: (
+            <SectionBox title="Available Images">
+              {item.jsonData.status?.images && item.jsonData.status.images.length > 0 ? (
+                <NameValueTable
+                  rows={item.jsonData.status.images.map((image, index) => ({
+                    name: `Image ${index + 1}`,
+                    value: (
+                      <Box>
+                        <Box sx={{ mb: 1, fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                          {image.id ? image.id.split('/').pop() : 'Unknown'}
+                        </Box>
+                        {image.requirements && image.requirements.length > 0 && (
+                          <Box sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                            {image.requirements.map((req, reqIndex) => (
+                              <NStatusLabel key={reqIndex} status="" sx={{ fontSize: '0.75rem' }}>
+                                {req.key.replace('karpenter.azure.com/', '')}: {req.values?.join(', ') || req.operator}
+                              </NStatusLabel>
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    ),
+                  }))}
+                />
+              ) : (
+                <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
+                  No images available
+                </Box>
+              )}
+            </SectionBox>
+          ),
+        },
+        ...commonSections,
+      ];
+    }
+
+    return commonSections;
+  };
+
   return (
     <DetailsGrid
       resourceType={NodeClass}
       name={name}
       withEvents
       actions={actions()}
-      extraInfo={item =>
-        item && [
-          {
-            name: 'Status',
-            value: <StatusLabel item={item} />,
-          },
-          {
-            name: 'IAM Role',
-            value: item.jsonData.spec?.role || '-',
-          },
-          {
-            name: 'Instance Profile',
-            value: item.jsonData.status?.instanceProfile || '-',
-          },
-          {
-            name: 'AMI Family',
-            value: item.jsonData.spec?.amiFamily || '-',
-          },
-        ]
-      }
-      extraSections={item =>
-        item && [
-          {
-            id: 'nodeclass-config',
-            section: (
-              <SectionBox title="NodeClass Configuration">
-                <NameValueTable
-                  rows={[
-                    {
-                      name: 'Subnet Selectors',
-                      value: renderSelectorTerms(item.jsonData.spec?.subnetSelectorTerms),
-                    },
-                    {
-                      name: 'Security Group Selectors',
-                      value: renderSelectorTerms(item.jsonData.spec?.securityGroupSelectorTerms),
-                    },
-                  ]}
-                />
-              </SectionBox>
-            ),
-          },
-          {
-            id: 'status',
-            section: (
-              <SectionBox title="Status">
-                <NameValueTable
-                  rows={[
-                    {
-                      name: 'Security Group IDs',
-                      value: renderStatusItems(
-                        item.jsonData.status?.securityGroups?.map(g => g.id)
-                      ),
-                    },
-                    {
-                      name: 'Subnet IDs',
-                      value: renderStatusItems(item.jsonData.status?.subnets?.map(s => s.id)),
-                    },
-                    {
-                      name: 'Availability Zones',
-                      value: renderStatusItems(item.jsonData.status?.subnets?.map(s => s.zone)),
-                    },
-                  ]}
-                />
-              </SectionBox>
-            ),
-          },
-          {
-            id: 'conditions',
-            section: <ConditionsSection resource={item.jsonData} />,
-          },
-        ]
-      }
+      extraInfo={getExtraInfo}
+      extraSections={getExtraSections}
     />
   );
 }
@@ -170,9 +311,9 @@ function renderStatusItems(items: string[] = []) {
   return (
     <Box sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
       {items.map((item, index) => (
-        <NStausLabel key={index} status="">
+        <NStatusLabel key={index} status="">
           {item}
-        </NStausLabel>
+        </NStatusLabel>
       ))}
     </Box>
   );
@@ -185,11 +326,25 @@ function renderSelectorTerms(terms: any[] = []) {
     <Box sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
       {terms.flatMap(term =>
         Object.entries(term.tags || {}).map(([key, value]) => (
-          <NStausLabel key={`${key}=${value}`} status="">
+          <NStatusLabel key={`${key}=${value}`} status="">
             {`${key}=${value}`}
-          </NStausLabel>
+          </NStatusLabel>
         ))
       )}
+    </Box>
+  );
+}
+
+function renderAzureTags(tags: Record<string, string> = {}) {
+  if (!tags || Object.keys(tags).length === 0) return '-';
+
+  return (
+    <Box sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+      {Object.entries(tags).map(([key, value]) => (
+        <NStatusLabel key={`${key}=${value}`} status="">
+          {`${key}=${value}`}
+        </NStatusLabel>
+      ))}
     </Box>
   );
 }

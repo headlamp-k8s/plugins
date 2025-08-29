@@ -1,4 +1,4 @@
-import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { ResourceListView, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useCloudProviderDetection } from '../hook/useCloudProviderDetection';
 import { CLOUD_PROVIDERS } from '../common/cloudProviders';
 import { createNodeClassClass } from '../helpers/createNodeClassClass';
@@ -7,7 +7,7 @@ export function NodeClasses() {
   const { cloudProvider, loading, error } = useCloudProviderDetection();
 
   if (loading) {
-    return <div>Detecting cloud provider...</div>;
+    return <Loader title="" />;
   }
 
   if (error) {

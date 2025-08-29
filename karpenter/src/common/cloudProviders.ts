@@ -4,7 +4,7 @@ export const CLOUD_PROVIDERS = {
     version: 'v1',
     singularName: 'ec2nodeclass',
     pluralName: 'ec2nodeclasses',
-    detailsRoute: 'ec2nodeclasses-detail',
+    detailsRoute: 'nodeclasses-detail',
     displayName: 'EC2 Node Classes',
     columns: [
       'name',
@@ -40,7 +40,7 @@ export const CLOUD_PROVIDERS = {
     version: 'v1beta1',
     singularName: 'aksnodeclass',
     pluralName: 'aksnodeclasses',
-    detailsRoute: 'aksnodeclasses-detail',
+    detailsRoute: 'nodeclasses-detail',
     displayName: 'AKS Node Classes',
     columns: [
       'name',
