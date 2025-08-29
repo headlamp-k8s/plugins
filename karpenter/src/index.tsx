@@ -43,25 +43,25 @@ registerSidebarEntry({
   name: 'karpenter.k8s',
   icon: 'simple-icons:karpenter',
   label: 'Karpenter',
-  url: '/karpenter/ec2nodeclasses',
+  url: '/karpenter/nodeclasses',
 });
 
 registerSidebarEntry({
   parent: 'karpenter.k8s',
   name: 'nodeclass',
   label: 'Node Class',
-  url: '/karpenter/ec2nodeclasses',
+  url: '/karpenter/nodeclasses',
 });
 
 registerRoute({
-  path: '/karpenter/ec2nodeclasses',
+  path: '/karpenter/nodeclasses',
   sidebar: 'nodeclass',
   component: NodeClasses,
   name: 'nodeclasses-list',
 });
 
 registerRoute({
-  path: '/karpenter/details/ec2nodeclasses/:name',
+  path: '/karpenter/details/nodeclasses/:name',
   sidebar: 'nodeclass',
   component: NodeClassDetailView,
   name: 'nodeclasses-detail',
@@ -133,6 +133,11 @@ registerKindIcon('NodePool', {
 registerKindIcon('EC2NodeClass', {
   icon: <Icon icon="mdi:file-cog" width="70%" height="70%" />,
   color: 'rgb(50, 108, 229)',
+});
+
+registerKindIcon('AKSNodeClass', {
+  icon: <Icon icon="mdi:file-cog" width="70%" height="70%" />,
+  color: 'rgb(0, 120, 215)',
 });
 
 registerKindIcon('NodeClaim', {

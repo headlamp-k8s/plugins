@@ -33,7 +33,7 @@ export const CLOUD_PROVIDERS = {
         getValue: nodeClass => nodeClass.jsonData?.spec?.role || '-',
       },
       'age',
-    ]
+    ],
   },
   AZURE: {
     group: 'karpenter.azure.com',
@@ -74,6 +74,6 @@ export const CLOUD_PROVIDERS = {
         getValue: nodeClass => nodeClass.jsonData?.spec?.osDiskSizeGB || '-',
       },
       'age',
-    ]
-  }
+    ],
+  },
 };

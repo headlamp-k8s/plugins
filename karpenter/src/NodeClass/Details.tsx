@@ -1,25 +1,25 @@
-import React from 'react';
 import { AppDispatch } from '@kinvolk/headlamp-plugin/lib';
 import {
-  Loader,
   ConditionsSection,
   DetailsGrid,
+  Loader,
   NameValueTable,
   SectionBox,
   StatusLabel as NStatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
 import { Box } from '@mui/material';
+import React from 'react';
 import { useDispatch } from 'react-redux';
-import { useParams, useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
+import { CLOUD_PROVIDERS } from '../common/cloudProviders';
 import { EditConfigButton } from '../common/EditConfigButton';
 import { DiffEditorDialog } from '../common/resourceEditor';
 import { StatusLabel } from '../common/StatusLabel';
+import { createNodeClassClass } from '../helpers/createNodeClassClass';
 import { handleShowDiff } from '../helpers/handleDiff';
 import { getHandleSaveHelper } from '../helpers/handleSave';
 import { useCloudProviderDetection } from '../hook/useCloudProviderDetection';
-import { CLOUD_PROVIDERS } from '../common/cloudProviders';
-import { createNodeClassClass } from '../helpers/createNodeClassClass';
 
 export function NodeClassDetailView(props: { name?: string }) {
   const params = useParams<{ name: string }>();
@@ -85,11 +85,11 @@ export function NodeClassDetailView(props: { name?: string }) {
                     <DiffEditorDialog
                       open={isEditorOpen}
                       onClose={() => setIsEditorOpen(false)}
-                      schema="Nodeclass-schema"
                       originalYaml={originalYaml}
                       modifiedYaml={modifiedYaml}
                       onSave={getHandleSave()}
                       resource={currentResource}
+                      cloudProvider={cloudProvider}
                     />
                   )}
                 </>
@@ -185,9 +185,7 @@ export function NodeClassDetailView(props: { name?: string }) {
                 rows={[
                   {
                     name: 'Security Group IDs',
-                    value: renderStatusItems(
-                      item.jsonData.status?.securityGroups?.map(g => g.id)
-                    ),
+                    value: renderStatusItems(item.jsonData.status?.securityGroups?.map(g => g.id)),
                   },
                   {
                     name: 'Subnet IDs',
@@ -269,7 +267,8 @@ export function NodeClassDetailView(props: { name?: string }) {
                           <Box sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                             {image.requirements.map((req, reqIndex) => (
                               <NStatusLabel key={reqIndex} status="" sx={{ fontSize: '0.75rem' }}>
-                                {req.key.replace('karpenter.azure.com/', '')}: {req.values?.join(', ') || req.operator}
+                                {req.key.replace('karpenter.azure.com/', '')}:{' '}
+                                {req.values?.join(', ') || req.operator}
                               </NStatusLabel>
                             ))}
                           </Box>

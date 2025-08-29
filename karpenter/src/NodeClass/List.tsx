@@ -1,7 +1,7 @@
-import { ResourceListView, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useCloudProviderDetection } from '../hook/useCloudProviderDetection';
+import { Loader, ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { CLOUD_PROVIDERS } from '../common/cloudProviders';
 import { createNodeClassClass } from '../helpers/createNodeClassClass';
+import { useCloudProviderDetection } from '../hook/useCloudProviderDetection';
 
 export function NodeClasses() {
   const { cloudProvider, loading, error } = useCloudProviderDetection();

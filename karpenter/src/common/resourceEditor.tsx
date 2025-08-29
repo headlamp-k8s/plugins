@@ -12,7 +12,8 @@ import addFormats from 'ajv-formats';
 import yaml from 'js-yaml';
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { KARPENTER_SCHEMAS } from '../schemas';
+import { useCloudProviderDetection } from '../hook/useCloudProviderDetection';
+import { getSchemaKey, KARPENTER_SCHEMAS } from '../schemas';
 
 /**
  * Props for the DiffEditorDialog component.
@@ -71,7 +72,11 @@ export interface DiffEditorDialogProps extends DialogProps {
   /**
    * JSON schema identifier for validation.
    */
-  schema: string;
+  schema?: string;
+  /**
+   * Cloud provider override (optional).
+   */
+  cloudProvider?: string;
 }
 
 export function DiffEditorDialog({
@@ -85,6 +90,7 @@ export function DiffEditorDialog({
   errorMessage,
   title,
   schema,
+  cloudProvider: providedCloudProvider,
   ...other
 }: DiffEditorDialogProps) {
   const [currentModifiedYaml, setCurrentModifiedYaml] = useState(modifiedYaml);
@@ -94,22 +100,52 @@ export function DiffEditorDialog({
   const dispatch = useDispatch();
   const editorRef = useRef<any>(null);
 
+  const { cloudProvider: detectedCloudProvider } = useCloudProviderDetection();
+
+  const activeCloudProvider = providedCloudProvider || detectedCloudProvider;
+
   const ajv = React.useMemo(() => {
     const instance = new Ajv({ allErrors: true });
     addFormats(instance);
     return instance;
   }, []);
 
+  const determineSchemaKey = React.useCallback(() => {
+    if (schema) {
+      return schema;
+    }
+
+    if (activeCloudProvider) {
+      return getSchemaKey(activeCloudProvider);
+    }
+
+    return 'EC2NodeClass-schema';
+  }, [schema, modifiedYaml, activeCloudProvider]);
+
   const karpenterValidate = React.useMemo(() => {
-    return ajv.compile(KARPENTER_SCHEMAS[schema]);
-  }, [ajv, schema]);
+    const schemaKey = determineSchemaKey();
+    console.log('schema key ', schemaKey);
+
+    const schemaToUse = KARPENTER_SCHEMAS[schemaKey];
+    if (!schemaToUse) {
+      console.warn(`Schema not found for key: ${schemaKey}`);
+      return null;
+    }
+
+    return ajv.compile(schemaToUse);
+  }, [ajv, determineSchemaKey]);
 
   useEffect(() => {
     setCurrentModifiedYaml(modifiedYaml);
     validateContent(modifiedYaml);
-  }, [modifiedYaml, open]);
+  }, [modifiedYaml, open, karpenterValidate]);
 
   const validateContent = (yamlContent: string) => {
+    if (!karpenterValidate) {
+      setValidationErrors(['Schema validation not available']);
+      return false;
+    }
+
     try {
       const docs = yaml.loadAll(yamlContent);
       const ajvErrors: string[] = [];
@@ -202,7 +238,8 @@ export function DiffEditorDialog({
   let dialogTitle = title;
   if (!dialogTitle && resource) {
     const itemName = resource.metadata?.name;
-    dialogTitle = `Config Editor: ${itemName}`;
+    const cloudProviderDisplay = activeCloudProvider === 'AZURE' ? 'Azure' : 'AWS';
+    dialogTitle = `Config Editor (${cloudProviderDisplay}): ${itemName}`;
   }
 
   return (

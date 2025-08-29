@@ -1,5 +1,5 @@
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export function useCloudProviderDetection() {
   const [cloudProvider, setCloudProvider] = useState(null);
@@ -10,16 +10,16 @@ export function useCloudProviderDetection() {
     async function detectCloudProvider() {
       try {
         setLoading(true);
-        
-        const response = await ApiProxy.request('/apis/apiextensions.k8s.io/v1/customresourcedefinitions');
-        const crds = response.items || [];
-   
-        const awsCRD = crds.find(crd => 
-          crd.metadata.name === 'ec2nodeclasses.karpenter.k8s.aws'
+
+        const response = await ApiProxy.request(
+          '/apis/apiextensions.k8s.io/v1/customresourcedefinitions'
         );
-        
-        const azureCRD = crds.find(crd => 
-          crd.metadata.name === 'aksnodeclasses.karpenter.azure.com'
+        const crds = response.items || [];
+
+        const awsCRD = crds.find(crd => crd.metadata.name === 'ec2nodeclasses.karpenter.k8s.aws');
+
+        const azureCRD = crds.find(
+          crd => crd.metadata.name === 'aksnodeclasses.karpenter.azure.com'
         );
 
         if (awsCRD) {

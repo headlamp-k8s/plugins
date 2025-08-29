@@ -11,9 +11,11 @@
  * 2. Examining the actual CRD configurations and jsonData:
  *    - EC2NodeClass CRD (karpenter.k8s.aws/v1)
  *    - NodePool CRD (karpenter.sh/v1)
+ *    - AKSNodeClass CRD (karpenter.azure.com/v1beta1)
  *
  * 3. Actual CRD definitions:
  *    - EC2NodeClass CRD: https://github.com/aws/karpenter-provider-aws/blob/main/pkg/apis/v1/ec2nodeclass.go
+ *    - AKSNodeClass CRD: https://github.com/Azure/karpenter-provider-azure/blob/main/pkg/apis/v1beta1/aksnodeclass.go
  *
  * Note: There is no official JSON schema documentation from Karpenter.
  * The schema here represents our best understanding of the valid configurations
@@ -22,11 +24,12 @@
  * 1. Check the CRD definitions for any new/changed fields
  * 2. Review any schema changes in new Karpenter releases:
  *    - https://github.com/aws/karpenter-provider-aws/releases
+ *    - https://github.com/Azure/karpenter-provider-azure/releases
  *
  */
 
 export const KARPENTER_SCHEMAS = {
-  'Nodeclass-schema': {
+  'EC2NodeClass-schema': {
     type: 'object',
     properties: {
       apiVersion: { const: 'karpenter.k8s.aws/v1' },
@@ -175,6 +178,80 @@ export const KARPENTER_SCHEMAS = {
       },
     },
   },
+  'AKSNodeClass-schema': {
+    type: 'object',
+    properties: {
+      apiVersion: { const: 'karpenter.azure.com/v1beta1' },
+      kind: { const: 'AKSNodeClass' },
+      metadata: {
+        type: 'object',
+        required: ['name'],
+        properties: {
+          name: { type: 'string', pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$' },
+          annotations: {
+            type: 'object',
+            properties: {
+              'karpenter.azure.com/aksnodeclass-hash': { type: 'string' },
+              'karpenter.azure.com/aksnodeclass-hash-version': { type: 'string' },
+              'kubectl.kubernetes.io/last-applied-configuration': { type: 'string' },
+            },
+          },
+          finalizers: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+      },
+      spec: {
+        type: 'object',
+        required: ['imageFamily'],
+        properties: {
+          imageFamily: {
+            type: 'string',
+          },
+          osDiskSizeGB: {
+            type: 'integer',
+            minimum: 30,
+            maximum: 2048,
+          },
+          tags: {
+            type: 'object',
+            additionalProperties: { type: 'string' },
+          },
+          osDiskPolicy: {
+            type: 'string',
+          },
+          userData: {
+            type: 'string',
+          },
+        },
+      },
+      status: {
+        type: 'object',
+        properties: {
+          conditions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['type', 'status'],
+              properties: {
+                type: {
+                  type: 'string',
+                },
+                status: {
+                  type: 'string',
+                },
+                lastTransitionTime: { type: 'string', format: 'date-time' },
+                message: { type: 'string' },
+                reason: { type: 'string' },
+                observedGeneration: { type: 'integer' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   'Nodepool-schema': {
     type: 'object',
     properties: {
@@ -237,15 +314,14 @@ export const KARPENTER_SCHEMAS = {
                 properties: {
                   expireAfter: {
                     type: 'string',
-                    pattern: '^[0-9]+(s|m|h)$',
                   },
                   nodeClassRef: {
                     type: 'object',
                     required: ['name'],
                     properties: {
                       name: { type: 'string' },
-                      kind: { const: 'EC2NodeClass' },
-                      group: { const: 'karpenter.k8s.aws' },
+                      kind: { type: 'string' },
+                      group: { type: 'string' },
                     },
                   },
                   requirements: {
@@ -306,4 +382,22 @@ export const KARPENTER_SCHEMAS = {
       },
     },
   },
+};
+
+export const getSchemaKey = (cloudProvider?: string, resourceKind?: string): string => {
+  if (resourceKind) {
+    const schemaKey = `${resourceKind}-schema`;
+    if (KARPENTER_SCHEMAS[schemaKey]) {
+      return schemaKey;
+    }
+  }
+
+  switch (cloudProvider) {
+    case 'AWS':
+      return 'EC2NodeClass-schema';
+    case 'AZURE':
+      return 'AKSNodeClass-schema';
+    default:
+      return 'EC2NodeClass-schema';
+  }
 };
