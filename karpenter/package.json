@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/karpenter",
-  "version": "0.1.0-alpha-0",
+  "version": "0.1.0",
   "description": "A Headlamp plugin that provides a UI for visualizing and managing Karpenter's autoscaling decisions, custom resources, and provisioning behavior in real-time. (Alpha Release)",
   "scripts": {
     "start": "headlamp-plugin start",
