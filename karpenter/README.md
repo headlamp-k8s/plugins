@@ -47,20 +47,31 @@ Here is one demo video of the diff editor:
 
 Please see this and other [closed PRs which have descriptions and more videos and screenshots of the features](https://github.com/headlamp-k8s/plugins/issues?q=state%3Aclosed%20label%3Akarpenter).
 
+---
+
+### Karpenter Providers
+
+This plugin should work with most Karpenter providers, but has only so far been tested on the ones listed in the table. Additionally, each provider gives some extra information, and the ones in the table below are displayed by the plugin.
+
+Please [submit an issue](https://github.com/headlamp-k8s/plugins/issues) if you test one of the untested providers or if you want support for this provider (PRs also gladly accepted).
+
+| Provider Name | Tested | Extra provider specific info supported |
+| --- | --- | --- |
+| [AWS](https://github.com/aws/karpenter-provider-aws) | ✅ | ✅ |
+| [Azure](https://github.com/Azure/karpenter-provider-azure) | ✅ | ✅ |
+| [AlibabaCloud](https://github.com/cloudpilot-ai/karpenter-provider-alibabacloud) | ❌ | ❌ |
+| [Bizfly Cloud](https://github.com/bizflycloud/karpenter-provider-bizflycloud) | ❌ | ❌ |
+| [Cluster API](https://github.com/kubernetes-sigs/karpenter-provider-cluster-api) | ❌ | ❌ |
+| [GCP](https://github.com/cloudpilot-ai/karpenter-provider-gcp) | ❌ | ❌ |
+| [Proxmox](https://github.com/sergelogvinov/karpenter-provider-proxmox) | ❌ | ❌ |
+| [Oracle Cloud Infrastructure (OCI)](https://github.com/zoom/karpenter-oci) | ❌ | ❌ |
 
 ---
 
-### Karpenter Implementations
+## Feedback and Questions
 
-Karpenter is a multi-cloud project with implementations by the following cloud providers:
-- [AWS](https://github.com/aws/karpenter-provider-aws)
-- [Azure](https://github.com/Azure/karpenter-provider-azure)
-- [AlibabaCloud](https://github.com/cloudpilot-ai/karpenter-provider-alibabacloud)
-- [Bizfly Cloud](https://github.com/bizflycloud/karpenter-provider-bizflycloud)
-- [Cluster API](https://github.com/kubernetes-sigs/karpenter-provider-cluster-api)
-- [GCP](https://github.com/cloudpilot-ai/karpenter-provider-gcp)
-- [Proxmox](https://github.com/sergelogvinov/karpenter-provider-proxmox)
-- [Oracle Cloud Infrastructure (OCI)](https://github.com/zoom/karpenter-oci)
+Please [submit an issue](https://github.com/headlamp-k8s/plugins/issues) if you use Karpenter and have any other ideas or feedback. Or come to the [Kubernetes slack headlamp channel](https://kubernetes.slack.com/?redir=%2Fmessages%2Fheadlamp) for a chat. 
+
 
 ---
 
