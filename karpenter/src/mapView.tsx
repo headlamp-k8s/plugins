@@ -2,8 +2,9 @@ import { Icon } from '@iconify/react';
 import { addIcon } from '@iconify/react';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { useMemo } from 'react';
+import { useCloudProviderDetection } from './hook/useCloudProviderDetection';
 import { NodeClassDetailView } from './NodeClass/Details';
-import { nodeClassClass } from './NodeClass/List';
+import { awsNodeClassClass, azureNodeClassClass } from './NodeClass/List';
 import { NodePoolDetailView } from './NodePool/Details';
 import { nodePoolClass } from './NodePool/List';
 import { ScalingDetailView } from './Scaling/Details';
@@ -23,8 +24,23 @@ const makeKubeToKubeEdge = (from: any, to: any): any => ({
   target: to.metadata.uid,
 });
 
+const useNodeClassClass = () => {
+  const { cloudProvider } = useCloudProviderDetection();
+
+  return useMemo(() => {
+    switch (cloudProvider) {
+      case 'AWS':
+        return awsNodeClassClass();
+      case 'AZURE':
+        return azureNodeClassClass();
+      default:
+        // Default to AWS if provider is unknown
+        return awsNodeClassClass();
+    }
+  }, [cloudProvider]);
+};
+
 class NodePool extends nodePoolClass() {}
-class NodeClass extends nodeClassClass() {}
 class NodeClaim extends nodeClaimClass() {}
 
 const findNodePoolEdges = (nodeClaims: NodeClaim[], nodePools: NodePool[]) => {
@@ -45,7 +61,7 @@ const findNodePoolEdges = (nodeClaims: NodeClaim[], nodePools: NodePool[]) => {
   return edges;
 };
 
-const findNodeClassEdges = (nodePools: NodePool[], nodeClasses: NodeClass[]) => {
+const findNodeClassEdges = (nodePools: NodePool[], nodeClasses: any[]) => {
   const edges = [];
 
   nodePools?.forEach(nodePool => {
@@ -65,7 +81,6 @@ const findNodeClaimToNodeEdges = (nodeClaims: NodeClaim[], nodes: any[]) => {
   const edges = [];
 
   nodeClaims?.forEach(nodeClaim => {
-    // Finding nodes that are managed by this NodeClaim
     const relatedNode = nodes?.find(node => {
       const ownerRefs = node.metadata?.ownerReferences || [];
       return ownerRefs.some(
@@ -120,7 +135,8 @@ const nodeClassSource = {
   label: 'nodeclasses',
   icon: <Icon icon="mdi:file-cog" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
-    const [nodeClasses] = nodeClassClass().useList();
+    const NodeClassClass = useNodeClassClass();
+    const [nodeClasses] = NodeClassClass.useList();
 
     return useMemo(() => {
       if (!nodeClasses) return null;
@@ -147,7 +163,8 @@ const nodePoolSource = {
   icon: <Icon icon="mdi:pool" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
     const [nodePools] = nodePoolClass().useList();
-    const [nodeClasses] = nodeClassClass().useList();
+    const NodeClassClass = useNodeClassClass();
+    const [nodeClasses] = NodeClassClass.useList();
 
     return useMemo(() => {
       if (!nodePools) return null;
@@ -212,7 +229,6 @@ const karpenterNodesSource = {
     return useMemo(() => {
       if (!nodes) return null;
 
-      // Filtering nodes that are managed by Karpenter
       const karpenterNodes = nodes?.filter(node => {
         const labels = node.metadata?.labels || {};
         const annotations = node.metadata?.annotations || {};
@@ -251,7 +267,6 @@ const karpenterPodsSource = {
     return useMemo(() => {
       if (!pods || !nodes) return null;
 
-      // Filter nodes managed by Karpenter
       const karpenterNodes = nodes?.filter(node => {
         const labels = node.metadata?.labels || {};
         const annotations = node.metadata?.annotations || {};
