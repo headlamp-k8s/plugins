@@ -29,6 +29,7 @@ export default class LangChainManager extends AIManager {
   private currentAbortController: AbortController | null = null;
   private promptTemplate: ChatPromptTemplate;
   private outputParser: StringOutputParser;
+  private useDirectToolCalling: boolean = false;
 
   constructor(providerId: string, config: Record<string, any>, enabledTools?: string[]) {
     super();
@@ -178,7 +179,7 @@ export default class LangChainManager extends AIManager {
     }
   }
 
-  configureTools(tools: any[], kubernetesContext: KubernetesToolContext): void {
+  async configureTools(tools: any[], kubernetesContext: KubernetesToolContext): Promise<void> {
     console.log('🔧 Configuring tools for LangChain with context:', {
       toolCount: tools.length,
       selectedClusters: kubernetesContext.selectedClusters,
@@ -188,10 +189,32 @@ export default class LangChainManager extends AIManager {
     // Configure the Kubernetes context for the KubernetesTool
     this.toolManager.configureKubernetesContext(kubernetesContext);
 
+    // Get all tools (including MCP tools)
+    const allTools = this.toolManager.getLangChainTools();
+    console.log(`🔧 Total tools available: ${allTools.length} (Regular: ${tools.length}, MCP: ${this.toolManager.getMCPTools().length})`);
+
     // Bind all tools to the model for compatible providers (OpenAI, Azure, etc.)
     this.boundModel = this.toolManager.bindToModel(this.model, this.providerId);
 
-    console.log('🔧 Tools bound to model successfully, boundModel exists:', !!this.boundModel);
+    // Enable direct tool calling for better performance
+    if (allTools.length > 0 && this.canUseDirectToolCalling()) {
+      this.useDirectToolCalling = true;
+      console.log('🔧 Direct tool calling enabled for', allTools.length, 'tools');
+    }
+
+    console.log('🔧 Tools configured:', {
+      boundModel: !!this.boundModel,
+      directToolCalling: this.useDirectToolCalling,
+      toolCount: allTools.length
+    });
+  }
+
+  /**
+   * Check if the current provider can use direct tool calling
+   */
+  private canUseDirectToolCalling(): boolean {
+    // All major providers support direct tool calling
+    return ['openai', 'azure', 'anthropic', 'mistral', 'gemini'].includes(this.providerId);
   }
 
   // Helper method to prepare chat history for prompt template
@@ -241,6 +264,11 @@ export default class LangChainManager extends AIManager {
     this.currentAbortController = new AbortController();
 
     try {
+      // Use direct tool calling if enabled
+      if (this.useDirectToolCalling) {
+        return await this.handleDirectToolCallingRequest(message);
+      }
+
       const modelToUse = this.boundModel || this.model;
 
       // For local models, use simplified approach
@@ -252,6 +280,61 @@ export default class LangChainManager extends AIManager {
       return await this.handleChainBasedRequest(message, modelToUse);
     } catch (error) {
       return this.handleUserSendError(error);
+    }
+  }
+
+  // Handle requests using direct tool calling (single LLM call)
+  private async handleDirectToolCallingRequest(message: string): Promise<Prompt> {
+    try {
+      console.log('🔧 Using direct tool calling for request:', message);
+      
+      const modelToUse = this.boundModel || this.model;
+      
+      // Prepare input for the model with tools
+      const chainInput = {
+        systemPrompt: this.createSystemPrompt(),
+        chatHistory: this.prepareChatHistory(),
+        input: message,
+      };
+
+      // Convert chain input to messages
+      const messages = [
+        new SystemMessage(chainInput.systemPrompt),
+        ...chainInput.chatHistory,
+        new HumanMessage(chainInput.input),
+      ];
+
+      // Single LLM call with tool capabilities
+      const response = await modelToUse.invoke(messages, {
+        signal: this.currentAbortController?.signal,
+      });
+
+      this.currentAbortController = null;
+
+      // Handle tool calls if present
+      if (response.tool_calls?.length) {
+        console.log('🔧 Tool calls detected, processing...');
+        return await this.handleToolCalls(response);
+      } else {
+        console.log('💬 No tool calls detected, treating as regular message');
+        // Handle regular response
+        const assistantPrompt: Prompt = {
+          role: 'assistant',
+          content: this.extractTextContent(response.content),
+        };
+        this.history.push(assistantPrompt);
+        return assistantPrompt;
+      }
+      
+    } catch (error) {
+      console.error('Error in direct tool calling request:', error);
+      
+      // If direct tool calling fails, fall back to regular approach
+      console.log('🔄 Falling back to chain-based approach');
+      this.useDirectToolCalling = false;
+      
+      const modelToUse = this.boundModel || this.model;
+      return await this.handleChainBasedRequest(message, modelToUse);
     }
   }
 
