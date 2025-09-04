@@ -1,14 +1,19 @@
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { DynamicTool } from '@langchain/core/tools';
 import { Prompt } from '../../ai/manager';
 import { KubernetesTool, KubernetesToolContext } from './kubernetes';
 import { AVAILABLE_TOOLS, getToolByName } from './registry';
 import { ToolBase, ToolResponse } from './ToolBase';
+import tools, { ElectronMCPClient } from '../../ai/mcp/electron-client';
 
 export class ToolManager {
   private tools: ToolBase[] = [];
   private toolHandlers: Map<string, ToolBase> = new Map();
+  private mcpTools: DynamicTool[] = [];
+  private mcpClient: ElectronMCPClient;
 
   constructor(enabledToolIds?: string[]) {
+    this.mcpClient = new ElectronMCPClient();
     this.initializeTools(enabledToolIds);
   }
 
@@ -16,6 +21,9 @@ export class ToolManager {
    * Initialize only enabled tools from the registry
    */
   private initializeTools(enabledToolIds?: string[]): void {
+    // Initialize MCP tools with proper error handling
+    this.initializeMCPTools();
+
     for (const ToolClass of AVAILABLE_TOOLS) {
       const tempTool = new ToolClass();
       if (enabledToolIds && !enabledToolIds.includes(tempTool.config.name)) {
@@ -28,6 +36,45 @@ export class ToolManager {
       } catch (error) {
         console.error(`Failed to load tool ${ToolClass.name}:`, error);
       }
+    }
+  }
+
+  /**
+   * Initialize MCP tools from Electron main process
+   */
+  private async initializeMCPTools(): Promise<void> {
+    try {
+      console.log('Initializing MCP tools from Electron...');
+      const mcpToolsData = await tools();
+      
+      if (mcpToolsData && mcpToolsData.length > 0) {
+        console.log(`Successfully loaded ${mcpToolsData.length} MCP tools from Electron`);
+        
+        // Convert MCP tools to LangChain DynamicTool format
+        this.mcpTools = mcpToolsData.map(toolData => 
+          new DynamicTool({
+            name: toolData.name,
+            description: toolData.description || `MCP tool: ${toolData.name}`,
+            schema: toolData.inputSchema,
+            func: async (args: any) => {
+              try {
+                const result = await this.mcpClient.executeTool(toolData.name, args);
+                return typeof result === 'string' ? result : JSON.stringify(result);
+              } catch (error) {
+                console.error(`Error executing MCP tool ${toolData.name}:`, error);
+                throw error;
+              }
+            }
+          })
+        );
+        
+        console.log(`Converted ${this.mcpTools.length} MCP tools to LangChain format`);
+      } else {
+        console.log('No MCP tools available or MCP client not initialized');
+      }
+    } catch (error) {
+      console.warn('Failed to initialize MCP tools from Electron:', error instanceof Error ? error.message : 'Unknown error');
+      // Continue without MCP tools - this is not a fatal error
     }
   }
   /**
@@ -67,10 +114,18 @@ export class ToolManager {
   }
 
   /**
-   * Get all configured tools as LangChain tools
+   * Get all configured tools as LangChain tools (including MCP tools)
    */
   getLangChainTools() {
-    return this.tools.map(tool => tool.createLangChainTool());
+    const regularTools = this.tools.map(tool => tool.createLangChainTool());
+    return [...regularTools, ...this.mcpTools];
+  }
+
+  /**
+   * Get all MCP tools as LangChain tools
+   */
+  getMCPTools() {
+    return this.mcpTools;
   }
 
   /**
@@ -111,6 +166,9 @@ export class ToolManager {
         console.warn('No tools configured for binding');
         return model;
       }
+
+      console.log(`Binding ${langChainTools.length} tools to ${providerId} model:`, 
+        langChainTools.map(t => t.name));
 
       return model.bindTools(langChainTools);
     } catch (error) {
