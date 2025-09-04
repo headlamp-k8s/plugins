@@ -12,6 +12,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | ---------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | [app-catalog](./app-catalog) | Provides a new area where users can install Helm charts and manage releases. | Desktop only. Shipped with Headlamp desktop builds by default. | [@ashu8912](https://github.com/ashu8912) |
 | [backstage](./backstage) | Provides links to the resource's views in Backstage. | See also the [Headlamp integration for Backstage](https://github.com/headlamp-k8s/backstage-plugin). | [@yolossn](https://github.com/yolossn) |
+| [cluster-api](./cluster-api) | See your Cluster API management clusters in Headlamp's sidebar and map. | Learn more about CAPI with the [Cluster API book](https://cluster-api.sigs.k8s.io/). |[@mboersma](https://github.com/mboersma) |
 | [flux](./flux) | Visualize Flux in Headlamp. | |[@ashu8912](https://github.com/ashu8912) |
 | [kompose](./kompose) | Translates docker-compose manifests to Kubernetes's. | Runs kompose in a job in the cluster for now. | [@joaquimrocha](https://github.com/joaquimrocha) |
 | [opencost](./opencost) | See the costs of your workloads in Headlamp. | |[@yolossn](https://github.com/yolossn)|
