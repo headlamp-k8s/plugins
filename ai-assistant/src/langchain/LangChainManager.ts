@@ -20,6 +20,7 @@ import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
 import { apiErrorPromptTemplate, toolFailurePromptTemplate } from './PromptTemplates';
 import { KubernetesToolContext, ToolManager } from './tools';
+import { toolApprovalManager, ToolCall } from '../utils/ToolApprovalManager';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -215,6 +216,32 @@ export default class LangChainManager extends AIManager {
   private canUseDirectToolCalling(): boolean {
     // All major providers support direct tool calling
     return ['openai', 'azure', 'anthropic', 'mistral', 'gemini'].includes(this.providerId);
+  }
+
+  /**
+   * Get description for a tool (for approval dialog)
+   */
+  private getToolDescription(toolName: string, isMCPTool: boolean): string {
+    if (isMCPTool) {
+      // MCP tool descriptions can be more specific based on tool name
+      if (toolName.includes('trace') || toolName.includes('profile')) {
+        return 'Traces system calls and processes for debugging';
+      } else if (toolName.includes('network') || toolName.includes('socket')) {
+        return 'Monitors network connections and traffic';
+      } else if (toolName.includes('top') || toolName.includes('process')) {
+        return 'Shows running processes and resource usage';
+      } else if (toolName.includes('exec') || toolName.includes('run')) {
+        return 'Executes commands in containers';
+      } else {
+        return `Inspektor Gadget debugging tool: ${toolName}`;
+      }
+    } else {
+      // Regular Kubernetes tools
+      if (toolName.includes('kubernetes')) {
+        return 'Executes Kubernetes API operations';
+      }
+      return `Kubernetes management tool: ${toolName}`;
+    }
   }
 
   // Helper method to prepare chat history for prompt template
@@ -473,8 +500,68 @@ export default class LangChainManager extends AIManager {
     };
     this.history.push(assistantPrompt);
 
-    // Process tool calls
-    await this.processToolCalls(toolCalls, assistantPrompt);
+    // Prepare tool calls for approval
+    const toolCallsForApproval: ToolCall[] = toolCalls.map(tc => {
+      const toolName = tc.function.name;
+      const mcpTools = this.toolManager.getMCPTools();
+      const isMCPTool = mcpTools.some(tool => tool.name === toolName);
+
+      return {
+        id: tc.id,
+        name: toolName,
+        description: this.getToolDescription(toolName, isMCPTool),
+        arguments: JSON.parse(tc.function.arguments),
+        type: isMCPTool ? 'mcp' : 'regular'
+      };
+    });
+
+    try {
+      // Request approval for tool execution
+      console.log('🔐 Requesting approval for', toolCallsForApproval.length, 'tools');
+      const approvedToolIds = await toolApprovalManager.requestApproval(toolCallsForApproval);
+      
+      console.log('✅ Tools approved:', approvedToolIds.length, 'of', toolCallsForApproval.length);
+
+      // Filter tool calls to only execute approved ones
+      const approvedToolCalls = toolCalls.filter(tc => approvedToolIds.includes(tc.id));
+      const deniedToolCalls = toolCalls.filter(tc => !approvedToolIds.includes(tc.id));
+
+      // Add denied tool responses to history
+      for (const deniedTool of deniedToolCalls) {
+        this.history.push({
+          role: 'tool',
+          content: JSON.stringify({
+            error: true,
+            message: 'Tool execution denied by user',
+            userFriendlyMessage: `The execution of ${deniedTool.function.name} was denied by the user.`
+          }),
+          toolCallId: deniedTool.id,
+          name: deniedTool.function.name,
+        });
+      }
+
+      // Process approved tool calls
+      if (approvedToolCalls.length > 0) {
+        await this.processToolCalls(approvedToolCalls, assistantPrompt);
+      }
+
+    } catch (error) {
+      console.log('❌ Tool approval denied or failed:', error.message);
+      
+      // Add denial responses for all tools
+      for (const toolCall of toolCalls) {
+        this.history.push({
+          role: 'tool',
+          content: JSON.stringify({
+            error: true,
+            message: error.message || 'Tool execution denied',
+            userFriendlyMessage: `Tool execution was denied: ${error.message || 'User chose not to proceed'}`
+          }),
+          toolCallId: toolCall.id,
+          name: toolCall.function.name,
+        });
+      }
+    }
 
     // Check if we should process follow-up
     const toolResponses = this.history.filter(
