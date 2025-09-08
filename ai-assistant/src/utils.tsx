@@ -6,6 +6,7 @@ import type {
 } from '@kinvolk/headlamp-plugin/lib/plugin/registry';
 import React from 'react';
 import { useBetween } from 'use-between';
+import type { MCPConfig } from './components/settings/MCPSettings';
 import type { SavedConfigurations, StoredProviderConfig } from './utils/ProviderConfigManager';
 
 export const PLUGIN_NAME = '@headlamp-k8s/ai-assistant';
@@ -137,6 +138,7 @@ interface PluginConfig extends SavedConfigurations {
   testMode?: boolean;
   /** Latest Headlamp event payload */
   event?: HeadlampEventPayload | null; //@todo: should this be HeadlampEventPayload?
+  mcpConfig?: MCPConfig;
 }
 
 export const pluginStore = new ConfigStore<PluginConfig>(PLUGIN_NAME);

@@ -24,6 +24,8 @@ interface ElectronMCPApi {
   ) => Promise<MCPResponse>;
   getStatus: () => Promise<{ isInitialized: boolean; hasClient: boolean }>;
   resetClient: () => Promise<MCPResponse>;
+  getConfig: () => Promise<{ success: boolean; config?: any; error?: string }>;
+  updateConfig: (config: any) => Promise<MCPResponse>;
 }
 
 // desktopApi is already declared on Window by @kinvolk/headlamp-plugin as `any`.
