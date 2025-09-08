@@ -26,6 +26,7 @@ import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { checkHolmesAgentHealth } from './agent/holmesClient';
 import { ModelSelector } from './components';
+import { MCPSettings } from './components/settings/MCPSettings';
 import { getDefaultConfig } from './config/modelConfig';
 import { isTestModeCheck } from './helper';
 import AIPrompt from './modal';
@@ -505,6 +506,10 @@ function Settings() {
           </Box>
         ))}
       </Box>
+
+      {/* MCP Servers Section */}
+      <Divider sx={{ my: 3 }} />
+      <MCPSettings />
     </Box>
   );
 }
