@@ -13,11 +13,13 @@ import {
   AIInputSection,
   ApiConfirmationDialog,
   PromptSuggestions,
+  ToolApprovalDialog,
 } from './components';
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
 import { isTestModeCheck } from './helper';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
+import { useToolApproval } from './hooks/useToolApproval';
 import LangChainManager from './langchain/LangChainManager';
 import { getSettingsURL, useGlobalState } from './utils';
 import { generateContextDescription } from './utils/contextGenerator';
@@ -32,6 +34,7 @@ import { getProviderModels, parseSuggestionsFromResponse } from './utils/modalUt
 //   ProactiveDiagnosisManager,
 // } from './utils/ProactiveDiagnosisManager';
 import { useDynamicPrompts } from './utils/promptGenerator';
+import { toolApprovalManager } from './utils/ToolApprovalManager';
 
 // Operation type constants for translation
 const OPERATION_TYPES = {
@@ -209,6 +212,9 @@ export default function AIPrompt(props: {
   // Stub: proactive diagnosis disabled — isDiagnosisRunning is always false
   const isDiagnosisRunning = false;
   // ─── End Proactive Diagnosis Setup ──────────────────────────────────
+
+  // Tool approval management
+  const toolApproval = useToolApproval();
 
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
@@ -1482,6 +1488,8 @@ export default function AIPrompt(props: {
                   aiManager?.reset();
                   updateHistory();
                 }
+                // Clear tool approval session when history is cleared
+                toolApprovalManager.clearSession();
               }}
               onConfigChange={(config, model) => {
                 setActiveConfig(config);
@@ -1494,6 +1502,24 @@ export default function AIPrompt(props: {
           </Grid>
         </Grid>
       </Box>
+
+      {/* Tool Approval Dialog */}
+      <ToolApprovalDialog
+        open={toolApproval.showApprovalDialog}
+        toolCalls={
+          toolApproval.pendingRequest?.toolCalls.map(tool => ({
+            id: tool.id,
+            name: tool.name,
+            description: tool.description,
+            arguments: tool.arguments,
+            type: tool.type,
+          })) || []
+        }
+        onApprove={toolApproval.handleApprove}
+        onDeny={toolApproval.handleDeny}
+        onClose={toolApproval.handleClose}
+        loading={toolApproval.isProcessing}
+      />
 
       {/* Editor Dialog */}
       {!isDelete && showEditor && (
