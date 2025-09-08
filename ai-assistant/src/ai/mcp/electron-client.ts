@@ -20,6 +20,8 @@ interface ElectronMCPApi {
   executeTool: (toolName: string, args: Record<string, any>, toolCallId?: string) => Promise<MCPResponse>;
   getStatus: () => Promise<{ isInitialized: boolean; hasClient: boolean }>;
   resetClient: () => Promise<MCPResponse>;
+  getConfig: () => Promise<{ success: boolean; config?: any; error?: string }>;
+  updateConfig: (config: any) => Promise<MCPResponse>;
 }
 
 declare global {
