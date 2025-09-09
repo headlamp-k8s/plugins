@@ -4,9 +4,7 @@ import {
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
 import {
-  ARTIFACTHUB_PROTOCOL,
   CommunityChartList,
-  HELM_PROTOCOL,
   HelmChartList,
 } from './api/catalogs';
 import { AppCatalogSettings } from '../src/components/settings/AppCatalogSettings';
@@ -15,6 +13,10 @@ import { ChartsList } from './components/charts/List';
 import ReleaseDetail from './components/releases/Detail';
 import ReleaseList from './components/releases/List';
 import { CatalogLists } from './helpers/catalog';
+import {
+    ARTIFACTHUB_PROTOCOL,
+    HELM_PROTOCOL,
+    VANILLA_HELM_REPO } from './constants/catalog';
 
 export function isElectron(): boolean {
   // Renderer process
@@ -159,7 +161,7 @@ registerRoute({
   sidebar: 'Charts',
   name: 'Charts',
   exact: true,
-  component: () => <ChartDetails />,
+  component: () => <ChartDetails vanillaHelmRepo={VANILLA_HELM_REPO} />,
 });
 
 registerRoute({

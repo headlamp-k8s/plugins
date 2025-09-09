@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 import semver from 'semver';
 import { fetchChart, getActionStatus, upgradeRelease } from '../../api/releases';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
-import {APP_CATALOG_HELM_REPOSITORY} from "../charts/List";
+import {APP_CATALOG_HELM_REPOSITORY} from "../../constants/catalog";
 
 export function EditorDialog(props: {
   openEditor: boolean;
@@ -80,6 +80,7 @@ export function EditorDialog(props: {
             variant: 'error',
             autoHideDuration: 5000,
           });
+          return;
         }
 
         setIsLoading(false);

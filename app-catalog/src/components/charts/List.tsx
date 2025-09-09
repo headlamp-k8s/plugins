@@ -26,6 +26,12 @@ import { AvailableComponentVersions } from '../../helpers/catalog';
 //import { createRelease } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
 import { SettingsLink } from './SettingsLink';
+import {getCatalogConfig} from "../../api/catalogConfig";
+import {
+    PAGE_OFFSET_COUNT_FOR_CHARTS,
+    VANILLA_HELM_REPO,
+} from '../../constants/catalog';
+
 //import * as global from "global";
 
 interface AppCatalogConfig {
@@ -37,21 +43,6 @@ interface AppCatalogConfig {
 
 export const store = new ConfigStore<AppCatalogConfig>('app-catalog');
 const useStoreConfig = store.useConfig();
-
-export const PAGE_OFFSET_COUNT_FOR_CHARTS = 9;
-
-export const VANILLA_HELM_REPO = 'VANILLA_HELM_REPOSITORY';
-
-export const COMMUNITY_REPO = 'COMMUNITY_REPOSITORY';
-
-// Replace the token with the URL prefix to values.yaml for a component on ${CUSTOM_CHART_VALUES_PREFIX}/${packageID}/${packageVersion}/values.yaml
-// This is used only for the catalog provided by a vanilla Helm repository.
-// For the default behavior when this token is not replaced during deployment, please take a look at the global variable CHART_VALUES_PREFIX and its
-// usage in src/api/catalogs.tsx
-export const CUSTOM_CHART_VALUES_PREFIX = 'CUSTOM_CHART_VALUES_PREFIX';
-
-// The name of the helm repository added before installing an application, while using vanilla helm repository
-export const APP_CATALOG_HELM_REPOSITORY = 'app-catalog';
 
 // Define a global variable to hold the available versions of the components in the catalog
 declare global {
@@ -174,6 +165,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   // we must have the default value here and have it imported for use in the settings tab
   const config = useStoreConfig();
   const showOnlyVerified = config?.showOnlyVerified ?? true;
+  const chartCfg = getCatalogConfig();
 
   // note: When the users changes the chartCategory or search, then we always go back to the first page
   useEffect(() => {
@@ -188,9 +180,10 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
       async function fetchData() {
         try {
           const response = await fetchCharts(search, showOnlyVerified, chartCategory, page);
+
           const data = await response.dataResponse.text();
           const d=yamlToJSON(data);
-          if (globalThis.CHART_PROFILE === VANILLA_HELM_REPO) {
+          if (chartCfg.chartProfile === VANILLA_HELM_REPO) {
             setCharts(d.entries);
             setChartsTotalCount(parseInt(response.total));
             // Capture available versions from the response and set AVAILABLE_VERSIONS
@@ -279,6 +272,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         openEditor={openEditor}
         chart={selectedChartForInstall}
         handleEditor={(open: boolean) => setEditorOpen(open)}
+        chartProfile={VANILLA_HELM_REPO}
       />
       <SectionHeader
         title="Applications"
@@ -352,7 +346,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                           justifyContent="space-between"
                           marginTop="15px"
                       >
-                        {globalThis.CHART_PROFILE === VANILLA_HELM_REPO ? (
+                        {chartCfg.chartProfile === VANILLA_HELM_REPO ? (
                             iconUrls[chart.icon] && (
                                 <CardMedia
                                     image={iconUrls[chart.icon]}
@@ -438,7 +432,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                             <Typography component="h2" variant="h5">
                                 {/* TODO: The app-catalog using artifacthub.io loads the details about the chart with an option to install the chart
                                     Fix this for vanilla helm repo */}
-                                {globalThis.CHART_PROFILE === VANILLA_HELM_REPO ? chart.name :
+                                {chartCfg.chartProfile === VANILLA_HELM_REPO ? chart.name :
                                 (
                                     <RouterLink
                                         routeName="/helm/:repoName/charts/:chartName"
@@ -512,7 +506,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                             Provide Learn More link only when the chart has source
                             When there are multiple sources for a chart, use the first source for the link, rather than using comma separated values
                     */}
-                          {globalThis.CHART_PROFILE === VANILLA_HELM_REPO ? (
+                          {chartCfg.chartProfile === VANILLA_HELM_REPO ? (
                               !chart?.sources ? (
                                   ''
                               ) : chart?.sources?.length === 1 ? (
@@ -551,7 +545,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
           />
         </Box>
       )}
-      {globalThis.CHART_PROFILE !== VANILLA_HELM_REPO && (
+      {chartCfg.chartProfile !== VANILLA_HELM_REPO && (
           <Box textAlign="right">
               <Link href="https://artifacthub.io/" target="_blank">
                   Powered by ArtifactHub

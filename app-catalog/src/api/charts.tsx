@@ -1,13 +1,16 @@
 import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import {
-  COMMUNITY_REPO,
-  CUSTOM_CHART_VALUES_PREFIX,
-  PAGE_OFFSET_COUNT_FOR_CHARTS,
-  VANILLA_HELM_REPO,
-} from '../components/charts/List';
+    COMMUNITY_REPO,
+    CUSTOM_CHART_VALUES_PREFIX,
+    PAGE_OFFSET_COUNT_FOR_CHARTS,
+    VANILLA_HELM_REPO,
+} from '../constants/catalog';
 import { yamlToJSON } from '../helpers';
 import { isElectron } from '../index';
+import { getCatalogConfig, setChartValuesPrefix } from "./catalogConfig";
 
+// Headlamp plugin's backend service proxy endpoint.
+// It was implemented by Headlamp's backed to proxies in-cluster requests to handle authentication
 const SERVICE_PROXY = '/serviceproxy';
 
 const getURLSearchParams = url => {
@@ -22,11 +25,12 @@ export async function fetchChartsFromArtifact(
   limit: number = PAGE_OFFSET_COUNT_FOR_CHARTS
 ) {
   if (!isElectron()) {
-    if (CHART_PROFILE === VANILLA_HELM_REPO) {
-      // When CHART_PROFILE is VANILLA_HELM_REPOSITORY, the code expects /charts/index.yaml
+    const chartCfg = getCatalogConfig()
+    if (chartCfg.chartProfile === VANILLA_HELM_REPO) {
+      // When chartProfile is VANILLA_HELM_REPOSITORY, the code expects /charts/index.yaml
       // to contain the metadata of the available charts
       const url =
-        `${SERVICE_PROXY}/${CATALOG_NAMESPACE}/${CATALOG_NAME}?` +
+        `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` +
         getURLSearchParams(`charts/index.yaml`);
 
       // Ensure that the UI renders index.yaml in yaml and json format. Please note that, helm repo index generates index.yaml
@@ -40,7 +44,7 @@ export async function fetchChartsFromArtifact(
 	  const jsonResponse = yamlToJSON(yamlResponse);
       const total = Object.keys(jsonResponse.entries || {}).length;
       return { dataResponse, total };
-    } else if (CHART_PROFILE === COMMUNITY_REPO) {
+    } else if (chartCfg.chartProfile === COMMUNITY_REPO) {
       let requestParam = '';
       if (!category || category.value === 0) {
         requestParam = `api/v1/packages/search?kind=0&ts_query_web=${search}&sort=relevance&facets=true&limit=${limit}&offset=${
@@ -53,7 +57,7 @@ export async function fetchChartsFromArtifact(
       }
 
       const url =
-        `${SERVICE_PROXY}/${CATALOG_NAMESPACE}/${CATALOG_NAME}?` + getURLSearchParams(requestParam);
+        `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` + getURLSearchParams(requestParam);
       const response = request(url, {}, true, true, {}).then(response => response);
       const dataResponse = response
       const total = response.headers.get('pagination-total-count');
@@ -86,10 +90,11 @@ export async function fetchChartsFromArtifact(
 }
 
 export function fetchChartDetailFromArtifact(chartName: string, repoName: string) {
+  const chartCfg = getCatalogConfig()
   // Use /serviceproxy to fetch the resource, by specifying the access token
-  if (!isElectron() && CHART_PROFILE === COMMUNITY_REPO) {
+  if (!isElectron() && chartCfg.chartProfile === COMMUNITY_REPO) {
     const url =
-      `${SERVICE_PROXY}/${CATALOG_NAMESPACE}/${CATALOG_NAME}?` +
+      `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` +
       getURLSearchParams(`api/v1/packages/helm/${repoName}/${chartName}`);
     return request(url, {}, true, true, {}).then(response => response);
   }
@@ -104,22 +109,23 @@ export function fetchChartDetailFromArtifact(chartName: string, repoName: string
 }
 
 export function fetchChartValues(packageID: string, packageVersion: string) {
+  const chartCfg = getCatalogConfig()
   if (!isElectron()) {
     let requestParam = '';
-    if (CHART_PROFILE === VANILLA_HELM_REPO) {
+    if (chartCfg.chartProfile === VANILLA_HELM_REPO) {
       // When the token CUSTOM_CHART_VALUES_PREFIX is replaced during the deployment, expect the values.yaml for the specified
       // package and version accessible on ${CUSTOM_CHART_VALUES_PREFIX}/${packageID}/${packageVersion}/values.yaml
       if (CUSTOM_CHART_VALUES_PREFIX !== 'CUSTOM_CHART_VALUES_PREFIX') {
-        globalThis.CHART_VALUES_PREFIX = `${CUSTOM_CHART_VALUES_PREFIX}`;
+        chartCfg.setChartValuesPrefix(`${CUSTOM_CHART_VALUES_PREFIX}`);
       }
       // The code expects /${packageID}/${packageVersion}/values.yaml to return values.yaml for the component
       // denoted by packageID and a given packageVersion. Please note that, chart.name is used for packageID in this case.
-      requestParam = `${CHART_VALUES_PREFIX}/${packageID}/${packageVersion}/values.yaml`;
-    } else if (CHART_PROFILE === COMMUNITY_REPO) {
+      requestParam = `${chartCfg.chartValuesPrefix}/${packageID}/${packageVersion}/values.yaml`;
+    } else if (chartCfg.chartProfile === COMMUNITY_REPO) {
       requestParam = `api/v1/packages/${packageID}/${packageVersion}/values`;
     }
     const url =
-      `${SERVICE_PROXY}/${CATALOG_NAMESPACE}/${CATALOG_NAME}?` + getURLSearchParams(requestParam);
+      `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` + getURLSearchParams(requestParam);
 
     // Use /serviceproxy to fetch the resource, by specifying the access token
     return request(url, { isJSON: false }, true, true, {}).then(response => response.text());
@@ -134,8 +140,9 @@ export function fetchChartValues(packageID: string, packageVersion: string) {
 }
 
 export async function  fetchChartIcon(iconName: string) {
+  const chartCfg = getCatalogConfig();
   const url =
-      `${SERVICE_PROXY}/${CATALOG_NAMESPACE}/${CATALOG_NAME}?` +
+      `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` +
       getURLSearchParams(`${iconName}`);
   return request(url, {isJSON: false}, true, true, {}).then(response => response);
 }

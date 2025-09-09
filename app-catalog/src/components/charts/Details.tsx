@@ -13,10 +13,14 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import remarkGfm from 'remark-gfm';
 import { fetchChartDetailFromArtifact } from '../../api/charts';
 import { EditorDialog } from './EditorDialog';
-import { VANILLA_HELM_REPO } from './List';
+import { getCatalogConfig } from "../../api/catalogConfig";
 
 const { createRouteURL } = Router;
-export default function ChartDetails() {
+type ChartDetailsProps = {
+    vanillaHelmRepo: string;
+}
+
+export default function ChartDetails({vanillaHelmRepo} : ChartDetailsProps) {
   const { chartName, repoName } = useParams<{ chartName: string; repoName: string }>();
   const [chart, setChart] = useState<{
     name: string;
@@ -30,6 +34,7 @@ export default function ChartDetails() {
     version: string;
   } | null>(null);
   const [openEditor, setOpenEditor] = useState(false);
+  const chartCfg = getCatalogConfig();
 
   useEffect(() => {
     // Note: This path is not enabled for vanilla helm repo. Please check the following comment in charts/List.tsx
@@ -51,6 +56,7 @@ export default function ChartDetails() {
         handleEditor={open => {
           setOpenEditor(open);
         }}
+        chartProfile={vanillaHelmRepo}
       />
       <SectionBox
         title={
@@ -88,7 +94,7 @@ export default function ChartDetails() {
                   <Box display="flex" alignItems="center">
                     {chart.logo_image_id && (
                       <Box mr={1}>
-                          {CHART_PROFILE === VANILLA_HELM_REPO ? (
+                          {chartCfg.chartProfile === vanillaHelmRepo ? (
                               <img src={`${chart?.icon || ''}`} width="25" height="25" alt={chart.name} />
                               ) : (
                               <img
