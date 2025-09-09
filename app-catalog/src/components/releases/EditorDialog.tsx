@@ -15,8 +15,8 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useRef, useState } from 'react';
 import semver from 'semver';
 import { fetchChart, getActionStatus, upgradeRelease } from '../../api/releases';
+import { APP_CATALOG_HELM_REPOSITORY } from '../../constants/catalog';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
-import {APP_CATALOG_HELM_REPOSITORY} from "../../constants/catalog";
 
 export function EditorDialog(props: {
   openEditor: boolean;
@@ -65,7 +65,10 @@ export function EditorDialog(props: {
         let response;
         let error: Error | null = null;
         try {
-          const metadataName = release.chart.metadata.name === APP_CATALOG_HELM_REPOSITORY ? '/' + release.chart.metadata.name : release.chart.metadata.name;
+          const metadataName =
+            release.chart.metadata.name === APP_CATALOG_HELM_REPOSITORY
+              ? '/' + release.chart.metadata.name
+              : release.chart.metadata.name;
           response = await fetchChart(metadataName);
         } catch (err) {
           error = err;

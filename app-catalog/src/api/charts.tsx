@@ -1,13 +1,13 @@
 import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import {
-    COMMUNITY_REPO,
-    CUSTOM_CHART_VALUES_PREFIX,
-    PAGE_OFFSET_COUNT_FOR_CHARTS,
-    VANILLA_HELM_REPO,
+  COMMUNITY_REPO,
+  CUSTOM_CHART_VALUES_PREFIX,
+  PAGE_OFFSET_COUNT_FOR_CHARTS,
+  VANILLA_HELM_REPO,
 } from '../constants/catalog';
 import { yamlToJSON } from '../helpers';
 import { isElectron } from '../index';
-import { getCatalogConfig, setChartValuesPrefix } from "./catalogConfig";
+import { getCatalogConfig } from './catalogConfig';
 
 // Headlamp plugin's backend service proxy endpoint.
 // It was implemented by Headlamp's backed to proxies in-cluster requests to handle authentication
@@ -25,7 +25,7 @@ export async function fetchChartsFromArtifact(
   limit: number = PAGE_OFFSET_COUNT_FOR_CHARTS
 ) {
   if (!isElectron()) {
-    const chartCfg = getCatalogConfig()
+    const chartCfg = getCatalogConfig();
     if (chartCfg.chartProfile === VANILLA_HELM_REPO) {
       // When chartProfile is VANILLA_HELM_REPOSITORY, the code expects /charts/index.yaml
       // to contain the metadata of the available charts
@@ -41,7 +41,7 @@ export async function fetchChartsFromArtifact(
       //  .then(yamlResponse => yamlToJSON(yamlResponse));
       const dataResponse = await request(url, { isJSON: false }, true, true, {});
       const yamlResponse = await dataResponse.text();
-	  const jsonResponse = yamlToJSON(yamlResponse);
+      const jsonResponse = yamlToJSON(yamlResponse);
       const total = Object.keys(jsonResponse.entries || {}).length;
       return { dataResponse, total };
     } else if (chartCfg.chartProfile === COMMUNITY_REPO) {
@@ -57,9 +57,10 @@ export async function fetchChartsFromArtifact(
       }
 
       const url =
-        `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` + getURLSearchParams(requestParam);
+        `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` +
+        getURLSearchParams(requestParam);
       const response = request(url, {}, true, true, {}).then(response => response);
-      const dataResponse = response
+      const dataResponse = response;
       const total = response.headers.get('pagination-total-count');
       return { dataResponse, total };
       //return request(url, {}, true, true, {}).then(response => response);
@@ -90,7 +91,7 @@ export async function fetchChartsFromArtifact(
 }
 
 export function fetchChartDetailFromArtifact(chartName: string, repoName: string) {
-  const chartCfg = getCatalogConfig()
+  const chartCfg = getCatalogConfig();
   // Use /serviceproxy to fetch the resource, by specifying the access token
   if (!isElectron() && chartCfg.chartProfile === COMMUNITY_REPO) {
     const url =
@@ -109,7 +110,7 @@ export function fetchChartDetailFromArtifact(chartName: string, repoName: string
 }
 
 export function fetchChartValues(packageID: string, packageVersion: string) {
-  const chartCfg = getCatalogConfig()
+  const chartCfg = getCatalogConfig();
   if (!isElectron()) {
     let requestParam = '';
     if (chartCfg.chartProfile === VANILLA_HELM_REPO) {
@@ -125,7 +126,8 @@ export function fetchChartValues(packageID: string, packageVersion: string) {
       requestParam = `api/v1/packages/${packageID}/${packageVersion}/values`;
     }
     const url =
-      `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` + getURLSearchParams(requestParam);
+      `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` +
+      getURLSearchParams(requestParam);
 
     // Use /serviceproxy to fetch the resource, by specifying the access token
     return request(url, { isJSON: false }, true, true, {}).then(response => response.text());
@@ -139,11 +141,10 @@ export function fetchChartValues(packageID: string, packageVersion: string) {
   }).then(response => response.text());
 }
 
-export async function  fetchChartIcon(iconName: string) {
+export async function fetchChartIcon(iconName: string) {
   const chartCfg = getCatalogConfig();
   const url =
-      `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` +
-      getURLSearchParams(`${iconName}`);
-  return request(url, {isJSON: false}, true, true, {}).then(response => response);
+    `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` +
+    getURLSearchParams(`${iconName}`);
+  return request(url, { isJSON: false }, true, true, {}).then(response => response);
 }
-

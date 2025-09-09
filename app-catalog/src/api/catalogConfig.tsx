@@ -7,29 +7,29 @@ declare global {
 }
 
 export type ChartConfig = {
-    chartURLPrefix: string;
-    chartProfile: string;
-    chartValuesPrefix: string;
-    catalogNamespace: string;
-    catalogName: string;
+  chartURLPrefix: string;
+  chartProfile: string;
+  chartValuesPrefix: string;
+  catalogNamespace: string;
+  catalogName: string;
 };
 
 const catalogConfig: ChartConfig = {
-    chartURLPrefix: '',
-    chartProfile: '',
-    chartValuesPrefix: '',
-    catalogNamespace: '',
-    catalogName: ''
+  chartURLPrefix: '',
+  chartProfile: '',
+  chartValuesPrefix: '',
+  catalogNamespace: '',
+  catalogName: '',
 };
 
 export function setChartValuesPrefix(valuesPrefix: string) {
-    catalogConfig.chartValuesPrefix = valuesPrefix;
+  catalogConfig.chartValuesPrefix = valuesPrefix;
 }
 
 export function setCatalogConfig(update: Partial<any>) {
-    Object.assign(catalogConfig, update);
+  Object.assign(catalogConfig, update);
 }
 
 export function getCatalogConfig(): Readonly<any> {
-    return catalogConfig;
+  return catalogConfig;
 }

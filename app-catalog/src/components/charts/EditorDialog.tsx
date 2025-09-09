@@ -6,12 +6,12 @@ import { Autocomplete } from '@mui/material';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
+import { getCatalogConfig } from '../../api/catalogConfig';
 import { fetchChartDetailFromArtifact, fetchChartValues } from '../../api/charts';
 import { createRelease, getActionStatus } from '../../api/releases';
 import { addRepository } from '../../api/repository';
-import { jsonToYAML, yamlToJSON } from '../../helpers';
 import { APP_CATALOG_HELM_REPOSITORY } from '../../constants/catalog';
-import { getCatalogConfig } from "../../api/catalogConfig";
+import { jsonToYAML, yamlToJSON } from '../../helpers';
 //import * as global from "global";
 
 type FieldType = {
@@ -94,14 +94,20 @@ export function EditorDialog(props: {
   useEffect(() => {
     if (chartCfg.chartProfile === chartProfile) {
       const versionsArray = AVAILABLE_VERSIONS.get(chart.name);
-      const availableVersions = versionsArray.map(({ version }) => ({ title: version, value: version }));
+      const availableVersions = versionsArray.map(({ version }) => ({
+        title: version,
+        value: version,
+      }));
       setVersions(availableVersions);
       setChartInstallDescription(`${chart.name} deployment`);
       setSelectedVersion(availableVersions[0]);
     } else {
       fetchChartDetailFromArtifact(chart.name, chart.repository.name).then(response => {
         if (response.available_versions) {
-          const availableVersions = response.available_versions.map(({ version }) => ({ title: version, value: version }));
+          const availableVersions = response.available_versions.map(({ version }) => ({
+            title: version,
+            value: version,
+          }));
           setVersions(availableVersions);
           setSelectedVersion(availableVersions[0]);
         }
@@ -178,9 +184,11 @@ export function EditorDialog(props: {
     // During the installation of an application, this URL will be added as a chart repository, and the list of available versions
     // will be loaded during the upgrade from this repository.
     const repoURL =
-      chartCfg.chartProfile === chartProfile ? `${chartCfg.chartURLPrefix}/charts/` : chart.repository.url;
+      chartCfg.chartProfile === chartProfile
+        ? `${chartCfg.chartURLPrefix}/charts/`
+        : chart.repository.url;
     const repoName =
-        chartCfg.chartProfile === chartProfile ? APP_CATALOG_HELM_REPOSITORY : chart.repository.name;
+      chartCfg.chartProfile === chartProfile ? APP_CATALOG_HELM_REPOSITORY : chart.repository.name;
     addRepository(repoName, repoURL)
       .then(() => {
         createRelease(

@@ -1,10 +1,7 @@
 import { QueryParameters, request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { ChartsList } from '../components/charts/List';
-import { setCatalogConfig } from "./catalogConfig";
-import {
-    COMMUNITY_REPO,
-    VANILLA_HELM_REPO,
-} from '../constants/catalog';
+import { COMMUNITY_REPO, VANILLA_HELM_REPO } from '../constants/catalog';
+import { setCatalogConfig } from './catalogConfig';
 
 const SERVICE_ENDPOINT = '/api/v1/services';
 const LABEL_CATALOG = 'catalog.ocne.io/is-catalog';
@@ -18,12 +15,12 @@ export function ResetGlobalVars(
   valuesPrefix: string
 ) {
   setCatalogConfig({
-      chartURLPrefix: prefix,
-      chartProfile: profile,
-      chartValuesPrefix: valuesPrefix,
-      catalogNamespace: namespace,
-      catalogName: metadataName,
-  })
+    chartURLPrefix: prefix,
+    chartProfile: profile,
+    chartValuesPrefix: valuesPrefix,
+    catalogNamespace: namespace,
+    catalogName: metadataName,
+  });
 }
 
 // Reset the variables and call ChartsList, when the protocol is helm

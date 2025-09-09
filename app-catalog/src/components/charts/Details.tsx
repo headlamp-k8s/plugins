@@ -11,16 +11,16 @@ import ReactMarkdown from 'react-markdown';
 import { useParams } from 'react-router';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import remarkGfm from 'remark-gfm';
+import { getCatalogConfig } from '../../api/catalogConfig';
 import { fetchChartDetailFromArtifact } from '../../api/charts';
 import { EditorDialog } from './EditorDialog';
-import { getCatalogConfig } from "../../api/catalogConfig";
 
 const { createRouteURL } = Router;
 type ChartDetailsProps = {
-    vanillaHelmRepo: string;
-}
+  vanillaHelmRepo: string;
+};
 
-export default function ChartDetails({vanillaHelmRepo} : ChartDetailsProps) {
+export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
   const { chartName, repoName } = useParams<{ chartName: string; repoName: string }>();
   const [chart, setChart] = useState<{
     name: string;
@@ -94,16 +94,21 @@ export default function ChartDetails({vanillaHelmRepo} : ChartDetailsProps) {
                   <Box display="flex" alignItems="center">
                     {chart.logo_image_id && (
                       <Box mr={1}>
-                          {chartCfg.chartProfile === vanillaHelmRepo ? (
-                              <img src={`${chart?.icon || ''}`} width="25" height="25" alt={chart.name} />
-                              ) : (
-                              <img
-                                  src={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                                  width="25"
-                                  height="25"
-                                  alt={chart.name}
-                              />
-                          )}
+                        {chartCfg.chartProfile === vanillaHelmRepo ? (
+                          <img
+                            src={`${chart?.icon || ''}`}
+                            width="25"
+                            height="25"
+                            alt={chart.name}
+                          />
+                        ) : (
+                          <img
+                            src={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                            width="25"
+                            height="25"
+                            alt={chart.name}
+                          />
+                        )}
                       </Box>
                     )}
                     <Box>{chart.name}</Box>

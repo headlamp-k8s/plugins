@@ -3,20 +3,14 @@ import {
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
-import {
-  CommunityChartList,
-  HelmChartList,
-} from './api/catalogs';
 import { AppCatalogSettings } from '../src/components/settings/AppCatalogSettings';
+import { CommunityChartList, HelmChartList } from './api/catalogs';
 import ChartDetails from './components/charts/Details';
 import { ChartsList } from './components/charts/List';
 import ReleaseDetail from './components/releases/Detail';
 import ReleaseList from './components/releases/List';
+import { ARTIFACTHUB_PROTOCOL, HELM_PROTOCOL, VANILLA_HELM_REPO } from './constants/catalog';
 import { CatalogLists } from './helpers/catalog';
-import {
-    ARTIFACTHUB_PROTOCOL,
-    HELM_PROTOCOL,
-    VANILLA_HELM_REPO } from './constants/catalog';
 
 export function isElectron(): boolean {
   // Renderer process

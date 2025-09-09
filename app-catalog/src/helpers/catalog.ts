@@ -41,10 +41,13 @@ export function CatalogLists() {
       }
 
       let catalogDisplayName = '';
-      if (ANNOTATION_DISPLAY_NAME in metadata.annotations && metadata.annotations[ANNOTATION_DISPLAY_NAME] != '') {
-        catalogDisplayName = metadata.annotations[ANNOTATION_DISPLAY_NAME]
+      if (
+        ANNOTATION_DISPLAY_NAME in metadata.annotations &&
+        metadata.annotations[ANNOTATION_DISPLAY_NAME] !== ''
+      ) {
+        catalogDisplayName = metadata.annotations[ANNOTATION_DISPLAY_NAME];
       } else {
-        catalogDisplayName = metadata.annotations[ANNOTATION_NAME]
+        catalogDisplayName = metadata.annotations[ANNOTATION_NAME];
       }
 
       const catalog: Catalog = {
