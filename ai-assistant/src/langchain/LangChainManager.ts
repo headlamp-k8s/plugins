@@ -309,6 +309,26 @@ export default class LangChainManager extends AIManager {
     return systemPromptContent;
   }
 
+  // Helper method to create system prompt specifically for tool response processing
+  private createToolResponseSystemPrompt(): string {
+    const baseSystemPrompt = this.createSystemPrompt();
+
+    // Add specific instructions for tool response processing
+    const toolResponseInstructions = `
+
+IMPORTANT: You have just received tool execution results. Your task is to:
+
+1. ANALYZE the tool results and provide a clear, helpful response to the user
+2. SUMMARIZE the information in a user-friendly way
+3. DO NOT call additional tools unless the user explicitly requests more actions
+4. FOCUS on explaining what the tools found or accomplished
+5. If the tool results show data (like file listings, directories, etc.), present them in a clear, formatted way
+
+The user is waiting for you to explain what the tools discovered. Provide a direct, informative response based on the tool results.`;
+
+    return baseSystemPrompt + toolResponseInstructions;
+  }
+
   private convertPromptsToMessages(prompts: Prompt[]): BaseMessage[] {
     return prompts.map(prompt => {
       switch (prompt.role) {
@@ -913,8 +933,11 @@ Format your response to make the errors prominent and actionable.`,
   public async processToolResponses(): Promise<Prompt> {
     // Check if there are any tool responses in the history
     if (!this.hasToolResponses()) {
+      console.log('🔍 No tool responses found in history');
       return this.getLastAssistantMessage();
     }
+
+    console.log('🔍 Processing tool responses from history');
 
     // Validate tool call/response alignment
     this.validateToolCallAlignment();
@@ -929,7 +952,7 @@ Format your response to make the errors prominent and actionable.`,
       // Process the response
       const response = await chain.invoke({
         messages: messages.slice(1), // Exclude system message for the chain
-        systemPrompt: this.createSystemPrompt(),
+        systemPrompt: this.createToolResponseSystemPrompt(), // Use specialized prompt for tool responses
       });
 
       return this.handleToolResponseResult(response);
@@ -1082,8 +1105,10 @@ Format your response to make the errors prominent and actionable.`,
       });
     }
 
-    // Check response size
-    const responseSize = prompt.content.length;
+    const content = prompt.content;
+
+    // Check response size after optimization handling
+    const responseSize = content.length;
     if (currentSize + responseSize > maxSize) {
       console.warn(`Tool response size exceeds limit (${currentSize + responseSize}/${maxSize})`);
       return (
@@ -1093,7 +1118,7 @@ Format your response to make the errors prominent and actionable.`,
     }
 
     // Sanitize content
-    return this.sanitizeContent(prompt.content);
+    return this.sanitizeContent(content);
   }
 
   // Find the last assistant message with tool calls
@@ -1121,36 +1146,104 @@ Format your response to make the errors prominent and actionable.`,
     // Analyze and potentially correct kubectl suggestions
     const correctedResponse = await this.analyzeAndCorrectResponse(response);
 
-    // If the LLM returned new tool calls (e.g., fetch logs after getting pod details),
-    // execute them — unless we've hit the recursion depth limit.
+    // <<<<<<< HEAD
+    //     // If the LLM returned new tool calls (e.g., fetch logs after getting pod details),
+    //     // execute them — unless we've hit the recursion depth limit.
+    //     if (
+    //       correctedResponse.tool_calls?.length > 0 &&
+    //       this.toolResponseDepth < LangChainManager.MAX_TOOL_RESPONSE_DEPTH
+    //     ) {
+    //       console.log(
+    //         `🔧 Follow-up tool calls detected in analysis response (depth ${this.toolResponseDepth}):`,
+    //         correctedResponse.tool_calls.map(tc => ({ name: tc.name, args: tc.args }))
+    //       );
+    //       this.toolResponseDepth++;
+    //       try {
+    //         // Clean up intermediate tool entries before processing new tool calls
+    //         const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();
+    //         if (lastAssistantWithToolsIndex >= 0) {
+    //           this.history = this.history.slice(0, lastAssistantWithToolsIndex + 1);
+    //         }
+    //         return await this.handleToolCalls(correctedResponse);
+    //       } finally {
+    //         this.toolResponseDepth--;
+    //       }
+    // =======
+    const extractedContent = this.extractTextContent(correctedResponse.content);
+
+    // If the model returned empty content but has tool calls, it's trying to call more tools
+    // Instead of allowing this, we should provide a fallback response based on the tool results
     if (
-      correctedResponse.tool_calls?.length > 0 &&
-      this.toolResponseDepth < LangChainManager.MAX_TOOL_RESPONSE_DEPTH
+      (!extractedContent || extractedContent.trim().length === 0) &&
+      response.tool_calls?.length > 0
     ) {
-      console.log(
-        `🔧 Follow-up tool calls detected in analysis response (depth ${this.toolResponseDepth}):`,
-        correctedResponse.tool_calls.map(tc => ({ name: tc.name, args: tc.args }))
-      );
-      this.toolResponseDepth++;
-      try {
-        // Clean up intermediate tool entries before processing new tool calls
-        const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();
-        if (lastAssistantWithToolsIndex >= 0) {
-          this.history = this.history.slice(0, lastAssistantWithToolsIndex + 1);
+      // Get the most recent tool responses from history
+      const recentToolResponses = this.history
+        .filter(prompt => prompt.role === 'tool' && prompt.toolCallId)
+        .slice(-3) // Get last 3 tool responses
+        .map(response => ({
+          name: response.name,
+          content: response.content,
+        }));
+
+      // Create a fallback response based on tool results
+      let fallbackContent = 'I executed the requested tools and here are the results:\n\n';
+
+      recentToolResponses.forEach((toolResponse, index) => {
+        const toolName = toolResponse.name || 'tool';
+        let content = toolResponse.content;
+
+        // Try to parse and clean up the content
+        try {
+          const parsed = JSON.parse(content);
+          if (parsed.error) {
+            content = `Error: ${parsed.message || 'Tool execution failed'}`;
+          } else if (parsed.userFriendlyMessage) {
+            content = parsed.userFriendlyMessage;
+          } else if (typeof parsed === 'object') {
+            content = JSON.stringify(parsed, null, 2);
+          }
+        } catch (e) {
+          // Content is not JSON, use as-is but clean it up
+          content = content.toString().trim();
         }
-        return await this.handleToolCalls(correctedResponse);
-      } finally {
-        this.toolResponseDepth--;
+
+        fallbackContent += `**${toolName}:**\n${content}\n\n`;
+      });
+
+      const assistantPrompt: Prompt = {
+        role: 'assistant',
+        content: fallbackContent.trim(),
+        toolCalls: [], // Don't include additional tool calls
+      };
+
+      // Clean up history to prevent message order issues
+      const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();
+      if (lastAssistantWithToolsIndex >= 0) {
+        this.history = this.history.slice(0, lastAssistantWithToolsIndex + 1);
       }
+
+      this.history.push(assistantPrompt);
+      return assistantPrompt;
+      // >>>>>>> 256976e (ai-plugin: Fix tool response and update MCPSettings)
     }
 
     const assistantPrompt: Prompt = {
       role: 'assistant',
-      content: this.extractTextContent(correctedResponse.content),
-      toolCalls: [],
+      // <<<<<<< HEAD
+      // content: this.extractTextContent(correctedResponse.content),
+      // toolCalls: [],
+      content: extractedContent,
+      toolCalls:
+        correctedResponse.tool_calls?.map(tc => ({
+          id: tc.id,
+          type: 'function',
+          function: {
+            name: tc.name || 'kubernetes_api_request',
+            arguments: JSON.stringify(tc.args || {}),
+          },
+        })) || [],
     };
-
-    console.log('Assistant prompt created from response');
 
     // Clean up history to prevent message order issues
     const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();

@@ -1,13 +1,10 @@
 import { Icon } from '@iconify/react';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
+  Alert,
   Box,
   Button,
-  Card,
-  CardContent,
-  Divider,
   FormControlLabel,
-  IconButton,
   Switch,
   TextField,
   Typography,
@@ -57,9 +54,8 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
     }
   );
 
-  const [newServerName, setNewServerName] = useState('');
-  const [newServerCommand, setNewServerCommand] = useState('npx');
-  const [newServerArgs, setNewServerArgs] = useState('');
+  const [jsonConfig, setJsonConfig] = useState('');
+  const [jsonError, setJsonError] = useState('');
 
   useEffect(() => {
     // Load MCP config from Electron if available
@@ -73,6 +69,11 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
       }
     }
   }, []);
+
+  // Update JSON config when mcpConfig changes
+  useEffect(() => {
+    setJsonConfig(JSON.stringify(mcpConfig, null, 2));
+  }, [mcpConfig]);
 
   const loadMCPConfigFromElectron = async () => {
     if (!isElectron()) return;
@@ -134,62 +135,128 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
 
   const handleToggleEnabled = async () => {
     const newConfig = { ...mcpConfig, enabled: !mcpConfig.enabled };
-
-    // If enabling MCP for the first time and no servers exist, add default Inspektor Gadget server
+    
+    // If enabling MCP for the first time and no servers exist, add default servers
     if (newConfig.enabled && mcpConfig.servers.length === 0) {
-      const defaultServer: MCPServer = {
-        name: 'inspektor-gadget',
-        command: 'docker',
-        args: [
-          'run',
-          '-i',
-          '--rm',
-          '--mount',
-          'type=bind,src=%USERPROFILE%\\.kube\\config,dst=/kubeconfig',
-          'ghcr.io/inspektor-gadget/ig-mcp-server:latest',
-          '-gadget-discoverer=artifacthub',
-        ],
-        enabled: true,
-      };
-
-      newConfig.servers = [defaultServer];
+      const defaultServers: MCPServer[] = [
+        {
+          name: 'inspektor-gadget',
+          command: 'docker',
+          args: [
+            'run', '-i', '--rm',
+            '--mount', 'type=bind,src=%USERPROFILE%\\.kube\\config,dst=/root/.kube/config,readonly',
+            '--mount', 'type=bind,src=%USERPROFILE%\\.minikube,dst=/root/.minikube,readonly',
+            'ghcr.io/inspektor-gadget/ig-mcp-server:latest',
+            '-gadget-discoverer=artifacthub'
+          ],
+          enabled: false, // Disabled by default to avoid errors
+        },
+        {
+          name: 'filesystem',
+          command: 'npx',
+          args: [
+            '-y', '@danielsuguimoto/readonly-server-filesystem',
+            'C:\\Users\\' + (process.env.USERNAME || 'username') + '\\Desktop'
+          ],
+          enabled: true,
+        }
+      ];
+      
+      newConfig.servers = defaultServers;
     }
 
     await handleConfigChange(newConfig);
   };
 
-  const handleAddServer = () => {
-    if (!newServerName.trim() || !newServerCommand.trim()) {
-      return;
-    }
 
+
+  const handleJsonConfigChange = (value: string) => {
+    setJsonConfig(value);
+    setJsonError('');
+  };
+
+  const validateAndApplyJsonConfig = () => {
+    try {
+      const parsedConfig = JSON.parse(jsonConfig) as MCPConfig;
+      
+      // Validate the structure
+      if (typeof parsedConfig.enabled !== 'boolean') {
+        throw new Error('enabled field must be a boolean');
+      }
+      
+      if (!Array.isArray(parsedConfig.servers)) {
+        throw new Error('servers field must be an array');
+      }
+      
+      // Validate each server
+      parsedConfig.servers.forEach((server, index) => {
+        if (typeof server.name !== 'string') {
+          throw new Error(`Server ${index}: name must be a string`);
+        }
+        if (typeof server.command !== 'string') {
+          throw new Error(`Server ${index}: command must be a string`);
+        }
+        if (!Array.isArray(server.args)) {
+          throw new Error(`Server ${index}: args must be an array`);
+        }
+        if (typeof server.enabled !== 'boolean') {
+          throw new Error(`Server ${index}: enabled must be a boolean`);
+        }
+      });
+      
+      // Apply the config
+      handleConfigChange(parsedConfig);
+      setJsonError('');
+    } catch (error) {
+      setJsonError(error instanceof Error ? error.message : 'Invalid JSON configuration');
+    }
+  };
+
+<<<<<<< HEAD
     const argsArray = newServerArgs.trim()
       ? newServerArgs
           .split(' ')
           .map(arg => arg.trim())
           .filter(arg => arg.length > 0)
       : [];
+=======
+  const resetJsonToCurrentConfig = () => {
+    setJsonConfig(JSON.stringify(mcpConfig, null, 2));
+    setJsonError('');
+  };
+>>>>>>> 98e370c (ai-plugin: Fix tool response and update MCPSettings)
 
-    const newServer: MCPServer = {
-      name: newServerName.trim(),
-      command: newServerCommand.trim(),
-      args: argsArray,
+  const getExampleConfig = (): MCPConfig => {
+    return {
       enabled: true,
+      servers: [
+        {
+          name: "inspektor-gadget",
+          command: "docker",
+          args: [
+            "run", "-i", "--rm",
+            "--mount", "type=bind,src=%USERPROFILE%\\.kube\\config,dst=/root/.kube/config,readonly",
+            "--mount", "type=bind,src=%USERPROFILE%\\.minikube,dst=/root/.minikube,readonly",
+            "ghcr.io/inspektor-gadget/ig-mcp-server:latest",
+            "-gadget-discoverer=artifacthub"
+          ],
+          enabled: false
+        },
+        {
+          name: "filesystem",
+          command: "npx",
+          args: [
+            "-y", "@danielsuguimoto/readonly-server-filesystem",
+            "C:\\Users\\username\\Desktop",
+            "C:\\Users\\username\\Documents"
+          ],
+          enabled: true
+        }
+      ]
     };
-
-    const newConfig = {
-      ...mcpConfig,
-      servers: [...mcpConfig.servers, newServer],
-    };
-
-    handleConfigChange(newConfig);
-
-    // Clear form
-    setNewServerName('');
-    setNewServerCommand('npx');
-    setNewServerArgs('');
   };
 
+<<<<<<< HEAD
   const handleRemoveServer = (index: number) => {
     const newConfig = {
       ...mcpConfig,
@@ -222,6 +289,12 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
 
     const newConfig = { ...mcpConfig, servers: newServers };
     handleConfigChange(newConfig);
+=======
+  const loadExampleConfig = () => {
+    const exampleConfig = getExampleConfig();
+    setJsonConfig(JSON.stringify(exampleConfig, null, 2));
+    setJsonError('');
+>>>>>>> 98e370c (ai-plugin: Fix tool response and update MCPSettings)
   };
 
   // Only show MCP settings in Electron
@@ -251,6 +324,7 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
 
       {mcpConfig.enabled && (
         <>
+<<<<<<< HEAD
           {/* Existing Servers */}
           {mcpConfig.servers.length > 0 && (
             <Box sx={{ mb: 3 }}>
@@ -379,14 +453,67 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
                   );
                 } catch (error) {
                   alert(`Error testing MCP: ${error}`);
+=======
+          {/* JSON Configuration */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              JSON Configuration Editor
+            </Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+              Edit your MCP servers configuration as JSON. This allows you to easily add, remove, 
+              and modify multiple servers at once.
+            </Typography>
+            
+            {jsonError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {jsonError}
+              </Alert>
+            )}
+            
+            <TextField
+              label="MCP Configuration JSON"
+              value={jsonConfig}
+              onChange={(e) => handleJsonConfigChange(e.target.value)}
+              multiline
+              rows={15}
+              fullWidth
+              variant="outlined"
+              sx={{ 
+                mb: 2,
+                '& .MuiInputBase-input': {
+                  fontFamily: 'monospace',
+                  fontSize: '0.875rem',
+>>>>>>> 98e370c (ai-plugin: Fix tool response and update MCPSettings)
                 }
-              }
-            }}
-            startIcon={<Icon icon="mdi:test-tube" />}
-          >
-            Test MCP Connection
-          </Button>
+              }}
+              helperText="Edit the JSON configuration above. Make sure to keep the proper structure."
+            />
+            
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+              <Button
+                variant="contained"
+                onClick={validateAndApplyJsonConfig}
+                startIcon={<Icon icon="mdi:check" />}
+              >
+                Apply Configuration
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={resetJsonToCurrentConfig}
+                startIcon={<Icon icon="mdi:refresh" />}
+              >
+                Reset to Current
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={loadExampleConfig}
+                startIcon={<Icon icon="mdi:file-document" />}
+              >
+                Load Example
+              </Button>
+            </Box>
 
+<<<<<<< HEAD
           {/* Example Configuration */}
           <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -430,6 +557,30 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
           </Box>
         </>
       )}
+=======
+            {/* Schema Documentation */}
+            <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, mb: 3 }}>
+              <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                📝 Configuration Schema:
+              </Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', mb: 1 }}>
+                {JSON.stringify({
+                  "enabled": "boolean - Enable/disable MCP servers",
+                  "servers": [
+                    {
+                      "name": "string - Unique server name",
+                      "command": "string - Executable command",
+                      "args": ["array of strings - Command arguments"],
+                      "enabled": "boolean - Enable/disable this server"
+                    }
+                  ]
+                }, null, 2)}
+              </Typography>
+            </Box>
+
+            </Box>
+            </>)}
+>>>>>>> 98e370c (ai-plugin: Fix tool response and update MCPSettings)
     </SectionBox>
   );
 }
