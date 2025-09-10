@@ -23,7 +23,6 @@ import { useEffect, useRef, useState } from 'react';
 import { getCatalogConfig } from '../../api/catalogConfig';
 import { fetchChartIcon, fetchChartsFromArtifact } from '../../api/charts';
 import { PAGE_OFFSET_COUNT_FOR_CHARTS, VANILLA_HELM_REPO } from '../../constants/catalog';
-import { yamlToJSON } from '../../helpers';
 import { AvailableComponentVersions } from '../../helpers/catalog';
 //import { createRelease } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
@@ -175,25 +174,21 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
 
       async function fetchData() {
         try {
-          const response = await fetchCharts(search, showOnlyVerified, chartCategory, page);
-
-          const data = await response.dataResponse.text();
-          const d = yamlToJSON(data);
+          const { data, total } = await fetchCharts(search, showOnlyVerified, chartCategory, page);
           if (chartCfg.chartProfile === VANILLA_HELM_REPO) {
-            setCharts(d.entries);
-            setChartsTotalCount(parseInt(response.total));
+            setCharts(data.entries);
+            setChartsTotalCount(parseInt(total));
             // Capture available versions from the response and set AVAILABLE_VERSIONS
-            globalThis.AVAILABLE_VERSIONS = AvailableComponentVersions(d.entries);
+            globalThis.AVAILABLE_VERSIONS = AvailableComponentVersions(data.entries);
           } else {
-            setCharts(d.packages);
-            setChartsTotalCount(parseInt(response.total));
+            setCharts(data.packages);
+            setChartsTotalCount(parseInt(total));
           }
         } catch (err) {
           console.error('Error fetching charts', err);
           setCharts([]);
         }
       }
-
       fetchData();
     },
     [page, chartCategory, search, showOnlyVerified]
@@ -253,7 +248,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                     console.error('failed to fetch icon:', error);
                   }
                 };
-                fetchIcon();
+                await fetchIcon();
               }
             })
           );

@@ -36,14 +36,11 @@ export async function fetchChartsFromArtifact(
       // Ensure that the UI renders index.yaml in yaml and json format. Please note that, helm repo index generates index.yaml
       // in yaml as the default format, although latest versions support generating the file in json format.
       // The API yamlToJSON works for the response in yaml as well as json format.
-      //const dataResponse = request(url, { isJSON: false }, true, true, {})
-      //  .then(response => response.text())
-      //  .then(yamlResponse => yamlToJSON(yamlResponse));
       const dataResponse = await request(url, { isJSON: false }, true, true, {});
       const yamlResponse = await dataResponse.text();
       const jsonResponse = yamlToJSON(yamlResponse);
       const total = Object.keys(jsonResponse.entries || {}).length;
-      return { dataResponse, total };
+      return { data: jsonResponse, total };
     } else if (chartCfg.chartProfile === COMMUNITY_REPO) {
       let requestParam = '';
       if (!category || category.value === 0) {
@@ -59,11 +56,10 @@ export async function fetchChartsFromArtifact(
       const url =
         `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` +
         getURLSearchParams(requestParam);
-      const response = request(url, {}, true, true, {}).then(response => response);
-      const dataResponse = response;
-      const total = response.headers.get('pagination-total-count');
-      return { dataResponse, total };
-      //return request(url, {}, true, true, {}).then(response => response);
+      const dataResponse = await request(url, {}, true, true, {}).then(response => response);
+      const jsonResponse = await dataResponse.json();
+      const total = dataResponse.headers.get('pagination-total-count');
+      return { data: jsonResponse, total };
     }
   }
 
@@ -84,10 +80,8 @@ export async function fetchChartsFromArtifact(
 
   const response = await fetch(url.toString());
   const total = response.headers.get('pagination-total-count');
-
-  const dataResponse = await response.json();
-
-  return { dataResponse, total };
+  const jsonResponse = await response.json();
+  return { data: jsonResponse, total };
 }
 
 export function fetchChartDetailFromArtifact(chartName: string, repoName: string) {
