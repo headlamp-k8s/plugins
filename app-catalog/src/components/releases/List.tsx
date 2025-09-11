@@ -95,7 +95,7 @@ export default function ReleaseList({ fetchReleases = listReleases }) {
           },
           {
             label: 'Current Version',
-            getter: release => release.chart.metadata.appVersion,
+            getter: release => formatVersion(release.chart.metadata.appVersion),
           },
           {
             label: 'Latest Version',
