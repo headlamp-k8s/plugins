@@ -1,4 +1,3 @@
----
 ## Karpenter Headlamp Plugin
 
 This Headlamp plugin adds **Karpenter-specific custom resources** to the Headlamp UI, helping users visualize, understand, and manage **autoscaling decisions** in a more intuitive way.
@@ -11,23 +10,23 @@ This Headlamp plugin adds **Karpenter-specific custom resources** to the Headlam
     * Clean UI to view Karpenter NodeClass CRs
     * Shows key attributes (subnet selectors, IAM role, etc.)
     * Status and condition rendering in a human-readable format
-* **Provisioner & NodePool Support:**
-    * View and inspect Provisioners and NodePools
+* **NodeClaim & NodePool Support:**
+    * View and inspect NodeClaims and NodePools
     * See constraints like CPU, requirements, disruption etc.
+    * Real-time status monitoring and configuration details
 * **Pending Pod Dashboard:**
     * Displays pending pods blocked from scheduling
     * Shows unmet requirements
+    * Highlights why pods couldn't be scheduled 
 * **CRD Editing:**
     * Use Headlamp’s editor to configure Karpenter CRDs
     * Includes schema validation and diff preview
-
-#### Upcoming Work
-
-* **Real-time visualization of scaling decisions**
-* **Prometheus integration for metrics like:**
-    * Provisioning latency
-    * Node lifecycle stats
-    * Cost efficiency insights
+* **Metrics Integration:**
+    * Prometheus integration for comprehensive metrics visualization
+    * Resource Usage, Allowed Disruptions and Pending Pods visualization (NodePools)
+    * Creation Rate and Provisioning Latency visualization (Scaling View)
+* **Maps View:**
+    * See relationship between Karpenter Resources like NodeClasses, NodePool and NodeClaims with core Kubernetes resources like Pods, Nodes etc.
 
 ---
 
