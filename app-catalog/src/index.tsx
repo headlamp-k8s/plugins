@@ -68,7 +68,7 @@ if (isElectron()) {
     label: 'Installed',
   });
 } else {
-  // Iterate the list of c, to register the sidebar and the respective routes
+  // Iterate the list of catalogs to register the sidebar and the respective routes
   CatalogLists().then(chart => {
     for (let i = 0; i < chart.length; i++) {
       // Register the sidebar for Apps, with the URL pointing to the first chart returned

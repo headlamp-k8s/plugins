@@ -61,7 +61,7 @@ export function EditorDialog(props: {
     let isMounted = true;
 
     if (isUpdateRelease) {
-      async function fetchChartVersions() {
+      const fetchChartVersions = async () => {
         let response;
         let error: Error | null = null;
         try {
@@ -104,7 +104,7 @@ export function EditorDialog(props: {
             version: chart.version,
           }))
         );
-      }
+      };
 
       setIsLoading(true);
       fetchChartVersions();

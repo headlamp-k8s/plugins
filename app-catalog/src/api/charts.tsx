@@ -7,7 +7,7 @@ import {
 } from '../constants/catalog';
 import { yamlToJSON } from '../helpers';
 import { isElectron } from '../index';
-import { getCatalogConfig } from './catalogConfig';
+import { getCatalogConfig, setChartValuesPrefix } from './catalogConfig';
 
 // Headlamp plugin's backend service proxy endpoint.
 // It was implemented by Headlamp's backed to proxies in-cluster requests to handle authentication
@@ -39,7 +39,8 @@ export async function fetchChartsFromArtifact(
       const dataResponse = await request(url, { isJSON: false }, true, true, {});
       const yamlResponse = await dataResponse.text();
       const jsonResponse = yamlToJSON(yamlResponse);
-      const total = Object.keys(jsonResponse.entries || {}).length;
+      // @ts-ignore
+      const total = Object.keys(jsonResponse.entries ?? {}).length;
       return { data: jsonResponse, total };
     } else if (chartCfg.chartProfile === COMMUNITY_REPO) {
       let requestParam = '';
@@ -111,7 +112,7 @@ export function fetchChartValues(packageID: string, packageVersion: string) {
       // When the token CUSTOM_CHART_VALUES_PREFIX is replaced during the deployment, expect the values.yaml for the specified
       // package and version accessible on ${CUSTOM_CHART_VALUES_PREFIX}/${packageID}/${packageVersion}/values.yaml
       if (CUSTOM_CHART_VALUES_PREFIX !== 'CUSTOM_CHART_VALUES_PREFIX') {
-        chartCfg.setChartValuesPrefix(`${CUSTOM_CHART_VALUES_PREFIX}`);
+        setChartValuesPrefix(`${CUSTOM_CHART_VALUES_PREFIX}`);
       }
       // The code expects /${packageID}/${packageVersion}/values.yaml to return values.yaml for the component
       // denoted by packageID and a given packageVersion. Please note that, chart.name is used for packageID in this case.

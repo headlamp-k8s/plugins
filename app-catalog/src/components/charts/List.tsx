@@ -24,11 +24,8 @@ import { getCatalogConfig } from '../../api/catalogConfig';
 import { fetchChartIcon, fetchChartsFromArtifact } from '../../api/charts';
 import { PAGE_OFFSET_COUNT_FOR_CHARTS, VANILLA_HELM_REPO } from '../../constants/catalog';
 import { AvailableComponentVersions } from '../../helpers/catalog';
-//import { createRelease } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
 import { SettingsLink } from './SettingsLink';
-
-//import * as global from "global";
 
 interface AppCatalogConfig {
   /**
@@ -194,64 +191,68 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
     [page, chartCategory, search, showOnlyVerified]
   );
 
+  type HelmIndex = Record<string, any[]>;
   useEffect(() => {
     if (charts && Object.keys(charts).length > 0) {
       const fetchIcons = async () => {
         try {
           const iconUrls = {};
-          const iconPromises = Object.values(charts).flatMap(chartArray =>
-            chartArray.map(async chart => {
-              const iconURL = chart.icon ?? '';
-              if (iconURL === '') {
-                return;
+          // charts is a map of name -> chart[]
+          const list = Object.values(charts as HelmIndex).flat();
+          const iconPromises = list.map(async (chart: any) => {
+            // const iconPromises = Object.values(charts).flatMap(chartArray =>
+            //   chartArray.map(async chart => {
+            const iconURL = chart.icon ?? '';
+            if (iconURL === '') {
+              return;
+            }
+            const isURL = urlString => {
+              try {
+                new URL(urlString);
+                return true;
+              } catch (e) {
+                return false;
               }
-              const isURL = urlString => {
+            };
+            if (isURL(iconURL)) {
+              // may be an external icon URL, so, just use as is
+              iconUrls[iconURL] = iconURL;
+            } else {
+              const fetchIcon = async () => {
                 try {
-                  new URL(urlString);
-                  return true;
-                } catch (e) {
-                  return false;
+                  const response = await fetchChartIcon(iconURL);
+                  const contentType = response.headers.get('Content-Type');
+                  if (
+                    contentType.includes('image/svg+xml') ||
+                    contentType.includes('text/xml') ||
+                    contentType.includes('text/plain')
+                  ) {
+                    const txt = await response.text();
+                    const reader = new FileReader();
+                    await new Promise((resolve, reject) => {
+                      reader.onloadend = () => resolve(reader.result);
+                      reader.onerror = reject;
+                      reader.readAsText(new Blob([txt], { type: 'text/plain' }));
+                    });
+                    iconUrls[iconURL] = `data:image/svg+xml;utf8,${encodeURIComponent(txt)}`;
+                  } else if (contentType.includes('image/')) {
+                    const blob = await response.blob();
+                    const reader = new FileReader();
+                    const result = await new Promise((resolve, reject) => {
+                      reader.onloadend = () => resolve(reader.result);
+                      reader.onerror = reject;
+                      reader.readAsDataURL(blob);
+                    });
+                    iconUrls[iconURL] = result as string;
+                  }
+                } catch (error) {
+                  console.error('failed to fetch icon:', error);
                 }
               };
-              if (isURL(iconURL)) {
-                // may be an external icon URL, so, just use as is
-                iconUrls[iconURL] = iconURL;
-              } else {
-                const fetchIcon = async () => {
-                  try {
-                    const response = await fetchChartIcon(iconURL);
-                    const contentType = response.headers.get('Content-Type');
-                    if (
-                      contentType.includes('image/svg+xml') ||
-                      contentType.includes('text/xml') ||
-                      contentType.includes('text/plain')
-                    ) {
-                      const txt = await response.text();
-                      const reader = new FileReader();
-                      await new Promise((resolve, reject) => {
-                        reader.onloadend = () => resolve(reader.result);
-                        reader.onerror = reject;
-                        reader.readAsText(new Blob([txt], { type: 'text/plain' }));
-                      });
-                      iconUrls[iconURL] = `data:image/svg+xml;utf8,${encodeURIComponent(txt)}`;
-                    } else if (contentType.includes('image/')) {
-                      const blob = await response.blob();
-                      const reader = new FileReader();
-                      const result = await new Promise((resolve, reject) => {
-                        reader.onloadend = () => resolve(reader.result);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(blob);
-                      });
-                      iconUrls[iconURL] = result as string;
-                    }
-                  } catch (error) {
-                    console.error('failed to fetch icon:', error);
-                  }
-                };
-                await fetchIcon();
-              }
-            })
-          );
+              await fetchIcon();
+            }
+          }); //end of chartArray
+          // ); // end of of iconPromisses
           await Promise.all(iconPromises);
           setIconUrls(iconUrls);
         } catch (error) {

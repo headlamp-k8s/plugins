@@ -25,13 +25,14 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
   const [chart, setChart] = useState<{
     name: string;
     description: string;
-    logo_image_id: string;
+    logo_image_id?: string; // optional just in case
     readme: string;
     app_version: string;
     maintainers: Array<{ name: string; email: string }>;
     home_url: string;
     package_id: string;
     version: string;
+    icon?: string; // used when VANILLA_HELM_REPO
   } | null>(null);
   const [openEditor, setOpenEditor] = useState(false);
   const chartCfg = getCatalogConfig();

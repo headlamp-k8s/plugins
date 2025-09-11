@@ -12,7 +12,6 @@ import { createRelease, getActionStatus } from '../../api/releases';
 import { addRepository } from '../../api/repository';
 import { APP_CATALOG_HELM_REPOSITORY } from '../../constants/catalog';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
-//import * as global from "global";
 
 type FieldType = {
   value: string;
@@ -31,7 +30,7 @@ export function EditorDialog(props: {
   const [installLoading, setInstallLoading] = useState(false);
   const [namespaces, error] = K8s.ResourceClasses.Namespace.useList();
   const [chartValues, setChartValues] = useState<string>('');
-  const [defaultChartValues, setDefaultChartValues] = useState<{}>('');
+  const [defaultChartValues, setDefaultChartValues] = useState<Record<string, unknown>>({});
   const [chartValuesLoading, setChartValuesLoading] = useState(false);
   const [chartValuesFetchError, setChartValuesFetchError] = useState(null);
   const { enqueueSnackbar } = useSnackbar();
@@ -58,7 +57,7 @@ export function EditorDialog(props: {
     }
   }, [selectedNamespace, namespaceNames]);
 
-  // Fetch chart values for a given package and version
+  // Fetch chart values for a given package and version (when chart version changed in editor dialog)
   function refreshChartValue(packageID: string, packageVersion: string) {
     fetchChartValues(packageID, packageVersion)
       .then((response: any) => {
@@ -93,11 +92,17 @@ export function EditorDialog(props: {
 
   useEffect(() => {
     if (chartCfg.chartProfile === chartProfile) {
-      const versionsArray = AVAILABLE_VERSIONS.get(chart.name);
-      const availableVersions = versionsArray.map(({ version }) => ({
-        title: version,
-        value: version,
-      }));
+      const versionsArray =
+        AVAILABLE_VERSIONS && AVAILABLE_VERSIONS.get && chart.name
+          ? AVAILABLE_VERSIONS.get(chart.name)
+          : undefined;
+
+      const availableVersions = Array.isArray(versionsArray)
+        ? versionsArray.map(({ version }) => ({
+            title: version,
+            value: version,
+          }))
+        : [];
       setVersions(availableVersions);
       setChartInstallDescription(`${chart.name} deployment`);
       setSelectedVersion(availableVersions[0]);
@@ -113,7 +118,6 @@ export function EditorDialog(props: {
         }
       });
     }
-    handleChartValueFetch(chart);
   }, [chart]);
 
   useEffect(() => {
@@ -174,10 +178,10 @@ export function EditorDialog(props: {
       return;
     }
 
-    const jsonChartValues = yamlToJSON(chartValues);
+    const jsonChartValues = yamlToJSON(chartValues) as Record<string, unknown>;
     const chartValuesDIFF = _.omitBy(jsonChartValues, (value, key) =>
-      _.isEqual(defaultChartValues[key], value)
-    );
+      _.isEqual((defaultChartValues as Record<string, unknown>)[key], value)
+    ) as Record<string, unknown>;
     setInstallLoading(true);
 
     // In case of profile: VANILLA_HELM_REPOSITORY, set the URL to access the index.yaml of the chart, as the repoURL.

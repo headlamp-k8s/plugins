@@ -26,10 +26,10 @@ export function setChartValuesPrefix(valuesPrefix: string) {
   catalogConfig.chartValuesPrefix = valuesPrefix;
 }
 
-export function setCatalogConfig(update: Partial<any>) {
+export function setCatalogConfig(update: Partial<ChartConfig>) {
   Object.assign(catalogConfig, update);
 }
 
-export function getCatalogConfig(): Readonly<any> {
+export function getCatalogConfig(): Readonly<ChartConfig> {
   return catalogConfig;
 }
