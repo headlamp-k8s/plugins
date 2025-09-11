@@ -8,7 +8,22 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { fetchLatestAppVersion } from '../../api/charts';
 import { listReleases } from '../../api/releases';
+
+/**
+ * @returns formatted version string
+ * @param v - version string
+ */
+function formatVersion(v?: string) {
+  const s = (v ?? '').trim();
+
+  if (!s || s === '—') {
+    return '—';
+  }
+
+  return s;
+}
 
 /**
  * ReleaseList component displays a list of installed Helm releases.
@@ -19,6 +34,7 @@ import { listReleases } from '../../api/releases';
  */
 export default function ReleaseList({ fetchReleases = listReleases }) {
   const [releases, setReleases] = useState<Array<any> | null>(null);
+  const [latestMap, setLatestMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchReleases().then(response => {
@@ -29,6 +45,21 @@ export default function ReleaseList({ fetchReleases = listReleases }) {
       setReleases(response.releases);
     });
   }, []);
+
+  useEffect(() => {
+    if (!releases?.length) {
+      setLatestMap({});
+      return;
+    }
+
+    Promise.all(
+      releases.map(async r => {
+        const chartName = r?.chart?.metadata?.name;
+        const v = chartName ? await fetchLatestAppVersion(chartName).catch(() => '—') : '—';
+        return [r.name, v] as const;
+      })
+    ).then(entries => setLatestMap(Object.fromEntries(entries)));
+  }, [releases]);
 
   return (
     <SectionBox title="Installed" textAlign="center" paddingTop={2}>
@@ -63,8 +94,12 @@ export default function ReleaseList({ fetchReleases = listReleases }) {
             getter: release => release.namespace,
           },
           {
-            label: 'App Version',
+            label: 'Current Version',
             getter: release => release.chart.metadata.appVersion,
+          },
+          {
+            label: 'Latest Version',
+            getter: release => formatVersion(latestMap[release?.name]),
           },
           {
             label: 'Version',
