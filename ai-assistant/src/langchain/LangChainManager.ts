@@ -20,6 +20,7 @@ import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
 import { apiErrorPromptTemplate, toolFailurePromptTemplate } from './PromptTemplates';
 import { KubernetesToolContext, ToolManager } from './tools';
+import { toolApprovalManager, ToolCall } from '../utils/ToolApprovalManager';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -29,6 +30,7 @@ export default class LangChainManager extends AIManager {
   private currentAbortController: AbortController | null = null;
   private promptTemplate: ChatPromptTemplate;
   private outputParser: StringOutputParser;
+  private useDirectToolCalling: boolean = false;
 
   constructor(providerId: string, config: Record<string, any>, enabledTools?: string[]) {
     super();
@@ -178,7 +180,7 @@ export default class LangChainManager extends AIManager {
     }
   }
 
-  configureTools(tools: any[], kubernetesContext: KubernetesToolContext): void {
+  async configureTools(tools: any[], kubernetesContext: KubernetesToolContext): Promise<void> {
     console.log('🔧 Configuring tools for LangChain with context:', {
       toolCount: tools.length,
       selectedClusters: kubernetesContext.selectedClusters,
@@ -188,10 +190,58 @@ export default class LangChainManager extends AIManager {
     // Configure the Kubernetes context for the KubernetesTool
     this.toolManager.configureKubernetesContext(kubernetesContext);
 
+    // Get all tools (including MCP tools)
+    const allTools = this.toolManager.getLangChainTools();
+    console.log(`🔧 Total tools available: ${allTools.length} (Regular: ${tools.length}, MCP: ${this.toolManager.getMCPTools().length})`);
+
     // Bind all tools to the model for compatible providers (OpenAI, Azure, etc.)
     this.boundModel = this.toolManager.bindToModel(this.model, this.providerId);
 
-    console.log('🔧 Tools bound to model successfully, boundModel exists:', !!this.boundModel);
+    // Enable direct tool calling for better performance
+    if (allTools.length > 0 && this.canUseDirectToolCalling()) {
+      this.useDirectToolCalling = true;
+      console.log('🔧 Direct tool calling enabled for', allTools.length, 'tools');
+    }
+
+    console.log('🔧 Tools configured:', {
+      boundModel: !!this.boundModel,
+      directToolCalling: this.useDirectToolCalling,
+      toolCount: allTools.length
+    });
+  }
+
+  /**
+   * Check if the current provider can use direct tool calling
+   */
+  private canUseDirectToolCalling(): boolean {
+    // All major providers support direct tool calling
+    return ['openai', 'azure', 'anthropic', 'mistral', 'gemini'].includes(this.providerId);
+  }
+
+  /**
+   * Get description for a tool (for approval dialog)
+   */
+  private getToolDescription(toolName: string, isMCPTool: boolean): string {
+    if (isMCPTool) {
+      // MCP tool descriptions can be more specific based on tool name
+      if (toolName.includes('trace') || toolName.includes('profile')) {
+        return 'Traces system calls and processes for debugging';
+      } else if (toolName.includes('network') || toolName.includes('socket')) {
+        return 'Monitors network connections and traffic';
+      } else if (toolName.includes('top') || toolName.includes('process')) {
+        return 'Shows running processes and resource usage';
+      } else if (toolName.includes('exec') || toolName.includes('run')) {
+        return 'Executes commands in containers';
+      } else {
+        return `Inspektor Gadget debugging tool: ${toolName}`;
+      }
+    } else {
+      // Regular Kubernetes tools
+      if (toolName.includes('kubernetes')) {
+        return 'Executes Kubernetes API operations';
+      }
+      return `Kubernetes management tool: ${toolName}`;
+    }
   }
 
   // Helper method to prepare chat history for prompt template
@@ -210,6 +260,26 @@ export default class LangChainManager extends AIManager {
       systemPromptContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
     }
     return systemPromptContent;
+  }
+
+  // Helper method to create system prompt specifically for tool response processing
+  private createToolResponseSystemPrompt(): string {
+    const baseSystemPrompt = this.createSystemPrompt();
+    
+    // Add specific instructions for tool response processing
+    const toolResponseInstructions = `
+
+IMPORTANT: You have just received tool execution results. Your task is to:
+
+1. ANALYZE the tool results and provide a clear, helpful response to the user
+2. SUMMARIZE the information in a user-friendly way
+3. DO NOT call additional tools unless the user explicitly requests more actions
+4. FOCUS on explaining what the tools found or accomplished
+5. If the tool results show data (like file listings, directories, etc.), present them in a clear, formatted way
+
+The user is waiting for you to explain what the tools discovered. Provide a direct, informative response based on the tool results.`;
+
+    return baseSystemPrompt + toolResponseInstructions;
   }
 
   private convertPromptsToMessages(prompts: Prompt[]): BaseMessage[] {
@@ -241,6 +311,11 @@ export default class LangChainManager extends AIManager {
     this.currentAbortController = new AbortController();
 
     try {
+      // Use direct tool calling if enabled
+      if (this.useDirectToolCalling) {
+        return await this.handleDirectToolCallingRequest(message);
+      }
+
       const modelToUse = this.boundModel || this.model;
 
       // For local models, use simplified approach
@@ -252,6 +327,61 @@ export default class LangChainManager extends AIManager {
       return await this.handleChainBasedRequest(message, modelToUse);
     } catch (error) {
       return this.handleUserSendError(error);
+    }
+  }
+
+  // Handle requests using direct tool calling (single LLM call)
+  private async handleDirectToolCallingRequest(message: string): Promise<Prompt> {
+    try {
+      console.log('🔧 Using direct tool calling for request:', message);
+      
+      const modelToUse = this.boundModel || this.model;
+      
+      // Prepare input for the model with tools
+      const chainInput = {
+        systemPrompt: this.createSystemPrompt(),
+        chatHistory: this.prepareChatHistory(),
+        input: message,
+      };
+
+      // Convert chain input to messages
+      const messages = [
+        new SystemMessage(chainInput.systemPrompt),
+        ...chainInput.chatHistory,
+        new HumanMessage(chainInput.input),
+      ];
+
+      // Single LLM call with tool capabilities
+      const response = await modelToUse.invoke(messages, {
+        signal: this.currentAbortController?.signal,
+      });
+
+      this.currentAbortController = null;
+
+      // Handle tool calls if present
+      if (response.tool_calls?.length) {
+        console.log('🔧 Tool calls detected, processing...');
+        return await this.handleToolCalls(response);
+      } else {
+        console.log('💬 No tool calls detected, treating as regular message');
+        // Handle regular response
+        const assistantPrompt: Prompt = {
+          role: 'assistant',
+          content: this.extractTextContent(response.content),
+        };
+        this.history.push(assistantPrompt);
+        return assistantPrompt;
+      }
+      
+    } catch (error) {
+      console.error('Error in direct tool calling request:', error);
+      
+      // If direct tool calling fails, fall back to regular approach
+      console.log('🔄 Falling back to chain-based approach');
+      this.useDirectToolCalling = false;
+      
+      const modelToUse = this.boundModel || this.model;
+      return await this.handleChainBasedRequest(message, modelToUse);
     }
   }
 
@@ -390,8 +520,68 @@ export default class LangChainManager extends AIManager {
     };
     this.history.push(assistantPrompt);
 
-    // Process tool calls
-    await this.processToolCalls(toolCalls, assistantPrompt);
+    // Prepare tool calls for approval
+    const toolCallsForApproval: ToolCall[] = toolCalls.map(tc => {
+      const toolName = tc.function.name;
+      const mcpTools = this.toolManager.getMCPTools();
+      const isMCPTool = mcpTools.some(tool => tool.name === toolName);
+
+      return {
+        id: tc.id,
+        name: toolName,
+        description: this.getToolDescription(toolName, isMCPTool),
+        arguments: JSON.parse(tc.function.arguments),
+        type: isMCPTool ? 'mcp' : 'regular'
+      };
+    });
+
+    try {
+      // Request approval for tool execution
+      console.log('🔐 Requesting approval for', toolCallsForApproval.length, 'tools');
+      const approvedToolIds = await toolApprovalManager.requestApproval(toolCallsForApproval);
+      
+      console.log('✅ Tools approved:', approvedToolIds.length, 'of', toolCallsForApproval.length);
+
+      // Filter tool calls to only execute approved ones
+      const approvedToolCalls = toolCalls.filter(tc => approvedToolIds.includes(tc.id));
+      const deniedToolCalls = toolCalls.filter(tc => !approvedToolIds.includes(tc.id));
+
+      // Add denied tool responses to history
+      for (const deniedTool of deniedToolCalls) {
+        this.history.push({
+          role: 'tool',
+          content: JSON.stringify({
+            error: true,
+            message: 'Tool execution denied by user',
+            userFriendlyMessage: `The execution of ${deniedTool.function.name} was denied by the user.`
+          }),
+          toolCallId: deniedTool.id,
+          name: deniedTool.function.name,
+        });
+      }
+
+      // Process approved tool calls
+      if (approvedToolCalls.length > 0) {
+        await this.processToolCalls(approvedToolCalls, assistantPrompt);
+      }
+
+    } catch (error) {
+      console.log('❌ Tool approval denied or failed:', error.message);
+      
+      // Add denial responses for all tools
+      for (const toolCall of toolCalls) {
+        this.history.push({
+          role: 'tool',
+          content: JSON.stringify({
+            error: true,
+            message: error.message || 'Tool execution denied',
+            userFriendlyMessage: `Tool execution was denied: ${error.message || 'User chose not to proceed'}`
+          }),
+          toolCallId: toolCall.id,
+          name: toolCall.function.name,
+        });
+      }
+    }
 
     // Check if we should process follow-up
     const toolResponses = this.history.filter(
@@ -675,8 +865,11 @@ Format your response to make the errors prominent and actionable.`,
   public async processToolResponses(): Promise<Prompt> {
     // Check if there are any tool responses in the history
     if (!this.hasToolResponses()) {
+      console.log('🔍 No tool responses found in history');
       return this.getLastAssistantMessage();
     }
+
+    console.log('🔍 Processing tool responses from history');
 
     // Validate tool call/response alignment
     this.validateToolCallAlignment();
@@ -691,7 +884,7 @@ Format your response to make the errors prominent and actionable.`,
       // Process the response
       const response = await chain.invoke({
         messages: messages.slice(1), // Exclude system message for the chain
-        systemPrompt: this.createSystemPrompt(),
+        systemPrompt: this.createToolResponseSystemPrompt(), // Use specialized prompt for tool responses
       });
 
       return this.handleToolResponseResult(response);
@@ -702,7 +895,8 @@ Format your response to make the errors prominent and actionable.`,
 
   // Helper method to check if there are tool responses
   private hasToolResponses(): boolean {
-    return this.history.some(prompt => prompt.role === 'tool' && prompt.toolCallId);
+    const toolResponses = this.history.filter(prompt => prompt.role === 'tool' && prompt.toolCallId);
+    return toolResponses.length > 0;
   }
 
   // Helper method to get the last assistant message
@@ -853,8 +1047,10 @@ Format your response to make the errors prominent and actionable.`,
       });
     }
 
-    // Check response size
-    const responseSize = prompt.content.length;
+    let content = prompt.content;
+
+    // Check response size after optimization handling
+    const responseSize = content.length;
     if (currentSize + responseSize > maxSize) {
       console.warn(`Tool response size exceeds limit (${currentSize + responseSize}/${maxSize})`);
       return (
@@ -864,7 +1060,7 @@ Format your response to make the errors prominent and actionable.`,
     }
 
     // Sanitize content
-    return this.sanitizeContent(prompt.content);
+    return this.sanitizeContent(content);
   }
 
   // Find the last assistant message with tool calls
@@ -888,9 +1084,65 @@ Format your response to make the errors prominent and actionable.`,
     // Analyze and potentially correct kubectl suggestions
     const correctedResponse = await this.analyzeAndCorrectResponse(response);
 
+    const extractedContent = this.extractTextContent(correctedResponse.content);
+
+    // If the model returned empty content but has tool calls, it's trying to call more tools
+    // Instead of allowing this, we should provide a fallback response based on the tool results
+    if ((!extractedContent || extractedContent.trim().length === 0) && response.tool_calls?.length > 0) {
+      
+      // Get the most recent tool responses from history
+      const recentToolResponses = this.history
+        .filter(prompt => prompt.role === 'tool' && prompt.toolCallId)
+        .slice(-3) // Get last 3 tool responses
+        .map(response => ({
+          name: response.name,
+          content: response.content
+        }));
+
+      // Create a fallback response based on tool results
+      let fallbackContent = 'I executed the requested tools and here are the results:\n\n';
+      
+      recentToolResponses.forEach((toolResponse, index) => {
+        const toolName = toolResponse.name || 'tool';
+        let content = toolResponse.content;
+        
+        // Try to parse and clean up the content
+        try {
+          const parsed = JSON.parse(content);
+          if (parsed.error) {
+            content = `Error: ${parsed.message || 'Tool execution failed'}`;
+          } else if (parsed.userFriendlyMessage) {
+            content = parsed.userFriendlyMessage;
+          } else if (typeof parsed === 'object') {
+            content = JSON.stringify(parsed, null, 2);
+          }
+        } catch (e) {
+          // Content is not JSON, use as-is but clean it up
+          content = content.toString().trim();
+        }
+
+        fallbackContent += `**${toolName}:**\n${content}\n\n`;
+      });
+
+      const assistantPrompt: Prompt = {
+        role: 'assistant',
+        content: fallbackContent.trim(),
+        toolCalls: [], // Don't include additional tool calls
+      };
+
+      // Clean up history to prevent message order issues
+      const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();
+      if (lastAssistantWithToolsIndex >= 0) {
+        this.history = this.history.slice(0, lastAssistantWithToolsIndex + 1);
+      }
+
+      this.history.push(assistantPrompt);
+      return assistantPrompt;
+    }
+
     const assistantPrompt: Prompt = {
       role: 'assistant',
-      content: this.extractTextContent(correctedResponse.content),
+      content: extractedContent,
       toolCalls:
         correctedResponse.tool_calls?.map(tc => ({
           id: tc.id,
@@ -902,7 +1154,6 @@ Format your response to make the errors prominent and actionable.`,
         })) || [],
     };
 
-    console.log('Assistant prompt created from response');
 
     // Clean up history to prevent message order issues
     const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();
