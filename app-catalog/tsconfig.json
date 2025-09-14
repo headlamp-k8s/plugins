@@ -1,4 +1,9 @@
 {
   "extends": "./node_modules/@kinvolk/headlamp-plugin/config/plugins-tsconfig.json",
-  "include": ["./src/**/*"]
+  "include": ["./src/**/*"],
+  "compilerOptions": {
+    "target": "ES5",
+    "lib": ["ES2015", "DOM"],
+    "jsx": "react-jsx"
+  },
 }

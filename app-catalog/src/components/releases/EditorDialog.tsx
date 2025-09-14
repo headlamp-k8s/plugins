@@ -15,6 +15,7 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useRef, useState } from 'react';
 import semver from 'semver';
 import { fetchChart, getActionStatus, upgradeRelease } from '../../api/releases';
+import { APP_CATALOG_HELM_REPOSITORY } from '../../constants/catalog';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
 
 export function EditorDialog(props: {
@@ -60,11 +61,15 @@ export function EditorDialog(props: {
     let isMounted = true;
 
     if (isUpdateRelease) {
-      async function fetchChartVersions() {
+      const fetchChartVersions = async () => {
         let response;
         let error: Error | null = null;
         try {
-          response = await fetchChart(release.chart.metadata.name);
+          const metadataName =
+            release.chart.metadata.name === APP_CATALOG_HELM_REPOSITORY
+              ? '/' + release.chart.metadata.name
+              : release.chart.metadata.name;
+          response = await fetchChart(metadataName);
         } catch (err) {
           error = err;
         }
@@ -74,7 +79,7 @@ export function EditorDialog(props: {
         }
 
         if (!!error) {
-          enqueueSnackbar(`Error fetching chart versions: ${error}`, {
+          enqueueSnackbar(`Error fetching chart versions: ${error.message}`, {
             variant: 'error',
             autoHideDuration: 5000,
           });
@@ -99,7 +104,7 @@ export function EditorDialog(props: {
             version: chart.version,
           }))
         );
-      }
+      };
 
       setIsLoading(true);
       fetchChartVersions();
