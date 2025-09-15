@@ -6,6 +6,12 @@ import {
   registerPluginSettings,
   registerResourceTableColumnsProcessor,
 } from '@kinvolk/headlamp-plugin/lib';
+import { ResourceTableColumn } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import type Deployment from '@kinvolk/headlamp-plugin/lib/K8s/deployment';
+import type Namespace from '@kinvolk/headlamp-plugin/lib/K8s/namespace';
+import type Node from '@kinvolk/headlamp-plugin/lib/K8s/node';
+import type Pod from '@kinvolk/headlamp-plugin/lib/K8s/pod';
+import type Service from '@kinvolk/headlamp-plugin/lib/K8s/service';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import { useEffect, useState } from 'react';
@@ -61,6 +67,8 @@ const acceptedList = [
   'headlamp-services',
   'headlamp-deployments',
 ];
+
+type AcceptedTypes = Pod | Node | Namespace | Service | Deployment;
 
 function resourceTypeFromId(id: string) {
   switch (id) {
@@ -134,8 +142,11 @@ function getCost(value): number {
 registerResourceTableColumnsProcessor(function processor({ id, columns }) {
   const configStore = getConfigStore();
   const conf = configStore.get();
+
   if ((conf?.isEnabledInListView ?? true) && acceptedList.includes(id)) {
-    const filteredColumns = columns.filter(col => col.id !== 'opencost');
+    const filteredColumns = (columns as ResourceTableColumn<AcceptedTypes>[]).filter(
+      col => col.id !== 'opencost'
+    );
     const column = {
       id: 'opencost',
       label: `Cost (${getDisplayTimespan()})`,
@@ -153,9 +164,10 @@ registerResourceTableColumnsProcessor(function processor({ id, columns }) {
       },
       disableFiltering: true,
       show: true,
-    };
+    } as unknown as ResourceTableColumn<AcceptedTypes>;
     filteredColumns.splice(filteredColumns.length - 1, 0, column);
-    return filteredColumns;
+
+    return filteredColumns as typeof columns;
   }
   return columns;
 });
