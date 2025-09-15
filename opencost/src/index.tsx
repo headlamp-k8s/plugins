@@ -52,7 +52,7 @@ registerDetailsViewSectionsProcessor(function addSubheaderSection(resource, sect
     resource?.kind === 'Deployment'
   ) {
     sections.push({
-      title: 'Opencost',
+      id: 'Opencost-' + resource.kind,
       section: <OpencostDetailSection resource={resource} type={resource?.kind.toLowerCase()} />,
     });
   }
