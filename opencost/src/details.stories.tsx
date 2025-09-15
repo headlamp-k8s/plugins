@@ -38,7 +38,7 @@ export const NoData = Template.bind({});
 NoData.args = {
   installed: true,
   displayTimespan: '24h',
-  tsData: {},
+  tsData: [],
   displayCurrency: '$',
   accumulatedData: {},
   learnMoreLink: 'http://localhost:3000/docs',
