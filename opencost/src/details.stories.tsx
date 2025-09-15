@@ -1,49 +1,54 @@
-import { Meta, StoryFn } from '@storybook/react/types-6-0';
+import type { Meta, StoryObj } from '@storybook/react';
 import { OpencostDetailSectionPure } from './detail';
 
-export default {
+const meta: Meta<typeof OpencostDetailSectionPure> = {
   title: 'OpencostDetails',
   component: OpencostDetailSectionPure,
-} as Meta;
+};
 
-const Template: StoryFn = (args: any) => <OpencostDetailSectionPure {...args} />;
+export default meta;
 
-export const LoadingState = Template.bind({});
-LoadingState.args = {
-  installed: true,
-  displayTimespan: '24h',
-  tsData: null,
-  displayCurrency: '$',
-  accumulatedData: null,
-  learnMoreLink: 'http://localhost:3000/docs',
-  handleDisplayTimespanChange: timespan => {
-    console.log(timespan);
+type Story = StoryObj<typeof OpencostDetailSectionPure>;
+
+export const LoadingState: Story = {
+  args: {
+    installed: true,
+    displayTimespan: '24h',
+    tsData: null,
+    displayCurrency: '$',
+    accumulatedData: null,
+    learnMoreLink: 'http://localhost:3000/docs',
+    handleDisplayTimespanChange: (timespan: string) => {
+      console.log(timespan);
+    },
   },
 };
 
-export const NotInstalled = Template.bind({});
-NotInstalled.args = {
-  installed: false,
-  displayTimespan: '24h',
-  tsData: null,
-  displayCurrency: '$',
-  accumulatedData: null,
-  learnMoreLink: 'http://localhost:3000/docs',
-  handleDisplayTimespanChange: timespan => {
-    console.log(timespan);
+export const NotInstalled: Story = {
+  args: {
+    installed: false,
+    displayTimespan: '24h',
+    tsData: null,
+    displayCurrency: '$',
+    accumulatedData: null,
+    learnMoreLink: 'http://localhost:3000/docs',
+    handleDisplayTimespanChange: (timespan: string) => {
+      console.log(timespan);
+    },
   },
 };
 
-export const NoData = Template.bind({});
-NoData.args = {
-  installed: true,
-  displayTimespan: '24h',
-  tsData: [],
-  displayCurrency: '$',
-  accumulatedData: {},
-  learnMoreLink: 'http://localhost:3000/docs',
-  handleDisplayTimespanChange: timespan => {
-    console.log(timespan);
+export const NoData: Story = {
+  args: {
+    installed: true,
+    displayTimespan: '24h',
+    tsData: [],
+    displayCurrency: '$',
+    accumulatedData: {},
+    learnMoreLink: 'http://localhost:3000/docs',
+    handleDisplayTimespanChange: (timespan: string) => {
+      console.log(timespan);
+    },
   },
 };
 
@@ -106,15 +111,16 @@ const tsDataWeek = [
   { date: '2024-05-01T15:44:04.180Z', cpuCost: 0.15356, ramCost: 0.01032, pvCost: 0, gpuCost: 0 },
 ];
 
-export const WeekData = Template.bind({});
-WeekData.args = {
-  installed: true,
-  displayTimespan: '24h',
-  tsData: tsDataWeek,
-  displayCurrency: '$',
-  accumulatedData: accumulatedDataWeek,
-  learnMoreLink: 'http://localhost:3000/docs',
-  handleDisplayTimespanChange: timespan => {
-    console.log(timespan);
+export const WeekData: Story = {
+  args: {
+    installed: true,
+    displayTimespan: '24h',
+    tsData: tsDataWeek,
+    displayCurrency: '$',
+    accumulatedData: accumulatedDataWeek,
+    learnMoreLink: 'http://localhost:3000/docs',
+    handleDisplayTimespanChange: (timespan: string) => {
+      console.log(timespan);
+    },
   },
 };
