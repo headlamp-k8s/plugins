@@ -262,7 +262,7 @@ export function PurePluginList({
           )
         ) : (
           <Box mt={2} mx="auto" maxWidth="max-content">
-            <Loader />
+            <Loader title="Loading" />
           </Box>
         )}
       </Box>
