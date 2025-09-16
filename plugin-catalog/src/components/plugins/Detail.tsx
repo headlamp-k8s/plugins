@@ -354,9 +354,10 @@ export function PluginDetail() {
 
           break;
         }
-        if (status.percentage !== undefined) {
-          setCurrentActionProgress(status.percentage);
-        }
+        // @todo: PluginManager ProgressResp doesn't have a percentage.
+        // if (status.percentage !== undefined) {
+        //   setCurrentActionProgress(status.percentage);
+        // }
         setCurrentActionState(status.type);
         setCurrentActionMessage(status.message);
 
