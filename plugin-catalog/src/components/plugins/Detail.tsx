@@ -163,8 +163,8 @@ export function PurePluginDetail({
         message={
           <Tooltip title={alertMessage || ''} arrow>
             <Typography>
-              {alertMessage ? alertMessage.substring(0, Math.min(50, alertMessage.length)) : null}
-            </Typography>{' '}
+              {alertMessage ? alertMessage.substring(0, Math.min(50, alertMessage.length)) : null}{' '}
+            </Typography>
           </Tooltip>
         }
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
