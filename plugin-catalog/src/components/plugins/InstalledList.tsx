@@ -58,7 +58,7 @@ export function PurePluginInstalledList({
             }}
           >
             <Box>
-              <Typography variant="h6" components="h2">
+              <Typography variant="h6" component="h2">
                 From the Plugin Catalog
               </Typography>
               <SimpleTable
@@ -91,7 +91,7 @@ export function PurePluginInstalledList({
             </Box>
 
             <Box>
-              <Typography variant="h6" components="h2">
+              <Typography variant="h6" component="h2">
                 Other Plugins
               </Typography>
 
