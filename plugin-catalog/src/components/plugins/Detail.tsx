@@ -16,18 +16,6 @@ import LoadingButton from './LoadingButton';
 
 const { createRouteURL } = Router;
 
-declare global {
-  interface Window {
-    pluginLib: {
-      [libName: string]: any;
-    };
-    plugins: {
-      [pluginId: string]: Plugin;
-    };
-    registerPlugin: (pluginId: string, pluginObj: Plugin) => void;
-    desktopApi: any;
-  }
-}
 /**
  * PluginDetailResp interface represents the response from the Artifact Hub API for a plugin detail.
  * For more information refer:
