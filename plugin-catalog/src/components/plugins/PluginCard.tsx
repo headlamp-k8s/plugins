@@ -95,7 +95,6 @@ export function PluginCard(props: PluginCardProps) {
               whiteSpace: 'nowrap',
             }}
           >
-            <Tooltip title={plugin.display_name} />
             <Typography
               component="h5"
               variant="h5"
@@ -104,12 +103,16 @@ export function PluginCard(props: PluginCardProps) {
                 textOverflow: 'ellipsis',
               }}
             >
-              <HeadlampRouterLink
-                routeName="/plugin-catalog/:repoName/:pluginName"
-                params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
-              >
-                {plugin.display_name}
-              </HeadlampRouterLink>
+              <Tooltip title={plugin.display_name}>
+                <span>
+                  <HeadlampRouterLink
+                    routeName="/plugin-catalog/:repoName/:pluginName"
+                    params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
+                  >
+                    {plugin.display_name}
+                  </HeadlampRouterLink>
+                </span>
+              </Tooltip>
             </Typography>
           </Box>
           <Box display="flex" justifyContent="space-between" my={1}>
