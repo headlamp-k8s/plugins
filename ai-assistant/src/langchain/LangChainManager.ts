@@ -18,9 +18,11 @@ import { AzureChatOpenAI, ChatOpenAI } from '@langchain/openai';
 import sanitizeHtml from 'sanitize-html';
 import AIManager, { Prompt } from '../ai/manager';
 import { basePrompt } from '../ai/prompts';
+import { MCPArgumentProcessor, UserContext } from '../components/mcpOutput/MCPArgumentProcessor';
+import { inlineToolApprovalManager } from '../utils/InlineToolApprovalManager';
+import { ToolCall } from '../utils/ToolApprovalManager';
 import { apiErrorPromptTemplate, toolFailurePromptTemplate } from './PromptTemplates';
 import { KubernetesToolContext, ToolManager } from './tools';
-import { toolApprovalManager, ToolCall } from '../utils/ToolApprovalManager';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -40,12 +42,31 @@ export default class LangChainManager extends AIManager {
       'AI Assistant: Initializing with enabled tools:',
       enabledToolIds || 'all tools enabled'
     );
-    this.toolManager = new ToolManager(enabledToolIds); // Only enabled tools
+    this.toolManager = new ToolManager(undefined, enabledToolIds); // Only enabled tools
     this.model = this.createModel(providerId, config);
 
     // Initialize prompt template and output parser
     this.promptTemplate = this.createPromptTemplate();
     this.outputParser = new StringOutputParser();
+
+    // Set up event listeners for inline tool confirmations
+    this.setupToolConfirmationListeners();
+  }
+
+  // Set up event listeners for tool confirmation events
+  private setupToolConfirmationListeners() {
+    inlineToolApprovalManager.on('request-confirmation', (data: any) => {
+      // Add the tool confirmation message to chat history
+      console.log('🔔 LangChainManager: Adding tool confirmation message to history', data);
+      this.addToolConfirmationMessage('', data.toolConfirmation);
+      console.log('📝 LangChainManager: History length after adding confirmation:', this.history.length);
+    });
+
+    inlineToolApprovalManager.on('update-confirmation', (data: any) => {
+      // Update the specific tool confirmation message with new state (e.g., loading)
+      console.log('🔄 Tool confirmation update:', data.requestId, 'loading:', data.toolConfirmation.loading);
+      this.updateToolConfirmationMessage(data.requestId, data.toolConfirmation);
+    });
   }
 
   // Helper method to extract text content from different response formats
@@ -187,6 +208,11 @@ export default class LangChainManager extends AIManager {
       providerId: this.providerId,
     });
 
+    // Wait for MCP tools to be initialized
+    console.log('⏳ Waiting for MCP tools initialization...');
+    await this.toolManager.waitForMCPToolsInitialization();
+    console.log('✅ MCP tools initialization complete');
+
     // Configure the Kubernetes context for the KubernetesTool
     this.toolManager.configureKubernetesContext(kubernetesContext);
 
@@ -219,6 +245,52 @@ export default class LangChainManager extends AIManager {
   }
 
   /**
+   * Build user context from current conversation and state
+   */
+  private buildUserContext(): UserContext {
+    // Get the most recent user message
+    const recentUserMessages = this.history
+      .filter(prompt => prompt.role === 'user')
+      .slice(-3); // Last 3 user messages for context
+
+    const userMessage = recentUserMessages.length > 0
+      ? recentUserMessages[recentUserMessages.length - 1].content
+      : '';
+
+    // Build conversation history
+    const conversationHistory = this.history
+      .slice(-10) // Last 10 messages
+      .map(prompt => ({
+        role: prompt.role,
+        content: prompt.content
+      }));
+
+    // Get recent tool results
+    const lastToolResults: Record<string, any> = {};
+    const recentToolResponses = this.history
+      .filter(prompt => prompt.role === 'tool')
+      .slice(-5); // Last 5 tool responses
+
+    recentToolResponses.forEach(response => {
+      if (response.name) {
+        try {
+          const parsed = JSON.parse(response.content);
+          lastToolResults[response.name] = parsed;
+        } catch {
+          lastToolResults[response.name] = response.content;
+        }
+      }
+    });
+
+    return {
+      userMessage,
+      conversationHistory,
+      lastToolResults,
+      timeContext: new Date()
+    };
+  }
+
+  /**
    * Get description for a tool (for approval dialog)
    */
   private getToolDescription(toolName: string, isMCPTool: boolean): string {
@@ -244,6 +316,50 @@ export default class LangChainManager extends AIManager {
     }
   }
 
+  /**
+   * Add a tool confirmation message to the history
+   */
+  public addToolConfirmationMessage(content: string, toolConfirmation: any, updateHistoryCallback?: () => void): void {
+    console.log('➕ LangChainManager: Adding tool confirmation message', { content, toolConfirmation });
+    const confirmationPrompt: Prompt = {
+      role: 'assistant',
+      content: content,
+      toolConfirmation: toolConfirmation,
+      isDisplayOnly: true, // Don't send to LLM
+      requestId: toolConfirmation.requestId // Add requestId for tracking
+    };
+    this.history.push(confirmationPrompt);
+    console.log('📚 LangChainManager: History after adding confirmation:', this.history.length, 'items');
+    
+    // Call the update callback if provided to trigger UI re-render
+    if (updateHistoryCallback) {
+      updateHistoryCallback();
+    }
+  }
+
+  public updateToolConfirmationMessage(requestId: string, updatedToolConfirmation: any): void {
+    console.log('🔄 LangChainManager: Updating tool confirmation message', { requestId, updatedToolConfirmation });
+    
+    // Find the message with matching requestId
+    const messageIndex = this.history.findIndex(
+      prompt => prompt.requestId === requestId && prompt.toolConfirmation
+    );
+    
+    if (messageIndex !== -1) {
+      // Update the tool confirmation in the existing message
+      this.history[messageIndex] = {
+        ...this.history[messageIndex],
+        toolConfirmation: updatedToolConfirmation
+      };
+      console.log('✅ LangChainManager: Tool confirmation message updated');
+      
+      // Use the inline tool approval manager to emit update event
+      inlineToolApprovalManager.emit('message-updated', { requestId, updatedToolConfirmation });
+    } else {
+      console.warn('⚠️ LangChainManager: Could not find tool confirmation message to update');
+    }
+  }
+
   // Helper method to prepare chat history for prompt template
   private prepareChatHistory(): BaseMessage[] {
     // Filter out system messages and display-only messages to avoid conflicts with the system message in the prompt template
@@ -256,6 +372,57 @@ export default class LangChainManager extends AIManager {
   // Helper method to create system prompt with context
   private createSystemPrompt(): string {
     let systemPromptContent = basePrompt;
+    
+    // Add MCP tool guidance if we have MCP tools available
+    const mcpTools = this.toolManager.getMCPTools();
+    if (mcpTools.length > 0) {
+      systemPromptContent += `
+
+MCP TOOL GUIDANCE:
+You have access to advanced debugging and monitoring tools through MCP (Model Context Protocol). When users request system analysis, monitoring, or debugging:
+
+INTELLIGENT PARAMETER SETTING:
+- When calling MCP tools, intelligently populate parameters based on the user's request and the current context
+- For duration parameters: Use reasonable defaults (30 seconds for quick checks, 60-300 seconds for monitoring, 0 for continuous)
+- For namespace parameters: Use the current namespace from context, or "default" if not specified
+- For filtering parameters: Extract relevant filters from the user's request (pod names, labels, etc.)
+- For params objects: Populate with relevant Kubernetes selectors based on context
+
+COMMON MCP TOOL PATTERNS:
+- Gadget tools with "snapshot" are for one-time data collection
+- Gadget tools with "trace" are for monitoring over time
+- Duration 0 means continuous monitoring (use sparingly)
+- Always populate the required "params" object, even if empty: {"params": {}}
+
+PARAMETER EXAMPLES:
+- For namespace-specific requests: {"params": {"operator.KubeManager.namespace": "target-namespace"}}
+- For pod-specific requests: {"params": {"operator.KubeManager.podname": "pod-name"}}
+- For monitoring duration: {"duration": 30, "params": {"operator.KubeManager.namespace": "default"}}
+- For continuous monitoring: {"duration": 0, "params": {...}}
+
+CONTEXT-AWARE PARAMETER EXTRACTION:
+- Extract pod names, namespaces, and labels from the user's request
+- Use current cluster context when available
+- Default to "default" namespace if not specified
+- Apply appropriate filters based on the user's intent
+
+RESULT INTERPRETATION AND PRESENTATION:
+When MCP tools return data, you MUST:
+1. **Analyze and summarize** - Don't just show raw JSON data
+2. **Identify patterns** - Group similar items, highlight anomalies
+3. **Format clearly** - Use tables, lists, or structured presentation
+4. **Focus on insights** - Explain what the data means, not just what it contains
+5. **Highlight issues** - Point out potential security or performance problems
+
+EXAMPLE result processing:
+- Socket data → "Found X active connections, Y listening ports, Z external connections"
+- Process data → "Identified N processes, M high CPU consumers"
+- Network traces → "Detected traffic patterns: internal vs external, protocols used"
+- Performance data → "Key metrics: CPU usage X%, memory Y%, network Z Mbps"
+
+NEVER just dump raw JSON - always interpret and present meaningfully.`;
+    }
+    
     if (this.currentContext) {
       systemPromptContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
     }
@@ -520,30 +687,74 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
     };
     this.history.push(assistantPrompt);
 
-    // Prepare tool calls for approval
-    const toolCallsForApproval: ToolCall[] = toolCalls.map(tc => {
+    // Prepare tool calls for approval with intelligent argument processing
+    const toolCallsForApproval: ToolCall[] = await Promise.all(toolCalls.map(async tc => {
       const toolName = tc.function.name;
       const mcpTools = this.toolManager.getMCPTools();
       const isMCPTool = mcpTools.some(tool => tool.name === toolName);
+      let processedArguments = JSON.parse(tc.function.arguments);
+
+      // Use AI to enhance arguments for MCP tools
+      if (isMCPTool) {
+        try {
+          const toolSchema = await MCPArgumentProcessor.getToolSchema(toolName);
+          if (toolSchema) {
+            // Build user context from current conversation
+            const userContext = this.buildUserContext();
+
+            // Use AI to intelligently prepare arguments
+            processedArguments = await this.enhanceArgumentsWithAI(
+              toolName,
+              toolSchema,
+              userContext,
+              processedArguments
+            );
+
+            console.log(`🧠 AI-enhanced arguments for ${toolName}:`, {
+              original: JSON.parse(tc.function.arguments),
+              enhanced: processedArguments
+            });
+          }
+        } catch (error) {
+          console.warn(`Failed to enhance arguments for ${toolName}:`, error);
+          // Fall back to original arguments
+        }
+      }
 
       return {
         id: tc.id,
         name: toolName,
         description: this.getToolDescription(toolName, isMCPTool),
-        arguments: JSON.parse(tc.function.arguments),
+        arguments: processedArguments,
         type: isMCPTool ? 'mcp' : 'regular'
       };
-    });
+    }));
 
     try {
-      // Request approval for tool execution
+      // Request approval for tool execution using inline approval system
       console.log('🔐 Requesting approval for', toolCallsForApproval.length, 'tools');
-      const approvedToolIds = await toolApprovalManager.requestApproval(toolCallsForApproval);
+      const approvedToolIds = await inlineToolApprovalManager.requestApproval(
+        toolCallsForApproval,
+        this // Pass the AI manager instance
+      );
       
       console.log('✅ Tools approved:', approvedToolIds.length, 'of', toolCallsForApproval.length);
 
-      // Filter tool calls to only execute approved ones
-      const approvedToolCalls = toolCalls.filter(tc => approvedToolIds.includes(tc.id));
+      // Filter tool calls to only execute approved ones and update with processed arguments
+      const approvedToolCalls = toolCalls.filter(tc => approvedToolIds.includes(tc.id)).map(tc => {
+        // Find the processed arguments from the approval data
+        const approvalData = toolCallsForApproval.find(approval => approval.id === tc.id);
+        if (approvalData) {
+          return {
+            ...tc,
+            function: {
+              ...tc.function,
+              arguments: JSON.stringify(approvalData.arguments)
+            }
+          };
+        }
+        return tc;
+      });
       const deniedToolCalls = toolCalls.filter(tc => !approvedToolIds.includes(tc.id));
 
       // Add denied tool responses to history
@@ -1047,7 +1258,7 @@ Format your response to make the errors prominent and actionable.`,
       });
     }
 
-    let content = prompt.content;
+    const content = prompt.content;
 
     // Check response size after optimization handling
     const responseSize = content.length;
@@ -1100,16 +1311,47 @@ Format your response to make the errors prominent and actionable.`,
         }));
 
       // Create a fallback response based on tool results
-      let fallbackContent = 'I executed the requested tools and here are the results:\n\n';
-      
+      // For MCP tools with formatted output, return them directly without prefix
+      if (recentToolResponses.length === 1) {
+        const singleResponse = recentToolResponses[0];
+        try {
+          const parsed = JSON.parse(singleResponse.content);
+          if (parsed.formatted && parsed.mcpOutput) {
+            // This is a formatted MCP output, return it directly
+            const assistantPrompt: Prompt = {
+              role: 'assistant',
+              content: singleResponse.content,
+              toolCalls: [],
+            };
+
+            // Clean up history to prevent message order issues
+            const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();
+            if (lastAssistantWithToolsIndex >= 0) {
+              this.history = this.history.slice(0, lastAssistantWithToolsIndex + 1);
+            }
+
+            this.history.push(assistantPrompt);
+            return assistantPrompt;
+          }
+        } catch (e) {
+          // Not formatted MCP output, continue with fallback
+        }
+      }
+
+      // Standard fallback for multiple tools or non-MCP tools
+      let fallbackContent = '';
+
       recentToolResponses.forEach((toolResponse, index) => {
         const toolName = toolResponse.name || 'tool';
         let content = toolResponse.content;
-        
+
         // Try to parse and clean up the content
         try {
           const parsed = JSON.parse(content);
-          if (parsed.error) {
+          if (parsed.formatted && parsed.mcpOutput) {
+            // For formatted MCP outputs, return the JSON directly
+            content = toolResponse.content;
+          } else if (parsed.error) {
             content = `Error: ${parsed.message || 'Tool execution failed'}`;
           } else if (parsed.userFriendlyMessage) {
             content = parsed.userFriendlyMessage;
@@ -1121,7 +1363,13 @@ Format your response to make the errors prominent and actionable.`,
           content = content.toString().trim();
         }
 
-        fallbackContent += `**${toolName}:**\n${content}\n\n`;
+        // For single formatted MCP output, return just the content
+        if (recentToolResponses.length === 1) {
+          fallbackContent = content;
+        } else {
+          // For multiple tools, use the tool name format
+          fallbackContent += `${toolName}: ${content}${index < recentToolResponses.length - 1 ? '\n\n' : ''}`;
+        }
       });
 
       const assistantPrompt: Prompt = {
@@ -1281,6 +1529,96 @@ Format your response to make the errors prominent and actionable.`,
       return typeof content === 'string'
         ? content.substring(0, 5000) // Limit length for safety
         : JSON.stringify({ error: true, message: 'Content could not be sanitized' });
+    }
+  }
+
+  /**
+   * Enhance arguments using AI-like intelligence
+   */
+  private async enhanceArgumentsWithAI(
+    _toolName: string,
+    toolSchema: any,
+    userContext: UserContext,
+    originalArgs: Record<string, any>
+  ): Promise<Record<string, any>> {
+    const enhanced = { ...originalArgs };
+
+    if (!toolSchema.inputSchema?.properties) {
+      return enhanced;
+    }
+
+    const properties = toolSchema.inputSchema.properties;
+    const required = toolSchema.inputSchema.required || [];
+
+    // Fill in required fields that are missing or empty
+    for (const [fieldName, fieldSchema] of Object.entries(properties)) {
+      const isRequired = required.includes(fieldName);
+      const currentValue = enhanced[fieldName];
+
+      if (isRequired && (currentValue === undefined || currentValue === null || currentValue === '')) {
+        // Provide intelligent defaults based on field type and context
+        enhanced[fieldName] = this.getIntelligentDefault(fieldName, fieldSchema, userContext);
+      }
+    }
+
+    return enhanced;
+  }
+
+  /**
+   * Get intelligent default value for a field based on context
+   */
+  private getIntelligentDefault(fieldName: string, fieldSchema: any, userContext: UserContext): any {
+    const fieldType = fieldSchema.type;
+    const fieldNameLower = fieldName.toLowerCase();
+
+    // Try to extract from user context first
+    if (userContext.userMessage) {
+      const userMessage = userContext.userMessage.toLowerCase();
+
+      // Extract namespace
+      if (fieldNameLower.includes('namespace')) {
+        const namespaceMatch = userMessage.match(/namespace[\s:]+([a-zA-Z0-9-_.]+)/i);
+        if (namespaceMatch) {
+          return namespaceMatch[1];
+        }
+        return 'default'; // Default Kubernetes namespace
+      }
+
+      // Extract container/pod names
+      if (fieldNameLower.includes('container') || fieldNameLower.includes('pod')) {
+        const containerMatch = userMessage.match(/(?:container|pod)[\s:]+([a-zA-Z0-9-_.]+)/i);
+        if (containerMatch) {
+          return containerMatch[1];
+        }
+      }
+
+      // Extract commands
+      if (fieldNameLower.includes('command') || fieldNameLower.includes('cmd')) {
+        const commandMatch = userMessage.match(/(?:run|execute|command)[\s:]+["']([^"']+)["']/i);
+        if (commandMatch) {
+          return commandMatch[1];
+        }
+      }
+    }
+
+    // Fallback to type-based defaults
+    switch (fieldType) {
+      case 'object':
+        return {};
+      case 'array':
+        return [];
+      case 'string':
+        if (fieldSchema.enum) {
+          return fieldSchema.enum[0];
+        }
+        return fieldSchema.default || '';
+      case 'number':
+      case 'integer':
+        return fieldSchema.default || fieldSchema.minimum || 0;
+      case 'boolean':
+        return fieldSchema.default !== undefined ? fieldSchema.default : false;
+      default:
+        return null;
     }
   }
 }
