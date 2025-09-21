@@ -47,9 +47,7 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
   onClose,
   loading = false,
 }) => {
-  const [selectedToolIds, setSelectedToolIds] = useState<string[]>(
-    toolCalls.map(tool => tool.id)
-  );
+  const [selectedToolIds, setSelectedToolIds] = useState<string[]>(toolCalls.map(tool => tool.id));
   const [rememberChoice, setRememberChoice] = useState(false);
 
   // Reset selection when toolCalls change
@@ -69,10 +67,8 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
   };
 
   const handleToolToggle = (toolId: string) => {
-    setSelectedToolIds(prev => 
-      prev.includes(toolId) 
-        ? prev.filter(id => id !== toolId)
-        : [...prev, toolId]
+    setSelectedToolIds(prev =>
+      prev.includes(toolId) ? prev.filter(id => id !== toolId) : [...prev, toolId]
     );
   };
 
@@ -87,7 +83,7 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
     if (toolType === 'mcp') {
       return 'mdi:docker'; // Inspektor Gadget runs in Docker
     }
-    
+
     // Regular Kubernetes tools
     if (toolName.includes('kubernetes') || toolName.includes('k8s')) {
       return 'mdi:kubernetes';
@@ -100,13 +96,9 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
       .map(([key, value]) => (
         <ListItem key={key} dense>
-          <ListItemText 
-            primary={key} 
-            secondary={
-              typeof value === 'object' 
-                ? JSON.stringify(value, null, 2)
-                : String(value)
-            }
+          <ListItemText
+            primary={key}
+            secondary={typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
           />
         </ListItem>
       ));
@@ -119,21 +111,16 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
       <Box sx={{ mb: 2 }}>
         <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
           {title}
-          <Chip 
-            label={tools.length} 
-            size="small" 
-            color={color}
-            sx={{ ml: 1 }}
-          />
+          <Chip label={tools.length} size="small" color={color} sx={{ ml: 1 }} />
         </Typography>
         {tools.map(tool => (
           <Accordion key={tool.id} sx={{ mb: 1 }}>
             <AccordionSummary
               expandIcon={<Icon icon="mdi:chevron-down" />}
-              sx={{ 
+              sx={{
                 '& .MuiAccordionSummary-content': {
-                  alignItems: 'center'
-                }
+                  alignItems: 'center',
+                },
               }}
             >
               <FormControlLabel
@@ -141,17 +128,14 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
                   <Checkbox
                     checked={selectedToolIds.includes(tool.id)}
                     onChange={() => handleToolToggle(tool.id)}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
                   />
                 }
                 label=""
                 sx={{ mr: 1 }}
-                onClick={(e) => e.stopPropagation()}
+                onClick={e => e.stopPropagation()}
               />
-              <Icon 
-                icon={getToolIcon(tool.name, tool.type)} 
-                style={{ marginRight: 8 }}
-              />
+              <Icon icon={getToolIcon(tool.name, tool.type)} style={{ marginRight: 8 }} />
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                   {tool.name}
@@ -163,10 +147,10 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
                 )}
               </Box>
               {tool.type === 'mcp' && (
-                <Chip 
-                  label="MCP Tool" 
-                  size="small" 
-                  color="info" 
+                <Chip
+                  label="MCP Tool"
+                  size="small"
+                  color="info"
                   variant="outlined"
                   sx={{ ml: 'auto', mr: 1 }}
                 />
@@ -176,9 +160,7 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
               <Typography variant="body2" gutterBottom color="text.secondary">
                 Arguments to be passed:
               </Typography>
-              <List dense>
-                {formatArguments(tool.arguments)}
-              </List>
+              <List dense>{formatArguments(tool.arguments)}</List>
             </AccordionDetails>
           </Accordion>
         ))}
@@ -187,20 +169,22 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
   };
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={loading ? undefined : onClose}
       maxWidth="md"
       fullWidth
       PaperProps={{
-        sx: { minHeight: '50vh' }
+        sx: { minHeight: '50vh' },
       }}
     >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Icon icon="mdi:security" style={{ marginRight: 8 }} />
           Tool Execution Approval Required
@@ -214,7 +198,7 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
 
       <DialogContent>
         <Alert severity="info" sx={{ mb: 3 }}>
-          The AI Assistant wants to execute {toolCalls.length} tool{toolCalls.length > 1 ? 's' : ''} 
+          The AI Assistant wants to execute {toolCalls.length} tool{toolCalls.length > 1 ? 's' : ''}
           to complete your request. Please review and approve the tools you want to allow.
         </Alert>
 
@@ -224,8 +208,8 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
               MCP Tools (Inspektor Gadget)
             </Typography>
             <Typography variant="body2">
-              These tools will execute debugging commands in your Kubernetes clusters through 
-              Inspektor Gadget containers. They provide deep system-level insights but require 
+              These tools will execute debugging commands in your Kubernetes clusters through
+              Inspektor Gadget containers. They provide deep system-level insights but require
               elevated permissions.
             </Typography>
           </Alert>
@@ -258,7 +242,7 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
             control={
               <Checkbox
                 checked={rememberChoice}
-                onChange={(e) => setRememberChoice(e.target.checked)}
+                onChange={e => setRememberChoice(e.target.checked)}
               />
             }
             label={
@@ -271,30 +255,36 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          width: '100%' 
-        }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+          }}
+        >
           <Typography variant="body2" color="text.secondary">
             {selectedToolIds.length} of {toolCalls.length} tools selected
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button 
-              onClick={onDeny} 
-              disabled={loading}
-              color="error"
-            >
+            <Button onClick={onDeny} disabled={loading} color="error">
               Deny All
             </Button>
-            <Button 
-              onClick={handleApprove} 
+            <Button
+              onClick={handleApprove}
               variant="contained"
               disabled={loading || selectedToolIds.length === 0}
-              startIcon={loading ? <Icon icon="mdi:loading" className="animate-spin" /> : <Icon icon="mdi:check" />}
+              startIcon={
+                loading ? (
+                  <Icon icon="mdi:loading" className="animate-spin" />
+                ) : (
+                  <Icon icon="mdi:check" />
+                )
+              }
             >
-              {loading ? 'Executing...' : `Approve ${selectedToolIds.length > 0 ? `(${selectedToolIds.length})` : ''}`}
+              {loading
+                ? 'Executing...'
+                : `Approve ${selectedToolIds.length > 0 ? `(${selectedToolIds.length})` : ''}`}
             </Button>
           </Box>
         </Box>

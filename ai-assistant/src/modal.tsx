@@ -42,7 +42,7 @@ export default function AIPrompt(props: {
   openPopup: boolean;
   setOpenPopup: (...args) => void;
   pluginSettings: any;
-  width: string
+  width: string;
 }) {
   const { openPopup, setOpenPopup, pluginSettings, width } = props;
   const history = useHistory();
@@ -62,8 +62,8 @@ export default function AIPrompt(props: {
   const prompWidthContext = usePromptWidth();
 
   useEffect(() => {
-    prompWidthContext.setPromptWidth(width)
-  }, [width])
+    prompWidthContext.setPromptWidth(width);
+  }, [width]);
   // Get cluster names for warning lookup - use selected clusters or current cluster only
   const clusterNames = useMemo(() => {
     const currentCluster = getCluster();
@@ -300,12 +300,15 @@ export default function AIPrompt(props: {
     }
 
     console.log('🔄 UpdateHistory called, aiManager.history length:', aiManager.history.length);
-    console.log('📋 Current aiManager.history:', aiManager.history.map(h => ({ 
-      role: h.role, 
-      hasToolConfirmation: !!h.toolConfirmation, 
-      content: h.content?.substring(0, 50),
-      isDisplayOnly: h.isDisplayOnly 
-    })));
+    console.log(
+      '📋 Current aiManager.history:',
+      aiManager.history.map(h => ({
+        role: h.role,
+        hasToolConfirmation: !!h.toolConfirmation,
+        content: h.content?.substring(0, 50),
+        isDisplayOnly: h.isDisplayOnly,
+      }))
+    );
 
     // Process the history to extract suggestions and clean content
     const processedHistory = aiManager.history.map((prompt, index) => {
@@ -327,12 +330,15 @@ export default function AIPrompt(props: {
     });
 
     console.log('✅ ProcessedHistory length:', processedHistory.length);
-    console.log('📝 ProcessedHistory items:', processedHistory.map(h => ({ 
-      role: h.role, 
-      hasToolConfirmation: !!h.toolConfirmation,
-      isDisplayOnly: h.isDisplayOnly,
-      content: h.content?.substring(0, 50)
-    })));
+    console.log(
+      '📝 ProcessedHistory items:',
+      processedHistory.map(h => ({
+        role: h.role,
+        hasToolConfirmation: !!h.toolConfirmation,
+        isDisplayOnly: h.isDisplayOnly,
+        content: h.content?.substring(0, 50),
+      }))
+    );
     setPromptHistory(processedHistory);
   }, [aiManager?.history]);
 
@@ -546,7 +552,7 @@ export default function AIPrompt(props: {
 
       try {
         console.log(`Retrying tool ${toolName} with args:`, args);
-        
+
         // Get the tool manager from the LangChain manager
         const toolManager = (aiManager as any).toolManager;
         if (!toolManager) {
@@ -556,7 +562,7 @@ export default function AIPrompt(props: {
 
         // Execute the tool directly
         const toolResponse = await toolManager.executeTool(toolName, args);
-        
+
         // Add the retry result to the conversation history
         const retryPrompt: Prompt = {
           role: 'tool',
@@ -573,16 +579,17 @@ export default function AIPrompt(props: {
           await aiManager.processToolResponses();
           updateHistory();
         }
-
       } catch (error) {
         console.error(`Error retrying tool ${toolName}:`, error);
-        
+
         // Add error to conversation
         const errorPrompt: Prompt = {
           role: 'tool',
           content: JSON.stringify({
             error: true,
-            message: `Failed to retry tool: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            message: `Failed to retry tool: ${
+              error instanceof Error ? error.message : 'Unknown error'
+            }`,
             toolName,
           }),
           toolCallId: `retry-error-${Date.now()}`,
@@ -902,7 +909,7 @@ export default function AIPrompt(props: {
                 handleChangeConfig(config, model);
               }}
               onTestModeResponse={handleTestModeResponse}
-              onToolsChange={(newEnabledTools) => {
+              onToolsChange={newEnabledTools => {
                 setEnabledTools(newEnabledTools);
                 // Recreate AI manager with new tools
                 handleChangeConfig(activeConfig, selectedModel);

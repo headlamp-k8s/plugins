@@ -127,27 +127,21 @@ export default function MCPConfigEditorDialog({
       enabled: true,
       servers: [
         {
-          name: "inspektor-gadget",
-          command: "docker",
-          args: [
-            "mcp",
-            "gateway",
-            "run"
-          ],
-          enabled: true
+          name: 'inspektor-gadget',
+          command: 'docker',
+          args: ['mcp', 'gateway', 'run'],
+          enabled: true,
         },
         {
-          name: "flux-mcp",
-          command: "flux-operator-mcp",
-          args: [
-            "serve"
-          ],
+          name: 'flux-mcp',
+          command: 'flux-operator-mcp',
+          args: ['serve'],
           env: {
-            "KUBECONFIG": "/Users/ashughildiyal/.kube/config"
+            KUBECONFIG: '/Users/ashughildiyal/.kube/config',
           },
-          enabled: true
-        }
-      ]
+          enabled: true,
+        },
+      ],
     };
 
     setContent(JSON.stringify(exampleConfig, null, 2));
@@ -165,18 +159,18 @@ export default function MCPConfigEditorDialog({
 
   const getSchemaDocumentation = () => {
     return {
-      enabled: "boolean - Enable/disable all MCP servers",
+      enabled: 'boolean - Enable/disable all MCP servers',
       servers: [
         {
-          name: "string - Unique server name",
-          command: "string - Executable command or path",
-          args: ["array of strings - Command arguments"],
+          name: 'string - Unique server name',
+          command: 'string - Executable command or path',
+          args: ['array of strings - Command arguments'],
           env: {
-            "KEY": "string value - Environment variables (optional)"
+            KEY: 'string value - Environment variables (optional)',
           },
-          enabled: "boolean - Enable/disable this specific server"
-        }
-      ]
+          enabled: 'boolean - Enable/disable this specific server',
+        },
+      ],
     };
   };
 
@@ -246,7 +240,8 @@ export default function MCPConfigEditorDialog({
             />
 
             <Typography variant="caption" color="textSecondary" sx={{ mt: 1 }}>
-              Edit the JSON configuration above. The editor will automatically format and validate your configuration.
+              Edit the JSON configuration above. The editor will automatically format and validate
+              your configuration.
             </Typography>
           </Box>
         )}
@@ -260,18 +255,21 @@ export default function MCPConfigEditorDialog({
 
               <Box sx={{ mb: 3 }}>
                 <Typography variant="body2" color="textSecondary" paragraph>
-                  The MCP configuration defines how your AI assistant connects to external tools and services.
-                  Each server represents a separate MCP server that provides specific capabilities.
+                  The MCP configuration defines how your AI assistant connects to external tools and
+                  services. Each server represents a separate MCP server that provides specific
+                  capabilities.
                 </Typography>
               </Box>
 
               <Box sx={{ fontFamily: 'monospace' }}>
-                <pre style={{
-                  backgroundColor: themeName === 'dark' ? '#1e1e1e' : '#f5f5f5',
-                  padding: '16px',
-                  borderRadius: '4px',
-                  overflow: 'auto',
-                }}>
+                <pre
+                  style={{
+                    backgroundColor: themeName === 'dark' ? '#1e1e1e' : '#f5f5f5',
+                    padding: '16px',
+                    borderRadius: '4px',
+                    overflow: 'auto',
+                  }}
+                >
                   {JSON.stringify(getSchemaDocumentation(), null, 2)}
                 </pre>
               </Box>
@@ -298,7 +296,8 @@ export default function MCPConfigEditorDialog({
                   </li>
                   <li>
                     <Typography variant="body2">
-                      <strong>command</strong>: The executable to run (e.g., "docker", "npx", "python")
+                      <strong>command</strong>: The executable to run (e.g., "docker", "npx",
+                      "python")
                     </Typography>
                   </li>
                   <li>
@@ -313,7 +312,8 @@ export default function MCPConfigEditorDialog({
                   </li>
                   <li>
                     <Typography variant="body2">
-                      <strong>enabled</strong>: Toggle individual server on/off without removing configuration
+                      <strong>enabled</strong>: Toggle individual server on/off without removing
+                      configuration
                     </Typography>
                   </li>
                 </Box>
@@ -327,12 +327,7 @@ export default function MCPConfigEditorDialog({
         <Button variant="outlined" onClick={onClose}>
           Cancel
         </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSave}
-          disabled={tabValue === 1}
-        >
+        <Button variant="contained" color="primary" onClick={handleSave} disabled={tabValue === 1}>
           Save Configuration
         </Button>
       </DialogActions>
