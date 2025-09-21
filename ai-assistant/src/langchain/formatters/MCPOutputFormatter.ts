@@ -156,20 +156,17 @@ Remember: Focus on making complex data accessible and actionable for Kubernetes 
         includeInsights: true,
         includeActionableItems: true,
         formatStyle: 'detailed',
-        ...options
+        ...options,
       } as Required<MCPFormatterOptions>;
 
       // Prepare the analysis prompt
       const analysisPrompt = this.buildAnalysisPrompt(rawOutput, toolName, opts);
 
       // Send to AI for analysis and formatting
-      const messages = [
-        new SystemMessage(this.SYSTEM_PROMPT),
-        new HumanMessage(analysisPrompt)
-      ];
+      const messages = [new SystemMessage(this.SYSTEM_PROMPT), new HumanMessage(analysisPrompt)];
 
       const response = await this.model.invoke(messages, {
-        max_tokens: opts.maxTokens
+        max_tokens: opts.maxTokens,
       });
 
       const processingTime = Date.now() - startTime;
@@ -178,11 +175,10 @@ Remember: Focus on making complex data accessible and actionable for Kubernetes 
       const formattedOutput = this.parseAIResponse(response.content as string, {
         toolName,
         responseSize: rawOutput.length,
-        processingTime
+        processingTime,
       });
 
       return formattedOutput;
-
     } catch (error) {
       console.error('Error formatting MCP output:', error);
 
@@ -203,7 +199,9 @@ Remember: Focus on making complex data accessible and actionable for Kubernetes 
 
     // Detect if this is likely an error
     const isError = this.detectError(rawOutput);
-    const errorHint = isError ? '\n\nIMPORTANT: This appears to be an error response. Use "error" type and provide helpful troubleshooting guidance.' : '';
+    const errorHint = isError
+      ? '\n\nIMPORTANT: This appears to be an error response. Use "error" type and provide helpful troubleshooting guidance.'
+      : '';
 
     return `Analyze and format this ${toolName} tool output:
 
@@ -225,9 +223,10 @@ Pay special attention to:
 
 ${errorHint}
 
-${truncatedOutput.length < rawOutput.length ?
-  `\n[Note: Output was truncated from ${rawOutput.length} to ${truncatedOutput.length} characters for analysis]` :
-  ''
+${
+  truncatedOutput.length < rawOutput.length
+    ? `\n[Note: Output was truncated from ${rawOutput.length} to ${truncatedOutput.length} characters for analysis]`
+    : ''
 }`;
   }
 
@@ -237,16 +236,20 @@ ${truncatedOutput.length < rawOutput.length ?
   private detectError(rawOutput: string): boolean {
     try {
       const parsed = JSON.parse(rawOutput);
-      return parsed.success === false ||
-             parsed.error === true ||
-             (typeof parsed.error === 'string' && parsed.error.length > 0) ||
-             rawOutput.toLowerCase().includes('schema mismatch');
+      return (
+        parsed.success === false ||
+        parsed.error === true ||
+        (typeof parsed.error === 'string' && parsed.error.length > 0) ||
+        rawOutput.toLowerCase().includes('schema mismatch')
+      );
     } catch {
       const lower = rawOutput.toLowerCase();
-      return lower.includes('error') ||
-             lower.includes('failed') ||
-             lower.includes('exception') ||
-             lower.includes('schema mismatch');
+      return (
+        lower.includes('error') ||
+        lower.includes('failed') ||
+        lower.includes('exception') ||
+        lower.includes('schema mismatch')
+      );
     }
   }
 
@@ -259,8 +262,8 @@ ${truncatedOutput.length < rawOutput.length ?
   ): FormattedMCPOutput {
     try {
       // Extract JSON from response (handle potential markdown wrapping)
-      const jsonMatch = aiResponse.match(/```json\n?([\s\S]*?)\n?```/) ||
-                       aiResponse.match(/\{[\s\S]*\}/);
+      const jsonMatch =
+        aiResponse.match(/```json\n?([\s\S]*?)\n?```/) || aiResponse.match(/\{[\s\S]*\}/);
 
       if (!jsonMatch) {
         throw new Error('No JSON found in AI response');
@@ -279,12 +282,11 @@ ${truncatedOutput.length < rawOutput.length ?
         actionable_items: parsed.actionable_items || [],
         metadata: {
           ...metadata,
-          dataPoints: this.estimateDataPoints(parsed.data)
-        }
+          dataPoints: this.estimateDataPoints(parsed.data),
+        },
       };
 
       return formatted;
-
     } catch (error) {
       console.error('Error parsing AI response:', error);
       throw error;
@@ -312,14 +314,14 @@ ${truncatedOutput.length < rawOutput.length ?
           items: parsed.slice(0, 100).map((item, index) => ({
             text: typeof item === 'string' ? item : JSON.stringify(item),
             status: 'normal',
-            metadata: `Item ${index + 1}`
-          }))
+            metadata: `Item ${index + 1}`,
+          })),
         };
       } else if (typeof parsed === 'object') {
         type = 'text';
         data = {
           content: JSON.stringify(parsed, null, 2),
-          language: 'json'
+          language: 'json',
         };
       } else {
         type = 'text';
@@ -329,10 +331,11 @@ ${truncatedOutput.length < rawOutput.length ?
       // Not JSON, treat as text
       type = 'text';
       data = {
-        content: rawOutput.length > 5000 ?
-          rawOutput.substring(0, 5000) + '\n\n[Output truncated...]' :
-          rawOutput,
-        language: 'text'
+        content:
+          rawOutput.length > 5000
+            ? rawOutput.substring(0, 5000) + '\n\n[Output truncated...]'
+            : rawOutput,
+        language: 'text',
       };
     }
 
@@ -348,8 +351,8 @@ ${truncatedOutput.length < rawOutput.length ?
         toolName,
         responseSize: rawOutput.length,
         processingTime,
-        dataPoints: this.estimateDataPoints(data)
-      }
+        dataPoints: this.estimateDataPoints(data),
+      },
     };
   }
 
@@ -370,9 +373,7 @@ ${truncatedOutput.length < rawOutput.length ?
     // Use the best boundary we can find
     const cutPoint = Math.max(lastNewline, lastBrace, lastBracket);
 
-    return cutPoint > maxLength * 0.8 ?
-      output.substring(0, cutPoint) :
-      truncated;
+    return cutPoint > maxLength * 0.8 ? output.substring(0, cutPoint) : truncated;
   }
 
   /**

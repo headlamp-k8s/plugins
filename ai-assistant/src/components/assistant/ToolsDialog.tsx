@@ -16,7 +16,7 @@ import {
   Switch,
   Typography,
 } from '@mui/material';
-import React, { useEffect,useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import tools from '../../ai/mcp/electron-client';
 import { AVAILABLE_TOOLS } from '../../langchain/tools/registry';
 
@@ -69,10 +69,8 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   };
 
   const handleToggleTool = (toolName: string) => {
-    setLocalEnabledTools(prev => 
-      prev.includes(toolName)
-        ? prev.filter(name => name !== toolName)
-        : [...prev, toolName]
+    setLocalEnabledTools(prev =>
+      prev.includes(toolName) ? prev.filter(name => name !== toolName) : [...prev, toolName]
     );
   };
 
@@ -106,7 +104,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
           External Model Context Protocol tools (always enabled)
         </Typography>
       </Box>
-      
+
       {loadingMcpTools ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
           <CircularProgress size={24} />
@@ -119,29 +117,24 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
           {mcpTools.length > 0 ? (
             mcpTools.map((tool, index) => (
               <ListItem key={`mcp-${index}`}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  minWidth: 40,
-                  justifyContent: 'center'
-                }}>
-                  <Icon 
-                    icon={getToolIcon(tool.name, 'mcp')} 
-                    style={{ fontSize: 20, marginRight: 8 }} 
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    minWidth: 40,
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon
+                    icon={getToolIcon(tool.name, 'mcp')}
+                    style={{ fontSize: 20, marginRight: 8 }}
                   />
                 </Box>
                 <ListItemText
                   primary={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body1">
-                        {tool.name}
-                      </Typography>
-                      <Chip 
-                        label="MCP" 
-                        size="small" 
-                        color="info"
-                        variant="outlined"
-                      />
+                      <Typography variant="body1">{tool.name}</Typography>
+                      <Chip label="MCP" size="small" color="info" variant="outlined" />
                     </Box>
                   }
                   secondary={tool.description || 'External MCP tool'}
@@ -195,7 +188,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
           </Typography>
         )}
       </Box>
-      
+
       <List>
         {tools.map(ToolClass => {
           const tempTool = new ToolClass();
@@ -205,10 +198,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
           return (
             <ListItem key={toolName} divider>
               <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                <Icon 
-                  icon={getToolIcon(toolName)} 
-                  style={{ fontSize: 20, marginRight: 8 }} 
-                />
+                <Icon icon={getToolIcon(toolName)} style={{ fontSize: 20, marginRight: 8 }} />
               </Box>
               <ListItemText
                 primary={
@@ -217,11 +207,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
                       {tempTool.config.displayName || toolName}
                     </Typography>
                     {tempTool.config.category && (
-                      <Chip 
-                        label={tempTool.config.category} 
-                        size="small" 
-                        variant="outlined"
-                      />
+                      <Chip label={tempTool.config.category} size="small" variant="outlined" />
                     )}
                   </Box>
                 }
@@ -243,67 +229,57 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   );
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={handleCancel}
       maxWidth="md"
       fullWidth
       PaperProps={{
-        sx: { height: '80vh' }
+        sx: { height: '80vh' },
       }}
     >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Icon icon="mdi:tools" style={{ fontSize: 24 }} />
-          <Typography variant="h6">
-            Manage Tools
-          </Typography>
-          <Chip 
-            label={`${localEnabledTools.length} enabled`} 
-            size="small" 
-            color="primary"
-          />
+          <Typography variant="h6">Manage Tools</Typography>
+          <Chip label={`${localEnabledTools.length} enabled`} size="small" color="primary" />
         </Box>
       </DialogTitle>
-      
+
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Enable or disable tools that the AI can use. Changes will take effect immediately and will be saved to your settings.
+          Enable or disable tools that the AI can use. Changes will take effect immediately and will
+          be saved to your settings.
         </Typography>
 
         {/* Kubernetes Tools */}
         {kubernetesTools.length > 0 && (
           <>
             {renderToolList(
-              kubernetesTools, 
-              "Kubernetes Tools", 
-              "Tools for interacting with Kubernetes clusters"
+              kubernetesTools,
+              'Kubernetes Tools',
+              'Tools for interacting with Kubernetes clusters'
             )}
             <Divider sx={{ my: 3 }} />
           </>
         )}
 
         {/* Other Tools */}
-        {otherTools.length > 0 && (
+        {otherTools.length > 0 &&
           renderToolList(
-            otherTools, 
-            "System Tools", 
-            "General purpose tools for various operations"
-          )
-        )}
+            otherTools,
+            'System Tools',
+            'General purpose tools for various operations'
+          )}
 
         {/* MCP Tools */}
         {renderMcpToolList()}
-        
-        {(kubernetesTools.length > 0 || otherTools.length > 0) && (
-          <Divider sx={{ my: 3 }} />
-        )}
+
+        {(kubernetesTools.length > 0 || otherTools.length > 0) && <Divider sx={{ my: 3 }} />}
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={handleCancel}>
-          Cancel
-        </Button>
+        <Button onClick={handleCancel}>Cancel</Button>
         <Button onClick={handleSave} variant="contained">
           Save Changes
         </Button>
