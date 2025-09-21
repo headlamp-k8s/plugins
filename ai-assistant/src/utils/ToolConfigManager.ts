@@ -52,3 +52,19 @@ export function getEnabledToolIds(pluginSettings: any): string[] {
   const allTools = getAllAvailableTools();
   return allTools.map(tool => tool.id).filter(toolId => isToolEnabled(pluginSettings, toolId));
 }
+
+// Sets the enabled tools list in plugin settings
+export function setEnabledTools(pluginSettings: any, enabledToolIds: string[]): any {
+  const enabledTools: Record<string, boolean> = {};
+  
+  // Get all available tools and set their enabled state
+  const allTools = getAllAvailableTools();
+  allTools.forEach(tool => {
+    enabledTools[tool.id] = enabledToolIds.includes(tool.id);
+  });
+
+  return {
+    ...pluginSettings,
+    enabledTools,
+  };
+}
