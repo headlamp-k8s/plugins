@@ -40,7 +40,7 @@ export default class LangChainManager extends AIManager {
       'AI Assistant: Initializing with enabled tools:',
       enabledToolIds || 'all tools enabled'
     );
-    this.toolManager = new ToolManager(enabledToolIds); // Only enabled tools
+    this.toolManager = new ToolManager({ enabledToolIds }); // Only enabled tools
     this.model = this.createModel(providerId, config);
 
     // Initialize prompt template and output parser
