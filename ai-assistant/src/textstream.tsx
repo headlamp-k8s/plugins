@@ -240,7 +240,8 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       const isJsonSuccess = prompt.success;
 
       if (prompt.content === '' && prompt.role === 'user') return null;
-      if (prompt.content === '' && prompt.role === 'assistant' && !prompt.toolConfirmation) return null;
+      if (prompt.content === '' && prompt.role === 'assistant' && !prompt.toolConfirmation)
+        return null;
       return (
         <Box
           ref={history.length === index + 1 ? lastMessageRef : null}
@@ -282,29 +283,34 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
           <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
             {prompt.role === 'user' ? 'You' : 'AI Assistant'}
           </Typography>
-          <Box sx={{ 
-            whiteSpace: 'pre-wrap',
-            maxWidth: '100%',
-            minWidth: 0,
-            width: '100%', // Ensure full width usage
-            overflowWrap: 'break-word',
-            wordWrap: 'break-word',
-            wordBreak: 'break-word',
-            overflowX: 'auto', // Add horizontal scroll as fallback
-            overflowY: 'visible', // Allow vertical expansion
-          }}>
+          <Box
+            sx={{
+              whiteSpace: 'pre-wrap',
+              maxWidth: '100%',
+              minWidth: 0,
+              width: '100%', // Ensure full width usage
+              overflowWrap: 'break-word',
+              wordWrap: 'break-word',
+              wordBreak: 'break-word',
+              overflowX: 'auto', // Add horizontal scroll as fallback
+              overflowY: 'visible', // Allow vertical expansion
+            }}
+          >
             {prompt.role === 'user' ? (
               prompt.content
             ) : (
               <>
                 {isContentFilterError || hasError ? (
-                  <Alert severity="error" sx={{ 
-                    mb: 1, 
-                    overflowWrap: 'anywhere',
-                    overflowX: 'auto',
-                    maxWidth: '100%',
-                    wordBreak: 'break-word'
-                  }}>
+                  <Alert
+                    severity="error"
+                    sx={{
+                      mb: 1,
+                      overflowWrap: 'anywhere',
+                      overflowX: 'auto',
+                      maxWidth: '100%',
+                      wordBreak: 'break-word',
+                    }}
+                  >
                     {prompt.content}
                     {isContentFilterError && (
                       <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
@@ -343,13 +349,15 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   );
 
   return (
-    <Box sx={{ 
-      position: 'relative', 
-      height: '100%',
-      maxWidth: '100%',
-      minWidth: 0,
-      overflow: 'hidden',
-    }}>
+    <Box
+      sx={{
+        position: 'relative',
+        height: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflow: 'hidden',
+      }}
+    >
       <Box
         ref={containerRef}
         onScroll={handleScroll}

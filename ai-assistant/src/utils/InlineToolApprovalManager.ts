@@ -35,41 +35,35 @@ export class InlineToolApprovalManager extends EventEmitter {
    */
   private extractUserContext(aiManager: any): UserContext {
     const userContext: UserContext = {
-      timeContext: new Date()
+      timeContext: new Date(),
     };
 
     try {
       // Extract user message from history
       const history = aiManager.history || [];
-      const lastUserMessage = history
-        .filter((msg: any) => msg.role === 'user')
-        .pop();
+      const lastUserMessage = history.filter((msg: any) => msg.role === 'user').pop();
 
       if (lastUserMessage) {
         userContext.userMessage = lastUserMessage.content;
       }
 
       // Extract conversation history (last 5 messages for context)
-      userContext.conversationHistory = history
-        .slice(-5)
-        .map((msg: any) => ({
-          role: msg.role,
-          content: msg.content
-        }));
+      userContext.conversationHistory = history.slice(-5).map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
 
       // Extract kubernetes context if available
       if (aiManager.toolManager?.kubernetesContext) {
         userContext.kubernetesContext = {
           selectedClusters: aiManager.toolManager.kubernetesContext.selectedClusters,
           namespace: aiManager.toolManager.kubernetesContext.namespace,
-          currentResource: aiManager.toolManager.kubernetesContext.currentResource
+          currentResource: aiManager.toolManager.kubernetesContext.currentResource,
         };
       }
 
       // Extract last tool results
-      const lastToolResults = history
-        .filter((msg: any) => msg.role === 'tool')
-        .slice(-3);
+      const lastToolResults = history.filter((msg: any) => msg.role === 'tool').slice(-3);
 
       if (lastToolResults.length > 0) {
         userContext.lastToolResults = {};
@@ -82,7 +76,6 @@ export class InlineToolApprovalManager extends EventEmitter {
           }
         });
       }
-
     } catch (error) {
       console.warn('Failed to extract user context:', error);
     }
@@ -132,12 +125,12 @@ export class InlineToolApprovalManager extends EventEmitter {
       const handleApprove = (approvedToolIds: string[]) => {
         // Combine auto-approved and manually approved tools
         const allApprovedIds = [...autoApprovedTools, ...approvedToolIds];
-        
+
         // Update the message to show loading state
         if (this.pendingRequest?.updateMessage) {
           this.pendingRequest.updateMessage(true);
         }
-        
+
         this.pendingRequest = null;
         resolve(allApprovedIds);
       };
@@ -158,8 +151,8 @@ export class InlineToolApprovalManager extends EventEmitter {
               onDeny: handleDeny,
               loading: loading,
               requestId: this.pendingRequest.requestId, // Include requestId
-              userContext: userContext // Include user context
-            }
+              userContext: userContext, // Include user context
+            },
           });
         }
       };
@@ -170,7 +163,7 @@ export class InlineToolApprovalManager extends EventEmitter {
         resolve: handleApprove,
         reject: handleDeny,
         aiManager,
-        updateMessage
+        updateMessage,
       };
 
       // Emit event to add the tool confirmation message to chat history
@@ -182,9 +175,9 @@ export class InlineToolApprovalManager extends EventEmitter {
           onDeny: handleDeny,
           loading: false,
           requestId: requestId, // Include requestId in the tool confirmation
-          userContext: userContext // Pass user context for intelligent argument processing
+          userContext: userContext, // Pass user context for intelligent argument processing
         },
-        aiManager
+        aiManager,
       });
     });
   }

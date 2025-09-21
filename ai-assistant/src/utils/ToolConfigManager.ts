@@ -56,7 +56,7 @@ export function getEnabledToolIds(pluginSettings: any): string[] {
 // Sets the enabled tools list in plugin settings
 export function setEnabledTools(pluginSettings: any, enabledToolIds: string[]): any {
   const enabledTools: Record<string, boolean> = {};
-  
+
   // Get all available tools and set their enabled state
   const allTools = getAllAvailableTools();
   allTools.forEach(tool => {
