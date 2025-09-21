@@ -67,7 +67,7 @@ export class ToolApprovalManager extends EventEmitter {
 
     return new Promise<string[]>((resolve, reject) => {
       const requestId = `tool-approval-${Date.now()}-${Math.random()}`;
-      
+
       this.pendingRequest = {
         requestId,
         toolCalls: needsApprovalTools,
@@ -80,7 +80,7 @@ export class ToolApprovalManager extends EventEmitter {
         reject: (error: Error) => {
           this.pendingRequest = null;
           reject(error);
-        }
+        },
       };
 
       // Emit event for UI components to listen to
@@ -169,10 +169,12 @@ export class ToolApprovalManager extends EventEmitter {
   } {
     return {
       sessionAutoApproval: this.sessionAutoApproval,
-      toolSettings: Array.from(this.autoApproveSettings.entries()).map(([toolName, autoApprove]) => ({
-        toolName,
-        autoApprove,
-      })),
+      toolSettings: Array.from(this.autoApproveSettings.entries()).map(
+        ([toolName, autoApprove]) => ({
+          toolName,
+          autoApprove,
+        })
+      ),
     };
   }
 }

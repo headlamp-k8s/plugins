@@ -1,4 +1,4 @@
-import React, { createContext, ReactNode,useContext, useState } from 'react';
+import React, { createContext, ReactNode, useContext, useState } from 'react';
 
 interface PromptWidthContextType {
   promptWidth: string;
@@ -12,9 +12,9 @@ interface PromptWidthProviderProps {
   initialWidth?: string;
 }
 
-export const PromptWidthProvider: React.FC<PromptWidthProviderProps> = ({ 
-  children, 
-  initialWidth = '400px'
+export const PromptWidthProvider: React.FC<PromptWidthProviderProps> = ({
+  children,
+  initialWidth = '400px',
 }) => {
   const [promptWidth, setPromptWidth] = useState<string>(initialWidth);
 

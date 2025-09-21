@@ -58,12 +58,20 @@ export default class LangChainManager extends AIManager {
       // Add the tool confirmation message to chat history
       console.log('🔔 LangChainManager: Adding tool confirmation message to history', data);
       this.addToolConfirmationMessage('', data.toolConfirmation);
-      console.log('📝 LangChainManager: History length after adding confirmation:', this.history.length);
+      console.log(
+        '📝 LangChainManager: History length after adding confirmation:',
+        this.history.length
+      );
     });
 
     inlineToolApprovalManager.on('update-confirmation', (data: any) => {
       // Update the specific tool confirmation message with new state (e.g., loading)
-      console.log('🔄 Tool confirmation update:', data.requestId, 'loading:', data.toolConfirmation.loading);
+      console.log(
+        '🔄 Tool confirmation update:',
+        data.requestId,
+        'loading:',
+        data.toolConfirmation.loading
+      );
       this.updateToolConfirmationMessage(data.requestId, data.toolConfirmation);
     });
   }
@@ -250,7 +258,11 @@ export default class LangChainManager extends AIManager {
 
     // Get all tools (including MCP tools)
     const allTools = this.toolManager.getLangChainTools();
-    console.log(`🔧 Total tools available: ${allTools.length} (Regular: ${tools.length}, MCP: ${this.toolManager.getMCPTools().length})`);
+    console.log(
+      `🔧 Total tools available: ${allTools.length} (Regular: ${tools.length}, MCP: ${
+        this.toolManager.getMCPTools().length
+      })`
+    );
 
     // Bind all tools to the model for compatible providers (OpenAI, Azure, etc.)
     this.boundModel = this.toolManager.bindToModel(this.model, this.providerId);
@@ -264,7 +276,7 @@ export default class LangChainManager extends AIManager {
     console.log('🔧 Tools configured:', {
       boundModel: !!this.boundModel,
       directToolCalling: this.useDirectToolCalling,
-      toolCount: allTools.length
+      toolCount: allTools.length,
     });
   }
 
@@ -281,27 +293,24 @@ export default class LangChainManager extends AIManager {
    */
   private buildUserContext(): UserContext {
     // Get the most recent user message
-    const recentUserMessages = this.history
-      .filter(prompt => prompt.role === 'user')
-      .slice(-3); // Last 3 user messages for context
+    const recentUserMessages = this.history.filter(prompt => prompt.role === 'user').slice(-3); // Last 3 user messages for context
 
-    const userMessage = recentUserMessages.length > 0
-      ? recentUserMessages[recentUserMessages.length - 1].content
-      : '';
+    const userMessage =
+      recentUserMessages.length > 0
+        ? recentUserMessages[recentUserMessages.length - 1].content
+        : '';
 
     // Build conversation history
     const conversationHistory = this.history
       .slice(-10) // Last 10 messages
       .map(prompt => ({
         role: prompt.role,
-        content: prompt.content
+        content: prompt.content,
       }));
 
     // Get recent tool results
     const lastToolResults: Record<string, any> = {};
-    const recentToolResponses = this.history
-      .filter(prompt => prompt.role === 'tool')
-      .slice(-5); // Last 5 tool responses
+    const recentToolResponses = this.history.filter(prompt => prompt.role === 'tool').slice(-5); // Last 5 tool responses
 
     recentToolResponses.forEach(response => {
       if (response.name) {
@@ -318,7 +327,7 @@ export default class LangChainManager extends AIManager {
       userMessage,
       conversationHistory,
       lastToolResults,
-      timeContext: new Date()
+      timeContext: new Date(),
     };
   }
 
@@ -351,18 +360,29 @@ export default class LangChainManager extends AIManager {
   /**
    * Add a tool confirmation message to the history
    */
-  public addToolConfirmationMessage(content: string, toolConfirmation: any, updateHistoryCallback?: () => void): void {
-    console.log('➕ LangChainManager: Adding tool confirmation message', { content, toolConfirmation });
+  public addToolConfirmationMessage(
+    content: string,
+    toolConfirmation: any,
+    updateHistoryCallback?: () => void
+  ): void {
+    console.log('➕ LangChainManager: Adding tool confirmation message', {
+      content,
+      toolConfirmation,
+    });
     const confirmationPrompt: Prompt = {
       role: 'assistant',
       content: content,
       toolConfirmation: toolConfirmation,
       isDisplayOnly: true, // Don't send to LLM
-      requestId: toolConfirmation.requestId // Add requestId for tracking
+      requestId: toolConfirmation.requestId, // Add requestId for tracking
     };
     this.history.push(confirmationPrompt);
-    console.log('📚 LangChainManager: History after adding confirmation:', this.history.length, 'items');
-    
+    console.log(
+      '📚 LangChainManager: History after adding confirmation:',
+      this.history.length,
+      'items'
+    );
+
     // Call the update callback if provided to trigger UI re-render
     if (updateHistoryCallback) {
       updateHistoryCallback();
@@ -370,21 +390,24 @@ export default class LangChainManager extends AIManager {
   }
 
   public updateToolConfirmationMessage(requestId: string, updatedToolConfirmation: any): void {
-    console.log('🔄 LangChainManager: Updating tool confirmation message', { requestId, updatedToolConfirmation });
-    
+    console.log('🔄 LangChainManager: Updating tool confirmation message', {
+      requestId,
+      updatedToolConfirmation,
+    });
+
     // Find the message with matching requestId
     const messageIndex = this.history.findIndex(
       prompt => prompt.requestId === requestId && prompt.toolConfirmation
     );
-    
+
     if (messageIndex !== -1) {
       // Update the tool confirmation in the existing message
       this.history[messageIndex] = {
         ...this.history[messageIndex],
-        toolConfirmation: updatedToolConfirmation
+        toolConfirmation: updatedToolConfirmation,
       };
       console.log('✅ LangChainManager: Tool confirmation message updated');
-      
+
       // Use the inline tool approval manager to emit update event
       inlineToolApprovalManager.emit('message-updated', { requestId, updatedToolConfirmation });
     } else {
@@ -404,7 +427,7 @@ export default class LangChainManager extends AIManager {
   // Helper method to create system prompt with context
   private createSystemPrompt(): string {
     let systemPromptContent = basePrompt;
-    
+
     // Add MCP tool guidance if we have MCP tools available
     const mcpTools = this.toolManager.getMCPTools();
     if (mcpTools.length > 0) {
@@ -454,7 +477,7 @@ EXAMPLE result processing:
 
 NEVER just dump raw JSON - always interpret and present meaningfully.`;
     }
-    
+
     if (this.currentContext) {
       systemPromptContent += `\n\nCURRENT CONTEXT:\n${this.currentContext}`;
     }
@@ -464,7 +487,7 @@ NEVER just dump raw JSON - always interpret and present meaningfully.`;
   // Helper method to create system prompt specifically for tool response processing
   private createToolResponseSystemPrompt(): string {
     const baseSystemPrompt = this.createSystemPrompt();
-    
+
     // Add specific instructions for tool response processing
     const toolResponseInstructions = `
 
@@ -533,9 +556,9 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
   private async handleDirectToolCallingRequest(message: string): Promise<Prompt> {
     try {
       console.log('🔧 Using direct tool calling for request:', message);
-      
+
       const modelToUse = this.boundModel || this.model;
-      
+
       // Prepare input for the model with tools
       const chainInput = {
         systemPrompt: this.createSystemPrompt(),
@@ -571,14 +594,13 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
         this.history.push(assistantPrompt);
         return assistantPrompt;
       }
-      
     } catch (error) {
       console.error('Error in direct tool calling request:', error);
-      
+
       // If direct tool calling fails, fall back to regular approach
       console.log('🔄 Falling back to chain-based approach');
       this.useDirectToolCalling = false;
-      
+
       const modelToUse = this.boundModel || this.model;
       return await this.handleChainBasedRequest(message, modelToUse);
     }
@@ -720,47 +742,49 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
     this.history.push(assistantPrompt);
 
     // Prepare tool calls for approval with intelligent argument processing
-    const toolCallsForApproval: ToolCall[] = await Promise.all(toolCalls.map(async tc => {
-      const toolName = tc.function.name;
-      const mcpTools = this.toolManager.getMCPTools();
-      const isMCPTool = mcpTools.some(tool => tool.name === toolName);
-      let processedArguments = JSON.parse(tc.function.arguments);
+    const toolCallsForApproval: ToolCall[] = await Promise.all(
+      toolCalls.map(async tc => {
+        const toolName = tc.function.name;
+        const mcpTools = this.toolManager.getMCPTools();
+        const isMCPTool = mcpTools.some(tool => tool.name === toolName);
+        let processedArguments = JSON.parse(tc.function.arguments);
 
-      // Use AI to enhance arguments for MCP tools
-      if (isMCPTool) {
-        try {
-          const toolSchema = await MCPArgumentProcessor.getToolSchema(toolName);
-          if (toolSchema) {
-            // Build user context from current conversation
-            const userContext = this.buildUserContext();
+        // Use AI to enhance arguments for MCP tools
+        if (isMCPTool) {
+          try {
+            const toolSchema = await MCPArgumentProcessor.getToolSchema(toolName);
+            if (toolSchema) {
+              // Build user context from current conversation
+              const userContext = this.buildUserContext();
 
-            // Use AI to intelligently prepare arguments
-            processedArguments = await this.enhanceArgumentsWithAI(
-              toolName,
-              toolSchema,
-              userContext,
-              processedArguments
-            );
+              // Use AI to intelligently prepare arguments
+              processedArguments = await this.enhanceArgumentsWithAI(
+                toolName,
+                toolSchema,
+                userContext,
+                processedArguments
+              );
 
-            console.log(`🧠 AI-enhanced arguments for ${toolName}:`, {
-              original: JSON.parse(tc.function.arguments),
-              enhanced: processedArguments
-            });
+              console.log(`🧠 AI-enhanced arguments for ${toolName}:`, {
+                original: JSON.parse(tc.function.arguments),
+                enhanced: processedArguments,
+              });
+            }
+          } catch (error) {
+            console.warn(`Failed to enhance arguments for ${toolName}:`, error);
+            // Fall back to original arguments
           }
-        } catch (error) {
-          console.warn(`Failed to enhance arguments for ${toolName}:`, error);
-          // Fall back to original arguments
         }
-      }
 
-      return {
-        id: tc.id,
-        name: toolName,
-        description: this.getToolDescription(toolName, isMCPTool),
-        arguments: processedArguments,
-        type: isMCPTool ? 'mcp' : 'regular'
-      };
-    }));
+        return {
+          id: tc.id,
+          name: toolName,
+          description: this.getToolDescription(toolName, isMCPTool),
+          arguments: processedArguments,
+          type: isMCPTool ? 'mcp' : 'regular',
+        };
+      })
+    );
 
     try {
       // Request approval for tool execution using inline approval system
@@ -769,24 +793,26 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
         toolCallsForApproval,
         this // Pass the AI manager instance
       );
-      
+
       console.log('✅ Tools approved:', approvedToolIds.length, 'of', toolCallsForApproval.length);
 
       // Filter tool calls to only execute approved ones and update with processed arguments
-      const approvedToolCalls = toolCalls.filter(tc => approvedToolIds.includes(tc.id)).map(tc => {
-        // Find the processed arguments from the approval data
-        const approvalData = toolCallsForApproval.find(approval => approval.id === tc.id);
-        if (approvalData) {
-          return {
-            ...tc,
-            function: {
-              ...tc.function,
-              arguments: JSON.stringify(approvalData.arguments)
-            }
-          };
-        }
-        return tc;
-      });
+      const approvedToolCalls = toolCalls
+        .filter(tc => approvedToolIds.includes(tc.id))
+        .map(tc => {
+          // Find the processed arguments from the approval data
+          const approvalData = toolCallsForApproval.find(approval => approval.id === tc.id);
+          if (approvalData) {
+            return {
+              ...tc,
+              function: {
+                ...tc.function,
+                arguments: JSON.stringify(approvalData.arguments),
+              },
+            };
+          }
+          return tc;
+        });
       const deniedToolCalls = toolCalls.filter(tc => !approvedToolIds.includes(tc.id));
 
       // Add denied tool responses to history
@@ -796,7 +822,7 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
           content: JSON.stringify({
             error: true,
             message: 'Tool execution denied by user',
-            userFriendlyMessage: `The execution of ${deniedTool.function.name} was denied by the user.`
+            userFriendlyMessage: `The execution of ${deniedTool.function.name} was denied by the user.`,
           }),
           toolCallId: deniedTool.id,
           name: deniedTool.function.name,
@@ -807,10 +833,9 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
       if (approvedToolCalls.length > 0) {
         await this.processToolCalls(approvedToolCalls, assistantPrompt);
       }
-
     } catch (error) {
       console.log('❌ Tool approval denied or failed:', error.message);
-      
+
       // Add denial responses for all tools
       for (const toolCall of toolCalls) {
         this.history.push({
@@ -818,7 +843,9 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
           content: JSON.stringify({
             error: true,
             message: error.message || 'Tool execution denied',
-            userFriendlyMessage: `Tool execution was denied: ${error.message || 'User chose not to proceed'}`
+            userFriendlyMessage: `Tool execution was denied: ${
+              error.message || 'User chose not to proceed'
+            }`,
           }),
           toolCallId: toolCall.id,
           name: toolCall.function.name,
@@ -1369,14 +1396,17 @@ Format your response to make the errors prominent and actionable.`,
 
     // If the model returned empty content but has tool calls (depth limit reached),
     // provide a fallback response based on the tool results instead of looping
-    if ((!extractedContent || extractedContent.trim().length === 0) && correctedResponse.tool_calls?.length > 0) {
+    if (
+      (!extractedContent || extractedContent.trim().length === 0) &&
+      correctedResponse.tool_calls?.length > 0
+    ) {
       // Get the most recent tool responses from history
       const recentToolResponses = this.history
         .filter(prompt => prompt.role === 'tool' && prompt.toolCallId)
         .slice(-3) // Get last 3 tool responses
         .map(response => ({
           name: response.name,
-          content: response.content
+          content: response.content,
         }));
 
       // Create a fallback response based on tool results
@@ -1437,7 +1467,9 @@ Format your response to make the errors prominent and actionable.`,
           fallbackContent = content;
         } else {
           // For multiple tools, use the tool name format
-          fallbackContent += `${toolName}: ${content}${index < recentToolResponses.length - 1 ? '\n\n' : ''}`;
+          fallbackContent += `${toolName}: ${content}${
+            index < recentToolResponses.length - 1 ? '\n\n' : ''
+          }`;
         }
       });
 
@@ -1470,7 +1502,6 @@ Format your response to make the errors prominent and actionable.`,
           },
         })) || [],
     };
-
 
     // Clean up history to prevent message order issues
     const lastAssistantWithToolsIndex = this.findLastAssistantWithTools();
@@ -1625,7 +1656,10 @@ Format your response to make the errors prominent and actionable.`,
       const isRequired = required.includes(fieldName);
       const currentValue = enhanced[fieldName];
 
-      if (isRequired && (currentValue === undefined || currentValue === null || currentValue === '')) {
+      if (
+        isRequired &&
+        (currentValue === undefined || currentValue === null || currentValue === '')
+      ) {
         // Provide intelligent defaults based on field type and context
         enhanced[fieldName] = this.getIntelligentDefault(fieldName, fieldSchema, userContext);
       }
@@ -1637,7 +1671,11 @@ Format your response to make the errors prominent and actionable.`,
   /**
    * Get intelligent default value for a field based on context
    */
-  private getIntelligentDefault(fieldName: string, fieldSchema: any, userContext: UserContext): any {
+  private getIntelligentDefault(
+    fieldName: string,
+    fieldSchema: any,
+    userContext: UserContext
+  ): any {
     const fieldType = fieldSchema.type;
     const fieldNameLower = fieldName.toLowerCase();
 
