@@ -83,8 +83,6 @@ export class ToolManager {
                 schema: toolData.inputSchema,
                 func: async (args: any) => {
                   try {
-                    // Handle argument mapping for MCP tools
-                    // LangChain may wrap args in different formats, need to handle properly
                     const mappedArgs = this.mapMCPToolArguments(args, toolData.inputSchema);
 
                     console.log(
@@ -100,19 +98,16 @@ export class ToolManager {
                       JSON.stringify(mappedArgs)
                     );
 
-                    // Execute MCP tool through Electron API
                     const result = await window.desktopApi?.mcp.executeTool(
                       toolData.name,
                       mappedArgs
                     );
                     console.log(`MCP tool ${toolData.name} returned result:`, result);
 
-                    // Extract actual result from MCP response
                     const actualResult = result?.result || result;
                     console.log(`MCP tool ${toolData.name} actual result:`, actualResult);
                     console.log(`MCP tool ${toolData.name} result type:`, typeof actualResult);
 
-                    // Ensure we return a string response
                     const response =
                       typeof actualResult === 'string'
                         ? actualResult

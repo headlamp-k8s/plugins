@@ -1,8 +1,9 @@
 import { Icon } from '@iconify/react';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Alert, Box, Button, FormControlLabel, Switch, TextField, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { Box, Button, FormControlLabel, Switch, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
 import { pluginStore } from '../../utils';
+import MCPConfigEditorDialog from './MCPConfigEditorDialog';
 
 // Helper function to check if running in Electron
 const isElectron = (): boolean => {
@@ -17,6 +18,7 @@ export interface MCPServer {
   name: string;
   command: string;
   args: string[];
+  env?: Record<string, string>;
   enabled: boolean;
 }
 
@@ -38,8 +40,7 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
     }
   );
 
-  const [jsonConfig, setJsonConfig] = useState('');
-  const [jsonError, setJsonError] = useState('');
+  const [editorDialogOpen, setEditorDialogOpen] = useState(false);
 
   useEffect(() => {
     // Load MCP config from Electron if available
@@ -53,11 +54,6 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
       }
     }
   }, []);
-
-  // Update JSON config when mcpConfig changes
-  useEffect(() => {
-    setJsonConfig(JSON.stringify(mcpConfig, null, 2));
-  }, [mcpConfig]);
 
   const loadMCPConfigFromElectron = async () => {
     if (!isElectron()) return;
@@ -145,7 +141,7 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
           args: [
             '-y',
             '@danielsuguimoto/readonly-server-filesystem',
-            'C:\\Users\\' + (process.env.USERNAME || 'username') + '\\Desktop',
+            'C:\\Users\\username\\Desktop',
           ],
           enabled: true,
         },
@@ -157,51 +153,12 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
     await handleConfigChange(newConfig);
   };
 
-  const handleJsonConfigChange = (value: string) => {
-    setJsonConfig(value);
-    setJsonError('');
+  const handleOpenEditorDialog = () => {
+    setEditorDialogOpen(true);
   };
 
-  const validateAndApplyJsonConfig = () => {
-    try {
-      const parsedConfig = JSON.parse(jsonConfig) as MCPConfig;
-
-      // Validate the structure
-      if (typeof parsedConfig.enabled !== 'boolean') {
-        throw new Error('enabled field must be a boolean');
-      }
-
-      if (!Array.isArray(parsedConfig.servers)) {
-        throw new Error('servers field must be an array');
-      }
-
-      // Validate each server
-      parsedConfig.servers.forEach((server, index) => {
-        if (typeof server.name !== 'string') {
-          throw new Error(`Server ${index}: name must be a string`);
-        }
-        if (typeof server.command !== 'string') {
-          throw new Error(`Server ${index}: command must be a string`);
-        }
-        if (!Array.isArray(server.args)) {
-          throw new Error(`Server ${index}: args must be an array`);
-        }
-        if (typeof server.enabled !== 'boolean') {
-          throw new Error(`Server ${index}: enabled must be a boolean`);
-        }
-      });
-
-      // Apply the config
-      handleConfigChange(parsedConfig);
-      setJsonError('');
-    } catch (error) {
-      setJsonError(error instanceof Error ? error.message : 'Invalid JSON configuration');
-    }
-  };
-
-  const resetJsonToCurrentConfig = () => {
-    setJsonConfig(JSON.stringify(mcpConfig, null, 2));
-    setJsonError('');
+  const handleCloseEditorDialog = () => {
+    setEditorDialogOpen(false);
   };
 
   const getExampleConfig = (): MCPConfig => {
@@ -239,10 +196,8 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
     };
   };
 
-  const loadExampleConfig = () => {
-    const exampleConfig = getExampleConfig();
-    setJsonConfig(JSON.stringify(exampleConfig, null, 2));
-    setJsonError('');
+  const handleSaveConfig = (newConfig: MCPConfig) => {
+    handleConfigChange(newConfig);
   };
 
   // Only show MCP settings in Electron
@@ -272,63 +227,15 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
 
       {mcpConfig.enabled && (
         <>
-          {/* JSON Configuration */}
+          {/* Configuration Summary */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
-              JSON Configuration Editor
+              Server Configuration
             </Typography>
             <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-              Edit your MCP servers configuration as JSON. This allows you to easily add, remove,
-              and modify multiple servers at once.
+              You have {mcpConfig.servers.length} server(s) configured.
+              {mcpConfig.servers.filter(s => s.enabled).length} server(s) are currently enabled.
             </Typography>
-
-            {jsonError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {jsonError}
-              </Alert>
-            )}
-
-            <TextField
-              label="MCP Configuration JSON"
-              value={jsonConfig}
-              onChange={e => handleJsonConfigChange(e.target.value)}
-              multiline
-              rows={15}
-              fullWidth
-              variant="outlined"
-              sx={{
-                mb: 2,
-                '& .MuiInputBase-input': {
-                  fontFamily: 'monospace',
-                  fontSize: '0.875rem',
-                },
-              }}
-              helperText="Edit the JSON configuration above. Make sure to keep the proper structure."
-            />
-
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-              <Button
-                variant="contained"
-                onClick={validateAndApplyJsonConfig}
-                startIcon={<Icon icon="mdi:check" />}
-              >
-                Apply Configuration
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={resetJsonToCurrentConfig}
-                startIcon={<Icon icon="mdi:refresh" />}
-              >
-                Reset to Current
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={loadExampleConfig}
-                startIcon={<Icon icon="mdi:file-document" />}
-              >
-                Load Example
-              </Button>
-            </Box>
 
             {/* Schema Documentation */}
             <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, mb: 3 }}>
@@ -356,9 +263,51 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
                 )}
               </Typography>
             </Box>
+
+            <Button
+              variant="contained"
+              onClick={handleOpenEditorDialog}
+              startIcon={<Icon icon="mdi:pencil" />}
+            >
+              Edit Configuration
+            </Button>
           </Box>
+
+          {/* Server List Summary */}
+          {mcpConfig.servers.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Configured Servers:
+              </Typography>
+              <Box component="ul" sx={{ pl: 2 }}>
+                {mcpConfig.servers.map((server, index) => (
+                  <li key={index}>
+                    <Typography variant="body2">
+                      <strong>{server.name}</strong> ({server.command}) -
+                      <span style={{ color: server.enabled ? 'green' : 'red', marginLeft: '8px' }}>
+                        {server.enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                      {server.env && (
+                        <span style={{ marginLeft: '8px', fontStyle: 'italic' }}>
+                          (with env variables)
+                        </span>
+                      )}
+                    </Typography>
+                  </li>
+                ))}
+              </Box>
+            </Box>
+          )}
         </>
       )}
+
+      {/* Editor Dialog */}
+      <MCPConfigEditorDialog
+        open={editorDialogOpen}
+        onClose={handleCloseEditorDialog}
+        config={mcpConfig}
+        onSave={handleSaveConfig}
+      />
     </SectionBox>
   );
 }
