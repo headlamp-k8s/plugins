@@ -92,6 +92,7 @@ class ElectronMCPClient {
     }
 
     try {
+      console.debug('args for tool executed is ', args);
       const response = await getDesktopMCPApi()!.executeTool(toolName, args, toolCallId);
 
       if (response.success) {

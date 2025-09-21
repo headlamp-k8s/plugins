@@ -161,41 +161,6 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
     setEditorDialogOpen(false);
   };
 
-  const getExampleConfig = (): MCPConfig => {
-    return {
-      enabled: true,
-      servers: [
-        {
-          name: 'inspektor-gadget',
-          command: 'docker',
-          args: [
-            'run',
-            '-i',
-            '--rm',
-            '--mount',
-            'type=bind,src=%USERPROFILE%\\.kube\\config,dst=/root/.kube/config,readonly',
-            '--mount',
-            'type=bind,src=%USERPROFILE%\\.minikube,dst=/root/.minikube,readonly',
-            'ghcr.io/inspektor-gadget/ig-mcp-server:latest',
-            '-gadget-discoverer=artifacthub',
-          ],
-          enabled: false,
-        },
-        {
-          name: 'filesystem',
-          command: 'npx',
-          args: [
-            '-y',
-            '@danielsuguimoto/readonly-server-filesystem',
-            'C:\\Users\\username\\Desktop',
-            'C:\\Users\\username\\Documents',
-          ],
-          enabled: true,
-        },
-      ],
-    };
-  };
-
   const handleSaveConfig = (newConfig: MCPConfig) => {
     handleConfigChange(newConfig);
   };

@@ -1629,12 +1629,12 @@ export default function AIPrompt(props: {
               }}
               onTestModeResponse={handleTestModeResponse}
               onToggleAgentMode={handleToggleAgentMode}
-              //TODO: onToolsChange does not exist anymore?
-              // onToolsChange={(newEnabledTools) => {
-              //   setEnabledTools(newEnabledTools);
-              //   // Recreate AI manager with new tools
-              //   handleChangeConfig(activeConfig, selectedModel);
-              // }}
+              enabledTools={enabledTools}
+              onToolsChange={newEnabledTools => {
+                setEnabledTools(newEnabledTools);
+                // Recreate AI manager with new tools
+                handleChangeConfig(activeConfig, selectedModel);
+              }}
             />
           </Grid>
         </Grid>
