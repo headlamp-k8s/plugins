@@ -16,7 +16,11 @@ interface MCPResponse {
 
 interface ElectronMCPApi {
   getTools: () => Promise<MCPResponse>;
-  executeTool: (toolName: string, args: Record<string, any>, toolCallId?: string) => Promise<MCPResponse>;
+  executeTool: (
+    toolName: string,
+    args: Record<string, any>,
+    toolCallId?: string
+  ) => Promise<MCPResponse>;
   getStatus: () => Promise<{ isInitialized: boolean; hasClient: boolean }>;
   resetClient: () => Promise<MCPResponse>;
 }

@@ -25,8 +25,12 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import React, { useEffect,useState } from 'react';
-import { MCPArgumentProcessor, type ProcessedArguments, type UserContext } from '../mcpOutput/MCPArgumentProcessor';
+import React, { useEffect, useState } from 'react';
+import {
+  MCPArgumentProcessor,
+  type ProcessedArguments,
+  type UserContext,
+} from '../mcpOutput/MCPArgumentProcessor';
 
 interface ToolCall {
   id: string;
@@ -54,13 +58,13 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
   userContext,
 }) => {
   const theme = useTheme();
-  const [selectedToolIds] = useState<string[]>(
-    toolCalls.map(tool => tool.id)
-  );
+  const [selectedToolIds] = useState<string[]>(toolCalls.map(tool => tool.id));
   const [showDetails, setShowDetails] = useState(!compact);
 
   // State to track processed arguments for each tool
-  const [processedArguments, setProcessedArguments] = useState<Record<string, ProcessedArguments>>({});
+  const [processedArguments, setProcessedArguments] = useState<Record<string, ProcessedArguments>>(
+    {}
+  );
   const [editedArguments, setEditedArguments] = useState<Record<string, Record<string, any>>>({});
   const [argumentsInitialized, setArgumentsInitialized] = useState(false);
 
@@ -153,12 +157,11 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
     }
   };
 
-
   const getToolIcon = (toolName: string, toolType: 'mcp' | 'regular') => {
     if (toolType === 'mcp') {
       return 'mdi:connection'; // Use connection icon for MCP tools
     }
-    
+
     if (toolName.includes('kubernetes') || toolName.includes('k8s')) {
       return 'mdi:kubernetes';
     }
@@ -184,8 +187,8 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
         ...prev,
         [toolId]: {
           ...prev[toolId],
-          [fieldName]: newValue
-        }
+          [fieldName]: newValue,
+        },
       }));
     };
 
@@ -221,9 +224,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
               </MenuItem>
             ))}
           </Select>
-          {fieldDescription && (
-            <FormHelperText>{fieldDescription}</FormHelperText>
-          )}
+          {fieldDescription && <FormHelperText>{fieldDescription}</FormHelperText>}
         </FormControl>
       );
     }
@@ -235,32 +236,39 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
           type="number"
           label={fieldName}
           value={currentValue ?? ''}
-          onChange={(e: any) => handleFieldChange(
-            fieldType === 'integer' ? parseInt(e.target.value) || 0 : parseFloat(e.target.value) || 0
-          )}
+          onChange={(e: any) =>
+            handleFieldChange(
+              fieldType === 'integer'
+                ? parseInt(e.target.value) || 0
+                : parseFloat(e.target.value) || 0
+            )
+          }
           helperText={fieldDescription}
           error={hasError}
           sx={{ minWidth: 200 }}
           inputProps={{
             min: fieldSchema?.minimum,
             max: fieldSchema?.maximum,
-            step: fieldType === 'integer' ? 1 : 'any'
+            step: fieldType === 'integer' ? 1 : 'any',
           }}
         />
       );
     }
 
     // Default to text field for strings and other types
-    const isMultiline = fieldType === 'object' || fieldType === 'array' ||
-                       (typeof currentValue === 'string' && currentValue.length > 50);
+    const isMultiline =
+      fieldType === 'object' ||
+      fieldType === 'array' ||
+      (typeof currentValue === 'string' && currentValue.length > 50);
 
     return (
       <TextField
         size="small"
         label={fieldName}
-        value={typeof currentValue === 'object'
-          ? JSON.stringify(currentValue, null, 2)
-          : String(currentValue ?? '')
+        value={
+          typeof currentValue === 'object'
+            ? JSON.stringify(currentValue, null, 2)
+            : String(currentValue ?? '')
         }
         onChange={(e: any) => {
           let newValue = e.target.value;
@@ -292,7 +300,11 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
       return Object.entries(tool.arguments).map(([key, value]) => (
         <ListItem key={key} dense sx={{ py: 0.5 }}>
           <ListItemText
-            primary={<Typography variant="caption" sx={{ fontWeight: 'bold' }}>{key}:</Typography>}
+            primary={
+              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                {key}:
+              </Typography>
+            }
             secondary={
               <Typography variant="caption" sx={{ ml: 1 }}>
                 {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
@@ -323,17 +335,17 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
               {fieldName}
             </Typography>
-            {isRequired && (
-              <Chip label="Required" size="small" color="error" variant="outlined" />
-            )}
-            {!isRequired && (
-              <Chip label="Optional" size="small" variant="outlined" />
-            )}
+            {isRequired && <Chip label="Required" size="small" color="error" variant="outlined" />}
+            {!isRequired && <Chip label="Optional" size="small" variant="outlined" />}
 
             {/* Show intelligent fill indicator */}
             {processedArgs.intelligentFills[fieldName] && (
               <Tooltip
-                title={`AI-suggested: ${processedArgs.intelligentFills[fieldName].reason} (Confidence: ${Math.round(processedArgs.intelligentFills[fieldName].confidence * 100)}%)`}
+                title={`AI-suggested: ${
+                  processedArgs.intelligentFills[fieldName].reason
+                } (Confidence: ${Math.round(
+                  processedArgs.intelligentFills[fieldName].confidence * 100
+                )}%)`}
                 placement="top"
               >
                 <Chip
@@ -366,7 +378,10 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
               <Typography variant="caption">
                 <strong>AI Analysis:</strong> {processedArgs.intelligentFills[fieldName].reason}
                 {processedArgs.intelligentFills[fieldName].confidence < 0.8 && (
-                  <> • <em>Please verify this value</em></>
+                  <>
+                    {' '}
+                    • <em>Please verify this value</em>
+                  </>
                 )}
               </Typography>
             </Alert>
@@ -408,7 +423,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
         variant="outlined"
         sx={{
           maxWidth: 600,
-          backgroundColor: theme.palette.background.paper
+          backgroundColor: theme.palette.background.paper,
         }}
       >
         <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -429,7 +444,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
         sx={{
           maxWidth: 600,
           backgroundColor: theme.palette.background.paper,
-          borderColor: theme.palette.error.main
+          borderColor: theme.palette.error.main,
         }}
       >
         <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -443,12 +458,12 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
   }
 
   return (
-    <Card 
-      variant="outlined" 
-      sx={{ 
+    <Card
+      variant="outlined"
+      sx={{
         maxWidth: 600,
         backgroundColor: theme.palette.background.paper,
-        borderColor: theme.palette.divider
+        borderColor: theme.palette.divider,
       }}
     >
       <CardContent sx={{ pb: 1 }}>
@@ -458,9 +473,9 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
           <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
             Tool Execution Required
           </Typography>
-          <Chip 
-            label={`${toolCalls.length} tool${toolCalls.length > 1 ? 's' : ''}`} 
-            size="small" 
+          <Chip
+            label={`${toolCalls.length} tool${toolCalls.length > 1 ? 's' : ''}`}
+            size="small"
             variant="outlined"
             color="primary"
           />
@@ -468,16 +483,17 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
 
         {/* Summary */}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {compact 
+          {compact
             ? `Allow execution of ${toolCalls.length} tool${toolCalls.length > 1 ? 's' : ''}?`
-            : `The following tool${toolCalls.length > 1 ? 's' : ''} need${toolCalls.length > 1 ? '' : 's'} permission to execute:`
-          }
+            : `The following tool${toolCalls.length > 1 ? 's' : ''} need${
+                toolCalls.length > 1 ? '' : 's'
+              } permission to execute:`}
         </Typography>
 
         {/* Tool summary when compact */}
         {compact && (
           <Box sx={{ mb: 2 }}>
-            {toolCalls.map((tool) => (
+            {toolCalls.map(tool => (
               <Chip
                 key={tool.id}
                 label={tool.name}
@@ -575,31 +591,45 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
                     <Chip label="MCP" size="small" color="info" variant="outlined" />
                   )}
                 </Box>
-                
+
                 {tool.description && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mb: 1 }}
+                  >
                     {tool.description}
                   </Typography>
                 )}
 
                 {(Object.keys(tool.arguments).length > 0 || tool.type === 'mcp') && (
                   <Box sx={{ ml: 2, mb: 1 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 'bold', mb: 1, display: 'block' }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ fontWeight: 'bold', mb: 1, display: 'block' }}
+                    >
                       Arguments {tool.type === 'mcp' ? '(editable):' : ':'}
                     </Typography>
                     {tool.type === 'mcp' ? (
-                      <Box sx={{ pl: 1 }}>
-                        {renderArgumentsForTool(tool, tool.id)}
-                      </Box>
+                      <Box sx={{ pl: 1 }}>{renderArgumentsForTool(tool, tool.id)}</Box>
                     ) : (
                       <List dense sx={{ pl: 1 }}>
                         {Object.entries(tool.arguments).map(([key, value]) => (
                           <ListItem key={key} dense sx={{ py: 0.5 }}>
                             <ListItemText
-                              primary={<Typography variant="caption" sx={{ fontWeight: 'bold' }}>{key}:</Typography>}
+                              primary={
+                                <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                                  {key}:
+                                </Typography>
+                              }
                               secondary={
-                                <Typography variant="caption" sx={{ ml: 1, wordBreak: 'break-word' }}>
-                                  {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                                <Typography
+                                  variant="caption"
+                                  sx={{ ml: 1, wordBreak: 'break-word' }}
+                                >
+                                  {typeof value === 'object'
+                                    ? JSON.stringify(value, null, 2)
+                                    : String(value)}
                                 </Typography>
                               }
                             />
@@ -619,8 +649,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
           <Typography variant="caption">
             {mcpTools.length > 0
               ? 'MCP tool arguments have been intelligently analyzed and pre-filled based on your request. Arguments marked "AI-filled" were extracted from your message or context. Review and modify as needed.'
-              : 'These tools will access external systems. Review the details before approving.'
-            }
+              : 'These tools will access external systems. Review the details before approving.'}
           </Typography>
         </Alert>
 
@@ -640,12 +669,14 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
             variant="outlined"
             size="small"
             onClick={handleDeny}
-            startIcon={isDenying ? <CircularProgress size={14} color="inherit" /> : <Icon icon="mdi:close" />}
+            startIcon={
+              isDenying ? <CircularProgress size={14} color="inherit" /> : <Icon icon="mdi:close" />
+            }
             disabled={isActionInProgress}
-            color={isDenying ? "error" : "inherit"}
+            color={isDenying ? 'error' : 'inherit'}
             sx={{
               opacity: isDenying ? 0.7 : 1,
-              cursor: isActionInProgress ? 'not-allowed' : 'pointer'
+              cursor: isActionInProgress ? 'not-allowed' : 'pointer',
             }}
           >
             {isDenying ? 'Denying...' : 'Deny'}
@@ -654,12 +685,22 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
             variant="contained"
             size="small"
             onClick={handleApprove}
-            startIcon={isApproving ? <CircularProgress size={14} color="inherit" /> : <Icon icon="mdi:check" />}
-            disabled={isActionInProgress || selectedToolIds.length === 0 || (!argumentsInitialized && mcpTools.length > 0)}
+            startIcon={
+              isApproving ? (
+                <CircularProgress size={14} color="inherit" />
+              ) : (
+                <Icon icon="mdi:check" />
+              )
+            }
+            disabled={
+              isActionInProgress ||
+              selectedToolIds.length === 0 ||
+              (!argumentsInitialized && mcpTools.length > 0)
+            }
             color="primary"
             sx={{
               opacity: isApproving ? 0.7 : 1,
-              cursor: isActionInProgress ? 'not-allowed' : 'pointer'
+              cursor: isActionInProgress ? 'not-allowed' : 'pointer',
             }}
           >
             {isApproving ? 'Approving...' : `Allow (${selectedToolIds.length})`}

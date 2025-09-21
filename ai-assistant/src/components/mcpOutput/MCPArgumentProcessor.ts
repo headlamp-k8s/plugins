@@ -48,7 +48,7 @@ export class MCPArgumentProcessor {
           this.toolSchemas.set(tool.name, {
             name: tool.name,
             description: tool.description,
-            inputSchema: tool.inputSchema
+            inputSchema: tool.inputSchema,
           });
         });
         this.schemasLoaded = true;
@@ -83,7 +83,7 @@ export class MCPArgumentProcessor {
         schema: null,
         suggestions: {},
         errors,
-        intelligentFills
+        intelligentFills,
       };
     }
 
@@ -98,7 +98,7 @@ export class MCPArgumentProcessor {
             intelligentFills[requiredField] = {
               value: processed[requiredField],
               reason: `Required field provided with empty ${fieldSchema.type}`,
-              confidence: 0.8
+              confidence: 0.8,
             };
           }
         }
@@ -118,7 +118,7 @@ export class MCPArgumentProcessor {
       schema,
       suggestions,
       errors,
-      intelligentFills
+      intelligentFills,
     };
   }
 
@@ -197,8 +197,10 @@ export class MCPArgumentProcessor {
       if (userContext.lastToolResults) {
         const lowerPropName = propertyName.toLowerCase();
         for (const [contextKey, contextValue] of Object.entries(userContext.lastToolResults)) {
-          if (contextKey.toLowerCase().includes(lowerPropName) ||
-              lowerPropName.includes(contextKey.toLowerCase())) {
+          if (
+            contextKey.toLowerCase().includes(lowerPropName) ||
+            lowerPropName.includes(contextKey.toLowerCase())
+          ) {
             return contextValue;
           }
         }
@@ -240,7 +242,11 @@ export class MCPArgumentProcessor {
     }
 
     // Path-related suggestions
-    if (lowerName.includes('path') || lowerName.includes('directory') || lowerName.includes('dir')) {
+    if (
+      lowerName.includes('path') ||
+      lowerName.includes('directory') ||
+      lowerName.includes('dir')
+    ) {
       if (lowerDesc.includes('current') || lowerDesc.includes('working')) {
         return '.';
       }
@@ -313,9 +319,7 @@ export class MCPArgumentProcessor {
   /**
    * Suggest boolean values
    */
-  private static suggestBooleanValue(
-    propertyName: string
-  ): boolean | undefined {
+  private static suggestBooleanValue(propertyName: string): boolean | undefined {
     const lowerName = propertyName.toLowerCase();
     // Note: description analysis could be added here for more intelligent suggestions
 
@@ -355,24 +359,10 @@ export class MCPArgumentProcessor {
     return {};
   }
 
-
-
-
-
-
-
-
-
-
-
-
   /**
    * Clean up arguments by removing empty non-required fields
    */
-  static cleanupArguments(
-    args: Record<string, any>,
-    schema: MCPToolSchema
-  ): Record<string, any> {
+  static cleanupArguments(args: Record<string, any>, schema: MCPToolSchema): Record<string, any> {
     if (!schema.inputSchema) return args;
 
     const cleaned: Record<string, any> = {};
@@ -431,7 +421,11 @@ export class MCPArgumentProcessor {
 
     // Check required fields (allow empty objects/arrays for required fields)
     for (const requiredField of required) {
-      if (!(requiredField in args) || args[requiredField] === undefined || args[requiredField] === null) {
+      if (
+        !(requiredField in args) ||
+        args[requiredField] === undefined ||
+        args[requiredField] === null
+      ) {
         errors.push(`Required field '${requiredField}' is missing`);
       }
     }
@@ -450,7 +444,6 @@ export class MCPArgumentProcessor {
 
     return errors;
   }
-
 
   /**
    * Get tool schema

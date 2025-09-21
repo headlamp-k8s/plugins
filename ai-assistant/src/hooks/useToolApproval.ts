@@ -30,19 +30,22 @@ export const useToolApproval = (): UseToolApprovalResult => {
     };
   }, []);
 
-  const handleApprove = useCallback((approvedToolIds: string[], rememberChoice = false) => {
-    if (!pendingRequest) return;
+  const handleApprove = useCallback(
+    (approvedToolIds: string[], rememberChoice = false) => {
+      if (!pendingRequest) return;
 
-    setIsProcessing(true);
-    toolApprovalManager.approveTools(pendingRequest.requestId, approvedToolIds, rememberChoice);
-    
-    // Close dialog after a brief delay to show processing state
-    setTimeout(() => {
-      setShowApprovalDialog(false);
-      setPendingRequest(null);
-      setIsProcessing(false);
-    }, 500);
-  }, [pendingRequest]);
+      setIsProcessing(true);
+      toolApprovalManager.approveTools(pendingRequest.requestId, approvedToolIds, rememberChoice);
+
+      // Close dialog after a brief delay to show processing state
+      setTimeout(() => {
+        setShowApprovalDialog(false);
+        setPendingRequest(null);
+        setIsProcessing(false);
+      }, 500);
+    },
+    [pendingRequest]
+  );
 
   const handleDeny = useCallback(() => {
     if (!pendingRequest) return;

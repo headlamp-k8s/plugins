@@ -1,21 +1,17 @@
 import { Icon } from '@iconify/react';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import {
-  Box,
-  Button,
-  FormControlLabel,
-  Switch,
-  Typography,
-} from '@mui/material';
+import { Box, Button, FormControlLabel, Switch, Typography } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { pluginStore } from '../../utils';
 import MCPConfigEditorDialog from './MCPConfigEditorDialog';
 
 // Helper function to check if running in Electron
 const isElectron = (): boolean => {
-  return typeof window !== 'undefined' && 
-         typeof window.desktopApi !== 'undefined' && 
-         typeof window.desktopApi.mcp !== 'undefined';
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.desktopApi !== 'undefined' &&
+    typeof window.desktopApi.mcp !== 'undefined'
+  );
 };
 
 export interface MCPServer {
@@ -59,10 +55,9 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
     }
   }, []);
 
-
   const loadMCPConfigFromElectron = async () => {
     if (!isElectron()) return;
-    
+
     try {
       const response = await window.desktopApi!.mcp.getConfig();
       if (response.success && response.config) {
@@ -80,7 +75,7 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
 
   const handleConfigChange = async (newConfig: MCPConfig) => {
     setMCPConfig(newConfig);
-    
+
     if (isElectron()) {
       // Save to Electron settings and restart MCP client
       try {
@@ -120,40 +115,32 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
 
   const handleToggleEnabled = async () => {
     const newConfig = { ...mcpConfig, enabled: !mcpConfig.enabled };
-    
+
     // If enabling MCP for the first time and no servers exist, add default servers
     if (newConfig.enabled && mcpConfig.servers.length === 0) {
       const defaultServers: MCPServer[] = [
         {
           name: 'inspektor-gadget',
           command: 'docker',
-          args: [
-            'mcp',
-            'gateway',
-            'run'
-          ],
+          args: ['mcp', 'gateway', 'run'],
           enabled: true,
         },
         {
           name: 'flux-mcp',
           command: 'flux-operator-mcp',
-          args: [
-            'serve'
-          ],
+          args: ['serve'],
           env: {
-            'KUBECONFIG': '/Users/ashughildiyal/.kube/config'
+            KUBECONFIG: '/Users/ashughildiyal/.kube/config',
           },
           enabled: true,
-        }
+        },
       ];
 
       newConfig.servers = defaultServers;
     }
-    
+
     await handleConfigChange(newConfig);
   };
-
-
 
   const handleOpenEditorDialog = () => {
     setEditorDialogOpen(true);
@@ -182,17 +169,12 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
     <SectionBox title="MCP Servers">
       <Box sx={{ mb: 3 }}>
         <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-          Model Context Protocol (MCP) allows AI assistants to connect to external tools and data sources.
-          Configure MCP servers here to extend the AI assistant's capabilities.
+          Model Context Protocol (MCP) allows AI assistants to connect to external tools and data
+          sources. Configure MCP servers here to extend the AI assistant's capabilities.
         </Typography>
-        
+
         <FormControlLabel
-          control={
-            <Switch
-              checked={mcpConfig.enabled}
-              onChange={handleToggleEnabled}
-            />
-          }
+          control={<Switch checked={mcpConfig.enabled} onChange={handleToggleEnabled} />}
           label="Enable MCP Servers"
         />
       </Box>

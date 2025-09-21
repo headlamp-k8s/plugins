@@ -37,7 +37,7 @@ interface MCPOutputDisplayProps {
 
 function calculateWidth(width: string): string {
   if (!width) return '800px'; // fallback
-  
+
   // Handle viewport width (vw) units
   if (width.includes('vw')) {
     const vwValue = parseFloat(width.replace('vw', ''));
@@ -45,21 +45,21 @@ function calculateWidth(width: string): string {
     const adjustedWidth = Math.max(300, pixelWidth - 30); // Subtract 40px, minimum 300px
     return `${adjustedWidth}px`;
   }
-  
+
   // Handle pixel (px) units
   if (width.includes('px')) {
     const pixelValue = parseInt(width.replace('px', ''), 10);
     const adjustedWidth = Math.max(300, pixelValue - 30); // Subtract 40px, minimum 300px
     return `${adjustedWidth}px`;
   }
-  
+
   // Handle numeric values (assume pixels)
   const numericValue = parseInt(width, 10);
   if (!isNaN(numericValue)) {
     const adjustedWidth = Math.max(300, numericValue - 30); // Subtract 40px, minimum 300px
     return `${adjustedWidth}px`;
   }
-  
+
   // Fallback for any other format
   return '780px'; // 800px - 40px
 }
@@ -81,7 +81,7 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
   useEffect(() => {
     const calculatedWidth = calculateWidth(promptWidth?.toString() || '800px');
     setWidth(calculatedWidth);
-  }, [promptWidth])
+  }, [promptWidth]);
   // Get status color based on type or warnings
   const getStatusColor = () => {
     if (output.type === 'error') return 'error';
@@ -92,13 +92,20 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
   // Get icon based on output type
   const getTypeIcon = () => {
     switch (output.type) {
-      case 'table': return 'mdi:table';
-      case 'metrics': return 'mdi:chart-line';
-      case 'list': return 'mdi:format-list-bulleted';
-      case 'graph': return 'mdi:chart-bar';
-      case 'text': return 'mdi:text';
-      case 'error': return 'mdi:alert-circle';
-      default: return 'mdi:file-document';
+      case 'table':
+        return 'mdi:table';
+      case 'metrics':
+        return 'mdi:chart-line';
+      case 'list':
+        return 'mdi:format-list-bulleted';
+      case 'graph':
+        return 'mdi:chart-bar';
+      case 'text':
+        return 'mdi:text';
+      case 'error':
+        return 'mdi:alert-circle';
+      default:
+        return 'mdi:file-document';
     }
   };
 
@@ -122,7 +129,7 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
   };
 
   return (
-    <Box 
+    <Box
       sx={{
         // Force the component to use full available width regardless of parent constraints
         width: `${width}`, // Use measured width in pixels
@@ -147,187 +154,184 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
           wordBreak: 'break-word',
         }}
       >
-      <CardHeader
-        avatar={
-          <Icon
-            icon={getTypeIcon()}
-            style={{
-              fontSize: 24,
-              color: theme.palette[getStatusColor()].main,
-            }}
-          />
-        }
-        title={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h6" component="div">
-              {output.title}
-            </Typography>
-            <Chip
-              label={output.type.toUpperCase()}
-              size="small"
-              color={getStatusColor()}
-              variant="outlined"
+        <CardHeader
+          avatar={
+            <Icon
+              icon={getTypeIcon()}
+              style={{
+                fontSize: 24,
+                color: theme.palette[getStatusColor()].main,
+              }}
             />
+          }
+          title={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" component="div">
+                {output.title}
+              </Typography>
+              <Chip
+                label={output.type.toUpperCase()}
+                size="small"
+                color={getStatusColor()}
+                variant="outlined"
+              />
+              {output.metadata && (
+                <Tooltip
+                  title={`${output.metadata.dataPoints} data points • ${output.metadata.processingTime}ms`}
+                >
+                  <Chip
+                    label={`${output.metadata.dataPoints} items`}
+                    size="small"
+                    variant="outlined"
+                  />
+                </Tooltip>
+              )}
+            </Box>
+          }
+          subheader={output.summary}
+          action={
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {onExport && (
+                <Tooltip title="Export data">
+                  <IconButton
+                    size="small"
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    sx={{ mr: 2 }}
+                  >
+                    <Icon icon="mdi:download" />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <Tooltip title="Show raw data">
+                <IconButton
+                  size="small"
+                  onClick={() => setShowRawData(!showRawData)}
+                  color={showRawData ? 'primary' : 'default'}
+                  sx={{ mr: 2 }}
+                >
+                  <Icon icon="mdi:code-json" />
+                </IconButton>
+              </Tooltip>
+              {compact && (
+                <IconButton size="small" onClick={() => setExpanded(!expanded)}>
+                  <Icon icon={expanded ? 'mdi:chevron-up' : 'mdi:chevron-down'} />
+                </IconButton>
+              )}
+            </Box>
+          }
+          sx={{ pb: 1 }}
+        />
+
+        <Collapse in={expanded}>
+          <CardContent
+            sx={{
+              pt: 0,
+              width: width, // Use full available width
+              minWidth: 0, // Allow shrinking
+              overflowWrap: 'break-word',
+              wordWrap: 'break-word',
+              '& > *': {
+                width: '100%',
+                minWidth: 0,
+                overflowWrap: 'break-word',
+                wordWrap: 'break-word',
+              },
+            }}
+          >
+            {/* Warnings */}
+            {output.warnings && output.warnings.length > 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  Warnings:
+                </Typography>
+                {output.warnings.map((warning, index) => (
+                  <Typography key={index} variant="body2">
+                    • {warning}
+                  </Typography>
+                ))}
+              </Alert>
+            )}
+
+            {/* Main Content */}
+            {renderContent()}
+
+            {/* Insights */}
+            {output.insights && output.insights.length > 0 && (
+              <Paper variant="outlined" sx={{ p: 2, mt: 2, bgcolor: 'action.hover' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  <Icon icon="mdi:lightbulb" style={{ marginRight: 8 }} />
+                  Key Insights:
+                </Typography>
+                {output.insights.map((insight, index) => (
+                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                    • {insight}
+                  </Typography>
+                ))}
+              </Paper>
+            )}
+
+            {/* Actionable Items */}
+            {output.actionable_items && output.actionable_items.length > 0 && (
+              <Paper variant="outlined" sx={{ p: 2, mt: 2, bgcolor: 'primary.50' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  <Icon icon="mdi:check-circle" style={{ marginRight: 8 }} />
+                  Recommended Actions:
+                </Typography>
+                {output.actionable_items.map((item, index) => (
+                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                    • {item}
+                  </Typography>
+                ))}
+              </Paper>
+            )}
+
+            {/* Raw Data Collapse */}
+            <Collapse in={showRawData}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Raw Data:
+              </Typography>
+              <SyntaxHighlighter
+                language="json"
+                style={syntaxTheme}
+                customStyle={{
+                  fontSize: '12px',
+                  maxHeight: '300px',
+                  overflow: 'auto',
+                  width: `${width}`, // Use fixed pixel width
+                  maxWidth: 'none',
+                  minWidth: 0,
+                  margin: 0,
+                  padding: '12px',
+                  wordWrap: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                  overflowWrap: 'break-word',
+                }}
+                wrapLongLines
+              >
+                {JSON.stringify(output.data, null, 2)}
+              </SyntaxHighlighter>
+            </Collapse>
+
+            {/* Metadata */}
             {output.metadata && (
-              <Tooltip title={`${output.metadata.dataPoints} data points • ${output.metadata.processingTime}ms`}>
+              <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Chip label={`Tool: ${output.metadata.toolName}`} size="small" variant="outlined" />
                 <Chip
-                  label={`${output.metadata.dataPoints} items`}
+                  label={`${(output.metadata.responseSize / 1024).toFixed(1)}KB`}
                   size="small"
                   variant="outlined"
                 />
-              </Tooltip>
-            )}
-          </Box>
-        }
-        subheader={output.summary}
-        action={
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            {onExport && (
-              <Tooltip title="Export data">
-                <IconButton
+                <Chip
+                  label={`${output.metadata.processingTime}ms`}
                   size="small"
-                  onClick={() => setShowExportMenu(!showExportMenu)}
-                  sx={{mr:2}}
-                >
-                  <Icon icon="mdi:download" />
-                </IconButton>
-              </Tooltip>
+                  variant="outlined"
+                />
+              </Box>
             )}
-            <Tooltip title="Show raw data">
-              <IconButton
-                size="small"
-                onClick={() => setShowRawData(!showRawData)}
-                color={showRawData ? 'primary' : 'default'}
-                sx={{mr:2}}
-              >
-                <Icon icon="mdi:code-json" />
-              </IconButton>
-            </Tooltip>
-            {compact && (
-              <IconButton
-                size="small"
-                onClick={() => setExpanded(!expanded)}
-              >
-                <Icon icon={expanded ? 'mdi:chevron-up' : 'mdi:chevron-down'} />
-              </IconButton>
-            )}
-          </Box>
-        }
-        sx={{ pb: 1 }}
-      />
-
-      <Collapse in={expanded}>
-        <CardContent sx={{
-          pt: 0,
-          width: width, // Use full available width
-          minWidth: 0, // Allow shrinking
-          overflowWrap: 'break-word',
-          wordWrap: 'break-word',
-          '& > *': {
-            width: '100%',
-            minWidth: 0,
-            overflowWrap: 'break-word',
-            wordWrap: 'break-word',
-          }
-        }}>
-          {/* Warnings */}
-          {output.warnings && output.warnings.length > 0 && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                Warnings:
-              </Typography>
-              {output.warnings.map((warning, index) => (
-                <Typography key={index} variant="body2">
-                  • {warning}
-                </Typography>
-              ))}
-            </Alert>
-          )}
-
-          {/* Main Content */}
-          {renderContent()}
-
-          {/* Insights */}
-          {output.insights && output.insights.length > 0 && (
-            <Paper variant="outlined" sx={{ p: 2, mt: 2, bgcolor: 'action.hover' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                <Icon icon="mdi:lightbulb" style={{ marginRight: 8 }} />
-                Key Insights:
-              </Typography>
-              {output.insights.map((insight, index) => (
-                <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                  • {insight}
-                </Typography>
-              ))}
-            </Paper>
-          )}
-
-          {/* Actionable Items */}
-          {output.actionable_items && output.actionable_items.length > 0 && (
-            <Paper variant="outlined" sx={{ p: 2, mt: 2, bgcolor: 'primary.50' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                <Icon icon="mdi:check-circle" style={{ marginRight: 8 }} />
-                Recommended Actions:
-              </Typography>
-              {output.actionable_items.map((item, index) => (
-                <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                  • {item}
-                </Typography>
-              ))}
-            </Paper>
-          )}
-
-          {/* Raw Data Collapse */}
-          <Collapse in={showRawData}>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Raw Data:
-            </Typography>
-            <SyntaxHighlighter
-              language="json"
-              style={syntaxTheme}
-              customStyle={{
-                fontSize: '12px',
-                maxHeight: '300px',
-                overflow: 'auto',
-                width: `${width}`, // Use fixed pixel width
-                maxWidth: 'none',
-                minWidth: 0,
-                margin: 0,
-                padding: '12px',
-                wordWrap: 'break-word',
-                whiteSpace: 'pre-wrap',
-                overflowWrap: 'break-word',
-              }}
-              wrapLongLines
-            >
-              {JSON.stringify(output.data, null, 2)}
-            </SyntaxHighlighter>
-          </Collapse>
-
-          {/* Metadata */}
-          {output.metadata && (
-            <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Chip
-                label={`Tool: ${output.metadata.toolName}`}
-                size="small"
-                variant="outlined"
-              />
-              <Chip
-                label={`${(output.metadata.responseSize / 1024).toFixed(1)}KB`}
-                size="small"
-                variant="outlined"
-              />
-              <Chip
-                label={`${output.metadata.processingTime}ms`}
-                size="small"
-                variant="outlined"
-              />
-            </Box>
-          )}
-        </CardContent>
-      </Collapse>
-    </Card>
+          </CardContent>
+        </Collapse>
+      </Card>
     </Box>
   );
 };
@@ -378,16 +382,19 @@ const TableDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) =
         },
       }}
     >
-      <Table size="small" sx={{ 
-        width: width, // Use fixed pixel width
-        wordBreak: 'break-word',
-        '& .MuiTableCell-root': {
-          // Ensure all cells can wrap text properly
-          whiteSpace: 'normal',
-          wordWrap: 'break-word',
-          overflowWrap: 'break-word',
-        },
-      }}>
+      <Table
+        size="small"
+        sx={{
+          width: width, // Use fixed pixel width
+          wordBreak: 'break-word',
+          '& .MuiTableCell-root': {
+            // Ensure all cells can wrap text properly
+            whiteSpace: 'normal',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+          },
+        }}
+      >
         <TableHead>
           <TableRow>
             {data.headers.map((header: string, index: number) => (
@@ -447,53 +454,74 @@ const TableDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) =
 const MetricsDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'error': return 'error';
-      case 'warning': return 'warning';
-      case 'info': return 'info';
-      default: return 'primary';
+      case 'error':
+        return 'error';
+      case 'warning':
+        return 'warning';
+      case 'info':
+        return 'info';
+      default:
+        return 'primary';
     }
   };
 
   return (
-    <Box sx={{ 
-      width: width, // Use fixed pixel width
-      maxWidth: 'none',
-      minWidth: 0,
-      overflowWrap: 'break-word',
-      wordWrap: 'break-word',
-    }}>
+    <Box
+      sx={{
+        width: width, // Use fixed pixel width
+        maxWidth: 'none',
+        minWidth: 0,
+        overflowWrap: 'break-word',
+        wordWrap: 'break-word',
+      }}
+    >
       {/* Primary Metrics */}
       {data.primary && (
-        <Grid container spacing={2} sx={{ 
-          mb: 2,
-          width: width, // Use fixed pixel width
-          maxWidth: 'none',
-          minWidth: 0,
-        }}>
+        <Grid
+          container
+          spacing={2}
+          sx={{
+            mb: 2,
+            width: width, // Use fixed pixel width
+            maxWidth: 'none',
+            minWidth: 0,
+          }}
+        >
           {data.primary.map((metric: any, index: number) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
-              <Paper variant="outlined" sx={{ 
-                p: 2, 
-                textAlign: 'center',
-                width: '100%',
-                maxWidth: '100%',
-                minWidth: 0,
-                overflowWrap: 'break-word',
-                wordWrap: 'break-word',
-                wordBreak: 'break-word',
-              }}>
-                <Typography variant="h4" color={getStatusColor(metric.status)} sx={{
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  textAlign: 'center',
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
                   overflowWrap: 'break-word',
                   wordWrap: 'break-word',
                   wordBreak: 'break-word',
-                }}>
+                }}
+              >
+                <Typography
+                  variant="h4"
+                  color={getStatusColor(metric.status)}
+                  sx={{
+                    overflowWrap: 'break-word',
+                    wordWrap: 'break-word',
+                    wordBreak: 'break-word',
+                  }}
+                >
                   {metric.value}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{
-                  overflowWrap: 'break-word',
-                  wordWrap: 'break-word',
-                  wordBreak: 'break-word',
-                }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    overflowWrap: 'break-word',
+                    wordWrap: 'break-word',
+                    wordBreak: 'break-word',
+                  }}
+                >
                   {metric.label}
                 </Typography>
               </Paper>
@@ -504,35 +532,49 @@ const MetricsDisplay: React.FC<{ data: any; width: string }> = ({ data, width })
 
       {/* Secondary Metrics */}
       {data.secondary && (
-        <Grid container spacing={1} sx={{
-          width: width, // Use fixed pixel width
-          maxWidth: 'none',
-          minWidth: 0,
-        }}>
+        <Grid
+          container
+          spacing={1}
+          sx={{
+            width: width, // Use fixed pixel width
+            maxWidth: 'none',
+            minWidth: 0,
+          }}
+        >
           {data.secondary.map((metric: any, index: number) => (
             <Grid item xs={6} sm={4} md={3} key={index}>
-              <Box sx={{ 
-                p: 1, 
-                textAlign: 'center',
-                width: '100%',
-                maxWidth: '100%',
-                minWidth: 0,
-                overflowWrap: 'break-word',
-                wordWrap: 'break-word',
-                wordBreak: 'break-word',
-              }}>
-                <Typography variant="h6" color={getStatusColor(metric.status)} sx={{
+              <Box
+                sx={{
+                  p: 1,
+                  textAlign: 'center',
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
                   overflowWrap: 'break-word',
                   wordWrap: 'break-word',
                   wordBreak: 'break-word',
-                }}>
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  color={getStatusColor(metric.status)}
+                  sx={{
+                    overflowWrap: 'break-word',
+                    wordWrap: 'break-word',
+                    wordBreak: 'break-word',
+                  }}
+                >
                   {metric.value}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{
-                  overflowWrap: 'break-word',
-                  wordWrap: 'break-word',
-                  wordBreak: 'break-word',
-                }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    overflowWrap: 'break-word',
+                    wordWrap: 'break-word',
+                    wordBreak: 'break-word',
+                  }}
+                >
                   {metric.label}
                 </Typography>
               </Box>
@@ -543,32 +585,41 @@ const MetricsDisplay: React.FC<{ data: any; width: string }> = ({ data, width })
 
       {/* Trends */}
       {data.trends && (
-        <Box sx={{ 
-          mt: 2,
-          width: width, // Use fixed pixel width
-          maxWidth: 'none',
-          minWidth: 0,
-        }}>
-          <Typography variant="subtitle2" sx={{ 
-            mb: 1,
-            overflowWrap: 'break-word',
-            wordWrap: 'break-word',
-            wordBreak: 'break-word',
-          }}>
-            Trends:
-          </Typography>
-          <Grid container spacing={1} sx={{
+        <Box
+          sx={{
+            mt: 2,
             width: width, // Use fixed pixel width
             maxWidth: 'none',
             minWidth: 0,
-          }}>
+          }}
+        >
+          <Typography
+            variant="subtitle2"
+            sx={{
+              mb: 1,
+              overflowWrap: 'break-word',
+              wordWrap: 'break-word',
+              wordBreak: 'break-word',
+            }}
+          >
+            Trends:
+          </Typography>
+          <Grid
+            container
+            spacing={1}
+            sx={{
+              width: width, // Use fixed pixel width
+              maxWidth: 'none',
+              minWidth: 0,
+            }}
+          >
             {data.trends.map((trend: any, index: number) => (
               <Grid item xs={12} sm={6} key={index}>
                 <Chip
                   label={`${trend.label}: ${trend.value}`}
                   color={getStatusColor(trend.status)}
                   variant="outlined"
-                  sx={{ 
+                  sx={{
                     width: '100%',
                     maxWidth: '100%',
                     minWidth: 0,
@@ -576,7 +627,7 @@ const MetricsDisplay: React.FC<{ data: any; width: string }> = ({ data, width })
                       overflowWrap: 'break-word',
                       wordWrap: 'break-word',
                       wordBreak: 'break-word',
-                    }
+                    },
                   }}
                 />
               </Grid>
@@ -592,21 +643,27 @@ const MetricsDisplay: React.FC<{ data: any; width: string }> = ({ data, width })
 const ListDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'error': return 'error.main';
-      case 'warning': return 'warning.main';
-      case 'info': return 'info.main';
-      default: return 'text.primary';
+      case 'error':
+        return 'error.main';
+      case 'warning':
+        return 'warning.main';
+      case 'info':
+        return 'info.main';
+      default:
+        return 'text.primary';
     }
   };
 
   return (
-    <Box sx={{ 
-      width: width, // Use fixed pixel width
-      maxWidth: 'none',
-      minWidth: 0,
-      overflowWrap: 'break-word',
-      wordWrap: 'break-word',
-    }}>
+    <Box
+      sx={{
+        width: width, // Use fixed pixel width
+        maxWidth: 'none',
+        minWidth: 0,
+        overflowWrap: 'break-word',
+        wordWrap: 'break-word',
+      }}
+    >
       {data.items?.map((item: any, index: number) => (
         <Paper
           key={index}
@@ -661,30 +718,38 @@ const GraphDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) =
 };
 
 // Text Display Component
-const TextDisplay: React.FC<{ data: any; theme: any; width: string }> = ({ data, theme, width }) => {
+const TextDisplay: React.FC<{ data: any; theme: any; width: string }> = ({
+  data,
+  theme,
+  width,
+}) => {
   return (
-    <Box sx={{ 
-      width: `${width}`, // Use fixed pixel width
-      maxWidth: 'none',
-      minWidth: 0,
-      overflowWrap: 'break-word',
-      wordWrap: 'break-word',
-    }}>
+    <Box
+      sx={{
+        width: `${width}`, // Use fixed pixel width
+        maxWidth: 'none',
+        minWidth: 0,
+        overflowWrap: 'break-word',
+        wordWrap: 'break-word',
+      }}
+    >
       {data.highlights && data.highlights.length > 0 && (
-        <Box sx={{ 
-          mb: 2, 
-          width: `${width}`,
-          maxWidth: 'none',
-          minWidth: 0,
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 1,
-        }}>
+        <Box
+          sx={{
+            mb: 2,
+            width: `${width}`,
+            maxWidth: 'none',
+            minWidth: 0,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1,
+          }}
+        >
           {data.highlights.map((highlight: string, index: number) => (
-            <Chip 
-              key={index} 
-              label={highlight} 
-              size="small" 
+            <Chip
+              key={index}
+              label={highlight}
+              size="small"
               sx={{
                 maxWidth: '100%',
                 '& .MuiChip-label': {
@@ -692,17 +757,19 @@ const TextDisplay: React.FC<{ data: any; theme: any; width: string }> = ({ data,
                   wordWrap: 'break-word',
                   wordBreak: 'break-word',
                   whiteSpace: 'normal',
-                }
+                },
               }}
             />
           ))}
         </Box>
       )}
-      <Box sx={{ 
-        width: `${width}`, // Use fixed pixel width
-        maxWidth: 'none',
-        minWidth: 0,
-      }}>
+      <Box
+        sx={{
+          width: `${width}`, // Use fixed pixel width
+          maxWidth: 'none',
+          minWidth: 0,
+        }}
+      >
         <SyntaxHighlighter
           language={data.language || 'text'}
           style={theme}
@@ -731,8 +798,11 @@ const TextDisplay: React.FC<{ data: any; theme: any; width: string }> = ({ data,
 };
 
 // Error Display Component
-const ErrorDisplay: React.FC<{ data: any; onRetry?: () => void; width: string }> = ({ data, onRetry, width }) => {
-
+const ErrorDisplay: React.FC<{ data: any; onRetry?: () => void; width: string }> = ({
+  data,
+  onRetry,
+  width,
+}) => {
   // Extract concise error message for common error types
   const getDisplayMessage = (errorData: any) => {
     const message = errorData.message || 'Tool Execution Error';
@@ -751,14 +821,16 @@ const ErrorDisplay: React.FC<{ data: any; onRetry?: () => void; width: string }>
   };
 
   return (
-    <Box sx={{ 
-      width: `${width}`, // Use fixed pixel width
-      maxWidth: 'none',
-      minWidth: 0,
-      pr: 2, // Add right padding for better readability
-      overflowWrap: 'break-word',
-      wordWrap: 'break-word',
-    }}>
+    <Box
+      sx={{
+        width: `${width}`, // Use fixed pixel width
+        maxWidth: 'none',
+        minWidth: 0,
+        pr: 2, // Add right padding for better readability
+        overflowWrap: 'break-word',
+        wordWrap: 'break-word',
+      }}
+    >
       <Alert
         severity="error"
         sx={{
@@ -858,15 +930,17 @@ const ErrorDisplay: React.FC<{ data: any; onRetry?: () => void; width: string }>
           size="small"
           onClick={() => {
             // Copy error details to clipboard
-            const errorText = `Tool Error: ${data.message}\nDetails: ${data.details || 'N/A'}\nSuggestions:\n${data.suggestions?.map((s: string) => `- ${s}`).join('\n') || 'None'}`;
+            const errorText = `Tool Error: ${data.message}\nDetails: ${
+              data.details || 'N/A'
+            }\nSuggestions:\n${
+              data.suggestions?.map((s: string) => `- ${s}`).join('\n') || 'None'
+            }`;
             navigator.clipboard.writeText(errorText);
           }}
           startIcon={<Icon icon="mdi:content-copy" />}
-          sx={
-            {
-              mr: 2
-            }
-          }
+          sx={{
+            mr: 2,
+          }}
         >
           Copy Error
         </Button>
@@ -878,14 +952,16 @@ const ErrorDisplay: React.FC<{ data: any; onRetry?: () => void; width: string }>
 // Raw Display Component
 const RawDisplay: React.FC<{ data: any; theme: any; width: string }> = ({ data, theme, width }) => {
   return (
-    <Box sx={{
-      width: width, // Use fixed pixel width
-      maxWidth: 'none',
-      minWidth: 0,
-      pr: 2, // Add right padding for better readability
-      overflowWrap: 'break-word',
-      wordWrap: 'break-word',
-    }}>
+    <Box
+      sx={{
+        width: width, // Use fixed pixel width
+        maxWidth: 'none',
+        minWidth: 0,
+        pr: 2, // Add right padding for better readability
+        overflowWrap: 'break-word',
+        wordWrap: 'break-word',
+      }}
+    >
       <SyntaxHighlighter
         language="json"
         style={theme}
