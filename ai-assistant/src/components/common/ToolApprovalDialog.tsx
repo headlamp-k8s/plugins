@@ -1,27 +1,26 @@
-import React, { useState } from 'react';
+import { Icon } from '@iconify/react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Box,
-  Chip,
-  Alert,
   Accordion,
-  AccordionSummary,
   AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  FormGroup,
+  IconButton,
   List,
   ListItem,
   ListItemText,
-  IconButton,
-  Tooltip,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
+  Typography,
 } from '@mui/material';
-import { Icon } from '@iconify/react';
+import React, { useState } from 'react';
 
 interface ToolCall {
   id: string;
@@ -98,7 +97,7 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
 
   const formatArguments = (args: Record<string, any>) => {
     return Object.entries(args)
-      .filter(([_, value]) => value !== undefined && value !== null && value !== '')
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
       .map(([key, value]) => (
         <ListItem key={key} dense>
           <ListItemText 
