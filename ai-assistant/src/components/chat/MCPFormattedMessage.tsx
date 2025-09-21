@@ -24,7 +24,7 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
   onRetryTool,
 }) => {
   const widthContext = usePromptWidth();
-  console.log("From context width ", widthContext.promptWidth)
+  console.log('From context width ', widthContext.promptWidth);
   // Try to parse the content as formatted MCP output
   const parseContent = (): ParsedMCPContent | null => {
     try {
@@ -63,7 +63,7 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
             mcpOutput.data.headers.join(','),
             ...mcpOutput.data.rows.map((row: any[]) =>
               row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-            )
+            ),
           ].join('\n');
           exportData = csvContent;
         } else {
@@ -100,10 +100,10 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
     try {
       // Parse the content to extract originalArgs and tool information
       const parsedContent = JSON.parse(content);
-      
+
       // Look for originalArgs in the parsed content
       const originalArgs = parsedContent.originalArgs;
-      
+
       if (!originalArgs) {
         console.error('No originalArgs found in content for retry');
         return;
@@ -128,49 +128,51 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
   }, [content, onRetryTool]);
 
   return (
-    <Box sx={{
-      my: 2,
-      pr: 3, // Add right padding for better readability
-      maxWidth: '100%',
-      overflowWrap: 'break-word',
-      wordWrap: 'break-word',
-      wordBreak: 'break-word',
-      overflowX: 'auto', // Add horizontal scroll as fallback
-      '& *': {
+    <Box
+      sx={{
+        my: 2,
+        pr: 3, // Add right padding for better readability
         maxWidth: '100%',
-        boxSizing: 'border-box',
         overflowWrap: 'break-word',
         wordWrap: 'break-word',
-      },
-      '& pre': {
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-all',
-        maxWidth: '100%',
-        overflowWrap: 'break-word',
-        overflowX: 'auto', // Horizontal scroll for code blocks
-      }
-    }}>
+        wordBreak: 'break-word',
+        overflowX: 'auto', // Add horizontal scroll as fallback
+        '& *': {
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          overflowWrap: 'break-word',
+          wordWrap: 'break-word',
+        },
+        '& pre': {
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+          maxWidth: '100%',
+          overflowWrap: 'break-word',
+          overflowX: 'auto', // Horizontal scroll for code blocks
+        },
+      }}
+    >
       {isAssistant && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <Icon
-            icon={mcpContent.isError || mcpContent.mcpOutput.type === 'error' ? 'mdi:alert-circle' : 'mdi:robot'}
+            icon={
+              mcpContent.isError || mcpContent.mcpOutput.type === 'error'
+                ? 'mdi:alert-circle'
+                : 'mdi:robot'
+            }
             style={{
               fontSize: 20,
-              color: mcpContent.isError || mcpContent.mcpOutput.type === 'error' ? '#f44336' : undefined
+              color:
+                mcpContent.isError || mcpContent.mcpOutput.type === 'error' ? '#f44336' : undefined,
             }}
           />
           <Typography variant="caption" color="text.secondary">
             {mcpContent.isError || mcpContent.mcpOutput.type === 'error'
               ? 'Tool Error - AI Analysis'
-              : 'AI-Formatted Tool Output'
-            }
+              : 'AI-Formatted Tool Output'}
           </Typography>
           {(mcpContent.isError || mcpContent.mcpOutput.type === 'error') && (
-            <Alert
-              severity="error"
-              variant="outlined"
-              sx={{ py: 0, px: 1, fontSize: '0.75rem' }}
-            >
+            <Alert severity="error" variant="outlined" sx={{ py: 0, px: 1, fontSize: '0.75rem' }}>
               Tool Execution Failed
             </Alert>
           )}
@@ -179,54 +181,59 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
 
       <MCPOutputDisplay
         output={mcpContent.mcpOutput}
-        onExport={mcpContent.isError || mcpContent.mcpOutput.type === 'error' ? undefined : handleExport}
+        onExport={
+          mcpContent.isError || mcpContent.mcpOutput.type === 'error' ? undefined : handleExport
+        }
         onRetry={handleRetry}
         compact={false}
       />
 
       {/* Show processing info if available and not an error */}
-      {mcpContent.mcpOutput.metadata && !(mcpContent.isError || mcpContent.mcpOutput.type === 'error') && (
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 1,
-            mt: 1,
-            bgcolor: 'action.hover',
-            borderRadius: 1,
-          }}
-        >
-          <Typography variant="caption" color="text.secondary">
-            <Icon icon="mdi:sparkles" style={{ marginRight: 4, fontSize: 14 }} />
-            Processed by AI in {mcpContent.mcpOutput.metadata.processingTime}ms
-            {mcpContent.mcpOutput.insights && mcpContent.mcpOutput.insights.length > 0 && (
-              <> • {mcpContent.mcpOutput.insights.length} insights generated</>
-            )}
-            {mcpContent.mcpOutput.actionable_items && mcpContent.mcpOutput.actionable_items.length > 0 && (
-              <> • {mcpContent.mcpOutput.actionable_items.length} action items</>
-            )}
-          </Typography>
-        </Paper>
-      )}
+      {mcpContent.mcpOutput.metadata &&
+        !(mcpContent.isError || mcpContent.mcpOutput.type === 'error') && (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1,
+              mt: 1,
+              bgcolor: 'action.hover',
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="caption" color="text.secondary">
+              <Icon icon="mdi:sparkles" style={{ marginRight: 4, fontSize: 14 }} />
+              Processed by AI in {mcpContent.mcpOutput.metadata.processingTime}ms
+              {mcpContent.mcpOutput.insights && mcpContent.mcpOutput.insights.length > 0 && (
+                <> • {mcpContent.mcpOutput.insights.length} insights generated</>
+              )}
+              {mcpContent.mcpOutput.actionable_items &&
+                mcpContent.mcpOutput.actionable_items.length > 0 && (
+                  <> • {mcpContent.mcpOutput.actionable_items.length} action items</>
+                )}
+            </Typography>
+          </Paper>
+        )}
 
       {/* Show error-specific info */}
-      {(mcpContent.isError || mcpContent.mcpOutput.type === 'error') && mcpContent.mcpOutput.metadata && (
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 1,
-            mt: 1,
-            bgcolor: 'error.50',
-            borderColor: 'error.light',
-            borderRadius: 1,
-          }}
-        >
-          <Typography variant="caption" color="error.main">
-            <Icon icon="mdi:bug" style={{ marginRight: 4, fontSize: 14 }} />
-            Error analyzed by AI in {mcpContent.mcpOutput.metadata.processingTime}ms
-            • Tool: {mcpContent.mcpOutput.metadata.toolName}
-          </Typography>
-        </Paper>
-      )}
+      {(mcpContent.isError || mcpContent.mcpOutput.type === 'error') &&
+        mcpContent.mcpOutput.metadata && (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1,
+              mt: 1,
+              bgcolor: 'error.50',
+              borderColor: 'error.light',
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="caption" color="error.main">
+              <Icon icon="mdi:bug" style={{ marginRight: 4, fontSize: 14 }} />
+              Error analyzed by AI in {mcpContent.mcpOutput.metadata.processingTime}ms • Tool:{' '}
+              {mcpContent.mcpOutput.metadata.toolName}
+            </Typography>
+          </Paper>
+        )}
     </Box>
   );
 };

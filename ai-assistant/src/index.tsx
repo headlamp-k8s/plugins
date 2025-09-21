@@ -110,17 +110,16 @@ const AIPanelComponent = React.memo(() => {
         }}
       />
       <PromptWidthProvider initialWidth={width}>
-      <AIPrompt
-        openPopup={pluginState.isUIPanelOpen}
-        setOpenPopup={pluginState.setIsUIPanelOpen}
-        pluginSettings={conf}
-        width={width}
-      />
+        <AIPrompt
+          openPopup={pluginState.isUIPanelOpen}
+          setOpenPopup={pluginState.setIsUIPanelOpen}
+          pluginSettings={conf}
+          width={width}
+        />
       </PromptWidthProvider>
     </Box>
   );
 });
-
 
 AIPanelComponent.displayName = 'AIPanelComponent';
 
