@@ -90,6 +90,7 @@ class ElectronMCPClient {
     }
 
     try {
+      console.log("args for tool executed is ", args)
       const response = await window.desktopApi!.mcp.executeTool(toolName, args, toolCallId);
       
       if (response.success) {
