@@ -118,6 +118,7 @@ const AIPanelComponent = React.memo(() => {
           openPopup={pluginState.isUIPanelOpen}
           setOpenPopup={pluginState.setIsUIPanelOpen}
           pluginSettings={conf}
+          width={width}
         />
       </PromptWidthProvider>
     </Box>
