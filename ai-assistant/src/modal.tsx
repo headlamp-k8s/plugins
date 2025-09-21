@@ -1596,8 +1596,7 @@ export default function AIPrompt(props: {
               isAgentMode={isAgentMode}
               agentModeStatus={agentModeStatus}
               isDiagnosisRunning={isDiagnosisRunning}
-              // TODO: this was in merge... but component has no enabledTools
-              // enabledTools={enabledTools}
+              enabledTools={enabledTools}
               onSend={prompt => {
                 // Block chat while proactive diagnosis is running
                 if (isDiagnosisRunning) return;
@@ -1629,7 +1628,6 @@ export default function AIPrompt(props: {
               }}
               onTestModeResponse={handleTestModeResponse}
               onToggleAgentMode={handleToggleAgentMode}
-              enabledTools={enabledTools}
               onToolsChange={newEnabledTools => {
                 setEnabledTools(newEnabledTools);
                 // Recreate AI manager with new tools
