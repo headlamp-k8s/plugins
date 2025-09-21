@@ -1189,7 +1189,7 @@ Format your response to make the errors prominent and actionable.`,
       // Create a fallback response based on tool results
       let fallbackContent = 'I executed the requested tools and here are the results:\n\n';
 
-      recentToolResponses.forEach((toolResponse, index) => {
+      recentToolResponses.forEach(toolResponse => {
         const toolName = toolResponse.name || 'tool';
         let content = toolResponse.content;
 
