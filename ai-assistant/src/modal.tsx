@@ -13,6 +13,7 @@ import {
   AIInputSection,
   ApiConfirmationDialog,
   PromptSuggestions,
+  // @todo: ToolApprovalDialog does not exist in this commit
   ToolApprovalDialog,
 } from './components';
 import { getProviderById } from './config/modelConfig';
@@ -1504,6 +1505,7 @@ export default function AIPrompt(props: {
       </Box>
 
       {/* Tool Approval Dialog */}
+      {/* @todo: ToolApprovalDialog does not exist in this commit */}
       <ToolApprovalDialog
         open={toolApproval.showApprovalDialog}
         toolCalls={
