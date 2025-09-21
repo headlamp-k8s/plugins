@@ -154,6 +154,9 @@ function usePluginSettings() {
   // Add state to control UI panel visibility - initialize from stored settings
   const [isUIPanelOpen, setIsUIPanelOpenState] = React.useState(conf?.isUIPanelOpen ?? false);
 
+  // Add state for enabled tools - initialize from stored settings
+  const [enabledTools, setEnabledToolsState] = React.useState<string[]>(conf?.enabledTools ?? []);
+
   // Wrap setIsUIPanelOpen to also update the stored configuration
   const setIsUIPanelOpen = (isOpen: boolean) => {
     setIsUIPanelOpenState(isOpen);
@@ -162,6 +165,17 @@ function usePluginSettings() {
     pluginStore.update({
       ...currentConf,
       isUIPanelOpen: isOpen,
+    });
+  };
+
+  // Wrap setEnabledTools to also update the stored configuration
+  const setEnabledTools = (tools: string[]) => {
+    setEnabledToolsState(tools);
+    // Save the tools configuration
+    const currentConf = pluginStore.get() || {};
+    pluginStore.update({
+      ...currentConf,
+      enabledTools: tools,
     });
   };
 
@@ -174,7 +188,8 @@ function usePluginSettings() {
     setActiveProvider,
     isUIPanelOpen,
     setIsUIPanelOpen,
-    // @todo: should testMode setTestMode be added here?
+    enabledTools,
+    setEnabledTools,
   };
 }
 
