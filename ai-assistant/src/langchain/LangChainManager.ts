@@ -725,6 +725,9 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
               // Build user context from current conversation
               const userContext = this.buildUserContext();
 
+              // Store original arguments for comparison
+              const originalArguments = { ...processedArguments };
+
               // Use AI to intelligently prepare arguments
               processedArguments = await this.enhanceArgumentsWithAI(
                 toolName,
@@ -737,6 +740,13 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
                 original: JSON.parse(tc.function.arguments),
                 enhanced: processedArguments,
               });
+
+              // Mark which fields were enhanced by LLM for UI display
+              processedArguments._llmEnhanced = {
+                enhanced: true,
+                originalArgs: originalArguments,
+                enhancedFields: this.identifyEnhancedFields(originalArguments, processedArguments),
+              };
             }
           } catch (error) {
             console.warn(`Failed to enhance arguments for ${toolName}:`, error);
@@ -1568,7 +1578,7 @@ Format your response to make the errors prominent and actionable.`,
    * Enhance arguments using AI-like intelligence
    */
   private async enhanceArgumentsWithAI(
-    _toolName: string,
+    toolName: string,
     toolSchema: any,
     userContext: UserContext,
     originalArgs: Record<string, any>
@@ -1579,24 +1589,203 @@ Format your response to make the errors prominent and actionable.`,
       return enhanced;
     }
 
-    const properties = toolSchema.inputSchema.properties;
-    const required = toolSchema.inputSchema.required || [];
+    try {
+      // Use LLM to intelligently prepare arguments based on user context and tool schema
+      const llmEnhancedArgs = await this.prepareLLMArguments(
+        toolName,
+        toolSchema,
+        userContext,
+        originalArgs
+      );
 
-    // Fill in required fields that are missing or empty
-    for (const [fieldName, fieldSchema] of Object.entries(properties)) {
-      const isRequired = required.includes(fieldName);
-      const currentValue = enhanced[fieldName];
+      // Merge LLM suggestions with original arguments, preferring LLM suggestions
+      Object.assign(enhanced, llmEnhancedArgs);
+    } catch (error) {
+      console.warn(`Failed to get LLM enhancement for ${toolName}:`, error);
+      // Fall back to basic enhancement
+      const properties = toolSchema.inputSchema.properties;
+      const required = toolSchema.inputSchema.required || [];
 
-      if (
-        isRequired &&
-        (currentValue === undefined || currentValue === null || currentValue === '')
-      ) {
-        // Provide intelligent defaults based on field type and context
-        enhanced[fieldName] = this.getIntelligentDefault(fieldName, fieldSchema, userContext);
+      // Fill in required fields that are missing or empty
+      for (const [fieldName, fieldSchema] of Object.entries(properties)) {
+        const isRequired = required.includes(fieldName);
+        const currentValue = enhanced[fieldName];
+
+        if (
+          isRequired &&
+          (currentValue === undefined || currentValue === null || currentValue === '')
+        ) {
+          // Provide intelligent defaults based on field type and context
+          enhanced[fieldName] = this.getIntelligentDefault(fieldName, fieldSchema, userContext);
+        }
       }
     }
 
     return enhanced;
+  }
+
+  /**
+   * Use LLM to prepare intelligent arguments based on user request and tool schema
+   */
+  private async prepareLLMArguments(
+    toolName: string,
+    toolSchema: any,
+    userContext: UserContext,
+    originalArgs: Record<string, any>
+  ): Promise<Record<string, any>> {
+    // Build prompt for argument preparation
+    const argumentPreparationPrompt = this.createArgumentPreparationPrompt(
+      toolName,
+      toolSchema,
+      userContext,
+      originalArgs
+    );
+
+    try {
+      // Use the existing model instance but without tools to avoid recursive tool calls
+      const response = await this.model.invoke([
+        { role: 'system', content: argumentPreparationPrompt.system },
+        { role: 'user', content: argumentPreparationPrompt.user },
+      ]);
+
+      // Parse the LLM response to extract arguments
+      const responseText = this.extractTextContent(response.content);
+      const parsedArgs = this.parseArgumentsFromLLMResponse(responseText);
+
+      return parsedArgs;
+    } catch (error) {
+      console.warn('Failed to prepare arguments with LLM:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Create a prompt for the LLM to prepare tool arguments
+   */
+  private createArgumentPreparationPrompt(
+    toolName: string,
+    toolSchema: any,
+    userContext: UserContext,
+    originalArgs: Record<string, any>
+  ): { system: string; user: string } {
+    const properties = toolSchema.inputSchema?.properties || {};
+    const required = toolSchema.inputSchema?.required || [];
+
+    // Create a description of the tool schema
+    const schemaDescription = Object.entries(properties)
+      .map(([fieldName, fieldSchema]: [string, any]) => {
+        const isReq = required.includes(fieldName) ? ' (REQUIRED)' : ' (optional)';
+        const type = fieldSchema.type || 'any';
+        const desc = fieldSchema.description || 'No description';
+
+        // Handle nested properties for complex objects
+        let nestedProps = '';
+        if (fieldSchema.properties) {
+          nestedProps =
+            '\n  Nested properties:\n' +
+            Object.entries(fieldSchema.properties)
+              .map(
+                ([nestedName, nestedSchema]: [string, any]) =>
+                  `    - ${nestedName} (${nestedSchema.type || 'any'}): ${
+                    nestedSchema.description || 'No description'
+                  }`
+              )
+              .join('\n');
+        }
+
+        return `- ${fieldName}${isReq} (${type}): ${desc}${nestedProps}`;
+      })
+      .join('\n');
+
+    const system = `You are an expert at preparing tool arguments based on user requests. Your task is to analyze the user's request and generate appropriate arguments for the "${toolName}" tool.
+
+TOOL SCHEMA:
+${schemaDescription}
+
+INSTRUCTIONS:
+1. Analyze the user's request to understand their intent
+2. Map their natural language request to the appropriate tool arguments
+3. For complex objects (like params), fill in the nested properties based on the user's requirements
+4. Use the conversation context to infer missing details
+5. Return ONLY a valid JSON object with the tool arguments
+6. If a required field cannot be determined from the user's request, provide a sensible default
+
+RESPONSE FORMAT:
+Return only valid JSON with the tool arguments. No explanations, no markdown, just the JSON.`;
+
+    const conversationContext =
+      userContext.conversationHistory
+        ?.slice(-5)
+        .map(msg => `${msg.role}: ${msg.content}`)
+        .join('\n') || '';
+
+    const user = `USER REQUEST: "${userContext.userMessage}"
+
+CONVERSATION CONTEXT:
+${conversationContext}
+
+CURRENT ARGUMENTS: ${JSON.stringify(originalArgs, null, 2)}
+
+Based on the user's request and the tool schema above, generate the appropriate arguments for the "${toolName}" tool. Focus on mapping the user's intent to the correct parameter values.
+
+For example, if the user says "get me info only from gadget namespace", the params object should include:
+{"operator.KubeManager.namespace": "gadget"}
+
+Return the complete arguments object:`;
+
+    return { system, user };
+  }
+
+  /**
+   * Parse arguments from LLM response
+   */
+  private parseArgumentsFromLLMResponse(response: string): Record<string, any> {
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+
+      // If no JSON found, try to parse the entire response
+      return JSON.parse(response.trim());
+    } catch (error) {
+      console.warn('Failed to parse LLM response for arguments:', error, response);
+      return {};
+    }
+  }
+
+  /**
+   * Identify which fields were enhanced by comparing original and enhanced arguments
+   */
+  private identifyEnhancedFields(
+    original: Record<string, any>,
+    enhanced: Record<string, any>
+  ): string[] {
+    const enhancedFields: string[] = [];
+
+    // Compare each field to see what was added or modified
+    for (const [key, enhancedValue] of Object.entries(enhanced)) {
+      if (key === '_llmEnhanced') continue; // Skip metadata
+
+      const originalValue = original[key];
+
+      // Field is enhanced if:
+      // 1. It didn't exist in original
+      // 2. It was null/undefined/empty in original but has value now
+      // 3. The value is different
+      if (
+        !(key in original) ||
+        originalValue === null ||
+        originalValue === undefined ||
+        originalValue === '' ||
+        JSON.stringify(originalValue) !== JSON.stringify(enhancedValue)
+      ) {
+        enhancedFields.push(key);
+      }
+    }
+
+    return enhancedFields;
   }
 
   /**
