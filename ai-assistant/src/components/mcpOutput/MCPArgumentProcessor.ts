@@ -75,6 +75,25 @@ export class MCPArgumentProcessor {
     const processed = { ...aiProcessedArgs };
     const intelligentFills: Record<string, { value: any; reason: string; confidence: number }> = {};
 
+    // Check if arguments were enhanced by LLM
+    const llmEnhanced = aiProcessedArgs._llmEnhanced;
+    if (llmEnhanced) {
+      // Remove metadata before processing
+      delete processed._llmEnhanced;
+
+      // Mark LLM-enhanced fields in intelligentFills
+      for (const fieldName of llmEnhanced.enhancedFields || []) {
+        if (fieldName in processed) {
+          intelligentFills[fieldName] = {
+            value: processed[fieldName],
+            reason: `AI-enhanced based on user request analysis`,
+            confidence: 0.9, // High confidence for LLM-enhanced fields
+          };
+        }
+      }
+    }
+
+    console.log('schema for this tool is ', toolName, schema);
     if (!schema) {
       errors.push(`No schema found for tool: ${toolName}`);
       return {
@@ -95,11 +114,15 @@ export class MCPArgumentProcessor {
           if (fieldSchema) {
             // Provide appropriate empty value based on type
             processed[requiredField] = this.getEmptyValueForRequiredField(fieldSchema);
-            intelligentFills[requiredField] = {
-              value: processed[requiredField],
-              reason: `Required field provided with empty ${fieldSchema.type}`,
-              confidence: 0.8,
-            };
+
+            // Only mark as intelligent fill if not already enhanced by LLM
+            if (!intelligentFills[requiredField]) {
+              intelligentFills[requiredField] = {
+                value: processed[requiredField],
+                reason: `Required field provided with empty ${fieldSchema.type}`,
+                confidence: 0.8,
+              };
+            }
           }
         }
       }
@@ -370,6 +393,9 @@ export class MCPArgumentProcessor {
     const properties = schema.inputSchema.properties || {};
 
     for (const [key, value] of Object.entries(args)) {
+      // Skip LLM metadata
+      if (key === '_llmEnhanced') continue;
+
       const isRequired = required.includes(key);
       const propertySchema = properties[key];
       const hasDefault = propertySchema?.default !== undefined;
