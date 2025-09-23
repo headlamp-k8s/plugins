@@ -23,8 +23,10 @@ import {
   useTheme,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import remarkGfm from 'remark-gfm';
 import { usePromptWidth } from '../../contexts/PromptWidthContext';
 import { FormattedMCPOutput } from '../../langchain/formatters/MCPOutputFormatter';
 
@@ -63,6 +65,296 @@ function calculateWidth(width: string): string {
   // Fallback for any other format
   return '780px'; // 800px - 40px
 }
+
+// Function to detect if content is markdown
+function isMarkdownContent(data: any): boolean {
+  // Check if language is explicitly markdown
+  if (data.language === 'markdown' || data.language === 'md') {
+    return true;
+  }
+
+  // Check for markdown patterns in content
+  if (typeof data.content === 'string') {
+    const content = data.content;
+
+    // Common markdown patterns
+    const markdownPatterns = [
+      /^#{1,6}\s+/m, // Headers (# ## ### etc.)
+      /^\s*[-*+]\s+/m, // Lists (- * +)
+      /^\s*\d+\.\s+/m, // Numbered lists (1. 2. etc.)
+      /\*\*[^*]+\*\*/, // Bold text
+      /\*[^*]+\*/, // Italic text
+      /`[^`]+`/, // Inline code
+      /```[\s\S]*?```/, // Code blocks
+      /\[.*?\]\(.*?\)/, // Links [text](url)
+      /^\s*>\s+/m, // Blockquotes
+      /^\s*\|.*\|/m, // Tables
+    ];
+
+    // Count how many patterns match
+    const matchCount = markdownPatterns.filter(pattern => pattern.test(content)).length;
+
+    // If we find 2 or more markdown patterns, consider it markdown
+    return matchCount >= 2;
+  }
+
+  return false;
+}
+
+// Markdown Renderer Component
+const MarkdownRenderer: React.FC<{ data: any; width: string; syntaxTheme: any }> = ({
+  data,
+  width,
+  syntaxTheme,
+}) => {
+  const theme = useTheme();
+  const [showFullContent, setShowFullContent] = useState(false);
+
+  // Check if content appears to be truncated
+  const isTruncated =
+    data.content &&
+    (data.content.includes('[Content truncated for display') ||
+      data.content.includes('[Output truncated...]') ||
+      data.content.endsWith('...'));
+
+  const displayContent = showFullContent ? data.fullContent || data.content : data.content;
+
+  return (
+    <Box
+      sx={{
+        width: `${width}`,
+        maxWidth: 'none',
+        minWidth: 0,
+        overflowWrap: 'break-word',
+        wordWrap: 'break-word',
+      }}
+    >
+      {data.highlights && data.highlights.length > 0 && (
+        <Box
+          sx={{
+            mb: 2,
+            width: `${width}`,
+            maxWidth: 'none',
+            minWidth: 0,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1,
+          }}
+        >
+          {data.highlights.map((highlight: string, index: number) => (
+            <Chip
+              key={index}
+              label={highlight}
+              size="small"
+              sx={{
+                maxWidth: '100%',
+                '& .MuiChip-label': {
+                  overflowWrap: 'break-word',
+                  wordWrap: 'break-word',
+                  wordBreak: 'break-word',
+                  whiteSpace: 'normal',
+                },
+              }}
+            />
+          ))}
+        </Box>
+      )}
+
+      {/* Truncation notification */}
+      {isTruncated && !showFullContent && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Button
+              size="small"
+              onClick={() => setShowFullContent(true)}
+              startIcon={<Icon icon="mdi:unfold-more-horizontal" />}
+            >
+              Show Full Content
+            </Button>
+          }
+        >
+          <Typography variant="body2">
+            Content has been truncated for display. Click "Show Full Content" to view the complete
+            documentation.
+          </Typography>
+        </Alert>
+      )}
+
+      <Box
+        sx={{
+          width: `${width}`,
+          maxWidth: 'none',
+          minWidth: 0,
+          bgcolor: theme.palette.background.default,
+          borderRadius: 1,
+          p: 2,
+          border: 1,
+          borderColor: theme.palette.divider,
+          maxHeight: showFullContent ? 'none' : '600px',
+          overflow: showFullContent ? 'visible' : 'auto',
+          '& h1, & h2, & h3, & h4, & h5, & h6': {
+            color: theme.palette.text.primary,
+            marginTop: 2,
+            marginBottom: 1,
+            fontWeight: 600,
+          },
+          '& h1': {
+            fontSize: '1.75rem',
+            borderBottom: 1,
+            borderColor: theme.palette.divider,
+            pb: 1,
+          },
+          '& h2': {
+            fontSize: '1.5rem',
+            borderBottom: 1,
+            borderColor: theme.palette.divider,
+            pb: 0.5,
+          },
+          '& h3': { fontSize: '1.25rem' },
+          '& h4': { fontSize: '1.1rem' },
+          '& h5, & h6': { fontSize: '1rem' },
+          '& p': {
+            marginBottom: 1.5,
+            lineHeight: 1.6,
+            color: theme.palette.text.primary,
+          },
+          '& ul, & ol': {
+            marginBottom: 1.5,
+            paddingLeft: 2,
+            '& li': {
+              marginBottom: 0.5,
+              color: theme.palette.text.primary,
+            },
+          },
+          '& blockquote': {
+            borderLeft: 4,
+            borderColor: theme.palette.primary.main,
+            marginLeft: 0,
+            marginRight: 0,
+            paddingLeft: 2,
+            paddingY: 1,
+            bgcolor: theme.palette.action.hover,
+            borderRadius: '0 4px 4px 0',
+            '& p': {
+              margin: 0,
+              fontStyle: 'italic',
+            },
+          },
+          '& code': {
+            bgcolor: theme.palette.action.selected,
+            color: theme.palette.primary.main,
+            padding: '2px 4px',
+            borderRadius: 1,
+            fontSize: '0.875rem',
+            fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
+          },
+          '& pre': {
+            margin: 0,
+            marginBottom: 1.5,
+            overflow: 'auto',
+            borderRadius: 1,
+            '& code': {
+              display: 'block',
+              padding: 1.5,
+              background: 'none',
+              color: 'inherit',
+            },
+          },
+          '& table': {
+            width: 'max-content',
+            minWidth: '100%',
+            borderCollapse: 'collapse',
+            marginBottom: 1.5,
+            '& th, & td': {
+              border: 1,
+              borderColor: theme.palette.divider,
+              padding: 1,
+              textAlign: 'left',
+              minWidth: '120px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            },
+            '& th': {
+              bgcolor: theme.palette.action.hover,
+              fontWeight: 600,
+              color: theme.palette.text.primary,
+            },
+            '& td': {
+              color: theme.palette.text.primary,
+            },
+          },
+          '& a': {
+            color: theme.palette.primary.main,
+            textDecoration: 'none',
+            '&:hover': {
+              textDecoration: 'underline',
+            },
+          },
+          '& hr': {
+            border: 'none',
+            borderTop: 1,
+            borderColor: theme.palette.divider,
+            marginY: 2,
+          },
+        }}
+      >
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code({ inline, className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || '');
+              const language = match ? match[1] : '';
+
+              if (!inline && language) {
+                return (
+                  <SyntaxHighlighter
+                    language={language}
+                    style={syntaxTheme}
+                    customStyle={{
+                      fontSize: '14px',
+                      margin: 0,
+                      borderRadius: '4px',
+                    }}
+                    wrapLongLines
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                );
+              }
+
+              return (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            },
+          }}
+        >
+          {displayContent}
+        </ReactMarkdown>
+      </Box>
+
+      {/* Collapse button for expanded content */}
+      {showFullContent && isTruncated && (
+        <Box sx={{ mt: 2, textAlign: 'center' }}>
+          <Button
+            size="small"
+            onClick={() => setShowFullContent(false)}
+            startIcon={<Icon icon="mdi:unfold-less-horizontal" />}
+            variant="outlined"
+          >
+            Collapse to Summary
+          </Button>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
 const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
   output,
   onRetry,
@@ -144,7 +436,8 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
         variant="outlined"
         sx={{
           mb: 2,
-          borderColor: theme.palette[getStatusColor()].main,
+          backgroundColor: theme.palette.background.paper,
+          borderColor: output.type === 'error' ? theme.palette.error.main : theme.palette.divider,
           borderWidth: output.type === 'error' ? 2 : 1,
           width: '100%', // Use 100% of parent container (which has padding)
           maxWidth: 'none', // Override any inherited maxWidth
@@ -257,13 +550,41 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
 
             {/* Insights */}
             {output.insights && output.insights.length > 0 && (
-              <Paper variant="outlined" sx={{ p: 2, mt: 2, bgcolor: 'action.hover' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  <Icon icon="mdi:lightbulb" style={{ marginRight: 8 }} />
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  mt: 2,
+                  bgcolor: theme.palette.action.hover,
+                  borderColor: theme.palette.divider,
+                }}
+              >
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 'bold',
+                    mb: 1,
+                    color: theme.palette.text.primary,
+                  }}
+                >
+                  <Icon
+                    icon="mdi:lightbulb"
+                    style={{
+                      marginRight: 8,
+                      color: theme.palette.primary.main,
+                    }}
+                  />
                   Key Insights:
                 </Typography>
                 {output.insights.map((insight, index) => (
-                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                  <Typography
+                    key={index}
+                    variant="body2"
+                    sx={{
+                      mb: 0.5,
+                      color: theme.palette.text.primary,
+                    }}
+                  >
                     • {insight}
                   </Typography>
                 ))}
@@ -272,13 +593,41 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
 
             {/* Actionable Items */}
             {output.actionable_items && output.actionable_items.length > 0 && (
-              <Paper variant="outlined" sx={{ p: 2, mt: 2, bgcolor: 'primary.50' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  <Icon icon="mdi:check-circle" style={{ marginRight: 8 }} />
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  mt: 2,
+                  bgcolor: theme.palette.action.hover,
+                  borderColor: theme.palette.divider,
+                }}
+              >
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 'bold',
+                    mb: 1,
+                    color: theme.palette.text.primary,
+                  }}
+                >
+                  <Icon
+                    icon="mdi:check-circle"
+                    style={{
+                      marginRight: 8,
+                      color: theme.palette.success.main,
+                    }}
+                  />
                   Recommended Actions:
                 </Typography>
                 {output.actionable_items.map((item, index) => (
-                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                  <Typography
+                    key={index}
+                    variant="body2"
+                    sx={{
+                      mb: 0.5,
+                      color: theme.palette.text.primary,
+                    }}
+                  >
                     • {item}
                   </Typography>
                 ))}
@@ -338,6 +687,7 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
 
 // Table Display Component
 const TableDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) => {
+  const theme = useTheme();
   const [sortBy, setSortBy] = useState(data.sortBy || null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -370,14 +720,15 @@ const TableDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) =
       component={Paper}
       variant="outlined"
       sx={{
-        width: width, // Use fixed pixel width
+        width: width, // Use fixed pixel width for container
         maxWidth: 'none',
         minWidth: 0,
-        // Only use horizontal scroll as absolute last resort
-        overflowX: 'auto',
+        overflowX: 'auto', // Enable horizontal scrolling
+        overflowY: 'visible',
+        backgroundColor: theme.palette.background.paper,
+        borderColor: theme.palette.divider,
         '& .MuiTable-root': {
-          width: width, // Use fixed pixel width
-          minWidth: 'auto',
+          minWidth: 'max-content', // Allow table to be wider than container
           tableLayout: 'auto', // Let table size itself naturally
         },
       }}
@@ -385,13 +736,30 @@ const TableDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) =
       <Table
         size="small"
         sx={{
-          width: width, // Use fixed pixel width
+          minWidth: 'max-content', // Allow table to grow beyond container width
           wordBreak: 'break-word',
           '& .MuiTableCell-root': {
-            // Ensure all cells can wrap text properly
-            whiteSpace: 'normal',
-            wordWrap: 'break-word',
-            overflowWrap: 'break-word',
+            // Ensure all cells can wrap text properly while maintaining minimum width
+            whiteSpace: 'nowrap', // Prevent wrapping for horizontal scroll to work
+            minWidth: '120px', // Minimum column width
+            paddingX: 1,
+            '&:first-of-type': {
+              paddingLeft: 2,
+            },
+            '&:last-of-type': {
+              paddingRight: 2,
+            },
+          },
+          '& .MuiTableCell-head': {
+            fontWeight: 'bold',
+            backgroundColor: theme.palette.action.hover,
+            color: theme.palette.text.primary,
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+          },
+          '& .MuiTableCell-body': {
+            color: theme.palette.text.primary,
           },
         }}
       >
@@ -401,14 +769,30 @@ const TableDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) =
               <TableCell
                 key={index}
                 onClick={() => handleSort(header)}
-                sx={{ cursor: 'pointer', fontWeight: 'bold' }}
+                sx={{
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  minWidth: '120px',
+                  maxWidth: '300px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  paddingX: 1,
+                  '&:first-of-type': {
+                    paddingLeft: 2,
+                  },
+                  '&:last-of-type': {
+                    paddingRight: 2,
+                  },
+                }}
+                title={header} // Show full header on hover
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {header}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{header}</span>
                   {sortBy === header && (
                     <Icon
                       icon={sortOrder === 'asc' ? 'mdi:arrow-up' : 'mdi:arrow-down'}
-                      style={{ fontSize: 16 }}
+                      style={{ fontSize: 16, flexShrink: 0 }}
                     />
                   )}
                 </Box>
@@ -422,22 +806,31 @@ const TableDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) =
               key={rowIndex}
               sx={{
                 backgroundColor: data.highlightRows?.includes(rowIndex)
-                  ? 'warning.light'
-                  : undefined,
+                  ? theme.palette.warning.light
+                  : 'transparent',
+                '&:hover': {
+                  backgroundColor: theme.palette.action.hover,
+                },
               }}
             >
               {row.map((cell: any, cellIndex: number) => (
                 <TableCell
                   key={cellIndex}
                   sx={{
-                    minWidth: 0, // Allow shrinking
-                    overflowWrap: 'break-word',
-                    wordBreak: 'break-word',
-                    whiteSpace: 'normal',
-                    wordWrap: 'break-word',
-                    // Remove maxWidth constraint to prevent truncation
+                    minWidth: '120px', // Minimum column width
+                    maxWidth: '300px', // Maximum column width to prevent extremely wide columns
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    paddingX: 1,
+                    '&:first-of-type': {
+                      paddingLeft: 2,
+                    },
+                    '&:last-of-type': {
+                      paddingRight: 2,
+                    },
                   }}
-                  title={typeof cell === 'object' ? JSON.stringify(cell) : String(cell)}
+                  title={typeof cell === 'object' ? JSON.stringify(cell) : String(cell)} // Show full content on hover
                 >
                   {typeof cell === 'object' ? JSON.stringify(cell) : String(cell)}
                 </TableCell>
@@ -452,6 +845,8 @@ const TableDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) =
 
 // Metrics Display Component
 const MetricsDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) => {
+  const theme = useTheme();
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'error':
@@ -500,6 +895,8 @@ const MetricsDisplay: React.FC<{ data: any; width: string }> = ({ data, width })
                   overflowWrap: 'break-word',
                   wordWrap: 'break-word',
                   wordBreak: 'break-word',
+                  backgroundColor: theme.palette.background.paper,
+                  borderColor: theme.palette.divider,
                 }}
               >
                 <Typography
@@ -641,16 +1038,18 @@ const MetricsDisplay: React.FC<{ data: any; width: string }> = ({ data, width })
 
 // List Display Component
 const ListDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) => {
+  const theme = useTheme();
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'error':
-        return 'error.main';
+        return theme.palette.error.main;
       case 'warning':
-        return 'warning.main';
+        return theme.palette.warning.main;
       case 'info':
-        return 'info.main';
+        return theme.palette.info.main;
       default:
-        return 'text.primary';
+        return theme.palette.text.primary;
     }
   };
 
@@ -679,6 +1078,8 @@ const ListDisplay: React.FC<{ data: any; width: string }> = ({ data, width }) =>
             overflowWrap: 'break-word',
             wordWrap: 'break-word',
             wordBreak: 'break-word',
+            backgroundColor: theme.palette.background.paper,
+            borderColor: theme.palette.divider,
           }}
         >
           <Typography variant="body1" sx={{ wordWrap: 'break-word', wordBreak: 'break-word' }}>
@@ -723,6 +1124,12 @@ const TextDisplay: React.FC<{ data: any; theme: any; width: string }> = ({
   theme,
   width,
 }) => {
+  // Check if the content should be rendered as markdown
+  if (isMarkdownContent(data)) {
+    return <MarkdownRenderer data={data} width={width} syntaxTheme={theme} />;
+  }
+
+  // Default to syntax highlighting for non-markdown content
   return (
     <Box
       sx={{
