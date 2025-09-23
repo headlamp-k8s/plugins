@@ -132,7 +132,6 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
     <Box
       sx={{
         my: 2,
-        pr: 3, // Add right padding for better readability
         maxWidth: '100%',
         overflowWrap: 'break-word',
         wordWrap: 'break-word',
