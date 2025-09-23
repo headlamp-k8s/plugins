@@ -195,12 +195,21 @@ Remember: Focus on making complex data accessible and actionable for Kubernetes 
     toolName: string,
     options: Required<MCPFormatterOptions>
   ): string {
-    const truncatedOutput = this.truncateIfNeeded(rawOutput, 10000); // Limit to ~10k chars
+    // Detect if this is documentation content
+    const isDocumentation = this.isDocumentationContent(rawOutput, toolName);
+
+    // Use higher limits for documentation content
+    const maxLength = isDocumentation ? 25000 : 10000;
+    const truncatedOutput = this.truncateIfNeeded(rawOutput, maxLength);
 
     // Detect if this is likely an error
     const isError = this.detectError(rawOutput);
     const errorHint = isError
       ? '\n\nIMPORTANT: This appears to be an error response. Use "error" type and provide helpful troubleshooting guidance.'
+      : '';
+
+    const docHint = isDocumentation
+      ? '\n\nIMPORTANT: This appears to be documentation content. Use "text" type with language="markdown" to enable proper markdown rendering.'
       : '';
 
     return `Analyze and format this ${toolName} tool output:
@@ -218,14 +227,15 @@ Pay special attention to:
 1. Identifying the most appropriate visualization type (or "error" if this is an error)
 2. For errors: Provide clear, actionable troubleshooting steps
 3. For data: Extract key metrics and patterns
-4. Highlighting any security or performance issues
-5. Providing actionable recommendations
+4. For documentation: Use markdown formatting and preserve structure
+5. Highlighting any security or performance issues
+6. Providing actionable recommendations
 
-${errorHint}
+${errorHint}${docHint}
 
 ${
   truncatedOutput.length < rawOutput.length
-    ? `\n[Note: Output was truncated from ${rawOutput.length} to ${truncatedOutput.length} characters for analysis]`
+    ? `\n[Note: Output was truncated from ${rawOutput.length} to ${truncatedOutput.length} characters for analysis. Original content size: ${rawOutput.length} characters]`
     : ''
 }`;
   }
@@ -251,6 +261,72 @@ ${
         lower.includes('schema mismatch')
       );
     }
+  }
+
+  /**
+   * Detect if content is documentation
+   */
+  private isDocumentationContent(rawOutput: string, toolName: string): boolean {
+    // Check tool name patterns
+    const docToolPatterns = [
+      'documentation',
+      'docs',
+      'fetch',
+      'microsoft',
+      'azure',
+      'guide',
+      'tutorial',
+      'manual',
+      'readme',
+    ];
+
+    const toolNameLower = toolName.toLowerCase();
+    const isDocTool = docToolPatterns.some(pattern => toolNameLower.includes(pattern));
+
+    // Check content patterns
+    const docContentPatterns = [
+      /^#{1,6}\s+/m, // Markdown headers
+      /```[\s\S]*?```/, // Code blocks
+      /\[.*?\]\(.*?\)/, // Markdown links
+      /^\s*[-*+]\s+/m, // Lists
+      /^\s*\d+\.\s+/m, // Numbered lists
+      /^\s*>\s+/m, // Blockquotes
+      /\*\*[^*]+\*\*/, // Bold text
+      /\*[^*]+\*/, // Italic text
+      /`[^`]+`/, // Inline code
+    ];
+
+    const contentMatches = docContentPatterns.filter(pattern => pattern.test(rawOutput)).length;
+
+    // Check for common documentation keywords
+    const docKeywords = [
+      'prerequisites',
+      'installation',
+      'configuration',
+      'getting started',
+      'tutorial',
+      'example',
+      'usage',
+      'overview',
+      'introduction',
+      'documentation',
+      'azure',
+      'microsoft',
+      'learn.microsoft.com',
+    ];
+
+    const contentLower = rawOutput.toLowerCase();
+    const keywordMatches = docKeywords.filter(keyword => contentLower.includes(keyword)).length;
+
+    // Consider it documentation if:
+    // 1. Tool name suggests documentation OR
+    // 2. Multiple markdown patterns + documentation keywords OR
+    // 3. Very large content with some doc patterns (likely fetched docs)
+    return (
+      isDocTool ||
+      (contentMatches >= 3 && keywordMatches >= 2) ||
+      (rawOutput.length > 20000 && contentMatches >= 2)
+    );
   }
 
   /**
@@ -304,6 +380,7 @@ ${
     // Try to detect if it's JSON
     let data: any;
     let type: FormattedMCPOutput['type'] = 'text';
+    const warnings: string[] = ['AI formatting failed - showing raw output'];
 
     try {
       const parsed = JSON.parse(rawOutput);
@@ -330,13 +407,31 @@ ${
     } catch {
       // Not JSON, treat as text
       type = 'text';
-      data = {
-        content:
-          rawOutput.length > 5000
-            ? rawOutput.substring(0, 5000) + '\n\n[Output truncated...]'
-            : rawOutput,
-        language: 'text',
-      };
+
+      // Check if this is documentation content
+      const isDocumentation = this.isDocumentationContent(rawOutput, toolName);
+
+      // Use higher limits for documentation
+      const maxLength = isDocumentation ? 15000 : 5000;
+
+      if (rawOutput.length > maxLength) {
+        const truncatedContent = rawOutput.substring(0, maxLength);
+        warnings.push(`Content truncated from ${rawOutput.length} to ${maxLength} characters`);
+
+        data = {
+          content:
+            truncatedContent +
+            '\n\n[Content truncated for display. Original size: ' +
+            rawOutput.length +
+            ' characters]',
+          language: isDocumentation ? 'markdown' : 'text',
+        };
+      } else {
+        data = {
+          content: rawOutput,
+          language: isDocumentation ? 'markdown' : 'text',
+        };
+      }
     }
 
     return {
@@ -345,7 +440,7 @@ ${
       summary: `Raw output from ${toolName}. AI formatting was not available.`,
       data,
       insights: [],
-      warnings: ['AI formatting failed - showing raw output'],
+      warnings,
       actionable_items: ['Consider checking the AI service connection'],
       metadata: {
         toolName,
