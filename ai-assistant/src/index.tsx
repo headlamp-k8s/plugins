@@ -22,7 +22,9 @@ import {
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { ModelSelector } from './components';
+import { MCPSettings } from './components/settings/MCPSettings';
 import { getDefaultConfig } from './config/modelConfig';
+import { PromptWidthProvider } from './contexts/PromptWidthContext';
 import { isTestModeCheck } from './helper';
 import AIPrompt from './modal';
 import { getSettingsURL, PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
@@ -107,11 +109,14 @@ const AIPanelComponent = React.memo(() => {
           zIndex: 10,
         }}
       />
-      <AIPrompt
-        openPopup={pluginState.isUIPanelOpen}
-        setOpenPopup={pluginState.setIsUIPanelOpen}
-        pluginSettings={conf}
-      />
+      <PromptWidthProvider initialWidth={width}>
+        <AIPrompt
+          openPopup={pluginState.isUIPanelOpen}
+          setOpenPopup={pluginState.setIsUIPanelOpen}
+          pluginSettings={conf}
+          width={width}
+        />
+      </PromptWidthProvider>
     </Box>
   );
 });
@@ -460,6 +465,10 @@ function Settings() {
           </Box>
         ))}
       </Box>
+
+      {/* MCP Servers Section */}
+      <Divider sx={{ my: 3 }} />
+      <MCPSettings />
     </Box>
   );
 }
