@@ -2,7 +2,7 @@
 
 import { PluginManager } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Typography } from '@mui/material';
+import { Link as MuiLink, Typography } from '@mui/material';
 import { Box } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -120,7 +120,7 @@ export function PurePluginInstalledList({
                       const url = plugin?.homepage || plugin?.repository?.url;
                       return plugin?.origin ? (
                         url ? (
-                          <Link href={url}>{plugin.origin}</Link>
+                          <MuiLink href={url}>{plugin.origin}</MuiLink>
                         ) : (
                           plugin?.origin
                         )
