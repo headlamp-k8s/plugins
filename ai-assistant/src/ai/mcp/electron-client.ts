@@ -5,6 +5,7 @@ interface MCPTool {
   name: string;
   description?: string;
   inputSchema?: any;
+  server?: string; // Add server information
 }
 
 interface MCPResponse {

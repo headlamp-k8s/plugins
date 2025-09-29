@@ -1,23 +1,28 @@
 import { Icon } from '@iconify/react';
+import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
   Chip,
   CircularProgress,
-  Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  InputAdornment,
   List,
   ListItem,
   ListItemSecondaryAction,
   ListItemText,
   Switch,
+  TextField,
   Typography,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
-import tools from '../../ai/mcp/electron-client';
+import { ElectronMCPClient } from '../../ai/mcp/electron-client';
 import { AVAILABLE_TOOLS } from '../../langchain/tools/registry';
 
 interface MCPTool {
@@ -41,7 +46,9 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
 }) => {
   const [localEnabledTools, setLocalEnabledTools] = useState<string[]>(enabledTools);
   const [mcpTools, setMcpTools] = useState<MCPTool[]>([]);
-  const [loadingMcpTools, setLoadingMcpTools] = useState<boolean>(false);
+  const [isLoadingMcp, setIsLoadingMcp] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set(['MCP Tools']));
 
   // Load MCP tools when dialog opens
   useEffect(() => {
@@ -56,22 +63,48 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   }, [enabledTools]);
 
   const loadMcpTools = async () => {
-    setLoadingMcpTools(true);
+    console.log('ToolsDialog: Starting to load MCP tools...');
+    setIsLoadingMcp(true);
     try {
-      const mcpToolsData = await tools();
-      setMcpTools(mcpToolsData || []);
+      const mcpClient = new ElectronMCPClient();
+      console.log('ToolsDialog: Created MCP client, isAvailable:', mcpClient.isAvailable());
+      const tools = await mcpClient.getTools();
+      console.log('ToolsDialog: Received tools from client:', tools.length, 'tools');
+      console.log('ToolsDialog: Tools:', tools);
+      setMcpTools(tools);
     } catch (error) {
-      console.warn('Failed to load MCP tools:', error);
+      console.error('ToolsDialog: Failed to load MCP tools:', error);
       setMcpTools([]);
     } finally {
-      setLoadingMcpTools(false);
+      setIsLoadingMcp(false);
     }
   };
 
   const handleToggleTool = (toolName: string) => {
-    setLocalEnabledTools(prev =>
-      prev.includes(toolName) ? prev.filter(name => name !== toolName) : [...prev, toolName]
-    );
+    const newEnabledTools = localEnabledTools.includes(toolName)
+      ? localEnabledTools.filter(name => name !== toolName)
+      : [...localEnabledTools, toolName];
+    setLocalEnabledTools(newEnabledTools);
+  };
+
+  // Filter tools based on search query
+  const filteredMcpTools = mcpTools.filter(
+    tool =>
+      tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (tool.description && tool.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  // Group tools by server (simplified version for now)
+  const groupedTools = { 'MCP Tools': filteredMcpTools };
+
+  const handleToggleServer = (serverName: string) => {
+    const newExpanded = new Set(expandedServers);
+    if (newExpanded.has(serverName)) {
+      newExpanded.delete(serverName);
+    } else {
+      newExpanded.add(serverName);
+    }
+    setExpandedServers(newExpanded);
   };
 
   const handleSave = () => {
@@ -101,11 +134,29 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
           MCP Tools
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          External Model Context Protocol tools (always enabled)
+          These are Model Context Protocol tools that provide additional capabilities to the
+          assistant.
         </Typography>
+
+        {/* Search Bar */}
+        <TextField
+          fullWidth
+          placeholder="Search MCP tools..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          size="small"
+          sx={{ mt: 2 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Icon icon="mdi:magnify" style={{ fontSize: 20 }} />
+              </InputAdornment>
+            ),
+          }}
+        />
       </Box>
 
-      {loadingMcpTools ? (
+      {isLoadingMcp ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
           <CircularProgress size={24} />
           <Typography variant="body2" sx={{ ml: 2 }}>
@@ -113,59 +164,88 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
           </Typography>
         </Box>
       ) : (
-        <List>
-          {mcpTools.length > 0 ? (
-            mcpTools.map((tool, index) => (
-              <ListItem key={`mcp-${index}`}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    minWidth: 40,
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon
-                    icon={getToolIcon(tool.name, 'mcp')}
-                    style={{ fontSize: 20, marginRight: 8 }}
-                  />
-                </Box>
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body1">{tool.name}</Typography>
-                      <Chip label="MCP" size="small" color="info" variant="outlined" />
-                    </Box>
-                  }
-                  secondary={tool.description || 'External MCP tool'}
-                />
-                <ListItemSecondaryAction>
-                  <Switch
-                    edge="end"
-                    onChange={() => handleToggleTool(tool.name)}
-                    checked={localEnabledTools.includes(tool.name)}
-                    color="primary"
-                  />
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))
-          ) : (
-            <ListItem>
-              <ListItemText
-                primary={
-                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                    No MCP tools available. Configure MCP servers to see tools here.
-                  </Typography>
-                }
-              />
-            </ListItem>
+        <>
+          {Object.entries(groupedTools).map(([serverName, tools]) => (
+            <Accordion
+              key={serverName}
+              expanded={expandedServers.has(serverName)}
+              onChange={() => handleToggleServer(serverName)}
+              sx={{ mb: 1 }}
+            >
+              <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
+                <Typography variant="subtitle1">
+                  {serverName} ({tools.length})
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <List>
+                  {tools.map((tool, index) => (
+                    <>
+                      <ListItem key={`${serverName}-${index}`}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            minWidth: 40,
+                            justifyContent: 'center',
+                            mr: 1,
+                          }}
+                        >
+                          <Icon
+                            icon={getToolIcon(tool.name, 'mcp')}
+                            style={{ fontSize: 20, marginRight: 8 }}
+                          />
+                        </Box>
+
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body1">{tool.name}</Typography>
+                              <Chip label="MCP" size="small" color="info" variant="outlined" />
+                            </Box>
+                          }
+                          secondary={tool.description}
+                        />
+
+                        <ListItemSecondaryAction>
+                          <Switch
+                            edge="end"
+                            onChange={() => handleToggleTool(tool.name)}
+                            checked={localEnabledTools.includes(tool.name)}
+                          />
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                      {index < tools.length - 1 && <Divider component="li" />}
+                    </>
+                  ))}
+                </List>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+
+          {filteredMcpTools.length === 0 && mcpTools.length > 0 && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ fontStyle: 'italic', textAlign: 'center', py: 3 }}
+            >
+              No tools match your search query.
+            </Typography>
           )}
-        </List>
+
+          {mcpTools.length === 0 && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ fontStyle: 'italic', textAlign: 'center', py: 3 }}
+            >
+              No MCP tools available. Connect to MCP servers to see available tools.
+            </Typography>
+          )}
+        </>
       )}
     </>
-  );
-
-  // Get tool categories
+  ); // Get tool categories
   const kubernetesTools = AVAILABLE_TOOLS.filter(ToolClass => {
     const tempTool = new ToolClass();
     return tempTool.config.name.includes('kubernetes') || tempTool.config.name.includes('k8s');
