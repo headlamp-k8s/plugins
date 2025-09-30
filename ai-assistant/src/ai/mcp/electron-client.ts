@@ -139,6 +139,23 @@ class ElectronMCPClient {
       return false;
     }
   }
+
+  /**
+   * Get MCP configuration from Electron main process
+   */
+  async getConfig(): Promise<{ success: boolean; config?: any; error?: string }> {
+    if (!this.isElectron) {
+      return { success: false, error: 'MCP client not available - not running in Electron environment' };
+    }
+
+    try {
+      const response = await window.desktopApi!.mcp.getConfig();
+      return response;
+    } catch (error) {
+      console.error('Error getting MCP config:', error);
+      return { success: false, error: String(error) };
+    }
+  }
 }
 
 // Export a function that returns tools (compatible with existing interface)

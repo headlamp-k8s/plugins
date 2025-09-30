@@ -29,6 +29,7 @@ interface MCPTool {
   name: string;
   description?: string;
   inputSchema?: any;
+  server?: string;
 }
 
 interface ToolsDialogProps {
@@ -48,7 +49,8 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   const [mcpTools, setMcpTools] = useState<MCPTool[]>([]);
   const [isLoadingMcp, setIsLoadingMcp] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set(['MCP Tools']));
+  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
+  const [mcpServers, setMcpServers] = useState<{[key: string]: any}>({});
 
   // Load MCP tools when dialog opens
   useEffect(() => {
@@ -68,13 +70,67 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
     try {
       const mcpClient = new ElectronMCPClient();
       console.log('ToolsDialog: Created MCP client, isAvailable:', mcpClient.isAvailable());
-      const tools = await mcpClient.getTools();
+
+      // Load both tools and server configuration
+      const [tools, configResponse] = await Promise.all([
+        mcpClient.getTools(),
+        mcpClient.getConfig()
+      ]);
+
       console.log('ToolsDialog: Received tools from client:', tools.length, 'tools');
       console.log('ToolsDialog: Tools:', tools);
-      setMcpTools(tools);
+      console.log('ToolsDialog: Config response:', configResponse);
+
+      // Extract server names from config
+      let servers: {[key: string]: any} = {};
+      if (configResponse.success && configResponse.config && configResponse.config.servers) {
+        servers = configResponse.config.servers.reduce((acc: {[key: string]: any}, server: any) => {
+          acc[server.name] = server;
+          return acc;
+        }, {});
+        setMcpServers(servers);
+      }
+
+      // Assign server names to tools based on available servers
+      // If we have server config, try to match tools to servers
+      // For now, if there's only one enabled server, assign all tools to it
+      const enabledServers = Object.values(servers).filter((server: any) => server.enabled);
+      const toolsWithServer = tools.map(tool => {
+        if (tool.server) {
+          return tool; // Tool already has server info
+        }
+
+        // If we have exactly one enabled server, assign all tools to it
+        if (enabledServers.length === 1) {
+          return { ...tool, server: enabledServers[0].name };
+        }
+
+        // Otherwise, try to infer from tool name or keep as unknown
+        const serverNames = Object.keys(servers);
+        for (const serverName of serverNames) {
+          if (tool.name.toLowerCase().includes(serverName.toLowerCase().replace('-mcp', ''))) {
+            return { ...tool, server: serverName };
+          }
+        }
+
+        return { ...tool, server: 'Unknown Server' };
+      });
+
+      setMcpTools(toolsWithServer);
+
+      // Auto-expand servers that have tools
+      const serversWithTools = new Set<string>();
+      toolsWithServer.forEach(tool => {
+        if (tool.server) {
+          serversWithTools.add(tool.server);
+        }
+      });
+      setExpandedServers(serversWithTools);
+
     } catch (error) {
       console.error('ToolsDialog: Failed to load MCP tools:', error);
       setMcpTools([]);
+      setMcpServers({});
     } finally {
       setIsLoadingMcp(false);
     }
@@ -87,6 +143,38 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
     setLocalEnabledTools(newEnabledTools);
   };
 
+  const handleToggleServer = (serverName: string) => {
+    const serverTools = mcpTools.filter(tool => tool.server === serverName);
+    const serverToolNames = serverTools.map(tool => tool.name);
+
+    // Check if all tools from this server are currently enabled
+    const allEnabled = serverToolNames.every(toolName => localEnabledTools.includes(toolName));
+
+    let newEnabledTools: string[];
+    if (allEnabled) {
+      // Disable all tools from this server
+      newEnabledTools = localEnabledTools.filter(toolName => !serverToolNames.includes(toolName));
+    } else {
+      // Enable all tools from this server
+      newEnabledTools = [...new Set([...localEnabledTools, ...serverToolNames])];
+    }
+
+    setLocalEnabledTools(newEnabledTools);
+  };
+
+  const isServerEnabled = (serverName: string) => {
+    const serverTools = mcpTools.filter(tool => tool.server === serverName);
+    const serverToolNames = serverTools.map(tool => tool.name);
+    return serverToolNames.length > 0 && serverToolNames.every(toolName => localEnabledTools.includes(toolName));
+  };
+
+  const isServerPartiallyEnabled = (serverName: string) => {
+    const serverTools = mcpTools.filter(tool => tool.server === serverName);
+    const serverToolNames = serverTools.map(tool => tool.name);
+    const enabledCount = serverToolNames.filter(toolName => localEnabledTools.includes(toolName)).length;
+    return enabledCount > 0 && enabledCount < serverToolNames.length;
+  };
+
   // Filter tools based on search query
   const filteredMcpTools = mcpTools.filter(
     tool =>
@@ -94,10 +182,17 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       (tool.description && tool.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Group tools by server (simplified version for now)
-  const groupedTools = { 'MCP Tools': filteredMcpTools };
+  // Group tools by server
+  const groupedToolsByServer = filteredMcpTools.reduce((acc, tool) => {
+    const serverName = tool.server || 'Unknown Server';
+    if (!acc[serverName]) {
+      acc[serverName] = [];
+    }
+    acc[serverName].push(tool);
+    return acc;
+  }, {} as {[key: string]: MCPTool[]});
 
-  const handleToggleServer = (serverName: string) => {
+  const handleToggleServerExpansion = (serverName: string) => {
     const newExpanded = new Set(expandedServers);
     if (newExpanded.has(serverName)) {
       newExpanded.delete(serverName);
@@ -165,23 +260,49 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
         </Box>
       ) : (
         <>
-          {Object.entries(groupedTools).map(([serverName, tools]) => (
+          {Object.entries(groupedToolsByServer).map(([serverName, tools]) => (
             <Accordion
               key={serverName}
               expanded={expandedServers.has(serverName)}
-              onChange={() => handleToggleServer(serverName)}
+              onChange={() => handleToggleServerExpansion(serverName)}
               sx={{ mb: 1 }}
             >
               <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
-                <Typography variant="subtitle1">
-                  {serverName} ({tools.length})
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                    <Icon icon="mdi:server" style={{ fontSize: 20 }} />
+                    <Typography variant="subtitle1">
+                      {serverName} ({tools.length} tools)
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Switch
+                      size="small"
+                      checked={isServerEnabled(serverName)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleToggleServer(serverName);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{
+                        ...(isServerPartiallyEnabled(serverName) && {
+                          '& .MuiSwitch-thumb': {
+                            backgroundColor: 'orange',
+                          },
+                          '& .MuiSwitch-track': {
+                            backgroundColor: 'rgba(255, 165, 0, 0.3)',
+                          }
+                        })
+                      }}
+                    />
+                  </Box>
+                </Box>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 0 }}>
-                <List>
+                <List sx={{ pl: 2 }}>
                   {tools.map((tool, index) => (
-                    <>
-                      <ListItem key={`${serverName}-${index}`}>
+                    <React.Fragment key={`${serverName}-${tool.name}-${index}`}>
+                      <ListItem>
                         <Box
                           sx={{
                             display: 'flex',
@@ -193,7 +314,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
                         >
                           <Icon
                             icon={getToolIcon(tool.name, 'mcp')}
-                            style={{ fontSize: 20, marginRight: 8 }}
+                            style={{ fontSize: 18, marginRight: 8 }}
                           />
                         </Box>
 
@@ -209,6 +330,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
 
                         <ListItemSecondaryAction>
                           <Switch
+                            size="small"
                             edge="end"
                             onChange={() => handleToggleTool(tool.name)}
                             checked={localEnabledTools.includes(tool.name)}
@@ -216,7 +338,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
                         </ListItemSecondaryAction>
                       </ListItem>
                       {index < tools.length - 1 && <Divider component="li" />}
-                    </>
+                    </React.Fragment>
                   ))}
                 </List>
               </AccordionDetails>
