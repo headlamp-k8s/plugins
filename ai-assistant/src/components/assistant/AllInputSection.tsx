@@ -35,7 +35,11 @@ interface AIInputSectionProps {
   onClearHistory: () => void;
   onConfigChange: (config: StoredProviderConfig, model: string) => void;
   onToggleAgentMode?: (enabled: boolean) => void;
-  onTestModeResponse: (content: string, type: 'assistant' | 'user', hasError?: boolean) => void;
+  onTestModeResponse: (
+    content: string | object,
+    type: 'assistant' | 'user',
+    hasError?: boolean
+  ) => void;
   onToolsChange: (enabledTools: string[]) => void;
 }
 
