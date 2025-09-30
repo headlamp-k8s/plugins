@@ -59,7 +59,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
 }) => {
   const theme = useTheme();
   const [selectedToolIds] = useState<string[]>(toolCalls.map(tool => tool.id));
-  const [showDetails, setShowDetails] = useState(!compact);
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set()); // Track which tools are expanded
 
   // State to track processed arguments for each tool
   const [processedArguments, setProcessedArguments] = useState<Record<string, ProcessedArguments>>(
@@ -166,6 +166,18 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
       return 'mdi:kubernetes';
     }
     return 'mdi:tool';
+  };
+
+  const toggleToolExpansion = (toolId: string) => {
+    setExpandedTools(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(toolId)) {
+        newSet.delete(toolId);
+      } else {
+        newSet.add(toolId);
+      }
+      return newSet;
+    });
   };
 
   const renderArgumentField = (
@@ -412,7 +424,6 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
   };
 
   const mcpTools = toolCalls.filter(tool => tool.type === 'mcp');
-  const regularTools = toolCalls.filter(tool => tool.type === 'regular');
 
   // Check if any action is in progress
   const isActionInProgress = loading || isApproving || isDenying;
@@ -483,173 +494,115 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
 
         {/* Summary */}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {compact
-            ? `Allow execution of ${toolCalls.length} tool${toolCalls.length > 1 ? 's' : ''}?`
-            : `The following tool${toolCalls.length > 1 ? 's' : ''} need${
-                toolCalls.length > 1 ? '' : 's'
-              } permission to execute:`}
+          The assistant wants to execute {toolCalls.length} tool{toolCalls.length > 1 ? 's' : ''}:
         </Typography>
 
-        {/* Tool summary when compact */}
-        {compact && (
-          <Box sx={{ mb: 2 }}>
-            {toolCalls.map(tool => (
-              <Chip
-                key={tool.id}
-                label={tool.name}
-                size="small"
-                variant="outlined"
-                sx={{ mr: 0.5, mb: 0.5 }}
-                icon={<Icon icon={getToolIcon(tool.name, tool.type)} />}
-              />
-            ))}
-          </Box>
-        )}
-
-        {/* Expandable details */}
-        {compact && !showDetails && (
-          <Box sx={{ mb: 2 }}>
-            {/* MCP Tools */}
-            {mcpTools.length > 0 && (
-              <Box sx={{ mb: 1 }}>
-                <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'info.main' }}>
-                  MCP Tools:
+        {/* Collapsible tool list */}
+        <Box sx={{ mb: 2 }}>
+          {toolCalls.map((tool, index) => (
+            <Box key={tool.id} sx={{ mb: index < toolCalls.length - 1 ? 1 : 0 }}>
+              {/* Tool header - always visible and clickable */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  p: 1,
+                  borderRadius: 1,
+                  border: `1px solid ${theme.palette.divider}`,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover,
+                  },
+                  backgroundColor: expandedTools.has(tool.id)
+                    ? theme.palette.action.selected
+                    : 'transparent',
+                }}
+                onClick={() => toggleToolExpansion(tool.id)}
+              >
+                <IconButton size="small" sx={{ p: 0.5 }}>
+                  <Icon
+                    icon={expandedTools.has(tool.id) ? 'mdi:chevron-up' : 'mdi:chevron-down'}
+                    style={{ fontSize: 16 }}
+                  />
+                </IconButton>
+                <Icon icon={getToolIcon(tool.name, tool.type)} style={{ fontSize: 18 }} />
+                <Typography variant="body2" sx={{ fontWeight: 'bold', flex: 1 }}>
+                  {tool.name}
                 </Typography>
-                {mcpTools.map(tool => (
-                  <Box key={tool.id} sx={{ ml: 2, mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Icon icon={getToolIcon(tool.name, tool.type)} style={{ fontSize: 16 }} />
-                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {tool.name}
-                      </Typography>
-                      <Chip label="MCP" size="small" color="info" variant="outlined" />
-                    </Box>
-                    {tool.description && (
-                      <Typography variant="caption" color="text.secondary" sx={{ ml: 3 }}>
-                        {tool.description}
-                      </Typography>
-                    )}
-                  </Box>
-                ))}
-              </Box>
-            )}
-
-            {/* Regular Tools */}
-            {regularTools.length > 0 && (
-              <Box sx={{ mb: 1 }}>
-                <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                  System Tools:
-                </Typography>
-                {regularTools.map(tool => (
-                  <Box key={tool.id} sx={{ ml: 2, mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Icon icon={getToolIcon(tool.name, tool.type)} style={{ fontSize: 16 }} />
-                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {tool.name}
-                      </Typography>
-                    </Box>
-                    {tool.description && (
-                      <Typography variant="caption" color="text.secondary" sx={{ ml: 3 }}>
-                        {tool.description}
-                      </Typography>
-                    )}
-                  </Box>
-                ))}
-              </Box>
-            )}
-          </Box>
-        )}
-
-        {/* Toggle details button for compact mode */}
-        {compact && (
-          <Box sx={{ mb: 1 }}>
-            <Button
-              size="small"
-              startIcon={<Icon icon={showDetails ? 'mdi:chevron-up' : 'mdi:chevron-down'} />}
-              onClick={() => setShowDetails(!showDetails)}
-              sx={{ p: 0, minWidth: 'auto' }}
-            >
-              <Typography variant="caption">
-                {showDetails ? 'Hide details' : 'Show details'}
-              </Typography>
-            </Button>
-          </Box>
-        )}
-
-        {/* Detailed view */}
-        <Collapse in={showDetails}>
-          <Box sx={{ mt: 1 }}>
-            {toolCalls.map((tool, index) => (
-              <Box key={tool.id}>
-                {index > 0 && <Divider sx={{ my: 1 }} />}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                  <Icon icon={getToolIcon(tool.name, tool.type)} style={{ fontSize: 16 }} />
-                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                    {tool.name}
+                {tool.type === 'mcp' && (
+                  <Chip label="MCP" size="small" color="info" variant="outlined" />
+                )}
+                {tool.description && (
+                  <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 200 }}>
+                    {tool.description.length > 50
+                      ? `${tool.description.substring(0, 50)}...`
+                      : tool.description
+                    }
                   </Typography>
-                  {tool.type === 'mcp' && (
-                    <Chip label="MCP" size="small" color="info" variant="outlined" />
+                )}
+              </Box>
+
+              {/* Tool details - collapsible */}
+              <Collapse in={expandedTools.has(tool.id)}>
+                <Box sx={{
+                  p: 2,
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderTop: 0,
+                  borderRadius: '0 0 4px 4px',
+                  backgroundColor: theme.palette.background.default,
+                }}>
+                  {/* Tool description */}
+                  {tool.description && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                        Description
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {tool.description}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Tool arguments */}
+                  {(Object.keys(tool.arguments).length > 0 || tool.type === 'mcp') && (
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                        Arguments {tool.type === 'mcp' ? '(editable)' : ''}
+                      </Typography>
+                      {tool.type === 'mcp' ? (
+                        <Box>{renderArgumentsForTool(tool, tool.id)}</Box>
+                      ) : (
+                        <Box sx={{ ml: 1 }}>
+                          {Object.entries(tool.arguments).map(([key, value]) => (
+                            <Box key={key} sx={{ mb: 1 }}>
+                              <Typography variant="body2" component="span" sx={{ fontWeight: 'bold' }}>
+                                {key}:{' '}
+                              </Typography>
+                              <Typography variant="body2" component="span" color="text.secondary">
+                                {typeof value === 'object'
+                                  ? JSON.stringify(value, null, 2)
+                                  : String(value)
+                                }
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
                   )}
                 </Box>
+              </Collapse>
+            </Box>
+          ))}
+        </Box>
 
-                {tool.description && (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: 'block', mb: 1 }}
-                  >
-                    {tool.description}
-                  </Typography>
-                )}
-
-                {(Object.keys(tool.arguments).length > 0 || tool.type === 'mcp') && (
-                  <Box sx={{ ml: 2, mb: 1 }}>
-                    <Typography
-                      variant="caption"
-                      sx={{ fontWeight: 'bold', mb: 1, display: 'block' }}
-                    >
-                      Arguments {tool.type === 'mcp' ? '(editable):' : ':'}
-                    </Typography>
-                    {tool.type === 'mcp' ? (
-                      <Box sx={{ pl: 1 }}>{renderArgumentsForTool(tool, tool.id)}</Box>
-                    ) : (
-                      <List dense sx={{ pl: 1 }}>
-                        {Object.entries(tool.arguments).map(([key, value]) => (
-                          <ListItem key={key} dense sx={{ py: 0.5 }}>
-                            <ListItemText
-                              primary={
-                                <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-                                  {key}:
-                                </Typography>
-                              }
-                              secondary={
-                                <Typography
-                                  variant="caption"
-                                  sx={{ ml: 1, wordBreak: 'break-word' }}
-                                >
-                                  {typeof value === 'object'
-                                    ? JSON.stringify(value, null, 2)
-                                    : String(value)}
-                                </Typography>
-                              }
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    )}
-                  </Box>
-                )}
-              </Box>
-            ))}
-          </Box>
-        </Collapse>
-
-        {/* Warning */}
+        {/* Contextual info */}
         <Alert severity="info" sx={{ mb: 2, py: 0.5 }}>
           <Typography variant="caption">
             {mcpTools.length > 0
-              ? 'MCP tool arguments have been intelligently analyzed and pre-filled based on your request. Arguments marked "AI-filled" were extracted from your message or context. Review and modify as needed.'
-              : 'These tools will access external systems. Review the details before approving.'}
+              ? `${mcpTools.length > 1 ? 'These MCP tools have' : 'This MCP tool has'} been configured with AI-analyzed arguments from your request. Click on any tool above to view details and edit arguments.`
+              : 'These tools will access your Kubernetes cluster and other systems. Click on any tool above to view details.'}
           </Typography>
         </Alert>
 
@@ -664,7 +617,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
         )}
 
         {/* Action buttons */}
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 1 }}>
           <Button
             variant="outlined"
             size="small"
@@ -689,7 +642,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
               isApproving ? (
                 <CircularProgress size={14} color="inherit" />
               ) : (
-                <Icon icon="mdi:check" />
+                <Icon icon="mdi:check-bold" />
               )
             }
             disabled={
@@ -703,7 +656,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
               cursor: isActionInProgress ? 'not-allowed' : 'pointer',
             }}
           >
-            {isApproving ? 'Approving...' : `Allow (${selectedToolIds.length})`}
+            {isApproving ? 'Executing...' : `Execute ${toolCalls.length} Tool${toolCalls.length > 1 ? 's' : ''}`}
           </Button>
         </Box>
       </CardContent>
