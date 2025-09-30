@@ -472,16 +472,32 @@ export default function AIPrompt(props: {
 
   // Function to handle test mode responses
   const handleTestModeResponse = (
-    content: string,
+    content: string | object,
     type: 'assistant' | 'user',
     hasError?: boolean
   ) => {
-    const newPrompt: Prompt = {
-      role: type,
-      content,
-      error: hasError || false,
-      ...(hasError && { contentFilterError: true }),
-    };
+    let newPrompt: Prompt;
+
+    // Handle tool confirmation objects
+    if (typeof content === 'object' && content && 'toolConfirmation' in content) {
+      newPrompt = {
+        role: type,
+        content: (content as any).content || '',
+        error: hasError || false,
+        toolConfirmation: (content as any).toolConfirmation,
+        isDisplayOnly: (content as any).isDisplayOnly,
+        requestId: (content as any).requestId,
+        ...(hasError && { contentFilterError: true }),
+      };
+    } else {
+      // Handle regular string content
+      newPrompt = {
+        role: type,
+        content: typeof content === 'string' ? content : JSON.stringify(content),
+        error: hasError || false,
+        ...(hasError && { contentFilterError: true }),
+      };
+    }
 
     setPromptHistory(prev => [...prev, newPrompt]);
     setOpenPopup(true);
