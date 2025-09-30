@@ -5,6 +5,7 @@ import { KubernetesToolContext } from './types';
 export class KubernetesTool extends ToolBase {
   readonly config: ToolConfig = {
     name: 'kubernetes_api_request',
+    shortDescription: 'Make requests to the Kubernetes API',
     description: `Make requests to the Kubernetes API server to fetch, create, update or delete resources.
 
 RESOURCE UPDATE GUIDELINES:

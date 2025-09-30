@@ -420,7 +420,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
                     )}
                   </Box>
                 }
-                secondary={tempTool.config.description}
+                secondary={tempTool.config.shortDescription || tempTool.config.description}
               />
               <ListItemSecondaryAction>
                 <Switch
