@@ -371,7 +371,6 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                         onApprove={prompt.toolConfirmation.onApprove}
                         onDeny={prompt.toolConfirmation.onDeny}
                         loading={prompt.toolConfirmation.loading}
-                        compact={false}
                       />
                     ) : showContent && prompt.content ? (
                       /* Use ContentRenderer for all assistant content */
