@@ -285,7 +285,6 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
           </Typography>
           <Box
             sx={{
-              whiteSpace: 'pre-wrap',
               maxWidth: '100%',
               minWidth: 0,
               width: '100%', // Ensure full width usage
