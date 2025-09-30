@@ -20,7 +20,7 @@ import {
 import React, { useState } from 'react';
 
 interface TestModeInputProps {
-  onAddTestResponse: (content: string, type: 'assistant' | 'user', hasError?: boolean) => void;
+  onAddTestResponse: (content: string | object, type: 'assistant' | 'user', hasError?: boolean) => void;
   isTestMode: boolean;
 }
 
@@ -31,7 +31,12 @@ const TestModeInput: React.FC<TestModeInputProps> = ({ onAddTestResponse, isTest
   const [hasError, setHasError] = useState(false);
 
   // Sample test responses for quick testing
-  const sampleResponses = [
+  const sampleResponses: Array<{
+    label: string;
+    content: string | object;
+    type: 'assistant' | 'user';
+    hasError?: boolean;
+  }> = [
     {
       label: 'Simple Markdown Text',
       content: `Here's how you can create a simple deployment:
@@ -183,11 +188,154 @@ All deployments are currently active in your cluster.`,
       content: `How can I create a deployment with 3 replicas of nginx?`,
       type: 'user' as const,
     },
+    {
+      label: 'Tool Confirmation - Kubernetes API',
+      content: {
+        role: "assistant",
+        content: "",
+        toolConfirmation: {
+          tools: [
+            {
+              id: "call_O7EYtgCzt5RmchxdZDJihMEF",
+              name: "kubernetes_api_request",
+              description: "Executes Kubernetes API operations",
+              arguments: {
+                url: "/api/v1/namespaces/default/pods",
+                method: "GET"
+              },
+              type: "regular"
+            }
+          ],
+          loading: false,
+          requestId: "tool-approval-1759265356521-0.1868110264399998",
+          userContext: {
+            timeContext: "2025-09-30T20:49:16.521Z",
+            userMessage: "List me the pods here.",
+            conversationHistory: [
+              {
+                role: "user",
+                content: "List me the pods here."
+              },
+              {
+                role: "assistant",
+                content: ""
+              }
+            ]
+          }
+        },
+        isDisplayOnly: true,
+        requestId: "tool-approval-1759265356521-0.1868110264399998"
+      },
+      type: 'assistant' as const,
+    },
+    {
+      label: 'Tool Confirmation - MCP Tool',
+      content: {
+        role: "assistant",
+        content: "",
+        toolConfirmation: {
+          tools: [
+            {
+              id: "call_MCP_example",
+              name: "flux_get_resources",
+              description: "Get Flux resources from the cluster",
+              arguments: {
+                namespace: "flux-system",
+                resourceType: "helmreleases",
+                name: ""
+              },
+              type: "mcp"
+            }
+          ],
+          loading: false,
+          requestId: "tool-approval-mcp-test",
+          userContext: {
+            timeContext: "2025-09-30T20:49:16.521Z",
+            userMessage: "Show me the Flux Helm releases.",
+            conversationHistory: [
+              {
+                role: "user",
+                content: "Show me the Flux Helm releases."
+              },
+              {
+                role: "assistant",
+                content: ""
+              }
+            ]
+          }
+        },
+        isDisplayOnly: true,
+        requestId: "tool-approval-mcp-test"
+      },
+      type: 'assistant' as const,
+    },
+    {
+      label: 'Tool Confirmation - Multiple Tools',
+      content: {
+        role: "assistant",
+        content: "",
+        toolConfirmation: {
+          tools: [
+            {
+              id: "call_k8s_get_pods",
+              name: "kubernetes_api_request",
+              description: "Get pods from Kubernetes API",
+              arguments: {
+                url: "/api/v1/namespaces/default/pods",
+                method: "GET"
+              },
+              type: "regular"
+            },
+            {
+              id: "call_flux_check",
+              name: "flux_get_helmreleases",
+              description: "Check Flux Helm releases",
+              arguments: {
+                namespace: "flux-system",
+                name: "",
+                output: "json"
+              },
+              type: "mcp"
+            }
+          ],
+          loading: false,
+          requestId: "tool-approval-multi-test",
+          userContext: {
+            timeContext: "2025-09-30T20:49:16.521Z",
+            userMessage: "Show me pods and Flux releases.",
+            conversationHistory: [
+              {
+                role: "user",
+                content: "Show me pods and Flux releases."
+              },
+              {
+                role: "assistant",
+                content: ""
+              }
+            ]
+          }
+        },
+        isDisplayOnly: true,
+        requestId: "tool-approval-multi-test"
+      },
+      type: 'assistant' as const,
+    }
   ];
 
   const handleSubmit = () => {
     if (testContent.trim()) {
-      onAddTestResponse(testContent, responseType, hasError);
+      let content: string | object = testContent;
+
+      // Try to parse as JSON if it looks like a tool confirmation object
+      if (testContent.trim().startsWith('{') && testContent.includes('toolConfirmation')) {
+        try {
+          content = JSON.parse(testContent);
+        } catch (error) {
+          console.warn('Failed to parse JSON content, using as string:', error);
+        }
+      }
+
+      onAddTestResponse(content, responseType, hasError);
       setTestContent('');
       setOpen(false);
     }
@@ -266,13 +414,12 @@ All deployments are currently active in your cluster.`,
               fullWidth
               value={testContent}
               onChange={e => setTestContent(e.target.value)}
-              placeholder="Enter your test response here. You can use markdown, YAML code blocks, etc."
+              placeholder="Enter your test response here. You can use markdown, YAML code blocks, or JSON objects for tool confirmations."
               variant="outlined"
             />
 
             <Typography variant="caption" color="text.secondary">
-              Tip: Use ```yaml code blocks to test YAML rendering, or include markdown for
-              formatting tests.
+              Tip: Use ```yaml code blocks to test YAML rendering, markdown for formatting tests, or JSON objects starting with {'{toolConfirmation: ...}'} to test tool confirmation dialogs.
             </Typography>
           </Box>
         </DialogContent>
