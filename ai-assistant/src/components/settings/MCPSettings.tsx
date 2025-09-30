@@ -1,18 +1,10 @@
 import { Icon } from '@iconify/react';
+import { Headlamp } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Button, FormControlLabel, Switch, Typography } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { pluginStore } from '../../utils';
 import MCPConfigEditorDialog from './MCPConfigEditorDialog';
-
-// Helper function to check if running in Electron
-const isElectron = (): boolean => {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.desktopApi !== 'undefined' &&
-    typeof window.desktopApi.mcp !== 'undefined'
-  );
-};
 
 export interface MCPServer {
   name: string;
@@ -44,7 +36,7 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
 
   useEffect(() => {
     // Load MCP config from Electron if available
-    if (isElectron()) {
+    if (Headlamp.isRunningAsApp()) {
       loadMCPConfigFromElectron();
     } else {
       // Fallback to plugin store for non-Electron environments
@@ -56,7 +48,7 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
   }, []);
 
   const loadMCPConfigFromElectron = async () => {
-    if (!isElectron()) return;
+    if (!Headlamp.isRunningAsApp()) return;
 
     try {
       const response = await window.desktopApi!.mcp.getConfig();
@@ -76,7 +68,7 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
   const handleConfigChange = async (newConfig: MCPConfig) => {
     setMCPConfig(newConfig);
 
-    if (isElectron()) {
+    if (Headlamp.isRunningAsApp()) {
       // Save to Electron settings and restart MCP client
       try {
         const response = await window.desktopApi!.mcp.updateConfig(newConfig);
@@ -155,7 +147,7 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
   };
 
   // Only show MCP settings in Electron
-  if (!isElectron()) {
+  if (!Headlamp.isRunningAsApp()) {
     return (
       <SectionBox title="MCP Servers">
         <Typography variant="body2" color="textSecondary">
