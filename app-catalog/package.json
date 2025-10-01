@@ -1,6 +1,6 @@
 {
   "name": "app-catalog",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "An app catalog for Headlamp",
   "scripts": {
     "start": "headlamp-plugin start",
