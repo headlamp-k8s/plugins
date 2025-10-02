@@ -75,18 +75,21 @@ export function ObjectEventsRenderer(props: { events?: Event[] }) {
         columns={[
           {
             header: 'Type',
+            gridTemplate: 'min-content',
             accessorFn: item => {
               return item.type;
             },
           },
           {
             header: 'Reason',
+            gridTemplate: 'min-content',
             accessorFn: item => {
               return item.reason;
             },
           },
           {
             header: 'From',
+            gridTemplate: 'min-content',
             accessorFn: item => {
               return item.source.component;
             },

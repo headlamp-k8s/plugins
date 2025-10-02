@@ -13,12 +13,8 @@ import {
 } from '../actions/index';
 import Flux404 from '../checkflux';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
+import { AlertNotification, ProviderNotification, ReceiverNotification } from '../common/Resources';
 import { ObjectEvents } from '../helpers/index';
-import {
-  alertNotificationClass,
-  providerNotificationClass,
-  receiverNotificationClass,
-} from './NotificationList';
 
 export function Notification() {
   const { namespace, pluralName, name } = useParams<{
@@ -29,11 +25,11 @@ export function Notification() {
   const resourceClass = (() => {
     switch (pluralName) {
       case 'alerts':
-        return alertNotificationClass();
+        return AlertNotification;
       case 'providers':
-        return providerNotificationClass();
+        return ProviderNotification;
       case 'receivers':
-        return receiverNotificationClass();
+        return ReceiverNotification;
       default:
         return null;
     }
@@ -53,9 +49,7 @@ export function Notification() {
 
 function NotificationDetails(props) {
   const { name, namespace, resourceClass } = props;
-  const [resource, setResource] = React.useState(null);
-
-  resourceClass.useApiGet(setResource, name, namespace);
+  const [resource] = resourceClass.useGet(name, namespace);
 
   function prepareExtraInfo() {
     const extraInfo = [];

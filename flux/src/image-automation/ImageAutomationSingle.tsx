@@ -13,13 +13,9 @@ import { ResumeAction, SuspendAction, SyncAction } from '../actions/index';
 import Flux404 from '../checkflux';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
+import { ImagePolicy, ImageRepository, ImageUpdateAutomation } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
 import { ObjectEvents } from '../helpers/index';
-import {
-  imagePolicyClass,
-  imageRepositoriesClass,
-  imageUpdateAutomationClass,
-} from './ImageAutomationList';
 
 export function FluxImageAutomationDetailView() {
   const { pluralName, namespace, name } = useParams<{
@@ -31,11 +27,11 @@ export function FluxImageAutomationDetailView() {
   const resourceClass = (() => {
     switch (pluralName) {
       case 'imagerepositories':
-        return imageRepositoriesClass();
+        return ImageRepository;
       case 'imagepolicies':
-        return imagePolicyClass();
+        return ImagePolicy;
       case 'imageupdateautomations':
-        return imageUpdateAutomationClass();
+        return ImageUpdateAutomation;
       default:
         return null;
     }
@@ -173,7 +169,7 @@ function CustomResourceDetails(props) {
         resource={resource}
         extraInfo={prepareExtraInfo()}
         actions={
-          resourceClass.pluralName === imagePolicyClass().pluralName
+          resourceClass.pluralName === ImagePolicy.pluralName
             ? []
             : [
                 <SyncAction resource={resource} />,
@@ -182,10 +178,10 @@ function CustomResourceDetails(props) {
               ]
         }
       />
-      {resourceClass.pluralName === imageRepositoriesClass().pluralName && (
+      {resourceClass.pluralName === ImageRepository.pluralName && (
         <TagList resource={resource?.jsonData} />
       )}
-      {resourceClass.pluralName === imageUpdateAutomationClass().pluralName && (
+      {resourceClass.pluralName === ImageUpdateAutomation.pluralName && (
         <Policies resource={resource?.jsonData} />
       )}
       <SectionBox title="Conditions">

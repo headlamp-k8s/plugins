@@ -1,102 +1,44 @@
 import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
-import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
+import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
+import {
+  BucketRepository,
+  ExternalArtifact,
+  GitRepository,
+  HelmChart,
+  HelmRepository,
+  OCIRepository,
+} from '../common/Resources';
 import Table, { TableProps } from '../common/Table';
-
-const sourceGroup = 'source.toolkit.fluxcd.io';
-
-export function externalArtifactClass() {
-  return makeCustomResourceClass({
-    apiInfo: [{ group: sourceGroup, version: 'v1' }],
-    isNamespaced: true,
-    singularName: 'ExternalArtifact',
-    pluralName: 'externalartifacts',
-  });
-}
-
-export function gitRepositoryClass() {
-  return makeCustomResourceClass({
-    apiInfo: [{ group: sourceGroup, version: 'v1' }],
-    isNamespaced: true,
-    singularName: 'GitRepository',
-    pluralName: 'gitrepositories',
-  });
-}
-
-export function ociRepositoryClass() {
-  return makeCustomResourceClass({
-    apiInfo: [{ group: sourceGroup, version: 'v1beta2' }],
-    isNamespaced: true,
-    singularName: 'OCIRepository',
-    pluralName: 'ocirepositories',
-  });
-}
-
-export function bucketRepositoryClass() {
-  return makeCustomResourceClass({
-    apiInfo: [
-      { group: sourceGroup, version: 'v1' },
-      { group: sourceGroup, version: 'v1beta2' },
-    ],
-    isNamespaced: true,
-    singularName: 'Bucket',
-    pluralName: 'buckets',
-  });
-}
-
-export function helmRepositoryClass() {
-  return makeCustomResourceClass({
-    apiInfo: [
-      { group: sourceGroup, version: 'v1' },
-      { group: sourceGroup, version: 'v1beta2' },
-    ],
-    isNamespaced: true,
-    singularName: 'HelmRepository',
-    pluralName: 'helmrepositories',
-  });
-}
-
-export function helmChartClass() {
-  return makeCustomResourceClass({
-    apiInfo: [
-      { group: sourceGroup, version: 'v1' },
-      { group: sourceGroup, version: 'v1beta2' },
-    ],
-    isNamespaced: true,
-    singularName: 'HelmChart',
-    pluralName: 'helmcharts',
-  });
-}
 
 export function FluxSources() {
   return (
     <>
       <FluxSource
-        resourceClass={externalArtifactClass()}
+        resourceClass={ExternalArtifact}
         pluralName="externalartifacts"
         title={'External Artifacts'}
       />
       <FluxSource
-        resourceClass={gitRepositoryClass()}
+        resourceClass={GitRepository}
         pluralName="gitrepositories"
         title={'Git Repositories'}
       />
       <FluxSource
-        resourceClass={ociRepositoryClass()}
+        resourceClass={OCIRepository}
         pluralName="ocirepositories"
         title={'OCI Repositories'}
       />
-      <FluxSource resourceClass={bucketRepositoryClass()} pluralName="buckets" title={'Buckets'} />
+      <FluxSource resourceClass={BucketRepository} pluralName="buckets" title={'Buckets'} />
       <FluxSource
-        resourceClass={helmRepositoryClass()}
+        resourceClass={HelmRepository}
         pluralName="helmrepositories"
         title={'Helm Repositories'}
       />
-      <FluxSource resourceClass={helmChartClass()} pluralName="helmcharts" title={'Helm Charts'} />
+      <FluxSource resourceClass={HelmChart} pluralName="helmcharts" title={'Helm Charts'} />
     </>
   );
 }
@@ -110,10 +52,7 @@ interface FluxSourceCustomResourceRendererProps {
 function FluxSource(props: FluxSourceCustomResourceRendererProps) {
   const filterFunction = useFilterFunc();
   const { resourceClass, title, pluralName } = props;
-  const [resources, setResources] = React.useState(null);
-  const [error, setError] = React.useState(null);
-
-  resourceClass.useApiList(setResources, setError);
+  const [resources, error] = resourceClass.useList();
 
   function prepareColumns() {
     const columns: TableProps['columns'] = [

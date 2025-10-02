@@ -49,6 +49,13 @@ export class HelmChart extends KubeObject {
   static isNamespaced = true;
 }
 
+export class ExternalArtifact extends KubeObject {
+  static kind = 'ExternalArtifact';
+  static apiName = 'externalartifacts';
+  static apiVersion = 'source.toolkit.fluxcd.io/v1';
+  static isNamespaced = true;
+}
+
 export class AlertNotification extends KubeObject {
   static kind = 'Alert';
   static apiName = 'alerts';
@@ -83,21 +90,25 @@ export class ReceiverNotification extends KubeObject {
 export class ImageUpdateAutomation extends KubeObject {
   static kind = 'ImageUpdateAutomation';
   static apiName = 'imageupdateautomations';
-  static apiVersion = ['image.toolkit.fluxcd.io/v1beta2', 'image.toolkit.fluxcd.io/v1beta1'];
+  static apiVersion = [
+    'image.toolkit.fluxcd.io/v1',
+    'image.toolkit.fluxcd.io/v1beta2',
+    'image.toolkit.fluxcd.io/v1beta1',
+  ];
   static isNamespaced = true;
 }
 
 export class ImagePolicy extends KubeObject {
   static kind = 'ImagePolicy';
   static apiName = 'imagepolicies';
-  static apiVersion = 'image.toolkit.fluxcd.io/v1beta2';
+  static apiVersion = ['image.toolkit.fluxcd.io/v1', 'image.toolkit.fluxcd.io/v1beta2'];
   static isNamespaced = true;
 }
 
 export class ImageRepository extends KubeObject {
   static kind = 'ImageRepository';
   static apiName = 'imagerepositories';
-  static apiVersion = 'image.toolkit.fluxcd.io/v1beta2';
+  static apiVersion = ['image.toolkit.fluxcd.io/v1', 'image.toolkit.fluxcd.io/v1beta2'];
   static isNamespaced = true;
 }
 
@@ -108,4 +119,5 @@ export const getSourceClassByPluralName = (pluralName: string) =>
     buckets: BucketRepository,
     helmrepositories: HelmRepository,
     helmcharts: HelmChart,
+    externalartifacts: ExternalArtifact,
   }[pluralName]);

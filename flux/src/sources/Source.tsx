@@ -1,43 +1,15 @@
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
+import { getSourceClassByPluralName } from '../common/Resources';
 import { getSourceNameAndPluralKind } from '../helpers';
-import {
-  bucketRepositoryClass,
-  externalArtifactClass,
-  gitRepositoryClass,
-  helmChartClass,
-  helmRepositoryClass,
-  ociRepositoryClass,
-} from './SourceList';
 
-export function GetSourceClass(pluralName: string) {
-  return (() => {
-    switch (pluralName) {
-      case 'externalartifacts':
-        return externalArtifactClass();
-      case 'gitrepositories':
-        return gitRepositoryClass();
-      case 'ocirepositories':
-        return ociRepositoryClass();
-      case 'buckets':
-        return bucketRepositoryClass();
-      case 'helmrepositories':
-        return helmRepositoryClass();
-      case 'helmcharts':
-        return helmChartClass();
-      default:
-        return null;
-    }
-  })();
-}
-
-export function GetSource(props: { item: KubeObject | null; setSource: (...args) => void }) {
-  const { item, setSource } = props;
+/** Returns instance of the source for the given resource */
+export function useSource(item: KubeObject) {
   const namespace = item.jsonData.metadata.namespace;
-
   const { name, pluralKind, namespace: sourceNamespace } = getSourceNameAndPluralKind(item);
 
-  const resourceClass = GetSourceClass(pluralKind);
-  resourceClass.useApiGet(setSource, name, sourceNamespace ?? namespace);
+  const resourceClass = getSourceClassByPluralName(pluralKind);
 
-  return <></>;
+  const [sourceItem] = resourceClass.useGet(name, sourceNamespace ?? namespace);
+
+  return sourceItem;
 }

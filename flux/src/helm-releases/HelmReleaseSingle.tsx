@@ -18,10 +18,9 @@ import {
   SyncWithSourceAction,
 } from '../actions/index';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
+import { HelmRelease } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
-import { GetSource } from '../sources/Source';
-import { helmReleaseClass } from './HelmReleaseList';
 import { HelmInventory } from './Inventory';
 
 export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: string }) {
@@ -31,7 +30,7 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
   return (
     <>
       <CustomResourceDetails name={name} namespace={namespace} />
-      <ObjectEvents name={name} namespace={namespace} resourceClass={helmReleaseClass()} />
+      <ObjectEvents name={name} namespace={namespace} resourceClass={HelmRelease} />
     </>
   );
 }
@@ -104,10 +103,7 @@ export const registerHelmRelease = () => {
 
 function CustomResourceDetails(props) {
   const { name, namespace } = props;
-  const [cr, setCr] = React.useState(null);
-  const [source, setSource] = React.useState(null);
-
-  helmReleaseClass().useApiGet(setCr, name, namespace);
+  const [cr] = HelmRelease.useGet(name, namespace);
 
   function prepareExtraInfo(cr) {
     if (!cr) {
@@ -198,7 +194,7 @@ function CustomResourceDetails(props) {
     }
 
     const actions = [];
-    actions.push(<SyncWithSourceAction resource={cr} source={source} />);
+    actions.push(<SyncWithSourceAction resource={cr} />);
     actions.push(<SyncWithoutSourceAction resource={cr} />);
     actions.push(<SuspendAction resource={cr} />);
     actions.push(<ResumeAction resource={cr} />);
@@ -210,7 +206,6 @@ function CustomResourceDetails(props) {
 
   return (
     <>
-      {cr && <GetSource item={cr} setSource={setSource} />}
       {cr && (
         <MainInfoSection
           resource={cr}

@@ -7,7 +7,7 @@ import {
   StatusLabel,
   TileChart,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import type { KubeObject, KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import {
   Accordion,
   AccordionDetails,
@@ -21,47 +21,111 @@ import {
 import { useTheme } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
 import SourceLink from '../common/Link';
+import {
+  AlertNotification,
+  BucketRepository,
+  ExternalArtifact,
+  GitRepository,
+  HelmChart,
+  HelmRelease,
+  HelmRepository,
+  ImagePolicy,
+  ImageRepository,
+  ImageUpdateAutomation,
+  Kustomization,
+  OCIRepository,
+  ProviderNotification,
+  ReceiverNotification,
+} from '../common/Resources';
 import Table from '../common/Table';
-import { helmReleaseClass } from '../helm-releases/HelmReleaseList';
 import { useFluxCheck } from '../helpers';
-import {
-  imagePolicyClass,
-  imageRepositoriesClass,
-  imageUpdateAutomationClass,
-} from '../image-automation/ImageAutomationList';
-import { kustomizationClass } from '../kustomizations/KustomizationList';
-import { providerNotificationClass } from '../notifications/NotificationList';
-import { alertNotificationClass } from '../notifications/NotificationList';
-import { receiverNotificationClass } from '../notifications/NotificationList';
-import {
-  bucketRepositoryClass,
-  externalArtifactClass,
-  gitRepositoryClass,
-  helmChartClass,
-  helmRepositoryClass,
-  ociRepositoryClass,
-} from '../sources/SourceList';
+
+// Helper to get failed count for a resource class
+function getFailedCount(items: KubeObject[] | null) {
+  if (items === null) return 0;
+  // getStatus is defined inside FluxOverviewChart, so redefine here
+  let failed = 0;
+  for (const resource of items) {
+    if (!resource.jsonData.status) {
+      continue;
+    } else if (resource.jsonData.spec?.suspend) {
+      continue;
+    } else if (Array.isArray(resource.jsonData.status.conditions)) {
+      if (
+        !resource.jsonData.status.conditions.some(
+          condition => condition.type === 'Ready' && condition.status === 'True'
+        )
+      ) {
+        failed++;
+      }
+    }
+  }
+  return failed;
+}
+
+// Helper to get success count for a resource class
+function getSuccessCount(items: KubeObject[] | null) {
+  if (items === null) return 0;
+
+  let success = 0;
+  for (const resource of items) {
+    if (!resource.jsonData.status) {
+      success++;
+    } else if (resource.jsonData.spec?.suspend) {
+      continue;
+    } else if (Array.isArray(resource.jsonData.status.conditions)) {
+      if (
+        resource.jsonData.status.conditions.some(
+          condition => condition.type === 'Ready' && condition.status === 'True'
+        )
+      ) {
+        success++;
+      }
+    }
+  }
+  return success;
+}
+
+// Helper to get display name for a resource class
+function getDisplayName(resourceClass: KubeObjectClass) {
+  const nameMap = {
+    gitrepositories: 'Git Repositories',
+    ocirepositories: 'OCI Repositories',
+    buckets: 'Buckets',
+    helmrepositories: 'Helm Repositories',
+    helmcharts: 'Helm Charts',
+    kustomizations: 'Kustomizations',
+    helmreleases: 'Helm Releases',
+    alerts: 'Alerts',
+    providers: 'Providers',
+    receivers: 'Receivers',
+    imagerepositories: 'Image Repositories',
+    imageupdateautomations: 'Image Update Automations',
+    imagepolicies: 'Image Policies',
+    externalartifacts: 'External Artifacts',
+  };
+  return nameMap[resourceClass.apiName] || resourceClass.apiName;
+}
 
 export function FluxOverview() {
   const [sortFilter, setSortFilter] = useState('failed');
-
-  const kustomizationResourceClass = kustomizationClass();
-  const helmReleaseResourceClass = helmReleaseClass();
-  const externalArtifactResourceClass = externalArtifactClass();
-  const gitRepoResourceClass = gitRepositoryClass();
-  const ociRepoResourceClass = ociRepositoryClass();
-  const bucketRepoResourceClass = bucketRepositoryClass();
-  const helmRepoResourceClass = helmRepositoryClass();
-  const helmChartResourceClass = helmChartClass();
-  const alertsResourceClass = alertNotificationClass();
-  const providersResourceClass = providerNotificationClass();
-  const receiversResourceClass = receiverNotificationClass();
-
-  const imageUpdateAutomationResourceClass = imageUpdateAutomationClass();
-  const imagePolicyResourceClass = imagePolicyClass();
-  const imageRepositoryResourceClass = imageRepositoriesClass();
-
   const fluxCheck = useFluxCheck();
+  const namespace = fluxCheck.namespace;
+
+  const [kustomizations] = Kustomization.useList({ namespace });
+  const [helmReleases] = HelmRelease.useList({ namespace });
+  const [gitRepos] = GitRepository.useList({ namespace });
+  const [ociRepos] = OCIRepository.useList({ namespace });
+  const [buckets] = BucketRepository.useList({ namespace });
+  const [helmRepos] = HelmRepository.useList({ namespace });
+  const [externalArtifacts] = ExternalArtifact.useList({ namespace });
+  const [helmCharts] = HelmChart.useList({ namespace });
+  const [alerts] = AlertNotification.useList({ namespace });
+  const [providerNotifications] = ProviderNotification.useList({ namespace });
+  const [receiverNotifications] = ReceiverNotification.useList({ namespace });
+  const [imageUpdateAutomations] = ImageUpdateAutomation.useList({ namespace });
+  const [imagePolicies] = ImagePolicy.useList({ namespace });
+  const [imageRepositories] = ImageRepository.useList({ namespace });
 
   const [pods] = K8s.ResourceClasses.Pod.useList({
     namespace: fluxCheck.namespace,
@@ -94,106 +158,30 @@ export function FluxOverview() {
     );
   }, [pods]);
 
-  // Collect all resource classes in an array with their display condition
-  const resourceClasses = [
-    kustomizationResourceClass,
-    helmReleaseResourceClass,
-    externalArtifactResourceClass,
-    gitRepoResourceClass,
-    ociRepoResourceClass,
-    bucketRepoResourceClass,
-    helmRepoResourceClass,
-    helmChartResourceClass,
-    alertsResourceClass,
-    providersResourceClass,
-    receiversResourceClass,
-    imageRepositoryResourceClass,
-    imagePolicyResourceClass,
-    imageUpdateAutomationResourceClass,
-  ].filter(Boolean);
-
-  // Helper to get failed count for a resource class
-  function getFailedCount(resourceClass) {
-    // Use the same logic as in FluxOverviewChart
-    const [crds] = resourceClass.useList ? resourceClass.useList() : [];
-    if (!crds) return 0;
-    // getStatus is defined inside FluxOverviewChart, so redefine here
-    let failed = 0;
-    for (const resource of crds) {
-      if (!resource.jsonData.status) {
-        continue;
-      } else if (resource.jsonData.spec?.suspend) {
-        continue;
-      } else if (Array.isArray(resource.jsonData.status.conditions)) {
-        if (
-          !resource.jsonData.status.conditions.some(
-            condition => condition.type === 'Ready' && condition.status === 'True'
-          )
-        ) {
-          failed++;
-        }
-      }
-    }
-    return failed;
-  }
-
-  // Helper to get total count for a resource class
-  function getTotalCount(resourceClass) {
-    const [crds] = resourceClass.useList ? resourceClass.useList() : [];
-    return crds ? crds.length : 0;
-  }
-
-  // Helper to get success count for a resource class
-  function getSuccessCount(resourceClass) {
-    const [crds] = resourceClass.useList ? resourceClass.useList() : [];
-    if (!crds) return 0;
-    let success = 0;
-    for (const resource of crds) {
-      if (!resource.jsonData.status) {
-        success++;
-      } else if (resource.jsonData.spec?.suspend) {
-        continue;
-      } else if (Array.isArray(resource.jsonData.status.conditions)) {
-        if (
-          resource.jsonData.status.conditions.some(
-            condition => condition.type === 'Ready' && condition.status === 'True'
-          )
-        ) {
-          success++;
-        }
-      }
-    }
-    return success;
-  }
-
-  // Helper to get display name for a resource class
-  function getDisplayName(resourceClass) {
-    const nameMap = {
-      gitrepositories: 'Git Repositories',
-      ocirepositories: 'OCI Repositories',
-      buckets: 'Buckets',
-      helmrepositories: 'Helm Repositories',
-      helmcharts: 'Helm Charts',
-      kustomizations: 'Kustomizations',
-      helmreleases: 'Helm Releases',
-      alerts: 'Alerts',
-      providers: 'Providers',
-      receivers: 'Receivers',
-      imagerepositories: 'Image Repositories',
-      imageupdateautomations: 'Image Update Automations',
-      imagepolicies: 'Image Policies',
-      externalartifacts: 'External Artifacts',
-    };
-    return nameMap[resourceClass.apiName] || resourceClass.apiName;
-  }
-
   // Sort resource classes based on selected filter
   const sortedResourceClasses = React.useMemo(() => {
-    const resourceData = resourceClasses.map(rc => ({
+    const itemsWithClass = [
+      { rc: Kustomization, items: kustomizations },
+      { rc: HelmRelease, items: helmReleases },
+      { rc: GitRepository, items: gitRepos },
+      { rc: OCIRepository, items: ociRepos },
+      { rc: BucketRepository, items: buckets },
+      { rc: HelmRepository, items: helmRepos },
+      { rc: ExternalArtifact, items: externalArtifacts },
+      { rc: HelmChart, items: helmCharts },
+      { rc: AlertNotification, items: alerts },
+      { rc: ProviderNotification, items: providerNotifications },
+      { rc: ReceiverNotification, items: receiverNotifications },
+      { rc: ImageRepository, items: imageRepositories },
+      { rc: ImagePolicy, items: imagePolicies },
+      { rc: ImageUpdateAutomation, items: imageUpdateAutomations },
+    ];
+
+    const resourceData = itemsWithClass.map(({ rc, items }) => ({
       rc,
-      failed: getFailedCount(rc),
-      total: getTotalCount(rc),
-      success: getSuccessCount(rc),
+      failed: getFailedCount(items),
+      total: items?.length ?? 0,
+      success: getSuccessCount(items),
       name: getDisplayName(rc),
     }));
 
@@ -217,7 +205,22 @@ export function FluxOverview() {
       default:
         return resourceData.sort((a, b) => b.failed - a.failed).map(obj => obj.rc);
     }
-  }, [resourceClasses, sortFilter]);
+  }, [
+    kustomizations,
+    helmReleases,
+    gitRepos,
+    ociRepos,
+    buckets,
+    helmRepos,
+    helmCharts,
+    alerts,
+    providerNotifications,
+    receiverNotifications,
+    imageRepositories,
+    imagePolicies,
+    imageUpdateAutomations,
+    sortFilter,
+  ]);
 
   const handleSortFilterChange = event => {
     setSortFilter(event.target.value);
