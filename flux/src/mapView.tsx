@@ -1,17 +1,10 @@
 import { Icon } from '@iconify/react';
 import Deployment from '@kinvolk/headlamp-plugin/lib/K8s/deployment';
 import { useMemo } from 'react';
-import { helmReleaseClass } from './helm-releases/HelmReleaseList';
+import { HelmRelease, HelmRepository, Kustomization, OCIRepository } from './common/Resources';
 import { FluxHelmReleaseDetailView } from './helm-releases/HelmReleaseSingle';
-import { kustomizationClass } from './kustomizations/KustomizationList';
 import { FluxKustomizationDetailView } from './kustomizations/KustomizationSingle';
-import { helmRepositoryClass, ociRepositoryClass } from './sources/SourceList';
 import { FluxSourceDetailView } from './sources/SourceSingle';
-
-const HelmRelease = helmReleaseClass();
-const HelmRepostory = helmRepositoryClass();
-const OciSource = ociRepositoryClass();
-const Kustomization = kustomizationClass();
 
 export const makeKubeToKubeEdge = (from: any, to: any): any => ({
   id: `${from.metadata.uid}-${to.metadata.uid}`,
@@ -51,7 +44,7 @@ const helmRepositorySource: any = {
   label: 'Helm Repository',
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
-    const [repositories] = HelmRepostory.useList();
+    const [repositories] = HelmRepository.useList();
     const [releases] = HelmRelease.useList();
 
     return useMemo(() => {
@@ -61,6 +54,7 @@ const helmRepositorySource: any = {
         id: it.metadata.uid,
         kubeObject: it,
         detailsComponent: HelmRepositoryDetails,
+        weight: 1100,
       }));
       const edges: any[] = [];
 
@@ -100,6 +94,7 @@ const helmReleaseSource = {
         id: it.metadata.uid,
         kubeObject: it,
         detailsComponent: HelmReleaseDetails,
+        weight: 1050,
       }));
       const edges = [];
 
@@ -139,6 +134,7 @@ const kustomizationSource = {
         id: it.metadata.uid,
         kubeObject: it,
         detailsComponent: KustomizationDetails,
+        weight: 1050,
       }));
       const edges = [];
 
@@ -170,7 +166,7 @@ const ociSource = {
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
     const [kustomizations] = Kustomization.useList();
-    const [ocisources] = OciSource.useList();
+    const [ocisources] = OCIRepository.useList();
 
     return useMemo(() => {
       if (!kustomizations || !ocisources) return null;
@@ -178,6 +174,7 @@ const ociSource = {
         id: it.metadata.uid,
         kubeObject: it,
         detailsComponent: OCIRepositoryDetails,
+        weight: 1100,
       }));
       const edges = [];
 
