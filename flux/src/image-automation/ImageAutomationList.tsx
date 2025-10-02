@@ -4,67 +4,28 @@ import {
   SectionFilterHeader,
   ShowHideLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
-import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
 import YAML from 'yaml';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
+import { ImagePolicy, ImageRepository, ImageUpdateAutomation } from '../common/Resources';
 import Table from '../common/Table';
 import { NameLink } from '../helpers';
-
-const imageGroup = 'image.toolkit.fluxcd.io';
-const imageVersion = 'v1beta2';
-export const IMAGE_AUTOMATION_BETA_VERSION = 'v1beta2';
-
-export function imageRepositoriesClass() {
-  return makeCustomResourceClass({
-    apiInfo: [{ group: imageGroup, version: imageVersion }],
-    isNamespaced: true,
-    singularName: 'ImageRepository',
-    pluralName: 'imagerepositories',
-  });
-}
-
-export function imagePolicyClass() {
-  return makeCustomResourceClass({
-    apiInfo: [{ group: imageGroup, version: imageVersion }],
-    isNamespaced: true,
-    singularName: 'ImagePolicy',
-    pluralName: 'imagepolicies',
-  });
-}
-
-export function imageUpdateAutomationClass(): KubeObjectClass {
-  return makeCustomResourceClass({
-    apiInfo: [
-      { group: imageGroup, version: imageVersion },
-      { group: imageGroup, version: 'v1beta1' },
-    ],
-    isNamespaced: true,
-    singularName: 'ImageUpdateAutomation',
-    pluralName: 'imageupdateautomations',
-  });
-}
 
 export function ImageAutomation() {
   return (
     <>
-      <ImageRepositoryList resourceClass={imageRepositoriesClass()} />
-      <ImagePolicyList resourceClass={imagePolicyClass()} />
-      <ImageUpdateAutomationList resourceClass={imageUpdateAutomationClass()} />
+      <ImageRepositoryList />
+      <ImagePolicyList />
+      <ImageUpdateAutomationList />
     </>
   );
 }
 
-function ImageUpdateAutomationList(props: { resourceClass: KubeObjectClass }) {
-  const { resourceClass } = props;
+function ImageUpdateAutomationList() {
   const filterFunction = useFilterFunc();
-  const [resources, setResources] = React.useState(null);
-  const [error, setError] = React.useState(null);
-
-  resourceClass.useApiList(setResources, setError);
+  const [resources, error] = ImageUpdateAutomation.useList();
 
   if (error?.status === 404) {
     return <NotSupported typeName="Image Update Automations" />;
@@ -75,7 +36,7 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObjectClass }) {
       <Table
         data={resources}
         columns={[
-          NameLink(resourceClass),
+          NameLink(ImageUpdateAutomation),
           'namespace',
           'status',
           {
@@ -111,13 +72,9 @@ function ImageUpdateAutomationList(props: { resourceClass: KubeObjectClass }) {
   );
 }
 
-function ImagePolicyList(props: { resourceClass: KubeObjectClass }) {
-  const { resourceClass } = props;
+function ImagePolicyList() {
   const filterFunction = useFilterFunc();
-  const [resources, setResources] = React.useState(null);
-  const [error, setError] = React.useState(null);
-
-  resourceClass.useApiList(setResources, setError);
+  const [resources, error] = ImagePolicy.useList();
 
   if (error?.status === 404) {
     return <NotSupported typeName="Image Update Policies" />;
@@ -128,7 +85,7 @@ function ImagePolicyList(props: { resourceClass: KubeObjectClass }) {
       <Table
         data={resources}
         columns={[
-          NameLink(resourceClass),
+          NameLink(ImagePolicy),
           'namespace',
           'status',
           {
@@ -148,13 +105,9 @@ function ImagePolicyList(props: { resourceClass: KubeObjectClass }) {
   );
 }
 
-function ImageRepositoryList(props: { resourceClass: KubeObjectClass }) {
-  const { resourceClass } = props;
+function ImageRepositoryList() {
   const filterFunction = useFilterFunc();
-  const [resources, setResources] = React.useState(null);
-  const [error, setError] = React.useState(null);
-
-  resourceClass.useApiList(setResources, setError);
+  const [resources, error] = ImageRepository.useList();
 
   if (error?.status === 404) {
     return <NotSupported typeName="Image Repositories" />;
@@ -165,7 +118,7 @@ function ImageRepositoryList(props: { resourceClass: KubeObjectClass }) {
       <Table
         data={resources}
         columns={[
-          NameLink(resourceClass),
+          NameLink(ImageRepository),
           'namespace',
           'status',
           {
