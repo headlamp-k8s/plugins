@@ -1,3 +1,4 @@
+import { registerDetailsViewSection } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link,
@@ -34,6 +35,72 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
     </>
   );
 }
+
+export const registerHelmRelease = () => {
+  registerDetailsViewSection(({ resource }: { resource: HelmRelease }) => {
+    console.log('flux', { resource });
+    if (resource.kind !== 'HelmRelease') return null;
+
+    const themeName = localStorage.getItem('headlampThemePreference');
+
+    const cr = resource;
+
+    return (
+      <>
+        {cr && cr?.jsonData?.spec?.values && (
+          <SectionBox title="Values">
+            <Editor
+              language="yaml"
+              value={YAML.stringify(cr?.jsonData?.spec?.values)}
+              height={200}
+              theme={themeName === 'dark' ? 'vs-dark' : 'light'}
+            />
+          </SectionBox>
+        )}
+
+        <SectionBox title="Inventory">
+          <HelmInventory name={resource.metadata.name} namespace={resource.metadata.namespace} />
+        </SectionBox>
+
+        <SectionBox title="Dependencies">
+          <Table
+            data={cr?.jsonData?.spec?.dependsOn}
+            columns={[
+              {
+                header: 'Name',
+                accessorFn: item => (
+                  <Link
+                    routeName="helm"
+                    params={{
+                      name: item.name,
+                      namespace: item.namespace || resource.metadata.namespace,
+                    }}
+                  >
+                    {item.name}
+                  </Link>
+                ),
+              },
+              {
+                header: 'Namespace',
+                accessorFn: item => (
+                  <Link
+                    routeName="namespace"
+                    params={{ name: item.namespace || resource.metadata.namespace }}
+                  >
+                    {item.namespace || resource.metadata.namespace}
+                  </Link>
+                ),
+              },
+            ]}
+          />
+        </SectionBox>
+        <SectionBox title="Conditions">
+          <ConditionsTable resource={cr?.jsonData} />
+        </SectionBox>
+      </>
+    );
+  });
+};
 
 function CustomResourceDetails(props) {
   const { name, namespace } = props;
