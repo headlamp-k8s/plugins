@@ -16,12 +16,11 @@ import {
   SyncWithSourceAction,
 } from '../actions/index';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
+import { Kustomization } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
 import Table from '../common/Table';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
-import { GetSource } from '../sources/Source';
 import { GetResourcesFromInventory } from './Inventory';
-import { kustomizationClass } from './KustomizationList';
 
 export function FluxKustomizationDetailView(props: { name?: string; namespace?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
@@ -30,17 +29,14 @@ export function FluxKustomizationDetailView(props: { name?: string; namespace?: 
   return (
     <>
       <KustomizationDetails name={name} namespace={namespace} />
-      <ObjectEvents name={name} namespace={namespace} resourceClass={kustomizationClass()} />
+      <ObjectEvents name={name} namespace={namespace} resourceClass={Kustomization} />
     </>
   );
 }
 
 function KustomizationDetails(props) {
   const { name, namespace } = props;
-  const [cr, setCr] = React.useState(null);
-  const [source, setSource] = React.useState(null);
-
-  kustomizationClass().useApiGet(setCr, name, namespace);
+  const [cr] = Kustomization.useGet(name, namespace);
 
   function prepareExtraInfo(cr) {
     if (!cr) {
@@ -110,7 +106,7 @@ function KustomizationDetails(props) {
     }
 
     const actions = [];
-    actions.push(<SyncWithSourceAction resource={cr} source={source} />);
+    actions.push(<SyncWithSourceAction resource={cr} />);
     actions.push(<SyncWithoutSourceAction resource={cr} />);
     actions.push(<SuspendAction resource={cr} />);
     actions.push(<ResumeAction resource={cr} />);
@@ -123,7 +119,6 @@ function KustomizationDetails(props) {
 
   return (
     <>
-      {cr && <GetSource item={cr} setSource={setSource} />}
       <MainInfoSection resource={cr} extraInfo={prepareExtraInfo(cr)} actions={prepareActions()} />
       {cr?.jsonData?.spec?.values && (
         <SectionBox title="Values">
