@@ -15,12 +15,13 @@ import Table from '../common/Table';
 import { NameLink } from '../helpers';
 
 const imageGroup = 'image.toolkit.fluxcd.io';
-const imageVersion = 'v1beta2';
-export const IMAGE_AUTOMATION_BETA_VERSION = 'v1beta2';
 
 export function imageRepositoriesClass() {
   return makeCustomResourceClass({
-    apiInfo: [{ group: imageGroup, version: imageVersion }],
+    apiInfo: [
+      { group: imageGroup, version: 'v1' },
+      { group: imageGroup, version: 'v1beta2' },
+    ],
     isNamespaced: true,
     singularName: 'ImageRepository',
     pluralName: 'imagerepositories',
@@ -29,7 +30,10 @@ export function imageRepositoriesClass() {
 
 export function imagePolicyClass() {
   return makeCustomResourceClass({
-    apiInfo: [{ group: imageGroup, version: imageVersion }],
+    apiInfo: [
+      { group: imageGroup, version: 'v1' },
+      { group: imageGroup, version: 'v1beta2' },
+    ],
     isNamespaced: true,
     singularName: 'ImagePolicy',
     pluralName: 'imagepolicies',
@@ -39,7 +43,8 @@ export function imagePolicyClass() {
 export function imageUpdateAutomationClass(): KubeObjectClass {
   return makeCustomResourceClass({
     apiInfo: [
-      { group: imageGroup, version: imageVersion },
+      { group: imageGroup, version: 'v1' },
+      { group: imageGroup, version: 'v1beta2' },
       { group: imageGroup, version: 'v1beta1' },
     ],
     isNamespaced: true,
