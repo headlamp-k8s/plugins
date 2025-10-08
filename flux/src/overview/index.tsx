@@ -35,6 +35,7 @@ import { alertNotificationClass } from '../notifications/NotificationList';
 import { receiverNotificationClass } from '../notifications/NotificationList';
 import {
   bucketRepositoryClass,
+  externalArtifactClass,
   gitRepositoryClass,
   helmChartClass,
   helmRepositoryClass,
@@ -46,6 +47,7 @@ export function FluxOverview() {
 
   const kustomizationResourceClass = kustomizationClass();
   const helmReleaseResourceClass = helmReleaseClass();
+  const externalArtifactResourceClass = externalArtifactClass();
   const gitRepoResourceClass = gitRepositoryClass();
   const ociRepoResourceClass = ociRepositoryClass();
   const bucketRepoResourceClass = bucketRepositoryClass();
@@ -96,6 +98,7 @@ export function FluxOverview() {
   const resourceClasses = [
     kustomizationResourceClass,
     helmReleaseResourceClass,
+    externalArtifactResourceClass,
     gitRepoResourceClass,
     ociRepoResourceClass,
     bucketRepoResourceClass,
@@ -179,6 +182,7 @@ export function FluxOverview() {
       imagerepositories: 'Image Repositories',
       imageupdateautomations: 'Image Update Automations',
       imagepolicies: 'Image Policies',
+      externalartifacts: 'External Artifacts',
     };
     return nameMap[resourceClass.apiName] || resourceClass.apiName;
   }
@@ -373,6 +377,7 @@ function FluxOverviewChart({ resourceClass }) {
 
   function prepareLink(name) {
     switch (name) {
+      case 'externalartifacts': // fallthrough
       case 'gitrepositories':
         return '/flux/sources';
       case 'ocirepositories':
@@ -406,6 +411,8 @@ function FluxOverviewChart({ resourceClass }) {
 
   function prepareName(name) {
     switch (name) {
+      case 'externalartifacts':
+        return 'External Artifacts';
       case 'gitrepositories':
         return 'Git Repositories';
       case 'ocirepositories':
