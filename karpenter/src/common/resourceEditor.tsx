@@ -119,7 +119,7 @@ export function DiffEditorDialog({
       return getSchemaKey(activeCloudProvider);
     }
 
-    return 'EC2NodeClass-schema';
+    return 'NodeClass-schema';
   }, [schema, modifiedYaml, activeCloudProvider]);
 
   const karpenterValidate = React.useMemo(() => {
