@@ -24,6 +24,7 @@ export class ToolManager {
     kubernetesContext?: KubernetesToolContext;
     enabledToolIds?: string[];
   } = {}) {
+    console.log('🔧 ToolManager: Initializing with enabledToolIds:', enabledToolIds);
     if (kubernetesContext) {
       this.configureKubernetesContext(kubernetesContext);
     }
@@ -39,16 +40,29 @@ export class ToolManager {
     for (const ToolClass of AVAILABLE_TOOLS) {
       const tempTool = new ToolClass();
       if (enabledToolIds && !enabledToolIds.includes(tempTool.config.name)) {
-        console.log('AI Assistant: Skipping tool (disabled)', tempTool.config.name);
+        console.log('🚫 ToolManager: Skipping tool (disabled):', tempTool.config.name);
         continue; // Skip tools not enabled
       }
       try {
         const tool = tempTool;
+        console.log('✅ ToolManager: Initializing tool:', tempTool.config.name);
         this.addTool(tool);
       } catch (error) {
         console.error(`Failed to load tool ${ToolClass.name}:`, error);
       }
     }
+<<<<<<< HEAD
+=======
+
+    // Initialize MCP tools asynchronously but start immediately
+    this.initializeMCPTools(enabledToolIds);
+
+    // Log final initialized tools
+    console.log(
+      '🔧 ToolManager: Regular tools initialized:',
+      this.tools.map(t => t.config.name)
+    );
+>>>>>>> 10c74b1 (ai-assistant: Fix k8s tool call working)
   }
 
   /**

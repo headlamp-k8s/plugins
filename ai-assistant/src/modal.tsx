@@ -440,6 +440,7 @@ export default function AIPrompt(props: {
           ...activeConfig.config,
           model: selectedModel,
         };
+        console.log('🔄 Creating new LangChainManager with enabledTools:', enabledTools);
         const newManager = new LangChainManager(
           activeConfig.providerId,
           configWithModel,
