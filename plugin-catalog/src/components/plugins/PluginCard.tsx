@@ -29,7 +29,7 @@ export function PluginCard(props: PluginCardProps) {
         }}
       >
         <Box
-          heigh="60px"
+          height="60px"
           display="flex"
           alignItems="center"
           marginTop="15px"
