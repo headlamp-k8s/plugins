@@ -122,13 +122,14 @@ async function processPlugins() {
     fetchOrgPlugins(ORGANIZATION_NAME),
   ]);
 
-  let pluginData = [];
+  let pluginData: Record<string, any>[] = [];
   try {
-    pluginData = await PluginManager.list();
+    // @todo: Note: PluginManager.list is badly typed at time of writing
+    pluginData = (await PluginManager.list()) as Record<string, any>[];
   } catch (err) {
     console.log('plugin-catalog: Failed to list plugins', err);
   }
-  const installedVersions: Record<string, string> = pluginData.reduce((acc, plugin: any) => {
+  const installedVersions: Record<string, string> = pluginData.reduce((acc, plugin) => {
     if (plugin.folderName && plugin.artifacthubVersion) {
       acc[plugin.folderName] = plugin.artifacthubVersion;
     }
