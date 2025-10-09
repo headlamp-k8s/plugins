@@ -50,7 +50,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   const [isLoadingMcp, setIsLoadingMcp] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
-  const [mcpServers, setMcpServers] = useState<{[key: string]: any}>({});
+  const [, setMcpServers] = useState<{ [key: string]: any }>({});
 
   // Load MCP tools when dialog opens
   useEffect(() => {
@@ -74,7 +74,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       // Load both tools and server configuration
       const [tools, configResponse] = await Promise.all([
         mcpClient.getTools(),
-        mcpClient.getConfig()
+        mcpClient.getConfig(),
       ]);
 
       console.log('ToolsDialog: Received tools from client:', tools.length, 'tools');
@@ -82,12 +82,15 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       console.log('ToolsDialog: Config response:', configResponse);
 
       // Extract server names from config
-      let servers: {[key: string]: any} = {};
+      let servers: { [key: string]: any } = {};
       if (configResponse.success && configResponse.config && configResponse.config.servers) {
-        servers = configResponse.config.servers.reduce((acc: {[key: string]: any}, server: any) => {
-          acc[server.name] = server;
-          return acc;
-        }, {});
+        servers = configResponse.config.servers.reduce(
+          (acc: { [key: string]: any }, server: any) => {
+            acc[server.name] = server;
+            return acc;
+          },
+          {}
+        );
         setMcpServers(servers);
       }
 
@@ -126,7 +129,6 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
         }
       });
       setExpandedServers(serversWithTools);
-
     } catch (error) {
       console.error('ToolsDialog: Failed to load MCP tools:', error);
       setMcpTools([]);
@@ -165,13 +167,18 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   const isServerEnabled = (serverName: string) => {
     const serverTools = mcpTools.filter(tool => tool.server === serverName);
     const serverToolNames = serverTools.map(tool => tool.name);
-    return serverToolNames.length > 0 && serverToolNames.every(toolName => localEnabledTools.includes(toolName));
+    return (
+      serverToolNames.length > 0 &&
+      serverToolNames.every(toolName => localEnabledTools.includes(toolName))
+    );
   };
 
   const isServerPartiallyEnabled = (serverName: string) => {
     const serverTools = mcpTools.filter(tool => tool.server === serverName);
     const serverToolNames = serverTools.map(tool => tool.name);
-    const enabledCount = serverToolNames.filter(toolName => localEnabledTools.includes(toolName)).length;
+    const enabledCount = serverToolNames.filter(toolName =>
+      localEnabledTools.includes(toolName)
+    ).length;
     return enabledCount > 0 && enabledCount < serverToolNames.length;
   };
 
@@ -190,7 +197,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
     }
     acc[serverName].push(tool);
     return acc;
-  }, {} as {[key: string]: MCPTool[]});
+  }, {} as { [key: string]: MCPTool[] });
 
   const handleToggleServerExpansion = (serverName: string) => {
     const newExpanded = new Set(expandedServers);
@@ -279,11 +286,11 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
                     <Switch
                       size="small"
                       checked={isServerEnabled(serverName)}
-                      onChange={(e) => {
+                      onChange={e => {
                         e.stopPropagation();
                         handleToggleServer(serverName);
                       }}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={e => e.stopPropagation()}
                       sx={{
                         ...(isServerPartiallyEnabled(serverName) && {
                           '& .MuiSwitch-thumb': {
@@ -291,8 +298,8 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
                           },
                           '& .MuiSwitch-track': {
                             backgroundColor: 'rgba(255, 165, 0, 0.3)',
-                          }
-                        })
+                          },
+                        }),
                       }}
                     />
                   </Box>
