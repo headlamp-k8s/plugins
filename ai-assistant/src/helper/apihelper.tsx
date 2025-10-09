@@ -393,14 +393,16 @@ export const handleActualApiRequest = async (
         ...requestOptions,
         isJSON: !isLogRequest(cleanedUrl),
       });
+      console.log('API response received:', response);
     } catch (apiError) {
-      console.log('Error in clusterRequest:', apiError);
-
       // Handle specific multi-container pod logs error
       if (
         isLogRequest(cleanedUrl) &&
         apiError.message &&
-        apiError.message?.includes('a container name must be specified')
+        (apiError.message?.includes('a container name must be specified') ||
+         apiError.message?.includes('container name must be specified') ||
+         (apiError.message?.includes('Bad Request') && cleanedUrl.includes('/log')) ||
+         apiError.message?.includes('choose one of'))
       ) {
         // Extract pod name and available containers from error message
         const podMatch = apiError.message.match(/for pod ([^,]+)/);
@@ -425,12 +427,33 @@ export const handleActualApiRequest = async (
             role: 'assistant',
             content: errorContent,
           });
+        } else {
+          // If we can't parse the specific error but know it's a log request with Bad Request
+          // Extract pod name from URL and suggest getting pod details
+          const podNameFromUrl = cleanedUrl.match(/\/pods\/([^\/]+)\/log/);
+          if (podNameFromUrl) {
+            const podName = podNameFromUrl[1];
+            
+            const errorContent = `Failed to get logs from pod "${podName}". This is likely because it has multiple containers.\n\nTo see the containers in this pod, I need to get the pod details first. Would you like me to check the pod details to see available containers?`;
+
+            aiManager.history.push({
+              error: false,
+              role: 'assistant',
+              content: errorContent,
+            });
+
+            return JSON.stringify({
+              error: false,
+              role: 'assistant',
+              content: errorContent,
+            });
+          }
         }
       }
 
       // Handle general API errors
       if (onFailure) {
-        onFailure(apiError, 'GET', { type: 'api_error' });
+        // onFailure(apiError, 'GET', { type: 'api_error' });
       }
       aiManager.history.push({
         error: true,
