@@ -165,7 +165,8 @@ export function PluginInstalledList() {
   useEffect(() => {
     async function fetchInstalledPlugins() {
       try {
-        const data = await PluginManager.list();
+        // @todo: Note: PluginManager.list is badly typed at time of writing
+        const data = (await PluginManager.list()) as Plugin[];
         setCatalogPlugins(data);
       } catch (error: any) {
         // @todo: We should have a better way to determine if the error is an ENOENT
