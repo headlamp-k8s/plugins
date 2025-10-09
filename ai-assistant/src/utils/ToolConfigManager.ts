@@ -68,3 +68,8 @@ export function setEnabledTools(pluginSettings: any, enabledToolIds: string[]): 
     enabledTools,
   };
 }
+
+// Check if a tool is a built-in tool (from AVAILABLE_TOOLS registry)
+export function isBuiltInTool(toolName: string): boolean {
+  return AVAILABLE_TOOLS.some(tool => tool.id === toolName);
+}

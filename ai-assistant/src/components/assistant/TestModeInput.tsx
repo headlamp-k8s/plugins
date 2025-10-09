@@ -20,7 +20,11 @@ import {
 import React, { useState } from 'react';
 
 interface TestModeInputProps {
-  onAddTestResponse: (content: string | object, type: 'assistant' | 'user', hasError?: boolean) => void;
+  onAddTestResponse: (
+    content: string | object,
+    type: 'assistant' | 'user',
+    hasError?: boolean
+  ) => void;
   isTestMode: boolean;
 }
 
@@ -191,135 +195,135 @@ All deployments are currently active in your cluster.`,
     {
       label: 'Tool Confirmation - Kubernetes API',
       content: {
-        role: "assistant",
-        content: "",
+        role: 'assistant',
+        content: '',
         toolConfirmation: {
           tools: [
             {
-              id: "call_O7EYtgCzt5RmchxdZDJihMEF",
-              name: "kubernetes_api_request",
-              description: "Executes Kubernetes API operations",
+              id: 'call_O7EYtgCzt5RmchxdZDJihMEF',
+              name: 'kubernetes_api_request',
+              description: 'Executes Kubernetes API operations',
               arguments: {
-                url: "/api/v1/namespaces/default/pods",
-                method: "GET"
+                url: '/api/v1/namespaces/default/pods',
+                method: 'GET',
               },
-              type: "regular"
-            }
+              type: 'regular',
+            },
           ],
           loading: false,
-          requestId: "tool-approval-1759265356521-0.1868110264399998",
+          requestId: 'tool-approval-1759265356521-0.1868110264399998',
           userContext: {
-            timeContext: "2025-09-30T20:49:16.521Z",
-            userMessage: "List me the pods here.",
+            timeContext: '2025-09-30T20:49:16.521Z',
+            userMessage: 'List me the pods here.',
             conversationHistory: [
               {
-                role: "user",
-                content: "List me the pods here."
+                role: 'user',
+                content: 'List me the pods here.',
               },
               {
-                role: "assistant",
-                content: ""
-              }
-            ]
-          }
+                role: 'assistant',
+                content: '',
+              },
+            ],
+          },
         },
         isDisplayOnly: true,
-        requestId: "tool-approval-1759265356521-0.1868110264399998"
+        requestId: 'tool-approval-1759265356521-0.1868110264399998',
       },
       type: 'assistant' as const,
     },
     {
       label: 'Tool Confirmation - MCP Tool',
       content: {
-        role: "assistant",
-        content: "",
+        role: 'assistant',
+        content: '',
         toolConfirmation: {
           tools: [
             {
-              id: "call_MCP_example",
-              name: "flux_get_resources",
-              description: "Get Flux resources from the cluster",
+              id: 'call_MCP_example',
+              name: 'flux_get_resources',
+              description: 'Get Flux resources from the cluster',
               arguments: {
-                namespace: "flux-system",
-                resourceType: "helmreleases",
-                name: ""
+                namespace: 'flux-system',
+                resourceType: 'helmreleases',
+                name: '',
               },
-              type: "mcp"
-            }
+              type: 'mcp',
+            },
           ],
           loading: false,
-          requestId: "tool-approval-mcp-test",
+          requestId: 'tool-approval-mcp-test',
           userContext: {
-            timeContext: "2025-09-30T20:49:16.521Z",
-            userMessage: "Show me the Flux Helm releases.",
+            timeContext: '2025-09-30T20:49:16.521Z',
+            userMessage: 'Show me the Flux Helm releases.',
             conversationHistory: [
               {
-                role: "user",
-                content: "Show me the Flux Helm releases."
+                role: 'user',
+                content: 'Show me the Flux Helm releases.',
               },
               {
-                role: "assistant",
-                content: ""
-              }
-            ]
-          }
+                role: 'assistant',
+                content: '',
+              },
+            ],
+          },
         },
         isDisplayOnly: true,
-        requestId: "tool-approval-mcp-test"
+        requestId: 'tool-approval-mcp-test',
       },
       type: 'assistant' as const,
     },
     {
       label: 'Tool Confirmation - Multiple Tools',
       content: {
-        role: "assistant",
-        content: "",
+        role: 'assistant',
+        content: '',
         toolConfirmation: {
           tools: [
             {
-              id: "call_k8s_get_pods",
-              name: "kubernetes_api_request",
-              description: "Get pods from Kubernetes API",
+              id: 'call_k8s_get_pods',
+              name: 'kubernetes_api_request',
+              description: 'Get pods from Kubernetes API',
               arguments: {
-                url: "/api/v1/namespaces/default/pods",
-                method: "GET"
+                url: '/api/v1/namespaces/default/pods',
+                method: 'GET',
               },
-              type: "regular"
+              type: 'regular',
             },
             {
-              id: "call_flux_check",
-              name: "flux_get_helmreleases",
-              description: "Check Flux Helm releases",
+              id: 'call_flux_check',
+              name: 'flux_get_helmreleases',
+              description: 'Check Flux Helm releases',
               arguments: {
-                namespace: "flux-system",
-                name: "",
-                output: "json"
+                namespace: 'flux-system',
+                name: '',
+                output: 'json',
               },
-              type: "mcp"
-            }
+              type: 'mcp',
+            },
           ],
           loading: false,
-          requestId: "tool-approval-multi-test",
+          requestId: 'tool-approval-multi-test',
           userContext: {
-            timeContext: "2025-09-30T20:49:16.521Z",
-            userMessage: "Show me pods and Flux releases.",
+            timeContext: '2025-09-30T20:49:16.521Z',
+            userMessage: 'Show me pods and Flux releases.',
             conversationHistory: [
               {
-                role: "user",
-                content: "Show me pods and Flux releases."
+                role: 'user',
+                content: 'Show me pods and Flux releases.',
               },
               {
-                role: "assistant",
-                content: ""
-              }
-            ]
-          }
+                role: 'assistant',
+                content: '',
+              },
+            ],
+          },
         },
         isDisplayOnly: true,
-        requestId: "tool-approval-multi-test"
+        requestId: 'tool-approval-multi-test',
       },
       type: 'assistant' as const,
-    }
+    },
   ];
 
   const handleSubmit = () => {
@@ -419,7 +423,9 @@ All deployments are currently active in your cluster.`,
             />
 
             <Typography variant="caption" color="text.secondary">
-              Tip: Use ```yaml code blocks to test YAML rendering, markdown for formatting tests, or JSON objects starting with {'{toolConfirmation: ...}'} to test tool confirmation dialogs.
+              Tip: Use ```yaml code blocks to test YAML rendering, markdown for formatting tests, or
+              JSON objects starting with {'{toolConfirmation: ...}'} to test tool confirmation
+              dialogs.
             </Typography>
           </Box>
         </DialogContent>

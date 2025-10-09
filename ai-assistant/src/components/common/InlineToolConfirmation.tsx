@@ -8,13 +8,11 @@ import {
   Chip,
   CircularProgress,
   Collapse,
-  Divider,
   FormControl,
   FormControlLabel,
   FormHelperText,
   IconButton,
   InputLabel,
-  List,
   ListItem,
   ListItemText,
   MenuItem,
@@ -54,7 +52,6 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
   onApprove,
   onDeny,
   loading = false,
-  compact = false,
   userContext,
 }) => {
   const theme = useTheme();
@@ -537,21 +534,22 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
                   <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 200 }}>
                     {tool.description.length > 50
                       ? `${tool.description.substring(0, 50)}...`
-                      : tool.description
-                    }
+                      : tool.description}
                   </Typography>
                 )}
               </Box>
 
               {/* Tool details - collapsible */}
               <Collapse in={expandedTools.has(tool.id)}>
-                <Box sx={{
-                  p: 2,
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderTop: 0,
-                  borderRadius: '0 0 4px 4px',
-                  backgroundColor: theme.palette.background.default,
-                }}>
+                <Box
+                  sx={{
+                    p: 2,
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderTop: 0,
+                    borderRadius: '0 0 4px 4px',
+                    backgroundColor: theme.palette.background.default,
+                  }}
+                >
                   {/* Tool description */}
                   {tool.description && (
                     <Box sx={{ mb: 2 }}>
@@ -576,14 +574,17 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
                         <Box sx={{ ml: 1 }}>
                           {Object.entries(tool.arguments).map(([key, value]) => (
                             <Box key={key} sx={{ mb: 1 }}>
-                              <Typography variant="body2" component="span" sx={{ fontWeight: 'bold' }}>
+                              <Typography
+                                variant="body2"
+                                component="span"
+                                sx={{ fontWeight: 'bold' }}
+                              >
                                 {key}:{' '}
                               </Typography>
                               <Typography variant="body2" component="span" color="text.secondary">
                                 {typeof value === 'object'
                                   ? JSON.stringify(value, null, 2)
-                                  : String(value)
-                                }
+                                  : String(value)}
                               </Typography>
                             </Box>
                           ))}
@@ -601,7 +602,9 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
         <Alert severity="info" sx={{ mb: 2, py: 0.5 }}>
           <Typography variant="caption">
             {mcpTools.length > 0
-              ? `${mcpTools.length > 1 ? 'These MCP tools have' : 'This MCP tool has'} been configured with AI-analyzed arguments from your request. Click on any tool above to view details and edit arguments.`
+              ? `${
+                  mcpTools.length > 1 ? 'These MCP tools have' : 'This MCP tool has'
+                } been configured with AI-analyzed arguments from your request. Click on any tool above to view details and edit arguments.`
               : 'These tools will access your Kubernetes cluster and other systems. Click on any tool above to view details.'}
           </Typography>
         </Alert>
@@ -656,7 +659,9 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
               cursor: isActionInProgress ? 'not-allowed' : 'pointer',
             }}
           >
-            {isApproving ? 'Executing...' : `Execute ${toolCalls.length} Tool${toolCalls.length > 1 ? 's' : ''}`}
+            {isApproving
+              ? 'Executing...'
+              : `Execute ${toolCalls.length} Tool${toolCalls.length > 1 ? 's' : ''}`}
           </Button>
         </Box>
       </CardContent>
