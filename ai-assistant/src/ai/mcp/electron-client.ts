@@ -145,7 +145,10 @@ class ElectronMCPClient {
    */
   async getConfig(): Promise<{ success: boolean; config?: any; error?: string }> {
     if (!this.isElectron) {
-      return { success: false, error: 'MCP client not available - not running in Electron environment' };
+      return {
+        success: false,
+        error: 'MCP client not available - not running in Electron environment',
+      };
     }
 
     try {
