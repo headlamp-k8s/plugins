@@ -28,7 +28,15 @@ const useNodeClassClass = () => {
   const { cloudProvider } = useCloudProviderDetection();
 
   return useMemo(() => {
-    switch (cloudProvider) {
+    // Handle null/undefined cloudProvider during initialization
+    if (!cloudProvider) {
+      return awsNodeClassClass(); // Default fallback
+    }
+
+    // Handle new cloudProvider object structure
+    const providerName = typeof cloudProvider === 'object' ? cloudProvider.provider : cloudProvider;
+    
+    switch (providerName) {
       case 'AWS':
         return awsNodeClassClass();
       case 'AZURE':

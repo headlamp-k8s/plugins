@@ -12,7 +12,7 @@ import { Box } from '@mui/material';
 import React from 'react';
 import { useDispatch } from 'react-redux';
 import { useLocation, useParams } from 'react-router-dom';
-import { CLOUD_PROVIDERS } from '../common/cloudProviders';
+import { CLOUD_PROVIDERS, getAWSConfig } from '../common/cloudProviders';
 import { EditConfigButton } from '../common/EditConfigButton';
 import { DiffEditorDialog } from '../common/resourceEditor';
 import { StatusLabel } from '../common/StatusLabel';
@@ -58,7 +58,28 @@ export function NodeClassDetailView(props: { name?: string }) {
     return <div>No supported NodeClass found</div>;
   }
 
-  const config = CLOUD_PROVIDERS[cloudProvider];
+  // Use the same logic as NodeClass List to get the correct config
+  let config;
+  if (typeof cloudProvider === 'object' && cloudProvider.provider === 'AWS') {
+    // New structure with deployment type - use dynamic configuration
+    config = getAWSConfig(cloudProvider.deploymentType);
+  } else if (cloudProvider === 'AWS' || cloudProvider?.provider === 'AWS') {
+    // Fallback for old structure
+    config = CLOUD_PROVIDERS.AWS;
+  } else {
+    // Other providers (Azure, etc.)
+    const providerName = typeof cloudProvider === 'object' ? cloudProvider.provider : cloudProvider;
+    config = CLOUD_PROVIDERS[providerName] || CLOUD_PROVIDERS.AWS; // fallback to AWS config
+  }
+
+  // Ensure config has all required properties
+  if (!config || !config.group) {
+    console.error('Invalid config for cloud provider in Details:', cloudProvider, 'Config:', config);
+    return <div>Error: Invalid configuration for cloud provider. Please reload the plugin.</div>;
+  }
+  
+  console.log('NodeClass Details using config:', config.displayName, 'for cloudProvider:', cloudProvider);
+
   const NodeClass = createNodeClassClass(config);
 
   const actions = () => {

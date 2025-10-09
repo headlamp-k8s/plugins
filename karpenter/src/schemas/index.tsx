@@ -384,7 +384,7 @@ export const KARPENTER_SCHEMAS = {
   },
 };
 
-export const getSchemaKey = (cloudProvider?: string, resourceKind?: string): string => {
+export const getSchemaKey = (cloudProvider?: any, resourceKind?: string): string => {
   if (resourceKind) {
     const schemaKey = `${resourceKind}-schema`;
     if (KARPENTER_SCHEMAS[schemaKey]) {
@@ -392,6 +392,21 @@ export const getSchemaKey = (cloudProvider?: string, resourceKind?: string): str
     }
   }
 
+  // Handle new cloudProvider object structure
+  if (typeof cloudProvider === 'object' && cloudProvider?.provider) {
+    switch (cloudProvider.provider) {
+      case 'AWS':
+        // For AWS, we can use the same schema for both deployment types
+        // The dynamic configuration will be handled in the cloud provider config
+        return 'EC2NodeClass-schema'; 
+      case 'AZURE':
+        return 'AKSNodeClass-schema';
+      default:
+        return 'EC2NodeClass-schema';
+    }
+  }
+
+  // Handle legacy string cloudProvider
   switch (cloudProvider) {
     case 'AWS':
       return 'EC2NodeClass-schema';
