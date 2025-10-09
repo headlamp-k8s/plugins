@@ -51,8 +51,6 @@ export class ToolManager {
         console.error(`Failed to load tool ${ToolClass.name}:`, error);
       }
     }
-<<<<<<< HEAD
-=======
 
     // Initialize MCP tools asynchronously but start immediately
     this.initializeMCPTools(enabledToolIds);
@@ -62,7 +60,6 @@ export class ToolManager {
       '🔧 ToolManager: Regular tools initialized:',
       this.tools.map(t => t.config.name)
     );
->>>>>>> 10c74b1 (ai-assistant: Fix k8s tool call working)
   }
 
   /**
