@@ -21,6 +21,7 @@ import { basePrompt } from '../ai/prompts';
 import { MCPArgumentProcessor, UserContext } from '../components/mcpOutput/MCPArgumentProcessor';
 import { inlineToolApprovalManager } from '../utils/InlineToolApprovalManager';
 import { ToolCall } from '../utils/ToolApprovalManager';
+import { isBuiltInTool } from '../utils/ToolConfigManager';
 import { apiErrorPromptTemplate, toolFailurePromptTemplate } from './PromptTemplates';
 import { KubernetesToolContext, ToolManager } from './tools';
 
@@ -210,27 +211,13 @@ export default class LangChainManager extends AIManager {
   }
 
   async configureTools(tools: any[], kubernetesContext: KubernetesToolContext): Promise<void> {
-    console.log('🔧 Configuring tools for LangChain with context:', {
-      toolCount: tools.length,
-      selectedClusters: kubernetesContext.selectedClusters,
-      providerId: this.providerId,
-    });
-
-    // Wait for MCP tools to be initialized
-    console.log('⏳ Waiting for MCP tools initialization...');
     await this.toolManager.waitForMCPToolsInitialization();
-    console.log('✅ MCP tools initialization complete');
 
     // Configure the Kubernetes context for the KubernetesTool
     this.toolManager.configureKubernetesContext(kubernetesContext);
 
     // Get all tools (including MCP tools)
     const allTools = this.toolManager.getLangChainTools();
-    console.log(
-      `🔧 Total tools available: ${allTools.length} (Regular: ${tools.length}, MCP: ${
-        this.toolManager.getMCPTools().length
-      })`
-    );
 
     // Bind all tools to the model for compatible providers (OpenAI, Azure, etc.)
     this.boundModel = this.toolManager.bindToModel(this.model, this.providerId);
@@ -394,7 +381,65 @@ export default class LangChainManager extends AIManager {
 
   // Helper method to create system prompt with context
   private createSystemPrompt(): string {
-    let systemPromptContent = basePrompt;
+    const availableTools = this.toolManager.getToolNames();
+    const hasKubernetesTool = availableTools.includes('kubernetes_api_request');
+
+    let systemPromptContent;
+
+    if (!hasKubernetesTool) {
+      // Modified prompt when Kubernetes tools are disabled
+      systemPromptContent = `You are an AI assistant for the Headlamp Kubernetes UI. You help users understand and manage their Kubernetes resources through a web interface.
+
+IMPORTANT: Kubernetes API access tools are currently DISABLED in your settings.
+
+CRITICAL LIMITATIONS:
+- You CANNOT access live cluster data (pods, deployments, services, etc.)
+- You CANNOT fetch current resource information from the cluster
+- You CANNOT retrieve logs, events, or real-time status information
+- DO NOT promise to fetch, retrieve, or access any live cluster data
+
+WHAT YOU CAN DO:
+- Provide general Kubernetes guidance and explanations
+- Generate YAML examples for resource creation
+- Explain Kubernetes concepts and best practices
+- Help troubleshoot based on information the user provides
+- Direct users to enable tools if they need live data access
+
+WHEN USERS ASK FOR LIVE DATA:
+- Clearly explain that you cannot access live cluster information
+- Inform them that Kubernetes API tools are disabled
+- Provide instructions to enable tools in AI Assistant settings
+- Offer to help with general guidance instead
+
+YAML FORMATTING:
+When providing Kubernetes YAML examples, use this format:
+
+## [Resource Type] Example:
+
+Brief explanation of the resource.
+
+\`\`\`yaml
+apiVersion: [version]
+kind: [kind]
+metadata:
+  name: [name]
+  namespace: default
+spec:
+  # Configuration here
+\`\`\`
+
+Note: The YAML you provide will be displayed in a preview editor with an "Edit" button that allows users to modify the configuration before applying it to their cluster.
+
+RESPONSES:
+- Format responses in markdown
+- Be honest about limitations
+- Always suggest enabling tools for live data access
+- Provide helpful general guidance when possible
+- If asked non-Kubernetes questions, politely redirect and include a light Kubernetes joke`;
+    } else {
+      // Original prompt when tools are available
+      systemPromptContent = basePrompt;
+    }
 
     // Add MCP tool guidance if we have MCP tools available
     const mcpTools = this.toolManager.getMCPTools();
@@ -675,6 +720,12 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
   private async handleToolCalls(response: any): Promise<Prompt> {
     const enabledToolIds = this.toolManager.getToolNames();
 
+    console.log('🔧 Tool calls detected, processing...', {
+      requestedTools: response.tool_calls?.map(tc => tc.name) || [],
+      enabledTools: enabledToolIds,
+      enabledToolsCount: enabledToolIds.length,
+    });
+
     // If no tools are enabled but LLM is returning tool calls, this indicates a bug
     if (enabledToolIds.length === 0) {
       console.warn('LLM returned tool calls but no tools are enabled. This should not happen.', {
@@ -693,7 +744,8 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
       return assistantPrompt;
     }
 
-    const toolCalls = response.tool_calls.map(tc => ({
+    // Filter out disabled tools from tool calls
+    const allToolCalls = response.tool_calls.map(tc => ({
       type: 'function',
       id: tc.id,
       function: {
@@ -702,12 +754,76 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
       },
     }));
 
+    // Only keep tool calls for enabled tools
+    const toolCalls = allToolCalls.filter(tc => enabledToolIds.includes(tc.function.name));
+
+    // Log detailed filtering information
+    console.log('🔍 Tool filtering details:', {
+      allRequestedTools: allToolCalls.map(tc => tc.function.name),
+      enabledTools: enabledToolIds,
+      allowedTools: toolCalls.map(tc => tc.function.name),
+    });
+
+    // Log if any tools were filtered out
+    const filteredOutTools = allToolCalls.filter(tc => !enabledToolIds.includes(tc.function.name));
+    if (filteredOutTools.length > 0) {
+      console.log(
+        '🚫 Filtered out disabled tool calls:',
+        filteredOutTools.map(tc => tc.function.name)
+      );
+      console.log('✅ Enabled tools:', enabledToolIds);
+      console.log(
+        '🔄 Total tool calls requested:',
+        allToolCalls.length,
+        'Allowed:',
+        toolCalls.length
+      );
+    } else if (allToolCalls.length > 0) {
+      console.log(
+        '✅ All requested tools are enabled, proceeding with:',
+        toolCalls.map(tc => tc.function.name)
+      );
+    }
+
     const assistantPrompt: Prompt = {
       role: 'assistant',
       content: this.extractTextContent(response.content),
       toolCalls: toolCalls,
     };
     this.history.push(assistantPrompt);
+
+    // If all tool calls were filtered out (all requested tools are disabled), handle gracefully
+    if (toolCalls.length === 0) {
+      console.log('ℹ️ All requested tools are disabled, providing alternative response');
+
+      // Add informational message about disabled tools if any were filtered
+      if (filteredOutTools.length > 0) {
+        const disabledToolNames = filteredOutTools.map(tc => tc.function.name).join(', ');
+
+        // Replace the AI's response with a clear explanation instead of calling tools again
+        const clarifiedResponse = `I understand you're asking for cluster data, but I cannot access live Kubernetes information because the required tools (${disabledToolNames}) are currently disabled in your settings.
+
+To get real-time cluster data, you'll need to:
+1. Go to AI Assistant settings
+2. Enable the "${disabledToolNames}" tool
+3. Ask your question again
+
+Without access to the Kubernetes API, I cannot fetch current pod, deployment, service, or other resource information from your cluster.`;
+
+        // Update the assistant prompt in history with the clarified response
+        const updatedPrompt: Prompt = {
+          role: 'assistant',
+          content: clarifiedResponse,
+        };
+
+        // Replace the last history entry with the updated prompt
+        this.history[this.history.length - 1] = updatedPrompt;
+
+        return updatedPrompt;
+      }
+
+      return assistantPrompt;
+    }
 
     // Prepare tool calls for approval with intelligent argument processing
     const toolCallsForApproval: ToolCall[] = await Promise.all(
@@ -765,14 +881,42 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
     );
 
     try {
-      // Request approval for tool execution using inline approval system
-      console.log('🔐 Requesting approval for', toolCallsForApproval.length, 'tools');
-      const approvedToolIds = await inlineToolApprovalManager.requestApproval(
-        toolCallsForApproval,
-        this // Pass the AI manager instance
-      );
+      // Separate built-in tools from MCP tools
+      const builtInTools = toolCallsForApproval.filter(tool => isBuiltInTool(tool.name));
+      const mcpTools = toolCallsForApproval.filter(tool => !isBuiltInTool(tool.name));
 
-      console.log('✅ Tools approved:', approvedToolIds.length, 'of', toolCallsForApproval.length);
+      const approvedToolIds: string[] = [];
+
+      // Auto-approve all built-in tools (no user interaction needed)
+      const builtInToolIds = builtInTools.map(tool => tool.id);
+      approvedToolIds.push(...builtInToolIds);
+
+      // Only request approval for MCP tools
+      if (mcpTools.length > 0) {
+        console.log('🔐 Requesting approval for', mcpTools.length, 'MCP tools');
+        const approvedMCPToolIds = await inlineToolApprovalManager.requestApproval(
+          mcpTools,
+          this // Pass the AI manager instance
+        );
+        approvedToolIds.push(...approvedMCPToolIds);
+        console.log('✅ MCP tools approved:', approvedMCPToolIds.length, 'of', mcpTools.length);
+      }
+
+      // Log built-in tools that were auto-approved
+      if (builtInToolIds.length > 0) {
+        console.log(
+          '✅ Built-in tools auto-executed (no approval needed):',
+          builtInToolIds.length,
+          builtInTools.map(tool => tool.name)
+        );
+      }
+
+      console.log(
+        '✅ Total tools approved:',
+        approvedToolIds.length,
+        'of',
+        toolCallsForApproval.length
+      );
 
       // Filter tool calls to only execute approved ones and update with processed arguments
       const approvedToolCalls = toolCalls
