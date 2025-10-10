@@ -64,23 +64,18 @@ export function NodeClassDetailView(props: { name?: string }) {
     // New structure with deployment type - use dynamic configuration
     config = getAWSConfig(cloudProvider.deploymentType);
   } else if (cloudProvider === 'AWS' || cloudProvider?.provider === 'AWS') {
-    // Fallback for old structure
-    config = CLOUD_PROVIDERS.AWS;
+    // Fallback for old structure - use SELF_INSTALLED as default
+    config = getAWSConfig('SELF_INSTALLED');
   } else {
     // Other providers (Azure, etc.)
     const providerName = typeof cloudProvider === 'object' ? cloudProvider.provider : cloudProvider;
-    config = CLOUD_PROVIDERS[providerName] || CLOUD_PROVIDERS.AWS; // fallback to AWS config
+    config = CLOUD_PROVIDERS[providerName] || getAWSConfig('SELF_INSTALLED'); // fallback to AWS SELF_INSTALLED config
   }
 
   // Ensure config has all required properties
-  if (!config || !config.group) {
-    console.error('Invalid config for cloud provider in Details:', cloudProvider, 'Config:', config);
-    return <div>Error: Invalid configuration for cloud provider. Please reload the plugin.</div>;
-  }
-  
-  console.log('NodeClass Details using config:', config.displayName, 'for cloudProvider:', cloudProvider);
-
-  const NodeClass = createNodeClassClass(config);
+  if (!config || !config.columns) {
+    return <div>Configuration error</div>;
+  }  const NodeClass = createNodeClassClass(config);
 
   const actions = () => {
     return (item: KubeObject) =>

@@ -16,12 +16,12 @@ export function useCloudProviderDetection() {
         );
         const crds = response.items || [];
 
-        // Log available Karpenter-related CRDs for debugging
+        // Filter for Karpenter-related CRDs
         const karpenterCRDs = crds.filter(crd => 
           crd.metadata.name.includes('karpenter') || 
           crd.metadata.name.includes('nodeclass')
         );
-        console.log('Available Karpenter CRDs:', karpenterCRDs.map(crd => crd.metadata.name));
+        const availableCRDs = karpenterCRDs.map(crd => crd.metadata.name);
 
         // Check for various possible NodeClass CRD names and determine the deployment type
         let awsCRD = null;
@@ -61,8 +61,14 @@ export function useCloudProviderDetection() {
         );
 
         if (awsCRD) {
-          console.log('Found AWS NodeClass CRD:', awsCRD.metadata.name, 'Deployment type:', deploymentType);
-          setCloudProvider({ provider: 'AWS', deploymentType, crdName: awsCRD.metadata.name });
+          // For backward compatibility: return 'AWS' string for default self-installed case
+          // Return object only for EKS Auto Mode to maintain compatibility
+          if (deploymentType === 'SELF_INSTALLED') {
+            setCloudProvider('AWS');
+          } else {
+            const result = { provider: 'AWS', deploymentType, crdName: awsCRD.metadata.name };
+            setCloudProvider(result);
+          }
         } else if (azureCRD) {
           setCloudProvider({ provider: 'AZURE', deploymentType: 'SELF_INSTALLED', crdName: azureCRD.metadata.name });
         } else {
@@ -70,8 +76,7 @@ export function useCloudProviderDetection() {
           setError(`No supported NodeClass CRDs found. Available Karpenter CRDs: ${availableNames || 'none'}`);
         }
       } catch (err) {
-        console.error('Error detecting cloud provider:', err);
-        setError('Failed to detect cloud provider');
+        setError(`Failed to detect cloud provider: ${err.message || err.toString()}`);
       } finally {
         setLoading(false);
       }
