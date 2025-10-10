@@ -1349,24 +1349,7 @@ Format your response to make the errors prominent and actionable.`,
         });
 
         // Add missing tool responses
-        this.addMissingToolResponses(expectedToolCallIds, actualToolResponses);
-      }
-    }
-  }
-
-  // Add missing tool responses
-  private addMissingToolResponses(expectedIds: string[], actualResponses: any[]): void {
-    for (const expectedId of expectedIds) {
-      if (!actualResponses.find(r => r.toolCallId === expectedId)) {
-        this.history.push({
-          role: 'tool',
-          content: JSON.stringify({
-            error: true,
-            message: 'Tool execution failed - no response recorded',
-          }),
-          toolCallId: expectedId,
-          name: 'kubernetes_api_request',
-        });
+        // this.addMissingToolResponses(expectedToolCallIds, actualToolResponses);
       }
     }
   }
