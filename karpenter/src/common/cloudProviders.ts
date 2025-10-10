@@ -5,7 +5,7 @@ export const AWS_DEPLOYMENT_CONFIGS = {
     singularName: 'nodeclass',
     pluralName: 'nodeclasses',
     kind: 'NodeClass',
-    displayName: 'Node Classes (EKS Automode)',
+    displayName: 'Node Classes',
     apiVersion: 'eks.amazonaws.com/v1',
     annotationPrefix: 'eks.amazonaws.com',
     detailsRoute: 'nodeclasses-detail',
@@ -124,12 +124,13 @@ export function getAWSConfig(deploymentType) {
 
 export const CLOUD_PROVIDERS = {
   AWS: {
-    group: 'eks.amazonaws.com', // Default to EKS Automode
+    // AWS configuration for self-installed Karpenter
+    group: 'karpenter.k8s.aws',
     version: 'v1',
-    singularName: 'nodeclass',
-    pluralName: 'nodeclasses',
+    singularName: 'ec2nodeclass',
+    pluralName: 'ec2nodeclasses',
     detailsRoute: 'nodeclasses-detail',
-    displayName: 'Node Classes',
+    displayName: 'EC2 Node Classes',
     columns: [
       'name',
       {
