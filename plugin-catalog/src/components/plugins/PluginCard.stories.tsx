@@ -1,10 +1,13 @@
-// src/components/PluginCard.stories.tsx
-
+import { configureStore } from '@reduxjs/toolkit';
 import { Meta, StoryFn } from '@storybook/react';
-import React from 'react';
+import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { PluginPackage } from './List';
 import { PluginCard } from './PluginCard';
+
+const store = configureStore({
+  reducer: (state = { drawerMode: { isDetailDrawerEnabled: false } }) => state,
+});
 
 export default {
   title: 'PluginCard',
@@ -12,9 +15,11 @@ export default {
   decorators: [
     Story => {
       return (
-        <BrowserRouter>
-          <Story />
-        </BrowserRouter>
+        <Provider store={store}>
+          <BrowserRouter>
+            <Story />
+          </BrowserRouter>
+        </Provider>
       );
     },
   ],
