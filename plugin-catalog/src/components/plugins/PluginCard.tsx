@@ -138,13 +138,15 @@ export function PluginCard(props: PluginCardProps) {
           <Divider />
           <Box mt={1}>
             <Typography>
-              <Tooltip title={plugin?.description}>
-                <>
-                  {plugin?.description?.slice(0, 100)}
-                  {plugin?.description?.length > 100 && (
-                    <Typography sx={{ display: 'inline-block' }}>…</Typography>
+              <Tooltip title={plugin?.description || ''}>
+                <span>
+                  {plugin?.description ? plugin.description.slice(0, 100) : ''}
+                  {plugin?.description && plugin.description.length > 100 && (
+                    <Typography component="span" sx={{ display: 'inline-block' }}>
+                      …
+                    </Typography>
                   )}
-                </>
+                </span>
               </Tooltip>
             </Typography>
           </Box>
