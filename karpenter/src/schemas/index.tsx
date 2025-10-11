@@ -398,7 +398,7 @@ export const getSchemaKey = (cloudProvider?: any, resourceKind?: string): string
       case 'AWS':
         // For AWS, we can use the same schema for both deployment types
         // The dynamic configuration will be handled in the cloud provider config
-        return 'EC2NodeClass-schema'; 
+        return 'EC2NodeClass-schema';
       case 'AZURE':
         return 'AKSNodeClass-schema';
       default:

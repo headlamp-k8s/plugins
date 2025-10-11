@@ -37,7 +37,7 @@ const useNodeClassClass = () => {
     } else {
       provider = null;
     }
-    
+
     switch (provider) {
       case 'AWS':
         return awsNodeClassClass(cloudProvider);

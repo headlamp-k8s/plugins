@@ -3,10 +3,12 @@ import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cr
 export function createNodeClassClass(config) {
   // Create the NodeClass resource class with the specified configuration
   const NodeClass = makeCustomResourceClass({
-    apiInfo: [{ 
-      group: config.group, 
-      version: config.version,
-    }],
+    apiInfo: [
+      {
+        group: config.group,
+        version: config.version,
+      },
+    ],
     isNamespaced: false,
     singularName: config.singularName,
     pluralName: config.pluralName,
