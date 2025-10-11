@@ -75,7 +75,8 @@ export function NodeClassDetailView(props: { name?: string }) {
   // Ensure config has all required properties
   if (!config || !config.columns) {
     return <div>Configuration error</div>;
-  }  const NodeClass = createNodeClassClass(config);
+  }
+  const NodeClass = createNodeClassClass(config);
 
   const actions = () => {
     return (item: KubeObject) =>

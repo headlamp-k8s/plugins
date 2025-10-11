@@ -17,20 +17,24 @@ export function useCloudProviderDetection() {
         const crds = response.items || [];
 
         // Filter for Karpenter-related CRDs
-        const karpenterCRDs = crds.filter(crd => 
-          crd.metadata.name.includes('karpenter') || 
-          crd.metadata.name.includes('nodeclass')
+        const karpenterCRDs = crds.filter(
+          crd => crd.metadata.name.includes('karpenter') || crd.metadata.name.includes('nodeclass')
         );
-        const availableCRDs = karpenterCRDs.map(crd => crd.metadata.name);
 
         // Check for various possible NodeClass CRD names and determine the deployment type
         let awsCRD = null;
         let deploymentType = null;
 
         // Priority order: EKS Automode first, then self-installed Karpenter
-        const eksAutomodeCRD = crds.find(crd => crd.metadata.name === 'nodeclasses.eks.amazonaws.com');
-        const selfInstalledCRD = crds.find(crd => crd.metadata.name === 'ec2nodeclasses.karpenter.k8s.aws');
-        const genericKarpenterCRD = crds.find(crd => crd.metadata.name === 'nodeclasses.karpenter.sh');
+        const eksAutomodeCRD = crds.find(
+          crd => crd.metadata.name === 'nodeclasses.eks.amazonaws.com'
+        );
+        const selfInstalledCRD = crds.find(
+          crd => crd.metadata.name === 'ec2nodeclasses.karpenter.k8s.aws'
+        );
+        const genericKarpenterCRD = crds.find(
+          crd => crd.metadata.name === 'nodeclasses.karpenter.sh'
+        );
 
         if (eksAutomodeCRD) {
           awsCRD = eksAutomodeCRD;
@@ -48,8 +52,11 @@ export function useCloudProviderDetection() {
           awsCRD = crds.find(crd => {
             const kind = crd.spec?.names?.kind;
             const group = crd.spec?.group;
-            return (kind === 'NodeClass' || kind === 'EC2NodeClass') && 
-                   group && (group.includes('karpenter') || group.includes('aws'));
+            return (
+              (kind === 'NodeClass' || kind === 'EC2NodeClass') &&
+              group &&
+              (group.includes('karpenter') || group.includes('aws'))
+            );
           });
           if (awsCRD) {
             deploymentType = 'UNKNOWN';
@@ -70,10 +77,18 @@ export function useCloudProviderDetection() {
             setCloudProvider(result);
           }
         } else if (azureCRD) {
-          setCloudProvider({ provider: 'AZURE', deploymentType: 'SELF_INSTALLED', crdName: azureCRD.metadata.name });
+          setCloudProvider({
+            provider: 'AZURE',
+            deploymentType: 'SELF_INSTALLED',
+            crdName: azureCRD.metadata.name,
+          });
         } else {
           const availableNames = karpenterCRDs.map(crd => crd.metadata.name).join(', ');
-          setError(`No supported NodeClass CRDs found. Available Karpenter CRDs: ${availableNames || 'none'}`);
+          setError(
+            `No supported NodeClass CRDs found. Available Karpenter CRDs: ${
+              availableNames || 'none'
+            }`
+          );
         }
       } catch (err) {
         setError(`Failed to detect cloud provider: ${err.message || err.toString()}`);
