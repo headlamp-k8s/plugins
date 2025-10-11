@@ -1,3 +1,4 @@
+import { Box } from '@mui/material';
 import { configureStore } from '@reduxjs/toolkit';
 import { Meta, StoryFn } from '@storybook/react';
 import { Provider } from 'react-redux';
@@ -17,7 +18,9 @@ export default {
       return (
         <Provider store={store}>
           <BrowserRouter>
-            <Story />
+            <Box minHeight="800px">
+              <Story />
+            </Box>
           </BrowserRouter>
         </Provider>
       );
