@@ -83,9 +83,9 @@ export function PluginCard(props: PluginCardProps) {
         <CardContent
           sx={{
             margin: '1rem 0rem',
-            height: '15vh',
-            overflow: 'hidden',
             paddingTop: 0,
+            paddingBottom: 0,
+            marginBottom: 0,
           }}
         >
           <Box
@@ -138,16 +138,37 @@ export function PluginCard(props: PluginCardProps) {
           <Divider />
           <Box mt={1}>
             <Typography>
-              <Tooltip title={plugin?.description || ''}>
-                <span>
-                  {plugin?.description ? plugin.description.slice(0, 100) : ''}
-                  {plugin?.description && plugin.description.length > 100 && (
-                    <Typography component="span" sx={{ display: 'inline-block' }}>
-                      …
-                    </Typography>
-                  )}
-                </span>
-              </Tooltip>
+              {(() => {
+                const desc = plugin?.description || '';
+                const needsTooltip = desc.length >= 180;
+                const content = (
+                  <Box
+                    component="span"
+                    sx={theme => ({
+                      display: 'block',
+                      lineHeight: '1.2',
+                      maxHeight: 'calc(1.2em * 5)', // max 5 lines
+                      overflow: 'hidden',
+                      position: 'relative',
+                      // Add a subtle fade at the bottom so users know the text is truncated.
+                      '&::after': needsTooltip && {
+                        content: '""',
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: '1.2em',
+                        pointerEvents: 'none',
+                        background: `linear-gradient(to bottom, rgba(0,0,0,0), ${theme.palette.background.paper})`,
+                      },
+                    })}
+                  >
+                    {desc}
+                  </Box>
+                );
+
+                return needsTooltip ? <Tooltip title={desc}>{content}</Tooltip> : content;
+              })()}
             </Typography>
           </Box>
         </CardContent>

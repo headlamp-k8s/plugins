@@ -71,6 +71,7 @@ export const LongDescription = Template.bind({});
 LongDescription.args = {
   ...Default.args,
   description:
+    // 'This is a sample plugin description that is intentionally long to demonstrate how the PluginCard component handles overflow text. The description continues with more details and information about the plugin to ensure that it exceeds the 100 character limit.',
     'This is a sample plugin description that is intentionally long to demonstrate how the PluginCard component handles overflow text. The description continues with more details and information about the plugin to ensure that it exceeds the 100 character limit.',
 };
 
