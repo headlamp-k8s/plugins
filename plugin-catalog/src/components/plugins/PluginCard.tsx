@@ -103,16 +103,21 @@ export function PluginCard(props: PluginCardProps) {
                 textOverflow: 'ellipsis',
               }}
             >
-              <Tooltip title={plugin.display_name}>
-                <span>
-                  <HeadlampRouterLink
-                    routeName="/plugin-catalog/:repoName/:pluginName"
-                    params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
-                  >
-                    {plugin.display_name}
-                  </HeadlampRouterLink>
-                </span>
-              </Tooltip>
+              {(() => {
+                const displayName = plugin.display_name || plugin.name || '';
+                const needsTooltip = displayName.length > 20;
+                const link = (
+                  <Box component="span" sx={{ display: 'inline-block' }}>
+                    <HeadlampRouterLink
+                      routeName="/plugin-catalog/:repoName/:pluginName"
+                      params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
+                    >
+                      {displayName}
+                    </HeadlampRouterLink>
+                  </Box>
+                );
+                return needsTooltip ? <Tooltip title={displayName}>{link}</Tooltip> : link;
+              })()}
             </Typography>
           </Box>
           <Box display="flex" justifyContent="space-between" my={1}>
