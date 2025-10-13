@@ -1,7 +1,7 @@
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { DynamicTool } from '@langchain/core/tools';
 import { Prompt } from '../../ai/manager';
-import tools from '../../ai/mcp/electron-client';
+import { ElectronMCPClient } from '../../ai/mcp/electron-client';
 import { MCPOutputFormatter } from '../formatters/MCPOutputFormatter';
 import { KubernetesTool, KubernetesToolContext } from './kubernetes';
 import { AVAILABLE_TOOLS, getToolByName } from './registry';
@@ -16,9 +16,11 @@ export class ToolManager {
   private boundModel: BaseChatModel | null = null;
   private providerId: string | null = null;
   private mcpFormatter: MCPOutputFormatter | null = null;
+  private mcpClient: ElectronMCPClient;
 
   constructor(private kubernetesContext?: KubernetesToolContext, enabledToolIds?: string[]) {
     console.log('🔧 ToolManager: Initializing with enabledToolIds:', enabledToolIds);
+    this.mcpClient = new ElectronMCPClient();
     this.initializeTools(enabledToolIds);
     this.mcpInitializationPromise = this.initializeMCPTools(enabledToolIds);
   }
@@ -59,22 +61,44 @@ export class ToolManager {
   private async initializeMCPTools(enabledToolIds?: string[]): Promise<void> {
     try {
       console.log('Initializing MCP tools from Electron...');
-      const mcpToolsData = await tools();
+      
+      if (!this.mcpClient.isAvailable()) {
+        console.log('MCP client not available - not running in Electron environment');
+        this.mcpToolsInitialized = true;
+        return;
+      }
+
+      // Get all available MCP tools
+      const mcpToolsData = await this.mcpClient.getTools();
 
       if (mcpToolsData && mcpToolsData.length > 0) {
         console.log(`Successfully loaded ${mcpToolsData.length} MCP tools from Electron`);
 
-        // Filter MCP tools by enabled status
-        const filteredMcpTools = enabledToolIds
-          ? mcpToolsData.filter(toolData => enabledToolIds.includes(toolData.name))
-          : mcpToolsData;
+        // Filter MCP tools using the new configuration system
+        const filteredMcpTools: typeof mcpToolsData = [];
+        
+        for (const toolData of mcpToolsData) {
+          // First check legacy enabledToolIds for backward compatibility
+          if (enabledToolIds && !enabledToolIds.includes(toolData.name)) {
+            console.log('🚫 ToolManager: Skipping MCP tool (disabled by legacy config):', toolData.name);
+            continue;
+          }
 
-        if (enabledToolIds) {
-          console.log(
-            `Filtered to ${filteredMcpTools.length} enabled MCP tools out of ${mcpToolsData.length} total`
-          );
+          // Then check the new MCP-specific configuration
+          const isEnabled = await this.mcpClient.isToolEnabled(toolData.name);
+          if (!isEnabled) {
+            console.log('🚫 ToolManager: Skipping MCP tool (disabled by MCP config):', toolData.name);
+            continue;
+          }
+
+          console.log('✅ ToolManager: Including MCP tool:', toolData.name);
+          filteredMcpTools.push(toolData);
         }
-        console.log('Filtered MCP tools:', filteredMcpTools);
+
+        console.log(
+          `Filtered to ${filteredMcpTools.length} enabled MCP tools out of ${mcpToolsData.length} total`
+        );
+        console.log('Filtered MCP tools:', filteredMcpTools.map(t => t.name));
         // Convert MCP tools to LangChain DynamicTool format
         this.mcpTools = filteredMcpTools.map(
           toolData =>
@@ -685,6 +709,99 @@ export class ToolManager {
     const regularToolNames = this.tools.map(tool => tool.config.name);
     const mcpToolNames = this.mcpTools.map(tool => tool.name);
     return [...regularToolNames, ...mcpToolNames];
+  }
+
+  /**
+   * Get MCP client instance for configuration management
+   */
+  getMCPClient(): ElectronMCPClient {
+    return this.mcpClient;
+  }
+
+  /**
+   * Enable or disable an MCP tool
+   */
+  async setMCPToolEnabled(toolName: string, enabled: boolean): Promise<boolean> {
+    if (!this.mcpClient.isAvailable()) {
+      return false;
+    }
+
+    const { serverName, toolName: actualToolName } = this.mcpClient.parseToolName(toolName);
+    const result = await this.mcpClient.setToolEnabled(serverName, actualToolName, enabled);
+    
+    if (result) {
+      // Reinitialize MCP tools to reflect the change
+      this.mcpToolsInitialized = false;
+      this.mcpInitializationPromise = this.initializeMCPTools();
+      await this.mcpInitializationPromise;
+      
+      // If we have a bound model, rebind with the updated tools
+      if (this.boundModel && this.providerId) {
+        this.boundModel = this.bindToModel(this.boundModel, this.providerId);
+      }
+    }
+    
+    return result;
+  }
+
+  /**
+   * Check if an MCP tool is enabled
+   */
+  async isMCPToolEnabled(toolName: string): Promise<boolean> {
+    if (!this.mcpClient.isAvailable()) {
+      return true;
+    }
+    return await this.mcpClient.isToolEnabled(toolName);
+  }
+
+  /**
+   * Get MCP tool statistics
+   */
+  async getMCPToolStats(toolName: string): Promise<any | null> {
+    if (!this.mcpClient.isAvailable()) {
+      return null;
+    }
+    
+    const { serverName, toolName: actualToolName } = this.mcpClient.parseToolName(toolName);
+    return await this.mcpClient.getToolStats(serverName, actualToolName);
+  }
+
+  /**
+   * Get MCP tools configuration
+   */
+  async getMCPToolsConfig(): Promise<{ success: boolean; config?: any; error?: string }> {
+    if (!this.mcpClient.isAvailable()) {
+      return {
+        success: false,
+        error: 'MCP client not available - not running in Electron environment',
+      };
+    }
+    return await this.mcpClient.getToolsConfig();
+  }
+
+  /**
+   * Update MCP tools configuration
+   */
+  async updateMCPToolsConfig(config: any): Promise<boolean> {
+    if (!this.mcpClient.isAvailable()) {
+      return false;
+    }
+    
+    const result = await this.mcpClient.updateToolsConfig(config);
+    
+    if (result) {
+      // Reinitialize MCP tools to reflect the changes
+      this.mcpToolsInitialized = false;
+      this.mcpInitializationPromise = this.initializeMCPTools();
+      await this.mcpInitializationPromise;
+      
+      // If we have a bound model, rebind with the updated tools
+      if (this.boundModel && this.providerId) {
+        this.boundModel = this.bindToModel(this.boundModel, this.providerId);
+      }
+    }
+    
+    return result;
   }
 
   /**
