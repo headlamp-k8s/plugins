@@ -46,7 +46,9 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   onToolsChange,
 }) => {
   const [localEnabledTools, setLocalEnabledTools] = useState<string[]>(enabledTools);
-  const [mcpTools, setMcpTools] = useState<MCPTool[]>([]);
+  const [allKnownMcpTools, setAllKnownMcpTools] = useState<MCPTool[]>([]); // Track all tools ever seen
+  const [mcpToolsConfig, setMcpToolsConfig] = useState<any>({});
+  const [originalMcpConfig, setOriginalMcpConfig] = useState<any>({});
   const [isLoadingMcp, setIsLoadingMcp] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
@@ -64,6 +66,31 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
     setLocalEnabledTools(enabledTools);
   }, [enabledTools]);
 
+  // Parse MCP tool name to extract server and tool components
+  const parseMcpToolName = (fullToolName: string): { serverName: string; toolName: string } => {
+    const parts = fullToolName.split('__');
+    if (parts.length >= 2) {
+      return {
+        serverName: parts[0],
+        toolName: parts.slice(1).join('__'),
+      };
+    }
+    return {
+      serverName: 'default',
+      toolName: fullToolName,
+    };
+  };
+
+  // Check if an MCP tool is enabled in the configuration
+  const isMcpToolEnabled = (toolName: string): boolean => {
+    const { serverName, toolName: actualToolName } = parseMcpToolName(toolName);
+    const serverConfig = mcpToolsConfig[serverName];
+    if (!serverConfig || !serverConfig[actualToolName]) {
+      return true; // Default to enabled for new tools
+    }
+    return serverConfig[actualToolName].enabled !== false;
+  };
+
   const loadMcpTools = async () => {
     console.log('ToolsDialog: Starting to load MCP tools...');
     setIsLoadingMcp(true);
@@ -71,15 +98,23 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       const mcpClient = new ElectronMCPClient();
       console.log('ToolsDialog: Created MCP client, isAvailable:', mcpClient.isAvailable());
 
-      // Load both tools and server configuration
-      const [tools, configResponse] = await Promise.all([
+      // Load tools, server configuration, and tools configuration
+      const [tools, configResponse, toolsConfigResponse] = await Promise.all([
         mcpClient.getTools(),
         mcpClient.getConfig(),
+        mcpClient.getToolsConfig(),
       ]);
 
       console.log('ToolsDialog: Received tools from client:', tools.length, 'tools');
       console.log('ToolsDialog: Tools:', tools);
       console.log('ToolsDialog: Config response:', configResponse);
+      console.log('ToolsDialog: Tools config response:', toolsConfigResponse);
+
+      // Store MCP tools configuration
+      if (toolsConfigResponse.success && toolsConfigResponse.config) {
+        setMcpToolsConfig(toolsConfigResponse.config);
+        setOriginalMcpConfig(JSON.parse(JSON.stringify(toolsConfigResponse.config)));
+      }
 
       // Extract server names from config
       let servers: { [key: string]: any } = {};
@@ -119,7 +154,12 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
         return { ...tool, server: 'Unknown Server' };
       });
 
-      setMcpTools(toolsWithServer);
+      // Update allKnownMcpTools by merging new tools with existing ones
+      setAllKnownMcpTools(prevKnown => {
+        const knownToolNames = new Set(prevKnown.map(t => t.name));
+        const newTools = toolsWithServer.filter(t => !knownToolNames.has(t.name));
+        return [...prevKnown, ...newTools];
+      });
 
       // Auto-expand servers that have tools
       const serversWithTools = new Set<string>();
@@ -131,59 +171,86 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       setExpandedServers(serversWithTools);
     } catch (error) {
       console.error('ToolsDialog: Failed to load MCP tools:', error);
-      setMcpTools([]);
       setMcpServers({});
     } finally {
       setIsLoadingMcp(false);
     }
   };
 
-  const handleToggleTool = (toolName: string) => {
-    const newEnabledTools = localEnabledTools.includes(toolName)
-      ? localEnabledTools.filter(name => name !== toolName)
-      : [...localEnabledTools, toolName];
-    setLocalEnabledTools(newEnabledTools);
+  const handleToggleRegularTool = (toolName: string) => {
+    setLocalEnabledTools(prevTools => {
+      if (prevTools.includes(toolName)) {
+        return prevTools.filter(tool => tool !== toolName);
+      } else {
+        return [...prevTools, toolName];
+      }
+    });
+  };
+
+  const handleToggleMcpTool = (toolName: string) => {
+    const { serverName, toolName: actualToolName } = parseMcpToolName(toolName);
+    const currentlyEnabled = isMcpToolEnabled(toolName);
+    
+    setMcpToolsConfig((prevConfig: any) => {
+      const newConfig = { ...prevConfig };
+      if (!newConfig[serverName]) {
+        newConfig[serverName] = {};
+      }
+      if (!newConfig[serverName][actualToolName]) {
+        newConfig[serverName][actualToolName] = {
+          enabled: true,
+          usageCount: 0,
+        };
+      }
+      newConfig[serverName][actualToolName].enabled = !currentlyEnabled;
+      return newConfig;
+    });
   };
 
   const handleToggleServer = (serverName: string) => {
-    const serverTools = mcpTools.filter(tool => tool.server === serverName);
-    const serverToolNames = serverTools.map(tool => tool.name);
-
+    const serverTools = allKnownMcpTools.filter(tool => tool.server === serverName);
+    
     // Check if all tools from this server are currently enabled
-    const allEnabled = serverToolNames.every(toolName => localEnabledTools.includes(toolName));
+    const allEnabled = serverTools.every(tool => isMcpToolEnabled(tool.name));
 
-    let newEnabledTools: string[];
-    if (allEnabled) {
-      // Disable all tools from this server
-      newEnabledTools = localEnabledTools.filter(toolName => !serverToolNames.includes(toolName));
-    } else {
-      // Enable all tools from this server
-      newEnabledTools = [...new Set([...localEnabledTools, ...serverToolNames])];
-    }
+    // Update MCP configuration for all tools in this server
+    setMcpToolsConfig((prevConfig: any) => {
+      const newConfig = { ...prevConfig };
+      if (!newConfig[serverName]) {
+        newConfig[serverName] = {};
+      }
 
-    setLocalEnabledTools(newEnabledTools);
+      serverTools.forEach(tool => {
+        const { toolName: actualToolName } = parseMcpToolName(tool.name);
+        if (!newConfig[serverName][actualToolName]) {
+          newConfig[serverName][actualToolName] = {
+            enabled: true,
+            usageCount: 0,
+          };
+        }
+        newConfig[serverName][actualToolName].enabled = !allEnabled;
+      });
+
+      return newConfig;
+    });
   };
 
   const isServerEnabled = (serverName: string) => {
-    const serverTools = mcpTools.filter(tool => tool.server === serverName);
-    const serverToolNames = serverTools.map(tool => tool.name);
+    const serverTools = allKnownMcpTools.filter(tool => tool.server === serverName);
     return (
-      serverToolNames.length > 0 &&
-      serverToolNames.every(toolName => localEnabledTools.includes(toolName))
+      serverTools.length > 0 &&
+      serverTools.every(tool => isMcpToolEnabled(tool.name))
     );
   };
 
   const isServerPartiallyEnabled = (serverName: string) => {
-    const serverTools = mcpTools.filter(tool => tool.server === serverName);
-    const serverToolNames = serverTools.map(tool => tool.name);
-    const enabledCount = serverToolNames.filter(toolName =>
-      localEnabledTools.includes(toolName)
-    ).length;
-    return enabledCount > 0 && enabledCount < serverToolNames.length;
+    const serverTools = allKnownMcpTools.filter(tool => tool.server === serverName);
+    const enabledCount = serverTools.filter(tool => isMcpToolEnabled(tool.name)).length;
+    return enabledCount > 0 && enabledCount < serverTools.length;
   };
 
-  // Filter tools based on search query
-  const filteredMcpTools = mcpTools.filter(
+  // Filter tools based on search query - use allKnownMcpTools to show all tools (including disabled ones)
+  const filteredMcpTools = allKnownMcpTools.filter(
     tool =>
       tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (tool.description && tool.description.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -209,13 +276,40 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
     setExpandedServers(newExpanded);
   };
 
-  const handleSave = () => {
-    onToolsChange(localEnabledTools);
-    onClose();
+  const handleSave = async () => {
+    try {
+      // Save regular tools configuration
+      onToolsChange(localEnabledTools);
+
+      // Save MCP tools configuration if it has changed
+      const mcpConfigChanged = JSON.stringify(mcpToolsConfig) !== JSON.stringify(originalMcpConfig);
+      
+      if (mcpConfigChanged) {
+        const mcpClient = new ElectronMCPClient();
+        console.log('Saving MCP tools configuration:', mcpToolsConfig);
+        if (mcpClient.isAvailable()) {
+          const response = await mcpClient.updateToolsConfig(mcpToolsConfig);
+          if (!response) {
+            console.error('Failed to save MCP tools configuration');
+            // Still continue to close dialog, but log the error
+          } else {
+            console.log('MCP tools configuration saved successfully');
+          }
+        }
+      }
+
+      onClose();
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+      // Still close the dialog even if there was an error
+      onClose();
+    }
   };
 
   const handleCancel = () => {
+    // Restore original state for both regular and MCP tools
     setLocalEnabledTools(enabledTools);
+    setMcpToolsConfig(JSON.parse(JSON.stringify(originalMcpConfig)));
     onClose();
   };
 
@@ -339,8 +433,8 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
                           <Switch
                             size="small"
                             edge="end"
-                            onChange={() => handleToggleTool(tool.name)}
-                            checked={localEnabledTools.includes(tool.name)}
+                            onChange={() => handleToggleMcpTool(tool.name)}
+                            checked={isMcpToolEnabled(tool.name)}
                           />
                         </ListItemSecondaryAction>
                       </ListItem>
@@ -352,7 +446,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
             </Accordion>
           ))}
 
-          {filteredMcpTools.length === 0 && mcpTools.length > 0 && (
+          {filteredMcpTools.length === 0 && allKnownMcpTools.length > 0 && (
             <Typography
               variant="body2"
               color="text.secondary"
@@ -362,7 +456,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
             </Typography>
           )}
 
-          {mcpTools.length === 0 && (
+          {allKnownMcpTools.length === 0 && (
             <Typography
               variant="body2"
               color="text.secondary"
@@ -425,7 +519,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
               <ListItemSecondaryAction>
                 <Switch
                   edge="end"
-                  onChange={() => handleToggleTool(toolName)}
+                  onChange={() => handleToggleRegularTool(toolName)}
                   checked={isEnabled}
                   color="primary"
                 />

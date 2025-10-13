@@ -24,18 +24,26 @@ import {
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { ModelSelector } from './components';
-import { MCPSettings } from './components/settings/MCPSettings';
+import { MCPSettings } from './components/settings';
 import { getDefaultConfig } from './config/modelConfig';
 import { PromptWidthProvider } from './contexts/PromptWidthContext';
 import { isTestModeCheck } from './helper';
 import AIPrompt from './modal';
-import { getSettingsURL, PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
+import { 
+  getSettingsURL, 
+  PLUGIN_NAME, 
+  pluginStore, 
+  useGlobalState, 
+  usePluginConfig,
+  getAllAvailableTools,
+  isToolEnabled,
+  toggleTool
+} from './utils';
 import {
   getActiveConfig,
   getSavedConfigurations,
   SavedConfigurations,
 } from './utils/ProviderConfigManager';
-import { getAllAvailableTools, isToolEnabled, toggleTool } from './utils/ToolConfigManager';
 
 // Memoized UI Panel component to prevent unnecessary re-renders
 const AIPanelComponent = React.memo(() => {
@@ -489,6 +497,9 @@ function Settings() {
       {/* MCP Servers Section */}
       <Divider sx={{ my: 3 }} />
       <MCPSettings />
+      
+      {/* MCP Tool Configuration Section */}
+      <Divider sx={{ my: 3 }} />
     </Box>
   );
 }
