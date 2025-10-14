@@ -2,6 +2,7 @@ import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { getSourceNameAndPluralKind } from '../helpers';
 import {
   bucketRepositoryClass,
+  externalArtifactClass,
   gitRepositoryClass,
   helmChartClass,
   helmRepositoryClass,
@@ -11,6 +12,8 @@ import {
 export function GetSourceClass(pluralName: string) {
   return (() => {
     switch (pluralName) {
+      case 'externalartifacts':
+        return externalArtifactClass();
       case 'gitrepositories':
         return gitRepositoryClass();
       case 'ocirepositories':

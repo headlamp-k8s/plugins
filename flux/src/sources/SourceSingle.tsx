@@ -20,6 +20,7 @@ import StatusLabel from '../common/StatusLabel';
 import { ObjectEvents } from '../helpers/index';
 import {
   bucketRepositoryClass,
+  externalArtifactClass,
   gitRepositoryClass,
   helmChartClass,
   helmRepositoryClass,
@@ -44,6 +45,8 @@ export function FluxSourceDetailView(props: {
 
   const resourceClass = (() => {
     switch (pluralName) {
+      case 'externalartifacts':
+        return externalArtifactClass();
       case 'gitrepositories':
         return gitRepositoryClass();
       case 'ocirepositories':
@@ -118,7 +121,7 @@ function SourceDetailView(props) {
       },
     ];
 
-    if (!resource?.jsonData.spec?.suspend) {
+    if (!resource?.jsonData.spec?.suspend && resource?.jsonData.spec?.interval) {
       extraInfo.push({
         name: 'Next Reconciliation',
         value: <RemainingTimeDisplay item={resource} />,

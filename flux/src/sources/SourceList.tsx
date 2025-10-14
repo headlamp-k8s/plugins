@@ -9,6 +9,15 @@ import Table, { TableProps } from '../common/Table';
 
 const sourceGroup = 'source.toolkit.fluxcd.io';
 
+export function externalArtifactClass() {
+  return makeCustomResourceClass({
+    apiInfo: [{ group: sourceGroup, version: 'v1' }],
+    isNamespaced: true,
+    singularName: 'ExternalArtifact',
+    pluralName: 'externalartifacts',
+  });
+}
+
 export function gitRepositoryClass() {
   return makeCustomResourceClass({
     apiInfo: [{ group: sourceGroup, version: 'v1' }],
@@ -66,6 +75,11 @@ export function helmChartClass() {
 export function FluxSources() {
   return (
     <>
+      <FluxSource
+        resourceClass={externalArtifactClass()}
+        pluralName="externalartifacts"
+        title={'External Artifacts'}
+      />
       <FluxSource
         resourceClass={gitRepositoryClass()}
         pluralName="gitrepositories"
