@@ -13,6 +13,17 @@ export function KafkaList() {
           'name',
           'namespace',
           {
+            label: 'Mode',
+            getValue: (kafka: Kafka) => {
+              const mode = kafka.getClusterMode();
+              return (
+                <StatusLabel status={mode === 'KRaft' ? 'success' : 'info'}>
+                  {mode}
+                </StatusLabel>
+              );
+            },
+          },
+          {
             label: 'Kafka Version',
             getValue: (kafka: Kafka) => kafka.spec.kafka.version || 'N/A',
           },
@@ -51,6 +62,9 @@ export function KafkaDetails({ name, namespace }: { name: string; namespace: str
     return <div>Loading...</div>;
   }
 
+  const mode = kafka.getClusterMode();
+  const isKRaft = kafka.isKRaftMode();
+
   return (
     <div>
       <SectionBox title="Kafka Cluster Details">
@@ -59,6 +73,10 @@ export function KafkaDetails({ name, namespace }: { name: string; namespace: str
         </div>
         <div>
           <strong>Namespace:</strong> {kafka.metadata.namespace}
+        </div>
+        <div>
+          <strong>Mode:</strong>{' '}
+          <StatusLabel status={isKRaft ? 'success' : 'info'}>{mode}</StatusLabel>
         </div>
         <div>
           <strong>Version:</strong> {kafka.spec.kafka.version || 'N/A'}
@@ -75,6 +93,33 @@ export function KafkaDetails({ name, namespace }: { name: string; namespace: str
           )}
         </div>
       </SectionBox>
+
+      {isKRaft && (
+        <SectionBox title="KRaft Configuration">
+          <div>
+            <strong>Metadata Version:</strong> {kafka.getMetadataVersion() || 'N/A'}
+          </div>
+          <div>
+            <strong>Description:</strong> This cluster is running in KRaft mode (ZooKeeper-less)
+          </div>
+        </SectionBox>
+      )}
+
+      {!isKRaft && kafka.spec.zookeeper && (
+        <SectionBox title="ZooKeeper Configuration">
+          <div>
+            <strong>Replicas:</strong> {kafka.spec.zookeeper.replicas}
+          </div>
+          <div>
+            <strong>Storage Type:</strong> {kafka.spec.zookeeper.storage.type}
+          </div>
+          {kafka.spec.zookeeper.storage.size && (
+            <div>
+              <strong>Storage Size:</strong> {kafka.spec.zookeeper.storage.size}
+            </div>
+          )}
+        </SectionBox>
+      )}
 
       {kafka.status?.listeners && kafka.status.listeners.length > 0 && (
         <SectionBox title="Listeners">

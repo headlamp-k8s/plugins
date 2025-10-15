@@ -35,6 +35,8 @@ export interface KafkaSpec {
       size?: string;
       deleteClaim?: boolean;
     };
+    // KRaft mode configuration
+    metadataVersion?: string;
   };
   zookeeper?: {
     replicas: number;
@@ -101,6 +103,18 @@ export class Kafka extends KubeObject<KafkaSpec, StrimziStatus> {
   isReady(): boolean {
     const condition = this.getReadyCondition();
     return condition?.status === 'True';
+  }
+
+  isKRaftMode(): boolean {
+    return !this.spec.zookeeper;
+  }
+
+  getClusterMode(): 'KRaft' | 'ZooKeeper' {
+    return this.isKRaftMode() ? 'KRaft' : 'ZooKeeper';
+  }
+
+  getMetadataVersion(): string | undefined {
+    return this.spec.kafka.metadataVersion;
   }
 }
 
