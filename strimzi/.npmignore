@@ -1,0 +1,27 @@
+# Exclude source code
+src/
+
+# Exclude development files
+node_modules/
+*.log
+.DS_Store
+tsconfig.json
+.eslintrc.json
+.prettierrc.json
+.editorconfig
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Exclude development documentation
+CONTRIBUTING.md
+
+# Exclude tests if any
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Keep only compiled code in dist/
