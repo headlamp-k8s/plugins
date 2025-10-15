@@ -1,139 +1,87 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { SectionBox, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { ResourceTable } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Kafka } from '../crds';
+import { ApiError, Kafka as K8sKafka } from '../crds';
+import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
 
 export function KafkaList() {
-  return (
-    <SectionBox title="Kafka Clusters">
-      <ResourceTable
-        resourceClass={Kafka}
-        columns={[
-          'name',
-          'namespace',
-          {
-            label: 'Mode',
-            getValue: (kafka: Kafka) => {
-              const mode = kafka.getClusterMode();
-              return (
-                <StatusLabel status={mode === 'KRaft' ? 'success' : 'info'}>
-                  {mode}
-                </StatusLabel>
-              );
-            },
-          },
-          {
-            label: 'Kafka Version',
-            getValue: (kafka: Kafka) => kafka.spec.kafka.version || 'N/A',
-          },
-          {
-            label: 'Replicas',
-            getValue: (kafka: Kafka) => kafka.spec.kafka.replicas,
-          },
-          {
-            label: 'Status',
-            getValue: (kafka: Kafka) => {
-              const condition = kafka.getReadyCondition();
-              return (
-                <StatusLabel
-                  status={condition?.status === 'True' ? 'success' : 'error'}
-                >
-                  {condition?.status === 'True' ? 'Ready' : condition?.reason || 'Unknown'}
-                </StatusLabel>
-              );
-            },
-          },
-          'age',
-        ]}
-      />
-    </SectionBox>
-  );
-}
-
-export function KafkaDetails({ name, namespace }: { name: string; namespace: string }) {
-  const [kafka, setKafka] = React.useState<Kafka | null>(null);
+  const [kafkas, setKafkas] = React.useState<K8sKafka[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    Kafka.useApiGet(setKafka, name, namespace);
-  }, [name, namespace]);
+    // Fetch Kafka resources from Kubernetes API
+    fetch('/apis/kafka.strimzi.io/v1beta2/kafkas')
+      .then(res => res.json())
+      .then(data => {
+        if (data.items) {
+          setKafkas(data.items);
+        }
+      })
+      .catch(err => {
+        setError(err.message);
+      });
+  }, []);
 
-  if (!kafka) {
-    return <div>Loading...</div>;
+  if (error) {
+    return <div style={{ padding: '20px', color: 'red' }}>Error: {error}</div>;
   }
 
-  const mode = kafka.getClusterMode();
-  const isKRaft = kafka.isKRaftMode();
-
   return (
-    <div>
-      <SectionBox title="Kafka Cluster Details">
-        <div>
-          <strong>Name:</strong> {kafka.metadata.name}
-        </div>
-        <div>
-          <strong>Namespace:</strong> {kafka.metadata.namespace}
-        </div>
-        <div>
-          <strong>Mode:</strong>{' '}
-          <StatusLabel status={isKRaft ? 'success' : 'info'}>{mode}</StatusLabel>
-        </div>
-        <div>
-          <strong>Version:</strong> {kafka.spec.kafka.version || 'N/A'}
-        </div>
-        <div>
-          <strong>Replicas:</strong> {kafka.spec.kafka.replicas}
-        </div>
-        <div>
-          <strong>Status:</strong>{' '}
-          {kafka.isReady() ? (
-            <StatusLabel status="success">Ready</StatusLabel>
-          ) : (
-            <StatusLabel status="error">Not Ready</StatusLabel>
-          )}
-        </div>
-      </SectionBox>
+    <div style={{ padding: '20px' }}>
+      <h1>Kafka Clusters</h1>
+      <p>Strimzi Kafka clusters with KRaft and ZooKeeper support</p>
 
-      {isKRaft && (
-        <SectionBox title="KRaft Configuration">
-          <div>
-            <strong>Metadata Version:</strong> {kafka.getMetadataVersion() || 'N/A'}
-          </div>
-          <div>
-            <strong>Description:</strong> This cluster is running in KRaft mode (ZooKeeper-less)
-          </div>
-        </SectionBox>
-      )}
+      {kafkas.length === 0 ? (
+        <p>No Kafka clusters found</p>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #ddd', textAlign: 'left' }}>
+              <th style={{ padding: '12px' }}>Name</th>
+              <th style={{ padding: '12px' }}>Namespace</th>
+              <th style={{ padding: '12px' }}>Mode</th>
+              <th style={{ padding: '12px' }}>Version</th>
+              <th style={{ padding: '12px' }}>Replicas</th>
+              <th style={{ padding: '12px' }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {kafkas.map((kafka) => {
+              const mode = getClusterMode(kafka);
+              const isKRaft = isKRaftMode(kafka);
+              const ready = isKafkaReady(kafka);
 
-      {!isKRaft && kafka.spec.zookeeper && (
-        <SectionBox title="ZooKeeper Configuration">
-          <div>
-            <strong>Replicas:</strong> {kafka.spec.zookeeper.replicas}
-          </div>
-          <div>
-            <strong>Storage Type:</strong> {kafka.spec.zookeeper.storage.type}
-          </div>
-          {kafka.spec.zookeeper.storage.size && (
-            <div>
-              <strong>Storage Size:</strong> {kafka.spec.zookeeper.storage.size}
-            </div>
-          )}
-        </SectionBox>
-      )}
-
-      {kafka.status?.listeners && kafka.status.listeners.length > 0 && (
-        <SectionBox title="Listeners">
-          {kafka.status.listeners.map((listener, idx) => (
-            <div key={idx}>
-              <strong>{listener.type}:</strong>
-              {listener.addresses.map((addr, addrIdx) => (
-                <div key={addrIdx} style={{ marginLeft: '20px' }}>
-                  {addr.host}:{addr.port}
-                </div>
-              ))}
-            </div>
-          ))}
-        </SectionBox>
+              return (
+                <tr key={`${kafka.metadata.namespace}/${kafka.metadata.name}`} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '12px' }}>{kafka.metadata.name}</td>
+                  <td style={{ padding: '12px' }}>{kafka.metadata.namespace}</td>
+                  <td style={{ padding: '12px' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      backgroundColor: isKRaft ? '#4caf50' : '#2196f3',
+                      color: 'white',
+                      fontSize: '12px'
+                    }}>
+                      {mode}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px' }}>{kafka.spec.kafka.version || 'N/A'}</td>
+                  <td style={{ padding: '12px' }}>{kafka.spec.kafka.replicas}</td>
+                  <td style={{ padding: '12px' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      backgroundColor: ready ? '#4caf50' : '#ff9800',
+                      color: 'white',
+                      fontSize: '12px'
+                    }}>
+                      {ready ? 'Ready' : 'Not Ready'}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </div>
   );

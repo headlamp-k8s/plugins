@@ -1,88 +1,72 @@
 import React from 'react';
-import { SectionBox, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { ResourceTable } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KafkaTopic } from '../crds';
+import { isTopicReady } from '../crds';
 
 export function KafkaTopicList() {
-  return (
-    <SectionBox title="Kafka Topics">
-      <ResourceTable
-        resourceClass={KafkaTopic}
-        columns={[
-          'name',
-          'namespace',
-          {
-            label: 'Partitions',
-            getValue: (topic: KafkaTopic) => topic.spec.partitions || 'N/A',
-          },
-          {
-            label: 'Replicas',
-            getValue: (topic: KafkaTopic) => topic.spec.replicas || 'N/A',
-          },
-          {
-            label: 'Status',
-            getValue: (topic: KafkaTopic) => {
-              const condition = topic.status?.conditions?.find(c => c.type === 'Ready');
-              return (
-                <StatusLabel
-                  status={condition?.status === 'True' ? 'success' : 'error'}
-                >
-                  {condition?.status === 'True' ? 'Ready' : condition?.reason || 'Unknown'}
-                </StatusLabel>
-              );
-            },
-          },
-          'age',
-        ]}
-      />
-    </SectionBox>
-  );
-}
-
-export function KafkaTopicDetails({ name, namespace }: { name: string; namespace: string }) {
-  const [topic, setTopic] = React.useState<KafkaTopic | null>(null);
+  const [topics, setTopics] = React.useState<KafkaTopic[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    KafkaTopic.useApiGet(setTopic, name, namespace);
-  }, [name, namespace]);
+    fetch('/apis/kafka.strimzi.io/v1beta2/kafkatopics')
+      .then(res => res.json())
+      .then(data => {
+        if (data.items) {
+          setTopics(data.items);
+        }
+      })
+      .catch(err => {
+        setError(err.message);
+      });
+  }, []);
 
-  if (!topic) {
-    return <div>Loading...</div>;
+  if (error) {
+    return <div style={{ padding: '20px', color: 'red' }}>Error: {error}</div>;
   }
 
   return (
-    <div>
-      <SectionBox title="Kafka Topic Details">
-        <div>
-          <strong>Name:</strong> {topic.metadata.name}
-        </div>
-        <div>
-          <strong>Namespace:</strong> {topic.metadata.namespace}
-        </div>
-        <div>
-          <strong>Partitions:</strong> {topic.spec.partitions || 'N/A'}
-        </div>
-        <div>
-          <strong>Replicas:</strong> {topic.spec.replicas || 'N/A'}
-        </div>
-        <div>
-          <strong>Status:</strong>{' '}
-          {topic.isReady() ? (
-            <StatusLabel status="success">Ready</StatusLabel>
-          ) : (
-            <StatusLabel status="error">Not Ready</StatusLabel>
-          )}
-        </div>
-      </SectionBox>
+    <div style={{ padding: '20px' }}>
+      <h1>Kafka Topics</h1>
+      <p>Strimzi Kafka topics</p>
 
-      {topic.spec.config && Object.keys(topic.spec.config).length > 0 && (
-        <SectionBox title="Configuration">
-          {Object.entries(topic.spec.config).map(([key, value]) => (
-            <div key={key}>
-              <strong>{key}:</strong> {String(value)}
-            </div>
-          ))}
-        </SectionBox>
+      {topics.length === 0 ? (
+        <p>No Kafka topics found</p>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #ddd', textAlign: 'left' }}>
+              <th style={{ padding: '12px' }}>Name</th>
+              <th style={{ padding: '12px' }}>Namespace</th>
+              <th style={{ padding: '12px' }}>Partitions</th>
+              <th style={{ padding: '12px' }}>Replicas</th>
+              <th style={{ padding: '12px' }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topics.map((topic) => {
+              const ready = isTopicReady(topic);
+
+              return (
+                <tr key={`${topic.metadata.namespace}/${topic.metadata.name}`} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '12px' }}>{topic.metadata.name}</td>
+                  <td style={{ padding: '12px' }}>{topic.metadata.namespace}</td>
+                  <td style={{ padding: '12px' }}>{topic.spec.partitions || 'N/A'}</td>
+                  <td style={{ padding: '12px' }}>{topic.spec.replicas || 'N/A'}</td>
+                  <td style={{ padding: '12px' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      backgroundColor: ready ? '#4caf50' : '#ff9800',
+                      color: 'white',
+                      fontSize: '12px'
+                    }}>
+                      {ready ? 'Ready' : 'Not Ready'}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </div>
   );

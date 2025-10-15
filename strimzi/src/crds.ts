@@ -1,4 +1,6 @@
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib';
+export interface ApiError {
+  message: string;
+}
 
 export interface StrimziStatus {
   conditions?: Array<{
@@ -52,11 +54,37 @@ export interface KafkaSpec {
   };
 }
 
+export interface Kafka {
+  apiVersion: string;
+  kind: string;
+  metadata: {
+    name: string;
+    namespace: string;
+    creationTimestamp?: string;
+    [key: string]: any;
+  };
+  spec: KafkaSpec;
+  status?: StrimziStatus;
+}
+
 export interface KafkaTopicSpec {
   partitions?: number;
   replicas?: number;
   config?: Record<string, any>;
   topicName?: string;
+}
+
+export interface KafkaTopic {
+  apiVersion: string;
+  kind: string;
+  metadata: {
+    name: string;
+    namespace: string;
+    creationTimestamp?: string;
+    [key: string]: any;
+  };
+  spec: KafkaTopicSpec;
+  status?: StrimziStatus;
 }
 
 export interface KafkaUserSpec {
@@ -82,78 +110,39 @@ export interface KafkaUserSpec {
   };
 }
 
-export class Kafka extends KubeObject<KafkaSpec, StrimziStatus> {
-  static kind = 'Kafka';
-  static apiName = 'kafkas';
-  static apiVersion = 'kafka.strimzi.io/v1beta2';
-  static isNamespaced = true;
-
-  get spec(): KafkaSpec {
-    return this.jsonData.spec;
-  }
-
-  get status(): StrimziStatus | undefined {
-    return this.jsonData.status;
-  }
-
-  getReadyCondition() {
-    return this.status?.conditions?.find(c => c.type === 'Ready');
-  }
-
-  isReady(): boolean {
-    const condition = this.getReadyCondition();
-    return condition?.status === 'True';
-  }
-
-  isKRaftMode(): boolean {
-    return !this.spec.zookeeper;
-  }
-
-  getClusterMode(): 'KRaft' | 'ZooKeeper' {
-    return this.isKRaftMode() ? 'KRaft' : 'ZooKeeper';
-  }
-
-  getMetadataVersion(): string | undefined {
-    return this.spec.kafka.metadataVersion;
-  }
+export interface KafkaUser {
+  apiVersion: string;
+  kind: string;
+  metadata: {
+    name: string;
+    namespace: string;
+    creationTimestamp?: string;
+    [key: string]: any;
+  };
+  spec: KafkaUserSpec;
+  status?: StrimziStatus;
 }
 
-export class KafkaTopic extends KubeObject<KafkaTopicSpec, StrimziStatus> {
-  static kind = 'KafkaTopic';
-  static apiName = 'kafkatopics';
-  static apiVersion = 'kafka.strimzi.io/v1beta2';
-  static isNamespaced = true;
-
-  get spec(): KafkaTopicSpec {
-    return this.jsonData.spec;
-  }
-
-  get status(): StrimziStatus | undefined {
-    return this.jsonData.status;
-  }
-
-  isReady(): boolean {
-    const condition = this.status?.conditions?.find(c => c.type === 'Ready');
-    return condition?.status === 'True';
-  }
+// Helper functions
+export function isKRaftMode(kafka: Kafka): boolean {
+  return !kafka.spec.zookeeper;
 }
 
-export class KafkaUser extends KubeObject<KafkaUserSpec, StrimziStatus> {
-  static kind = 'KafkaUser';
-  static apiName = 'kafkausers';
-  static apiVersion = 'kafka.strimzi.io/v1beta2';
-  static isNamespaced = true;
+export function getClusterMode(kafka: Kafka): 'KRaft' | 'ZooKeeper' {
+  return isKRaftMode(kafka) ? 'KRaft' : 'ZooKeeper';
+}
 
-  get spec(): KafkaUserSpec {
-    return this.jsonData.spec;
-  }
+export function isKafkaReady(kafka: Kafka): boolean {
+  const condition = kafka.status?.conditions?.find((c) => c.type === 'Ready');
+  return condition?.status === 'True';
+}
 
-  get status(): StrimziStatus | undefined {
-    return this.jsonData.status;
-  }
+export function isTopicReady(topic: KafkaTopic): boolean {
+  const condition = topic.status?.conditions?.find((c) => c.type === 'Ready');
+  return condition?.status === 'True';
+}
 
-  isReady(): boolean {
-    const condition = this.status?.conditions?.find(c => c.type === 'Ready');
-    return condition?.status === 'True';
-  }
+export function isUserReady(user: KafkaUser): boolean {
+  const condition = user.status?.conditions?.find((c) => c.type === 'Ready');
+  return condition?.status === 'True';
 }
