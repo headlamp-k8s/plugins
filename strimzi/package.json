@@ -1,0 +1,49 @@
+{
+  "name": "@headlamp-k8s/plugin-strimzi",
+  "version": "0.1.0",
+  "description": "Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources",
+  "main": "dist/main.js",
+  "author": "Angelo Cesaro",
+  "license": "UNLICENSED",
+  "private": false,
+  "keywords": [
+    "headlamp",
+    "headlamp-plugin",
+    "kubernetes",
+    "strimzi",
+    "kafka"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/strimzi-headlamp.git"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:code && npm run build:package",
+    "build:code": "tsc",
+    "build:package": "headlamp-plugin create dist",
+    "clean": "rm -rf dist",
+    "dev": "tsc --watch",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "lint": "eslint src --ext .ts,.tsx",
+    "prepublishOnly": "npm run build",
+    "pack:binary": "npm run build && npm pack"
+  },
+  "dependencies": {
+    "@kinvolk/headlamp-plugin": "^0.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "prettier": "^3.2.4",
+    "typescript": "^5.3.3"
+  }
+}
