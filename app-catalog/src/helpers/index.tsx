@@ -1,6 +1,6 @@
 import yaml from 'js-yaml';
 
-export function yamlToJSON(yamlObj: string) {
+export function yamlToJSON<T = unknown>(yamlObj: string): T {
   const loadedYaml = yaml.loadAll(yamlObj);
   const normalizedObject = {};
   for (const parsedObject of loadedYaml) {
@@ -12,7 +12,7 @@ export function yamlToJSON(yamlObj: string) {
       Object.assign(normalizedObject, parsedObject);
     }
   }
-  return normalizedObject;
+  return normalizedObject as T;
 }
 
 export function jsonToYAML(jsonObj: any) {

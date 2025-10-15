@@ -10,6 +10,13 @@ import { Box } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { listReleases } from '../../api/releases';
 
+/**
+ * ReleaseList component displays a list of installed Helm releases.
+ *
+ * @param props - Component properties.
+ * @param [props.fetchReleases=listReleases] - Function to fetch the list of releases.
+ * @returns ReleaseList component.
+ */
 export default function ReleaseList({ fetchReleases = listReleases }) {
   const [releases, setReleases] = useState<Array<any> | null>(null);
 
