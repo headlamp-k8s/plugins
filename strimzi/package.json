@@ -34,7 +34,7 @@
     "pack:binary": "npm run build && npm pack"
   },
   "dependencies": {
-    "@kinvolk/headlamp-plugin": "^0.9.0"
+    "@kinvolk/headlamp-plugin": "^0.13.0-alpha.10"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
