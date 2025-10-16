@@ -54,28 +54,74 @@ mkdir %APPDATA%\Headlamp\plugins\strimzi
 headlamp-server -plugins-dir=/path/to/extracted/plugin
 ```
 
-## Testing Locally
+## Development
 
-### Method 1: Using Headlamp Desktop App
+### Building the Plugin
+
+```bash
+# Install dependencies
+npm install
+
+# Build the plugin
+npm run build
+```
+
+The build creates a `dist/` directory with:
+- `main.js` - Plugin entry point (required by Headlamp)
+- `components/` - Compiled React components
+- Other compiled files
+
+### Testing Locally
+
+#### Method 1: Using Headlamp Desktop App
 
 1. Build the plugin:
    ```bash
    npm run build
    ```
 
-2. Copy the plugin to Headlamp's plugins directory:
-   - **Linux**: `~/.config/Headlamp/plugins/`
-   - **macOS**: `~/Library/Application Support/Headlamp/plugins/`
-   - **Windows**: `%APPDATA%\Headlamp\plugins\`
+2. Install to Headlamp's plugins directory:
 
-3. Create a folder for your plugin:
+   **macOS:**
    ```bash
-   # macOS example
    mkdir -p ~/Library/Application\ Support/Headlamp/plugins/strimzi
    cp -r dist/* ~/Library/Application\ Support/Headlamp/plugins/strimzi/
+
+   # Create package.json (required)
+   cat > ~/Library/Application\ Support/Headlamp/plugins/strimzi/package.json << 'EOF'
+   {
+     "name": "@headlamp-k8s/plugin-strimzi",
+     "version": "0.1.0",
+     "main": "main.js"
+   }
+   EOF
    ```
 
-4. Restart Headlamp
+   **Linux:**
+   ```bash
+   mkdir -p ~/.config/Headlamp/plugins/strimzi
+   cp -r dist/* ~/.config/Headlamp/plugins/strimzi/
+
+   # Create package.json (required)
+   cat > ~/.config/Headlamp/plugins/strimzi/package.json << 'EOF'
+   {
+     "name": "@headlamp-k8s/plugin-strimzi",
+     "version": "0.1.0",
+     "main": "main.js"
+   }
+   EOF
+   ```
+
+3. Restart Headlamp completely (quit and reopen)
+
+**Required structure:**
+```
+plugins/strimzi/
+├── main.js          # Entry point (required)
+├── package.json     # Plugin metadata (required)
+├── components/      # Compiled components
+└── other files...
+```
 
 ### Method 2: Using Headlamp in Development Mode
 
