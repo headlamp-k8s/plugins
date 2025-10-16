@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/strimzi-headlamp.git"
+    "url": "https://github.com/cesaroangelo/strimzi-headlamp.git"
   },
   "files": [
     "dist/**/*",
@@ -30,6 +30,7 @@
     "dev": "tsc --watch",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "lint": "eslint src --ext .ts,.tsx",
+    "package": "headlamp-plugin extract . .plugins",
     "prepublishOnly": "npm run build",
     "pack:binary": "npm run build && npm pack"
   },
