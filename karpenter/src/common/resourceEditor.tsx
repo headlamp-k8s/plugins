@@ -119,16 +119,14 @@ export function DiffEditorDialog({
       return getSchemaKey(activeCloudProvider);
     }
 
-    return 'EC2NodeClass-schema';
+    return 'NodeClass-schema';
   }, [schema, modifiedYaml, activeCloudProvider]);
 
   const karpenterValidate = React.useMemo(() => {
     const schemaKey = determineSchemaKey();
-    console.log('schema key ', schemaKey);
 
     const schemaToUse = KARPENTER_SCHEMAS[schemaKey];
     if (!schemaToUse) {
-      console.warn(`Schema not found for key: ${schemaKey}`);
       return null;
     }
 

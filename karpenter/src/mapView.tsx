@@ -28,14 +28,24 @@ const useNodeClassClass = () => {
   const { cloudProvider } = useCloudProviderDetection();
 
   return useMemo(() => {
-    switch (cloudProvider) {
+    // Handle both string and object cloudProvider values
+    let provider;
+    if (typeof cloudProvider === 'string') {
+      provider = cloudProvider;
+    } else if (cloudProvider && typeof cloudProvider === 'object') {
+      provider = cloudProvider.provider;
+    } else {
+      provider = null;
+    }
+
+    switch (provider) {
       case 'AWS':
-        return awsNodeClassClass();
+        return awsNodeClassClass(cloudProvider);
       case 'AZURE':
         return azureNodeClassClass();
       default:
         // Default to AWS if provider is unknown
-        return awsNodeClassClass();
+        return awsNodeClassClass(cloudProvider);
     }
   }, [cloudProvider]);
 };
