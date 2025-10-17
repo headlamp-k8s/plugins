@@ -1,3 +1,4 @@
+import { registerDetailsViewSection } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link,
@@ -17,10 +18,9 @@ import {
   SyncWithSourceAction,
 } from '../actions/index';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
+import { HelmRelease } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
-import { GetSource } from '../sources/Source';
-import { helmReleaseClass } from './HelmReleaseList';
 import { HelmInventory } from './Inventory';
 
 export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: string }) {
@@ -30,17 +30,80 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
   return (
     <>
       <CustomResourceDetails name={name} namespace={namespace} />
-      <ObjectEvents name={name} namespace={namespace} resourceClass={helmReleaseClass()} />
+      <ObjectEvents name={name} namespace={namespace} resourceClass={HelmRelease} />
     </>
   );
 }
 
+export const registerHelmRelease = () => {
+  registerDetailsViewSection(({ resource }: { resource: HelmRelease }) => {
+    console.log('flux', { resource });
+    if (resource.kind !== 'HelmRelease') return null;
+
+    const themeName = localStorage.getItem('headlampThemePreference');
+
+    const cr = resource;
+
+    return (
+      <>
+        {cr && cr?.jsonData?.spec?.values && (
+          <SectionBox title="Values">
+            <Editor
+              language="yaml"
+              value={YAML.stringify(cr?.jsonData?.spec?.values)}
+              height={200}
+              theme={themeName === 'dark' ? 'vs-dark' : 'light'}
+            />
+          </SectionBox>
+        )}
+
+        <SectionBox title="Inventory">
+          <HelmInventory name={resource.metadata.name} namespace={resource.metadata.namespace} />
+        </SectionBox>
+
+        <SectionBox title="Dependencies">
+          <Table
+            data={cr?.jsonData?.spec?.dependsOn}
+            columns={[
+              {
+                header: 'Name',
+                accessorFn: item => (
+                  <Link
+                    routeName="helm"
+                    params={{
+                      name: item.name,
+                      namespace: item.namespace || resource.metadata.namespace,
+                    }}
+                  >
+                    {item.name}
+                  </Link>
+                ),
+              },
+              {
+                header: 'Namespace',
+                accessorFn: item => (
+                  <Link
+                    routeName="namespace"
+                    params={{ name: item.namespace || resource.metadata.namespace }}
+                  >
+                    {item.namespace || resource.metadata.namespace}
+                  </Link>
+                ),
+              },
+            ]}
+          />
+        </SectionBox>
+        <SectionBox title="Conditions">
+          <ConditionsTable resource={cr?.jsonData} />
+        </SectionBox>
+      </>
+    );
+  });
+};
+
 function CustomResourceDetails(props) {
   const { name, namespace } = props;
-  const [cr, setCr] = React.useState(null);
-  const [source, setSource] = React.useState(null);
-
-  helmReleaseClass().useApiGet(setCr, name, namespace);
+  const [cr] = HelmRelease.useGet(name, namespace);
 
   function prepareExtraInfo(cr) {
     if (!cr) {
@@ -131,7 +194,7 @@ function CustomResourceDetails(props) {
     }
 
     const actions = [];
-    actions.push(<SyncWithSourceAction resource={cr} source={source} />);
+    actions.push(<SyncWithSourceAction resource={cr} />);
     actions.push(<SyncWithoutSourceAction resource={cr} />);
     actions.push(<SuspendAction resource={cr} />);
     actions.push(<ResumeAction resource={cr} />);
@@ -143,7 +206,6 @@ function CustomResourceDetails(props) {
 
   return (
     <>
-      {cr && <GetSource item={cr} setSource={setSource} />}
       {cr && (
         <MainInfoSection
           resource={cr}

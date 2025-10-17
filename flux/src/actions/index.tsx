@@ -2,6 +2,7 @@ import { ActionButton, ConfirmDialog } from '@kinvolk/headlamp-plugin/lib/compon
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useSnackbar } from 'notistack';
 import React from 'react';
+import { useSource } from '../sources/Source';
 
 function ForceReconciliationAction(props) {
   const { enqueueSnackbar } = useSnackbar();
@@ -215,8 +216,12 @@ function SyncAction(props) {
 }
 
 function SyncWithSourceAction(props) {
-  const { resource, source } = props;
+  const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
+  const source = useSource(resource);
+
+  if (!source) return null;
+
   return (
     <ActionButton
       description="Sync with source"
@@ -224,7 +229,7 @@ function SyncWithSourceAction(props) {
         enqueueSnackbar(`Starting sync for source ${source.metadata.name}`, { variant: 'info' });
         const date = new Date().toISOString();
         syncRequest(source, enqueueSnackbar, date).then(() => {
-          const get = source.constructor.apiEndpoint.get;
+          const get = (source.constructor as any).apiEndpoint.get;
           let isSourceSynced = false;
           get(source.metadata.namespace, source.metadata.name, newSource => {
             if (newSource.status.lastHandledReconcileAt === date && !isSourceSynced) {

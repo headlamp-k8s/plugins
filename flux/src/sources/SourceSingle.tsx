@@ -16,16 +16,9 @@ import {
 import Flux404 from '../checkflux';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
+import { getSourceClassByPluralName } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
 import { ObjectEvents } from '../helpers/index';
-import {
-  bucketRepositoryClass,
-  externalArtifactClass,
-  gitRepositoryClass,
-  helmChartClass,
-  helmRepositoryClass,
-  ociRepositoryClass,
-} from './SourceList';
 
 export function FluxSourceDetailView(props: {
   name?: string;
@@ -43,24 +36,7 @@ export function FluxSourceDetailView(props: {
     pluralName = params.pluralName,
   } = props;
 
-  const resourceClass = (() => {
-    switch (pluralName) {
-      case 'externalartifacts':
-        return externalArtifactClass();
-      case 'gitrepositories':
-        return gitRepositoryClass();
-      case 'ocirepositories':
-        return ociRepositoryClass();
-      case 'buckets':
-        return bucketRepositoryClass();
-      case 'helmrepositories':
-        return helmRepositoryClass();
-      case 'helmcharts':
-        return helmChartClass();
-      default:
-        return null;
-    }
-  })();
+  const resourceClass = getSourceClassByPluralName(pluralName);
 
   if (!resourceClass) {
     return <Flux404 message={`Unknown type ${pluralName}`} />;
