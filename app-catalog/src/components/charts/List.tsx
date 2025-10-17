@@ -321,7 +321,11 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                   }, {})
               ).map(chartName => {
                 // When a chart contains multiple versions, only display the first version
-                return charts[chartName].slice(0, 1).map(chart => {
+                return (
+                  Array.isArray(charts[chartName])
+                    ? charts[chartName]?.slice?.(0, 1) || []
+                    : [charts[chartName]]
+                ).map(chart => {
                   return (
                     <Card
                       key={`${chart.name}-${chart.version}`}
