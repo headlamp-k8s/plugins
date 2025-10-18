@@ -166,9 +166,6 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
           <Loader title="" />
         ) : (
           <ReactMarkdown
-            style={{
-              padding: '1rem',
-            }}
             remarkPlugins={[remarkGfm]}
             children={chart.readme}
             components={{
