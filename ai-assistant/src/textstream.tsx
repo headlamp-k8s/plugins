@@ -326,6 +326,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                         onApprove={prompt.toolConfirmation.onApprove}
                         onDeny={prompt.toolConfirmation.onDeny}
                         loading={prompt.toolConfirmation.loading}
+                        userContext={prompt.toolConfirmation.userContext}
                         compact={false}
                       />
                     ) : (

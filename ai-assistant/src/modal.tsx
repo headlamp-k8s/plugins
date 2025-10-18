@@ -280,7 +280,6 @@ export default function AIPrompt(props: {
           ...activeConfig.config,
           model: selectedModel,
         };
-        console.log('🔄 Creating new LangChainManager with enabledTools:', enabledTools);
         const newManager = new LangChainManager(
           activeConfig.providerId,
           configWithModel,
@@ -299,18 +298,6 @@ export default function AIPrompt(props: {
       setPromptHistory([]);
       return;
     }
-
-    console.log('🔄 UpdateHistory called, aiManager.history length:', aiManager.history.length);
-    console.log(
-      '📋 Current aiManager.history:',
-      aiManager.history.map(h => ({
-        role: h.role,
-        hasToolConfirmation: !!h.toolConfirmation,
-        content: h.content?.substring(0, 50),
-        isDisplayOnly: h.isDisplayOnly,
-      }))
-    );
-
     // Process the history to extract suggestions and clean content
     const processedHistory = aiManager.history.map((prompt, index) => {
       if (prompt.role === 'assistant' && prompt.content && !prompt.error) {
@@ -330,16 +317,6 @@ export default function AIPrompt(props: {
       return prompt;
     });
 
-    console.log('✅ ProcessedHistory length:', processedHistory.length);
-    console.log(
-      '📝 ProcessedHistory items:',
-      processedHistory.map(h => ({
-        role: h.role,
-        hasToolConfirmation: !!h.toolConfirmation,
-        isDisplayOnly: h.isDisplayOnly,
-        content: h.content?.substring(0, 50),
-      }))
-    );
     setPromptHistory(processedHistory);
   }, [aiManager?.history]);
 
@@ -349,8 +326,7 @@ export default function AIPrompt(props: {
 
   // Set up event listeners for tool confirmation events
   React.useEffect(() => {
-    const handleRequestConfirmation = (data: any) => {
-      console.log('🎯 Request confirmation event received:', data);
+    const handleRequestConfirmation = () => {
       // Clear loading state when tool approval is requested
       setLoading(false);
       // Force an immediate update of the history from the AI manager
@@ -359,14 +335,12 @@ export default function AIPrompt(props: {
       setPromptHistory(prev => [...prev]);
     };
 
-    const handleUpdateConfirmation = (data: any) => {
-      console.log('🔄 Update confirmation event received:', data);
+    const handleUpdateConfirmation = () => {
       updateHistory();
       setPromptHistory(prev => [...prev]);
     };
 
-    const handleMessageUpdated = (data: any) => {
-      console.log('📝 Message updated event received:', data);
+    const handleMessageUpdated = () => {
       updateHistory();
       setPromptHistory(prev => [...prev]);
     };
@@ -381,35 +355,6 @@ export default function AIPrompt(props: {
       inlineToolApprovalManager.removeListener('message-updated', handleMessageUpdated);
     };
   }, [updateHistory]);
-
-  const handleOperationSuccess = React.useCallback(
-    (response: any) => {
-      // Add the response to the conversation
-      const operationType = response.metadata?.deletionTimestamp ? 'deletion' : 'application';
-
-      const toolPrompt: Prompt = {
-        role: 'tool',
-        content: `Resource ${operationType} completed successfully: ${JSON.stringify(
-          {
-            kind: response.kind,
-            name: response.metadata.name,
-            namespace: response.metadata.namespace,
-            status: 'Success',
-          },
-          null,
-          2
-        )}`,
-        name: 'kubernetes_api_request',
-        toolCallId: `${operationType}-${Date.now()}`,
-      };
-
-      if (aiManager) {
-        aiManager.history.push(toolPrompt);
-        updateHistory();
-      }
-    },
-    [aiManager, updateHistory]
-  );
 
   const handleOperationFailure = React.useCallback(
     (error: any, operationType: string, resourceInfo?: any) => {
@@ -568,8 +513,6 @@ export default function AIPrompt(props: {
       }
 
       try {
-        console.log(`Retrying tool ${toolName} with args:`, args);
-
         // Get the tool manager from the LangChain manager
         const toolManager = (aiManager as any).toolManager;
         if (!toolManager) {
@@ -871,7 +814,7 @@ export default function AIPrompt(props: {
               history={memoizedHistory}
               isLoading={loading}
               apiError={apiError}
-              onOperationSuccess={handleOperationSuccess}
+              onOperationSuccess={() => {}}
               onOperationFailure={handleOperationFailure}
               onYamlAction={handleYamlAction}
               onRetryTool={handleRetryTool}
@@ -944,7 +887,7 @@ export default function AIPrompt(props: {
           yamlContent={editorContent}
           title={editorTitle}
           resourceType={resourceType}
-          onSuccess={handleOperationSuccess}
+          onSuccess={() => {}}
           onFailure={handleOperationFailure}
         />
       )}

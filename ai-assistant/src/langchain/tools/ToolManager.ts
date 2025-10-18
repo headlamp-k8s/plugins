@@ -19,10 +19,9 @@ export class ToolManager {
   private mcpClient: ElectronMCPClient;
 
   constructor(private kubernetesContext?: KubernetesToolContext, enabledToolIds?: string[]) {
-    console.log('🔧 ToolManager: Initializing with enabledToolIds:', enabledToolIds);
     this.mcpClient = new ElectronMCPClient();
     this.initializeTools(enabledToolIds);
-    this.mcpInitializationPromise = this.initializeMCPTools(enabledToolIds);
+    this.mcpInitializationPromise = this.initializeMCPTools();
   }
 
   /**
@@ -33,12 +32,10 @@ export class ToolManager {
     for (const ToolClass of AVAILABLE_TOOLS) {
       const tempTool = new ToolClass();
       if (enabledToolIds && !enabledToolIds.includes(tempTool.config.name)) {
-        console.log('🚫 ToolManager: Skipping tool (disabled):', tempTool.config.name);
         continue; // Skip tools not enabled
       }
       try {
         const tool = tempTool;
-        console.log('✅ ToolManager: Initializing tool:', tempTool.config.name);
         this.addTool(tool);
       } catch (error) {
         console.error(`Failed to load tool ${ToolClass.name}:`, error);
@@ -46,59 +43,57 @@ export class ToolManager {
     }
 
     // Initialize MCP tools asynchronously but start immediately
-    this.initializeMCPTools(enabledToolIds);
-
-    // Log final initialized tools
-    console.log(
-      '🔧 ToolManager: Regular tools initialized:',
-      this.tools.map(t => t.config.name)
-    );
+    this.initializeMCPTools();
   }
 
   /**
    * Initialize MCP tools from Electron main process
    */
-  private async initializeMCPTools(enabledToolIds?: string[]): Promise<void> {
+  private async initializeMCPTools(): Promise<void> {
     try {
-      console.log('Initializing MCP tools from Electron...');
       
       if (!this.mcpClient.isAvailable()) {
-        console.log('MCP client not available - not running in Electron environment');
         this.mcpToolsInitialized = true;
         return;
       }
 
-      // Get all available MCP tools
-      const mcpToolsData = await this.mcpClient.getTools();
+      // Get tools configuration (source of truth)
+      const toolsConfigResponse = await this.mcpClient.getToolsConfig();
 
-      if (mcpToolsData && mcpToolsData.length > 0) {
-        console.log(`Successfully loaded ${mcpToolsData.length} MCP tools from Electron`);
+      if (!toolsConfigResponse.success || !toolsConfigResponse.config) {
+        this.mcpToolsInitialized = true;
+        return;
+      }
 
-        // Filter MCP tools using the new configuration system
-        const filteredMcpTools: typeof mcpToolsData = [];
-        
-        for (const toolData of mcpToolsData) {
-          // First check legacy enabledToolIds for backward compatibility
-          if (enabledToolIds && !enabledToolIds.includes(toolData.name)) {
-            console.log('🚫 ToolManager: Skipping MCP tool (disabled by legacy config):', toolData.name);
-            continue;
-          }
+      // Create tools from configuration
+      const mcpToolsData: any[] = [];
+      Object.entries(toolsConfigResponse.config).forEach(([serverName, serverTools]: [string, any]) => {
+        Object.entries(serverTools).forEach(([toolName, toolConfig]: [string, any]) => {
+          const fullToolName = `${serverName}__${toolName}`;
+          mcpToolsData.push({
+            name: fullToolName,
+            description: `Tool: ${toolName} from ${serverName} server`,
+            inputSchema: {}, // We'll get this later if needed
+            server: serverName,
+            enabled: toolConfig.enabled !== false
+          });
+        });
+      });
 
-          // Then check the new MCP-specific configuration
-          const isEnabled = await this.mcpClient.isToolEnabled(toolData.name);
-          if (!isEnabled) {
-            console.log('🚫 ToolManager: Skipping MCP tool (disabled by MCP config):', toolData.name);
-            continue;
-          }
-
-          console.log('✅ ToolManager: Including MCP tool:', toolData.name);
-          filteredMcpTools.push(toolData);
+      // Filter MCP tools using the MCP configuration (not legacy enabledToolIds)
+      const filteredMcpTools: typeof mcpToolsData = [];
+      
+      for (const toolData of mcpToolsData) {
+        // MCP tools are controlled by their own configuration system, not legacy enabledToolIds
+        // Check if tool is enabled in MCP configuration
+        if (!toolData.enabled) {
+          continue;
         }
 
-        console.log(
-          `Filtered to ${filteredMcpTools.length} enabled MCP tools out of ${mcpToolsData.length} total`
-        );
-        console.log('Filtered MCP tools:', filteredMcpTools.map(t => t.name));
+        filteredMcpTools.push(toolData);
+      }
+
+      if (filteredMcpTools.length > 0) {
         // Convert MCP tools to LangChain DynamicTool format
         this.mcpTools = filteredMcpTools.map(
           toolData =>
@@ -112,36 +107,17 @@ export class ToolManager {
                   // LangChain may wrap args in different formats, need to handle properly
                   const mappedArgs = this.mapMCPToolArguments(args, toolData.inputSchema);
 
-                  console.log(
-                    `MCP tool ${toolData.name} called with original args:`,
-                    JSON.stringify(args)
-                  );
-                  console.log(
-                    `MCP tool ${toolData.name} input schema:`,
-                    JSON.stringify(toolData.inputSchema)
-                  );
-                  console.log(
-                    `MCP tool ${toolData.name} calling with mapped args:`,
-                    JSON.stringify(mappedArgs)
-                  );
-
                   // Execute MCP tool through Electron API
                   const result = await window.desktopApi?.mcp.executeTool(
                     toolData.name,
                     mappedArgs
                   );
-                  console.log(`MCP tool ${toolData.name} returned result:`, result);
-
                   // Extract actual result from MCP response
                   const actualResult = result?.result || result;
-                  console.log(`MCP tool ${toolData.name} actual result:`, actualResult);
-                  console.log(`MCP tool ${toolData.name} result type:`, typeof actualResult);
 
                   // Ensure we return a string response
                   const response =
                     typeof actualResult === 'string' ? actualResult : JSON.stringify(actualResult);
-                  console.log(`MCP tool ${toolData.name} final response:`, response);
-
                   return response;
                 } catch (error) {
                   console.error(`Error executing MCP tool ${toolData.name}:`, error);
@@ -151,23 +127,16 @@ export class ToolManager {
             })
         );
 
-        console.log(`Converted ${this.mcpTools.length} MCP tools to LangChain format`);
         this.mcpToolsInitialized = true;
 
         // If we have a bound model, rebind with the new MCP tools
         if (this.boundModel && this.providerId) {
-          console.log('🔄 Rebinding model with newly loaded MCP tools');
           this.boundModel = this.bindToModel(this.boundModel, this.providerId);
         }
       } else {
-        console.log('No MCP tools available or MCP client not initialized');
         this.mcpToolsInitialized = true;
       }
     } catch (error) {
-      console.warn(
-        'Failed to initialize MCP tools from Electron:',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
       this.mcpToolsInitialized = true;
       // Continue without MCP tools - this is not a fatal error
     }
@@ -178,8 +147,6 @@ export class ToolManager {
    * Handles common argument wrapping patterns and schema mismatches
    */
   private mapMCPToolArguments(args: any, inputSchema?: any): any {
-    console.log('Mapping MCP tool arguments:', { args, inputSchema });
-
     if (!inputSchema) {
       // If no schema, return args as-is
       return args;
@@ -190,7 +157,6 @@ export class ToolManager {
     // Handle tools that expect no parameters
     if (!schemaProps || Object.keys(schemaProps).length === 0) {
       // Return empty object for tools that expect no parameters
-      console.log('Tool expects no parameters, returning empty object');
       return {};
     }
 
@@ -205,13 +171,9 @@ export class ToolManager {
       const requiredProps = inputSchema?.required || [];
       if (requiredProps.length === 0) {
         // Tool has no required parameters, safe to return empty object
-        console.log('Tool has no required parameters, returning empty object');
         return {};
       } else {
         // Tool has required parameters but got empty args - create default structure
-        console.log(
-          'Tool has required parameters but got empty args, creating default parameter structure'
-        );
         return this.createDefaultParameterStructure(inputSchema);
       }
     }
@@ -231,7 +193,6 @@ export class ToolManager {
 
       // If we found valid schema fields, use the cleaned args
       if (Object.keys(cleanArgs).length > 0) {
-        console.log('Found valid schema fields, using cleaned args:', cleanArgs);
         return this.filterMCPArguments(cleanArgs, inputSchema);
       }
 
@@ -243,7 +204,6 @@ export class ToolManager {
         if (!inputValue || inputValue === '' || inputValue === '""') {
           const requiredProps = inputSchema?.required || [];
           if (requiredProps.length === 0) {
-            console.log('Unwrapped input is empty and no required params, returning empty object');
             return {};
           }
         }
@@ -256,13 +216,12 @@ export class ToolManager {
             typeof inputValue === 'boolean')
         ) {
           // Map the primitive value to the single expected property
-          console.log(`Mapping primitive input to single property: ${schemaPropertyNames[0]}`);
           return { [schemaPropertyNames[0]]: inputValue };
         }
 
         // If the input is an object, try to unwrap it
         if (typeof inputValue === 'object' && inputValue !== null) {
-          console.log('Unwrapping object input');
+          return this.filterMCPArguments(inputValue, inputSchema);
           return this.filterMCPArguments(inputValue, inputSchema);
         }
 
@@ -270,23 +229,18 @@ export class ToolManager {
         if (typeof inputValue === 'string') {
           // Try common parameter names
           if (schemaProps.query) {
-            console.log('Mapping string input to query parameter');
             return { query: inputValue };
           }
           if (schemaProps.path) {
-            console.log('Mapping string input to path parameter');
             return { path: inputValue };
           }
           if (schemaProps.directory) {
-            console.log('Mapping string input to directory parameter');
             return { directory: inputValue };
           }
           if (schemaProps.file) {
-            console.log('Mapping string input to file parameter');
             return { file: inputValue };
           }
           if (schemaProps.name) {
-            console.log('Mapping string input to name parameter');
             return { name: inputValue };
           }
 
@@ -294,19 +248,17 @@ export class ToolManager {
           const requiredProps = inputSchema?.required || [];
           const targetProp = requiredProps.length > 0 ? requiredProps[0] : schemaPropertyNames[0];
           if (targetProp) {
-            console.log(`Mapping string input to target property: ${targetProp}`);
             return { [targetProp]: inputValue };
           }
         }
 
         // Return the unwrapped input and let the tool handle validation
-        console.log('Returning unwrapped input value');
+        return inputValue;
         return inputValue;
       }
     }
 
     // If args structure matches or is already properly formatted, filter and return
-    console.log('Args appear to be in correct format, filtering empty values');
     return this.filterMCPArguments(args, inputSchema);
   }
 
@@ -369,12 +321,6 @@ export class ToolManager {
         filteredArgs[key] = value;
       }
     }
-
-    console.log('Filtered MCP arguments:', {
-      original: args,
-      filtered: filteredArgs,
-      required: requiredProps,
-    });
     return filteredArgs;
   }
 
@@ -436,7 +382,6 @@ export class ToolManager {
       }
     }
 
-    console.log('Created default parameter structure:', defaultParams);
     return defaultParams;
   }
 
@@ -662,7 +607,6 @@ export class ToolManager {
       // Initialize MCP formatter with the model
       if (!this.mcpFormatter) {
         this.mcpFormatter = new MCPOutputFormatter(model);
-        console.log('🎨 MCP output formatter initialized');
       }
 
       const langChainTools = this.getLangChainTools();
@@ -671,12 +615,6 @@ export class ToolManager {
         this.boundModel = model;
         return model;
       }
-
-      console.log(
-        `Binding ${langChainTools.length} tools to ${providerId} model:`,
-        langChainTools.map(t => t.name)
-      );
-
       this.boundModel = model.bindTools(langChainTools);
       return this.boundModel;
     } catch (error) {
@@ -684,6 +622,16 @@ export class ToolManager {
       this.boundModel = model;
       return model;
     }
+  }
+
+  /**
+   * Bind all tools to a LangChain model, waiting for MCP tools to initialize first
+   */
+  async bindToModelAsync(model: BaseChatModel, providerId: string): Promise<BaseChatModel> {
+    // Wait for MCP tools to initialize before binding
+    await this.waitForMCPToolsInitialization();
+    
+    return this.bindToModel(model, providerId);
   }
 
   /**
