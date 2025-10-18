@@ -43,6 +43,7 @@ export class MCPArgumentProcessor {
 
     try {
       const mcpTools = await tools();
+      console.log("mcp tools are ", mcpTools)
       if (mcpTools && Array.isArray(mcpTools)) {
         mcpTools.forEach(tool => {
           this.toolSchemas.set(tool.name, {
@@ -52,7 +53,6 @@ export class MCPArgumentProcessor {
           });
         });
         this.schemasLoaded = true;
-        console.log('MCPArgumentProcessor: Loaded schemas for', this.toolSchemas.size, 'tools');
       }
     } catch (error) {
       console.error('Failed to load MCP tool schemas:', error);
@@ -69,7 +69,7 @@ export class MCPArgumentProcessor {
     userContext?: UserContext
   ): Promise<ProcessedArguments> {
     await this.loadSchemas();
-
+    console.log("tools")
     const schema = this.toolSchemas.get(toolName);
     const errors: string[] = [];
     const processed = { ...aiProcessedArgs };
@@ -93,7 +93,6 @@ export class MCPArgumentProcessor {
       }
     }
 
-    console.log('schema for this tool is ', toolName, schema);
     if (!schema) {
       errors.push(`No schema found for tool: ${toolName}`);
       return {

@@ -38,7 +38,6 @@ export class ToolApprovalManager extends EventEmitter {
   public async requestApproval(toolCalls: ToolCall[]): Promise<string[]> {
     // Check if session auto-approval is enabled
     if (this.sessionAutoApproval) {
-      console.log('Auto-approving tools due to session setting');
       return toolCalls.map(tool => tool.id);
     }
 
@@ -56,7 +55,6 @@ export class ToolApprovalManager extends EventEmitter {
 
     // If all tools are auto-approved, return them
     if (needsApprovalTools.length === 0) {
-      console.log('All tools auto-approved:', autoApprovedTools);
       return autoApprovedTools;
     }
 
@@ -103,7 +101,6 @@ export class ToolApprovalManager extends EventEmitter {
       const allToolIds = this.pendingRequest.toolCalls.map(tool => tool.id);
       if (approvedToolIds.length === allToolIds.length) {
         this.sessionAutoApproval = true;
-        console.log('Session auto-approval enabled');
       } else {
         // Remember individual tool approvals
         for (const toolCall of this.pendingRequest.toolCalls) {
@@ -111,7 +108,6 @@ export class ToolApprovalManager extends EventEmitter {
             this.autoApproveSettings.set(toolCall.name, true);
           }
         }
-        console.log('Individual tool approvals saved');
       }
     }
 
@@ -143,7 +139,6 @@ export class ToolApprovalManager extends EventEmitter {
   public clearSession(): void {
     this.sessionAutoApproval = false;
     this.autoApproveSettings.clear();
-    console.log('Tool approval session settings cleared');
   }
 
   /**

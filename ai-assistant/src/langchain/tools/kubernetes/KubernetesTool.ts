@@ -95,15 +95,8 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
     pendingPrompt
   ): Promise<ToolResponse> => {
     if (!this.context) {
-      console.error('Kubernetes tool context not configured');
       throw new Error('Kubernetes tool context not configured');
     }
-
-    console.log(`Processing kubernetes_api_request tool: ${method} ${url}`, {
-      hasContext: !!this.context,
-      toolCallId,
-      selectedClusters: this.context?.selectedClusters,
-    });
 
     // For GET requests, we can execute them immediately using the API helper
     if (method.toUpperCase() === 'GET') {
