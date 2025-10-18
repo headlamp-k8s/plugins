@@ -54,6 +54,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
   const [, setMcpServers] = useState<{ [key: string]: any }>({});
 
+  console.log("all known MCP tools ", allKnownMcpTools)
   // Load MCP tools when dialog opens
   useEffect(() => {
     if (open) {
@@ -92,24 +93,17 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   };
 
   const loadMcpTools = async () => {
-    console.log('ToolsDialog: Starting to load MCP tools...');
     setIsLoadingMcp(true);
     try {
       const mcpClient = new ElectronMCPClient();
-      console.log('ToolsDialog: Created MCP client, isAvailable:', mcpClient.isAvailable());
 
-      // Load tools, server configuration, and tools configuration
-      const [tools, configResponse, toolsConfigResponse] = await Promise.all([
-        mcpClient.getTools(),
+      // Load server configuration and tools configuration - these are our source of truth
+      const [configResponse, toolsConfigResponse] = await Promise.all([
         mcpClient.getConfig(),
         mcpClient.getToolsConfig(),
       ]);
 
-      console.log('ToolsDialog: Received tools from client:', tools.length, 'tools');
-      console.log('ToolsDialog: Tools:', tools);
-      console.log('ToolsDialog: Config response:', configResponse);
-      console.log('ToolsDialog: Tools config response:', toolsConfigResponse);
-
+      console.log("config response is ", configResponse)
       // Store MCP tools configuration
       if (toolsConfigResponse.success && toolsConfigResponse.config) {
         setMcpToolsConfig(toolsConfigResponse.config);
@@ -129,48 +123,37 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
         setMcpServers(servers);
       }
 
-      // Assign server names to tools based on available servers
-      // If we have server config, try to match tools to servers
-      // For now, if there's only one enabled server, assign all tools to it
-      const enabledServers = Object.values(servers).filter((server: any) => server.enabled);
-      const toolsWithServer = tools.map(tool => {
-        if (tool.server) {
-          return tool; // Tool already has server info
-        }
+      // Create tools from configuration (this is our source of truth)
+      const toolsFromConfig: MCPTool[] = [];
+      if (toolsConfigResponse.success && toolsConfigResponse.config) {
+        Object.entries(toolsConfigResponse.config).forEach(([serverName, serverTools]: [string, any]) => {
+          Object.keys(serverTools).forEach((toolName: string) => {
+            const fullToolName = `${serverName}__${toolName}`;
+            toolsFromConfig.push({
+              name: fullToolName,
+              description: `Tool: ${toolName}`,
+              server: serverName
+            });
+          });
+        });
+      }
 
-        // If we have exactly one enabled server, assign all tools to it
-        if (enabledServers.length === 1) {
-          return { ...tool, server: enabledServers[0].name };
-        }
-
-        // Otherwise, try to infer from tool name or keep as unknown
-        const serverNames = Object.keys(servers);
-        for (const serverName of serverNames) {
-          if (tool.name.toLowerCase().includes(serverName.toLowerCase().replace('-mcp', ''))) {
-            return { ...tool, server: serverName };
-          }
-        }
-
-        return { ...tool, server: 'Unknown Server' };
-      });
-
-      // Update allKnownMcpTools by merging new tools with existing ones
+      // Update allKnownMcpTools with tools from configuration
       setAllKnownMcpTools(prevKnown => {
         const knownToolNames = new Set(prevKnown.map(t => t.name));
-        const newTools = toolsWithServer.filter(t => !knownToolNames.has(t.name));
-        return [...prevKnown, ...newTools];
+        const newToolsFromConfig = toolsFromConfig.filter(t => !knownToolNames.has(t.name));
+        return [...prevKnown, ...newToolsFromConfig];
       });
 
-      // Auto-expand servers that have tools
+      // Auto-expand servers that have tools in configuration
       const serversWithTools = new Set<string>();
-      toolsWithServer.forEach(tool => {
+      toolsFromConfig.forEach(tool => {
         if (tool.server) {
           serversWithTools.add(tool.server);
         }
       });
       setExpandedServers(serversWithTools);
     } catch (error) {
-      console.error('ToolsDialog: Failed to load MCP tools:', error);
       setMcpServers({});
     } finally {
       setIsLoadingMcp(false);
@@ -236,17 +219,12 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   };
 
   const isServerEnabled = (serverName: string) => {
+    console.log("Server name", serverName)
     const serverTools = allKnownMcpTools.filter(tool => tool.server === serverName);
     return (
       serverTools.length > 0 &&
       serverTools.every(tool => isMcpToolEnabled(tool.name))
     );
-  };
-
-  const isServerPartiallyEnabled = (serverName: string) => {
-    const serverTools = allKnownMcpTools.filter(tool => tool.server === serverName);
-    const enabledCount = serverTools.filter(tool => isMcpToolEnabled(tool.name)).length;
-    return enabledCount > 0 && enabledCount < serverTools.length;
   };
 
   // Filter tools based on search query - use allKnownMcpTools to show all tools (including disabled ones)
@@ -286,15 +264,8 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       
       if (mcpConfigChanged) {
         const mcpClient = new ElectronMCPClient();
-        console.log('Saving MCP tools configuration:', mcpToolsConfig);
         if (mcpClient.isAvailable()) {
-          const response = await mcpClient.updateToolsConfig(mcpToolsConfig);
-          if (!response) {
-            console.error('Failed to save MCP tools configuration');
-            // Still continue to close dialog, but log the error
-          } else {
-            console.log('MCP tools configuration saved successfully');
-          }
+          await mcpClient.updateToolsConfig(mcpToolsConfig);
         }
       }
 
@@ -385,16 +356,6 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
                         handleToggleServer(serverName);
                       }}
                       onClick={e => e.stopPropagation()}
-                      sx={{
-                        ...(isServerPartiallyEnabled(serverName) && {
-                          '& .MuiSwitch-thumb': {
-                            backgroundColor: 'orange',
-                          },
-                          '& .MuiSwitch-track': {
-                            backgroundColor: 'rgba(255, 165, 0, 0.3)',
-                          },
-                        }),
-                      }}
                     />
                   </Box>
                 </Box>

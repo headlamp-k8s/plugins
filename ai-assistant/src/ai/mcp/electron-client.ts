@@ -17,7 +17,6 @@ interface MCPResponse {
 }
 
 interface ElectronMCPApi {
-  getTools: () => Promise<MCPResponse>;
   executeTool: (
     toolName: string,
     args: Record<string, any>,
@@ -59,32 +58,6 @@ class ElectronMCPClient {
   }
 
   /**
-   * Get available MCP tools from Electron main process
-   */
-  async getTools(): Promise<MCPTool[]> {
-    if (!this.isElectron) {
-      console.warn('MCP client not available - not running in Electron environment');
-      return [];
-    }
-
-    try {
-      const response = await window.desktopApi!.mcp.getTools();
-      console.log('mcp response from getting tools is', response);
-      console.log('mcp window desktop api', window.desktopApi!.mcp.getTools);
-      if (response.success && response.tools) {
-        console.log('Retrieved MCP tools from Electron:', response.tools.length, 'tools');
-        return response.tools;
-      } else {
-        console.warn('Failed to get MCP tools:', response.error);
-        return [];
-      }
-    } catch (error) {
-      console.error('Error getting MCP tools from Electron:', error);
-      return [];
-    }
-  }
-
-  /**
    * Execute an MCP tool via Electron main process
    */
   async executeTool(
@@ -97,7 +70,6 @@ class ElectronMCPClient {
     }
 
     try {
-      console.log('args for tool executed is ', args);
       const response = await window.desktopApi!.mcp.executeTool(toolName, args, toolCallId);
 
       if (response.success) {
@@ -194,7 +166,6 @@ class ElectronMCPClient {
 
     try {
       const response = await window.desktopApi!.mcp.updateToolsConfig(config);
-      console.log("response from updating mcp tools config is ", response);
       return response.success;
     } catch (error) {
       console.error('Error updating MCP tools config:', error);
@@ -291,7 +262,7 @@ class ElectronMCPClient {
     }
 
     try {
-      const allTools = await this.getTools();
+      const allTools = await this.getEnabledTools();
       const enabledTools: MCPTool[] = [];
 
       for (const tool of allTools) {
@@ -312,8 +283,7 @@ class ElectronMCPClient {
 // Export a function that returns tools (compatible with existing interface)
 const tools = async function (): Promise<MCPTool[]> {
   const client = new ElectronMCPClient();
-  console.log('mcp electron client is ', client);
-  return await client.getTools();
+  return (await client.getToolsConfig()).config;
 };
 
 // Export both the client class and the tools function for flexibility

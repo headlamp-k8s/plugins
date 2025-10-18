@@ -89,7 +89,6 @@ export class InlineToolApprovalManager extends EventEmitter {
   async requestApproval(toolCalls: any[], aiManager: any): Promise<string[]> {
     // Check if session auto-approval is enabled
     if (this.sessionAutoApproval) {
-      console.log('Auto-approving tools due to session setting');
       return toolCalls.map(tool => tool.id);
     }
 
@@ -107,7 +106,6 @@ export class InlineToolApprovalManager extends EventEmitter {
 
     // If all tools are auto-approved, return them
     if (needsApprovalTools.length === 0) {
-      console.log('All tools auto-approved:', autoApprovedTools);
       return autoApprovedTools;
     }
 
@@ -197,7 +195,6 @@ export class InlineToolApprovalManager extends EventEmitter {
       const allToolIds = this.pendingRequest.toolCalls.map(tool => tool.id);
       if (approvedToolIds.length === allToolIds.length) {
         this.sessionAutoApproval = true;
-        console.log('Session auto-approval enabled');
       } else {
         // Remember individual tool approvals
         for (const toolCall of this.pendingRequest.toolCalls) {
@@ -205,7 +202,6 @@ export class InlineToolApprovalManager extends EventEmitter {
             this.autoApproveSettings.set(toolCall.name, true);
           }
         }
-        console.log('Individual tool approvals saved');
       }
     }
 
@@ -237,7 +233,6 @@ export class InlineToolApprovalManager extends EventEmitter {
   public clearSession(): void {
     this.sessionAutoApproval = false;
     this.autoApproveSettings.clear();
-    console.log('Tool approval session settings cleared');
   }
 
   /**
@@ -245,7 +240,6 @@ export class InlineToolApprovalManager extends EventEmitter {
    */
   public setSessionAutoApproval(enabled: boolean): void {
     this.sessionAutoApproval = enabled;
-    console.log(`Session auto-approval ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   /**
@@ -264,7 +258,6 @@ export class InlineToolApprovalManager extends EventEmitter {
     } else {
       this.autoApproveSettings.delete(toolName);
     }
-    console.log(`Tool "${toolName}" auto-approval ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   /**

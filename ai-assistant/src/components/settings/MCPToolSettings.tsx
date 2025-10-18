@@ -149,7 +149,6 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
 
     // Update configuration state
     setToolsConfig(prevConfig => {
-      console.log('Previous config:', prevConfig);
       const newConfig = { ...prevConfig };
       if (!newConfig[toolInfo.server]) {
         newConfig[toolInfo.server] = {};
@@ -178,24 +177,20 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
 
   // Save configuration changes
   const handleSaveChanges = async () => {
-    console.log('Saving changes:', toolsConfig);
     if (!window.desktopApi?.mcp) {
       return;
     }
 
     try {
-      console.log("Saving MCP tools configuration:", toolsConfig);
-      const response = await window.desktopApi.mcp.updateToolsConfig(toolsConfig);
+       const response = await window.desktopApi.mcp.updateToolsConfig(toolsConfig);
       if (response.success) {
         setHasChanges(false);
         onConfigChange?.(false);
         setOriginalConfig(JSON.parse(JSON.stringify(toolsConfig))); // Update original config
-        console.log('MCP tools configuration saved successfully');
       } else {
         throw new Error(response.error || 'Failed to save configuration');
       }
     } catch (error) {
-      console.error('Error saving MCP tools configuration:', error);
       setError(`Failed to save configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
