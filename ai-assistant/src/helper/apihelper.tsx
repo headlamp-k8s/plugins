@@ -393,7 +393,6 @@ export const handleActualApiRequest = async (
         ...requestOptions,
         isJSON: !isLogRequest(cleanedUrl),
       });
-      console.log('API response received:', response);
     } catch (apiError) {
       // Handle specific multi-container pod logs error
       if (

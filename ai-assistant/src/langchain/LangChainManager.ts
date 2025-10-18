@@ -58,22 +58,11 @@ export default class LangChainManager extends AIManager {
   private setupToolConfirmationListeners() {
     inlineToolApprovalManager.on('request-confirmation', (data: any) => {
       // Add the tool confirmation message to chat history
-      console.log('🔔 LangChainManager: Adding tool confirmation message to history', data);
       this.addToolConfirmationMessage('', data.toolConfirmation);
-      console.log(
-        '📝 LangChainManager: History length after adding confirmation:',
-        this.history.length
-      );
     });
 
     inlineToolApprovalManager.on('update-confirmation', (data: any) => {
       // Update the specific tool confirmation message with new state (e.g., loading)
-      console.log(
-        '🔄 Tool confirmation update:',
-        data.requestId,
-        'loading:',
-        data.toolConfirmation.loading
-      );
       this.updateToolConfirmationMessage(data.requestId, data.toolConfirmation);
     });
   }
@@ -263,19 +252,13 @@ export default class LangChainManager extends AIManager {
     const allTools = this.toolManager.getLangChainTools();
 
     // Bind all tools to the model for compatible providers (OpenAI, Azure, etc.)
-    this.boundModel = this.toolManager.bindToModel(this.model, this.providerId);
+    // Use the async version to ensure MCP tools are properly included
+    this.boundModel = await this.toolManager.bindToModelAsync(this.model, this.providerId);
 
     // Enable direct tool calling for better performance
     if (allTools.length > 0 && this.canUseDirectToolCalling()) {
       this.useDirectToolCalling = true;
-      console.log('🔧 Direct tool calling enabled for', allTools.length, 'tools');
     }
-
-    console.log('🔧 Tools configured:', {
-      boundModel: !!this.boundModel,
-      directToolCalling: this.useDirectToolCalling,
-      toolCount: allTools.length,
-    });
   }
 
   /**
@@ -363,10 +346,6 @@ export default class LangChainManager extends AIManager {
     toolConfirmation: any,
     updateHistoryCallback?: () => void
   ): void {
-    console.log('➕ LangChainManager: Adding tool confirmation message', {
-      content,
-      toolConfirmation,
-    });
     const confirmationPrompt: Prompt = {
       role: 'assistant',
       content: content,
@@ -375,11 +354,6 @@ export default class LangChainManager extends AIManager {
       requestId: toolConfirmation.requestId, // Add requestId for tracking
     };
     this.history.push(confirmationPrompt);
-    console.log(
-      '📚 LangChainManager: History after adding confirmation:',
-      this.history.length,
-      'items'
-    );
 
     // Call the update callback if provided to trigger UI re-render
     if (updateHistoryCallback) {
@@ -388,11 +362,6 @@ export default class LangChainManager extends AIManager {
   }
 
   public updateToolConfirmationMessage(requestId: string, updatedToolConfirmation: any): void {
-    console.log('🔄 LangChainManager: Updating tool confirmation message', {
-      requestId,
-      updatedToolConfirmation,
-    });
-
     // Find the message with matching requestId
     const messageIndex = this.history.findIndex(
       prompt => prompt.requestId === requestId && prompt.toolConfirmation
@@ -404,7 +373,6 @@ export default class LangChainManager extends AIManager {
         ...this.history[messageIndex],
         toolConfirmation: updatedToolConfirmation,
       };
-      console.log('✅ LangChainManager: Tool confirmation message updated');
 
       // Use the inline tool approval manager to emit update event
       inlineToolApprovalManager.emit('message-updated', { requestId, updatedToolConfirmation });
@@ -611,8 +579,6 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
   // Handle requests using direct tool calling (single LLM call)
   private async handleDirectToolCallingRequest(message: string): Promise<Prompt> {
     try {
-      console.log('🔧 Using direct tool calling for request:', message);
-
       const modelToUse = this.boundModel || this.model;
 
       // Prepare input for the model with tools
@@ -638,10 +604,8 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
 
       // Handle tool calls if present
       if (response.tool_calls?.length) {
-        console.log('🔧 Tool calls detected, processing...');
         return await this.handleToolCalls(response);
       } else {
-        console.log('💬 No tool calls detected, treating as regular message');
         // Handle regular response
         const assistantPrompt: Prompt = {
           role: 'assistant',
@@ -654,7 +618,6 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
       console.error('Error in direct tool calling request:', error);
 
       // If direct tool calling fails, fall back to regular approach
-      console.log('🔄 Falling back to chain-based approach');
       this.useDirectToolCalling = false;
 
       const modelToUse = this.boundModel || this.model;
@@ -723,12 +686,6 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
 
     // IMPORTANT: Use the boundModel (which has tools) instead of the original model
     const modelToUse = this.boundModel || model;
-    console.log('🔧 Using model for tool-enabled request:', {
-      usingBoundModel: !!this.boundModel,
-      modelHasBindTools: typeof modelToUse.bindTools === 'function',
-      toolsAvailable: this.toolManager.getToolNames(),
-    });
-
     const response = await modelToUse.invoke(messages, {
       signal: this.currentAbortController.signal,
     });
@@ -737,17 +694,7 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
 
     // Handle tool calls if present
     if (response.tool_calls?.length) {
-      console.log(
-        '🔧 Tool calls detected:',
-        response.tool_calls.length,
-        response.tool_calls.map(tc => ({
-          name: tc.name,
-          args: tc.args,
-        }))
-      );
       return await this.handleToolCalls(response);
-    } else {
-      console.log('💬 No tool calls detected in response, treating as regular message');
     }
 
     // Handle regular response
@@ -763,19 +710,8 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
   private async handleToolCalls(response: any): Promise<Prompt> {
     const enabledToolIds = this.toolManager.getToolNames();
 
-    console.log('🔧 Tool calls detected, processing...', {
-      requestedTools: response.tool_calls?.map(tc => tc.name) || [],
-      enabledTools: enabledToolIds,
-      enabledToolsCount: enabledToolIds.length,
-    });
-
     // If no tools are enabled but LLM is returning tool calls, this indicates a bug
     if (enabledToolIds.length === 0) {
-      console.warn('LLM returned tool calls but no tools are enabled. This should not happen.', {
-        toolCalls: response.tool_calls,
-        modelUsed: this.boundModel === this.model ? 'original' : 'bound',
-      });
-
       // Treat as regular response since no tools should be available
       const assistantPrompt: Prompt = {
         role: 'assistant',
@@ -800,33 +736,8 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
     // Only keep tool calls for enabled tools
     const toolCalls = allToolCalls.filter(tc => enabledToolIds.includes(tc.function.name));
 
-    // Log detailed filtering information
-    console.log('🔍 Tool filtering details:', {
-      allRequestedTools: allToolCalls.map(tc => tc.function.name),
-      enabledTools: enabledToolIds,
-      allowedTools: toolCalls.map(tc => tc.function.name),
-    });
-
     // Log if any tools were filtered out
     const filteredOutTools = allToolCalls.filter(tc => !enabledToolIds.includes(tc.function.name));
-    if (filteredOutTools.length > 0) {
-      console.log(
-        '🚫 Filtered out disabled tool calls:',
-        filteredOutTools.map(tc => tc.function.name)
-      );
-      console.log('✅ Enabled tools:', enabledToolIds);
-      console.log(
-        '🔄 Total tool calls requested:',
-        allToolCalls.length,
-        'Allowed:',
-        toolCalls.length
-      );
-    } else if (allToolCalls.length > 0) {
-      console.log(
-        '✅ All requested tools are enabled, proceeding with:',
-        toolCalls.map(tc => tc.function.name)
-      );
-    }
 
     const assistantPrompt: Prompt = {
       role: 'assistant',
@@ -837,8 +748,6 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
 
     // If all tool calls were filtered out (all requested tools are disabled), handle gracefully
     if (toolCalls.length === 0) {
-      console.log('ℹ️ All requested tools are disabled, providing alternative response');
-
       // Add informational message about disabled tools if any were filtered
       if (filteredOutTools.length > 0) {
         const disabledToolNames = filteredOutTools.map(tc => tc.function.name).join(', ');
@@ -895,11 +804,6 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
                 processedArguments
               );
 
-              console.log(`🧠 AI-enhanced arguments for ${toolName}:`, {
-                original: JSON.parse(tc.function.arguments),
-                enhanced: processedArguments,
-              });
-
               // Mark which fields were enhanced by LLM for UI display
               processedArguments._llmEnhanced = {
                 enhanced: true,
@@ -936,30 +840,12 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
 
       // Only request approval for MCP tools
       if (mcpTools.length > 0) {
-        console.log('🔐 Requesting approval for', mcpTools.length, 'MCP tools');
         const approvedMCPToolIds = await inlineToolApprovalManager.requestApproval(
           mcpTools,
           this // Pass the AI manager instance
         );
         approvedToolIds.push(...approvedMCPToolIds);
-        console.log('✅ MCP tools approved:', approvedMCPToolIds.length, 'of', mcpTools.length);
       }
-
-      // Log built-in tools that were auto-approved
-      if (builtInToolIds.length > 0) {
-        console.log(
-          '✅ Built-in tools auto-executed (no approval needed):',
-          builtInToolIds.length,
-          builtInTools.map(tool => tool.name)
-        );
-      }
-
-      console.log(
-        '✅ Total tools approved:',
-        approvedToolIds.length,
-        'of',
-        toolCallsForApproval.length
-      );
 
       // Filter tool calls to only execute approved ones and update with processed arguments
       const approvedToolCalls = toolCalls
@@ -999,8 +885,6 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
         await this.processToolCalls(approvedToolCalls, assistantPrompt);
       }
     } catch (error) {
-      console.log('❌ Tool approval denied or failed:', error.message);
-
       // Add denial responses for all tools
       for (const toolCall of toolCalls) {
         this.history.push({
@@ -1321,11 +1205,8 @@ Format your response to make the errors prominent and actionable.`,
   public async processToolResponses(): Promise<Prompt> {
     // Check if there are any tool responses in the history
     if (!this.hasToolResponses()) {
-      console.log('🔍 No tool responses found in history');
       return this.getLastAssistantMessage();
     }
-
-    console.log('🔍 Processing tool responses from history');
 
     // Validate tool call/response alignment
     this.validateToolCallAlignment();
@@ -1511,9 +1392,6 @@ Format your response to make the errors prominent and actionable.`,
 
   // Handle the result of tool response processing
   private async handleToolResponseResult(response: any): Promise<Prompt> {
-    // Track usage after tool processing
-    this.logUsageInfo(response);
-
     // Analyze and potentially correct kubectl suggestions
     const correctedResponse = await this.analyzeAndCorrectResponse(response);
 
@@ -1664,33 +1542,6 @@ Format your response to make the errors prominent and actionable.`,
     this.history.push(assistantPrompt);
     this.toolResponseDepth = 0; // Reset depth on final text response
     return assistantPrompt;
-  }
-
-  // Log usage information
-  private logUsageInfo(response: any): void {
-    let providerName = 'AI Service';
-    let estimatedTokens = 0;
-
-    // Estimate tokens
-    const outputLength = this.extractTextContent(response.content).length || 0;
-    estimatedTokens = Math.ceil(outputLength / 4);
-
-    switch (this.providerId) {
-      case 'openai':
-        providerName = 'OpenAI';
-        break;
-      case 'azure':
-        providerName = 'Azure OpenAI';
-        break;
-      case 'anthropic':
-        providerName = 'Anthropic';
-        break;
-      case 'local':
-        providerName = 'Local Model';
-        break;
-    }
-
-    console.log(`${providerName} - Estimated tokens: ${estimatedTokens}`);
   }
 
   // Analyze response and correct kubectl suggestions

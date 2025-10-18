@@ -1,8 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Alert, Box, Paper, Typography } from '@mui/material';
 import React, { useCallback } from 'react';
-// @todo: this file does not exist in this commit
-// import { usePromptWidth } from '../../contexts/PromptWidthContext';
 import { FormattedMCPOutput } from '../../langchain/formatters/MCPOutputFormatter';
 import MCPOutputDisplay from '../mcpOutput/MCPOutputDisplay';
 
@@ -24,8 +22,6 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
   isAssistant = true,
   onRetryTool,
 }) => {
-  // const widthContext = usePromptWidth();
-  // console.log('From context width ', widthContext.promptWidth);
   // Try to parse the content as formatted MCP output
   const parseContent = (): ParsedMCPContent | null => {
     try {
@@ -94,7 +90,6 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
 
   const handleRetry = useCallback(() => {
     if (!onRetryTool) {
-      console.log('Retry requested but no retry handler available');
       return;
     }
 
@@ -121,7 +116,6 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
         return;
       }
 
-      console.log('Retrying tool:', toolName, 'with args:', originalArgs);
       onRetryTool(toolName, originalArgs);
     } catch (error) {
       console.error('Failed to parse content for retry:', error);

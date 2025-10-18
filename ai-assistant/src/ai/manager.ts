@@ -35,6 +35,8 @@ export type Prompt = {
     onApprove: (approvedToolIds: string[]) => void;
     onDeny: () => void;
     loading?: boolean;
+    //TODO: added this, because there was no userContext
+    userContext?: any; // Additional context about the user or conversation for tool confirmation
   };
 };
 
