@@ -177,3 +177,36 @@ export async function fetchChartIcon(iconName: string) {
     getURLSearchParams(`${iconName}`);
   return request(url, { isJSON: false }, true, true, {}).then(response => response);
 }
+
+/**
+ * Fetches the latest application version for a given chart name from Artifact Hub.
+ * @param chartName - The name of the chart to fetch the latest version for.
+ * @returns A promise that resolves to the latest application version as a string.
+ */
+export async function fetchLatestAppVersion(chartName: string): Promise<string> {
+  if (!chartName) {
+    return '—';
+  }
+
+  try {
+    const url = new URL('https://artifacthub.io/api/v1/packages/search');
+    url.searchParams.set('offset', '0');
+    url.searchParams.set('limit', '5');
+    url.searchParams.set('facets', 'false');
+    url.searchParams.set('kind', '0');
+    url.searchParams.set('ts_query_web', chartName);
+
+    const response = await fetch(url.toString());
+    const dataResponse = await response.json();
+    const packages: any[] = dataResponse?.packages ?? [];
+
+    const lowerChartName = chartName.toLowerCase();
+    const selectedPackage = packages.find(
+      p => p?.name?.toLowerCase() === lowerChartName || p?.normalized_name === lowerChartName
+    );
+
+    return selectedPackage?.app_version ?? '—';
+  } catch {
+    return '—';
+  }
+}
