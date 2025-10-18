@@ -1,14 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { Meta, StoryFn } from '@storybook/react';
-import React from 'react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { PurePluginInstalledList, PurePluginInstalledListProps } from './InstalledList';
 
 const store = configureStore({
-  reducer: {
-    config: (state = { settings: { tableRowsPerPageOptions: [10, 20, 50] } }) => state,
-  },
+  reducer: (
+    state = {
+      drawerMode: { isDetailDrawerEnabled: false },
+      config: { settings: { tableRowsPerPageOptions: [10, 20, 50] } },
+    }
+  ) => state,
 });
 
 export default {

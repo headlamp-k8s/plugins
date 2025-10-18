@@ -12,7 +12,8 @@
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
     "test": "headlamp-plugin test",
-    "package": "headlamp-plugin package"
+    "package": "headlamp-plugin package",
+    "i18n": "headlamp-plugin i18n"
   },
   "keywords": [
     "headlamp",
@@ -31,7 +32,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.12.0"
+    "@kinvolk/headlamp-plugin": "^0.13.0-alpha.10"
   },
   "dependencies": {
     "markdown-to-jsx": "^7.4.7"

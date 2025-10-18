@@ -1,9 +1,11 @@
-// src/components/PurePluginList.stories.tsx
-
+import { configureStore } from '@reduxjs/toolkit';
 import { Meta, StoryFn } from '@storybook/react';
-import React from 'react';
+import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { PluginPackage, PurePluginList, PurePluginListProps } from './List';
+const store = configureStore({
+  reducer: (state = { drawerMode: { isDetailDrawerEnabled: false } }) => state,
+});
 
 export default {
   title: 'List',
@@ -11,9 +13,11 @@ export default {
   decorators: [
     Story => {
       return (
-        <BrowserRouter>
-          <Story />
-        </BrowserRouter>
+        <Provider store={store}>
+          <BrowserRouter>
+            <Story />
+          </BrowserRouter>
+        </Provider>
       );
     },
   ],
