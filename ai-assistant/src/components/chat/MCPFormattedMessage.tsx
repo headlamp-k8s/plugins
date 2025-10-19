@@ -1,7 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Alert, Box, Paper, Typography } from '@mui/material';
 import React, { useCallback } from 'react';
-import { usePromptWidth } from '../../contexts/PromptWidthContext';
 import { FormattedMCPOutput } from '../../langchain/formatters/MCPOutputFormatter';
 import MCPOutputDisplay from '../mcpOutput/MCPOutputDisplay';
 

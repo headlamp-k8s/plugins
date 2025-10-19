@@ -70,7 +70,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
       setError(null);
 
       // Get available MCP tools
-      const toolsResponse = await window.desktopApi.mcp.getTools();
+      const toolsResponse = await window.desktopApi.mcp.getToolsConfig();
       if (!toolsResponse.success) {
         throw new Error(toolsResponse.error || 'Failed to get MCP tools');
       }
@@ -88,7 +88,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
       // Process tools data
       const toolsData: MCPToolInfo[] = [];
       
-      for (const tool of toolsResponse.tools || []) {
+      for (const tool of toolsResponse.config || []) {
         const { serverName, toolName: actualToolName } = parseMCPToolName(tool.name);
         
         // Get tool state from configuration
