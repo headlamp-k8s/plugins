@@ -110,7 +110,7 @@ export function parseMCPToolName(fullToolName: string): { serverName: string; to
 // This function needs to be async to fetch MCP tools
 export async function getAllAvailableToolsIncludingMCP(): Promise<ToolInfo[]> {
   const builtInTools = getAllAvailableTools();
-  
+
   // Try to get MCP tools if running in Electron environment
   try {
     if (typeof window !== 'undefined' && window.desktopApi?.mcp) {
@@ -128,7 +128,7 @@ export async function getAllAvailableToolsIncludingMCP(): Promise<ToolInfo[]> {
   } catch (error) {
     console.warn('Failed to fetch MCP tools for tool config management:', error);
   }
-  
+
   return builtInTools;
 }
 
@@ -143,12 +143,12 @@ export async function getEnabledToolIdsIncludingMCP(pluginSettings: any): Promis
 // but respects any saved configuration if it exists
 export async function initializeToolsState(pluginSettings: any): Promise<string[]> {
   const allTools = await getAllAvailableToolsIncludingMCP();
-  
+
   // If we have no enabledTools config at all, enable all tools by default
   if (!pluginSettings || !pluginSettings.enabledTools) {
     return allTools.map(tool => tool.id);
   }
-  
+
   // If we have partial config, use the isToolEnabled logic which defaults to true
   return allTools.map(tool => tool.id).filter(toolId => isToolEnabled(pluginSettings, toolId));
 }

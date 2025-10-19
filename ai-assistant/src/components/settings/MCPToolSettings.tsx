@@ -87,19 +87,22 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
 
       // Process tools data
       const toolsData: MCPToolInfo[] = [];
-      
+
       for (const tool of toolsResponse.config || []) {
         const { serverName, toolName: actualToolName } = parseMCPToolName(tool.name);
-        
+
         // Get tool state from configuration
         const serverConfig = config[serverName];
         const toolState = serverConfig?.[actualToolName];
         const enabled = toolState?.enabled !== false; // Default to true if not configured
-        
+
         // Get tool statistics
         let stats: MCPToolState | null = null;
         try {
-          const statsResponse = await window.desktopApi.mcp.getToolStats(serverName, actualToolName);
+          const statsResponse = await window.desktopApi.mcp.getToolStats(
+            serverName,
+            actualToolName
+          );
           if (statsResponse.success) {
             stats = statsResponse.stats;
           }
@@ -142,9 +145,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
   const handleToolToggle = (toolInfo: MCPToolInfo, enabled: boolean) => {
     // Update local tool state
     setMCPTools(prevTools =>
-      prevTools.map(tool =>
-        tool.name === toolInfo.name ? { ...tool, enabled } : tool
-      )
+      prevTools.map(tool => (tool.name === toolInfo.name ? { ...tool, enabled } : tool))
     );
 
     // Update configuration state
@@ -182,7 +183,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
     }
 
     try {
-       const response = await window.desktopApi.mcp.updateToolsConfig(toolsConfig);
+      const response = await window.desktopApi.mcp.updateToolsConfig(toolsConfig);
       if (response.success) {
         setHasChanges(false);
         onConfigChange?.(false);
@@ -191,14 +192,16 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
         throw new Error(response.error || 'Failed to save configuration');
       }
     } catch (error) {
-      setError(`Failed to save configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(
+        `Failed to save configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   };
 
   // Discard changes and revert to original configuration
   const handleDiscardChanges = () => {
     setToolsConfig(JSON.parse(JSON.stringify(originalConfig))); // Restore original config
-    
+
     // Update tools to reflect original configuration
     setMCPTools(prevTools =>
       prevTools.map(tool => {
@@ -208,7 +211,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
         return { ...tool, enabled };
       })
     );
-    
+
     setHasChanges(false);
     onConfigChange?.(false);
   };
@@ -216,9 +219,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
   // Enable all tools (local state only)
   const handleEnableAll = () => {
     // Update all tools to enabled in local state
-    setMCPTools(prevTools =>
-      prevTools.map(tool => ({ ...tool, enabled: true }))
-    );
+    setMCPTools(prevTools => prevTools.map(tool => ({ ...tool, enabled: true })));
 
     // Update configuration state
     setToolsConfig(prevConfig => {
@@ -245,9 +246,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
   // Disable all tools (local state only)
   const handleDisableAll = () => {
     // Update all tools to disabled in local state
-    setMCPTools(prevTools =>
-      prevTools.map(tool => ({ ...tool, enabled: false }))
-    );
+    setMCPTools(prevTools => prevTools.map(tool => ({ ...tool, enabled: false })));
 
     // Update configuration state
     setToolsConfig(prevConfig => {
@@ -325,10 +324,10 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
     <SectionBox title="MCP Tool Configuration">
       <Box mb={2}>
         <Typography variant="body2" color="textSecondary" gutterBottom>
-          Configure individual MCP (Model Context Protocol) tools. You can enable or disable specific tools 
-          to control which capabilities are available to the AI assistant.
+          Configure individual MCP (Model Context Protocol) tools. You can enable or disable
+          specific tools to control which capabilities are available to the AI assistant.
         </Typography>
-        
+
         <Box display="flex" alignItems="center" justifyContent="space-between" mt={2}>
           <Box display="flex" alignItems="center" gap={1}>
             <Chip
@@ -344,9 +343,8 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
                 icon={<Icon icon="mdi:pencil" />}
               />
             )}
-
           </Box>
-          
+
           <Box display="flex" gap={1}>
             {hasChanges && (
               <>
@@ -396,13 +394,16 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
 
       {totalCount === 0 ? (
         <Box display="flex" flexDirection="column" alignItems="center" py={4}>
-          <Icon icon="mdi:tools" style={{ fontSize: 48, color: theme.palette.text.secondary, marginBottom: 16 }} />
+          <Icon
+            icon="mdi:tools"
+            style={{ fontSize: 48, color: theme.palette.text.secondary, marginBottom: 16 }}
+          />
           <Typography variant="h6" color="textSecondary" gutterBottom>
             No MCP Tools Available
           </Typography>
           <Typography variant="body2" color="textSecondary" align="center">
-            No MCP servers are configured or running. Configure MCP servers in the MCP Settings section 
-            to see available tools here.
+            No MCP servers are configured or running. Configure MCP servers in the MCP Settings
+            section to see available tools here.
           </Typography>
         </Box>
       ) : (
@@ -412,7 +413,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
               <Icon icon="mdi:server" style={{ marginRight: 8, verticalAlign: 'middle' }} />
               {serverName} ({serverTools.length} tools)
             </Typography>
-            
+
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>
@@ -424,7 +425,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {serverTools.map((tool) => (
+                  {serverTools.map(tool => (
                     <TableRow key={tool.name}>
                       <TableCell>
                         <Typography variant="body2" component="div">
@@ -454,7 +455,7 @@ export function MCPToolSettings({ onConfigChange }: MCPToolSettingsProps) {
                           control={
                             <Switch
                               checked={tool.enabled}
-                              onChange={(e) => handleToolToggle(tool, e.target.checked)}
+                              onChange={e => handleToolToggle(tool, e.target.checked)}
                               size="small"
                             />
                           }

@@ -116,7 +116,7 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
         return;
       }
 
-       onRetryTool(toolName, originalArgs);
+      onRetryTool(toolName, originalArgs);
     } catch (error) {
       console.error('Failed to parse content for retry:', error);
     }
