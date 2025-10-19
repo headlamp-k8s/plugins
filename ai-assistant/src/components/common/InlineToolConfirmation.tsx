@@ -114,7 +114,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
     try {
       // Update the original toolCalls with edited arguments
       toolCalls.forEach(tool => {
-        if (editedArguments[tool.id]) {
+        if (selectedToolIds.includes(tool.id) && editedArguments[tool.id]) {
           const edited = editedArguments[tool.id];
 
           if (tool.type === 'mcp') {
@@ -131,10 +131,10 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
             // For regular tools, use edited arguments as-is
             tool.arguments = edited;
           }
-        }
+         }
       });
 
-      onApprove(selectedToolIds);
+       onApprove(selectedToolIds);
     } catch (error) {
       console.error('Error during tool approval:', error);
       setIsApproving(false);

@@ -883,6 +883,7 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
 
     for (const toolCall of toolCalls) {
       const args = JSON.parse(toolCall.function.arguments);
+      console.log('🔧 LangChainManager: Executing tool', toolCall.function.name, 'with parsed args:', args);
 
       try {
         // Execute the tool call using ToolManager
