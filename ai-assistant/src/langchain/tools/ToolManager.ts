@@ -63,7 +63,6 @@ export class ToolManager {
   private async initializeMCPTools(): Promise<void> {
     try {
       console.debug('Initializing MCP tools from Electron...');
-
       if (!this.mcpClient.isAvailable()) {
         this.mcpToolsInitialized = true;
         return;
