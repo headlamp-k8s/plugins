@@ -72,8 +72,8 @@ export class ToolManager {
           const fullToolName = `${serverName}__${toolName}`;
           mcpToolsData.push({
             name: fullToolName,
-            description: `Tool: ${toolName} from ${serverName} server`,
-            inputSchema: {}, // We'll get this later if needed
+            description: toolConfig.description || `Tool: ${toolName} from ${serverName} server`,
+            inputSchema: toolConfig.inputSchema || {}, // Use the actual schema from MCP config
             server: serverName,
             enabled: toolConfig.enabled !== false
           });

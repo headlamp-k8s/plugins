@@ -54,7 +54,6 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
   const [, setMcpServers] = useState<{ [key: string]: any }>({});
 
-  console.log("all known MCP tools ", allKnownMcpTools)
   // Load MCP tools when dialog opens
   useEffect(() => {
     if (open) {
@@ -219,7 +218,6 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   };
 
   const isServerEnabled = (serverName: string) => {
-    console.log("Server name", serverName)
     const serverTools = allKnownMcpTools.filter(tool => tool.server === serverName);
     return (
       serverTools.length > 0 &&

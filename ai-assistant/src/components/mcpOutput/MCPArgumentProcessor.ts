@@ -1,4 +1,4 @@
-import tools from '../../ai/mcp/electron-client';
+import { ElectronMCPClient } from '../../ai/mcp/electron-client';
 
 export interface MCPToolSchema {
   name: string;
@@ -42,14 +42,19 @@ export class MCPArgumentProcessor {
     if (this.schemasLoaded) return;
 
     try {
-      const mcpTools = await tools();
-      console.log("mcp tools are ", mcpTools)
-      if (mcpTools && Array.isArray(mcpTools)) {
-        mcpTools.forEach(tool => {
-          this.toolSchemas.set(tool.name, {
-            name: tool.name,
-            description: tool.description,
-            inputSchema: tool.inputSchema,
+      const mcpClient = new ElectronMCPClient();
+      const toolsConfigResponse = await mcpClient.getToolsConfig();
+      
+      if (toolsConfigResponse && toolsConfigResponse.config) {
+        // Parse the new structure: { "serverName": { "toolName": { enabled, inputSchema, ... } } }
+        Object.entries(toolsConfigResponse.config).forEach(([serverName, serverTools]: [string, any]) => {
+          Object.entries(serverTools).forEach(([toolName, toolConfig]: [string, any]) => {
+            const fullToolName = `${serverName}__${toolName}`;
+            this.toolSchemas.set(fullToolName, {
+              name: fullToolName,
+              description: toolConfig.description,
+              inputSchema: toolConfig.inputSchema,
+            });
           });
         });
         this.schemasLoaded = true;
