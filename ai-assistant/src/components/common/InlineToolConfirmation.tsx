@@ -113,7 +113,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
     try {
       // Update the original toolCalls with edited arguments
       toolCalls.forEach(tool => {
-        if (editedArguments[tool.id]) {
+        if (selectedToolIds.includes(tool.id) && editedArguments[tool.id]) {
           const edited = editedArguments[tool.id];
 
           if (tool.type === 'mcp') {
