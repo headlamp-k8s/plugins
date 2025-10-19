@@ -29,7 +29,10 @@ interface ElectronMCPApi {
   getToolsConfig: () => Promise<{ success: boolean; config?: any; error?: string }>;
   updateToolsConfig: (config: any) => Promise<MCPResponse>;
   setToolEnabled: (serverName: string, toolName: string, enabled: boolean) => Promise<MCPResponse>;
-  getToolStats: (serverName: string, toolName: string) => Promise<{ success: boolean; stats?: any; error?: string }>;
+  getToolStats: (
+    serverName: string,
+    toolName: string
+  ) => Promise<{ success: boolean; stats?: any; error?: string }>;
 }
 
 declare global {
@@ -236,7 +239,7 @@ class ElectronMCPClient {
     try {
       const { serverName, toolName } = this.parseToolName(fullToolName);
       const toolsConfig = await this.getToolsConfig();
-      
+
       if (!toolsConfig.success || !toolsConfig.config) {
         return true; // Default to enabled if config not available
       }

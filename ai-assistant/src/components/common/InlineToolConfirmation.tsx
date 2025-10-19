@@ -131,10 +131,10 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
             // For regular tools, use edited arguments as-is
             tool.arguments = edited;
           }
-         }
+        }
       });
 
-       onApprove(selectedToolIds);
+      onApprove(selectedToolIds);
     } catch (error) {
       console.error('Error during tool approval:', error);
       setIsApproving(false);
