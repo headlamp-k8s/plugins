@@ -133,7 +133,11 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
         }}
       />
 
-      <Grid container justifyContent="space-between" alignItems="center">
+      <Grid container justifyContent="space-between" alignItems="center" sx={{
+        '& > .MuiGrid-item': {
+          maxWidth: '100% !important'
+        }
+      }}>
         <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
           <ActionButton description="Clear History" onClick={onClearHistory} icon="mdi:broom" />
 
