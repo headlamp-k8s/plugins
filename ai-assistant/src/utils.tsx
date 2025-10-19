@@ -29,24 +29,26 @@ function usePluginSettings() {
   // Initialize tools state properly on first load
   React.useEffect(() => {
     if (!toolsInitialized) {
-      initializeToolsState(conf).then(initializedTools => {
-        setEnabledToolsState(initializedTools);
-        setToolsInitialized(true);
-        
-        // If this is the first time and we have tools to save, save them
-        if (!conf?.enabledTools && initializedTools.length > 0) {
-          const currentConf = pluginStore.get() || {};
-          pluginStore.update({
-            ...currentConf,
-            enabledTools: initializedTools,
-          });
-        }
-      }).catch(error => {
-        console.error('Failed to initialize tools state:', error);
-        // Fallback to existing behavior
-        setEnabledToolsState(conf?.enabledTools ?? []);
-        setToolsInitialized(true);
-      });
+      initializeToolsState(conf)
+        .then(initializedTools => {
+          setEnabledToolsState(initializedTools);
+          setToolsInitialized(true);
+
+          // If this is the first time and we have tools to save, save them
+          if (!conf?.enabledTools && initializedTools.length > 0) {
+            const currentConf = pluginStore.get() || {};
+            pluginStore.update({
+              ...currentConf,
+              enabledTools: initializedTools,
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Failed to initialize tools state:', error);
+          // Fallback to existing behavior
+          setEnabledToolsState(conf?.enabledTools ?? []);
+          setToolsInitialized(true);
+        });
     }
   }, [conf, toolsInitialized]);
 
@@ -90,14 +92,14 @@ function usePluginSettings() {
 export const useGlobalState = () => useBetween(usePluginSettings);
 
 // Export tool configuration utilities
-export { 
-  getAllAvailableTools, 
-  isToolEnabled, 
+export {
+  getAllAvailableTools,
+  isToolEnabled,
   toggleTool,
   getAllAvailableToolsIncludingMCP,
   getEnabledToolIdsIncludingMCP,
   isMCPTool,
   parseMCPToolName,
   isBuiltInTool,
-  initializeToolsState
+  initializeToolsState,
 } from './utils/ToolConfigManager';

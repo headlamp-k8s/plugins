@@ -571,7 +571,7 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
       console.error('Error in direct tool calling request:', error);
 
       // If direct tool calling fails, fall back to regular approach
-       this.useDirectToolCalling = false;
+      this.useDirectToolCalling = false;
 
       const modelToUse = this.boundModel || this.model;
       return await this.handleChainBasedRequest(message, modelToUse);
@@ -665,7 +665,6 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
 
     // If no tools are enabled but LLM is returning tool calls, this indicates a bug
     if (enabledToolIds.length === 0) {
-
       // Treat as regular response since no tools should be available
       const assistantPrompt: Prompt = {
         role: 'assistant',
@@ -883,7 +882,12 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
 
     for (const toolCall of toolCalls) {
       const args = JSON.parse(toolCall.function.arguments);
-      console.log('🔧 LangChainManager: Executing tool', toolCall.function.name, 'with parsed args:', args);
+      console.log(
+        '🔧 LangChainManager: Executing tool',
+        toolCall.function.name,
+        'with parsed args:',
+        args
+      );
 
       try {
         // Execute the tool call using ToolManager
@@ -1459,7 +1463,6 @@ Format your response to make the errors prominent and actionable.`,
     this.history.push(assistantPrompt);
     return assistantPrompt;
   }
-
 
   // Analyze response and correct kubectl suggestions
   private async analyzeAndCorrectResponse(response: any): Promise<any> {

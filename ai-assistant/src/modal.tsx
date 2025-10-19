@@ -780,7 +780,7 @@ export default function AIPrompt(props: {
           minWidth: 0,
           // Global override for all MUI Grid items to prevent max-width: none
           '& .MuiGrid-root > .MuiGrid-item': {
-            maxWidth: '100% !important'
+            maxWidth: '100% !important',
           },
         }}
       >
@@ -802,8 +802,8 @@ export default function AIPrompt(props: {
             maxWidth: '100%',
             minWidth: 0,
             '& > .MuiGrid-item': {
-              maxWidth: '100% !important'
-            }
+              maxWidth: '100% !important',
+            },
           }}
         >
           <Grid
@@ -831,10 +831,10 @@ export default function AIPrompt(props: {
             item
             sx={{
               paddingY: 1,
-              maxWidth: "100% !important",
+              maxWidth: '100% !important',
               '& .MuiGrid-item': {
-                maxWidth: '100% !important'
-              }
+                maxWidth: '100% !important',
+              },
             }}
           >
             <PromptSuggestions

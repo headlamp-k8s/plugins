@@ -27,15 +27,15 @@ import { getDefaultConfig } from './config/modelConfig';
 import { PromptWidthProvider } from './contexts/PromptWidthContext';
 import { isTestModeCheck } from './helper';
 import AIPrompt from './modal';
-import { 
-  getSettingsURL, 
-  PLUGIN_NAME, 
-  pluginStore, 
-  useGlobalState, 
-  usePluginConfig,
+import {
   getAllAvailableTools,
+  getSettingsURL,
   isToolEnabled,
-  toggleTool
+  PLUGIN_NAME,
+  pluginStore,
+  toggleTool,
+  useGlobalState,
+  usePluginConfig,
 } from './utils';
 import {
   getActiveConfig,
@@ -477,7 +477,7 @@ function Settings() {
       {/* MCP Servers Section */}
       <Divider sx={{ my: 3 }} />
       <MCPSettings />
-      
+
       {/* MCP Tool Configuration Section */}
       <Divider sx={{ my: 3 }} />
     </Box>

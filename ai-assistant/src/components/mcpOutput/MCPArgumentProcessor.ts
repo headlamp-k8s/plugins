@@ -44,19 +44,21 @@ export class MCPArgumentProcessor {
     try {
       const mcpClient = new ElectronMCPClient();
       const toolsConfigResponse = await mcpClient.getToolsConfig();
-      
+
       if (toolsConfigResponse && toolsConfigResponse.config) {
         // Parse the new structure: { "serverName": { "toolName": { enabled, inputSchema, ... } } }
-        Object.entries(toolsConfigResponse.config).forEach(([serverName, serverTools]: [string, any]) => {
-          Object.entries(serverTools).forEach(([toolName, toolConfig]: [string, any]) => {
-            const fullToolName = `${serverName}__${toolName}`;
-            this.toolSchemas.set(fullToolName, {
-              name: fullToolName,
-              description: toolConfig.description,
-              inputSchema: toolConfig.inputSchema,
+        Object.entries(toolsConfigResponse.config).forEach(
+          ([serverName, serverTools]: [string, any]) => {
+            Object.entries(serverTools).forEach(([toolName, toolConfig]: [string, any]) => {
+              const fullToolName = `${serverName}__${toolName}`;
+              this.toolSchemas.set(fullToolName, {
+                name: fullToolName,
+                description: toolConfig.description,
+                inputSchema: toolConfig.inputSchema,
+              });
             });
-          });
-        });
+          }
+        );
         this.schemasLoaded = true;
       }
     } catch (error) {
@@ -74,7 +76,7 @@ export class MCPArgumentProcessor {
     userContext?: UserContext
   ): Promise<ProcessedArguments> {
     await this.loadSchemas();
-    console.log("tools")
+    console.log('tools');
     const schema = this.toolSchemas.get(toolName);
     const errors: string[] = [];
     const processed = { ...aiProcessedArgs };

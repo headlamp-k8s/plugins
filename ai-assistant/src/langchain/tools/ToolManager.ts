@@ -51,7 +51,6 @@ export class ToolManager {
    */
   private async initializeMCPTools(): Promise<void> {
     try {
-      
       if (!this.mcpClient.isAvailable()) {
         this.mcpToolsInitialized = true;
         return;
@@ -67,22 +66,24 @@ export class ToolManager {
 
       // Create tools from configuration
       const mcpToolsData: any[] = [];
-      Object.entries(toolsConfigResponse.config).forEach(([serverName, serverTools]: [string, any]) => {
-        Object.entries(serverTools).forEach(([toolName, toolConfig]: [string, any]) => {
-          const fullToolName = `${serverName}__${toolName}`;
-          mcpToolsData.push({
-            name: fullToolName,
-            description: toolConfig.description || `Tool: ${toolName} from ${serverName} server`,
-            inputSchema: toolConfig.inputSchema || {}, // Use the actual schema from MCP config
-            server: serverName,
-            enabled: toolConfig.enabled !== false
+      Object.entries(toolsConfigResponse.config).forEach(
+        ([serverName, serverTools]: [string, any]) => {
+          Object.entries(serverTools).forEach(([toolName, toolConfig]: [string, any]) => {
+            const fullToolName = `${serverName}__${toolName}`;
+            mcpToolsData.push({
+              name: fullToolName,
+              description: toolConfig.description || `Tool: ${toolName} from ${serverName} server`,
+              inputSchema: toolConfig.inputSchema || {}, // Use the actual schema from MCP config
+              server: serverName,
+              enabled: toolConfig.enabled !== false,
+            });
           });
-        });
-      });
+        }
+      );
 
       // Filter MCP tools using the MCP configuration (not legacy enabledToolIds)
       const filteredMcpTools: typeof mcpToolsData = [];
-      
+
       for (const toolData of mcpToolsData) {
         // MCP tools are controlled by their own configuration system, not legacy enabledToolIds
         // Check if tool is enabled in MCP configuration
@@ -630,7 +631,7 @@ export class ToolManager {
   async bindToModelAsync(model: BaseChatModel, providerId: string): Promise<BaseChatModel> {
     // Wait for MCP tools to initialize before binding
     await this.waitForMCPToolsInitialization();
-    
+
     return this.bindToModel(model, providerId);
   }
 
@@ -676,19 +677,19 @@ export class ToolManager {
 
     const { serverName, toolName: actualToolName } = this.mcpClient.parseToolName(toolName);
     const result = await this.mcpClient.setToolEnabled(serverName, actualToolName, enabled);
-    
+
     if (result) {
       // Reinitialize MCP tools to reflect the change
       this.mcpToolsInitialized = false;
       this.mcpInitializationPromise = this.initializeMCPTools();
       await this.mcpInitializationPromise;
-      
+
       // If we have a bound model, rebind with the updated tools
       if (this.boundModel && this.providerId) {
         this.boundModel = this.bindToModel(this.boundModel, this.providerId);
       }
     }
-    
+
     return result;
   }
 
@@ -709,7 +710,7 @@ export class ToolManager {
     if (!this.mcpClient.isAvailable()) {
       return null;
     }
-    
+
     const { serverName, toolName: actualToolName } = this.mcpClient.parseToolName(toolName);
     return await this.mcpClient.getToolStats(serverName, actualToolName);
   }
@@ -734,21 +735,21 @@ export class ToolManager {
     if (!this.mcpClient.isAvailable()) {
       return false;
     }
-    
+
     const result = await this.mcpClient.updateToolsConfig(config);
-    
+
     if (result) {
       // Reinitialize MCP tools to reflect the changes
       this.mcpToolsInitialized = false;
       this.mcpInitializationPromise = this.initializeMCPTools();
       await this.mcpInitializationPromise;
-      
+
       // If we have a bound model, rebind with the updated tools
       if (this.boundModel && this.providerId) {
         this.boundModel = this.bindToModel(this.boundModel, this.providerId);
       }
     }
-    
+
     return result;
   }
 

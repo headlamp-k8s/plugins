@@ -399,9 +399,9 @@ export const handleActualApiRequest = async (
         isLogRequest(cleanedUrl) &&
         apiError.message &&
         (apiError.message?.includes('a container name must be specified') ||
-         apiError.message?.includes('container name must be specified') ||
-         (apiError.message?.includes('Bad Request') && cleanedUrl.includes('/log')) ||
-         apiError.message?.includes('choose one of'))
+          apiError.message?.includes('container name must be specified') ||
+          (apiError.message?.includes('Bad Request') && cleanedUrl.includes('/log')) ||
+          apiError.message?.includes('choose one of'))
       ) {
         // Extract pod name and available containers from error message
         const podMatch = apiError.message.match(/for pod ([^,]+)/);
@@ -432,7 +432,7 @@ export const handleActualApiRequest = async (
           const podNameFromUrl = cleanedUrl.match(/\/pods\/([^\/]+)\/log/);
           if (podNameFromUrl) {
             const podName = podNameFromUrl[1];
-            
+
             const errorContent = `Failed to get logs from pod "${podName}". This is likely because it has multiple containers.\n\nTo see the containers in this pod, I need to get the pod details first. Would you like me to check the pod details to see available containers?`;
 
             aiManager.history.push({
