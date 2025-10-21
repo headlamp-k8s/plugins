@@ -1,6 +1,6 @@
 import { StatusLabel as HLStatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
-import { Tooltip } from '@mui/material';
+import { Tooltip, Typography } from '@mui/material';
 
 interface StatusLabelProps {
   item: KubeCRD;
@@ -24,7 +24,9 @@ export default function StatusLabel(props: StatusLabelProps) {
   if (ready.reason === 'DependencyNotReady') {
     return (
       <HLStatusLabel status={'warning'}>
-        <Tooltip title={ready.message}>{'Waiting'}</Tooltip>
+        <Tooltip title={ready.message}>
+          <Typography component="span">Waiting</Typography>
+        </Tooltip>
       </HLStatusLabel>
     );
   }
@@ -32,7 +34,9 @@ export default function StatusLabel(props: StatusLabelProps) {
   const isReady = ready.status === 'True';
   return (
     <HLStatusLabel status={isReady ? 'success' : 'error'}>
-      <Tooltip title={ready.message}>{isReady ? 'Ready' : 'Failed'}</Tooltip>
+      <Tooltip title={ready.message}>
+        <Typography component="span">{isReady ? 'Ready' : 'Failed'}</Typography>
+      </Tooltip>
     </HLStatusLabel>
   );
 }
