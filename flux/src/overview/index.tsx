@@ -374,6 +374,23 @@ export function FluxOverview() {
   );
 }
 
+declare module '@mui/material/styles' {
+  interface Palette {
+    chartStyles: {
+      defaultFillColor: string;
+      fillColor: string;
+      labelColor: string;
+    };
+  }
+  interface PaletteOptions {
+    chartStyles?: {
+      defaultFillColor?: string;
+      fillColor?: string;
+      labelColor?: string;
+    };
+  }
+}
+
 function FluxOverviewChart({ resourceClass }) {
   const [crds] = resourceClass.useList();
   const theme = useTheme();
