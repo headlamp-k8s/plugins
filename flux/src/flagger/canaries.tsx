@@ -7,6 +7,7 @@ import {
   SectionBox,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { ApiError } from '@kinvolk/headlamp-plugin/lib/k8s/api/v2/ApiError';
 import { Box } from '@mui/material';
 import React from 'react';
 import FlaggerAvailabilityCheck, { useCanary } from './availabilitycheck';
@@ -16,7 +17,7 @@ import { DeploymentProgress } from './deploymentprogress';
 export default function Canaries() {
   const [canary] = useCanary();
   const canaryResourceClass = React.useMemo(() => {
-    return canary?.makeCRClass();
+    return !canary || canary instanceof ApiError ? undefined : canary.makeCRClass();
   }, [canary]);
 
   return (
