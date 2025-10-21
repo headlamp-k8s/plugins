@@ -8,6 +8,7 @@ import {
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ApiError } from '@kinvolk/headlamp-plugin/lib/k8s/api/v2/ApiError';
+import type { KubeCRD } from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { Box } from '@mui/material';
 import React from 'react';
 import FlaggerAvailabilityCheck, { useCanary } from './availabilitycheck';
@@ -43,7 +44,10 @@ function CanaryList({ canaryResourceClass }) {
       hasAbTesting: boolean;
       abHeaders: string;
       abCookies: string;
-    } & K8s.CustomResource
+      status?: {
+        phase?: string;
+      };
+    } & KubeCRD
   ] = React.useMemo(() => {
     if (!canaries || !deployments) return null;
     return canaries.map(canary => {
