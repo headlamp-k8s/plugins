@@ -22,7 +22,11 @@ export default function Canaries() {
 
   return (
     <FlaggerAvailabilityCheck>
-      {canaryResourceClass ? <CanaryList canaryResourceClass={canaryResourceClass} /> : <Loader />}
+      {canaryResourceClass ? (
+        <CanaryList canaryResourceClass={canaryResourceClass} />
+      ) : (
+        <Loader title="Loading..." />
+      )}
     </FlaggerAvailabilityCheck>
   );
 }
