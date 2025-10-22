@@ -1,4 +1,3 @@
-import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { AppCatalogSettings, AppCatalogSettingsProps } from './AppCatalogSettings';
@@ -8,13 +7,7 @@ export default {
   component: AppCatalogSettings,
 } as Meta;
 
-const theme = createTheme();
-
-const Template: StoryFn<AppCatalogSettingsProps> = args => (
-  <ThemeProvider theme={theme}>
-    <AppCatalogSettings {...args} />
-  </ThemeProvider>
-);
+const Template: StoryFn<AppCatalogSettingsProps> = args => <AppCatalogSettings {...args} />;
 
 export const Default = Template.bind({});
 Default.args = {};

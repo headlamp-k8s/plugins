@@ -77,7 +77,7 @@ const initialStateFalse = {
 
 const Template: StoryFn = ({ initialState, ...args }) => {
   const mockStore = configureStore({
-    reducer: (state = initialState) => state,
+    reducer: (state = { ...initialState, drawerMode: { isDetailDrawerEnabled: false } }) => state,
   });
 
   return (
