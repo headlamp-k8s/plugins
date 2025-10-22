@@ -520,7 +520,7 @@ function FluxOverviewChart({ resourceClass }) {
         {
           name: 'failed',
           value: adjustedFailedPercent,
-          fill: '#DC7501',
+          fill: theme.palette.error.main,
         },
         {
           name: 'suspended',
