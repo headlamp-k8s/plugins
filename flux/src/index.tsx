@@ -46,7 +46,6 @@ registerSidebarEntry({
 
 registerRoute({
   path: '/flux/overview',
-  parent: 'flux',
   sidebar: 'overview',
   component: () => <FluxOverview />,
   exact: true,
@@ -62,7 +61,6 @@ registerSidebarEntry({
 
 registerRoute({
   path: '/flux/kustomizations',
-  parent: 'flux',
   sidebar: 'kustomizations',
   component: () => <Kustomizations />,
   exact: true,
@@ -71,7 +69,6 @@ registerRoute({
 
 registerRoute({
   path: '/flux/helmreleases',
-  parent: 'flux',
   sidebar: 'helmreleases',
   component: () => <HelmReleases />,
   exact: true,
@@ -94,7 +91,6 @@ registerSidebarEntry({
 
 registerRoute({
   path: '/flux/sources',
-  parent: 'flux',
   sidebar: 'sources',
   component: () => <FluxSources />,
   exact: true,
@@ -103,7 +99,6 @@ registerRoute({
 
 registerRoute({
   path: '/flux/kustomize/kustomizations/:namespace/:name',
-  parent: 'flux',
   sidebar: 'kustomizations',
   component: () => <FluxKustomizationDetailView />,
   exact: true,
@@ -112,7 +107,6 @@ registerRoute({
 
 registerRoute({
   path: '/flux/helm/helmreleases/:namespace/:name',
-  parent: 'flux',
   sidebar: 'helmreleases',
   component: () => <FluxHelmReleaseDetailView />,
   exact: true,
@@ -121,7 +115,6 @@ registerRoute({
 
 registerRoute({
   path: '/flux/source/:pluralName/:namespace/:name',
-  parent: 'flux',
   sidebar: 'sources',
   component: () => <FluxSourceDetailView />,
   exact: true,
@@ -137,7 +130,6 @@ registerSidebarEntry({
 
 registerRoute({
   path: '/flux/image-automations',
-  parent: 'flux',
   sidebar: 'image-automations',
   component: () => <ImageAutomation />,
   exact: true,
@@ -146,7 +138,6 @@ registerRoute({
 
 registerRoute({
   path: '/flux/image/:pluralName/:namespace/:name',
-  parent: 'flux',
   sidebar: 'image-automations',
   component: () => <FluxImageAutomationDetailView />,
   exact: true,
@@ -162,7 +153,6 @@ registerSidebarEntry({
 
 registerRoute({
   path: '/flux/notifications',
-  parent: 'flux',
   sidebar: 'notifications',
   component: () => <Notifications />,
   exact: true,
@@ -170,7 +160,6 @@ registerRoute({
 
 registerRoute({
   path: '/flux/notification/:pluralName/:namespace/:name',
-  parent: 'flux',
   sidebar: 'notifications',
   component: () => <Notification />,
   exact: true,
@@ -186,7 +175,6 @@ registerSidebarEntry({
 
 registerRoute({
   path: '/flux/flagger/canaries',
-  parent: 'flux',
   sidebar: 'canaries',
   component: () => <Canaries />,
   exact: true,
@@ -194,7 +182,6 @@ registerRoute({
 
 registerRoute({
   path: '/flux/flagger/canaries/:namespace/:name',
-  parent: 'flux',
   sidebar: 'canaries',
   component: () => <CanaryDetails />,
   exact: true,
@@ -209,7 +196,6 @@ registerSidebarEntry({
 
 registerRoute({
   path: '/flux/runtime',
-  parent: 'flux',
   sidebar: 'flux-runtime',
   component: () => <FluxRunTime />,
 });

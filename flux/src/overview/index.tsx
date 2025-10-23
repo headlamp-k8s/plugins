@@ -274,16 +274,16 @@ export function FluxOverview() {
             <Box p={2} display="flex" gap={2}>
               {fluxCheck.isBoostrapped ? (
                 <StatusLabel status="success">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
-                    Boostrapped
+                    Bootstrapped
                   </Box>{' '}
                 </StatusLabel>
               ) : (
                 <StatusLabel status="error">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:close" width={16} height={16} />
                     </Box>{' '}
@@ -293,7 +293,7 @@ export function FluxOverview() {
               )}
               {fluxCheck.distribution && (
                 <StatusLabel status="success">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
@@ -312,7 +312,7 @@ export function FluxOverview() {
               {controllers?.length > 0 &&
                 (controllers?.every(controller => controller.status?.phase === 'Running') ? (
                   <StatusLabel status="success">
-                    <Box display="flex" aligItems="center">
+                    <Box display="flex" alignItems="center">
                       <Box mt={0.2} mr={0.1}>
                         <Icon icon="mdi:check" width={16} height={16} />
                       </Box>
@@ -321,7 +321,7 @@ export function FluxOverview() {
                   </StatusLabel>
                 ) : (
                   <StatusLabel status="warning">
-                    <Box display="flex" aligItems="center">
+                    <Box display="flex" alignItems="center">
                       <Box mt={0.2} mr={0.1}>
                         <Icon icon="mdi:close" width={16} height={16} />
                       </Box>{' '}
@@ -344,7 +344,7 @@ export function FluxOverview() {
               {/* see if all crds check passed */}
               {fluxCheck.allCrdsSuccessful ? (
                 <StatusLabel status="success">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
@@ -353,7 +353,7 @@ export function FluxOverview() {
                 </StatusLabel>
               ) : (
                 <StatusLabel status="warning">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:close" width={16} height={16} />
                     </Box>{' '}
@@ -372,6 +372,23 @@ export function FluxOverview() {
       </SectionBox>
     </>
   );
+}
+
+declare module '@mui/material/styles' {
+  interface Palette {
+    chartStyles: {
+      defaultFillColor: string;
+      fillColor: string;
+      labelColor: string;
+    };
+  }
+  interface PaletteOptions {
+    chartStyles?: {
+      defaultFillColor?: string;
+      fillColor?: string;
+      labelColor?: string;
+    };
+  }
 }
 
 function FluxOverviewChart({ resourceClass }) {

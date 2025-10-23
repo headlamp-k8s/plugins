@@ -34,11 +34,15 @@ export function GetResourcesFromInventory(
       const parsedID = parseID(item.id);
       const { name, namespace, group, kind } = parsedID;
 
+      // @todo: this use of makeCustomResourceClass is deprecated
+      // "Use the version of the function that receives an object as its argument."
       const resourceClass = makeCustomResourceClass({
         apiInfo: [{ group: group, version: item.v }],
         isNamespaced: !!namespace,
         singularName: kind,
         pluralName: PluralName(kind),
+        kind: kind,
+        customResourceDefinition: undefined as any,
       });
 
       resourceClass.apiGet(
