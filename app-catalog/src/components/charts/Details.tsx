@@ -166,16 +166,13 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
           <Loader title="" />
         ) : (
           <ReactMarkdown
-            style={{
-              padding: '1rem',
-            }}
             remarkPlugins={[remarkGfm]}
             children={chart.readme}
             components={{
-              a: props => {
-                return <Link {...props} target="_blank" />;
-              },
-              table: props => {
+              // eslint-disable-next-line no-unused-vars
+              a: ({ node, ref, ...props }) => <Link {...props} target="_blank" />,
+              // eslint-disable-next-line no-unused-vars
+              table: ({ node, ref, ...props }: any) => {
                 return (
                   <Table
                     {...props}
@@ -186,31 +183,27 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
                   />
                 );
               },
-              thead: props => {
-                return <TableHead {...props} />;
-              },
-              tr: props => {
-                return <TableRow {...props} />;
-              },
-              td: props => {
+              // eslint-disable-next-line no-unused-vars
+              thead: ({ node, ref, ...props }: any) => <TableHead {...props} />,
+              // eslint-disable-next-line no-unused-vars
+              tr: ({ node, ref, ...props }: any) => <TableRow {...props} />,
+              // eslint-disable-next-line no-unused-vars
+              td: ({ node, ref, ...props }: any) => {
                 return <TableCell {...props} style={{ textAlign: 'center', overflow: 'hidden' }} />;
               },
-              // eslint-disable-next-line
-              pre: ({ inline, className, children, ...props }) => {
+              pre: ({ className, children, ...props }) => {
                 return (
-                  !inline && (
-                    <pre {...props} className={className}>
-                      <Box display="block" width="64vw" my={0.5}>
-                        {children}
-                      </Box>
-                    </pre>
-                  )
+                  <pre {...props} className={className}>
+                    <Box display="block" width="64vw" my={0.5}>
+                      {children}
+                    </Box>
+                  </pre>
                 );
               },
               // eslint-disable-next-line
-              code({ node, inline, className, children, ...props }) {
+              code({ node, className, children, ...props }) {
                 const match = /language-(\w+)/.exec(className || '');
-                return !inline && match ? (
+                return match ? (
                   <SyntaxHighlighter
                     children={String(children).replace(/\n$/, '')}
                     language={match[1]}
