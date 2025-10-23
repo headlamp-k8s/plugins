@@ -9,11 +9,13 @@
  *    - https://karpenter.sh/docs/concepts/nodepools/
  *
  * 2. Examining the actual CRD configurations and jsonData:
- *    - EC2NodeClass CRD (karpenter.k8s.aws/v1)
+ *    - NodeClass CRD (eks.amazonaws.com/v1) - EKS Auto Mode
+ *    - EC2NodeClass CRD (karpenter.k8s.aws/v1) - Self-installed Karpenter
  *    - NodePool CRD (karpenter.sh/v1)
  *    - AKSNodeClass CRD (karpenter.azure.com/v1beta1)
  *
  * 3. Actual CRD definitions:
+ *    - EKS Auto Mode NodeClass: https://docs.aws.amazon.com/eks/latest/userguide/automode.html
  *    - EC2NodeClass CRD: https://github.com/aws/karpenter-provider-aws/blob/main/pkg/apis/v1/ec2nodeclass.go
  *    - AKSNodeClass CRD: https://github.com/Azure/karpenter-provider-azure/blob/main/pkg/apis/v1beta1/aksnodeclass.go
  *
@@ -29,6 +31,62 @@
  */
 
 export const KARPENTER_SCHEMAS = {
+  'NodeClass-schema': {
+    type: 'object',
+    properties: {
+      apiVersion: { const: 'eks.amazonaws.com/v1' },
+      kind: { const: 'NodeClass' },
+      metadata: {
+        type: 'object',
+        required: ['name'],
+        properties: {
+          name: { type: 'string', pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$' },
+          annotations: {
+            type: 'object',
+            properties: {
+              'eks.amazonaws.com/nodeclass-hash': { type: 'string' },
+              'eks.amazonaws.com/nodeclass-hash-version': { type: 'string' },
+              'kubectl.kubernetes.io/last-applied-configuration': { type: 'string' },
+            },
+          },
+          finalizers: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+      },
+      spec: {
+        type: 'object',
+        properties: {
+          role: { type: 'string' },
+          tags: {
+            type: 'object',
+            additionalProperties: { type: 'string' },
+          },
+        },
+      },
+      status: {
+        type: 'object',
+        properties: {
+          conditions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['type', 'status'],
+              properties: {
+                type: { type: 'string' },
+                status: { type: 'string' },
+                lastTransitionTime: { type: 'string', format: 'date-time' },
+                message: { type: 'string' },
+                reason: { type: 'string' },
+                observedGeneration: { type: 'integer' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   'EC2NodeClass-schema': {
     type: 'object',
     properties: {
@@ -384,7 +442,7 @@ export const KARPENTER_SCHEMAS = {
   },
 };
 
-export const getSchemaKey = (cloudProvider?: string, resourceKind?: string): string => {
+export const getSchemaKey = (cloudProvider?: any, resourceKind?: string): string => {
   if (resourceKind) {
     const schemaKey = `${resourceKind}-schema`;
     if (KARPENTER_SCHEMAS[schemaKey]) {
@@ -392,6 +450,23 @@ export const getSchemaKey = (cloudProvider?: string, resourceKind?: string): str
     }
   }
 
+  // Handle new cloudProvider object structure
+  if (typeof cloudProvider === 'object' && cloudProvider?.provider) {
+    switch (cloudProvider.provider) {
+      case 'AWS':
+        // Check deployment type for AWS
+        if (cloudProvider.deploymentType === 'EKS_AUTOMODE') {
+          return 'NodeClass-schema';
+        }
+        return 'EC2NodeClass-schema';
+      case 'AZURE':
+        return 'AKSNodeClass-schema';
+      default:
+        return 'EC2NodeClass-schema';
+    }
+  }
+
+  // Handle legacy string cloudProvider
   switch (cloudProvider) {
     case 'AWS':
       return 'EC2NodeClass-schema';
