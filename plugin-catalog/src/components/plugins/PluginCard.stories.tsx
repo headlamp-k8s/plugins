@@ -1,10 +1,14 @@
-// src/components/PluginCard.stories.tsx
-
+import { Box } from '@mui/material';
+import { configureStore } from '@reduxjs/toolkit';
 import { Meta, StoryFn } from '@storybook/react';
-import React from 'react';
+import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { PluginPackage } from './List';
 import { PluginCard } from './PluginCard';
+
+const store = configureStore({
+  reducer: (state = { drawerMode: { isDetailDrawerEnabled: false } }) => state,
+});
 
 export default {
   title: 'PluginCard',
@@ -12,9 +16,13 @@ export default {
   decorators: [
     Story => {
       return (
-        <BrowserRouter>
-          <Story />
-        </BrowserRouter>
+        <Provider store={store}>
+          <BrowserRouter>
+            <Box minHeight="800px">
+              <Story />
+            </Box>
+          </BrowserRouter>
+        </Provider>
       );
     },
   ],
@@ -63,6 +71,7 @@ export const LongDescription = Template.bind({});
 LongDescription.args = {
   ...Default.args,
   description:
+    // 'This is a sample plugin description that is intentionally long to demonstrate how the PluginCard component handles overflow text. The description continues with more details and information about the plugin to ensure that it exceeds the 100 character limit.',
     'This is a sample plugin description that is intentionally long to demonstrate how the PluginCard component handles overflow text. The description continues with more details and information about the plugin to ensure that it exceeds the 100 character limit.',
 };
 

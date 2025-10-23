@@ -16,18 +16,6 @@ import LoadingButton from './LoadingButton';
 
 const { createRouteURL } = Router;
 
-declare global {
-  interface Window {
-    pluginLib: {
-      [libName: string]: any;
-    };
-    plugins: {
-      [pluginId: string]: Plugin;
-    };
-    registerPlugin: (pluginId: string, pluginObj: Plugin) => void;
-    desktopApi: any;
-  }
-}
 /**
  * PluginDetailResp interface represents the response from the Artifact Hub API for a plugin detail.
  * For more information refer:
@@ -175,8 +163,8 @@ export function PurePluginDetail({
         message={
           <Tooltip title={alertMessage || ''} arrow>
             <Typography>
-              {alertMessage ? alertMessage.substring(0, Math.min(50, alertMessage.length)) : null}
-            </Typography>{' '}
+              {alertMessage ? alertMessage.substring(0, Math.min(50, alertMessage.length)) : null}{' '}
+            </Typography>
           </Tooltip>
         }
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
@@ -366,9 +354,10 @@ export function PluginDetail() {
 
           break;
         }
-        if (status.percentage !== undefined) {
-          setCurrentActionProgress(status.percentage);
-        }
+        // @todo: PluginManager ProgressResp doesn't have a percentage.
+        // if (status.percentage !== undefined) {
+        //   setCurrentActionProgress(status.percentage);
+        // }
         setCurrentActionState(status.type);
         setCurrentActionMessage(status.message);
 

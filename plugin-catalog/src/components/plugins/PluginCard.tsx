@@ -29,7 +29,7 @@ export function PluginCard(props: PluginCardProps) {
         }}
       >
         <Box
-          heigh="60px"
+          height="60px"
           display="flex"
           alignItems="center"
           marginTop="15px"
@@ -83,9 +83,9 @@ export function PluginCard(props: PluginCardProps) {
         <CardContent
           sx={{
             margin: '1rem 0rem',
-            height: '15vh',
-            overflow: 'hidden',
             paddingTop: 0,
+            paddingBottom: 0,
+            marginBottom: 0,
           }}
         >
           <Box
@@ -95,7 +95,6 @@ export function PluginCard(props: PluginCardProps) {
               whiteSpace: 'nowrap',
             }}
           >
-            <Tooltip title={plugin.display_name} />
             <Typography
               component="h5"
               variant="h5"
@@ -104,12 +103,21 @@ export function PluginCard(props: PluginCardProps) {
                 textOverflow: 'ellipsis',
               }}
             >
-              <HeadlampRouterLink
-                routeName="/plugin-catalog/:repoName/:pluginName"
-                params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
-              >
-                {plugin.display_name}
-              </HeadlampRouterLink>
+              {(() => {
+                const displayName = plugin.display_name || plugin.name || '';
+                const needsTooltip = displayName.length > 20;
+                const link = (
+                  <Box component="span" sx={{ display: 'inline-block' }}>
+                    <HeadlampRouterLink
+                      routeName="/plugin-catalog/:repoName/:pluginName"
+                      params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
+                    >
+                      {displayName}
+                    </HeadlampRouterLink>
+                  </Box>
+                );
+                return needsTooltip ? <Tooltip title={displayName}>{link}</Tooltip> : link;
+              })()}
             </Typography>
           </Box>
           <Box display="flex" justifyContent="space-between" my={1}>
@@ -135,12 +143,37 @@ export function PluginCard(props: PluginCardProps) {
           <Divider />
           <Box mt={1}>
             <Typography>
-              <Tooltip title={plugin?.description}>
-                {plugin?.description?.slice(0, 100)}
-                {plugin?.description?.length > 100 && (
-                  <Typography sx={{ display: 'inline-block' }}>…</Typography>
-                )}
-              </Tooltip>
+              {(() => {
+                const desc = plugin?.description || '';
+                const needsTooltip = desc.length >= 180;
+                const content = (
+                  <Box
+                    component="span"
+                    sx={theme => ({
+                      display: 'block',
+                      lineHeight: '1.2',
+                      maxHeight: 'calc(1.2em * 5)', // max 5 lines
+                      overflow: 'hidden',
+                      position: 'relative',
+                      // Add a subtle fade at the bottom so users know the text is truncated.
+                      '&::after': needsTooltip && {
+                        content: '""',
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: '1.2em',
+                        pointerEvents: 'none',
+                        background: `linear-gradient(to bottom, rgba(0,0,0,0), ${theme.palette.background.paper})`,
+                      },
+                    })}
+                  >
+                    {desc}
+                  </Box>
+                );
+
+                return needsTooltip ? <Tooltip title={desc}>{content}</Tooltip> : content;
+              })()}
             </Typography>
           </Box>
         </CardContent>

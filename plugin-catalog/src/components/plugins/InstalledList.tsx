@@ -58,7 +58,7 @@ export function PurePluginInstalledList({
             }}
           >
             <Box>
-              <Typography variant="h6" components="h2">
+              <Typography variant="h6" component="h2">
                 From the Plugin Catalog
               </Typography>
               <SimpleTable
@@ -91,7 +91,7 @@ export function PurePluginInstalledList({
             </Box>
 
             <Box>
-              <Typography variant="h6" components="h2">
+              <Typography variant="h6" component="h2">
                 Other Plugins
               </Typography>
 
@@ -165,7 +165,8 @@ export function PluginInstalledList() {
   useEffect(() => {
     async function fetchInstalledPlugins() {
       try {
-        const data = await PluginManager.list();
+        // @todo: Note: PluginManager.list is badly typed at time of writing
+        const data = (await PluginManager.list()) as Plugin[];
         setCatalogPlugins(data);
       } catch (error: any) {
         // @todo: We should have a better way to determine if the error is an ENOENT
