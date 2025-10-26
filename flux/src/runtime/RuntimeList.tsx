@@ -33,13 +33,15 @@ export function FluxRunTime() {
   const imageAutomationController = pods?.filter(
     pod => pod.metadata.labels?.['app'] === 'image-automation-controller'
   );
+  const sourceWatcher = pods?.filter(pod => pod.metadata.labels?.['app'] === 'source-watcher');
 
   const controllers = helmController?.concat(
     kustomizeController,
     notificationController,
     sourceController,
     imageReflectorController,
-    imageAutomationController
+    imageAutomationController,
+    sourceWatcher
   );
 
   return (
