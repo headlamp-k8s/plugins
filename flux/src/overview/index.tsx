@@ -148,13 +148,15 @@ export function FluxOverview() {
     const imageAutomationController = pods?.filter(
       pod => pod.metadata.labels?.['app'] === 'image-automation-controller'
     );
+    const sourceWatcher = pods?.filter(pod => pod.metadata.labels?.['app'] === 'source-watcher');
 
     return helmController?.concat(
       kustomizeController,
       notificationController,
       sourceController,
       imageReflectorController,
-      imageAutomationController
+      imageAutomationController,
+      sourceWatcher
     );
   }, [pods]);
 
