@@ -919,12 +919,6 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
 
     for (const toolCall of toolCalls) {
       const args = JSON.parse(toolCall.function.arguments);
-      console.log(
-        '🔧 LangChainManager: Executing tool',
-        toolCall.function.name,
-        'with parsed args:',
-        args
-      );
 
       try {
         // Execute the tool call using ToolManager
@@ -1481,10 +1475,8 @@ Format your response to make the errors prominent and actionable.`,
 
         // For single formatted MCP output, return just the content
         if (recentToolResponses.length === 1) {
-          console.log('🔧 Taking single tool response path');
           fallbackContent = content;
         } else {
-          console.log('🔧 Taking multiple tool responses path');
           // For multiple tools, use the tool name format
           fallbackContent += `${toolName}: ${content}${
             index < recentToolResponses.length - 1 ? '\n\n' : ''
