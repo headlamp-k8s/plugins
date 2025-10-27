@@ -28,6 +28,7 @@ import { MCPSettings } from './components/settings';
 import { getDefaultConfig } from './config/modelConfig';
 import { PromptWidthProvider } from './contexts/PromptWidthContext';
 import { isTestModeCheck } from './helper';
+import { ClusterChangeNotifier } from './hooks/useClusterChangeNotifier';
 import AIPrompt from './modal';
 import {
   getAllAvailableTools,
@@ -51,6 +52,13 @@ const AIPanelComponent = React.memo(() => {
   const conf = usePluginConfig();
   const [width, setWidth] = React.useState('35vw');
   const [isResizing, setIsResizing] = React.useState(false);
+
+  // Check if models are configured
+  const savedConfigData = React.useMemo(() => {
+    return getSavedConfigurations(conf);
+  }, [conf]);
+
+  const hasAnyValidConfig = savedConfigData.providers && savedConfigData.providers.length > 0;
 
   const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -107,6 +115,8 @@ const AIPanelComponent = React.memo(() => {
         },
       }}
     >
+      {/* Monitor cluster changes and notify electron - only when models are configured */}
+      {hasAnyValidConfig && <ClusterChangeNotifier />}
       <Box
         onMouseDown={handleMouseDown}
         sx={{
@@ -505,3 +515,6 @@ function Settings() {
 }
 
 registerPluginSettings(PLUGIN_NAME, Settings);
+
+// Export the cluster change notifier for external use
+export { useClusterChangeNotifier, ClusterChangeNotifier } from './hooks/useClusterChangeNotifier';
