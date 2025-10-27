@@ -447,75 +447,78 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
           wordBreak: 'break-word',
         }}
       >
-        <CardHeader
-          avatar={
-            <Icon
-              icon={getTypeIcon()}
-              style={{
-                fontSize: 24,
-                color: theme.palette[getStatusColor()].main,
-              }}
-            />
-          }
-          title={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="h6" component="div">
-                {output.title}
-              </Typography>
-              <Chip
-                label={output.type.toUpperCase()}
-                size="small"
-                color={getStatusColor()}
-                variant="outlined"
+        {/* Hide header for errors - show only content */}
+        {output.type !== 'error' && (
+          <CardHeader
+            avatar={
+              <Icon
+                icon={getTypeIcon()}
+                style={{
+                  fontSize: 24,
+                  color: theme.palette[getStatusColor()].main,
+                }}
               />
-              {output.metadata && (
-                <Tooltip
-                  title={`${output.metadata.dataPoints} data points • ${output.metadata.processingTime}ms`}
-                >
-                  <Chip
-                    label={`${output.metadata.dataPoints} items`}
-                    size="small"
-                    variant="outlined"
-                  />
-                </Tooltip>
-              )}
-            </Box>
-          }
-          subheader={output.summary}
-          action={
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {onExport && (
-                <Tooltip title="Export data">
+            }
+            title={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6" component="div">
+                  {output.title}
+                </Typography>
+                <Chip
+                  label={output.type.toUpperCase()}
+                  size="small"
+                  color={getStatusColor()}
+                  variant="outlined"
+                />
+                {output.metadata && (
+                  <Tooltip
+                    title={`${output.metadata.dataPoints} data points • ${output.metadata.processingTime}ms`}
+                  >
+                    <Chip
+                      label={`${output.metadata.dataPoints} items`}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </Tooltip>
+                )}
+              </Box>
+            }
+            subheader={output.summary}
+            action={
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {onExport && (
+                  <Tooltip title="Export data">
+                    <IconButton
+                      size="small"
+                      onClick={() => setShowExportMenu(!showExportMenu)}
+                      sx={{ mr: 2 }}
+                    >
+                      <Icon icon="mdi:download" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                <Tooltip title="Show raw data">
                   <IconButton
                     size="small"
-                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    onClick={() => setShowRawData(!showRawData)}
+                    color={showRawData ? 'primary' : 'default'}
                     sx={{ mr: 2 }}
                   >
-                    <Icon icon="mdi:download" />
+                    <Icon icon="mdi:code-json" />
                   </IconButton>
                 </Tooltip>
-              )}
-              <Tooltip title="Show raw data">
-                <IconButton
-                  size="small"
-                  onClick={() => setShowRawData(!showRawData)}
-                  color={showRawData ? 'primary' : 'default'}
-                  sx={{ mr: 2 }}
-                >
-                  <Icon icon="mdi:code-json" />
-                </IconButton>
-              </Tooltip>
-              {compact && (
-                <IconButton size="small" onClick={() => setExpanded(!expanded)}>
-                  <Icon icon={expanded ? 'mdi:chevron-up' : 'mdi:chevron-down'} />
-                </IconButton>
-              )}
-            </Box>
-          }
-          sx={{ pb: 1 }}
-        />
+                {compact && (
+                  <IconButton size="small" onClick={() => setExpanded(!expanded)}>
+                    <Icon icon={expanded ? 'mdi:chevron-up' : 'mdi:chevron-down'} />
+                  </IconButton>
+                )}
+              </Box>
+            }
+            sx={{ pb: 1 }}
+          />
+        )}
 
-        <Collapse in={expanded}>
+        <Collapse in={output.type === 'error' ? true : expanded}>
           <CardContent
             sx={{
               pt: 0,
@@ -531,107 +534,117 @@ const MCPOutputDisplay: React.FC<MCPOutputDisplayProps> = ({
               },
             }}
           >
-            {/* Warnings */}
-            {output.warnings && output.warnings.length > 0 && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  Warnings:
-                </Typography>
-                {output.warnings.map((warning, index) => (
-                  <Typography key={index} variant="body2">
-                    • {warning}
-                  </Typography>
-                ))}
-              </Alert>
+            {/* Skip warnings, insights, and actionable items for errors */}
+            {output.type !== 'error' && (
+              <>
+                {/* Warnings */}
+                {output.warnings && output.warnings.length > 0 && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                      Warnings:
+                    </Typography>
+                    {output.warnings.map((warning, index) => (
+                      <Typography key={index} variant="body2">
+                        • {warning}
+                      </Typography>
+                    ))}
+                  </Alert>
+                )}
+              </>
             )}
 
             {/* Main Content */}
             {renderContent()}
 
-            {/* Insights */}
-            {output.insights && output.insights.length > 0 && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  mt: 2,
-                  bgcolor: theme.palette.action.hover,
-                  borderColor: theme.palette.divider,
-                }}
-              >
-                <Typography
-                  variant="subtitle2"
-                  sx={{
-                    fontWeight: 'bold',
-                    mb: 1,
-                    color: theme.palette.text.primary,
-                  }}
-                >
-                  <Icon
-                    icon="mdi:lightbulb"
-                    style={{
-                      marginRight: 8,
-                      color: theme.palette.primary.main,
-                    }}
-                  />
-                  Key Insights:
-                </Typography>
-                {output.insights.map((insight, index) => (
-                  <Typography
-                    key={index}
-                    variant="body2"
+            {/* Skip insights and actionable items for errors */}
+            {output.type !== 'error' && (
+              <>
+                {/* Insights */}
+                {output.insights && output.insights.length > 0 && (
+                  <Paper
+                    variant="outlined"
                     sx={{
-                      mb: 0.5,
-                      color: theme.palette.text.primary,
+                      p: 2,
+                      mt: 2,
+                      bgcolor: theme.palette.action.hover,
+                      borderColor: theme.palette.divider,
                     }}
                   >
-                    • {insight}
-                  </Typography>
-                ))}
-              </Paper>
-            )}
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        fontWeight: 'bold',
+                        mb: 1,
+                        color: theme.palette.text.primary,
+                      }}
+                    >
+                      <Icon
+                        icon="mdi:lightbulb"
+                        style={{
+                          marginRight: 8,
+                          color: theme.palette.primary.main,
+                        }}
+                      />
+                      Key Insights:
+                    </Typography>
+                    {output.insights.map((insight, index) => (
+                      <Typography
+                        key={index}
+                        variant="body2"
+                        sx={{
+                          mb: 0.5,
+                          color: theme.palette.text.primary,
+                        }}
+                      >
+                        • {insight}
+                      </Typography>
+                    ))}
+                  </Paper>
+                )}
 
-            {/* Actionable Items */}
-            {output.actionable_items && output.actionable_items.length > 0 && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  mt: 2,
-                  bgcolor: theme.palette.action.hover,
-                  borderColor: theme.palette.divider,
-                }}
-              >
-                <Typography
-                  variant="subtitle2"
-                  sx={{
-                    fontWeight: 'bold',
-                    mb: 1,
-                    color: theme.palette.text.primary,
-                  }}
-                >
-                  <Icon
-                    icon="mdi:check-circle"
-                    style={{
-                      marginRight: 8,
-                      color: theme.palette.success.main,
-                    }}
-                  />
-                  Recommended Actions:
-                </Typography>
-                {output.actionable_items.map((item, index) => (
-                  <Typography
-                    key={index}
-                    variant="body2"
+                {/* Actionable Items */}
+                {output.actionable_items && output.actionable_items.length > 0 && (
+                  <Paper
+                    variant="outlined"
                     sx={{
-                      mb: 0.5,
-                      color: theme.palette.text.primary,
+                      p: 2,
+                      mt: 2,
+                      bgcolor: theme.palette.action.hover,
+                      borderColor: theme.palette.divider,
                     }}
                   >
-                    • {item}
-                  </Typography>
-                ))}
-              </Paper>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        fontWeight: 'bold',
+                        mb: 1,
+                        color: theme.palette.text.primary,
+                      }}
+                    >
+                      <Icon
+                        icon="mdi:check-circle"
+                        style={{
+                          marginRight: 8,
+                          color: theme.palette.success.main,
+                        }}
+                      />
+                      Recommended Actions:
+                    </Typography>
+                    {output.actionable_items.map((item, index) => (
+                      <Typography
+                        key={index}
+                        variant="body2"
+                        sx={{
+                          mb: 0.5,
+                          color: theme.palette.text.primary,
+                        }}
+                      >
+                        • {item}
+                      </Typography>
+                    ))}
+                  </Paper>
+                )}
+              </>
             )}
 
             {/* Raw Data Collapse */}
@@ -1210,23 +1223,6 @@ const ErrorDisplay: React.FC<{ data: any; onRetry?: () => void; width: string }>
   onRetry,
   width,
 }) => {
-  // Extract concise error message for common error types
-  const getDisplayMessage = (errorData: any) => {
-    const message = errorData.message || 'Tool Execution Error';
-
-    // Handle file not found errors specifically
-    if (message.includes('ENOENT') || message.includes('no such file')) {
-      return 'File Not Found Error';
-    }
-
-    // Handle schema mismatch errors
-    if (message.includes('schema mismatch')) {
-      return 'Tool Configuration Error';
-    }
-
-    return message;
-  };
-
   return (
     <Box
       sx={{
@@ -1238,89 +1234,41 @@ const ErrorDisplay: React.FC<{ data: any; onRetry?: () => void; width: string }>
         wordWrap: 'break-word',
       }}
     >
-      <Alert
-        severity="error"
+      <Paper
+        variant="outlined"
         sx={{
-          mb: 2,
-          width: '100%', // Use 100% of parent container (which has padding)
+          p: 2,
+          width: '100%',
           maxWidth: 'none',
           minWidth: 0,
           overflowWrap: 'break-word',
           wordWrap: 'break-word',
           wordBreak: 'break-word',
-          '& .MuiAlert-icon': {
-            fontSize: '2rem',
-          },
+          bgcolor: 'error.50',
+          borderColor: 'error.light',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, color: 'error.main' }}>
-              <Icon icon="mdi:alert-circle" style={{ marginRight: 8, fontSize: 24 }} />
-              {getDisplayMessage(data)}
-            </Typography>
-            {data.details && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  mb: 2,
-                  bgcolor: 'error.50',
-                  borderColor: 'error.light',
-                }}
-              >
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  Error Details:
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: 'monospace',
-                    wordBreak: 'break-word',
-                    wordWrap: 'break-word',
-                    overflowWrap: 'break-word',
-                    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                    p: 1,
-                    borderRadius: 1,
-                    width: '100%',
-                    maxWidth: '100%',
-                    minWidth: 0,
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
-                  {data.details}
-                </Typography>
-              </Paper>
-            )}
-          </Box>
-        </Box>
-      </Alert>
-
-      {data.suggestions && data.suggestions.length > 0 && (
-        <Paper
-          variant="outlined"
+        <Typography
+          variant="body2"
           sx={{
-            p: 2,
-            mb: 2,
-            borderColor: 'warning.light',
-            bgcolor: 'warning.50',
+            fontFamily: 'monospace',
+            wordBreak: 'break-word',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            backgroundColor: 'rgba(0, 0, 0, 0.05)',
+            p: 1,
+            borderRadius: 1,
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            whiteSpace: 'pre-wrap',
           }}
         >
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'warning.dark' }}>
-            <Icon icon="mdi:lightbulb" style={{ marginRight: 8 }} />
-            Troubleshooting Suggestions:
-          </Typography>
-          <Box component="ul" sx={{ m: 0, pl: 2 }}>
-            {data.suggestions.map((suggestion: string, index: number) => (
-              <Typography key={index} component="li" variant="body2" sx={{ mb: 0.5 }}>
-                {suggestion}
-              </Typography>
-            ))}
-          </Box>
-        </Paper>
-      )}
+          {data.message || data.details || 'Tool Execution Error'}
+        </Typography>
+      </Paper>
 
-      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mr: 2 }}>
+      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mr: 2, mt: 2 }}>
         {onRetry && (
           <Button
             variant="contained"
@@ -1328,29 +1276,11 @@ const ErrorDisplay: React.FC<{ data: any; onRetry?: () => void; width: string }>
             size="small"
             onClick={onRetry}
             startIcon={<Icon icon="mdi:refresh" />}
+            sx={{mr: 0.5}}
           >
             Retry Tool
           </Button>
         )}
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => {
-            // Copy error details to clipboard
-            const errorText = `Tool Error: ${data.message}\nDetails: ${
-              data.details || 'N/A'
-            }\nSuggestions:\n${
-              data.suggestions?.map((s: string) => `- ${s}`).join('\n') || 'None'
-            }`;
-            navigator.clipboard.writeText(errorText);
-          }}
-          startIcon={<Icon icon="mdi:content-copy" />}
-          sx={{
-            mr: 2,
-          }}
-        >
-          Copy Error
-        </Button>
       </Box>
     </Box>
   );

@@ -76,7 +76,6 @@ export class MCPArgumentProcessor {
     userContext?: UserContext
   ): Promise<ProcessedArguments> {
     await this.loadSchemas();
-    console.log('tools');
     const schema = this.toolSchemas.get(toolName);
     const errors: string[] = [];
     const processed = { ...aiProcessedArgs };

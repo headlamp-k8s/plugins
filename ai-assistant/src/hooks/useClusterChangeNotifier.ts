@@ -42,11 +42,6 @@ export function useClusterChangeNotifier() {
 
     // Only notify if cluster actually changed and it's not the initial load
     if (currentCluster !== previousCluster && previousClusterRef.current !== undefined) {
-      console.log('Cluster change detected, notifying electron:', {
-        from: previousCluster,
-        to: currentCluster,
-      });
-
       // Notify the electron main process
       (window as any).desktopApi.notifyClusterChange(currentCluster);
     }

@@ -99,7 +99,14 @@ const TableWrapper: React.FC<{ children: React.ReactNode }> = React.memo(({ chil
 
   // Extract table rows from children
   const tableElement = React.Children.only(children) as React.ReactElement;
-  const tbody = React.Children.toArray(tableElement.props.children).find(
+  const tableChildren = tableElement.props.children;
+  
+  if (!tableChildren) {
+    // No children found, return table as is
+    return <Box sx={{ overflowX: 'auto', width: '100%', mb: 2 }}>{children}</Box>;
+  }
+  
+  const tbody = React.Children.toArray(tableChildren).find(
     (child: any) => child?.type === 'tbody' || child?.props?.component === 'tbody'
   );
 
@@ -109,7 +116,8 @@ const TableWrapper: React.FC<{ children: React.ReactNode }> = React.memo(({ chil
   }
 
   const tbodyElement = tbody as React.ReactElement;
-  const rows = React.Children.toArray(tbodyElement.props.children);
+  const tbodyChildren = tbodyElement.props.children;
+  const rows = tbodyChildren ? React.Children.toArray(tbodyChildren) : [];
   const hasMoreRows = rows.length > maxRows;
   const visibleRows = showAll ? rows : rows.slice(0, maxRows);
 
@@ -120,7 +128,7 @@ const TableWrapper: React.FC<{ children: React.ReactNode }> = React.memo(({ chil
 
   // Clone the table with the limited tbody
   const limitedTable = React.cloneElement(tableElement, {
-    children: React.Children.map(tableElement.props.children, (child: any) => {
+    children: React.Children.map(tableChildren, (child: any) => {
       if (child?.type === 'tbody' || child?.props?.component === 'tbody') {
         return limitedTbody;
       }

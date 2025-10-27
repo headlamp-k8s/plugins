@@ -102,7 +102,6 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
         mcpClient.getToolsConfig(),
       ]);
 
-      console.log('config response is ', configResponse);
       // Store MCP tools configuration
       if (toolsConfigResponse.success && toolsConfigResponse.config) {
         setMcpToolsConfig(toolsConfigResponse.config);
