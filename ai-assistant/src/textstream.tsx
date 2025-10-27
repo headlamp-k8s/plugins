@@ -253,6 +253,20 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         return null;
       }
 
+      // Extract message from tool response if it's JSON with shouldProcessFollowUp
+      let displayContent = prompt.content;
+      if (prompt.role === 'tool' && typeof prompt.content === 'string') {
+        try {
+          const parsed = JSON.parse(prompt.content);
+          if (parsed.shouldProcessFollowUp && parsed.message) {
+            // Use the message field for display
+            displayContent = parsed.message;
+          }
+        } catch (e) {
+          // Not JSON, use original content
+        }
+      }
+
       // Check if this is a content filter error or if the prompt has its own error
       const isContentFilterError = prompt.role === 'assistant' && prompt.contentFilterError;
       const hasError = prompt.error === true;
@@ -336,7 +350,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
             }}
           >
             {prompt.role === 'user' ? (
-              prompt.content
+              displayContent
             ) : (
               <>
                 {/* Agent thinking block */}
@@ -355,7 +369,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                       wordBreak: 'break-word',
                     }}
                   >
-                    {prompt.content}
+                    {displayContent}
                     {isContentFilterError && (
                       <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
                         Tip: Focus your question specifically on Kubernetes administration tasks.
@@ -376,7 +390,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                     ) : showContent && prompt.content ? (
                       /* Use ContentRenderer for all assistant content */
                       <ContentRenderer
-                        content={prompt.content || ''}
+                        content={displayContent || ''}
                         onYamlDetected={memoizedOnYamlDetected}
                         onRetryTool={onRetryTool}
                       />
