@@ -127,17 +127,11 @@ export default function MCPConfigEditorDialog({
       enabled: true,
       servers: [
         {
-          name: 'inspektor-gadget',
-          command: 'docker',
-          args: ['mcp', 'gateway', 'run'],
-          enabled: true,
-        },
-        {
           name: 'flux-mcp',
           command: 'flux-operator-mcp',
-          args: ['serve'],
+          args: ['serve', '--kube-context', 'HEADLAMP_CURRENT_CLUSTER'],
           env: {
-            KUBECONFIG: '/Users/ashughildiyal/.kube/config',
+            KUBECONFIG: 'PATH_TO_KUBECONFIG',
           },
           enabled: true,
         },
