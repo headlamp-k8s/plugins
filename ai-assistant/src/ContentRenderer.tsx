@@ -100,12 +100,12 @@ const TableWrapper: React.FC<{ children: React.ReactNode }> = React.memo(({ chil
   // Extract table rows from children
   const tableElement = React.Children.only(children) as React.ReactElement;
   const tableChildren = tableElement.props.children;
-  
+
   if (!tableChildren) {
     // No children found, return table as is
     return <Box sx={{ overflowX: 'auto', width: '100%', mb: 2 }}>{children}</Box>;
   }
-  
+
   const tbody = React.Children.toArray(tableChildren).find(
     (child: any) => child?.type === 'tbody' || child?.props?.component === 'tbody'
   );
