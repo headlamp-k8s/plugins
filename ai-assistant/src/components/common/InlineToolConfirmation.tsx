@@ -134,9 +134,12 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
         }
       });
 
-      onApprove(selectedToolIds);
+      // Call onApprove and wait for it to complete
+      await onApprove(selectedToolIds);
     } catch (error) {
       console.error('Error during tool approval:', error);
+    } finally {
+      // Always reset the approving state, whether success or error
       setIsApproving(false);
     }
   };
@@ -147,9 +150,12 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
     setIsDenying(true);
 
     try {
-      onDeny();
+      // Call onDeny and wait for it to complete
+      await onDeny();
     } catch (error) {
       console.error('Error during tool denial:', error);
+    } finally {
+      // Always reset the denying state
       setIsDenying(false);
     }
   };

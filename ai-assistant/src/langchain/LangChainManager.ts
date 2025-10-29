@@ -24,6 +24,7 @@ import { ToolCall } from '../utils/ToolApprovalManager';
 import { isBuiltInTool } from '../utils/ToolConfigManager';
 import { apiErrorPromptTemplate, toolFailurePromptTemplate } from './PromptTemplates';
 import { KubernetesToolContext, ToolManager } from './tools';
+import { RecommendedTool, ToolOrchestrator } from './tools/ToolOrchestrator';
 
 export default class LangChainManager extends AIManager {
   private model: BaseChatModel;
@@ -367,6 +368,21 @@ export default class LangChainManager extends AIManager {
     }
   }
 
+  /**
+   * Clear the most recent tool confirmation message from history
+   * Called after tool execution completes to hide the loading dialog
+   */
+  public clearToolConfirmation(): void {
+    // Find the most recent tool confirmation message (from the end)
+    for (let i = this.history.length - 1; i >= 0; i--) {
+      if (this.history[i].toolConfirmation) {
+        // Remove this message from history
+        this.history.splice(i, 1);
+        return;
+      }
+    }
+  }
+
   // Helper method to prepare chat history for prompt template
   private prepareChatHistory(): BaseMessage[] {
     // Filter out system messages and display-only messages to avoid conflicts with the system message in the prompt template
@@ -543,7 +559,16 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
     this.currentAbortController = new AbortController();
 
     try {
-      // Use direct tool calling if enabled
+      // FIRST: Try to orchestrate multiple relevant tools before making LLM call
+      // This enables multi-tool execution for comprehensive responses
+      const recommendedTools = await this.orchestrateToolsForRequest(message);
+
+      if (recommendedTools && recommendedTools.length > 0) {
+        // Execute multiple tools together for a comprehensive response
+        return await this.handleMultipleToolExecution(message, recommendedTools);
+      }
+
+      // FALLBACK: Use direct tool calling if enabled
       if (this.useDirectToolCalling) {
         return await this.handleDirectToolCallingRequest(message);
       }
@@ -690,6 +715,370 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
     };
     this.history.push(assistantPrompt);
     return assistantPrompt;
+  }
+
+  /**
+   * Analyze user request to determine ALL relevant tools that should be executed together
+   * This enables multi-tool orchestration for comprehensive responses
+   */
+  private async orchestrateToolsForRequest(userMessage: string): Promise<RecommendedTool[] | null> {
+    try {
+      const enabledToolIds = this.toolManager.getToolNames();
+
+      if (enabledToolIds.length === 0) {
+        // No tools available
+        return null;
+      }
+
+      // Get available tools with descriptions
+      const allTools = this.toolManager.getLangChainTools();
+      const availableTools = allTools.map(tool => ({
+        name: tool.name,
+        description: tool.description || '',
+      }));
+
+      // Use ToolOrchestrator to analyze and recommend tools
+      const recommendation = await ToolOrchestrator.analyzeAndRecommendTools(
+        userMessage,
+        availableTools,
+        this.boundModel || this.model,
+        this.history.slice(-10), // Pass last 10 messages for context
+        this.currentAbortController?.signal
+      );
+
+      // Return tools if recommendation suggests executing all together
+      if (recommendation.shouldExecuteAll && recommendation.tools.length > 0) {
+        return recommendation.tools;
+      }
+
+      // Return null if only single tool is needed
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Execute multiple tools together based on orchestration recommendation
+   * Requests approval before executing each batch of tools
+   * Collects results and provides a comprehensive response
+   */
+  private async handleMultipleToolExecution(
+    userMessage: string,
+    recommendedTools: RecommendedTool[]
+  ): Promise<Prompt> {
+    try {
+      // Prepare tools with enhanced arguments (using same pattern as regular tool execution)
+      const toolsForApproval = await Promise.all(
+        recommendedTools.map(async tool => {
+          const isMCPTool = !isBuiltInTool(tool.name);
+          let processedArguments = tool.arguments || {};
+
+          // Use AI to enhance arguments for MCP tools (same as regular flow)
+          if (isMCPTool) {
+            try {
+              const toolSchema = await MCPArgumentProcessor.getToolSchema(tool.name);
+              if (toolSchema) {
+                // Build user context from current conversation
+                const userContext = this.buildUserContext();
+
+                // Store original arguments for comparison
+                const originalArguments = { ...processedArguments };
+
+                // Use AI to intelligently prepare arguments
+                processedArguments = await this.enhanceArgumentsWithAI(
+                  tool.name,
+                  toolSchema,
+                  userContext,
+                  processedArguments
+                );
+
+                // Mark which fields were enhanced by LLM for UI display
+                processedArguments._llmEnhanced = {
+                  enhanced: true,
+                  originalArgs: originalArguments,
+                  enhancedFields: this.identifyEnhancedFields(
+                    originalArguments,
+                    processedArguments
+                  ),
+                };
+              }
+            } catch (error) {
+              console.warn(`Failed to enhance arguments for ${tool.name}:`, error);
+              // Fall back to original arguments
+            }
+          }
+
+          return {
+            id: `orchestrated-${tool.name}-${Date.now()}`,
+            name: tool.name,
+            description: tool.description,
+            arguments: processedArguments,
+            type: isMCPTool ? 'mcp' : 'regular',
+            priority: tool.priority,
+            reason: tool.reason,
+          };
+        })
+      );
+
+      let approvedToolIds: string[] = [];
+      try {
+        approvedToolIds = await inlineToolApprovalManager.requestApproval(toolsForApproval, this);
+      } catch (approvalError) {
+        const denialPrompt: Prompt = {
+          role: 'assistant',
+          content: "I understand. I won't execute those tools. Feel free to ask me something else.",
+        };
+        this.history.push(denialPrompt);
+        return denialPrompt;
+      }
+
+      // Filter approved tools and get their processed arguments
+      const approvedTools = recommendedTools.filter(tool =>
+        approvedToolIds.some(id => id.includes(tool.name))
+      );
+
+      // Group tools by execution strategy (parallel vs sequential)
+      const { parallel, sequential } =
+        ToolOrchestrator.groupToolsByExecutionStrategy(approvedTools);
+
+      // Execute parallel tools first
+      const toolResults: Record<string, any> = {};
+      const toolExecutionIds: Record<string, string> = {};
+
+      if (parallel.length > 0) {
+        const parallelPromises = parallel.map(async tool => {
+          const approvalData = toolsForApproval.find(t => t.name === tool.name);
+          const toolCallId = approvalData?.id || `orchestrated-${tool.name}-${Date.now()}`;
+          toolExecutionIds[tool.name] = toolCallId;
+
+          try {
+            const result = await this.toolManager.executeTool(
+              tool.name,
+              approvalData?.arguments || tool.arguments || {}
+            );
+            toolResults[tool.name] = result;
+            return result;
+          } catch (error) {
+            toolResults[tool.name] = {
+              error: true,
+              message: `Failed to execute ${tool.name}: ${error?.message || 'Unknown error'}`,
+            };
+          }
+        });
+
+        try {
+          await Promise.all(parallelPromises);
+        } catch (error) {
+          console.error('Error executing parallel tools:', error);
+          // Continue with sequential tools even if some parallel tools fail
+        }
+      }
+
+      // Execute sequential tools one by one
+      for (const tool of sequential) {
+        const approvalData = toolsForApproval.find(t => t.name === tool.name);
+        const toolCallId = approvalData?.id || `orchestrated-${tool.name}-${Date.now()}`;
+        toolExecutionIds[tool.name] = toolCallId;
+
+        try {
+          const result = await this.toolManager.executeTool(
+            tool.name,
+            approvalData?.arguments || tool.arguments || {}
+          );
+          toolResults[tool.name] = result;
+        } catch (error) {
+          toolResults[tool.name] = {
+            error: true,
+            message: `Failed to execute ${tool.name}: ${error?.message || 'Unknown error'}`,
+          };
+        }
+      }
+
+      // DO NOT add tool results to history - we'll let the LLM response handle rendering
+      // This prevents duplicate JSON rendering in the UI
+      // The results are kept in memory for the response generation below
+
+      // Use LLM to generate a comprehensive response based on tool results
+      // Pass the FULL tool results with all data for the LLM to analyze
+      const response = await this.generateResponseFromToolResults(userMessage, toolResults);
+
+      // Clear the tool confirmation message from history after execution completes
+      // This ensures the "Executing tools..." loading dialog is hidden
+      this.clearToolConfirmation();
+
+      return response;
+    } catch (error) {
+      // Fall back to regular LLM response
+      const errorPrompt: Prompt = {
+        role: 'assistant',
+        content: `I encountered an error coordinating multiple tools: ${
+          error?.message || 'Unknown error'
+        }.
+
+Please try your request again or ask a simpler question.`,
+        error: true,
+      };
+      this.history.push(errorPrompt);
+      return errorPrompt;
+    }
+  }
+
+  /**
+   * Execute a single tool and return its result
+   */
+  private async executeSingleTool(tool: RecommendedTool): Promise<any> {
+    try {
+      // Create a tool call object compatible with existing tool execution logic
+      const toolCall = {
+        id: `tool-${tool.name}-${Date.now()}`,
+        function: {
+          name: tool.name,
+          arguments: JSON.stringify(tool.arguments || {}),
+        },
+      };
+
+      // Use the existing tool manager to execute
+      const toolResponse = await this.toolManager.executeTool(
+        tool.name,
+        tool.arguments || {},
+        toolCall.id,
+        { role: 'assistant', content: '' } // Placeholder prompt
+      );
+
+      return {
+        success: true,
+        toolName: tool.name,
+        data: JSON.parse(toolResponse.content),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        toolName: tool.name,
+        error: true,
+        message: error?.message || 'Unknown error occurred',
+      };
+    }
+  }
+
+  /**
+   * Aggregate results from multiple tools into a structured format
+   */
+  private aggregateToolResults(results: Record<string, any>): string {
+    let aggregation = '## Tool Execution Results\n\n';
+
+    for (const [toolName, result] of Object.entries(results)) {
+      aggregation += `### ${toolName}\n`;
+
+      if (result.error) {
+        aggregation += `**Error**: ${result.message}\n\n`;
+      } else if (result.success) {
+        aggregation += `**Status**: Successfully executed\n`;
+        aggregation += `**Data**:\n\`\`\`json\n${JSON.stringify(result.data, null, 2)}\n\`\`\`\n\n`;
+      } else {
+        aggregation += `**Result**:\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\`\n\n`;
+      }
+    }
+
+    return aggregation;
+  }
+
+  /**
+   * Generate a comprehensive response based on aggregated tool results
+   * Now accepts full tool results object to provide complete context to LLM
+   */
+  private async generateResponseFromToolResults(
+    userMessage: string,
+    toolResults: Record<string, any>
+  ): Promise<Prompt> {
+    try {
+      const modelToUse = this.boundModel || this.model;
+
+      // Format tool results with full data for LLM analysis
+      let formattedResults = '## Tool Execution Results\n\n';
+
+      for (const [toolName, result] of Object.entries(toolResults)) {
+        formattedResults += `### ${toolName}\n`;
+
+        if (result.error || result.isError) {
+          formattedResults += `**Status**: ❌ Error\n`;
+          formattedResults += `**Error Message**: ${result.message || 'Unknown error'}\n\n`;
+        } else {
+          formattedResults += `**Status**: ✅ Success\n`;
+
+          // Include the raw data (this is what was missing before!)
+          if (result.data) {
+            formattedResults += `**Data**:\n`;
+            formattedResults += '```json\n';
+            formattedResults += JSON.stringify(result.data, null, 2);
+            formattedResults += '\n```\n\n';
+          } else if (result.content) {
+            // Handle case where tool returns content directly
+            formattedResults += `**Data**:\n${result.content}\n\n`;
+          } else {
+            formattedResults += `**Result**:\n`;
+            formattedResults += '```json\n';
+            formattedResults += JSON.stringify(result, null, 2);
+            formattedResults += '\n```\n\n';
+          }
+        }
+      }
+
+      const systemPrompt = `You are an AI assistant analyzing results from multiple tools that were executed together.
+
+Based on the ACTUAL tool response data provided below, generate a clear, comprehensive response to the user's request.
+
+CRITICAL GUIDELINES:
+1. Analyze and discuss the ACTUAL data returned by the tools - don't be generic
+2. Reference specific values, numbers, status, and findings from the results
+3. Synthesize information across all tools to provide a complete picture
+4. Use clear formatting (lists, tables, sections) for readability
+5. Explain what the data means and why it matters
+6. If any tools failed, mention that but focus on successful results
+7. Provide actionable insights or next steps based on the actual data
+8. Do NOT give generic responses - engage with the specific results`;
+
+      const userPrompt = `Original user request: "${userMessage}"
+
+Tool Results:
+${formattedResults}
+
+Please analyze this data and provide a specific, detailed response that directly addresses the user's request using the information provided above. Reference specific findings from the results.`;
+
+      const messages = [
+        new SystemMessage(systemPrompt),
+        ...this.prepareChatHistory().slice(-4), // Include recent context
+        new HumanMessage(userPrompt),
+      ];
+
+      const response = await modelToUse.invoke(messages, {
+        signal: this.currentAbortController?.signal,
+      });
+
+      this.currentAbortController = null;
+
+      const assistantPrompt: Prompt = {
+        role: 'assistant',
+        content: this.extractTextContent(response.content),
+      };
+
+      this.history.push(assistantPrompt);
+      return assistantPrompt;
+    } catch (error) {
+      console.error('Error generating response from tool results:', error);
+
+      const fallbackPrompt: Prompt = {
+        role: 'assistant',
+        content: `I executed the requested tools and gathered information. There was an error generating a comprehensive summary, but here are the raw results:
+
+${Object.entries(toolResults)
+  .map(([name, result]) => `**${name}**: ${JSON.stringify(result, null, 2)}`)
+  .join('\n\n')}`,
+      };
+
+      this.history.push(fallbackPrompt);
+      return fallbackPrompt;
+    }
   }
 
   // Extract tool call handling into separate method

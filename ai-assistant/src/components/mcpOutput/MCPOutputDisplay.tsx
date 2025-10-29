@@ -1276,7 +1276,7 @@ const ErrorDisplay: React.FC<{ data: any; onRetry?: () => void; width: string }>
             size="small"
             onClick={onRetry}
             startIcon={<Icon icon="mdi:refresh" />}
-            sx={{mr: 0.5}}
+            sx={{ mr: 0.5 }}
           >
             Retry Tool
           </Button>
