@@ -14,16 +14,52 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 
 - [Headlamp](https://headlamp.dev/) installed
 - A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) deployed
+  - See [strimzi/](strimzi/) for ready-to-use Strimzi deployment configurations
 
-## Installation
+## Quick Start
 
-### Install from npm
+### 1. Deploy Strimzi Operator and Kafka
+
+#### Using Helper Scripts (Recommended)
+
+```bash
+# Install Strimzi operator
+./deploy-strimzi.sh install-operator
+
+# List available configurations
+./deploy-strimzi.sh list-configs
+
+# Deploy a Kafka cluster
+./deploy-strimzi.sh deploy single          # Single node for development
+./deploy-strimzi.sh deploy dual-role       # 3 nodes for production
+./deploy-strimzi.sh deploy separated       # Full production topology
+
+# Check status
+./deploy-strimzi.sh status
+```
+
+#### Manual Deployment
+
+```bash
+# Install Strimzi operator
+cd strimzi/operator
+./install.sh
+
+# Deploy a Kafka cluster (choose a configuration)
+kubectl apply -f ../configurations/single-node/kafka-single-node.yaml -n kafka
+```
+
+See [strimzi/](strimzi/) directory for more deployment options.
+
+### 2. Install the Plugin
+
+#### Install from npm
 
 ```bash
 npm install @headlamp-k8s/plugin-strimzi
 ```
 
-### Manual Installation
+#### Manual Installation
 
 1. Download the latest release package (.tgz file)
 2. Extract the plugin to your Headlamp plugins directory:
@@ -40,15 +76,9 @@ mkdir -p ~/.config/Headlamp/plugins/strimzi
 tar -xzf headlamp-k8s-plugin-strimzi-*.tgz -C ~/.config/Headlamp/plugins/strimzi --strip-components=1
 ```
 
-**Windows:**
-```powershell
-mkdir %APPDATA%\Headlamp\plugins\strimzi
-# Extract the .tgz file to this directory
-```
-
 3. Restart Headlamp
 
-### Using Headlamp Server
+#### Using Headlamp Server
 
 ```bash
 headlamp-server -plugins-dir=/path/to/extracted/plugin
@@ -165,6 +195,40 @@ headlamp-server -plugins-dir=/path/to/strimzi-headlamp/dist
 - View authentication methods
 - Monitor authorization rules and quotas
 
+## Strimzi Deployment Configurations
+
+This repository includes ready-to-use Kafka deployment configurations in the [strimzi/](strimzi/) directory:
+
+- **Operator Installation**: Scripts to install/uninstall Strimzi operator
+- **Single Node**: Development configuration with 1 broker/controller
+- **3 Dual-Role Nodes**: Small production setup with high availability
+- **3 Controllers + 3 Brokers**: Full production topology with separated roles
+- **Ephemeral**: Quick testing configuration without persistence
+- **Monitoring**: Prometheus metrics configurations
+
+### Helper Scripts
+
+Two helper scripts are provided for easy management:
+
+**deploy-strimzi.sh** - Deploy and manage Strimzi:
+```bash
+./deploy-strimzi.sh install-operator    # Install operator
+./deploy-strimzi.sh list-configs        # List available configs
+./deploy-strimzi.sh deploy <config>     # Deploy Kafka cluster
+./deploy-strimzi.sh status              # Check status
+```
+
+**cleanup-strimzi.sh** - Clean up resources:
+```bash
+./cleanup-strimzi.sh cluster            # Delete cluster (keep data)
+./cleanup-strimzi.sh cluster-all        # Delete cluster and data
+./cleanup-strimzi.sh operator           # Uninstall operator (keep data)
+./cleanup-strimzi.sh operator-all       # Uninstall operator and delete data
+./cleanup-strimzi.sh everything         # Remove everything
+```
+
+See [strimzi/README.md](strimzi/README.md) for detailed deployment instructions.
+
 ## Plugin Structure
 
 ```
@@ -173,7 +237,13 @@ strimzi-headlamp/
 │   ├── components/       # React components for UI
 │   ├── crds.ts          # Strimzi CRD definitions
 │   └── index.tsx        # Plugin entry point
+├── strimzi/             # Kafka deployment configurations
+│   ├── operator/        # Operator installation scripts
+│   ├── configurations/  # Various Kafka cluster configs
+│   └── monitoring/      # Prometheus metrics setup
 ├── dist/                # Build output
+├── deploy-strimzi.sh    # Helper script for deployment
+├── cleanup-strimzi.sh   # Helper script for cleanup
 ├── package.json
 ├── tsconfig.json
 └── README.md
