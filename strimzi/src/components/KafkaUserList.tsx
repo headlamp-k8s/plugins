@@ -3,6 +3,21 @@ import { KafkaUser } from '../crds';
 import { isUserReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 
+// Helper to get theme-aware colors
+const useThemeColors = () => {
+  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  return {
+    background: isDark ? '#1e1e1e' : '#ffffff',
+    text: isDark ? '#e0e0e0' : '#000000',
+    textSecondary: isDark ? '#b0b0b0' : '#666666',
+    border: isDark ? '#404040' : '#ddd',
+    inputBg: isDark ? '#2a2a2a' : '#ffffff',
+    inputBorder: isDark ? '#505050' : '#ddd',
+    overlay: 'rgba(0,0,0,0.5)',
+  };
+};
+
 interface ACL {
   resource: {
     type: string;
@@ -38,6 +53,7 @@ export function KafkaUserList() {
     acls: [],
   });
   const [loading, setLoading] = React.useState(false);
+  const colors = useThemeColors();
 
   const fetchUsers = React.useCallback(() => {
     ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkausers')
@@ -223,25 +239,26 @@ export function KafkaUserList() {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: colors.overlay,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
       }}>
         <div style={{
-          backgroundColor: 'white',
+          backgroundColor: colors.background,
+          color: colors.text,
           padding: '24px',
           borderRadius: '8px',
           minWidth: '600px',
           maxHeight: '80vh',
           overflow: 'auto',
         }}>
-          <h2>User Credentials: {selectedUser.metadata.name}</h2>
-          <p><strong>Authentication:</strong> {selectedUser.spec.authentication.type}</p>
+          <h2 style={{ color: colors.text }}>User Credentials: {selectedUser.metadata.name}</h2>
+          <p style={{ color: colors.text }}><strong>Authentication:</strong> {selectedUser.spec.authentication.type}</p>
 
           <div style={{ marginTop: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
               {selectedUser.spec.authentication.type === 'scram-sha-512' ? 'Password' : 'Certificate & Key'}
             </label>
             <textarea
@@ -251,8 +268,10 @@ export function KafkaUserList() {
                 width: '100%',
                 minHeight: '200px',
                 padding: '12px',
-                border: '1px solid #ddd',
+                border: `1px solid ${colors.inputBorder}`,
                 borderRadius: '4px',
+                backgroundColor: colors.inputBg,
+                color: colors.text,
                 fontFamily: 'monospace',
                 fontSize: '12px',
               }}
@@ -293,58 +312,59 @@ export function KafkaUserList() {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: colors.overlay,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
       }}>
         <div style={{
-          backgroundColor: 'white',
+          backgroundColor: colors.background,
+          color: colors.text,
           padding: '24px',
           borderRadius: '8px',
           minWidth: '600px',
           maxHeight: '80vh',
           overflow: 'auto',
         }}>
-          <h2>Create New User</h2>
+          <h2 style={{ color: colors.text }}>Create New User</h2>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Name</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Namespace</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Namespace</label>
             <input
               type="text"
               value={formData.namespace}
               onChange={(e) => setFormData({ ...formData, namespace: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Cluster</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Cluster</label>
             <input
               type="text"
               value={formData.cluster}
               onChange={(e) => setFormData({ ...formData, cluster: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Authentication Type</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Authentication Type</label>
             <select
               value={formData.authenticationType}
               onChange={(e) => setFormData({ ...formData, authenticationType: e.target.value as 'tls' | 'scram-sha-512' })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             >
               <option value="scram-sha-512">SCRAM-SHA-512</option>
               <option value="tls">TLS</option>
@@ -352,11 +372,11 @@ export function KafkaUserList() {
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Authorization Type</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Authorization Type</label>
             <select
               value={formData.authorizationType}
               onChange={(e) => setFormData({ ...formData, authorizationType: e.target.value as 'simple' | 'none' })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             >
               <option value="simple">Simple</option>
               <option value="none">None</option>
@@ -366,7 +386,7 @@ export function KafkaUserList() {
           {formData.authorizationType === 'simple' && (
             <div style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ fontWeight: 'bold' }}>ACLs</label>
+                <label style={{ fontWeight: 'bold', color: colors.text }}>ACLs</label>
                 <button
                   onClick={addACL}
                   style={{
@@ -384,9 +404,9 @@ export function KafkaUserList() {
               </div>
 
               {formData.acls.map((acl, index) => (
-                <div key={index} style={{ marginBottom: '12px', padding: '12px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                <div key={index} style={{ marginBottom: '12px', padding: '12px', border: `1px solid ${colors.border}`, borderRadius: '4px', backgroundColor: colors.inputBg }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <strong>ACL {index + 1}</strong>
+                    <strong style={{ color: colors.text }}>ACL {index + 1}</strong>
                     <button
                       onClick={() => removeACL(index)}
                       style={{
@@ -405,11 +425,11 @@ export function KafkaUserList() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px' }}>Resource Type</label>
+                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px', color: colors.text }}>Resource Type</label>
                       <select
                         value={acl.resource.type}
                         onChange={(e) => updateACL(index, 'resource.type', e.target.value)}
-                        style={{ width: '100%', padding: '4px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px' }}
+                        style={{ width: '100%', padding: '4px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', fontSize: '12px', backgroundColor: colors.background, color: colors.text }}
                       >
                         <option value="topic">Topic</option>
                         <option value="group">Group</option>
@@ -418,21 +438,21 @@ export function KafkaUserList() {
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px' }}>Resource Name</label>
+                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px', color: colors.text }}>Resource Name</label>
                       <input
                         type="text"
                         value={acl.resource.name}
                         onChange={(e) => updateACL(index, 'resource.name', e.target.value)}
-                        style={{ width: '100%', padding: '4px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px' }}
+                        style={{ width: '100%', padding: '4px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', fontSize: '12px', backgroundColor: colors.background, color: colors.text }}
                       />
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px' }}>Pattern Type</label>
+                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px', color: colors.text }}>Pattern Type</label>
                       <select
                         value={acl.resource.patternType}
                         onChange={(e) => updateACL(index, 'resource.patternType', e.target.value)}
-                        style={{ width: '100%', padding: '4px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px' }}
+                        style={{ width: '100%', padding: '4px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', fontSize: '12px', backgroundColor: colors.background, color: colors.text }}
                       >
                         <option value="literal">Literal</option>
                         <option value="prefix">Prefix</option>
@@ -440,13 +460,13 @@ export function KafkaUserList() {
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px' }}>Operations (comma-separated)</label>
+                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px', color: colors.text }}>Operations (comma-separated)</label>
                       <input
                         type="text"
                         value={acl.operations.join(',')}
                         onChange={(e) => updateACL(index, 'operations', e.target.value.split(',').map(s => s.trim()))}
                         placeholder="e.g., Read,Write,Describe"
-                        style={{ width: '100%', padding: '4px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px' }}
+                        style={{ width: '100%', padding: '4px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', fontSize: '12px', backgroundColor: colors.background, color: colors.text }}
                       />
                     </div>
                   </div>
@@ -471,9 +491,10 @@ export function KafkaUserList() {
               disabled={loading}
               style={{
                 padding: '8px 16px',
-                border: '1px solid #ddd',
+                border: `1px solid ${colors.border}`,
                 borderRadius: '4px',
-                backgroundColor: 'white',
+                backgroundColor: colors.inputBg,
+                color: colors.text,
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
