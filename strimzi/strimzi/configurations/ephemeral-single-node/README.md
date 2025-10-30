@@ -59,19 +59,19 @@ None - uses ephemeral storage (emptyDir volumes).
 Create a test topic:
 
 ```bash
-kubectl run kafka-producer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-3.9.0 --rm=true --restart=Never -n kafka -- bin/kafka-topics.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --create --topic test-topic --partitions 1 --replication-factor 1
+kubectl run kafka-producer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-4.1.0 --rm=true --restart=Never -n kafka -- bin/kafka-topics.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --create --topic test-topic --partitions 1 --replication-factor 1
 ```
 
 Produce messages:
 
 ```bash
-kubectl run kafka-producer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-3.9.0 --rm=true --restart=Never -n kafka -- bin/kafka-console-producer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic test-topic
+kubectl run kafka-producer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-4.1.0 --rm=true --restart=Never -n kafka -- bin/kafka-console-producer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic test-topic
 ```
 
 Consume messages:
 
 ```bash
-kubectl run kafka-consumer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-3.9.0 --rm=true --restart=Never -n kafka -- bin/kafka-console-consumer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic test-topic --from-beginning
+kubectl run kafka-consumer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-4.1.0 --rm=true --restart=Never -n kafka -- bin/kafka-console-consumer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic test-topic --from-beginning
 ```
 
 ## Advantages
