@@ -10,6 +10,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 
 | Plugin | Description | Notes | Maintainers |
 | ---------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| [ai-assistant](./ai-assistant) | Integrates AI capabilities directly into Headlamp. | | [@ashu8912](https://github.com/ashu8912) |
 | [app-catalog](./app-catalog) | Provides a new area where users can install Helm charts and manage releases. | Desktop only. Shipped with Headlamp desktop builds by default. | [@ashu8912](https://github.com/ashu8912) |
 | [backstage](./backstage) | Provides links to the resource's views in Backstage. | See also the [Headlamp integration for Backstage](https://github.com/headlamp-k8s/backstage-plugin). | [@yolossn](https://github.com/yolossn) |
 | [flux](./flux) | Visualize Flux in Headlamp. | |[@ashu8912](https://github.com/ashu8912) |
