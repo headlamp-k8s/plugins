@@ -1,8 +1,8 @@
-# Strimzi Headlamp Plugin
+# 🎛️ Strimzi Headlamp Plugin
 
 A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources directly from the Headlamp UI.
 
-## Features
+## ✨ Features
 
 - **Kafka Clusters**: View and manage Kafka cluster resources
 - **Kafka Topics**: Monitor and configure Kafka topics
@@ -10,13 +10,13 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 - Real-time status monitoring for all Strimzi resources
 - Detailed views with configuration and status information
 
-## Prerequisites
+## 📋 Prerequisites
 
 - [Headlamp](https://headlamp.dev/) installed
 - A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) deployed
   - See [strimzi/](strimzi/) for ready-to-use Strimzi deployment configurations
 
-## Quick Start
+## 🚀 Quick Start
 
 ### 1. Deploy Strimzi Operator and Kafka
 
@@ -53,13 +53,13 @@ See [strimzi/](strimzi/) directory for more deployment options.
 
 ### 2. Install the Plugin
 
-#### Install from npm
+#### 📦 Install from npm
 
 ```bash
 npm install @headlamp-k8s/plugin-strimzi
 ```
 
-#### Manual Installation
+#### 💾 Manual Installation
 
 1. Download the latest release package (.tgz file)
 2. Extract the plugin to your Headlamp plugins directory:
@@ -84,7 +84,7 @@ tar -xzf headlamp-k8s-plugin-strimzi-*.tgz -C ~/.config/Headlamp/plugins/strimzi
 headlamp-server -plugins-dir=/path/to/extracted/plugin
 ```
 
-## Development
+## 🛠️ Development
 
 ### Building the Plugin
 
@@ -178,7 +178,7 @@ npm run build
 headlamp-server -plugins-dir=/path/to/strimzi-headlamp/dist
 ```
 
-## Supported Strimzi Resources
+## 📊 Supported Strimzi Resources
 
 ### Kafka (kafka.strimzi.io/v1beta2)
 - View Kafka cluster status and configuration
@@ -195,7 +195,7 @@ headlamp-server -plugins-dir=/path/to/strimzi-headlamp/dist
 - View authentication methods
 - Monitor authorization rules and quotas
 
-## Strimzi Deployment Configurations
+## ☸️ Strimzi Deployment Configurations
 
 This repository includes ready-to-use Kafka deployment configurations in the [strimzi/](strimzi/) directory:
 
@@ -229,7 +229,7 @@ Two helper scripts are provided for easy management:
 
 See [strimzi/README.md](strimzi/README.md) for detailed deployment instructions.
 
-## Plugin Structure
+## 📁 Plugin Structure
 
 ```
 strimzi-headlamp/
@@ -249,27 +249,58 @@ strimzi-headlamp/
 └── README.md
 ```
 
-## License
+## 📦 Publishing to npm (Keep Source Code Private)
+
+This plugin can be published to npm while keeping the source code private on GitHub:
+
+### 1. Make GitHub Repository Private
+
+- Go to https://github.com/cesaroangelo/strimzi-headlamp/settings
+- Scroll to "Danger Zone"
+- Click "Change visibility" → "Make private"
+
+### 2. Publish to npm
+
+The `package.json` is already configured to publish only compiled files (`dist/`), not source code:
+
+```bash
+# Login to npm (first time only)
+npm login
+
+# Build the plugin
+npm run build
+
+# Publish to npm
+npm publish --access public
+```
+
+### 3. Result
+
+- ✅ **Source code**: Private on GitHub (only you can see it)
+- ✅ **Compiled plugin**: Public on npm (anyone can install it)
+- ✅ **Users can install**: `npm install @headlamp-k8s/plugin-strimzi`
+- ❌ **Users cannot see**: Your TypeScript source code
+
+The `files` field in `package.json` ensures only these are published:
+- `dist/**/*` (compiled JavaScript)
+- `README.md`
+- `LICENSE`
+
+## 📄 License
 
 This software is proprietary and closed-source. See [LICENSE](LICENSE) and [EULA.md](EULA.md) for details.
 
 All rights reserved. Copyright (c) 2025 Angelo Cesaro.
 
-## Support and Contact
+## 💬 Support and Contact
 
 For support, feature requests, or licensing inquiries:
 - Open an issue in the GitHub repository
-- Email: [your-email@example.com]
+- Email: cesaro.angelo@gmail.com
 
-## Resources
+## 📚 Resources
 
 - [Strimzi Documentation](https://strimzi.io/documentation/)
 - [Headlamp Plugin Development](https://headlamp.dev/docs/latest/development/plugins/)
 - [Apache Kafka](https://kafka.apache.org/)
 
-## Support
-
-For issues and questions:
-- Open an issue in this repository
-- Check Strimzi documentation for operator-related questions
-- Visit Headlamp documentation for plugin development questions
