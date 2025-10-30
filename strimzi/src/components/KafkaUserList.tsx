@@ -1,20 +1,20 @@
 import React from 'react';
 import { KafkaUser } from '../crds';
 import { isUserReady } from '../crds';
+import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 
 export function KafkaUserList() {
   const [users, setUsers] = React.useState<KafkaUser[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    fetch('/apis/kafka.strimzi.io/v1beta2/kafkausers')
-      .then(res => res.json())
-      .then(data => {
-        if (data.items) {
+    ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkausers')
+      .then((data: any) => {
+        if (data && data.items) {
           setUsers(data.items);
         }
       })
-      .catch(err => {
+      .catch((err: Error) => {
         setError(err.message);
       });
   }, []);
