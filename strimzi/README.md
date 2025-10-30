@@ -4,11 +4,18 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 
 ## ✨ Features
 
-- **Kafka Clusters**: View and manage Kafka cluster resources
-- **Kafka Topics**: Monitor and configure Kafka topics
-- **Kafka Users**: Manage Kafka users with authentication and authorization
+- **Kafka Clusters**: View Kafka cluster resources with KRaft/ZooKeeper mode detection
+- **Kafka Topics**: Full CRUD operations (Create, Read, Update, Delete)
+  - Create topics with custom partitions, replicas, retention, and compression
+  - Edit topic configurations (partitions, replicas, retention, min ISR)
+  - Delete topics with confirmation
+- **Kafka Users**: Complete user management with security
+  - Create users with SCRAM-SHA-512 or TLS authentication
+  - Configure ACLs for fine-grained authorization
+  - View passwords and certificates (secrets)
+  - Delete users with confirmation
 - Real-time status monitoring for all Strimzi resources
-- Detailed views with configuration and status information
+- Multi-namespace support - view resources across all namespaces
 
 ## 📋 Prerequisites
 
@@ -184,16 +191,28 @@ headlamp-server -plugins-dir=/path/to/strimzi-headlamp/dist
 - View Kafka cluster status and configuration
 - Monitor replicas and versions
 - Check listener addresses and connection details
+- KRaft and ZooKeeper mode detection
 
 ### KafkaTopic (kafka.strimzi.io/v1beta2)
-- List all Kafka topics in the cluster
+- **Create** topics with configurable:
+  - Partitions and replicas
+  - Retention period
+  - Compression type (gzip, snappy, lz4, zstd, producer)
+  - Min in-sync replicas
+- **Edit** existing topic configurations
+- **Delete** topics with confirmation dialog
 - View partition and replica counts
-- Monitor topic configuration
+- Monitor topic status (Ready/Not Ready)
 
 ### KafkaUser (kafka.strimzi.io/v1beta2)
-- Manage Kafka users
-- View authentication methods
-- Monitor authorization rules and quotas
+- **Create** users with:
+  - SCRAM-SHA-512 or TLS authentication
+  - Simple ACL authorization with custom rules
+  - Support for topic, group, and cluster resources
+- **View secrets**: Display passwords (SCRAM) or certificates/keys (TLS)
+- **Delete** users with confirmation dialog
+- Monitor user status (Ready/Not Ready)
+- View authentication and authorization types
 
 ## ☸️ Strimzi Deployment Configurations
 
