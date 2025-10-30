@@ -1,0 +1,15 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: high-throughput-topic
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 259200000  # 3 days
+    segment.bytes: 536870912  # 512 MB
+    compression.type: lz4
+    min.insync.replicas: 2
+    max.message.bytes: 10485760  # 10 MB

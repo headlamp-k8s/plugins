@@ -93,6 +93,44 @@ kubectl wait kafka/my-cluster --for=condition=Ready --timeout=600s -n kafka
 | 3 Dual-Role | 3 | 300Gi | 3 | 2 | Small Prod |
 | 3C + 3B | 6 | 360Gi | 3 | 2 | Production |
 
+## Example Resources
+
+The `examples/` directory contains ready-to-use YAML files for common Kafka resources:
+
+### 📝 Topics
+
+Located in `examples/topics/`:
+
+- **simple-topic.yaml**: Basic topic with 1 partition and 1 replica (for single-node setups)
+- **multi-partition-topic.yaml**: Multi-partition topic with 3 replicas (for production)
+- **compacted-topic.yaml**: Log-compacted topic for state storage
+- **high-throughput-topic.yaml**: Optimized for high-throughput scenarios
+
+Apply a topic:
+```bash
+kubectl apply -f examples/topics/simple-topic.yaml -n kafka
+```
+
+### 👥 Users
+
+Located in `examples/users/`:
+
+- **simple-user-scram.yaml**: Basic user with SCRAM-SHA-512 authentication and read/write ACLs
+- **admin-user-tls.yaml**: Admin user with TLS authentication and full cluster access
+- **producer-user.yaml**: Producer-only user with write permissions
+- **consumer-user.yaml**: Consumer-only user with read permissions
+
+Apply a user:
+```bash
+kubectl apply -f examples/users/simple-user-scram.yaml -n kafka
+```
+
+After creating a user, retrieve the password:
+```bash
+# For SCRAM-SHA-512 users
+kubectl get secret my-user -n kafka -o jsonpath='{.data.password}' | base64 -d
+```
+
 ## Common Operations
 
 ### Check Cluster Status
@@ -119,7 +157,17 @@ kubectl logs -n kafka my-cluster-broker-0 -c kafka
 kubectl logs -n kafka my-cluster-controller-0 -c kafka
 ```
 
-### Create a Topic
+### Create a Topic (kubectl apply)
+
+```bash
+# Use example configurations
+kubectl apply -f examples/topics/simple-topic.yaml -n kafka
+
+# Verify topic was created
+kubectl get kafkatopic -n kafka
+```
+
+### Create a Topic (kafka-topics.sh)
 
 ```bash
 kubectl run kafka-admin -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-4.1.0 --rm=true --restart=Never -n kafka -- bin/kafka-topics.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --create --topic my-topic --partitions 3 --replication-factor 3
