@@ -52,4 +52,4 @@ By installing or using the Software, you acknowledge that you have read this EUL
 
 ---
 
-For questions or licensing inquiries, please contact: [your-email@example.com]
+For questions or licensing inquiries, please contact: cesaro.angelo@gmail.com
