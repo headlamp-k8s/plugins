@@ -1,0 +1,34 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: admin-user
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  authentication:
+    type: tls
+  authorization:
+    type: simple
+    acls:
+      # Full access to all topics
+      - resource:
+          type: topic
+          name: "*"
+          patternType: literal
+        operations:
+          - All
+        host: "*"
+      # Full access to all consumer groups
+      - resource:
+          type: group
+          name: "*"
+          patternType: literal
+        operations:
+          - All
+        host: "*"
+      # Cluster operations
+      - resource:
+          type: cluster
+        operations:
+          - All
+        host: "*"

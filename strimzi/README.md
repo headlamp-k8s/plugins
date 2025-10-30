@@ -204,7 +204,30 @@ This repository includes ready-to-use Kafka deployment configurations in the [st
 - **3 Dual-Role Nodes**: Small production setup with high availability
 - **3 Controllers + 3 Brokers**: Full production topology with separated roles
 - **Ephemeral**: Quick testing configuration without persistence
+- **Example Resources**: Ready-to-use YAML files for topics and users
 - **Monitoring**: Prometheus metrics configurations
+
+### 📝 Example Topics and Users
+
+The [strimzi/examples/](strimzi/examples/) directory contains ready-to-use YAML files:
+
+**Topics** (`examples/topics/`):
+- Simple topic (1 partition, 1 replica for dev)
+- Multi-partition topic (3 replicas for production)
+- Compacted topic (for state storage)
+- High-throughput topic (optimized settings)
+
+**Users** (`examples/users/`):
+- Simple user with SCRAM-SHA-512 authentication
+- Admin user with TLS authentication
+- Producer-only user with write permissions
+- Consumer-only user with read permissions
+
+Apply an example:
+```bash
+kubectl apply -f strimzi/examples/topics/simple-topic.yaml -n kafka
+kubectl apply -f strimzi/examples/users/simple-user-scram.yaml -n kafka
+```
 
 ### Helper Scripts
 

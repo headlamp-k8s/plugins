@@ -1,0 +1,28 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: producer-user
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Write to topics with prefix
+      - resource:
+          type: topic
+          name: app-
+          patternType: prefix
+        operations:
+          - Write
+          - Create
+          - Describe
+        host: "*"
+      # Idempotent producer
+      - resource:
+          type: cluster
+        operations:
+          - IdempotentWrite
+        host: "*"
