@@ -23,21 +23,15 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run clean && npm run build:code && npm run build:package",
-    "build:code": "tsc",
-    "build:package": "headlamp-plugin create dist",
-    "clean": "rm -rf dist",
-    "dev": "tsc --watch",
+    "build": "headlamp-plugin build",
+    "package": "headlamp-plugin package",
+    "start": "headlamp-plugin start",
+    "tsc": "headlamp-plugin tsc",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "lint": "eslint src --ext .ts,.tsx",
-    "package": "headlamp-plugin extract . .plugins",
-    "prepublishOnly": "npm run build",
-    "pack:binary": "npm run build && npm pack"
-  },
-  "dependencies": {
-    "@kinvolk/headlamp-plugin": "^0.13.0-alpha.10"
+    "lint": "eslint src --ext .ts,.tsx"
   },
   "devDependencies": {
+    "@kinvolk/headlamp-plugin": "^0.11.0",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.48",
     "@typescript-eslint/eslint-plugin": "^6.19.0",

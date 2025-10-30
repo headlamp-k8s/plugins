@@ -1,20 +1,20 @@
 import React from 'react';
 import { KafkaTopic } from '../crds';
 import { isTopicReady } from '../crds';
+import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 
 export function KafkaTopicList() {
   const [topics, setTopics] = React.useState<KafkaTopic[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    fetch('/apis/kafka.strimzi.io/v1beta2/kafkatopics')
-      .then(res => res.json())
-      .then(data => {
-        if (data.items) {
+    ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkatopics')
+      .then((data: any) => {
+        if (data && data.items) {
           setTopics(data.items);
         }
       })
-      .catch(err => {
+      .catch((err: Error) => {
         setError(err.message);
       });
   }, []);

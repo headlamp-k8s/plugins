@@ -1,21 +1,21 @@
 import React from 'react';
 import { ApiError, Kafka as K8sKafka } from '../crds';
 import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
+import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 
 export function KafkaList() {
   const [kafkas, setKafkas] = React.useState<K8sKafka[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    // Fetch Kafka resources from Kubernetes API
-    fetch('/apis/kafka.strimzi.io/v1beta2/kafkas')
-      .then(res => res.json())
-      .then(data => {
-        if (data.items) {
+    // Fetch Kafka resources using Headlamp API
+    ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkas')
+      .then((data: any) => {
+        if (data && data.items) {
           setKafkas(data.items);
         }
       })
-      .catch(err => {
+      .catch((err: Error) => {
         setError(err.message);
       });
   }, []);
