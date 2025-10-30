@@ -56,7 +56,7 @@ See [strimzi/](strimzi/) directory for more deployment options.
 #### 📦 Install from npm
 
 ```bash
-npm install @headlamp-k8s/plugin-strimzi
+npm install @headlamp-k8s/strimzi
 ```
 
 #### 💾 Manual Installation
@@ -67,13 +67,13 @@ npm install @headlamp-k8s/plugin-strimzi
 **macOS:**
 ```bash
 mkdir -p ~/Library/Application\ Support/Headlamp/plugins/strimzi
-tar -xzf headlamp-k8s-plugin-strimzi-*.tgz -C ~/Library/Application\ Support/Headlamp/plugins/strimzi --strip-components=1
+tar -xzf headlamp-k8s-strimzi-*.tgz -C ~/Library/Application\ Support/Headlamp/plugins/strimzi --strip-components=1
 ```
 
 **Linux:**
 ```bash
 mkdir -p ~/.config/Headlamp/plugins/strimzi
-tar -xzf headlamp-k8s-plugin-strimzi-*.tgz -C ~/.config/Headlamp/plugins/strimzi --strip-components=1
+tar -xzf headlamp-k8s-strimzi-*.tgz -C ~/.config/Headlamp/plugins/strimzi --strip-components=1
 ```
 
 3. Restart Headlamp
@@ -120,7 +120,7 @@ The build creates a `dist/` directory with:
    # Create package.json (required)
    cat > ~/Library/Application\ Support/Headlamp/plugins/strimzi/package.json << 'EOF'
    {
-     "name": "@headlamp-k8s/plugin-strimzi",
+     "name": "@headlamp-k8s/strimzi",
      "version": "0.1.0",
      "main": "main.js"
    }
@@ -135,7 +135,7 @@ The build creates a `dist/` directory with:
    # Create package.json (required)
    cat > ~/.config/Headlamp/plugins/strimzi/package.json << 'EOF'
    {
-     "name": "@headlamp-k8s/plugin-strimzi",
+     "name": "@headlamp-k8s/strimzi",
      "version": "0.1.0",
      "main": "main.js"
    }
@@ -301,7 +301,7 @@ npm publish --access public
 
 - ✅ **Source code**: Private on GitHub (only you can see it)
 - ✅ **Compiled plugin**: Public on npm (anyone can install it)
-- ✅ **Users can install**: `npm install @headlamp-k8s/plugin-strimzi`
+- ✅ **Users can install**: `npm install @headlamp-k8s/strimzi`
 - ❌ **Users cannot see**: Your TypeScript source code
 
 The `files` field in `package.json` ensures only these are published:
