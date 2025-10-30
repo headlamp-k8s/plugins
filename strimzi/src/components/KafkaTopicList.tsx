@@ -3,6 +3,21 @@ import { KafkaTopic } from '../crds';
 import { isTopicReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 
+// Helper to get theme-aware colors
+const useThemeColors = () => {
+  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  return {
+    background: isDark ? '#1e1e1e' : '#ffffff',
+    text: isDark ? '#e0e0e0' : '#000000',
+    textSecondary: isDark ? '#b0b0b0' : '#666666',
+    border: isDark ? '#404040' : '#ddd',
+    inputBg: isDark ? '#2a2a2a' : '#ffffff',
+    inputBorder: isDark ? '#505050' : '#ddd',
+    overlay: 'rgba(0,0,0,0.5)',
+  };
+};
+
 interface TopicFormData {
   name: string;
   namespace: string;
@@ -28,6 +43,7 @@ export function KafkaTopicList() {
     replicas: 3,
   });
   const [loading, setLoading] = React.useState(false);
+  const colors = useThemeColors();
 
   const fetchTopics = React.useCallback(() => {
     ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkatopics')
@@ -177,92 +193,93 @@ export function KafkaTopicList() {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: colors.overlay,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
       }}>
         <div style={{
-          backgroundColor: 'white',
+          backgroundColor: colors.background,
+          color: colors.text,
           padding: '24px',
           borderRadius: '8px',
           minWidth: '500px',
           maxHeight: '80vh',
           overflow: 'auto',
         }}>
-          <h2>{isEdit ? 'Edit Topic' : 'Create New Topic'}</h2>
+          <h2 style={{ color: colors.text }}>{isEdit ? 'Edit Topic' : 'Create New Topic'}</h2>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Name</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Name</label>
             <input
               type="text"
               value={formData.name}
               disabled={isEdit}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Namespace</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Namespace</label>
             <input
               type="text"
               value={formData.namespace}
               disabled={isEdit}
               onChange={(e) => setFormData({ ...formData, namespace: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Cluster</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Cluster</label>
             <input
               type="text"
               value={formData.cluster}
               disabled={isEdit}
               onChange={(e) => setFormData({ ...formData, cluster: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Partitions</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Partitions</label>
             <input
               type="number"
               value={formData.partitions}
               onChange={(e) => setFormData({ ...formData, partitions: parseInt(e.target.value) })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Replicas</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Replicas</label>
             <input
               type="number"
               value={formData.replicas}
               onChange={(e) => setFormData({ ...formData, replicas: parseInt(e.target.value) })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Retention (ms)</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Retention (ms)</label>
             <input
               type="number"
               value={formData.retentionMs || ''}
               placeholder="Optional, e.g., 604800000 (7 days)"
               onChange={(e) => setFormData({ ...formData, retentionMs: e.target.value ? parseInt(e.target.value) : undefined })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Compression Type</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Compression Type</label>
             <select
               value={formData.compressionType || ''}
               onChange={(e) => setFormData({ ...formData, compressionType: e.target.value || undefined })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             >
               <option value="">None</option>
               <option value="gzip">gzip</option>
@@ -274,13 +291,13 @@ export function KafkaTopicList() {
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Min In-Sync Replicas</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Min In-Sync Replicas</label>
             <input
               type="number"
               value={formData.minInSyncReplicas || ''}
               placeholder="Optional, e.g., 2"
               onChange={(e) => setFormData({ ...formData, minInSyncReplicas: e.target.value ? parseInt(e.target.value) : undefined })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
             />
           </div>
 
@@ -293,9 +310,10 @@ export function KafkaTopicList() {
               disabled={loading}
               style={{
                 padding: '8px 16px',
-                border: '1px solid #ddd',
+                border: `1px solid ${colors.border}`,
                 borderRadius: '4px',
-                backgroundColor: 'white',
+                backgroundColor: colors.inputBg,
+                color: colors.text,
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
