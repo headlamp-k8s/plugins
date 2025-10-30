@@ -122,25 +122,25 @@ kubectl logs -n kafka my-cluster-controller-0 -c kafka
 ### Create a Topic
 
 ```bash
-kubectl run kafka-admin -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-3.9.0 --rm=true --restart=Never -n kafka -- bin/kafka-topics.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --create --topic my-topic --partitions 3 --replication-factor 3
+kubectl run kafka-admin -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-4.1.0 --rm=true --restart=Never -n kafka -- bin/kafka-topics.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --create --topic my-topic --partitions 3 --replication-factor 3
 ```
 
 ### List Topics
 
 ```bash
-kubectl run kafka-admin -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-3.9.0 --rm=true --restart=Never -n kafka -- bin/kafka-topics.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --list
+kubectl run kafka-admin -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-4.1.0 --rm=true --restart=Never -n kafka -- bin/kafka-topics.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --list
 ```
 
 ### Produce Messages
 
 ```bash
-kubectl run kafka-producer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-3.9.0 --rm=true --restart=Never -n kafka -- bin/kafka-console-producer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic my-topic
+kubectl run kafka-producer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-4.1.0 --rm=true --restart=Never -n kafka -- bin/kafka-console-producer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic my-topic
 ```
 
 ### Consume Messages
 
 ```bash
-kubectl run kafka-consumer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-3.9.0 --rm=true --restart=Never -n kafka -- bin/kafka-console-consumer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic my-topic --from-beginning
+kubectl run kafka-consumer -ti --image=quay.io/strimzi/kafka:0.44.0-kafka-4.1.0 --rm=true --restart=Never -n kafka -- bin/kafka-console-consumer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic my-topic --from-beginning
 ```
 
 ## Scaling

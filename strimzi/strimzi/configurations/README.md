@@ -110,7 +110,7 @@ Edit the `version` field in the Kafka spec:
 ```yaml
 spec:
   kafka:
-    version: 3.9.0  # Change to desired version
+    version: 4.1.0  # Change to desired version
     metadataVersion: 3.9-IV0  # Update accordingly
 ```
 
