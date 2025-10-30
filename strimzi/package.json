@@ -1,5 +1,5 @@
 {
-  "name": "@headlamp-k8s/plugin-strimzi",
+  "name": "@headlamp-k8s/strimzi",
   "version": "0.1.0",
   "description": "Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources",
   "main": "dist/main.js",

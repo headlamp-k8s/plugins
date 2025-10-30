@@ -26,10 +26,31 @@ registerRoute({
   component: () => React.createElement(KafkaUserList),
 });
 
-// Register sidebar entry
+// Register sidebar entries
 registerSidebarEntry({
   parent: null,
   name: 'strimzi',
   label: 'Strimzi',
   url: '/strimzi/kafkas',
+});
+
+registerSidebarEntry({
+  parent: 'strimzi',
+  name: 'kafkas',
+  label: 'Kafka Clusters',
+  url: '/strimzi/kafkas',
+});
+
+registerSidebarEntry({
+  parent: 'strimzi',
+  name: 'topics',
+  label: 'Kafka Topics',
+  url: '/strimzi/topics',
+});
+
+registerSidebarEntry({
+  parent: 'strimzi',
+  name: 'users',
+  label: 'Kafka Users',
+  url: '/strimzi/users',
 });
