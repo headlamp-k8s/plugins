@@ -414,7 +414,7 @@ function Settings() {
   };
 
   return (
-    <Box width={'80%'}>
+    <Box width={'100%'}>
       <Typography variant="body1" sx={{ mb: 3 }}>
         This plugin is in early development and is not yet ready for production use. Using it may
         incur in costs from the AI provider! Use at your own risk.

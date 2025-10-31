@@ -140,6 +140,7 @@ export default function MCPConfigEditorDialog({
 
     setContent(JSON.stringify(exampleConfig, null, 2));
     setValidationError('');
+    setTabValue(0); // Switch to editor tab
   };
 
   const handleReset = () => {
@@ -296,7 +297,9 @@ export default function MCPConfigEditorDialog({
                   </li>
                   <li>
                     <Typography variant="body2">
-                      <strong>args</strong>: Command-line arguments passed to the executable
+                      <strong>args</strong>: Command-line arguments passed to the executable. You
+                      can use <code>HEADLAMP_CURRENT_CLUSTER</code> as a placeholder that will be
+                      replaced with the current cluster context at runtime.
                     </Typography>
                   </li>
                   <li>
