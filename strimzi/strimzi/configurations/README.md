@@ -1,191 +1,194 @@
-# Kafka Configurations
+# Kafka Security Configurations
 
-This directory contains various Kafka cluster configurations for different use cases.
+This directory contains Kafka cluster configurations organized by security level.
 
-## Available Configurations
+## 📁 Directory Structure
 
-### 1. Ephemeral Single Node
-**Directory**: `ephemeral-single-node/`
+```
+configurations/
+├── no-security/           # No authentication, no authorization (development)
+├── auth-only/             # Authentication only (staging/testing)
+├── auth-and-authz/        # Full security with ACLs (production)
+├── single-node/           # DEPRECATED - see no-security/
+├── dual-role-3-nodes/     # DEPRECATED - see no-security/ or auth-and-authz/
+├── 3-controllers-3-brokers/  # DEPRECATED
+└── ephemeral-single-node/ # DEPRECATED
+```
 
-Perfect for quick testing and development where data persistence is not required.
+## 🔒 Security Levels
 
-- 1 dual-role node (controller + broker)
-- Ephemeral storage (no persistence)
-- Replication factor: 1
-- Fast to deploy, no storage requirements
+### 1️⃣ No Security (`no-security/`)
+
+**Use for**: Local development, testing, non-sensitive data
+
+- ❌ No authentication
+- ❌ No authorization
+- ✅ Anyone can connect
+- ✅ Full access to all resources
+
+**Configurations:**
+- `kafka-single-node.yaml` - 1 node, 20Gi storage
+- `kafka-3-nodes.yaml` - 3 nodes, 100Gi/node storage
+
+[📖 Read more](./no-security/README.md)
+
+---
+
+### 2️⃣ Authentication Only (`auth-only/`)
+
+**Use for**: Staging, user tracking, audit logging
+
+- ✅ Authentication required (SCRAM or TLS)
+- ❌ No authorization (authenticated users have full access)
+- ✅ Identity verification
+- ✅ Connection encryption (TLS variants)
+
+**Configurations:**
+- `kafka-single-node-scram.yaml` - SCRAM-SHA-512 authentication
+- `kafka-single-node-tls.yaml` - TLS mutual authentication
+
+[📖 Read more](./auth-only/README.md)
+
+---
+
+### 3️⃣ Full Security (`auth-and-authz/`)
+
+**Use for**: Production, multi-tenant, compliance
+
+- ✅ Authentication required
+- ✅ Authorization with ACLs
+- ✅ Fine-grained access control
+- ✅ Principle of least privilege
+
+**Configurations:**
+- `kafka-single-node-secure.yaml` - 1 node, SCRAM + ACLs
+- `kafka-3-nodes-secure.yaml` - 3 nodes, SCRAM/TLS + ACLs
+
+[📖 Read more](./auth-and-authz/README.md)
+
+---
+
+## 🚀 Quick Start
+
+### Choose Based on Environment
+
+| Environment | Security Level | Configuration |
+|------------|---------------|---------------|
+| Local Dev | None | `no-security/kafka-single-node.yaml` |
+| Staging | Auth Only | `auth-only/kafka-single-node-scram.yaml` |
+| Production | Full | `auth-and-authz/kafka-3-nodes-secure.yaml` |
+
+### Deploy
 
 ```bash
-kubectl apply -f ephemeral-single-node/kafka-ephemeral-single.yaml -n kafka
-```
+# Example: Deploy production-ready secure cluster
+kubectl apply -f auth-and-authz/kafka-3-nodes-secure.yaml -n kafka
 
-### 2. Single Node (Persistent)
-**Directory**: `single-node/`
-
-Suitable for development environments where you need data persistence.
-
-- 1 dual-role node (controller + broker)
-- 20Gi persistent storage
-- Replication factor: 1
-- Data survives pod restarts
-
-```bash
-kubectl apply -f single-node/kafka-single-node.yaml -n kafka
-```
-
-### 3. 3 Dual-Role Nodes
-**Directory**: `dual-role-3-nodes/`
-
-Best balance between high availability and resource efficiency for small to medium production workloads.
-
-- 3 dual-role nodes (controller + broker)
-- 100Gi persistent storage per node (300Gi total)
-- Replication factor: 3, min ISR: 2
-- Can tolerate 1 node failure
-
-```bash
-kubectl apply -f dual-role-3-nodes/kafka-dual-role-3.yaml -n kafka
-```
-
-### 4. 3 Controllers + 3 Brokers
-**Directory**: `3-controllers-3-brokers/`
-
-Production-grade configuration with separated controller and broker roles for maximum performance and isolation.
-
-- 3 dedicated controller nodes (20Gi each)
-- 3 broker nodes (100Gi each)
-- Replication factor: 3, min ISR: 2
-- Better resource isolation and scaling flexibility
-
-```bash
-kubectl apply -f 3-controllers-3-brokers/kafka-3c-3b.yaml -n kafka
-```
-
-## Configuration Matrix
-
-| Feature | Ephemeral Single | Single Node | 3 Dual-Role | 3C + 3B |
-|---------|-----------------|-------------|-------------|---------|
-| **Total Nodes** | 1 | 1 | 3 | 6 |
-| **Controllers** | 1 | 1 | 3 | 3 |
-| **Brokers** | 1 | 1 | 3 | 3 |
-| **Storage Type** | Ephemeral | Persistent | Persistent | Persistent |
-| **Total Storage** | - | 20Gi | 300Gi | 360Gi |
-| **Replication** | 1 | 1 | 3 | 3 |
-| **Min ISR** | 1 | 1 | 2 | 2 |
-| **HA** | ❌ | ❌ | ✅ | ✅ |
-| **Data Persistence** | ❌ | ✅ | ✅ | ✅ |
-| **Use Case** | Testing | Development | Small Prod | Production |
-
-## Choosing the Right Configuration
-
-### Use Ephemeral Single Node when:
-- Running integration tests in CI/CD
-- Learning Kafka and Strimzi
-- Quick prototyping
-- Data persistence is not needed
-
-### Use Single Node (Persistent) when:
-- Developing applications locally
-- Need data to persist across restarts
-- Working with small datasets
-- Testing data persistence features
-
-### Use 3 Dual-Role Nodes when:
-- Running in production with moderate load
-- Want high availability with minimal resources
-- Don't need to scale controllers and brokers independently
-- Cost optimization is important
-
-### Use 3 Controllers + 3 Brokers when:
-- Running high-performance production workloads
-- Need to scale brokers independently from controllers
-- Maximum resource isolation is required
-- Running large-scale Kafka deployments
-
-## Common Customizations
-
-### Change Kafka Version
-
-Edit the `version` field in the Kafka spec:
-
-```yaml
-spec:
-  kafka:
-    version: 4.1.0  # Change to desired version
-    metadataVersion: 3.9-IV0  # Update accordingly
-```
-
-### Adjust Storage Size
-
-For persistent configurations, edit the storage size:
-
-```yaml
-storage:
-  type: jbod
-  volumes:
-    - id: 0
-      type: persistent-claim
-      size: 200Gi  # Change to desired size
-```
-
-### Add External Access
-
-Add a LoadBalancer listener for external access:
-
-```yaml
-listeners:
-  - name: plain
-    port: 9092
-    type: internal
-    tls: false
-  - name: external
-    port: 9094
-    type: loadbalancer
-    tls: false
-```
-
-### Configure Resource Limits
-
-Add resource requests and limits:
-
-```yaml
-spec:
-  replicas: 3
-  roles:
-    - broker
-  resources:
-    requests:
-      memory: 2Gi
-      cpu: 500m
-    limits:
-      memory: 4Gi
-      cpu: 2000m
-```
-
-## Verification
-
-After deploying any configuration:
-
-```bash
-# Check Kafka resource
-kubectl get kafka my-cluster -n kafka
-
-# Check node pools
-kubectl get kafkanodepool -n kafka
-
-# Check pods
-kubectl get pods -n kafka -l strimzi.io/cluster=my-cluster
-
-# Wait for ready state
+# Wait for cluster to be ready
 kubectl wait kafka/my-cluster --for=condition=Ready --timeout=600s -n kafka
 ```
 
-## Next Steps
+## 📊 Security Comparison
 
-After deploying a configuration:
+| Feature | No Security | Auth Only | Auth + Authz |
+|---------|------------|-----------|--------------|
+| **Authentication** | ❌ No | ✅ Yes | ✅ Yes |
+| **Authorization** | ❌ No | ❌ No | ✅ Yes (ACLs) |
+| **User Required** | ❌ No | ✅ Yes | ✅ Yes |
+| **ACLs Required** | ❌ No | ❌ No | ✅ Yes |
+| **Production Ready** | ❌ No | ⚠️ Limited | ✅ Yes |
+| **Compliance** | ❌ No | ⚠️ Partial | ✅ Yes |
 
-1. Create topics using the Kafka Admin API or KafkaTopic CRDs
-2. Configure users and ACLs if using authentication
-3. Set up monitoring (see `../monitoring/` directory)
-4. Configure TLS and authentication (see `../security/` directory)
+## 🔐 Authentication Types
 
-For detailed information about each configuration, refer to the README.md file in each subdirectory.
+### SCRAM-SHA-512
+- Username/password authentication
+- Credentials stored in Kubernetes secrets
+- Easy to rotate
+- Good for service accounts
+
+### TLS (Mutual TLS)
+- Certificate-based authentication
+- Strong cryptographic identity
+- More complex setup
+- Best for service-to-service
+
+## 📝 Creating Users
+
+### No Security
+No users needed - anyone can connect.
+
+### Authentication Only
+Create users without ACLs:
+
+```yaml
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: my-user
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  # No authorization - user has full access once authenticated
+```
+
+### Authentication + Authorization
+Create users WITH ACLs:
+
+```yaml
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: my-user
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: my-topic
+          patternType: literal
+        operations:
+          - Read
+          - Write
+        host: "*"
+```
+
+## ⚠️ Important Notes
+
+1. **Authorization Requires Cluster Config**: ACLs only work if the Kafka cluster has `authorization: type: simple` configured
+2. **Default Deny**: With authorization enabled, users without ACLs have NO access
+3. **Cannot Mix**: You cannot use "auth-only" users (no ACLs) with "auth-and-authz" clusters - they will be denied access
+4. **Migration Path**: Start with no-security → add authentication → add authorization
+
+## 🔄 Migration Guide
+
+### From No Security to Auth Only
+
+1. Deploy new cluster with authentication
+2. Create users for all applications
+3. Update application configurations with credentials
+4. Switch applications to new cluster
+
+### From Auth Only to Full Security
+
+1. Update Kafka cluster with `authorization: type: simple`
+2. Add ACLs to all existing KafkaUser resources
+3. Cluster will restart automatically
+4. Users without ACLs will be denied access
+
+## 📚 Additional Resources
+
+- [Strimzi Security Documentation](https://strimzi.io/docs/operators/latest/configuring.html#assembly-securing-kafka-str)
+- [Example Users](../examples/users/)
+- [Example Topics](../examples/topics/)
+
+## 🗑️ Deprecated Configurations
+
+Old configurations (single-node/, dual-role-3-nodes/, etc.) are deprecated. Use the new organized structure above for better clarity on security levels.
