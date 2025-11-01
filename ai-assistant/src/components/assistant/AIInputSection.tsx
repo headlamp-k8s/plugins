@@ -15,6 +15,7 @@ import { getProviderById } from '../../config/modelConfig';
 import { getModelDisplayName, getProviderModelsForChat } from '../../utils/modalUtils';
 import { StoredProviderConfig } from '../../utils/ProviderConfigManager';
 import TestModeInput from './TestModeInput';
+import { ToolsDialog } from './ToolsDialog';
 
 interface AIInputSectionProps {
   promptVal: string;
@@ -24,11 +25,17 @@ interface AIInputSectionProps {
   activeConfig: StoredProviderConfig | null;
   availableConfigs: StoredProviderConfig[];
   selectedModel: string;
+  enabledTools: string[];
   onSend: (prompt: string) => void;
   onStop: () => void;
   onClearHistory: () => void;
   onConfigChange: (config: StoredProviderConfig, model: string) => void;
-  onTestModeResponse: (content: string, type: 'assistant' | 'user', hasError?: boolean) => void;
+  onTestModeResponse: (
+    content: string | object,
+    type: 'assistant' | 'user',
+    hasError?: boolean
+  ) => void;
+  onToolsChange: (enabledTools: string[]) => void;
 }
 
 export const AIInputSection: React.FC<AIInputSectionProps> = ({
@@ -39,12 +46,15 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   activeConfig,
   availableConfigs,
   selectedModel,
+  enabledTools,
   onSend,
   onStop,
   onClearHistory,
   onConfigChange,
   onTestModeResponse,
+  onToolsChange,
 }) => {
+  const [showToolsDialog, setShowToolsDialog] = React.useState(false);
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
@@ -123,7 +133,16 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
         }}
       />
 
-      <Grid container justifyContent="space-between" alignItems="center">
+      <Grid
+        container
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{
+          '& > .MuiGrid-item': {
+            maxWidth: '100% !important',
+          },
+        }}
+      >
         <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
           <ActionButton description="Clear History" onClick={onClearHistory} icon="mdi:broom" />
 
@@ -188,6 +207,20 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
               </Select>
             </Box>
           )}
+
+          {/* Tools Button */}
+          {!isTestMode && (
+            <Box ml={1}>
+              <ActionButton
+                description="Manage Tools"
+                onClick={() => setShowToolsDialog(true)}
+                icon="mdi:tools"
+                iconButtonProps={{
+                  size: 'small',
+                }}
+              />
+            </Box>
+          )}
         </Grid>
 
         <Grid item>
@@ -214,6 +247,14 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
           )}
         </Grid>
       </Grid>
+
+      {/* Tools Dialog */}
+      <ToolsDialog
+        open={showToolsDialog}
+        onClose={() => setShowToolsDialog(false)}
+        enabledTools={enabledTools}
+        onToolsChange={onToolsChange}
+      />
     </Box>
   );
 };

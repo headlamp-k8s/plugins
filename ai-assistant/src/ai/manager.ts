@@ -1,3 +1,11 @@
+export type ToolCall = {
+  id: string;
+  name: string;
+  description?: string;
+  arguments: Record<string, any>;
+  type: 'mcp' | 'regular';
+};
+
 export type Prompt = {
   role: string;
   content: string;
@@ -9,6 +17,14 @@ export type Prompt = {
   contentFilterError?: boolean;
   alreadyDisplayed?: boolean;
   isDisplayOnly?: boolean; // Mark messages that shouldn't be sent to LLM
+  requestId?: string; // For tracking tool confirmation messages
+  // Add support for inline tool confirmations
+  toolConfirmation?: {
+    tools: ToolCall[];
+    onApprove: (approvedToolIds: string[]) => void;
+    onDeny: () => void;
+    loading?: boolean;
+  };
 };
 
 export default abstract class AIManager {
