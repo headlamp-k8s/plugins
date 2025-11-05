@@ -1,5 +1,5 @@
 {
-  "name": "@headlamp-k8s/app-catalog",
+  "name": "app-catalog",
   "version": "0.7.0",
   "description": "An app catalog for Headlamp",
   "scripts": {
