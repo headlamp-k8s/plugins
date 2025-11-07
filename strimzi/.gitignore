@@ -10,3 +10,6 @@ dist/
 # Keep source code in git but exclude from npm
 # (source code will be in git repo but not in published package)
 *.tar.gz
+
+# Extracted package directories (from testing)
+strimzi-headlamp/
