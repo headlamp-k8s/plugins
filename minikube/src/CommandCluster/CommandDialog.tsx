@@ -20,7 +20,7 @@ export interface CommandDialogProps {
   /** Is the dialog open? */
   open: boolean;
   /** Function to call when the dialog is closed */
-  onClose: () => void;
+  onClose: (cancel?: boolean) => void;
   /** Function to call when the user confirms the action */
   onConfirm: (data: { clusterName: string; driver: string }) => void;
   /** Command to run, like stop, start, delete... */
@@ -170,7 +170,7 @@ export default function CommandDialog({
       {!info && !waitForDriver && <Loader title={`Loading cluster info...`} />}
       {!acting && !waitForDriver && info && (
         <>
-          {!useGrid && <Button onClick={onClose}>Cancel</Button>}
+          {!useGrid && <Button onClick={() => onClose(true)}>Cancel</Button>}
           <Button
             onClick={() => {
               if (clusterName) {
@@ -187,7 +187,7 @@ export default function CommandDialog({
       )}
       {!useGrid && commandDone && (
         <>
-          <Button variant="contained" color="primary" onClick={onClose}>
+          <Button variant="contained" color="primary" onClick={() => onClose(false)}>
             Close
           </Button>
         </>
@@ -210,7 +210,7 @@ export default function CommandDialog({
             variant="contained"
             color="primary"
             onClick={() => {
-              onClose();
+              onClose(false);
               history.push(`/`);
             }}
           >
@@ -234,7 +234,7 @@ export default function CommandDialog({
       </Grid>
     </Grid>
   ) : (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={() => onClose(false)}>
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>{content}</DialogContent>
       <DialogActions>{buttons}</DialogActions>
