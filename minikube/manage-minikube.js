@@ -438,14 +438,37 @@ function info() {
   }
 
   const simulateSlowComputer = true;
+  const output = JSON.stringify(info) + '\n';
+
+  // Flush stdout reliably across platforms (some pipes/windows consoles
+  // need an extra empty write to actually flush the stream).
+  const flushAndExit = (code = 0) => {
+    // helper that performs an extra empty write then exits on next tick
+    const doEmptyWriteAndExit = () => {
+      process.stdout.write('', () => {
+        setImmediate(() => process.exit(code));
+      });
+    };
+
+    // Write the real output first
+    const ok = process.stdout.write(output, 'utf8');
+
+    if (!ok) {
+      // Wait for drain, then perform an empty write and exit
+      process.stdout.once('drain', doEmptyWriteAndExit);
+    } else {
+      // Already flushed synchronously in libuv queue, but do an empty write
+      // to coax some platforms/pipes to finish flushing.
+      doEmptyWriteAndExit();
+    }
+  };
+
   if (simulateSlowComputer) {
     setTimeout(() => {
-      console.log(JSON.stringify(info));
-      process.exit(0);
+      flushAndExit(0);
     }, 1000);
   } else {
-    console.log(JSON.stringify(info));
-    process.exit(0);
+    flushAndExit(0);
   }
 }
 
