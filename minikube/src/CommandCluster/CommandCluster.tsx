@@ -30,7 +30,7 @@ interface CommandClusterProps {
   /** The name of the cluster to act on */
   initialClusterName?: string;
   /** The function to call when the dialog is closed */
-  handleClose: () => void;
+  handleClose: (cancel?: boolean) => void;
   /** The function to call when the user confirms the action */
   onConfirm: () => void;
   /** Command to run (stop, start, delete, etc) */
@@ -362,7 +362,7 @@ export default function CommandCluster(props: CommandClusterProps) {
       cancelCallback: () => {
         setActing(false);
         setRunning(false);
-        handleClose();
+        handleClose(false);
         setOpenDialog(false);
       },
     });
@@ -391,9 +391,9 @@ may keep running in the background. Leave?"
       />
       <CommandDialog
         open={openDialog}
-        onClose={() => {
+        onClose={cancel => {
           setOpenDialog(false);
-          handleClose();
+          handleClose(cancel);
           setActing(false);
           setCommandDone(false);
           setRunningCommand(null);

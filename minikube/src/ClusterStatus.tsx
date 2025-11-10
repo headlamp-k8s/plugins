@@ -14,8 +14,11 @@ export default function ClusterStatus({ cluster, error }) {
       <CommandCluster
         initialClusterName={cluster.name}
         open={openConfirmDialog === 'stopMinikube'}
-        handleClose={() => {
+        handleClose={cancel => {
           setOpenConfirmDialog('');
+          if (cancel) {
+            return;
+          }
           // reload the browser to refresh the cluster list
           window.location.reload();
         }}
@@ -27,8 +30,11 @@ export default function ClusterStatus({ cluster, error }) {
       <CommandCluster
         initialClusterName={cluster.name}
         open={openConfirmDialog === 'startMinikube'}
-        handleClose={() => {
+        handleClose={cancel => {
           setOpenConfirmDialog('');
+          if (cancel) {
+            return;
+          }
           // reload the browser to refresh the cluster list
           window.location.reload();
         }}
