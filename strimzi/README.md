@@ -21,28 +21,10 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 
 - [Headlamp](https://headlamp.dev/) installed
 - A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) deployed
-  - See [strimzi-deployment](https://github.com/cesaroangelo/strimzi-deployment) repository for ready-to-use Strimzi deployment configurations
 
 ## 🚀 Quick Start
 
-### 1. Deploy Strimzi Operator and Kafka
-
-For detailed Strimzi deployment instructions, see the [strimzi-deployment](https://github.com/cesaroangelo/strimzi-deployment) repository.
-
-Quick example:
-```bash
-# Clone the deployment repository
-git clone https://github.com/cesaroangelo/strimzi-deployment.git
-cd strimzi-deployment
-
-# Install Strimzi operator
-./deploy-strimzi.sh install-operator
-
-# Deploy a Kafka cluster
-./deploy-strimzi.sh deploy single
-```
-
-### 2. Install the Plugin
+### Install the Plugin
 
 #### 📦 Install from npm
 
@@ -198,18 +180,6 @@ headlamp-server -plugins-dir=/path/to/strimzi-headlamp/dist
 - Monitor user status (Ready/Not Ready)
 - View authentication and authorization types
 
-## ☸️ Strimzi Deployment
-
-For Kafka deployment on Kubernetes, check out the companion repository:
-
-**[strimzi-deployment](https://github.com/cesaroangelo/strimzi-deployment)** - Production-ready Strimzi configurations
-
-Features:
-- Multiple security levels (no-security, auth-only, auth-and-authz)
-- Various topologies (single node, 3 nodes, separated controllers/brokers)
-- Helper scripts for deployment and cleanup
-- Ready-to-use examples for topics and users
-- Monitoring configurations
 
 ## 📁 Plugin Structure
 
