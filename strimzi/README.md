@@ -1,4 +1,4 @@
-# 🎛️ Strimzi Headlamp Plugin
+# ☸️ Strimzi Headlamp Plugin
 
 A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources directly from the Headlamp UI.
 
