@@ -195,19 +195,9 @@ strimzi-headlamp/
 └── README.md
 ```
 
-## 📦 Publishing to npm (Keep Source Code Private)
+## 📦 Publishing to npm
 
-This plugin can be published to npm while keeping the source code private on GitHub:
-
-### 1. Make GitHub Repository Private
-
-- Go to https://github.com/cesaroangelo/strimzi-headlamp/settings
-- Scroll to "Danger Zone"
-- Click "Change visibility" → "Make private"
-
-### 2. Publish to npm
-
-The `package.json` is already configured to publish only compiled files (`dist/`), not source code:
+This plugin is published to npm for easy installation:
 
 ```bash
 # Login to npm (first time only)
@@ -220,13 +210,6 @@ npm run build
 npm publish --access public
 ```
 
-### 3. Result
-
-- ✅ **Source code**: Private on GitHub (only you can see it)
-- ✅ **Compiled plugin**: Public on npm (anyone can install it)
-- ✅ **Users can install**: `npm install @headlamp-k8s/strimzi`
-- ❌ **Users cannot see**: Your TypeScript source code
-
 The `files` field in `package.json` ensures only these are published:
 - `dist/**/*` (compiled JavaScript)
 - `README.md`
@@ -234,9 +217,9 @@ The `files` field in `package.json` ensures only these are published:
 
 ## 📄 License
 
-This software is proprietary and closed-source. See [LICENSE](LICENSE) and [EULA.md](EULA.md) for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-All rights reserved. Copyright (c) 2025 Angelo Cesaro.
+Copyright (c) 2025 Angelo Cesaro
 
 ## 💬 Support and Contact
 

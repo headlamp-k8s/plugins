@@ -4,7 +4,7 @@
   "description": "Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources",
   "main": "dist/main.js",
   "author": "Angelo Cesaro",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "private": false,
   "keywords": [
     "headlamp",
