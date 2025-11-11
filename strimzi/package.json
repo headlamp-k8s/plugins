@@ -17,6 +17,10 @@
     "type": "git",
     "url": "https://github.com/cesaroangelo/strimzi-headlamp.git"
   },
+  "homepage": "https://github.com/cesaroangelo/strimzi-headlamp#readme",
+  "bugs": {
+    "url": "https://github.com/cesaroangelo/strimzi-headlamp/issues"
+  },
   "files": [
     "dist/**/*",
     "README.md",
