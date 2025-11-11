@@ -21,42 +21,26 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 
 - [Headlamp](https://headlamp.dev/) installed
 - A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) deployed
-  - See [strimzi/](strimzi/) for ready-to-use Strimzi deployment configurations
+  - See [strimzi-deployment](https://github.com/cesaroangelo/strimzi-deployment) repository for ready-to-use Strimzi deployment configurations
 
 ## 🚀 Quick Start
 
 ### 1. Deploy Strimzi Operator and Kafka
 
-#### Using Helper Scripts (Recommended)
+For detailed Strimzi deployment instructions, see the [strimzi-deployment](https://github.com/cesaroangelo/strimzi-deployment) repository.
 
+Quick example:
 ```bash
+# Clone the deployment repository
+git clone https://github.com/cesaroangelo/strimzi-deployment.git
+cd strimzi-deployment
+
 # Install Strimzi operator
 ./deploy-strimzi.sh install-operator
 
-# List available configurations
-./deploy-strimzi.sh list-configs
-
 # Deploy a Kafka cluster
-./deploy-strimzi.sh deploy single          # Single node for development
-./deploy-strimzi.sh deploy dual-role       # 3 nodes for production
-./deploy-strimzi.sh deploy separated       # Full production topology
-
-# Check status
-./deploy-strimzi.sh status
+./deploy-strimzi.sh deploy single
 ```
-
-#### Manual Deployment
-
-```bash
-# Install Strimzi operator
-cd strimzi/operator
-./install.sh
-
-# Deploy a Kafka cluster (choose a configuration)
-kubectl apply -f ../configurations/single-node/kafka-single-node.yaml -n kafka
-```
-
-See [strimzi/](strimzi/) directory for more deployment options.
 
 ### 2. Install the Plugin
 
@@ -214,62 +198,18 @@ headlamp-server -plugins-dir=/path/to/strimzi-headlamp/dist
 - Monitor user status (Ready/Not Ready)
 - View authentication and authorization types
 
-## ☸️ Strimzi Deployment Configurations
+## ☸️ Strimzi Deployment
 
-This repository includes ready-to-use Kafka deployment configurations in the [strimzi/](strimzi/) directory:
+For Kafka deployment on Kubernetes, check out the companion repository:
 
-- **Operator Installation**: Scripts to install/uninstall Strimzi operator
-- **Single Node**: Development configuration with 1 broker/controller
-- **3 Dual-Role Nodes**: Small production setup with high availability
-- **3 Controllers + 3 Brokers**: Full production topology with separated roles
-- **Ephemeral**: Quick testing configuration without persistence
-- **Example Resources**: Ready-to-use YAML files for topics and users
-- **Monitoring**: Prometheus metrics configurations
+**[strimzi-deployment](https://github.com/cesaroangelo/strimzi-deployment)** - Production-ready Strimzi configurations
 
-### 📝 Example Topics and Users
-
-The [strimzi/examples/](strimzi/examples/) directory contains ready-to-use YAML files:
-
-**Topics** (`examples/topics/`):
-- Simple topic (1 partition, 1 replica for dev)
-- Multi-partition topic (3 replicas for production)
-- Compacted topic (for state storage)
-- High-throughput topic (optimized settings)
-
-**Users** (`examples/users/`):
-- Simple user with SCRAM-SHA-512 authentication
-- Admin user with TLS authentication
-- Producer-only user with write permissions
-- Consumer-only user with read permissions
-
-Apply an example:
-```bash
-kubectl apply -f strimzi/examples/topics/simple-topic.yaml -n kafka
-kubectl apply -f strimzi/examples/users/simple-user-scram.yaml -n kafka
-```
-
-### Helper Scripts
-
-Two helper scripts are provided for easy management:
-
-**deploy-strimzi.sh** - Deploy and manage Strimzi:
-```bash
-./deploy-strimzi.sh install-operator    # Install operator
-./deploy-strimzi.sh list-configs        # List available configs
-./deploy-strimzi.sh deploy <config>     # Deploy Kafka cluster
-./deploy-strimzi.sh status              # Check status
-```
-
-**cleanup-strimzi.sh** - Clean up resources:
-```bash
-./cleanup-strimzi.sh cluster            # Delete cluster (keep data)
-./cleanup-strimzi.sh cluster-all        # Delete cluster and data
-./cleanup-strimzi.sh operator           # Uninstall operator (keep data)
-./cleanup-strimzi.sh operator-all       # Uninstall operator and delete data
-./cleanup-strimzi.sh everything         # Remove everything
-```
-
-See [strimzi/README.md](strimzi/README.md) for detailed deployment instructions.
+Features:
+- Multiple security levels (no-security, auth-only, auth-and-authz)
+- Various topologies (single node, 3 nodes, separated controllers/brokers)
+- Helper scripts for deployment and cleanup
+- Ready-to-use examples for topics and users
+- Monitoring configurations
 
 ## 📁 Plugin Structure
 
@@ -279,13 +219,7 @@ strimzi-headlamp/
 │   ├── components/       # React components for UI
 │   ├── crds.ts          # Strimzi CRD definitions
 │   └── index.tsx        # Plugin entry point
-├── strimzi/             # Kafka deployment configurations
-│   ├── operator/        # Operator installation scripts
-│   ├── configurations/  # Various Kafka cluster configs
-│   └── monitoring/      # Prometheus metrics setup
 ├── dist/                # Build output
-├── deploy-strimzi.sh    # Helper script for deployment
-├── cleanup-strimzi.sh   # Helper script for cleanup
 ├── package.json
 ├── tsconfig.json
 └── README.md
