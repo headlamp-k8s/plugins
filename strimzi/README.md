@@ -14,6 +14,8 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
   - Configure ACLs for fine-grained authorization
   - View passwords and certificates (secrets)
   - Delete users with confirmation
+- **Search & Filter**: Real-time search and advanced filtering on all lists
+  - Filter by status, mode, authentication type, partitions, replicas, and more
 - Real-time status monitoring for all Strimzi resources
 - Multi-namespace support - view resources across all namespaces
 
