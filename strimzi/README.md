@@ -219,15 +219,13 @@ The `files` field in `package.json` ensures only these are published:
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-Copyright (c) 2025 Angelo Cesaro
-
 ## 💬 Support
 
 For support, feature requests, or bug reports, please open an issue in the [GitHub repository](https://github.com/cesaroangelo/strimzi-headlamp/issues).
 
 ---
 
-Made with ❤️ by [Angelo Cesaro](https://angelocesaro.com)
+Developed with ❤️ on 🌎 by [Angelo Cesaro](https://angelocesaro.com)
 
 ## 📚 Resources
 
