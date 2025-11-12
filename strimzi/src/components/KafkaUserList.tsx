@@ -2,6 +2,7 @@ import React from 'react';
 import { KafkaUser } from '../crds';
 import { isUserReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
 
 // Helper to get theme-aware colors
 const useThemeColors = () => {
@@ -55,6 +56,12 @@ export function KafkaUserList() {
   const [loading, setLoading] = React.useState(false);
   const colors = useThemeColors();
 
+  // Search and Filter state
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [authTypeFilter, setAuthTypeFilter] = React.useState('all');
+  const [hasAclsFilter, setHasAclsFilter] = React.useState('all');
+
   const fetchUsers = React.useCallback(() => {
     ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkausers')
       .then((data: any) => {
@@ -70,6 +77,44 @@ export function KafkaUserList() {
   React.useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // Filter users based on search and filters
+  const filteredUsers = React.useMemo(() => {
+    return users.filter((user) => {
+      // Search filter
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch =
+        searchTerm === '' ||
+        user.metadata.name.toLowerCase().includes(searchLower) ||
+        user.metadata.namespace.toLowerCase().includes(searchLower);
+
+      if (!matchesSearch) return false;
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        const ready = isUserReady(user);
+        if (statusFilter === 'ready' && !ready) return false;
+        if (statusFilter === 'not-ready' && ready) return false;
+      }
+
+      // Auth Type filter
+      if (authTypeFilter !== 'all') {
+        const authType = user.spec.authentication.type;
+        if (authTypeFilter === 'scram' && authType !== 'scram-sha-512') return false;
+        if (authTypeFilter === 'tls' && authType !== 'tls') return false;
+      }
+
+      // Has ACLs filter
+      if (hasAclsFilter !== 'all') {
+        const hasAcls = user.spec.authorization?.type === 'simple' &&
+                        (user.spec.authorization?.acls?.length ?? 0) > 0;
+        if (hasAclsFilter === 'yes' && !hasAcls) return false;
+        if (hasAclsFilter === 'no' && hasAcls) return false;
+      }
+
+      return true;
+    });
+  }, [users, searchTerm, statusFilter, authTypeFilter, hasAclsFilter]);
 
   const fetchUserSecret = async (user: KafkaUser) => {
     try {
@@ -543,8 +588,57 @@ export function KafkaUserList() {
         </button>
       </div>
 
-      {users.length === 0 ? (
-        <p>No Kafka users found</p>
+      {/* Search and Filter */}
+      <SearchFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        placeholder="Search users by name or namespace..."
+        resultCount={filteredUsers.length}
+        totalCount={users.length}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+          <FilterGroup label="Status">
+            <FilterSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'ready', label: 'Ready' },
+                { value: 'not-ready', label: 'Not Ready' },
+              ]}
+            />
+          </FilterGroup>
+
+          <FilterGroup label="Authentication Type">
+            <FilterSelect
+              value={authTypeFilter}
+              onChange={setAuthTypeFilter}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'scram', label: 'SCRAM-SHA-512' },
+                { value: 'tls', label: 'TLS' },
+              ]}
+            />
+          </FilterGroup>
+
+          <FilterGroup label="Has ACLs">
+            <FilterSelect
+              value={hasAclsFilter}
+              onChange={setHasAclsFilter}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'yes', label: 'Yes' },
+                { value: 'no', label: 'No' },
+              ]}
+            />
+          </FilterGroup>
+        </div>
+      </SearchFilter>
+
+      {filteredUsers.length === 0 ? (
+        <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
+          {users.length === 0 ? 'No Kafka users found' : 'No users match your search criteria'}
+        </p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
           <thead>
@@ -558,7 +652,7 @@ export function KafkaUserList() {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => {
+            {filteredUsers.map((user) => {
               const ready = isUserReady(user);
 
               return (

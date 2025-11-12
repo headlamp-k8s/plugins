@@ -2,6 +2,7 @@ import React from 'react';
 import { KafkaTopic } from '../crds';
 import { isTopicReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { SearchFilter, FilterGroup, FilterSelect, FilterNumberRange } from './SearchFilter';
 
 // Helper to get theme-aware colors
 const useThemeColors = () => {
@@ -45,6 +46,14 @@ export function KafkaTopicList() {
   const [loading, setLoading] = React.useState(false);
   const colors = useThemeColors();
 
+  // Search and Filter state
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [minPartitions, setMinPartitions] = React.useState<number | ''>('');
+  const [maxPartitions, setMaxPartitions] = React.useState<number | ''>('');
+  const [minReplicas, setMinReplicas] = React.useState<number | ''>('');
+  const [maxReplicas, setMaxReplicas] = React.useState<number | ''>('');
+
   const fetchTopics = React.useCallback(() => {
     ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkatopics')
       .then((data: any) => {
@@ -60,6 +69,39 @@ export function KafkaTopicList() {
   React.useEffect(() => {
     fetchTopics();
   }, [fetchTopics]);
+
+  // Filter topics based on search and filters
+  const filteredTopics = React.useMemo(() => {
+    return topics.filter((topic) => {
+      // Search filter
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch =
+        searchTerm === '' ||
+        topic.metadata.name.toLowerCase().includes(searchLower) ||
+        topic.metadata.namespace.toLowerCase().includes(searchLower);
+
+      if (!matchesSearch) return false;
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        const ready = isTopicReady(topic);
+        if (statusFilter === 'ready' && !ready) return false;
+        if (statusFilter === 'not-ready' && ready) return false;
+      }
+
+      // Partitions filter
+      const partitions = topic.spec.partitions || 0;
+      if (minPartitions !== '' && partitions < minPartitions) return false;
+      if (maxPartitions !== '' && partitions > maxPartitions) return false;
+
+      // Replicas filter
+      const replicas = topic.spec.replicas || 0;
+      if (minReplicas !== '' && replicas < minReplicas) return false;
+      if (maxReplicas !== '' && replicas > maxReplicas) return false;
+
+      return true;
+    });
+  }, [topics, searchTerm, statusFilter, minPartitions, maxPartitions, minReplicas, maxReplicas]);
 
   const handleCreate = async () => {
     setLoading(true);
@@ -371,8 +413,55 @@ export function KafkaTopicList() {
         </button>
       </div>
 
-      {topics.length === 0 ? (
-        <p>No Kafka topics found</p>
+      {/* Search and Filter */}
+      <SearchFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        placeholder="Search topics by name or namespace..."
+        resultCount={filteredTopics.length}
+        totalCount={topics.length}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+          <FilterGroup label="Status">
+            <FilterSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'ready', label: 'Ready' },
+                { value: 'not-ready', label: 'Not Ready' },
+              ]}
+            />
+          </FilterGroup>
+
+          <FilterGroup label="Partitions">
+            <FilterNumberRange
+              minValue={minPartitions}
+              maxValue={maxPartitions}
+              onMinChange={setMinPartitions}
+              onMaxChange={setMaxPartitions}
+              minPlaceholder="Min partitions"
+              maxPlaceholder="Max partitions"
+            />
+          </FilterGroup>
+
+          <FilterGroup label="Replicas">
+            <FilterNumberRange
+              minValue={minReplicas}
+              maxValue={maxReplicas}
+              onMinChange={setMinReplicas}
+              onMaxChange={setMaxReplicas}
+              minPlaceholder="Min replicas"
+              maxPlaceholder="Max replicas"
+            />
+          </FilterGroup>
+        </div>
+      </SearchFilter>
+
+      {filteredTopics.length === 0 ? (
+        <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
+          {topics.length === 0 ? 'No Kafka topics found' : 'No topics match your search criteria'}
+        </p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
           <thead>
@@ -386,7 +475,7 @@ export function KafkaTopicList() {
             </tr>
           </thead>
           <tbody>
-            {topics.map((topic) => {
+            {filteredTopics.map((topic) => {
               const ready = isTopicReady(topic);
 
               return (

@@ -1,11 +1,17 @@
 import React from 'react';
-import { ApiError, Kafka as K8sKafka } from '../crds';
+import { Kafka as K8sKafka } from '../crds';
 import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
 
 export function KafkaList() {
   const [kafkas, setKafkas] = React.useState<K8sKafka[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Search and Filter state
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [modeFilter, setModeFilter] = React.useState('all');
+  const [statusFilter, setStatusFilter] = React.useState('all');
 
   React.useEffect(() => {
     // Fetch Kafka resources using Headlamp API
@@ -20,6 +26,36 @@ export function KafkaList() {
       });
   }, []);
 
+  // Filter kafkas based on search and filters
+  const filteredKafkas = React.useMemo(() => {
+    return kafkas.filter((kafka) => {
+      // Search filter
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch =
+        searchTerm === '' ||
+        kafka.metadata.name.toLowerCase().includes(searchLower) ||
+        kafka.metadata.namespace.toLowerCase().includes(searchLower);
+
+      if (!matchesSearch) return false;
+
+      // Mode filter
+      if (modeFilter !== 'all') {
+        const mode = getClusterMode(kafka);
+        if (modeFilter === 'kraft' && mode !== 'KRaft') return false;
+        if (modeFilter === 'zookeeper' && mode !== 'ZooKeeper') return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        const ready = isKafkaReady(kafka);
+        if (statusFilter === 'ready' && !ready) return false;
+        if (statusFilter === 'not-ready' && ready) return false;
+      }
+
+      return true;
+    });
+  }, [kafkas, searchTerm, modeFilter, statusFilter]);
+
   if (error) {
     return <div style={{ padding: '20px', color: 'red' }}>Error: {error}</div>;
   }
@@ -29,8 +65,45 @@ export function KafkaList() {
       <h1>Kafka Clusters</h1>
       <p>Strimzi Kafka clusters with KRaft and ZooKeeper support</p>
 
-      {kafkas.length === 0 ? (
-        <p>No Kafka clusters found</p>
+      {/* Search and Filter */}
+      <SearchFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        placeholder="Search clusters by name or namespace..."
+        resultCount={filteredKafkas.length}
+        totalCount={kafkas.length}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+          <FilterGroup label="Mode">
+            <FilterSelect
+              value={modeFilter}
+              onChange={setModeFilter}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'kraft', label: 'KRaft' },
+                { value: 'zookeeper', label: 'ZooKeeper' },
+              ]}
+            />
+          </FilterGroup>
+
+          <FilterGroup label="Status">
+            <FilterSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'ready', label: 'Ready' },
+                { value: 'not-ready', label: 'Not Ready' },
+              ]}
+            />
+          </FilterGroup>
+        </div>
+      </SearchFilter>
+
+      {filteredKafkas.length === 0 ? (
+        <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
+          {kafkas.length === 0 ? 'No Kafka clusters found' : 'No clusters match your search criteria'}
+        </p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
           <thead>
@@ -44,7 +117,7 @@ export function KafkaList() {
             </tr>
           </thead>
           <tbody>
-            {kafkas.map((kafka) => {
+            {filteredKafkas.map((kafka) => {
               const mode = getClusterMode(kafka);
               const isKRaft = isKRaftMode(kafka);
               const ready = isKafkaReady(kafka);
