@@ -153,6 +153,24 @@ npm run build
 headlamp-server -plugins-dir=/path/to/strimzi-headlamp/dist
 ```
 
+### Method 4: Using Docker Compose (Recommended)
+
+The easiest way to run Headlamp Server with the Strimzi plugin.
+
+```bash
+# Build the plugin
+npm install && npm run build
+
+# Start Headlamp Server
+docker-compose up -d
+
+# Access Headlamp at http://localhost:4466
+```
+
+**Requirements**: Docker Desktop, valid kubeconfig at `~/.kube/config`, and plugin built in `dist/` directory.
+
+To stop: `docker-compose down`
+
 ## 📊 Supported Strimzi Resources
 
 ### Kafka (kafka.strimzi.io/v1beta2)

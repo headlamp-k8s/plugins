@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  headlamp:
+    image: ghcr.io/headlamp-k8s/headlamp:latest
+    container_name: headlamp-server
+    ports:
+      # Headlamp web interface
+      - "4466:4466"
+    volumes:
+      # Mount kubeconfig for Kubernetes cluster access (read-only)
+      - ~/.kube/config:/root/.kube/config:ro
+      # Mount the Strimzi plugin directory (read-only)
+      # Make sure to build the plugin first with 'npm run build'
+      - ./dist:/headlamp/plugins/strimzi:ro
+    environment:
+      # Disable login for local development (optional, remove for production)
+      - HEADLAMP_CONFIG_DISABLE_LOGIN=true
+    restart: unless-stopped
+    networks:
+      - headlamp-network
+
+networks:
+  headlamp-network:
+    driver: bridge
