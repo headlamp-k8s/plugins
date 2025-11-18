@@ -1,0 +1,148 @@
+---
+# Namespace for Headlamp
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: headlamp
+---
+# ServiceAccount for Headlamp
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp
+  namespace: headlamp
+---
+# ClusterRoleBinding to give Headlamp cluster-admin access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: headlamp
+    namespace: headlamp
+---
+# ConfigMap for the Strimzi plugin
+# Note: In production, you would build a custom image with the plugin
+# For development, we use an init container to copy the plugin
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: strimzi-plugin
+  namespace: headlamp
+data:
+  # Plugin will be loaded via init container or custom image
+  placeholder: "true"
+---
+# Deployment for Headlamp
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headlamp
+  namespace: headlamp
+  labels:
+    app: headlamp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: headlamp
+  template:
+    metadata:
+      labels:
+        app: headlamp
+    spec:
+      serviceAccountName: headlamp
+      initContainers:
+        - name: copy-plugins
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /plugins/strimzi
+              cp /plugin-source/main.js /plugins/strimzi/
+              cp /plugin-source/package.json /plugins/strimzi/
+          volumeMounts:
+            - name: plugin-source
+              mountPath: /plugin-source
+            - name: plugins
+              mountPath: /plugins
+      containers:
+        - name: headlamp
+          image: ghcr.io/headlamp-k8s/headlamp:v0.38.0
+          ports:
+            - containerPort: 4466
+              name: http
+          args:
+            - "-in-cluster"
+            - "-plugins-dir=/headlamp/plugins"
+          volumeMounts:
+            - name: plugins
+              mountPath: /headlamp/plugins
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4466
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4466
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: plugin-source
+          configMap:
+            name: strimzi-plugin-files
+        - name: plugins
+          emptyDir: {}
+---
+# Service to expose Headlamp
+apiVersion: v1
+kind: Service
+metadata:
+  name: headlamp
+  namespace: headlamp
+  labels:
+    app: headlamp
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 4466
+      protocol: TCP
+      name: http
+  selector:
+    app: headlamp
+---
+# NodePort Service for local development access
+apiVersion: v1
+kind: Service
+metadata:
+  name: headlamp-nodeport
+  namespace: headlamp
+  labels:
+    app: headlamp
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 4466
+      nodePort: 30080
+      protocol: TCP
+      name: http
+  selector:
+    app: headlamp

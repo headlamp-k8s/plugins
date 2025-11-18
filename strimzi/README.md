@@ -153,23 +153,28 @@ npm run build
 headlamp-server -plugins-dir=/path/to/strimzi-headlamp/dist
 ```
 
-### Method 4: Using Docker Compose (Recommended)
+### Method 4: Deploy Headlamp to Kubernetes
 
-The easiest way to run Headlamp Server with the Strimzi plugin.
+Deploy Headlamp with the Strimzi plugin directly to your Kubernetes cluster.
 
 ```bash
-# Build the plugin
-npm install && npm run build
+# Deploy Headlamp
+kubectl apply -f deploy/headlamp.yaml
 
-# Start Headlamp Server
-docker-compose up -d
+# Access via NodePort (port 30080)
+# For Docker Desktop: http://localhost:30080
+# For Kind: http://localhost:30080 (may need port-forward)
 
-# Access Headlamp at http://localhost:4466
+# Or use port-forward
+kubectl port-forward -n headlamp svc/headlamp 8080:80
+# Access at http://localhost:8080
 ```
 
-**Requirements**: Docker Desktop, valid kubeconfig at `~/.kube/config`, and plugin built in `dist/` directory.
+**Note**: The base deployment uses an empty plugins directory. To add the Strimzi plugin, you need to either:
+1. Build a custom Headlamp image with the plugin included
+2. Use a ConfigMap/PersistentVolume to mount the plugin files
 
-To stop: `docker-compose down`
+To uninstall: `kubectl delete -f deploy/headlamp.yaml`
 
 ## 📊 Supported Strimzi Resources
 
@@ -209,6 +214,8 @@ strimzi-headlamp/
 │   ├── components/       # React components for UI
 │   ├── crds.ts          # Strimzi CRD definitions
 │   └── index.tsx        # Plugin entry point
+├── deploy/              # Kubernetes manifests
+│   └── headlamp.yaml    # Headlamp deployment
 ├── dist/                # Build output
 ├── package.json
 ├── tsconfig.json
