@@ -6,7 +6,7 @@ import { StoredProviderConfig } from './utils/ProviderConfigManager';
 export const PLUGIN_NAME = '@headlamp-k8s/ai-assistant';
 export const getSettingsURL = () => `/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`;
 
-export const pluginStore = new ConfigStore(PLUGIN_NAME);
+export const pluginStore = new ConfigStore<{ isUIPanelOpen?: boolean }>(PLUGIN_NAME);
 export const usePluginConfig = pluginStore.useConfig();
 
 function usePluginSettings() {
