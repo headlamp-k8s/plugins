@@ -224,6 +224,7 @@ export default function ApiConfirmationDialog({
   if (method.toUpperCase() === 'PUT' && showUpdateConfirm) {
     return (
       <ConfirmDialog
+        // @todo: open does exist on ConfirmDialog, but TS is not recognizing it.
         // @ts-ignore
         open={showUpdateConfirm}
         handleClose={() => {
