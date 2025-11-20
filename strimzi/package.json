@@ -56,5 +56,8 @@
       "plugin:jsx-a11y/recommended"
     ]
   },
-  "prettier": "@headlamp-k8s/eslint-config/prettier-config"
+  "prettier": "@headlamp-k8s/eslint-config/prettier-config",
+  "dependencies": {
+    "@xyflow/react": "^12.9.3"
+  }
 }

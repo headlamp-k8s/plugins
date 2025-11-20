@@ -123,6 +123,35 @@ export interface KafkaUser {
   status?: StrimziStatus;
 }
 
+export interface KafkaNodePoolSpec {
+  replicas: number;
+  roles: string[];
+  storage?: {
+    type: string;
+    size?: string;
+  };
+  resources?: {
+    requests?: Record<string, string>;
+    limits?: Record<string, string>;
+  };
+}
+
+export interface KafkaNodePool {
+  apiVersion: string;
+  kind: string;
+  metadata: {
+    name: string;
+    namespace: string;
+    labels?: Record<string, string>;
+    creationTimestamp?: string;
+    [key: string]: any;
+  };
+  spec: KafkaNodePoolSpec;
+  status?: StrimziStatus & {
+    nodeIds?: number[];
+  };
+}
+
 // Helper functions
 export function isKRaftMode(kafka: Kafka): boolean {
   return !kafka.spec.zookeeper;

@@ -124,7 +124,20 @@ export function KafkaList() {
 
               return (
                 <tr key={`${kafka.metadata.namespace}/${kafka.metadata.name}`} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '12px' }}>{kafka.metadata.name}</td>
+                  <td style={{ padding: '12px' }}>
+                    <a
+                      href={`/strimzi/kafkas/${kafka.metadata.namespace}/${kafka.metadata.name}`}
+                      style={{
+                        color: '#2563eb',
+                        textDecoration: 'none',
+                        fontWeight: 500,
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                    >
+                      {kafka.metadata.name}
+                    </a>
+                  </td>
                   <td style={{ padding: '12px' }}>{kafka.metadata.namespace}</td>
                   <td style={{ padding: '12px' }}>
                     <span style={{
