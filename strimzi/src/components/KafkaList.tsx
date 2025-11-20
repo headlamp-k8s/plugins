@@ -2,6 +2,7 @@ import React from 'react';
 import { Kafka as K8sKafka } from '../crds';
 import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { createRouteURL } from '@kinvolk/headlamp-plugin/lib/lib/router';
 import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
 
 export function KafkaList() {
@@ -126,11 +127,15 @@ export function KafkaList() {
                 <tr key={`${kafka.metadata.namespace}/${kafka.metadata.name}`} style={{ borderBottom: '1px solid #eee' }}>
                   <td style={{ padding: '12px' }}>
                     <a
-                      href={`/strimzi/kafkas/${kafka.metadata.namespace}/${kafka.metadata.name}`}
+                      href={createRouteURL('Kafka Cluster Details', {
+                        namespace: kafka.metadata.namespace,
+                        name: kafka.metadata.name,
+                      })}
                       style={{
                         color: '#2563eb',
                         textDecoration: 'none',
                         fontWeight: 500,
+                        cursor: 'pointer',
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                       onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
