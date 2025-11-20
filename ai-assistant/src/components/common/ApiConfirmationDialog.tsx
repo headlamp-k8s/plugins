@@ -216,8 +216,7 @@ export default function ApiConfirmationDialog({
             </Typography>
           </Box>
         }
-        confirmButtonProps={{ color: 'error' }}
-        confirmButtonText={`Yes, Delete ${resourceInfo?.kind || 'Resource'}`}
+        confirmLabel={`Yes, Delete ${resourceInfo?.kind || 'Resource'}`}
       />
     );
   }
@@ -249,7 +248,7 @@ export default function ApiConfirmationDialog({
             </Typography>
           </Box>
         }
-        confirmButtonText="Yes, Apply Patch"
+        confirmLabel="Yes, Apply Patch"
       />
     );
   }
