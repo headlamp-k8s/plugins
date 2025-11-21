@@ -112,6 +112,8 @@ export class ToolManager {
         return model;
       }
 
+      // @todo: need to fix return type of this bindToModel method.
+      // @ts-ignore
       return model.bindTools(langChainTools);
     } catch (error) {
       console.error(`Error binding tools to ${providerId} model:`, error);

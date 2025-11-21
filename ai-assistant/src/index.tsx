@@ -5,6 +5,8 @@ import {
   registerPluginSettings,
   registerUIPanel,
 } from '@kinvolk/headlamp-plugin/lib';
+// @todo: this HeadlampEventType import is weird. Maybe fix in headlamp to be better.
+import { DefaultHeadlampEvents as HeadlampEventType } from '@kinvolk/headlamp-plugin/lib/plugin/registry';
 import {
   Box,
   Button,
@@ -200,6 +202,7 @@ function HeadlampAIPrompt() {
           }}
           selected={pluginState.isUIPanelOpen}
           size="small"
+          value="ai-assistant"
         >
           <Icon icon="ai-assistant:logo" width="24px" />
         </ToggleButton>
@@ -262,32 +265,49 @@ registerAppBarAction(HeadlampAIPrompt);
 
 registerAppBarAction(() => {
   const _pluginState = useGlobalState();
+
+  // @todo: these "any" casts are all suspicious and also bugs (at least in the types maybe more).
+  // @todo: the data being used is not in the event type definitions. Check the definitions and this code.
   registerHeadlampEventCallback(event => {
+    // @todo: headlamp.home-page-loaded does not exist in headlampEventSlice or anywhere in headlamp.
     if (event.type === 'headlamp.home-page-loaded') {
       _pluginState.setEvent({
         ..._pluginState.event,
+        type: 'headlamp.home-page-loaded',
         clusters: (event.data as any).clusters,
         errors: (event.data as any).errors,
       });
     }
-    if (event.type === 'headlamp.object-events') {
+    if (event.type === HeadlampEventType.OBJECT_EVENTS) {
+      // @todo: some of these fields need fixing
       _pluginState.setEvent({
         ..._pluginState.event,
-        objectEvent: event.data,
+        type: HeadlampEventType.OBJECT_EVENTS,
+        objectEvent: (_pluginState?.event as any)?.objectEvent,
+        resources: (event.data as any).resources,
+        resourceKind: (event.data as any).resourceKind,
       });
     }
-
-    if (event.type === 'headlamp.details-view') {
+    if (event.type === HeadlampEventType.DETAILS_VIEW) {
+      // @todo: some of these fields need fixing
       _pluginState.setEvent({
+        type: HeadlampEventType.DETAILS_VIEW,
         title: (event.data as any).title,
         resource: (event.data as any).resource,
-        objectEvent: _pluginState?.event?.objectEvent,
+        objectEvent: (_pluginState?.event as any)?.objectEvent,
+        resources: (event.data as any).resources,
+        resourceKind: (event.data as any).resourceKind,
       });
     }
-    if (event.type === 'headlamp.list-view') {
+    if (event.type === HeadlampEventType.LIST_VIEW) {
+      // @todo: some of these fields need fixing
       _pluginState.setEvent({
-        resources: event.data.resources,
-        resourceKind: event.data.resourceKind,
+        type: HeadlampEventType.LIST_VIEW,
+        title: (event.data as any).title,
+        resources: (event.data as any).resources,
+        resourceKind: (event.data as any).resourceKind,
+        resource: (event.data as any).resource,
+        objectEvent: (_pluginState?.event as any)?.objectEvent,
       });
     }
     return null;
