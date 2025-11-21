@@ -127,6 +127,10 @@ export function KafkaList() {
               const isKRaft = isKRaftMode(kafka);
               const ready = isKafkaReady(kafka);
 
+              // Check if cluster uses KafkaNodePools (replicas might be undefined)
+              const replicas = kafka.spec?.kafka?.replicas;
+              const replicasDisplay = replicas !== undefined ? replicas : 'KafkaNodePool';
+
               return (
                 <tr key={`${kafka.metadata.namespace}/${kafka.metadata.name}`} style={{ borderBottom: '1px solid #eee' }}>
                   <td style={{ padding: '12px' }}>
@@ -160,7 +164,7 @@ export function KafkaList() {
                     </span>
                   </td>
                   <td style={{ padding: '12px' }}>{kafka.spec.kafka.version || 'N/A'}</td>
-                  <td style={{ padding: '12px' }}>{kafka.spec.kafka.replicas}</td>
+                  <td style={{ padding: '12px' }}>{replicasDisplay}</td>
                   <td style={{ padding: '12px' }}>
                     <span style={{
                       padding: '4px 8px',
