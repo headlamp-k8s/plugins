@@ -1,4 +1,3 @@
-import { AppDispatch } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -29,7 +28,7 @@ export function NodeClassDetailView(props: { name?: string }) {
   const [modifiedYaml, setModifiedYaml] = React.useState('');
   const [isEditorOpen, setIsEditorOpen] = React.useState(false);
   const location = useLocation();
-  const dispatch: AppDispatch = useDispatch();
+  const dispatch = useDispatch();
 
   const { cloudProvider, loading, error } = useCloudProviderDetection();
 
