@@ -302,11 +302,14 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
           </Box>
         ) : (
           <Box
-            display="flex"
-            m={1}
             sx={{
-              flexWrap: 'wrap',
-              flexDirection: { sm: 'column', md: 'row' },
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: 'repeat(auto-fit, minmax(260px, 1fr))',
+                md: 'repeat(auto-fit, minmax(320px, 1fr))',
+              },
+              gap: 3,
+              m: 2,
             }}
           >
             {
@@ -330,15 +333,10 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                     <Card
                       key={`${chart.name}-${chart.version}`}
                       sx={{
-                        margin: '1rem',
                         display: 'flex',
                         flexDirection: 'column',
                         height: '100%',
-                        boxShadow: '0px 0px 5px 0px rgba(0,0,0,0.5)',
-                        width: {
-                          md: '40%',
-                          lg: '30%',
-                        },
+                        boxShadow: 3,
                       }}
                     >
                       <Box
@@ -354,9 +352,9 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                                 image={iconUrls[chart.icon]}
                                 alt={`${chart.name} logo`}
                                 sx={{
-                                  width: '60px',
-                                  height: '60px',
-                                  margin: '1rem',
+                                  width: 60,
+                                  height: 60,
+                                  m: 2,
                                   alignSelf: 'flex-start',
                                   objectFit: 'contain',
                                 }}
@@ -368,9 +366,9 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                                 image={`https://artifacthub.io/image/${chart.logo_image_id}`}
                                 alt={`${chart.name} logo`}
                                 sx={{
-                                  width: '60px',
-                                  height: '60px',
-                                  margin: '1rem',
+                                  width: 60,
+                                  height: 60,
+                                  m: 2,
                                   alignSelf: 'flex-start',
                                   objectFit: 'contain',
                                 }}
@@ -420,17 +418,17 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                       </Box>
                       <CardContent
                         sx={{
-                          margin: '1rem 0rem',
-                          height: '10vh',
-                          overflow: 'hidden',
-                          paddingTop: 0,
+                          my: 2,
+                          pt: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 1,
+                          flexGrow: 1,
                         }}
                       >
                         <Box
                           sx={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            wordBreak: 'break-word',
                           }}
                         >
                           <Tooltip title={chart.name}>
@@ -463,9 +461,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                           <Box
                             marginLeft={1}
                             sx={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                              wordBreak: 'break-word',
                             }}
                           >
                             <Tooltip title={chart?.repository?.name || ''}>
@@ -475,7 +471,16 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                         </Box>
                         <Divider />
                         <Box mt={1}>
-                          <Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              wordBreak: 'break-word',
+                              minHeight: '72px',
+                              maxHeight: '72px',
+                            }}
+                          >
                             {chart?.description?.slice(0, 100)}
                             {chart?.description?.length > 100 && (
                               <Tooltip title={chart?.description}>
@@ -488,7 +493,11 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                       <CardActions
                         sx={{
                           justifyContent: 'space-between',
-                          padding: '14px',
+                          px: 3,
+                          py: 2,
+                          gap: 1,
+                          flexWrap: 'wrap',
+                          mt: 'auto',
                         }}
                       >
                         <Button
