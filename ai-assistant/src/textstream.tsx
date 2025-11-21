@@ -7,18 +7,18 @@ import { Prompt } from './ai/manager';
 import ContentRenderer from './ContentRenderer';
 import EditorDialog from './editordialog';
 
-// declare module '@mui/material/styles' {
-//   interface Palette {
-//     sidebar: {
-//       selectedBackground: string;
-//     };
-//   }
-//   interface PaletteOptions {
-//     sidebar: {
-//       selectedBackground: string;
-//     };
-//   }
-// }
+declare module '@mui/material/styles' {
+  interface Palette {
+    sidebar: {
+      selectedBackground: string;
+    };
+  }
+  interface PaletteOptions {
+    sidebar: {
+      selectedBackground: string;
+    };
+  }
+}
 
 const TextStreamContainer = React.memo(function TextStreamContainer({
   history,
