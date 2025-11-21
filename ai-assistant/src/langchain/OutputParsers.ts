@@ -1,5 +1,8 @@
-import { CommaSeparatedListOutputParser, StringOutputParser } from '@langchain/core/output_parsers';
-import { StructuredOutputParser } from 'langchain/output_parsers';
+import {
+  CommaSeparatedListOutputParser,
+  StringOutputParser,
+  StructuredOutputParser,
+} from '@langchain/core/output_parsers';
 import { z } from 'zod';
 
 /**
