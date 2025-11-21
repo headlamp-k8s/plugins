@@ -24,6 +24,8 @@ export function nodePoolClass() {
     isNamespaced: false,
     singularName: 'NodePool',
     pluralName: 'nodepools',
+    kind: 'NodePool',
+    customResourceDefinition: undefined as any,
   });
 
   return class extendedNodePoolClass extends NodePool {
