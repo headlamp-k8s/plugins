@@ -19,7 +19,7 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
@@ -30,14 +30,14 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
     >
       <div
         style={{
-          backgroundColor: 'white',
+          backgroundColor: '#1e293b',
           borderRadius: '12px',
           width: '95vw',
           maxWidth: '1600px',
           height: '90vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -45,17 +45,17 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
         <div
           style={{
             padding: '20px 24px',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid #334155',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
         >
           <div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b' }}>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#f1f5f9' }}>
               {kafka.metadata.name}
             </div>
-            <div style={{ fontSize: '14px', fontWeight: 400, color: '#64748b', marginTop: '4px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 400, color: '#94a3b8', marginTop: '4px' }}>
               {kafka.metadata.namespace} • Cluster Topology
             </div>
           </div>
@@ -66,8 +66,8 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
               height: '32px',
               borderRadius: '6px',
               border: 'none',
-              backgroundColor: '#f1f5f9',
-              color: '#64748b',
+              backgroundColor: '#334155',
+              color: '#94a3b8',
               cursor: 'pointer',
               fontSize: '20px',
               display: 'flex',
@@ -76,12 +76,12 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
               transition: 'all 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e2e8f0';
-              e.currentTarget.style.color = '#1e293b';
+              e.currentTarget.style.backgroundColor = '#475569';
+              e.currentTarget.style.color = '#f1f5f9';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#f1f5f9';
-              e.currentTarget.style.color = '#64748b';
+              e.currentTarget.style.backgroundColor = '#334155';
+              e.currentTarget.style.color = '#94a3b8';
             }}
           >
             ×
@@ -94,7 +94,7 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
             flex: 1,
             overflow: 'auto',
             padding: '24px',
-            backgroundColor: '#f8fafc',
+            backgroundColor: '#0f172a',
           }}
         >
           <KafkaClusterTopology kafka={kafka} />
