@@ -1,7 +1,6 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
 import { KafkaList } from './components/KafkaList';
-import { KafkaDetails } from './components/KafkaDetails';
 import { KafkaTopicList } from './components/KafkaTopicList';
 import { KafkaUserList } from './components/KafkaUserList';
 
@@ -11,13 +10,6 @@ registerRoute({
   sidebar: 'strimzi',
   name: 'Kafka Clusters',
   component: () => React.createElement(KafkaList),
-});
-
-registerRoute({
-  path: '/strimzi/kafkas/:namespace/:name',
-  sidebar: 'strimzi',
-  name: 'Kafka Cluster Details',
-  component: () => React.createElement(KafkaDetails),
 });
 
 registerRoute({
