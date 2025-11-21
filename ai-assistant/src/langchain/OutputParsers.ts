@@ -146,10 +146,10 @@ export function getFormatInstructions(parser: StructuredOutputParser<any>): stri
 /**
  * Utility function to safely parse responses with error handling
  */
-export async function safeParseResponse<T>(
+export async function safeParseResponse<T extends z.ZodTypeAny>(
   parser: StructuredOutputParser<T>,
   response: string
-): Promise<{ success: boolean; data?: T; error?: string }> {
+): Promise<{ success: boolean; data?: z.infer<T>; error?: string }> {
   try {
     const parsed = await parser.parse(response);
     return { success: true, data: parsed };
