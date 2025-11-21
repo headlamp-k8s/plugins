@@ -1,4 +1,3 @@
-import { AppDispatch } from '@kinvolk/headlamp-plugin/lib';
 import {
   DetailsGrid,
   Link,
@@ -28,7 +27,7 @@ export function NodePoolDetailView(props: { name?: string }) {
   const [modifiedYaml, setModifiedYaml] = React.useState('');
   const [isEditorOpen, setIsEditorOpen] = React.useState(false);
   const [currentResource, setCurrentResource] = React.useState<KubeObject | null>(null);
-  const dispatch: AppDispatch = useDispatch();
+  const dispatch = useDispatch();
   const location = useLocation();
 
   const getHandleSave = React.useCallback(() => {
