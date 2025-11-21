@@ -1,9 +1,13 @@
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Alert, Box, Button, Link as MuiLink, Typography } from '@mui/material';
 import React, { useMemo, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+// import ReactMarkdown from 'react-markdown';
+// @todo: esm+tsc issues use require, try to fix later versions of package
+const ReactMarkdown = require('react-markdown').default;
 import { Link as RouterLink, useHistory } from 'react-router-dom';
-import remarkGfm from 'remark-gfm';
+// import remarkGfm from 'remark-gfm';
+// @todo: esm+tsc issues use require, try to fix later versions of package
+const remarkGfm = require('remark-gfm').default;
 import YAML from 'yaml';
 import { LogsButton, YamlDisplay } from './components';
 import { getHeadlampLink } from './utils/promptLinkHelper';
