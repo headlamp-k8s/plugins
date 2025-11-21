@@ -1,9 +1,9 @@
-import { AppDispatch, clusterAction } from '@kinvolk/headlamp-plugin/lib';
+import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/K8s/KubeObject';
 import yaml from 'js-yaml';
 
 export interface SaveConfig {
-  dispatch: AppDispatch;
+  dispatch: any;
   currentResource: KubeObject;
   cancelUrl: string;
   closeDialog?: () => void;
@@ -46,7 +46,7 @@ export function createHandleSave(config: SaveConfig) {
 }
 
 interface GetHandleSaveParams {
-  dispatch: AppDispatch;
+  dispatch: any;
   currentResource: KubeObject;
   cancelUrl: string;
   closeDialog: () => void;
