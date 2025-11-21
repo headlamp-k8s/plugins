@@ -816,7 +816,6 @@ Format your response to make the errors prominent and actionable.`,
               new FunctionMessage({
                 name: prompt.name || 'kubernetes_api_request',
                 content: processedContent,
-                tool_call_id: prompt.toolCallId,
               })
             );
           }
