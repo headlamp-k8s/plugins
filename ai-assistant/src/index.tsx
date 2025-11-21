@@ -202,6 +202,7 @@ function HeadlampAIPrompt() {
           }}
           selected={pluginState.isUIPanelOpen}
           size="small"
+          value="ai-assistant"
         >
           <Icon icon="ai-assistant:logo" width="24px" />
         </ToggleButton>
