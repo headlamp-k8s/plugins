@@ -2,8 +2,8 @@ import React from 'react';
 import { Kafka as K8sKafka } from '../crds';
 import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
-import { createRouteURL } from '@kinvolk/headlamp-plugin/lib/lib/router';
 import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
+import { KafkaTopologyModal } from './KafkaTopologyModal';
 
 export function KafkaList() {
   const [kafkas, setKafkas] = React.useState<K8sKafka[]>([]);
@@ -13,6 +13,10 @@ export function KafkaList() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [modeFilter, setModeFilter] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
+
+  // Topology modal state
+  const [selectedKafka, setSelectedKafka] = React.useState<K8sKafka | null>(null);
+  const [isTopologyModalOpen, setIsTopologyModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     // Fetch Kafka resources using Headlamp API
@@ -126,11 +130,11 @@ export function KafkaList() {
               return (
                 <tr key={`${kafka.metadata.namespace}/${kafka.metadata.name}`} style={{ borderBottom: '1px solid #eee' }}>
                   <td style={{ padding: '12px' }}>
-                    <a
-                      href={createRouteURL('Kafka Cluster Details', {
-                        namespace: kafka.metadata.namespace,
-                        name: kafka.metadata.name,
-                      })}
+                    <span
+                      onClick={() => {
+                        setSelectedKafka(kafka);
+                        setIsTopologyModalOpen(true);
+                      }}
                       style={{
                         color: '#2563eb',
                         textDecoration: 'none',
@@ -141,7 +145,7 @@ export function KafkaList() {
                       onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                     >
                       {kafka.metadata.name}
-                    </a>
+                    </span>
                   </td>
                   <td style={{ padding: '12px' }}>{kafka.metadata.namespace}</td>
                   <td style={{ padding: '12px' }}>
@@ -174,6 +178,16 @@ export function KafkaList() {
           </tbody>
         </table>
       )}
+
+      {/* Topology Modal */}
+      <KafkaTopologyModal
+        kafka={selectedKafka}
+        open={isTopologyModalOpen}
+        onClose={() => {
+          setIsTopologyModalOpen(false);
+          setSelectedKafka(null);
+        }}
+      />
     </div>
   );
 }
