@@ -10,7 +10,7 @@ import { useParams } from 'react-router-dom';
 import CustomObjectEventList from '../common/EventList';
 import { nodeClaimClass } from './List';
 
-export function ScalingDetailView(props: { name: string }) {
+export function ScalingDetailView(props: { name?: string }) {
   const params = useParams<{ name: string }>();
 
   const { name = params.name } = props;

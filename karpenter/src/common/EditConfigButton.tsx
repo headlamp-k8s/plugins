@@ -1,10 +1,11 @@
-import { CallbackActionOptions, KubeObject } from '@kinvolk/headlamp-plugin/lib';
+import { CallbackActionOptions } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   AuthVisible,
   ButtonStyle,
   ViewButton,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { useState } from 'react';
 
 interface EditConfigButtonProps {

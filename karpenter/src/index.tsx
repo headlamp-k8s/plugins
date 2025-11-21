@@ -63,7 +63,7 @@ registerRoute({
 registerRoute({
   path: '/karpenter/details/nodeclasses/:name',
   sidebar: 'nodeclass',
-  component: NodeClassDetailView,
+  component: () => <NodeClassDetailView />,
   name: 'nodeclasses-detail',
 });
 
@@ -84,7 +84,7 @@ registerRoute({
 registerRoute({
   path: '/karpenter/details/nodepools/:name',
   sidebar: 'nodepool',
-  component: NodePoolDetailView,
+  component: () => <NodePoolDetailView />,
   name: 'nodepools-detail',
 });
 
@@ -119,7 +119,7 @@ registerRoute({
 registerRoute({
   path: '/karpenter/details/scaling/:name',
   sidebar: 'scaling-view',
-  component: ScalingDetailView,
+  component: () => <ScalingDetailView />,
   name: 'nodeclaims-detail',
 });
 

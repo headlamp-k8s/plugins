@@ -10,6 +10,8 @@ export function nodeClaimClass() {
     isNamespaced: false,
     singularName: 'NodeClaim',
     pluralName: 'nodeclaims',
+    kind: 'NodeClaim',
+    customResourceDefinition: undefined as any,
   });
 
   return class extendedNodeClaim extends NodeClaim {
