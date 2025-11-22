@@ -22,7 +22,11 @@ import { Autocomplete, Pagination } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { getCatalogConfig } from '../../api/catalogConfig';
 import { fetchChartIcon, fetchChartsFromArtifact } from '../../api/charts';
-import { PAGE_OFFSET_COUNT_FOR_CHARTS, VANILLA_HELM_REPO } from '../../constants/catalog';
+import {
+  COMMUNITY_REPO,
+  PAGE_OFFSET_COUNT_FOR_CHARTS,
+  VANILLA_HELM_REPO,
+} from '../../constants/catalog';
 import { AvailableComponentVersions } from '../../helpers/catalog';
 import { EditorDialog } from './EditorDialog';
 import { SettingsLink } from './SettingsLink';
@@ -177,6 +181,9 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             setChartsTotalCount(parseInt(total));
             // Capture available versions from the response and set AVAILABLE_VERSIONS
             globalThis.AVAILABLE_VERSIONS = AvailableComponentVersions(data.entries);
+          } else if (chartCfg.chartProfile === COMMUNITY_REPO) {
+            setCharts(Object.fromEntries(data.packages.map((chart: any) => [chart.name, chart])));
+            setChartsTotalCount(parseInt(total));
           } else {
             setCharts(data.packages);
             setChartsTotalCount(parseInt(total));
