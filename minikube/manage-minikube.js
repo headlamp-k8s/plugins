@@ -265,8 +265,20 @@ function info() {
       // Convert to GB, 2 decimals
       return (ramInBytes / (1024 * 1024 * 1024)).toFixed(2);
     } catch (error) {
-      console.error('Failed to get RAM:', error.message);
-      return null;
+      // Fallback to PowerShell if wmic is not available
+      try {
+        const output = execSync(
+          'powershell -Command "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory"'
+        ).toString();
+        const ramInBytes = parseInt(output.trim(), 10);
+        if (isNaN(ramInBytes)) return null;
+        // Convert to GB, 2 decimals
+        return (ramInBytes / (1024 * 1024 * 1024)).toFixed(2);
+      } catch (psError) {
+        console.error('Failed to get RAM with wmic:', error.message);
+        console.error('Failed to get RAM with PowerShell:', psError.message);
+        return null;
+      }
     }
   }
 
@@ -277,8 +289,20 @@ function info() {
       // Convert to GB, 2 decimals
       return (freeMemInKB / (1024 * 1024)).toFixed(2);
     } catch (error) {
-      console.error('Failed to get free RAM:', error.message);
-      return null;
+      // Fallback to PowerShell if wmic is not available
+      try {
+        const output = execSync(
+          'powershell -Command "(Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory"'
+        ).toString();
+        const freeMemInKB = parseInt(output.trim(), 10);
+        if (isNaN(freeMemInKB)) return null;
+        // Convert to GB, 2 decimals
+        return (freeMemInKB / (1024 * 1024)).toFixed(2);
+      } catch (psError) {
+        console.error('Failed to get free RAM with wmic:', error.message);
+        console.error('Failed to get free RAM with PowerShell:', psError.message);
+        return null;
+      }
     }
   }
 
@@ -396,8 +420,20 @@ function info() {
       // Return GB as number, 2 decimals
       return (freeSpace / (1024 * 1024 * 1024)).toFixed(2);
     } catch (error) {
-      console.error('Failed to get disk space:', error.message);
-      return null;
+      // Fallback to PowerShell if wmic is not available
+      try {
+        const output = execSync(
+          'powershell -Command "(Get-PSDrive -Name ($PWD.Drive.Name)).Free"'
+        ).toString();
+        const freeSpace = parseInt(output.trim(), 10);
+        if (isNaN(freeSpace)) return null;
+        // Return GB as number, 2 decimals
+        return (freeSpace / (1024 * 1024 * 1024)).toFixed(2);
+      } catch (psError) {
+        console.error('Failed to get disk space with wmic:', error.message);
+        console.error('Failed to get disk space with PowerShell:', psError.message);
+        return null;
+      }
     }
   }
 
