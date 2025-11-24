@@ -11,5 +11,8 @@ dist/
 # (source code will be in git repo but not in published package)
 *.tar.gz
 
-# Extracted package directories (from testing)
+# Extracted plugin directories (from npm run package + tar extraction)
+# strimzi-headlamp/ - created when extracting tarball directly in project root
+# plugins/ - created when extracting tarball for Kubernetes deployment (see README Method 4)
 strimzi-headlamp/
+plugins/
