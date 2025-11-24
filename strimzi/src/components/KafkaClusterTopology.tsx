@@ -58,9 +58,9 @@ const COLORS = {
     label: '#f59e0b',
   },
   dual: {
-    border: '#a78bfa',
-    bg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(124, 58, 237, 0.2) 100%)',
-    label: '#8b5cf6',
+    border: '#f472b6',
+    bg: 'linear-gradient(135deg, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.2) 100%)',
+    label: '#ec4899',
   },
 };
 
@@ -163,11 +163,12 @@ function createPodNode(params: {
 function createGroupLabel(params: {
   id: string;
   title: string;
-  subtitle: string;
+  role: string;
+  replicas: number;
   parentId: string;
   color: typeof COLORS.nodePool;
 }): Node {
-  const { id, title, subtitle, parentId, color } = params;
+  const { id, title, role, replicas, parentId, color } = params;
 
   return {
     id,
@@ -195,7 +196,17 @@ function createGroupLabel(params: {
               letterSpacing: '0.2px',
             }}
           >
-            {subtitle}
+            {role}
+          </div>
+          <div
+            style={{
+              fontSize: '13px',
+              color: 'rgba(255, 255, 255, 0.95)',
+              fontWeight: 500,
+              letterSpacing: '0.2px',
+            }}
+          >
+            Replicas: {replicas}
           </div>
         </div>
       ),
@@ -262,63 +273,50 @@ function TopologyFlow({ kafka }: TopologyProps) {
     const clusterName = kafka.metadata.name;
     const generatedNodes: Node[] = [];
 
-    // Calculate dimensions
-    const nodeWidth = 200;
-    const nodeSpacing = 16;
-    const labelHeight = 70;
+    // Calculate dimensions - horizontal pod layout
+    const podNodeWidth = 180;
     const podNodeHeight = 200;
-    const groupPadding = { top: labelHeight + 48, right: 20, bottom: 20, left: 20 };
+    const nodeSpacing = 24;
+    const labelHeight = 150;
+    const groupLabelHeight = 95;
+    const groupPadding = { top: groupLabelHeight + 25, right: 30, bottom: 30, left: 30 };
+    const groupSpacing = 30;
 
     // Root cluster node
     let clusterWidth = 400;
     let clusterHeight = 400;
 
     if (nodePools.length > 0) {
-      // Calculate size based on node pools
-      const poolsPerRow = 3;
-      const rows = Math.ceil(nodePools.length / poolsPerRow);
+      // KRaft with KafkaNodePools - stack groups vertically
+      let maxGroupWidth = 0;
+      let totalGroupHeight = 0;
 
-      let maxPoolHeight = 0;
-      let totalWidth = groupPadding.left + groupPadding.right;
-
-      nodePools.forEach((pool, idx) => {
+      nodePools.forEach((pool) => {
         const replicas = pool.spec.replicas;
-        const poolHeight =
-          groupPadding.top + groupPadding.bottom + replicas * (podNodeHeight + nodeSpacing);
-        maxPoolHeight = Math.max(maxPoolHeight, poolHeight);
-
-        if ((idx + 1) % poolsPerRow !== 0 && idx < nodePools.length - 1) {
-          totalWidth += nodeWidth + nodeSpacing;
-        }
+        const groupWidth = groupPadding.left + groupPadding.right + replicas * (podNodeWidth + nodeSpacing) - nodeSpacing;
+        const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
+        maxGroupWidth = Math.max(maxGroupWidth, groupWidth);
+        totalGroupHeight += groupHeight + groupSpacing;
       });
 
-      clusterWidth = Math.max(
-        totalWidth + Math.min(nodePools.length, poolsPerRow) * (nodeWidth + nodeSpacing),
-        600
-      );
-      clusterHeight = labelHeight + 40 + rows * (maxPoolHeight + nodeSpacing);
+      clusterWidth = Math.max(maxGroupWidth + 80, 600);
+      clusterHeight = labelHeight + 40 + totalGroupHeight;
     } else if (isKRaft) {
+      // KRaft legacy - single group with horizontal pods
       const brokerCount = kafka.spec.kafka.replicas;
-      clusterHeight =
-        labelHeight +
-        60 +
-        brokerCount * (podNodeHeight + nodeSpacing) +
-        groupPadding.top +
-        groupPadding.bottom;
-      clusterWidth = Math.max(nodeWidth + groupPadding.left + groupPadding.right + 80, 500);
+      const groupWidth = groupPadding.left + groupPadding.right + brokerCount * (podNodeWidth + nodeSpacing) - nodeSpacing;
+      const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
+      clusterWidth = Math.max(groupWidth + 80, 600);
+      clusterHeight = labelHeight + 60 + groupHeight;
     } else {
+      // ZooKeeper mode - two groups stacked vertically
       const zkCount = kafka.spec.zookeeper?.replicas || 0;
       const brokerCount = kafka.spec.kafka.replicas;
-      const maxCount = Math.max(zkCount, brokerCount);
-      clusterHeight =
-        labelHeight +
-        60 +
-        maxCount * (podNodeHeight + nodeSpacing) +
-        groupPadding.top +
-        groupPadding.bottom;
-      clusterWidth =
-        (zkCount > 0 ? 2 : 1) * (nodeWidth + groupPadding.left + groupPadding.right + nodeSpacing) +
-        80;
+      const maxPods = Math.max(zkCount, brokerCount);
+      const groupWidth = groupPadding.left + groupPadding.right + maxPods * (podNodeWidth + nodeSpacing) - nodeSpacing;
+      const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
+      clusterWidth = Math.max(groupWidth + 80, 600);
+      clusterHeight = labelHeight + 60 + (zkCount > 0 ? 2 : 1) * (groupHeight + groupSpacing);
     }
 
     // Cluster node
@@ -345,21 +343,27 @@ function TopologyFlow({ kafka }: TopologyProps) {
       data: {
         label: (
           <div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: 'white', marginBottom: '5px', letterSpacing: '0.4px' }}>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: 'white', marginBottom: '5px', letterSpacing: '0.4px' }}>
               {clusterName}
             </div>
-            <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.98)', fontWeight: 500, letterSpacing: '0.2px' }}>
-              {isKRaft ? 'KRaft Mode' : 'ZooKeeper Mode'} • {kafka.metadata.namespace} •{' '}
+            <div style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.95)', fontWeight: 500, marginBottom: '4px' }}>
+              Mode: {isKRaft ? 'KRaft' : 'ZooKeeper'}
+            </div>
+            <div style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.95)', fontWeight: 500, marginBottom: '8px' }}>
+              Namespace: {kafka.metadata.namespace}
+            </div>
+            <div>
               <span
                 style={{
-                  padding: '3px 10px',
+                  padding: '5px 12px',
                   borderRadius: '5px',
+                  fontSize: '14px',
                   backgroundColor: clusterReady
                     ? 'rgba(16, 185, 129, 0.35)'
                     : 'rgba(239, 68, 68, 0.35)',
-                  marginLeft: '5px',
                   fontWeight: 600,
                   letterSpacing: '0.3px',
+                  color: 'white',
                 }}
               >
                 {clusterReady ? '✓ Ready' : '✗ Not Ready'}
@@ -384,13 +388,27 @@ function TopologyFlow({ kafka }: TopologyProps) {
     const startY = labelHeight + 40;
 
     if (nodePools.length > 0) {
-      // KRaft with KafkaNodePools
-      const poolsPerRow = 3;
+      // KRaft with KafkaNodePools - groups stacked vertically, pods horizontal
+      // Sort: controllers first, then brokers (brokers always last)
+      const sortedPools = [...nodePools].sort((a, b) => {
+        const aRoles = a.spec.roles || [];
+        const bRoles = b.spec.roles || [];
+        const aIsController = aRoles.includes('controller');
+        const bIsController = bRoles.includes('controller');
+        const aIsBroker = aRoles.includes('broker') && !aIsController;
+        const bIsBroker = bRoles.includes('broker') && !bIsController;
 
-      nodePools.forEach((pool, poolIndex) => {
-        const row = Math.floor(poolIndex / poolsPerRow);
-        const col = poolIndex % poolsPerRow;
+        // Controllers first, pure brokers last
+        if (aIsController && !bIsController) return -1;
+        if (!aIsController && bIsController) return 1;
+        if (aIsBroker && !bIsBroker) return 1;
+        if (!aIsBroker && bIsBroker) return -1;
+        return 0;
+      });
 
+      let currentY = startY;
+
+      sortedPools.forEach((pool) => {
         const poolName = pool.metadata.name;
         const roles = pool.spec.roles || [];
         const replicas = pool.spec.replicas;
@@ -403,45 +421,44 @@ function TopologyFlow({ kafka }: TopologyProps) {
         const roleLabel = isDual ? 'Controller + Broker' : isController ? 'Controller' : 'Broker';
         const poolColor = isDual ? COLORS.dual : isController ? COLORS.controller : COLORS.broker;
 
-        const poolHeight =
-          groupPadding.top +
-          groupPadding.bottom +
-          replicas * (podNodeHeight + nodeSpacing) -
-          nodeSpacing;
-        const poolX = 40 + col * (nodeWidth + groupPadding.left + groupPadding.right + nodeSpacing);
-        const poolY = startY + row * (poolHeight + nodeSpacing + 20);
+        // Horizontal layout: width based on number of pods
+        const groupWidth = groupPadding.left + groupPadding.right + replicas * (podNodeWidth + nodeSpacing) - nodeSpacing;
+        const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
+
+        // Center the group horizontally in the cluster
+        const groupX = (clusterWidth - groupWidth) / 2;
 
         // Node pool group
         generatedNodes.push({
           id: `pool-${poolName}`,
           type: 'group',
-          position: { x: poolX, y: poolY },
+          position: { x: groupX, y: currentY },
           data: { label: '' },
           style: {
-            width: nodeWidth + groupPadding.left + groupPadding.right,
-            height: poolHeight,
+            width: groupWidth,
+            height: groupHeight,
             backgroundColor: COLORS.nodePool.bg,
             border: `2px solid ${COLORS.nodePool.border}`,
             borderRadius: '12px',
-            padding: `${groupPadding.top}px ${groupPadding.right}px ${groupPadding.bottom}px ${groupPadding.left}px`,
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           },
           parentId: 'cluster',
           extent: 'parent' as const,
         });
 
-        // Pool label
+        // Pool label - centered
         generatedNodes.push(
           createGroupLabel({
             id: `pool-label-${poolName}`,
             title: poolName,
-            subtitle: `${roleLabel} • ${replicas} replicas`,
+            role: roleLabel,
+            replicas: replicas,
             parentId: `pool-${poolName}`,
             color: COLORS.nodePool,
           })
         );
 
-        // Individual pod nodes
+        // Individual pod nodes - horizontal layout
         nodeIds.forEach((nodeId, index) => {
           const podName = `${clusterName}-${poolName}-${nodeId}`;
           const pod = pods.find(p => p.metadata?.name === podName);
@@ -453,34 +470,33 @@ function TopologyFlow({ kafka }: TopologyProps) {
               nodeId,
               role: isDual ? 'C+B' : isController ? 'Ctrl' : 'Broker',
               parentId: `pool-${poolName}`,
-              position: { x: 20, y: labelHeight + 32 + index * (podNodeHeight + nodeSpacing) },
+              position: { x: groupPadding.left + index * (podNodeWidth + nodeSpacing), y: groupPadding.top },
               color: poolColor,
               pod,
             })
           );
         });
+
+        currentY += groupHeight + groupSpacing;
       });
     } else if (isKRaft) {
-      // KRaft legacy (no node pools)
+      // KRaft legacy (no node pools) - single group, horizontal pods
       const brokerCount = kafka.spec.kafka.replicas;
-      const groupHeight =
-        groupPadding.top +
-        groupPadding.bottom +
-        brokerCount * (podNodeHeight + nodeSpacing) -
-        nodeSpacing;
+      const groupWidth = groupPadding.left + groupPadding.right + brokerCount * (podNodeWidth + nodeSpacing) - nodeSpacing;
+      const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
+      const groupX = (clusterWidth - groupWidth) / 2;
 
       generatedNodes.push({
         id: 'broker-group',
         type: 'group',
-        position: { x: 40, y: startY },
+        position: { x: groupX, y: startY },
         data: { label: '' },
         style: {
-          width: nodeWidth + groupPadding.left + groupPadding.right,
+          width: groupWidth,
           height: groupHeight,
           backgroundColor: COLORS.nodePool.bg,
           border: `2px solid ${COLORS.controller.border}`,
           borderRadius: '12px',
-          padding: `${groupPadding.top}px ${groupPadding.right}px ${groupPadding.bottom}px ${groupPadding.left}px`,
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
         },
         parentId: 'cluster',
@@ -491,7 +507,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
         createGroupLabel({
           id: 'broker-group-label',
           title: 'KRaft Brokers',
-          subtitle: `Controller + Broker • ${brokerCount} replicas`,
+          role: 'Controller + Broker',
+          replicas: brokerCount,
           parentId: 'broker-group',
           color: COLORS.controller,
         })
@@ -508,39 +525,37 @@ function TopologyFlow({ kafka }: TopologyProps) {
             nodeId: i,
             role: 'C+B',
             parentId: 'broker-group',
-            position: { x: 20, y: labelHeight + 32 + i * (podNodeHeight + nodeSpacing) },
+            position: { x: groupPadding.left + i * (podNodeWidth + nodeSpacing), y: groupPadding.top },
             color: COLORS.controller,
             pod,
           })
         );
       }
     } else {
-      // ZooKeeper mode
+      // ZooKeeper mode - two groups stacked vertically (ZK on top, Brokers below), horizontal pods
       const zkCount = kafka.spec.zookeeper?.replicas || 0;
       const brokerCount = kafka.spec.kafka.replicas;
 
-      let currentX = 40;
+      const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
 
-      // ZooKeeper group
+      let currentY = startY;
+
+      // ZooKeeper group (on top)
       if (zkCount > 0) {
-        const zkGroupHeight =
-          groupPadding.top +
-          groupPadding.bottom +
-          zkCount * (podNodeHeight + nodeSpacing) -
-          nodeSpacing;
+        const zkGroupWidth = groupPadding.left + groupPadding.right + zkCount * (podNodeWidth + nodeSpacing) - nodeSpacing;
+        const groupX = (clusterWidth - zkGroupWidth) / 2;
 
         generatedNodes.push({
           id: 'zk-group',
           type: 'group',
-          position: { x: currentX, y: startY },
+          position: { x: groupX, y: currentY },
           data: { label: '' },
           style: {
-            width: nodeWidth + groupPadding.left + groupPadding.right,
-            height: zkGroupHeight,
+            width: zkGroupWidth,
+            height: groupHeight,
             backgroundColor: COLORS.nodePool.bg,
             border: `2px solid ${COLORS.zookeeper.border}`,
             borderRadius: '12px',
-            padding: `${groupPadding.top}px ${groupPadding.right}px ${groupPadding.bottom}px ${groupPadding.left}px`,
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           },
           parentId: 'cluster',
@@ -551,7 +566,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
           createGroupLabel({
             id: 'zk-group-label',
             title: 'ZooKeeper',
-            subtitle: `Ensemble • ${zkCount} nodes`,
+            role: 'Ensemble',
+            replicas: zkCount,
             parentId: 'zk-group',
             color: COLORS.zookeeper,
           })
@@ -568,35 +584,31 @@ function TopologyFlow({ kafka }: TopologyProps) {
               nodeId: i,
               role: 'Metadata',
               parentId: 'zk-group',
-              position: { x: 20, y: labelHeight + 32 + i * (podNodeHeight + nodeSpacing) },
+              position: { x: groupPadding.left + i * (podNodeWidth + nodeSpacing), y: groupPadding.top },
               color: COLORS.zookeeper,
               pod,
             })
           );
         }
 
-        currentX += nodeWidth + groupPadding.left + groupPadding.right + nodeSpacing + 20;
+        currentY += groupHeight + groupSpacing;
       }
 
-      // Broker group
-      const brokerGroupHeight =
-        groupPadding.top +
-        groupPadding.bottom +
-        brokerCount * (podNodeHeight + nodeSpacing) -
-        nodeSpacing;
+      // Broker group (below ZK)
+      const brokerGroupWidth = groupPadding.left + groupPadding.right + brokerCount * (podNodeWidth + nodeSpacing) - nodeSpacing;
+      const brokerGroupX = (clusterWidth - brokerGroupWidth) / 2;
 
       generatedNodes.push({
         id: 'broker-group',
         type: 'group',
-        position: { x: currentX, y: startY },
+        position: { x: brokerGroupX, y: currentY },
         data: { label: '' },
         style: {
-          width: nodeWidth + groupPadding.left + groupPadding.right,
-          height: brokerGroupHeight,
+          width: brokerGroupWidth,
+          height: groupHeight,
           backgroundColor: COLORS.nodePool.bg,
           border: `2px solid ${COLORS.broker.border}`,
           borderRadius: '12px',
-          padding: `${groupPadding.top}px ${groupPadding.right}px ${groupPadding.bottom}px ${groupPadding.left}px`,
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
         },
         parentId: 'cluster',
@@ -607,7 +619,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
         createGroupLabel({
           id: 'broker-group-label',
           title: 'Kafka Brokers',
-          subtitle: `Data Nodes • ${brokerCount} replicas`,
+          role: 'Data Nodes',
+          replicas: brokerCount,
           parentId: 'broker-group',
           color: COLORS.broker,
         })
@@ -624,7 +637,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
             nodeId: i,
             role: 'Broker',
             parentId: 'broker-group',
-            position: { x: 20, y: labelHeight + 32 + i * (podNodeHeight + nodeSpacing) },
+            position: { x: groupPadding.left + i * (podNodeWidth + nodeSpacing), y: groupPadding.top },
             color: COLORS.broker,
             pod,
           })
@@ -745,6 +758,21 @@ function TopologyFlow({ kafka }: TopologyProps) {
                   }}
                 />
                 <span style={{ color: '#e2e8f0', fontSize: '13px', fontWeight: 500, letterSpacing: '0.2px' }}>Controller</span>
+              </div>
+            )}
+
+            {isKRaft && (
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                <span
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    backgroundColor: COLORS.dual.border,
+                    borderRadius: '3px',
+                    marginRight: '10px',
+                  }}
+                />
+                <span style={{ color: '#e2e8f0', fontSize: '13px', fontWeight: 500, letterSpacing: '0.2px' }}>Controller + Broker</span>
               </div>
             )}
 

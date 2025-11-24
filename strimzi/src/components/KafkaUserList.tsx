@@ -70,7 +70,12 @@ export function KafkaUserList() {
         }
       })
       .catch((err: Error) => {
-        setError(err.message);
+        // Handle case when Strimzi CRD is not installed
+        if (err.message === 'Not Found' || err.message.includes('404')) {
+          setError('Strimzi is not installed in this cluster. Please install the Strimzi operator first.');
+        } else {
+          setError(err.message);
+        }
       });
   }, []);
 
