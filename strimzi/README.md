@@ -73,8 +73,18 @@ npm run build
 
 The build creates a `dist/` directory with:
 - `main.js` - Plugin entry point (required by Headlamp)
-- `components/` - Compiled React components
-- Other compiled files
+
+### Packaging the Plugin
+
+To create a distributable package with all required files:
+
+```bash
+npm run package
+```
+
+This creates a tarball `headlamp-k8s-strimzi-<version>.tar.gz` containing:
+- `strimzi-headlamp/main.js` - Compiled plugin
+- `strimzi-headlamp/package.json` - Plugin metadata
 
 ### Testing Locally
 
@@ -153,26 +163,48 @@ npm run build
 headlamp-server -plugins-dir=/path/to/strimzi-headlamp/dist
 ```
 
-### Method 4: Deploy Headlamp to Kubernetes
+### Method 4: Deploy Headlamp to Kubernetes (Docker Desktop)
 
 Deploy Headlamp with the Strimzi plugin directly to your Kubernetes cluster.
 
+**Step 1: Build and package the plugin**
 ```bash
-# Deploy Headlamp
+npm run build
+npm run package
+
+# Extract to plugins directory
+mkdir -p plugins
+tar -xzf headlamp-k8s-strimzi-*.tar.gz -C plugins/
+```
+
+**Step 2: Update the manifest path**
+
+Edit `deploy/headlamp.yaml` and update the hostPath to your plugins directory:
+```yaml
+volumes:
+  - name: plugins
+    hostPath:
+      path: /path/to/your/strimzi-headlamp/plugins  # Update this path
+      type: Directory
+```
+
+**Step 3: Deploy**
+```bash
 kubectl apply -f deploy/headlamp.yaml
 
-# Access via NodePort (port 30080)
-# For Docker Desktop: http://localhost:30080
-# For Kind: http://localhost:30080 (may need port-forward)
+# Generate authentication token (valid 24h)
+kubectl -n headlamp create token headlamp --duration=24h
+```
 
-# Or use port-forward
+**Step 4: Access Headlamp**
+- URL: http://localhost:30080
+- Use the generated token to authenticate
+
+**Alternative: Use port-forward**
+```bash
 kubectl port-forward -n headlamp svc/headlamp 8080:80
 # Access at http://localhost:8080
 ```
-
-**Note**: The base deployment uses an empty plugins directory. To add the Strimzi plugin, you need to either:
-1. Build a custom Headlamp image with the plugin included
-2. Use a ConfigMap/PersistentVolume to mount the plugin files
 
 To uninstall: `kubectl delete -f deploy/headlamp.yaml`
 

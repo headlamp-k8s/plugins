@@ -26,19 +26,8 @@ subjects:
     name: headlamp
     namespace: headlamp
 ---
-# ConfigMap for the Strimzi plugin
-# Note: In production, you would build a custom image with the plugin
-# For development, we use an init container to copy the plugin
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: strimzi-plugin
-  namespace: headlamp
-data:
-  # Plugin will be loaded via init container or custom image
-  placeholder: "true"
----
-# Deployment for Headlamp
+# Deployment for Headlamp with Strimzi plugin
+# IMPORTANT: Update the hostPath below to match your local plugins directory
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -57,33 +46,19 @@ spec:
         app: headlamp
     spec:
       serviceAccountName: headlamp
-      initContainers:
-        - name: copy-plugins
-          image: busybox
-          command:
-            - sh
-            - -c
-            - |
-              mkdir -p /plugins/strimzi
-              cp /plugin-source/main.js /plugins/strimzi/
-              cp /plugin-source/package.json /plugins/strimzi/
-          volumeMounts:
-            - name: plugin-source
-              mountPath: /plugin-source
-            - name: plugins
-              mountPath: /plugins
       containers:
         - name: headlamp
-          image: ghcr.io/headlamp-k8s/headlamp:v0.38.0
+          image: ghcr.io/headlamp-k8s/headlamp:v0.26.0
           ports:
             - containerPort: 4466
               name: http
           args:
             - "-in-cluster"
-            - "-plugins-dir=/headlamp/plugins"
+            - "-plugins-dir=/plugins"
           volumeMounts:
             - name: plugins
-              mountPath: /headlamp/plugins
+              mountPath: /plugins
+              readOnly: true
           resources:
             requests:
               cpu: 100m
@@ -104,35 +79,18 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:
-        - name: plugin-source
-          configMap:
-            name: strimzi-plugin-files
         - name: plugins
-          emptyDir: {}
+          hostPath:
+            # Docker Desktop on macOS with VirtioFS: use direct path
+            # For older Docker Desktop versions, may need /run/desktop/mnt/host prefix
+            path: /Users/angelo/Downloads/github/strimzi-headlamp/plugins
+            type: Directory
 ---
 # Service to expose Headlamp
 apiVersion: v1
 kind: Service
 metadata:
   name: headlamp
-  namespace: headlamp
-  labels:
-    app: headlamp
-spec:
-  type: ClusterIP
-  ports:
-    - port: 80
-      targetPort: 4466
-      protocol: TCP
-      name: http
-  selector:
-    app: headlamp
----
-# NodePort Service for local development access
-apiVersion: v1
-kind: Service
-metadata:
-  name: headlamp-nodeport
   namespace: headlamp
   labels:
     app: headlamp
