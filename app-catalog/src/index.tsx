@@ -1,9 +1,4 @@
-import {
-  registerPluginSettings,
-  registerRoute,
-  registerSidebarEntry,
-} from '@kinvolk/headlamp-plugin/lib';
-import { AppCatalogSettings } from '../src/components/settings/AppCatalogSettings';
+import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import { CommunityChartList, HelmChartList } from './api/catalogs';
 import ChartDetails from './components/charts/Details';
 import { ChartsList } from './components/charts/List';
@@ -157,13 +152,3 @@ registerRoute({
   exact: true,
   component: () => <ChartDetails vanillaHelmRepo={VANILLA_HELM_REPO} />,
 });
-
-registerRoute({
-  path: '/settings/plugins/app-catalog',
-  sidebar: 'Charts',
-  name: 'App Catalog',
-  exact: true,
-  component: () => <AppCatalogSettings />,
-});
-
-registerPluginSettings('app-catalog', AppCatalogSettings, false);

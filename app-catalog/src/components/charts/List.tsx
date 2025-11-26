@@ -5,7 +5,9 @@ import {
   Loader,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { HoverInfoLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -13,19 +15,20 @@ import {
   CardContent,
   CardMedia,
   Divider,
+  FormControlLabel,
   Link,
+  Pagination,
+  Switch,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Autocomplete, Pagination } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { getCatalogConfig } from '../../api/catalogConfig';
 import { fetchChartIcon, fetchChartsFromArtifact } from '../../api/charts';
 import { PAGE_OFFSET_COUNT_FOR_CHARTS, VANILLA_HELM_REPO } from '../../constants/catalog';
 import { AvailableComponentVersions } from '../../helpers/catalog';
 import { EditorDialog } from './EditorDialog';
-import { SettingsLink } from './SettingsLink';
 
 interface AppCatalogConfig {
   /**
@@ -132,6 +135,34 @@ function CategoryForCharts({
   );
 }
 
+interface OnlyVerifiedSwitchProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+function OnlyVerifiedSwitch({ checked, onChange }: OnlyVerifiedSwitchProps) {
+  return (
+    <FormControlLabel
+      control={
+        <Switch
+          size="small"
+          checked={checked}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+            onChange(event.target.checked);
+          }}
+        />
+      }
+      sx={{ gap: 1 }}
+      label={
+        <HoverInfoLabel
+          label="Only verified"
+          hoverInfo="Show charts from verified publishers only"
+        />
+      }
+    />
+  );
+}
+
 export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   const helmChartCategoryList = [
     { title: 'All', value: 0 },
@@ -153,8 +184,8 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
   const [selectedChartForInstall, setSelectedChartForInstall] = useState<any | null>(null);
   const [iconUrls, setIconUrls] = useState<{ [url: string]: string }>({}); // New state for multiple icon URLs
 
-  // note: since we default to true for showOnlyVerified and the settings page is not accessible from anywhere else but the list comp
-  // we must have the default value here and have it imported for use in the settings tab
+  // Keep the config in sync so both the main page toggle and the settings view share the same value.
+  // Default to true when no user preference has been stored yet.
   const config = useStoreConfig();
   const showOnlyVerified = config?.showOnlyVerified ?? true;
   const chartCfg = getCatalogConfig();
@@ -273,7 +304,17 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
       />
       <SectionHeader
         title="Applications"
-        titleSideActions={[<SettingsLink />]}
+        titleSideActions={[
+          <Box key="verified-switch" pl={2}>
+            <OnlyVerifiedSwitch
+              checked={showOnlyVerified}
+              onChange={(isChecked: boolean) => {
+                store.set({ showOnlyVerified: isChecked });
+                setPage(1);
+              }}
+            />
+          </Box>,
+        ]}
         actions={[
           <Search search={search} setSearch={setSearch} />,
           <CategoryForCharts
