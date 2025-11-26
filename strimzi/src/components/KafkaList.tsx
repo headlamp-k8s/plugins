@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2025 Angelo Cesaro
+
 import React from 'react';
 import { Kafka as K8sKafka, K8sListResponse } from '../crds';
 import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
