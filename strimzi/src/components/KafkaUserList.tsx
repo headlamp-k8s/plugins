@@ -3,21 +3,7 @@ import { KafkaUser } from '../crds';
 import { isUserReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
-
-// Helper to get theme-aware colors
-const useThemeColors = () => {
-  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-  return {
-    background: isDark ? '#1e1e1e' : '#ffffff',
-    text: isDark ? '#e0e0e0' : '#000000',
-    textSecondary: isDark ? '#b0b0b0' : '#666666',
-    border: isDark ? '#404040' : '#ddd',
-    inputBg: isDark ? '#2a2a2a' : '#ffffff',
-    inputBorder: isDark ? '#505050' : '#ddd',
-    overlay: 'rgba(0,0,0,0.5)',
-  };
-};
+import { useThemeColors } from '../utils/theme';
 
 interface ACL {
   resource: {
