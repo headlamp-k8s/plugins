@@ -4,7 +4,7 @@ displayName: Strimzi
 createdAt: 2025-10-30T00:00:00Z
 description: A UI for viewing and managing Strimzi (Apache Kafka) resources in Headlamp
 logoURL: https://strimzi.io/assets/images/strimzi_logo.png
-license: UNLICENSED
+license: Apache-2.0
 homeURL: https://github.com/cesaroangelo/strimzi-headlamp
 keywords:
   - headlamp
