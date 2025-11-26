@@ -1,9 +1,10 @@
 import React from 'react';
-import { KafkaTopic } from '../crds';
+import { KafkaTopic, K8sListResponse } from '../crds';
 import { isTopicReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { SearchFilter, FilterGroup, FilterSelect, FilterNumberRange } from './SearchFilter';
 import { useThemeColors } from '../utils/theme';
+import { getErrorMessage } from '../utils/errors';
 
 interface TopicFormData {
   name: string;
@@ -42,17 +43,16 @@ export function KafkaTopicList() {
 
   const fetchTopics = React.useCallback(() => {
     ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkatopics')
-      .then((data: any) => {
-        if (data && data.items) {
-          setTopics(data.items);
-        }
+      .then((data: K8sListResponse<KafkaTopic>) => {
+        setTopics(data.items);
       })
-      .catch((err: Error) => {
+      .catch((err: unknown) => {
         // Handle case when Strimzi CRD is not installed
-        if (err.message === 'Not Found' || err.message.includes('404')) {
+        const message = getErrorMessage(err);
+        if (message === 'Not Found' || message.includes('404')) {
           setError('Strimzi is not installed in this cluster. Please install the Strimzi operator first.');
         } else {
-          setError(err.message);
+          setError(message);
         }
       });
   }, []);
@@ -136,8 +136,8 @@ export function KafkaTopicList() {
         replicas: 3,
       });
       fetchTopics();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create topic');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Failed to create topic');
     } finally {
       setLoading(false);
     }
@@ -174,8 +174,8 @@ export function KafkaTopicList() {
       setShowEditDialog(false);
       setEditingTopic(null);
       fetchTopics();
-    } catch (err: any) {
-      setError(err.message || 'Failed to update topic');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Failed to update topic');
     } finally {
       setLoading(false);
     }
@@ -192,8 +192,8 @@ export function KafkaTopicList() {
         { method: 'DELETE' }
       );
       fetchTopics();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete topic');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Failed to delete topic');
     }
   };
 

@@ -2,6 +2,18 @@ export interface ApiError {
   message: string;
 }
 
+/**
+ * Generic Kubernetes API list response structure.
+ * Used for all K8s resource list endpoints (e.g., /apis/kafka.strimzi.io/v1beta2/kafkas)
+ */
+export interface K8sListResponse<T> {
+  items: T[];
+  metadata?: {
+    resourceVersion?: string;
+    continue?: string;
+  };
+}
+
 export interface StrimziStatus {
   conditions?: Array<{
     type: string;

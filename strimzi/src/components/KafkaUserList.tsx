@@ -1,9 +1,10 @@
 import React from 'react';
-import { KafkaUser } from '../crds';
+import { KafkaUser, K8sListResponse } from '../crds';
 import { isUserReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
 import { useThemeColors } from '../utils/theme';
+import { getErrorMessage } from '../utils/errors';
 
 interface ACL {
   resource: {
@@ -50,17 +51,16 @@ export function KafkaUserList() {
 
   const fetchUsers = React.useCallback(() => {
     ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkausers')
-      .then((data: any) => {
-        if (data && data.items) {
-          setUsers(data.items);
-        }
+      .then((data: K8sListResponse<KafkaUser>) => {
+        setUsers(data.items);
       })
-      .catch((err: Error) => {
+      .catch((err: unknown) => {
         // Handle case when Strimzi CRD is not installed
-        if (err.message === 'Not Found' || err.message.includes('404')) {
+        const message = getErrorMessage(err);
+        if (message === 'Not Found' || message.includes('404')) {
           setError('Strimzi is not installed in this cluster. Please install the Strimzi operator first.');
         } else {
-          setError(err.message);
+          setError(message);
         }
       });
   }, []);
@@ -128,8 +128,8 @@ export function KafkaUserList() {
 
       setSelectedUser(user);
       setShowSecretDialog(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch user secret');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Failed to fetch user secret');
     } finally {
       setLoading(false);
     }
@@ -181,8 +181,8 @@ export function KafkaUserList() {
         acls: [],
       });
       fetchUsers();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create user');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Failed to create user');
     } finally {
       setLoading(false);
     }
@@ -199,8 +199,8 @@ export function KafkaUserList() {
         { method: 'DELETE' }
       );
       fetchUsers();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete user');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Failed to delete user');
     }
   };
 
@@ -229,7 +229,7 @@ export function KafkaUserList() {
     });
   };
 
-  const updateACL = (index: number, field: string, value: any) => {
+  const updateACL = (index: number, field: string, value: string | string[]) => {
     const newACLs = [...formData.acls];
     if (field.startsWith('resource.')) {
       const resourceField = field.split('.')[1];
@@ -243,7 +243,7 @@ export function KafkaUserList() {
     } else if (field === 'operations') {
       newACLs[index] = {
         ...newACLs[index],
-        operations: value,
+        operations: value as string[],
       };
     } else {
       newACLs[index] = {
