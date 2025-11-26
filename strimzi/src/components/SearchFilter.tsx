@@ -1,20 +1,5 @@
 import React from 'react';
-
-// Helper to get theme-aware colors
-const useThemeColors = () => {
-  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-  return {
-    background: isDark ? '#1e1e1e' : '#ffffff',
-    text: isDark ? '#e0e0e0' : '#000000',
-    textSecondary: isDark ? '#b0b0b0' : '#666666',
-    border: isDark ? '#404040' : '#ddd',
-    inputBg: isDark ? '#2a2a2a' : '#ffffff',
-    inputBorder: isDark ? '#505050' : '#ddd',
-    chipBg: isDark ? '#3a3a3a' : '#e3f2fd',
-    chipText: isDark ? '#90caf9' : '#1976d2',
-  };
-};
+import { useThemeColors } from '../utils/theme';
 
 interface SearchFilterProps {
   searchTerm: string;
