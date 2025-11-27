@@ -61,7 +61,16 @@ export function KafkaTopicList() {
   }, []);
 
   React.useEffect(() => {
+    // Initial fetch
     fetchTopics();
+
+    // Auto-refresh every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchTopics();
+    }, 5000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, [fetchTopics]);
 
   // Filter topics based on search and filters

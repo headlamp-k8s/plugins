@@ -22,8 +22,7 @@ export function KafkaList() {
   const [selectedKafka, setSelectedKafka] = React.useState<K8sKafka | null>(null);
   const [isTopologyModalOpen, setIsTopologyModalOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    // Fetch Kafka resources using Headlamp API
+  const fetchKafkas = React.useCallback(() => {
     ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkas')
       .then((data: K8sListResponse<K8sKafka>) => {
         setKafkas(data.items);
@@ -38,6 +37,19 @@ export function KafkaList() {
         }
       });
   }, []);
+
+  React.useEffect(() => {
+    // Initial fetch
+    fetchKafkas();
+
+    // Auto-refresh every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchKafkas();
+    }, 5000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
+  }, [fetchKafkas]);
 
   // Filter kafkas based on search and filters
   const filteredKafkas = React.useMemo(() => {
