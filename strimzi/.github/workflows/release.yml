@@ -1,0 +1,134 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2025 Angelo Cesaro
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Release version: $VERSION"
+
+      - name: Verify package.json version matches tag
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION=${{ steps.version.outputs.version }}
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "   package.json: $PACKAGE_VERSION"
+            echo "   Tag: $TAG_VERSION"
+            exit 1
+          fi
+          echo "✅ Version match: $PACKAGE_VERSION"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Package plugin
+        run: npm run package
+
+      - name: Calculate checksum
+        id: checksum
+        run: |
+          TARBALL=$(ls headlamp-k8s-strimzi-*.tgz)
+          CHECKSUM=$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)
+          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
+          echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
+          echo "📋 Checksum: $CHECKSUM"
+          echo "📦 Tarball: $TARBALL"
+
+      - name: Check NPM Token
+        id: check-npm
+        run: |
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "npm_available=true" >> $GITHUB_OUTPUT
+            echo "✅ NPM_TOKEN configured - will publish to npm"
+          else
+            echo "npm_available=false" >> $GITHUB_OUTPUT
+            echo "⚠️  NPM_TOKEN not configured - skipping npm publish"
+            echo "ℹ️  To enable npm publishing:"
+            echo "   1. Generate token at https://www.npmjs.com/settings/tokens"
+            echo "   2. Add as NPM_TOKEN secret in repository settings"
+          fi
+
+      - name: Publish to npm
+        if: steps.check-npm.outputs.npm_available == 'true'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.version.outputs.tag }}
+          body: |
+            ## Strimzi Headlamp Plugin ${{ steps.version.outputs.version }}
+
+            ### Installation
+
+            **From npm:**
+            ```bash
+            npm install @headlamp-k8s/strimzi@${{ steps.version.outputs.version }}
+            ```
+
+            **Manual installation:**
+            Download the `.tgz` file below and extract to your Headlamp plugins directory.
+
+            ### Checksums
+
+            SHA-256: `${{ steps.checksum.outputs.checksum }}`
+
+            ### What's Changed
+            See [CHANGELOG.md](https://github.com/cesaroangelo/strimzi-headlamp/blob/main/CHANGELOG.md) for details.
+          files: ${{ steps.checksum.outputs.tarball }}
+          draft: false
+          prerelease: false
+
+      - name: Release Summary
+        if: always()
+        run: |
+          echo "### 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tarball:** ${{ steps.checksum.outputs.tarball }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Checksum:** \`${{ steps.checksum.outputs.checksum }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check-npm.outputs.npm_available }}" == "true" ]; then
+            echo "- ✅ Published to npm" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️  NPM publish skipped (NPM_TOKEN not configured)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- ✅ GitHub Release created" >> $GITHUB_STEP_SUMMARY
