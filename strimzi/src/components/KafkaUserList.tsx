@@ -8,6 +8,7 @@ import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
 import { useThemeColors } from '../utils/theme';
 import { getErrorMessage } from '../utils/errors';
+import { SecureSecretDisplay } from './SecureSecretDisplay';
 
 interface ACL {
   resource: {
@@ -268,77 +269,10 @@ export function KafkaUserList() {
     );
   }
 
-  const renderSecretDialog = () => {
-    if (!showSecretDialog || !selectedUser) return null;
-
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: colors.overlay,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-      }}>
-        <div style={{
-          backgroundColor: colors.background,
-          color: colors.text,
-          padding: '24px',
-          borderRadius: '8px',
-          minWidth: '600px',
-          maxHeight: '80vh',
-          overflow: 'auto',
-        }}>
-          <h2 style={{ color: colors.text }}>User Credentials: {selectedUser.metadata.name}</h2>
-          <p style={{ color: colors.text }}><strong>Authentication:</strong> {selectedUser.spec.authentication.type}</p>
-
-          <div style={{ marginTop: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
-              {selectedUser.spec.authentication.type === 'scram-sha-512' ? 'Password' : 'Certificate & Key'}
-            </label>
-            <textarea
-              readOnly
-              value={userSecret}
-              style={{
-                width: '100%',
-                minHeight: '200px',
-                padding: '12px',
-                border: `1px solid ${colors.inputBorder}`,
-                borderRadius: '4px',
-                backgroundColor: colors.inputBg,
-                color: colors.text,
-                fontFamily: 'monospace',
-                fontSize: '12px',
-              }}
-            />
-          </div>
-
-          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={() => {
-                setShowSecretDialog(false);
-                setSelectedUser(null);
-                setUserSecret('');
-              }}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#2196f3',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  const handleCloseSecretDialog = () => {
+    setShowSecretDialog(false);
+    setSelectedUser(null);
+    setUserSecret('');
   };
 
   const renderCreateDialog = () => {
@@ -716,7 +650,15 @@ export function KafkaUserList() {
       )}
 
       {renderCreateDialog()}
-      {renderSecretDialog()}
+
+      {/* Secure Secret Display with confirmation dialog */}
+      <SecureSecretDisplay
+        secretValue={userSecret}
+        secretType={selectedUser?.spec.authentication.type === 'scram-sha-512' ? 'password' : 'certificate'}
+        resourceName={selectedUser?.metadata.name || ''}
+        isOpen={showSecretDialog}
+        onClose={handleCloseSecretDialog}
+      />
     </div>
   );
 }
