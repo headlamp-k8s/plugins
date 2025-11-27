@@ -74,6 +74,21 @@ npm run build
 The build creates a `dist/` directory with:
 - `main.js` - Plugin entry point (required by Headlamp)
 
+### Testing
+
+```bash
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test -- --watch
+
+# Run tests with coverage
+npm run test -- --coverage
+```
+
+Tests are written using Vitest and cover utility functions and CRD helpers.
+
 ### Packaging the Plugin
 
 To create a distributable package with all required files:
