@@ -9,6 +9,7 @@ import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
 import { useThemeColors } from '../utils/theme';
 import { getErrorMessage } from '../utils/errors';
 import { SecureSecretDisplay } from './SecureSecretDisplay';
+import { Toast, ToastMessage } from './Toast';
 
 interface ACL {
   resource: {
@@ -31,7 +32,7 @@ interface UserFormData {
 
 export function KafkaUserList() {
   const [users, setUsers] = React.useState<KafkaUser[]>([]);
-  const [error, setError] = React.useState<string | null>(null);
+  const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [showSecretDialog, setShowSecretDialog] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<KafkaUser | null>(null);
@@ -62,9 +63,13 @@ export function KafkaUserList() {
         // Handle case when Strimzi CRD is not installed
         const message = getErrorMessage(err);
         if (message === 'Not Found' || message.includes('404')) {
-          setError('Strimzi is not installed in this cluster. Please install the Strimzi operator first.');
+          setToast({
+            message: 'Strimzi is not installed in this cluster. Please install the Strimzi operator first.',
+            type: 'error',
+            duration: 6000
+          });
         } else {
-          setError(message);
+          setToast({ message, type: 'error' });
         }
       });
   }, []);
@@ -142,7 +147,7 @@ export function KafkaUserList() {
       setSelectedUser(user);
       setShowSecretDialog(true);
     } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Failed to fetch user secret');
+      setToast({ message: getErrorMessage(err) || 'Failed to fetch user secret', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -185,6 +190,7 @@ export function KafkaUserList() {
       );
 
       setShowCreateDialog(false);
+      const userName = formData.name;
       setFormData({
         name: '',
         namespace: 'kafka',
@@ -193,9 +199,10 @@ export function KafkaUserList() {
         authorizationType: 'simple',
         acls: [],
       });
+      setToast({ message: `User "${userName}" created successfully`, type: 'success' });
       fetchUsers();
     } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Failed to create user');
+      setToast({ message: getErrorMessage(err) || 'Failed to create user', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -211,9 +218,10 @@ export function KafkaUserList() {
         `/apis/kafka.strimzi.io/v1beta2/namespaces/${user.metadata.namespace}/kafkausers/${user.metadata.name}`,
         { method: 'DELETE' }
       );
+      setToast({ message: `User "${user.metadata.name}" deleted successfully`, type: 'success' });
       fetchUsers();
     } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Failed to delete user');
+      setToast({ message: getErrorMessage(err) || 'Failed to delete user', type: 'error' });
     }
   };
 
@@ -266,17 +274,6 @@ export function KafkaUserList() {
     }
     setFormData({ ...formData, acls: newACLs });
   };
-
-  if (error) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <div style={{ color: 'red', marginBottom: '16px' }}>Error: {error}</div>
-        <button onClick={() => setError(null)} style={{ padding: '8px 16px', cursor: 'pointer' }}>
-          Dismiss
-        </button>
-      </div>
-    );
-  }
 
   const handleCloseSecretDialog = () => {
     setShowSecretDialog(false);
@@ -668,6 +665,9 @@ export function KafkaUserList() {
         isOpen={showSecretDialog}
         onClose={handleCloseSecretDialog}
       />
+
+      {/* Toast notifications */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }

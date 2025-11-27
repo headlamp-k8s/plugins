@@ -8,6 +8,7 @@ import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { SearchFilter, FilterGroup, FilterSelect, FilterNumberRange } from './SearchFilter';
 import { useThemeColors } from '../utils/theme';
 import { getErrorMessage } from '../utils/errors';
+import { Toast, ToastMessage } from './Toast';
 
 interface TopicFormData {
   name: string;
@@ -22,7 +23,7 @@ interface TopicFormData {
 
 export function KafkaTopicList() {
   const [topics, setTopics] = React.useState<KafkaTopic[]>([]);
-  const [error, setError] = React.useState<string | null>(null);
+  const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [showEditDialog, setShowEditDialog] = React.useState(false);
   const [editingTopic, setEditingTopic] = React.useState<KafkaTopic | null>(null);
@@ -53,9 +54,13 @@ export function KafkaTopicList() {
         // Handle case when Strimzi CRD is not installed
         const message = getErrorMessage(err);
         if (message === 'Not Found' || message.includes('404')) {
-          setError('Strimzi is not installed in this cluster. Please install the Strimzi operator first.');
+          setToast({
+            message: 'Strimzi is not installed in this cluster. Please install the Strimzi operator first.',
+            type: 'error',
+            duration: 6000
+          });
         } else {
-          setError(message);
+          setToast({ message, type: 'error' });
         }
       });
   }, []);
@@ -147,9 +152,10 @@ export function KafkaTopicList() {
         partitions: 3,
         replicas: 3,
       });
+      setToast({ message: `Topic "${formData.name}" created successfully`, type: 'success' });
       fetchTopics();
     } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Failed to create topic');
+      setToast({ message: getErrorMessage(err) || 'Failed to create topic', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -185,9 +191,10 @@ export function KafkaTopicList() {
 
       setShowEditDialog(false);
       setEditingTopic(null);
+      setToast({ message: `Topic "${editingTopic?.metadata.name}" updated successfully`, type: 'success' });
       fetchTopics();
     } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Failed to update topic');
+      setToast({ message: getErrorMessage(err) || 'Failed to update topic', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -203,9 +210,10 @@ export function KafkaTopicList() {
         `/apis/kafka.strimzi.io/v1beta2/namespaces/${topic.metadata.namespace}/kafkatopics/${topic.metadata.name}`,
         { method: 'DELETE' }
       );
+      setToast({ message: `Topic "${topic.metadata.name}" deleted successfully`, type: 'success' });
       fetchTopics();
     } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Failed to delete topic');
+      setToast({ message: getErrorMessage(err) || 'Failed to delete topic', type: 'error' });
     }
   };
 
@@ -223,10 +231,6 @@ export function KafkaTopicList() {
     });
     setShowEditDialog(true);
   };
-
-  if (error) {
-    return <div style={{ padding: '20px', color: 'red' }}>Error: {error}</div>;
-  }
 
   const renderDialog = (isEdit: boolean) => {
     if ((!showCreateDialog && !isEdit) || (!showEditDialog && isEdit)) return null;
@@ -538,6 +542,8 @@ export function KafkaTopicList() {
 
       {renderDialog(false)}
       {renderDialog(true)}
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
