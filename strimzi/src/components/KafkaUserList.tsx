@@ -70,7 +70,16 @@ export function KafkaUserList() {
   }, []);
 
   React.useEffect(() => {
+    // Initial fetch
     fetchUsers();
+
+    // Auto-refresh every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchUsers();
+    }, 5000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, [fetchUsers]);
 
   // Filter users based on search and filters
