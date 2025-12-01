@@ -10,6 +10,7 @@ import { useThemeColors } from '../utils/theme';
 import { getErrorMessage } from '../utils/errors';
 import { SecureSecretDisplay } from './SecureSecretDisplay';
 import { Toast, ToastMessage } from './Toast';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
 
 interface ACL {
   resource: {
@@ -34,8 +35,10 @@ export function KafkaUserList() {
   const [users, setUsers] = React.useState<KafkaUser[]>([]);
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showSecretDialog, setShowSecretDialog] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<KafkaUser | null>(null);
+  const [deletingUser, setDeletingUser] = React.useState<KafkaUser | null>(null);
   const [userSecret, setUserSecret] = React.useState<string>('');
   const [formData, setFormData] = React.useState<UserFormData>({
     name: '',
@@ -208,21 +211,33 @@ export function KafkaUserList() {
     }
   };
 
-  const handleDelete = async (user: KafkaUser) => {
-    if (!window.confirm(`Are you sure you want to delete user "${user.metadata.name}"?`)) {
-      return;
-    }
+  const openDeleteDialog = (user: KafkaUser) => {
+    setDeletingUser(user);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingUser) return;
+
+    setShowDeleteDialog(false);
 
     try {
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${user.metadata.namespace}/kafkausers/${user.metadata.name}`,
+        `/apis/kafka.strimzi.io/v1beta2/namespaces/${deletingUser.metadata.namespace}/kafkausers/${deletingUser.metadata.name}`,
         { method: 'DELETE' }
       );
-      setToast({ message: `User "${user.metadata.name}" deleted successfully`, type: 'success' });
+      setToast({ message: `User "${deletingUser.metadata.name}" deleted successfully`, type: 'success' });
       fetchUsers();
     } catch (err: unknown) {
       setToast({ message: getErrorMessage(err) || 'Failed to delete user', type: 'error' });
+    } finally {
+      setDeletingUser(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
+    setDeletingUser(null);
   };
 
   const addACL = () => {
@@ -634,7 +649,7 @@ export function KafkaUserList() {
                       View Secret
                     </button>
                     <button
-                      onClick={() => handleDelete(user)}
+                      onClick={() => openDeleteDialog(user)}
                       style={{
                         padding: '6px 12px',
                         backgroundColor: '#f44336',
@@ -665,6 +680,28 @@ export function KafkaUserList() {
         isOpen={showSecretDialog}
         onClose={handleCloseSecretDialog}
       />
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={showDeleteDialog}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">Delete User</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete user <strong>{deletingUser?.metadata.name}</strong>?
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Toast notifications */}
       <Toast toast={toast} onClose={() => setToast(null)} />
