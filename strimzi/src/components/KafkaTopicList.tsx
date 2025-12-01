@@ -9,6 +9,7 @@ import { SearchFilter, FilterGroup, FilterSelect, FilterNumberRange } from './Se
 import { useThemeColors } from '../utils/theme';
 import { getErrorMessage } from '../utils/errors';
 import { Toast, ToastMessage } from './Toast';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
 
 interface TopicFormData {
   name: string;
@@ -26,7 +27,9 @@ export function KafkaTopicList() {
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [showEditDialog, setShowEditDialog] = React.useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [editingTopic, setEditingTopic] = React.useState<KafkaTopic | null>(null);
+  const [deletingTopic, setDeletingTopic] = React.useState<KafkaTopic | null>(null);
   const [formData, setFormData] = React.useState<TopicFormData>({
     name: '',
     namespace: 'kafka',
@@ -200,21 +203,33 @@ export function KafkaTopicList() {
     }
   };
 
-  const handleDelete = async (topic: KafkaTopic) => {
-    if (!window.confirm(`Are you sure you want to delete topic "${topic.metadata.name}"?`)) {
-      return;
-    }
+  const openDeleteDialog = (topic: KafkaTopic) => {
+    setDeletingTopic(topic);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingTopic) return;
+
+    setShowDeleteDialog(false);
 
     try {
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${topic.metadata.namespace}/kafkatopics/${topic.metadata.name}`,
+        `/apis/kafka.strimzi.io/v1beta2/namespaces/${deletingTopic.metadata.namespace}/kafkatopics/${deletingTopic.metadata.name}`,
         { method: 'DELETE' }
       );
-      setToast({ message: `Topic "${topic.metadata.name}" deleted successfully`, type: 'success' });
+      setToast({ message: `Topic "${deletingTopic.metadata.name}" deleted successfully`, type: 'success' });
       fetchTopics();
     } catch (err: unknown) {
       setToast({ message: getErrorMessage(err) || 'Failed to delete topic', type: 'error' });
+    } finally {
+      setDeletingTopic(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
+    setDeletingTopic(null);
   };
 
   const openEditDialog = (topic: KafkaTopic) => {
@@ -519,7 +534,7 @@ export function KafkaTopicList() {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(topic)}
+                      onClick={() => openDeleteDialog(topic)}
                       style={{
                         padding: '6px 12px',
                         backgroundColor: '#f44336',
@@ -542,6 +557,28 @@ export function KafkaTopicList() {
 
       {renderDialog(false)}
       {renderDialog(true)}
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={showDeleteDialog}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">Delete Topic</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete topic <strong>{deletingTopic?.metadata.name}</strong>?
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
