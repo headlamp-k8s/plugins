@@ -221,6 +221,21 @@ kubectl port-forward -n headlamp svc/headlamp 8080:80
 # Access at http://localhost:8080
 ```
 
+**Updating the plugin:**
+```bash
+# Rebuild and repackage
+npm run build && npm run package
+
+# Remove old version and extract new
+rm -rf plugins/strimzi-headlamp
+tar -xzf headlamp-k8s-strimzi-*.tar.gz -C plugins/
+
+# Restart Headlamp deployment
+kubectl rollout restart deployment/headlamp -n headlamp
+
+# Clear browser cache: Cmd+Shift+R (macOS) or Ctrl+Shift+R (Windows/Linux)
+```
+
 To uninstall: `kubectl delete -f deploy/headlamp.yaml`
 
 ## 📊 Supported Strimzi Resources
