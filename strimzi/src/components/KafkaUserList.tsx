@@ -156,7 +156,7 @@ export function KafkaUserList() {
   const handleCreate = async () => {
     setLoading(true);
     try {
-      const userResource: any = {
+      const userResource: KafkaUser = {
         apiVersion: 'kafka.strimzi.io/v1beta2',
         kind: 'KafkaUser',
         metadata: {
