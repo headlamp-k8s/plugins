@@ -48,7 +48,7 @@ spec:
       serviceAccountName: headlamp
       containers:
         - name: headlamp
-          image: ghcr.io/headlamp-k8s/headlamp:v0.26.0
+          image: ghcr.io/headlamp-k8s/headlamp:v0.38.0
           ports:
             - containerPort: 4466
               name: http
