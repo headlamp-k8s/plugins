@@ -46,7 +46,7 @@ export interface KafkaSpec {
       type: string;
       tls: boolean;
     }>;
-    config?: Record<string, any>;
+    config?: Record<string, unknown>;
     storage: {
       type: string;
       size?: string;
@@ -64,8 +64,8 @@ export interface KafkaSpec {
     };
   };
   entityOperator?: {
-    topicOperator?: Record<string, any>;
-    userOperator?: Record<string, any>;
+    topicOperator?: Record<string, unknown>;
+    userOperator?: Record<string, unknown>;
   };
 }
 
@@ -76,7 +76,9 @@ export interface Kafka {
     name: string;
     namespace: string;
     creationTimestamp?: string;
-    [key: string]: any;
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+    [key: string]: unknown;
   };
   spec: KafkaSpec;
   status?: StrimziStatus;
@@ -85,7 +87,7 @@ export interface Kafka {
 export interface KafkaTopicSpec {
   partitions?: number;
   replicas?: number;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
   topicName?: string;
 }
 
@@ -96,7 +98,9 @@ export interface KafkaTopic {
     name: string;
     namespace: string;
     creationTimestamp?: string;
-    [key: string]: any;
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+    [key: string]: unknown;
   };
   spec: KafkaTopicSpec;
   status?: StrimziStatus;
@@ -132,7 +136,9 @@ export interface KafkaUser {
     name: string;
     namespace: string;
     creationTimestamp?: string;
-    [key: string]: any;
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+    [key: string]: unknown;
   };
   spec: KafkaUserSpec;
   status?: StrimziStatus;
@@ -158,8 +164,9 @@ export interface KafkaNodePool {
     name: string;
     namespace: string;
     labels?: Record<string, string>;
+    annotations?: Record<string, string>;
     creationTimestamp?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   spec: KafkaNodePoolSpec;
   status?: StrimziStatus & {
