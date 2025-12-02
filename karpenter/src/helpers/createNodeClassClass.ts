@@ -12,6 +12,8 @@ export function createNodeClassClass(config) {
     isNamespaced: false,
     singularName: config.singularName,
     pluralName: config.pluralName,
+    kind: config.kind,
+    customResourceDefinition: undefined as any,
   });
 
   return class extends NodeClass {

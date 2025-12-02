@@ -1,10 +1,8 @@
-import {
-  apply,
-  clusterAction,
-  getCluster,
-  KubeObjectInterface,
-} from '@kinvolk/headlamp-plugin/lib';
+import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
+import { apply } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { ConfirmButton, Dialog, DialogProps } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { DiffEditor } from '@monaco-editor/react';
 import { Alert, Box, Button, DialogActions, DialogContent, Typography } from '@mui/material';
 import Ajv from 'ajv';
@@ -18,7 +16,7 @@ import { getSchemaKey, KARPENTER_SCHEMAS } from '../schemas';
 /**
  * Props for the DiffEditorDialog component.
  */
-export interface DiffEditorDialogProps extends DialogProps {
+export interface DiffEditorDialogProps extends Omit<DialogProps, 'resource'> {
   /**
    * The Kubernetes resource object being edited.
    * Contains the resource's metadata and specifications.
@@ -193,6 +191,8 @@ export function DiffEditorDialog({
         const clusterName = getCluster() || '';
 
         dispatch(
+          // @todo: this should not use redux dispatch but a plugin API instead.
+          // @ts-ignore
           clusterAction(() => applyFunc(validItems, clusterName), {
             startMessage: `Applying ${resourceNames.join(',')}…`,
             cancelledMessage: `Cancelled applying ${resourceNames.join(',')}`,
