@@ -688,6 +688,32 @@ function TopologyFlow({ kafka }: TopologyProps) {
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.3)',
       }}
     >
+      <style>{`
+        /* Improve ReactFlow Controls visibility */
+        .react-flow__controls {
+          background-color: #475569 !important;
+          border: 1px solid #64748b !important;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important;
+        }
+        .react-flow__controls-button {
+          background-color: #64748b !important;
+          border-bottom: 1px solid #475569 !important;
+          color: #f1f5f9 !important;
+        }
+        .react-flow__controls-button:hover {
+          background-color: #94a3b8 !important;
+        }
+        .react-flow__controls-button svg {
+          fill: #f1f5f9 !important;
+        }
+
+        /* Improve ReactFlow MiniMap visibility */
+        .react-flow__minimap {
+          background-color: #475569 !important;
+          border: 1px solid #64748b !important;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important;
+        }
+      `}</style>
       <ReactFlow
         nodes={nodes}
         edges={[]}
