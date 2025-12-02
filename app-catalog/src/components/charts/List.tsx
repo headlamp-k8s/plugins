@@ -178,12 +178,12 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             // Capture available versions from the response and set AVAILABLE_VERSIONS
             globalThis.AVAILABLE_VERSIONS = AvailableComponentVersions(data.entries);
           } else {
-            setCharts(data.packages);
+            setCharts(Object.fromEntries(data.packages.map((chart: any) => [chart.name, chart])));
             setChartsTotalCount(parseInt(total));
           }
         } catch (err) {
           console.error('Error fetching charts', err);
-          setCharts([]);
+          setCharts({});
         }
       }
       fetchData();
