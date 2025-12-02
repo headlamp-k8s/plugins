@@ -8,10 +8,11 @@ import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
 import { KafkaTopologyModal } from './KafkaTopologyModal';
 import { getErrorMessage } from '../utils/errors';
+import { Toast, ToastMessage } from './Toast';
 
 export function KafkaList() {
   const [kafkas, setKafkas] = React.useState<K8sKafka[]>([]);
-  const [error, setError] = React.useState<string | null>(null);
+  const [toast, setToast] = React.useState<ToastMessage | null>(null);
 
   // Search and Filter state
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -31,9 +32,13 @@ export function KafkaList() {
         // Handle case when Strimzi CRD is not installed
         const message = getErrorMessage(err);
         if (message === 'Not Found' || message.includes('404')) {
-          setError('Strimzi is not installed in this cluster. Please install the Strimzi operator first.');
+          setToast({
+            message: 'Strimzi is not installed in this cluster. Please install the Strimzi operator first.',
+            type: 'error',
+            duration: 6000
+          });
         } else {
-          setError(message);
+          setToast({ message, type: 'error' });
         }
       });
   }, []);
@@ -80,10 +85,6 @@ export function KafkaList() {
       return true;
     });
   }, [kafkas, searchTerm, modeFilter, statusFilter]);
-
-  if (error) {
-    return <div style={{ padding: '20px', color: 'red' }}>Error: {error}</div>;
-  }
 
   return (
     <div style={{ padding: '20px' }}>
@@ -212,6 +213,8 @@ export function KafkaList() {
           setSelectedKafka(null);
         }}
       />
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
