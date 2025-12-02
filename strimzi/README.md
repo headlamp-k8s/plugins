@@ -284,6 +284,64 @@ strimzi-headlamp/
 └── README.md
 ```
 
+## 🚀 Releases and Versioning
+
+This project uses semantic versioning (MAJOR.MINOR.PATCH) and GitHub Actions for automated releases.
+
+### Creating a New Release
+
+**Step 1: Update version**
+```bash
+# Increment version in package.json and create git tag
+npm version patch  # 0.1.0 → 0.1.1 (bug fixes)
+npm version minor  # 0.1.0 → 0.2.0 (new features)
+npm version major  # 0.1.0 → 1.0.0 (breaking changes)
+```
+
+This command automatically:
+- Updates `package.json` version
+- Creates a git commit with the new version
+- Creates a git tag (e.g., `v0.1.1`)
+
+**Step 2: Push to trigger release workflow**
+```bash
+git push origin main
+git push origin v0.1.1  # Push the tag
+```
+
+**Step 3: Automated workflow runs**
+
+The `release.yml` workflow automatically:
+- ✅ Verifies package.json version matches tag version
+- ✅ Runs tests and linter
+- ✅ Builds the plugin
+- ✅ Creates `.tgz` package
+- ✅ Calculates SHA-256 checksum
+- ✅ Creates GitHub Release with artifacts
+- ✅ Publishes to npm (if `NPM_TOKEN` secret is configured)
+
+### Version Verification
+
+The release workflow enforces version consistency. If `package.json` version doesn't match the git tag, the workflow fails:
+
+```bash
+# Tag: v0.1.1
+# package.json: "version": "0.1.1"  ✅ Match - workflow succeeds
+
+# Tag: v0.1.1
+# package.json: "version": "0.1.0"  ❌ Mismatch - workflow fails
+```
+
+### NPM Publishing (Optional)
+
+To enable automatic npm publishing:
+
+1. Generate npm token at https://www.npmjs.com/settings/tokens
+2. Add `NPM_TOKEN` as repository secret in GitHub Settings → Secrets
+3. The workflow will automatically publish on release
+
+If `NPM_TOKEN` is not configured, the workflow skips npm publishing (no error).
+
 ## 📦 Publishing to npm
 
 This plugin is published to npm for easy installation:
