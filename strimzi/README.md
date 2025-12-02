@@ -36,19 +36,19 @@ npm install @headlamp-k8s/strimzi
 
 #### 💾 Manual Installation
 
-1. Download the latest release package (.tgz file)
+1. Download the latest release package (.tar.gz file)
 2. Extract the plugin to your Headlamp plugins directory:
 
 **macOS:**
 ```bash
 mkdir -p ~/Library/Application\ Support/Headlamp/plugins/strimzi
-tar -xzf headlamp-k8s-strimzi-*.tgz -C ~/Library/Application\ Support/Headlamp/plugins/strimzi --strip-components=1
+tar -xzf headlamp-k8s-strimzi-*.tar.gz -C ~/Library/Application\ Support/Headlamp/plugins/strimzi --strip-components=1
 ```
 
 **Linux:**
 ```bash
 mkdir -p ~/.config/Headlamp/plugins/strimzi
-tar -xzf headlamp-k8s-strimzi-*.tgz -C ~/.config/Headlamp/plugins/strimzi --strip-components=1
+tar -xzf headlamp-k8s-strimzi-*.tar.gz -C ~/.config/Headlamp/plugins/strimzi --strip-components=1
 ```
 
 3. Restart Headlamp
@@ -333,7 +333,7 @@ The `release.yml` workflow automatically:
 - ✅ Verifies package.json version matches tag version
 - ✅ Runs tests and linter
 - ✅ Builds the plugin
-- ✅ Creates `.tgz` package
+- ✅ Creates `.tar.gz` package
 - ✅ Calculates SHA-256 checksum
 - ✅ Creates GitHub Release with artifacts
 - ✅ Publishes to npm (if `NPM_TOKEN` secret is configured)

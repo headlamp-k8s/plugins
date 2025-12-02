@@ -62,7 +62,7 @@ jobs:
       - name: Calculate checksum
         id: checksum
         run: |
-          TARBALL=$(ls headlamp-k8s-strimzi-*.tgz)
+          TARBALL=$(ls headlamp-k8s-strimzi-*.tar.gz)
           CHECKSUM=$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)
           echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
           echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
@@ -104,7 +104,7 @@ jobs:
             ```
 
             **Manual installation:**
-            Download the `.tgz` file below and extract to your Headlamp plugins directory.
+            Download the `.tar.gz` file below and extract to your Headlamp plugins directory.
 
             ### Checksums
 
