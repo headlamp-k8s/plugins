@@ -7,7 +7,6 @@ import {
   Node,
   Background,
   Controls,
-  MiniMap,
   ReactFlowProvider,
   Panel,
 } from '@xyflow/react';
@@ -706,13 +705,6 @@ function TopologyFlow({ kafka }: TopologyProps) {
         .react-flow__controls-button svg {
           fill: #f1f5f9 !important;
         }
-
-        /* Improve ReactFlow MiniMap visibility */
-        .react-flow__minimap {
-          background-color: #475569 !important;
-          border: 1px solid #64748b !important;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important;
-        }
       `}</style>
       <ReactFlow
         nodes={nodes}
@@ -727,21 +719,6 @@ function TopologyFlow({ kafka }: TopologyProps) {
       >
         <Background color="#1e293b" gap={20} size={1} />
         <Controls />
-        <MiniMap
-          nodeColor={node => {
-            if (node.id === 'cluster') return COLORS.cluster.border;
-            if (node.id.startsWith('pool-')) return COLORS.nodePool.border;
-            if (node.id.includes('zk')) return COLORS.zookeeper.border;
-            if (node.id.includes('controller')) return COLORS.controller.border;
-            return COLORS.broker.border;
-          }}
-          style={{
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
-            borderRadius: '8px',
-          }}
-          maskColor="rgba(15, 23, 42, 0.7)"
-        />
         <Panel position="top-right">
           <div
             style={{
