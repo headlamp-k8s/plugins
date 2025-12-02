@@ -705,6 +705,23 @@ function TopologyFlow({ kafka }: TopologyProps) {
         .react-flow__controls-button svg {
           fill: #f1f5f9 !important;
         }
+
+        /* Improve ReactFlow attribution visibility */
+        .react-flow__attribution {
+          background-color: #475569 !important;
+          padding: 4px 8px !important;
+          border-radius: 4px !important;
+          border: 1px solid #64748b !important;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+        }
+        .react-flow__attribution a {
+          color: #e2e8f0 !important;
+          text-decoration: none !important;
+          font-size: 11px !important;
+        }
+        .react-flow__attribution a:hover {
+          color: #ffffff !important;
+        }
       `}</style>
       <ReactFlow
         nodes={nodes}
