@@ -290,26 +290,44 @@ This project uses semantic versioning (MAJOR.MINOR.PATCH) and GitHub Actions for
 
 ### Creating a New Release
 
-**Step 1: Update version**
+**Important:** Always create releases from the `main` branch after merging your PR and ensuring all checks pass.
+
+**Step 1: Merge your changes**
 ```bash
-# Increment version in package.json and create git tag
+# Create feature branch, make changes, commit
+git checkout -b feature/my-changes
+# ... make changes ...
+git add .
+git commit -m "feat: description"
+git push origin feature/my-changes
+
+# Create PR, wait for tests to pass, then merge to main
+```
+
+**Step 2: Create release from main**
+```bash
+# Switch to main branch
+git checkout main
+git pull origin main
+
+# Run npm version (automatically creates commit + tag)
 npm version patch  # 0.1.0 → 0.1.1 (bug fixes)
 npm version minor  # 0.1.0 → 0.2.0 (new features)
 npm version major  # 0.1.0 → 1.0.0 (breaking changes)
 ```
 
-This command automatically:
+The `npm version` command automatically:
 - Updates `package.json` version
-- Creates a git commit with the new version
+- Creates a git commit with the version number
 - Creates a git tag (e.g., `v0.1.1`)
 
-**Step 2: Push to trigger release workflow**
+**Step 3: Push to trigger release workflow**
 ```bash
 git push origin main
-git push origin v0.1.1  # Push the tag
+git push origin v0.1.1  # Push the tag created by npm version
 ```
 
-**Step 3: Automated workflow runs**
+**Step 4: Automated workflow runs**
 
 The `release.yml` workflow automatically:
 - ✅ Verifies package.json version matches tag version
