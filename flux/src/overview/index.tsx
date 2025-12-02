@@ -473,18 +473,26 @@ function FluxOverviewChart({ resourceClass }) {
     let processing: number = 0;
 
     for (const resource of customResources) {
+      const status = resource.jsonData.status;
+
       // If no status at all, treat as success (original logic)
-      if (!resource.jsonData.status) {
+      if (!status) {
         success++;
       } else if (resource.jsonData.spec?.suspend) {
         suspended++;
-      } else if (Array.isArray(resource.jsonData.status.conditions)) {
-        if (
-          resource.jsonData.status.conditions.some(
-            condition => condition.type === 'Ready' && condition.status === 'True'
+      } else if (Array.isArray(status.conditions)) {
+        const readyCondition = status.conditions.find(condition => condition.type === 'Ready');
+
+        if (readyCondition?.status === 'True') {
+          success++;
+        } else if (
+          !readyCondition ||
+          readyCondition.status === 'Unknown' ||
+          ['DependencyNotReady', 'Progressing', 'ReconciliationInProgress'].includes(
+            readyCondition.reason ?? ''
           )
         ) {
-          success++;
+          processing++;
         } else {
           failed++;
         }
