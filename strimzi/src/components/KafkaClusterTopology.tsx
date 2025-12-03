@@ -13,6 +13,8 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Kafka, KafkaNodePool, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { useTopologyTheme } from '../hooks/useTopologyTheme';
+import { getSemanticColors, SemanticColors } from '../utils/topologyColors';
 
 interface TopologyProps {
   kafka: Kafka;
@@ -32,40 +34,6 @@ interface Pod {
   };
 }
 
-// Dark theme color scheme with better contrast and readability
-const COLORS = {
-  cluster: {
-    border: '#818cf8',
-    bg: 'rgba(129, 140, 248, 0.1)',
-    label: '#6366f1',
-  },
-  nodePool: {
-    border: '#a78bfa',
-    bg: 'rgba(167, 139, 250, 0.12)',
-    label: '#8b5cf6',
-  },
-  controller: {
-    border: '#34d399',
-    bg: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.2) 100%)',
-    label: '#10b981',
-  },
-  broker: {
-    border: '#60a5fa',
-    bg: 'linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.2) 100%)',
-    label: '#3b82f6',
-  },
-  zookeeper: {
-    border: '#fbbf24',
-    bg: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.2) 100%)',
-    label: '#f59e0b',
-  },
-  dual: {
-    border: '#f472b6',
-    bg: 'linear-gradient(135deg, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.2) 100%)',
-    label: '#ec4899',
-  },
-};
-
 // Helper to determine if pod is ready
 function isPodReady(pod: Pod | undefined): boolean {
   if (!pod?.status?.conditions) return false;
@@ -81,10 +49,11 @@ function createPodNode(params: {
   role: string;
   parentId: string;
   position: { x: number; y: number };
-  color: typeof COLORS.broker;
+  color: { border: string; bg: string; label: string };
   pod?: Pod;
+  theme: ReturnType<typeof useTopologyTheme>;
 }): Node {
-  const { id, name, nodeId, role, parentId, position, color, pod } = params;
+  const { id, name, nodeId, role, parentId, position, color, pod, theme } = params;
   const podIP = pod?.status?.podIP || 'N/A';
   const ready = isPodReady(pod);
   const phase = pod?.status?.phase || 'Unknown';
@@ -95,51 +64,56 @@ function createPodNode(params: {
     position,
     data: {
       label: (
-        <div style={{ padding: '6px' }}>
+        <div style={{ padding: theme.spacing.sm }}>
           <div
             style={{
-              fontSize: '15px',
-              fontWeight: 700,
+              fontSize: theme.typography.fontSize.medium,
+              fontWeight: theme.typography.fontWeight.bold,
+              fontFamily: theme.typography.fontFamily,
               color: color.label,
-              marginBottom: '10px',
+              marginBottom: theme.spacing.sm,
               textAlign: 'center',
-              letterSpacing: '0.3px',
+              letterSpacing: theme.typography.letterSpacing,
             }}
           >
             {name}-{nodeId}
           </div>
           <div
             style={{
-              fontSize: '12px',
-              color: '#e2e8f0',
-              lineHeight: '1.8',
-              fontWeight: 500,
+              fontSize: theme.typography.fontSize.small,
+              fontFamily: theme.typography.fontFamily,
+              color: theme.colors.nodeTextSecondary,
+              lineHeight: theme.typography.lineHeight.relaxed,
+              fontWeight: theme.typography.fontWeight.medium,
             }}
           >
             <div>
-              <strong style={{ color: '#f1f5f9' }}>ID:</strong> {nodeId}
+              <strong style={{ color: theme.colors.nodeText }}>ID:</strong> {nodeId}
             </div>
             <div>
-              <strong style={{ color: '#f1f5f9' }}>Role:</strong> {role}
+              <strong style={{ color: theme.colors.nodeText }}>Role:</strong> {role}
             </div>
             <div>
-              <strong style={{ color: '#f1f5f9' }}>IP:</strong> {podIP}
+              <strong style={{ color: theme.colors.nodeText }}>IP:</strong> {podIP}
             </div>
             <div>
-              <strong style={{ color: '#f1f5f9' }}>Phase:</strong> {phase}
+              <strong style={{ color: theme.colors.nodeText }}>Phase:</strong> {phase}
             </div>
           </div>
           <div
             style={{
-              marginTop: '10px',
-              padding: '6px 10px',
+              marginTop: theme.spacing.sm,
+              padding: `${theme.spacing.xs}px ${theme.spacing.sm}px`,
               borderRadius: '5px',
-              fontSize: '12px',
-              fontWeight: 700,
+              fontSize: theme.typography.fontSize.small,
+              fontFamily: theme.typography.fontFamily,
+              fontWeight: theme.typography.fontWeight.bold,
               textAlign: 'center',
-              backgroundColor: ready ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)',
-              color: ready ? '#34d399' : '#f87171',
-              letterSpacing: '0.5px',
+              backgroundColor: ready
+                ? theme.colors.statusReadyBg
+                : theme.colors.statusNotReadyBg,
+              color: ready ? theme.colors.statusReady : theme.colors.statusNotReady,
+              letterSpacing: theme.typography.letterSpacing,
             }}
           >
             {ready ? '✓ Ready' : '✗ Not Ready'}
@@ -151,10 +125,10 @@ function createPodNode(params: {
       background: color.bg,
       border: `2px solid ${color.border}`,
       borderRadius: '12px',
-      padding: '16px',
+      padding: theme.spacing.md,
       width: 180,
       minHeight: 160,
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      boxShadow: theme.colors.nodeShadow,
     },
     parentId,
     extent: 'parent' as const,
@@ -168,9 +142,10 @@ function createGroupLabel(params: {
   role: string;
   replicas: number;
   parentId: string;
-  color: typeof COLORS.nodePool;
+  color: { border: string; bg: string; label: string };
+  theme: ReturnType<typeof useTopologyTheme>;
 }): Node {
-  const { id, title, role, replicas, parentId, color } = params;
+  const { id, title, role, replicas, parentId, color, theme } = params;
 
   return {
     id,
@@ -181,31 +156,34 @@ function createGroupLabel(params: {
         <div>
           <div
             style={{
-              fontSize: '16px',
-              fontWeight: 700,
+              fontSize: theme.typography.fontSize.large,
+              fontWeight: theme.typography.fontWeight.bold,
+              fontFamily: theme.typography.fontFamily,
               color: 'white',
-              marginBottom: '3px',
-              letterSpacing: '0.3px',
+              marginBottom: theme.spacing.xs,
+              letterSpacing: theme.typography.letterSpacing,
             }}
           >
             {title}
           </div>
           <div
             style={{
-              fontSize: '13px',
+              fontSize: theme.typography.fontSize.medium,
+              fontFamily: theme.typography.fontFamily,
               color: 'rgba(255, 255, 255, 0.95)',
-              fontWeight: 500,
-              letterSpacing: '0.2px',
+              fontWeight: theme.typography.fontWeight.medium,
+              letterSpacing: theme.typography.letterSpacing,
             }}
           >
             {role}
           </div>
           <div
             style={{
-              fontSize: '13px',
+              fontSize: theme.typography.fontSize.medium,
+              fontFamily: theme.typography.fontFamily,
               color: 'rgba(255, 255, 255, 0.95)',
-              fontWeight: 500,
-              letterSpacing: '0.2px',
+              fontWeight: theme.typography.fontWeight.medium,
+              letterSpacing: theme.typography.letterSpacing,
             }}
           >
             Replicas: {replicas}
@@ -217,8 +195,8 @@ function createGroupLabel(params: {
       background: color.label,
       border: 'none',
       borderRadius: '8px',
-      padding: '10px 16px',
-      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      padding: `${theme.spacing.sm}px ${theme.spacing.md}px`,
+      boxShadow: theme.colors.nodeShadow,
     },
     parentId,
     draggable: false,
@@ -231,6 +209,10 @@ function TopologyFlow({ kafka }: TopologyProps) {
   const [pods, setPods] = React.useState<Pod[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [nodes, setNodes] = React.useState<Node[]>([]);
+
+  // Get theme and semantic colors
+  const theme = useTopologyTheme();
+  const colors = React.useMemo(() => getSemanticColors(theme), [theme]);
 
   const isKRaft = React.useMemo(() => isKRaftMode(kafka), [kafka]);
   const clusterReady = React.useMemo(
@@ -330,8 +312,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
       style: {
         width: clusterWidth,
         height: clusterHeight,
-        backgroundColor: COLORS.cluster.bg,
-        border: `3px dashed ${COLORS.cluster.border}`,
+        backgroundColor: colors.cluster.bg,
+        border: `3px dashed ${colors.cluster.border}`,
         borderRadius: '16px',
         padding: `${labelHeight + 20}px 20px 20px 20px`,
       },
@@ -375,7 +357,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
         ),
       },
       style: {
-        background: COLORS.cluster.label,
+        background: colors.cluster.label,
         border: 'none',
         borderRadius: '10px',
         padding: '12px 20px',
@@ -421,7 +403,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
         const isDual = isController && isBroker;
 
         const roleLabel = isDual ? 'Controller + Broker' : isController ? 'Controller' : 'Broker';
-        const poolColor = isDual ? COLORS.dual : isController ? COLORS.controller : COLORS.broker;
+        const poolColor = isDual ? colors.dual : isController ? colors.controller : colors.broker;
 
         // Horizontal layout: width based on number of pods
         const groupWidth = groupPadding.left + groupPadding.right + replicas * (podNodeWidth + nodeSpacing) - nodeSpacing;
@@ -439,8 +421,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
           style: {
             width: groupWidth,
             height: groupHeight,
-            backgroundColor: COLORS.nodePool.bg,
-            border: `2px solid ${COLORS.nodePool.border}`,
+            backgroundColor: colors.nodePool.bg,
+            border: `2px solid ${colors.nodePool.border}`,
             borderRadius: '12px',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           },
@@ -456,7 +438,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
             role: roleLabel,
             replicas: replicas,
             parentId: `pool-${poolName}`,
-            color: COLORS.nodePool,
+            color: colors.nodePool,
+            theme,
           })
         );
 
@@ -475,6 +458,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
               position: { x: groupPadding.left + index * (podNodeWidth + nodeSpacing), y: groupPadding.top },
               color: poolColor,
               pod,
+              theme,
             })
           );
         });
@@ -496,8 +480,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
         style: {
           width: groupWidth,
           height: groupHeight,
-          backgroundColor: COLORS.nodePool.bg,
-          border: `2px solid ${COLORS.controller.border}`,
+          backgroundColor: colors.nodePool.bg,
+          border: `2px solid ${colors.controller.border}`,
           borderRadius: '12px',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
         },
@@ -512,7 +496,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
           role: 'Controller + Broker',
           replicas: brokerCount,
           parentId: 'broker-group',
-          color: COLORS.controller,
+          color: colors.controller,
+          theme,
         })
       );
 
@@ -528,8 +513,9 @@ function TopologyFlow({ kafka }: TopologyProps) {
             role: 'C+B',
             parentId: 'broker-group',
             position: { x: groupPadding.left + i * (podNodeWidth + nodeSpacing), y: groupPadding.top },
-            color: COLORS.controller,
+            color: colors.controller,
             pod,
+            theme,
           })
         );
       }
@@ -555,8 +541,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
           style: {
             width: zkGroupWidth,
             height: groupHeight,
-            backgroundColor: COLORS.nodePool.bg,
-            border: `2px solid ${COLORS.zookeeper.border}`,
+            backgroundColor: colors.nodePool.bg,
+            border: `2px solid ${colors.zookeeper.border}`,
             borderRadius: '12px',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           },
@@ -571,7 +557,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
             role: 'Ensemble',
             replicas: zkCount,
             parentId: 'zk-group',
-            color: COLORS.zookeeper,
+            color: colors.zookeeper,
+            theme,
           })
         );
 
@@ -587,8 +574,9 @@ function TopologyFlow({ kafka }: TopologyProps) {
               role: 'Metadata',
               parentId: 'zk-group',
               position: { x: groupPadding.left + i * (podNodeWidth + nodeSpacing), y: groupPadding.top },
-              color: COLORS.zookeeper,
+              color: colors.zookeeper,
               pod,
+              theme,
             })
           );
         }
@@ -608,8 +596,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
         style: {
           width: brokerGroupWidth,
           height: groupHeight,
-          backgroundColor: COLORS.nodePool.bg,
-          border: `2px solid ${COLORS.broker.border}`,
+          backgroundColor: colors.nodePool.bg,
+          border: `2px solid ${colors.broker.border}`,
           borderRadius: '12px',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
         },
@@ -624,7 +612,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
           role: 'Data Nodes',
           replicas: brokerCount,
           parentId: 'broker-group',
-          color: COLORS.broker,
+          color: colors.broker,
+          theme,
         })
       );
 
@@ -640,15 +629,16 @@ function TopologyFlow({ kafka }: TopologyProps) {
             role: 'Broker',
             parentId: 'broker-group',
             position: { x: groupPadding.left + i * (podNodeWidth + nodeSpacing), y: groupPadding.top },
-            color: COLORS.broker,
+            color: colors.broker,
             pod,
+            theme,
           })
         );
       }
     }
 
     setNodes(generatedNodes);
-  }, [kafka, isKRaft, nodePools, pods, loading, clusterReady]);
+  }, [kafka, isKRaft, nodePools, pods, loading, clusterReady, colors, theme]);
 
   if (loading) {
     return (
@@ -659,15 +649,15 @@ function TopologyFlow({ kafka }: TopologyProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#0f172a',
+          backgroundColor: theme.colors.canvasBackground,
+          fontFamily: theme.typography.fontFamily,
         }}
       >
         <div
           style={{
-            fontSize: '17px',
-            color: '#cbd5e1',
-            fontWeight: 600,
-            letterSpacing: '0.3px',
+            fontSize: theme.typography.fontSize.large,
+            color: theme.colors.nodeTextSecondary,
+            fontWeight: theme.typography.fontWeight.bold,
           }}
         >
           Loading topology...
@@ -681,46 +671,43 @@ function TopologyFlow({ kafka }: TopologyProps) {
       style={{
         width: '100%',
         height: '700px',
-        backgroundColor: '#0f172a',
+        backgroundColor: theme.colors.canvasBackground,
         borderRadius: '12px',
         overflow: 'hidden',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.3)',
+        boxShadow: theme.colors.nodeShadow,
       }}
     >
       <style>{`
-        /* Improve ReactFlow Controls visibility */
+        /* Theme-aware ReactFlow Controls */
         .react-flow__controls {
-          background-color: #475569 !important;
-          border: 1px solid #64748b !important;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important;
+          background-color: ${theme.colors.controlsBg} !important;
+          border: 1px solid ${theme.colors.controlsBorder} !important;
+          box-shadow: ${theme.colors.nodeShadow} !important;
         }
         .react-flow__controls-button {
-          background-color: #64748b !important;
-          border-bottom: 1px solid #475569 !important;
-          color: #f1f5f9 !important;
+          background-color: ${theme.colors.controlsBg} !important;
+          border-bottom: 1px solid ${theme.colors.controlsBorder} !important;
+          color: ${theme.colors.controlsText} !important;
         }
         .react-flow__controls-button:hover {
-          background-color: #94a3b8 !important;
+          background-color: ${theme.colors.controlsHover} !important;
         }
         .react-flow__controls-button svg {
-          fill: #f1f5f9 !important;
+          fill: ${theme.colors.controlsText} !important;
         }
 
-        /* Improve ReactFlow attribution visibility */
+        /* Theme-aware ReactFlow attribution */
         .react-flow__attribution {
-          background-color: #475569 !important;
+          background-color: ${theme.colors.controlsBg} !important;
           padding: 4px 8px !important;
           border-radius: 4px !important;
-          border: 1px solid #64748b !important;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+          border: 1px solid ${theme.colors.controlsBorder} !important;
+          box-shadow: ${theme.colors.nodeShadow} !important;
         }
         .react-flow__attribution a {
-          color: #e2e8f0 !important;
+          color: ${theme.colors.nodeText} !important;
           text-decoration: none !important;
-          font-size: 11px !important;
-        }
-        .react-flow__attribution a:hover {
-          color: #ffffff !important;
+          font-size: ${theme.typography.fontSize.small} !important;
         }
       `}</style>
       <ReactFlow
@@ -734,82 +721,120 @@ function TopologyFlow({ kafka }: TopologyProps) {
         minZoom={0.3}
         maxZoom={2.0}
       >
-        <Background color="#1e293b" gap={20} size={1} />
+        <Background color={theme.colors.gridColor} gap={20} size={1} />
         <Controls />
         <Panel position="top-right">
           <div
             style={{
-              backgroundColor: '#1e293b',
-              padding: '16px',
+              backgroundColor: theme.colors.nodeBackground,
+              padding: theme.spacing.md,
               borderRadius: '10px',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-              fontSize: '13px',
+              boxShadow: theme.colors.nodeShadow,
+              fontSize: theme.typography.fontSize.medium,
+              fontFamily: theme.typography.fontFamily,
               minWidth: '180px',
-              border: '1px solid #334155',
+              border: `1px solid ${theme.colors.nodeBorder}`,
             }}
           >
             <div
-              style={{ fontWeight: 700, marginBottom: '12px', color: '#f1f5f9', fontSize: '15px', letterSpacing: '0.3px' }}
+              style={{
+                fontWeight: theme.typography.fontWeight.bold,
+                marginBottom: theme.spacing.sm,
+                color: theme.colors.nodeText,
+                fontSize: theme.typography.fontSize.medium,
+              }}
             >
               Legend
             </div>
 
             {nodePools.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: theme.spacing.xs }}>
                 <span
                   style={{
                     width: '16px',
                     height: '16px',
-                    backgroundColor: COLORS.nodePool.border,
+                    backgroundColor: colors.nodePool.border,
                     borderRadius: '3px',
-                    marginRight: '10px',
+                    marginRight: theme.spacing.sm,
                   }}
                 />
-                <span style={{ color: '#e2e8f0', fontSize: '13px', fontWeight: 500, letterSpacing: '0.2px' }}>KafkaNodePool</span>
+                <span
+                  style={{
+                    color: theme.colors.nodeTextSecondary,
+                    fontSize: theme.typography.fontSize.small,
+                    fontWeight: theme.typography.fontWeight.medium,
+                  }}
+                >
+                  KafkaNodePool
+                </span>
               </div>
             )}
 
             {isKRaft && (
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: theme.spacing.xs }}>
                 <span
                   style={{
                     width: '16px',
                     height: '16px',
-                    backgroundColor: COLORS.controller.border,
+                    backgroundColor: colors.controller.border,
                     borderRadius: '3px',
-                    marginRight: '10px',
+                    marginRight: theme.spacing.sm,
                   }}
                 />
-                <span style={{ color: '#e2e8f0', fontSize: '13px', fontWeight: 500, letterSpacing: '0.2px' }}>Controller</span>
+                <span
+                  style={{
+                    color: theme.colors.nodeTextSecondary,
+                    fontSize: theme.typography.fontSize.small,
+                    fontWeight: theme.typography.fontWeight.medium,
+                  }}
+                >
+                  Controller
+                </span>
               </div>
             )}
 
             {isKRaft && (
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: theme.spacing.xs }}>
                 <span
                   style={{
                     width: '16px',
                     height: '16px',
-                    backgroundColor: COLORS.dual.border,
+                    backgroundColor: colors.dual.border,
                     borderRadius: '3px',
-                    marginRight: '10px',
+                    marginRight: theme.spacing.sm,
                   }}
                 />
-                <span style={{ color: '#e2e8f0', fontSize: '13px', fontWeight: 500, letterSpacing: '0.2px' }}>Controller + Broker</span>
+                <span
+                  style={{
+                    color: theme.colors.nodeTextSecondary,
+                    fontSize: theme.typography.fontSize.small,
+                    fontWeight: theme.typography.fontWeight.medium,
+                  }}
+                >
+                  Controller + Broker
+                </span>
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: theme.spacing.xs }}>
               <span
                 style={{
                   width: '16px',
                   height: '16px',
-                  backgroundColor: COLORS.broker.border,
+                  backgroundColor: colors.broker.border,
                   borderRadius: '3px',
-                  marginRight: '10px',
+                  marginRight: theme.spacing.sm,
                 }}
               />
-              <span style={{ color: '#e2e8f0', fontSize: '13px', fontWeight: 500, letterSpacing: '0.2px' }}>Broker</span>
+              <span
+                style={{
+                  color: theme.colors.nodeTextSecondary,
+                  fontSize: theme.typography.fontSize.small,
+                  fontWeight: theme.typography.fontWeight.medium,
+                }}
+              >
+                Broker
+              </span>
             </div>
 
             {!isKRaft && (
@@ -818,12 +843,20 @@ function TopologyFlow({ kafka }: TopologyProps) {
                   style={{
                     width: '16px',
                     height: '16px',
-                    backgroundColor: COLORS.zookeeper.border,
+                    backgroundColor: colors.zookeeper.border,
                     borderRadius: '3px',
-                    marginRight: '10px',
+                    marginRight: theme.spacing.sm,
                   }}
                 />
-                <span style={{ color: '#e2e8f0', fontSize: '13px', fontWeight: 500, letterSpacing: '0.2px' }}>ZooKeeper</span>
+                <span
+                  style={{
+                    color: theme.colors.nodeTextSecondary,
+                    fontSize: theme.typography.fontSize.small,
+                    fontWeight: theme.typography.fontWeight.medium,
+                  }}
+                >
+                  ZooKeeper
+                </span>
               </div>
             )}
           </div>
