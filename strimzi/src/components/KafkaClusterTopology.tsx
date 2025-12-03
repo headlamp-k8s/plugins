@@ -70,7 +70,7 @@ function createPodNode(params: {
               fontSize: theme.typography.fontSize.medium,
               fontWeight: theme.typography.fontWeight.bold,
               fontFamily: theme.typography.fontFamily,
-              color: color.label,
+              color: theme.colors.nodeText,
               marginBottom: theme.spacing.sm,
               textAlign: 'center',
               letterSpacing: theme.typography.letterSpacing,
@@ -159,7 +159,7 @@ function createGroupLabel(params: {
               fontSize: theme.typography.fontSize.large,
               fontWeight: theme.typography.fontWeight.bold,
               fontFamily: theme.typography.fontFamily,
-              color: 'white',
+              color: theme.colors.nodeText,
               marginBottom: theme.spacing.xs,
               letterSpacing: theme.typography.letterSpacing,
             }}
@@ -170,7 +170,7 @@ function createGroupLabel(params: {
             style={{
               fontSize: theme.typography.fontSize.medium,
               fontFamily: theme.typography.fontFamily,
-              color: 'rgba(255, 255, 255, 0.95)',
+              color: theme.colors.nodeText,
               fontWeight: theme.typography.fontWeight.medium,
               letterSpacing: theme.typography.letterSpacing,
             }}
@@ -181,7 +181,7 @@ function createGroupLabel(params: {
             style={{
               fontSize: theme.typography.fontSize.medium,
               fontFamily: theme.typography.fontFamily,
-              color: 'rgba(255, 255, 255, 0.95)',
+              color: theme.colors.nodeText,
               fontWeight: theme.typography.fontWeight.medium,
               letterSpacing: theme.typography.letterSpacing,
             }}
@@ -213,6 +213,18 @@ function TopologyFlow({ kafka }: TopologyProps) {
   // Get theme and semantic colors
   const theme = useTopologyTheme();
   const colors = React.useMemo(() => getSemanticColors(theme), [theme]);
+
+  // Helper to convert hex color to rgba with opacity
+  const hexToRgba = React.useCallback((hex: string, alpha: number): string => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }, []);
+
+  // Legend colors - same color palette as topology, higher opacity for visibility
+  // In light mode: 0.5 for legend visibility, in dark mode: use solid colors
+  const legendOpacity = theme.isDark ? 1.0 : 0.5;
 
   const isKRaft = React.useMemo(() => isKRaftMode(kafka), [kafka]);
   const clusterReady = React.useMemo(
@@ -313,7 +325,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
         width: clusterWidth,
         height: clusterHeight,
         backgroundColor: colors.cluster.bg,
-        border: `3px dashed ${colors.cluster.border}`,
+        border: `3px solid ${colors.cluster.border}`,
         borderRadius: '16px',
         padding: `${labelHeight + 20}px 20px 20px 20px`,
       },
@@ -327,13 +339,13 @@ function TopologyFlow({ kafka }: TopologyProps) {
       data: {
         label: (
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: 'white', marginBottom: '5px', letterSpacing: '0.4px' }}>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: theme.colors.nodeText, marginBottom: '5px', letterSpacing: '0.4px' }}>
               {clusterName}
             </div>
-            <div style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.95)', fontWeight: 500, marginBottom: '4px' }}>
+            <div style={{ fontSize: '16px', color: theme.colors.nodeText, fontWeight: 500, marginBottom: '4px' }}>
               Mode: {isKRaft ? 'KRaft' : 'ZooKeeper'}
             </div>
-            <div style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.95)', fontWeight: 500, marginBottom: '8px' }}>
+            <div style={{ fontSize: '16px', color: theme.colors.nodeText, fontWeight: 500, marginBottom: '8px' }}>
               Namespace: {kafka.metadata.namespace}
             </div>
             <div>
@@ -347,7 +359,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
                     : 'rgba(239, 68, 68, 0.35)',
                   fontWeight: 600,
                   letterSpacing: '0.3px',
-                  color: 'white',
+                  color: clusterReady ? theme.colors.statusReady : theme.colors.statusNotReady,
                 }}
               >
                 {clusterReady ? '✓ Ready' : '✗ Not Ready'}
@@ -645,7 +657,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
       <div
         style={{
           width: '100%',
-          height: '700px',
+          height: 'calc(100vh - 250px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -670,7 +682,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
     <div
       style={{
         width: '100%',
-        height: '700px',
+        height: 'calc(100vh - 250px)',
         backgroundColor: theme.colors.canvasBackground,
         borderRadius: '12px',
         overflow: 'hidden',
@@ -758,7 +770,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
                   style={{
                     width: '16px',
                     height: '16px',
-                    backgroundColor: colors.nodePool.border,
+                    backgroundColor: theme.isDark ? theme.colors.nodePool : hexToRgba(theme.colors.nodePool, legendOpacity),
                     borderRadius: '3px',
                     marginRight: theme.spacing.sm,
                   }}
@@ -781,7 +793,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
                   style={{
                     width: '16px',
                     height: '16px',
-                    backgroundColor: colors.controller.border,
+                    backgroundColor: theme.isDark ? theme.colors.controller : hexToRgba(theme.colors.controller, legendOpacity),
                     borderRadius: '3px',
                     marginRight: theme.spacing.sm,
                   }}
@@ -804,7 +816,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
                   style={{
                     width: '16px',
                     height: '16px',
-                    backgroundColor: colors.dual.border,
+                    backgroundColor: theme.isDark ? theme.colors.dual : hexToRgba(theme.colors.dual, legendOpacity),
                     borderRadius: '3px',
                     marginRight: theme.spacing.sm,
                   }}
@@ -826,7 +838,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
                 style={{
                   width: '16px',
                   height: '16px',
-                  backgroundColor: colors.broker.border,
+                  backgroundColor: theme.isDark ? theme.colors.broker : hexToRgba(theme.colors.broker, legendOpacity),
                   borderRadius: '3px',
                   marginRight: theme.spacing.sm,
                 }}
@@ -848,7 +860,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
                   style={{
                     width: '16px',
                     height: '16px',
-                    backgroundColor: colors.zookeeper.border,
+                    backgroundColor: theme.isDark ? theme.colors.zookeeper : hexToRgba(theme.colors.zookeeper, legendOpacity),
                     borderRadius: '3px',
                     marginRight: theme.spacing.sm,
                   }}
