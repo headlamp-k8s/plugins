@@ -155,9 +155,13 @@ export function useTopologyTheme(): TopologyTheme {
 
       // Nodes - using MUI palette
       nodeBackground: muiTheme.palette.background.paper,
-      nodeBorder: muiTheme.palette.divider,
-      nodeText: muiTheme.palette.text.primary,
-      nodeTextSecondary: muiTheme.palette.text.secondary,
+      // Light mode: use visible light grey border
+      // Dark mode: use theme divider
+      nodeBorder: isDark ? muiTheme.palette.divider : '#d1d5db',
+      // Light mode: dark grey text for better contrast and readability
+      // Dark mode: use theme default
+      nodeText: isDark ? muiTheme.palette.text.primary : '#374151',
+      nodeTextSecondary: isDark ? muiTheme.palette.text.secondary : '#6b7280',
       nodeHover: isDark
         ? 'rgba(255, 255, 255, 0.08)'
         : 'rgba(0, 0, 0, 0.04)',
@@ -170,7 +174,8 @@ export function useTopologyTheme(): TopologyTheme {
       edgeStroke: muiTheme.palette.divider,
       edgeStrokeSelected: muiTheme.palette.primary.main,
       edgeLabelBg: muiTheme.palette.background.paper,
-      edgeLabelText: muiTheme.palette.text.primary,
+      // Light mode: dark grey text for better readability
+      edgeLabelText: isDark ? muiTheme.palette.text.primary : '#374151',
 
       // Semantic colors
       broker: semanticColors.broker,
@@ -192,7 +197,8 @@ export function useTopologyTheme(): TopologyTheme {
       // UI elements
       controlsBg: isDark ? '#334155' : '#f1f5f9',
       controlsBorder: isDark ? '#475569' : '#cbd5e1',
-      controlsText: muiTheme.palette.text.primary,
+      // Light mode: dark grey text for better readability
+      controlsText: isDark ? muiTheme.palette.text.primary : '#374151',
       controlsHover: isDark ? '#475569' : '#e2e8f0',
       overlay: isDark
         ? 'rgba(0, 0, 0, 0.6)'
