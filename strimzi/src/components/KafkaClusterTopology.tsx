@@ -717,9 +717,14 @@ function TopologyFlow({ kafka }: TopologyProps) {
         nodesConnectable={false}
         elementsSelectable={true}
         fitView
-        fitViewOptions={{ padding: 0.15, maxZoom: 1.0 }}
-        minZoom={0.3}
+        fitViewOptions={{
+          minZoom: 1.0,
+          maxZoom: 1.0,
+          padding: 0.1
+        }}
+        minZoom={0.5}
         maxZoom={2.0}
+        panOnScroll={true}
       >
         <Background color={theme.colors.gridColor} gap={20} size={1} />
         <Controls />
