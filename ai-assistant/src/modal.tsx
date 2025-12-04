@@ -248,7 +248,6 @@ export default function AIPrompt(props: {
       selectedModel !== model
     ) {
       setPromptHistory([]);
-      setPromptVal('');
       setApiError(null);
       setActiveConfig(config);
       setSelectedModel(resolveSelectedModel(config, model));
