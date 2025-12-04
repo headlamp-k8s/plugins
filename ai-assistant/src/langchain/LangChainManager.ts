@@ -112,7 +112,6 @@ export default class LangChainManager extends AIManager {
           return new ChatOpenAI({
             apiKey: config.apiKey,
             modelName: config.model,
-            dangerouslyAllowBrowser: true,
             verbose: true,
           });
         case 'azure':
@@ -125,7 +124,6 @@ export default class LangChainManager extends AIManager {
             azureOpenAIApiDeploymentName: config.deploymentName,
             azureOpenAIApiVersion: '2024-12-01-preview',
             modelName: config.model,
-            dangerouslyAllowBrowser: true,
             verbose: true,
           });
         case 'anthropic':
@@ -135,7 +133,6 @@ export default class LangChainManager extends AIManager {
           return new ChatAnthropic({
             apiKey: config.apiKey,
             modelName: config.model,
-            dangerouslyAllowBrowser: true,
             verbose: true,
           });
         case 'mistral':
@@ -145,7 +142,6 @@ export default class LangChainManager extends AIManager {
           return new ChatMistralAI({
             apiKey: config.apiKey,
             modelName: config.model,
-            dangerouslyAllowBrowser: true,
             verbose: true,
           });
         case 'gemini': {
@@ -155,7 +151,6 @@ export default class LangChainManager extends AIManager {
           return new ChatGoogleGenerativeAI({
             apiKey: config.apiKey,
             model: config.model,
-            dangerouslyAllowBrowser: true,
             verbose: true,
           });
         }
@@ -166,7 +161,6 @@ export default class LangChainManager extends AIManager {
           return new ChatOllama({
             baseUrl: config.baseUrl,
             model: config.model,
-            dangerouslyAllowBrowser: true,
             verbose: true,
           });
         default:
@@ -822,7 +816,6 @@ Format your response to make the errors prominent and actionable.`,
               new FunctionMessage({
                 name: prompt.name || 'kubernetes_api_request',
                 content: processedContent,
-                tool_call_id: prompt.toolCallId,
               })
             );
           }

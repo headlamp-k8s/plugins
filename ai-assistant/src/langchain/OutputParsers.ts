@@ -1,5 +1,8 @@
-import { CommaSeparatedListOutputParser, StringOutputParser } from '@langchain/core/output_parsers';
-import { StructuredOutputParser } from 'langchain/output_parsers';
+import {
+  CommaSeparatedListOutputParser,
+  StringOutputParser,
+  StructuredOutputParser,
+} from '@langchain/core/output_parsers';
 import { z } from 'zod';
 
 /**
@@ -70,7 +73,7 @@ export const resourceListParser = StructuredOutputParser.fromZodSchema(
           status: z.string().describe('Current status'),
           age: z.string().describe('Age of the resource'),
           additionalInfo: z
-            .record(z.string())
+            .record(z.string(), z.string())
             .optional()
             .describe('Additional resource-specific information'),
         })
@@ -125,7 +128,7 @@ export const actionSuggestionParser = StructuredOutputParser.fromZodSchema(
       .array(
         z.object({
           toolName: z.string().describe('Name of the tool to use'),
-          parameters: z.record(z.any()).describe('Parameters for the tool call'),
+          parameters: z.record(z.string(), z.any()).describe('Parameters for the tool call'),
           description: z.string().describe('What this tool action accomplishes'),
         })
       )
@@ -146,13 +149,13 @@ export function getFormatInstructions(parser: StructuredOutputParser<any>): stri
 /**
  * Utility function to safely parse responses with error handling
  */
-export async function safeParseResponse<T>(
+export async function safeParseResponse<T extends z.ZodTypeAny>(
   parser: StructuredOutputParser<T>,
   response: string
-): Promise<{ success: boolean; data?: T; error?: string }> {
+): Promise<{ success: boolean; data?: z.infer<T>; error?: string }> {
   try {
     const parsed = await parser.parse(response);
-    return { success: true, data: parsed };
+    return { success: true, data: parsed as z.infer<T> };
   } catch (error) {
     console.error('Error parsing structured response:', error);
     return {

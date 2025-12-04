@@ -2,6 +2,7 @@
   "name": "@headlamp-k8s/ai-assistant",
   "version": "0.1.0-alpha",
   "description": "Headlamp's AI Assistant",
+  "type": "module",
   "scripts": {
     "start": "headlamp-plugin start",
     "build": "headlamp-plugin build",
@@ -12,7 +13,8 @@
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
-    "test": "headlamp-plugin test"
+    "test": "headlamp-plugin test",
+    "i18n": "headlamp-plugin i18n"
   },
   "keywords": [
     "headlamp",
@@ -31,34 +33,31 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.12.0"
+    "@kinvolk/headlamp-plugin": "^0.13.0-alpha.14"
   },
   "dependencies": {
-    "@langchain/anthropic": "^0.3.17",
-    "@langchain/community": "^0.3.42",
-    "@langchain/core": "^0.3.51",
-    "@langchain/google-genai": "^0.2.5",
-    "@langchain/mistralai": "^0.2.0",
-    "@langchain/ollama": "^0.2.0",
-    "@langchain/openai": "^0.5.5",
+    "@langchain/anthropic": "^1.1.1",
+    "@langchain/core": "^1.0.6",
+    "@langchain/google-genai": "^1.0.3",
+    "@langchain/mistralai": "^1.0.0",
+    "@langchain/ollama": "^1.0.1",
+    "@langchain/openai": "^1.1.2",
     "@monaco-editor/react": "^4.5.2",
     "@types/prismjs": "^1.26.5",
     "@types/react-syntax-highlighter": "^15.5.13",
     "js-yaml": "^4.1.0",
-    "langchain": "^0.3.0",
+    "langchain": "^1.0.6",
     "notistack": "^3.0.1",
     "prismjs": "^1.30.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-syntax-highlighter": "^15.6.1",
+    "react-syntax-highlighter": "^16.1.0",
     "remark-gfm": "^4.0.1",
     "sanitize-html": "^2.17.0",
     "use-between": "^1.3.5",
-    "zod": "^3.24.2"
+    "zod": "^4.1.12"
   },
   "overrides": {
-    "axios": "^1.12.0",
-    "prismjs": "^1.30.0",
     "typescript": "5.6.2"
   }
 }
