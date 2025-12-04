@@ -103,64 +103,80 @@ export default class LangChainManager extends AIManager {
   }
 
   private createModel(providerId: string, config: Record<string, any>): BaseChatModel {
+    const sanitizeString = (value: unknown): string =>
+      typeof value === 'string' ? value.trim() : '';
+    const sanitizedConfig = {
+      ...config,
+      apiKey: sanitizeString(config.apiKey),
+      endpoint: sanitizeString(config.endpoint),
+      baseUrl: sanitizeString(config.baseUrl),
+      deploymentName: sanitizeString(config.deploymentName),
+      model: sanitizeString(config.model),
+    };
+
     try {
       switch (providerId) {
         case 'openai':
-          if (!config.apiKey) {
+          if (!sanitizedConfig.apiKey) {
             throw new Error('API key is required for OpenAI');
           }
           return new ChatOpenAI({
-            apiKey: config.apiKey,
-            modelName: config.model,
+            apiKey: sanitizedConfig.apiKey,
+            modelName: sanitizedConfig.model,
             verbose: true,
           });
         case 'azure':
-          if (!config.apiKey || !config.endpoint || !config.deploymentName) {
+          if (
+            !sanitizedConfig.apiKey ||
+            !sanitizedConfig.endpoint ||
+            !sanitizedConfig.deploymentName
+          ) {
             throw new Error('Incomplete Azure OpenAI configuration');
           }
           return new AzureChatOpenAI({
-            azureOpenAIEndpoint: config.endpoint.replace(/\/+\$/, ''),
-            azureOpenAIApiKey: config.apiKey,
-            azureOpenAIApiDeploymentName: config.deploymentName,
+            // Strip trailing slashes only
+            azureOpenAIEndpoint: sanitizedConfig.endpoint.replace(/\/+$/, ''),
+            azureOpenAIApiKey: sanitizedConfig.apiKey,
+            azureOpenAIApiDeploymentName: sanitizedConfig.deploymentName,
             azureOpenAIApiVersion: '2024-12-01-preview',
-            modelName: config.model,
+            modelName: sanitizedConfig.model,
             verbose: true,
           });
         case 'anthropic':
-          if (!config.apiKey) {
+          if (!sanitizedConfig.apiKey) {
             throw new Error('API key is required for Anthropic');
           }
           return new ChatAnthropic({
-            apiKey: config.apiKey,
-            modelName: config.model,
+            apiKey: sanitizedConfig.apiKey,
+            modelName: sanitizedConfig.model,
             verbose: true,
           });
         case 'mistral':
-          if (!config.apiKey) {
+          if (!sanitizedConfig.apiKey) {
             throw new Error('API key is required for Mistral AI');
           }
           return new ChatMistralAI({
-            apiKey: config.apiKey,
-            modelName: config.model,
+            apiKey: sanitizedConfig.apiKey,
+            modelName: sanitizedConfig.model,
             verbose: true,
           });
         case 'gemini': {
-          if (!config.apiKey) {
+          if (!sanitizedConfig.apiKey) {
             throw new Error('API key is required for Google Gemini');
           }
           return new ChatGoogleGenerativeAI({
-            apiKey: config.apiKey,
-            model: config.model,
+            apiKey: sanitizedConfig.apiKey,
+            model: sanitizedConfig.model,
             verbose: true,
           });
         }
         case 'local':
-          if (!config.baseUrl) {
+          if (!sanitizedConfig.baseUrl) {
             throw new Error('Base URL is required for local models');
           }
           return new ChatOllama({
-            baseUrl: config.baseUrl,
-            model: config.model,
+            baseUrl: sanitizedConfig.baseUrl,
+            model: sanitizedConfig.model,
             verbose: true,
           });
         default:
