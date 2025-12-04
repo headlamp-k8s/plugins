@@ -250,7 +250,6 @@ export default function AIPrompt(props: {
       JSON.stringify(activeConfig.config) !== JSON.stringify(config.config) ||
       selectedModel !== resolvedModel
     ) {
-      setPromptHistory([]);
       setApiError(null);
       setActiveConfig(config);
       setSelectedModel(resolvedModel);
@@ -261,7 +260,8 @@ export default function AIPrompt(props: {
         setTimeout(() => {
           const providerName =
             config.displayName || getProviderById(config.providerId)?.name || config.providerId;
-          setPromptHistory([
+          setPromptHistory(prev => [
+            ...prev,
             {
               role: 'system',
               content: `Switched to ${providerName}${resolvedModel ? ' / ' + resolvedModel : ''}.`,
@@ -271,7 +271,8 @@ export default function AIPrompt(props: {
       } else {
         const providerName =
           config.displayName || getProviderById(config.providerId)?.name || config.providerId;
-        setPromptHistory([
+        setPromptHistory(prev => [
+          ...prev,
           {
             role: 'system',
             content: `Using ${providerName}${resolvedModel ? ' / ' + resolvedModel : ''}.`,
