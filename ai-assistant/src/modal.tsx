@@ -247,7 +247,6 @@ export default function AIPrompt(props: {
       JSON.stringify(activeConfig.config) !== JSON.stringify(config.config) ||
       selectedModel !== model
     ) {
-      setPromptHistory([]);
       setApiError(null);
       setActiveConfig(config);
       setSelectedModel(resolveSelectedModel(config, model));
@@ -258,19 +257,19 @@ export default function AIPrompt(props: {
         setTimeout(() => {
           const providerName =
             config.displayName || getProviderById(config.providerId)?.name || config.providerId;
-          setPromptHistory([
+          setPromptHistory(prev => [
+            ...prev,
             {
               role: 'system',
-              content: `Switched to ${providerName}${
-                model ? ' / ' + model : ''
-              }. History has been cleared.`,
+              content: `Switched to ${providerName}${model ? ' / ' + model : ''}.`,
             },
           ]);
         }, 100);
       } else {
         const providerName =
           config.displayName || getProviderById(config.providerId)?.name || config.providerId;
-        setPromptHistory([
+        setPromptHistory(prev => [
+          ...prev,
           {
             role: 'system',
             content: `Using ${providerName}${model ? ' / ' + model : ''}.`,
