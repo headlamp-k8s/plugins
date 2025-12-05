@@ -9,7 +9,7 @@ The plugin adds a new item (Radius) to the sidebar to give the user an overview 
 
 ## Radius Installation
 
-Please refer to the [official installation guide](https://docs.radapp.io/tutorials/install-radius/) for Radius to learn to install it.
+Please refer to the [official installation guide](https://docs.radapp.io/tutorials/install-radius/) for Radius to learn how to install it.
 
 ## Plugin Installation in Headlamp for Desktop
 
