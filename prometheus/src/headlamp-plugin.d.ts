@@ -15,3 +15,29 @@
  */
 
 /// <reference types="@kinvolk/headlamp-plugin" />
+
+import type {
+  Palette as MuiPalette,
+  PaletteColor as MuiPaletteColor,
+  PaletteOptions as MuiPaletteOptions,
+} from '@mui/material/styles';
+
+declare module '@mui/material/styles' {
+  interface ChartStyles {
+    defaultFillColor?: string;
+    labelColor?: string;
+    fillColor?: string;
+  }
+
+  interface Palette extends MuiPalette {
+    chartStyles?: ChartStyles;
+  }
+
+  interface PaletteOptions extends MuiPaletteOptions {
+    chartStyles?: ChartStyles;
+  }
+
+  interface PaletteColor extends MuiPaletteColor {
+    text?: string;
+  }
+}
