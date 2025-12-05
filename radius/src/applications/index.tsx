@@ -1,4 +1,4 @@
-import { Link, SectionBox, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { CircularProgress, Typography } from '@mui/material';
 import { RadiusStatusLabel } from '../components/RadiusStatusLabel';
 import { useRadiusApplications } from '../models/radius';
