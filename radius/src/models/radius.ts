@@ -622,9 +622,6 @@ export function useApplicationResources(
         return appName === resourceAppName;
       });
 
-      console.log(
-        `[useApplicationResources] Found ${appResources.length} resources for app ${applicationId}`
-      );
       setFilteredResources(appResources);
       setError(null);
     } else if (allResourcesError) {
