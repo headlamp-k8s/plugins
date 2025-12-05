@@ -335,7 +335,7 @@ export default function EnvironmentDetailView() {
       {/* Resources Tab */}
       <TabPanel value={tabValue} index={2}>
         {appsError ? (
-          <Typography color="error">Error loading resources: {appsError}</Typography>
+          <Typography color="error">Error loading resources: {appsError.message}</Typography>
         ) : null}
 
         {!appsError && environmentApps.length === 0 ? (
