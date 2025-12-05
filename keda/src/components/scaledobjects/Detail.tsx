@@ -7,6 +7,8 @@ import {
   OwnedPodsSection,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import Deployment from '@kinvolk/headlamp-plugin/lib/k8s/deployment';
+import StatefulSet from '@kinvolk/headlamp-plugin/lib/k8s/statefulSet';
 import { useParams } from 'react-router-dom';
 import { ScaledObject, ScalingModifierMetricType } from '../../resources/scaledobject';
 import { KedaInstallCheck, TriggersSection } from '../common/CommonComponents';
@@ -22,7 +24,7 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
   const [deploymentTarget] = K8s.ResourceClasses.Deployment.useGet(scaleTargetName, namespace);
   const [statefulSetTarget] = K8s.ResourceClasses.StatefulSet.useGet(scaleTargetName, namespace);
 
-  let scaleTarget: K8s.Deployment | K8s.StatefulSet = null;
+  let scaleTarget: Deployment | StatefulSet | null = null;
   if (scaleTargetKind === K8s.ResourceClasses.Deployment.kind) {
     scaleTarget = deploymentTarget;
   } else if (scaleTargetKind === K8s.ResourceClasses.StatefulSet.kind) {
