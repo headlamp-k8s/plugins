@@ -16,6 +16,7 @@ import {
 import Empty from '@kinvolk/headlamp-plugin/lib/components/common/EmptyContent';
 import { ApiError } from '@kinvolk/headlamp-plugin/lib/k8s/api/v2/ApiError';
 import { KubeContainer, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import Job from '@kinvolk/headlamp-plugin/lib/k8s/job';
 import { KubePod } from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { formatDuration } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, CircularProgress, Grid, Link as MuiLink, Typography } from '@mui/material';
@@ -497,7 +498,7 @@ export function ContainersSection(props: { resource: KubeObjectInterface | null 
   );
 }
 
-export function makeJobStatusLabel(job: K8s.ResourceClasses.Job) {
+export function makeJobStatusLabel(job: Job) {
   if (!job?.status?.conditions) {
     return null;
   }
@@ -543,7 +544,7 @@ export function makeJobStatusLabel(job: K8s.ResourceClasses.Job) {
 }
 
 export interface JobsListRendererProps {
-  jobs: K8s.ResourceClasses.Job[] | null;
+  jobs: Job[] | null;
   errors?: ApiError[] | null;
   hideColumns?: string[];
   reflectTableInURL?: SimpleTableProps['reflectInURL'];
@@ -553,11 +554,11 @@ export interface JobsListRendererProps {
 export function JobsListRenderer(props: JobsListRendererProps) {
   const { jobs, errors, hideColumns = [], reflectTableInURL = 'jobs', noNamespaceFilter } = props;
 
-  function getCompletions(job: K8s.ResourceClasses.Job) {
+  function getCompletions(job: Job) {
     return `${job.spec.completions}/${job.spec.parallelism}`;
   }
 
-  function sortByCompletions(job1: K8s.ResourceClasses.Job, job2: K8s.ResourceClasses.Job) {
+  function sortByCompletions(job1: Job, job2: Job) {
     const parallelismSorted = job1.spec.parallelism - job2.spec.parallelism;
     if (parallelismSorted === 0) {
       return job1.spec.completions - job2.spec.completions;

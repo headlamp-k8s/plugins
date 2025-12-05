@@ -32,7 +32,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.13.0-alpha.11"
+    "@kinvolk/headlamp-plugin": "^0.13.0"
   },
   "dependencies": {
     "tar": "^7.5.2"

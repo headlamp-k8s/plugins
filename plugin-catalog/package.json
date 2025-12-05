@@ -32,7 +32,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.13.0-alpha.10"
+    "@kinvolk/headlamp-plugin": "^0.13.0"
   },
   "dependencies": {
     "markdown-to-jsx": "^7.4.7"

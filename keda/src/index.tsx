@@ -39,7 +39,7 @@ function registerKedaResource(config: ResourceRegistrationConfig) {
     path: `/keda/${path}/${hasNamespace ? ':namespace/:name' : ':name'}`,
     sidebar: name,
     name: name.slice(0, -1), // Remove 's' from plural form
-    component: DetailComponent,
+    component: () => <DetailComponent />,
   });
 
   // Register list route
@@ -47,7 +47,7 @@ function registerKedaResource(config: ResourceRegistrationConfig) {
     path: `/keda/${path}`,
     sidebar: name,
     name,
-    component: ListComponent,
+    component: () => <ListComponent />,
   });
 }
 

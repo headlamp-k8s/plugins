@@ -1,10 +1,10 @@
 import {
   DefaultDetailsViewSection,
-  DetailsViewSectionProps,
   registerDetailsViewHeaderActionsProcessor,
   registerDetailsViewSectionsProcessor,
   registerPluginSettings,
 } from '@kinvolk/headlamp-plugin/lib';
+import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { KarpenterChart } from '../src/components/Chart/KarpenterChart/KarpenterChart';
 import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
@@ -14,7 +14,15 @@ import { VisibilityButton } from './components/VisibilityButton/VisibilityButton
 import { ChartEnabledKinds, PLUGIN_NAME } from './util';
 import { getNodeClaimChartConfigs, getNodePoolChartConfigs } from './util';
 
-function PrometheusMetrics(resource: DetailsViewSectionProps) {
+type SectionWithId = { id: string };
+
+const hasSectionId = (section: unknown): section is SectionWithId =>
+  typeof section === 'object' &&
+  section !== null &&
+  'id' in section &&
+  typeof (section as SectionWithId).id === 'string';
+
+function PrometheusMetrics(resource: KubeObject) {
   if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
     return (
       <GenericMetricsChart
@@ -116,12 +124,14 @@ registerDetailsViewSectionsProcessor(function addSubheaderSection(resource, sect
   }
 
   const prometheusSection = 'prom_metrics';
-  if (sections.findIndex(section => section.id === prometheusSection) !== -1) {
+  if (
+    sections.findIndex(section => hasSectionId(section) && section.id === prometheusSection) !== -1
+  ) {
     return sections;
   }
 
   const detailsHeaderIdx = sections.findIndex(
-    section => section.id === DefaultDetailsViewSection.MAIN_HEADER
+    section => hasSectionId(section) && section.id === DefaultDetailsViewSection.MAIN_HEADER
   );
   // There is no header, so we do nothing.
   if (detailsHeaderIdx === -1) {
