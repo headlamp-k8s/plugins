@@ -31,7 +31,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.12.0"
+    "@kinvolk/headlamp-plugin": "^0.13.0"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
