@@ -9,8 +9,12 @@ import {
   Controls,
   ReactFlowProvider,
   Panel,
+  useReactFlow,
+  useStore,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { Icon } from '@iconify/react';
+import { Button, ButtonGroup, Box } from '@mui/material';
 import { Kafka, KafkaNodePool, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
@@ -39,6 +43,106 @@ function isPodReady(pod: Pod | undefined): boolean {
   if (!pod?.status?.conditions) return false;
   const readyCondition = pod.status.conditions.find(c => c.type === 'Ready');
   return readyCondition?.status === 'True';
+}
+
+// Custom control button component
+function GraphControlButton({
+  children,
+  onClick,
+  title,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  title: string;
+  disabled?: boolean;
+}) {
+  const sx = {
+    width: '32px',
+    height: '32px',
+    padding: 0,
+    minWidth: '32px',
+    borderRadius: '50%',
+    '> svg': { width: '14px', height: '14px' },
+    fontSize: 'x-small',
+    backgroundColor: '#fff',
+    color: '#000',
+    border: 'none',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    '&:hover': {
+      backgroundColor: '#f5f5f5',
+    },
+    '&.Mui-disabled': {
+      backgroundColor: '#e0e0e0',
+      color: '#9e9e9e',
+    },
+  };
+
+  return (
+    <Button
+      disabled={disabled}
+      sx={sx}
+      variant="contained"
+      title={title}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  );
+}
+
+// Custom controls component
+function GraphControls({ children }: { children?: React.ReactNode }) {
+  const minZoomReached = useStore(it => it.transform[2] <= it.minZoom);
+  const maxZoomReached = useStore(it => it.transform[2] >= it.maxZoom);
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+
+  return (
+    <Box display="flex" gap={1} flexDirection="column">
+      <ButtonGroup
+        sx={{
+          borderRadius: '40px',
+          '> .MuiButtonGroup-grouped': { minWidth: '32px' },
+        }}
+        orientation="vertical"
+        variant="contained"
+      >
+        <GraphControlButton
+          disabled={maxZoomReached}
+          title="Zoom in"
+          onClick={() => zoomIn()}
+        >
+          <Icon icon="mdi:plus" />
+        </GraphControlButton>
+        <GraphControlButton
+          disabled={minZoomReached}
+          title="Zoom out"
+          onClick={() => zoomOut()}
+        >
+          <Icon icon="mdi:minus" />
+        </GraphControlButton>
+      </ButtonGroup>
+      <ButtonGroup
+        sx={{
+          borderRadius: '40px',
+          '> .MuiButtonGroup-grouped': { minWidth: '32px' },
+        }}
+        orientation="vertical"
+        variant="contained"
+      >
+        <GraphControlButton title="Fit to screen" onClick={() => fitView()}>
+          <Icon icon="mdi:fit-to-screen" />
+        </GraphControlButton>
+        <GraphControlButton
+          title="Zoom to 100%"
+          onClick={() => fitView({ minZoom: 1.0, maxZoom: 1.0 })}
+        >
+          100%
+        </GraphControlButton>
+      </ButtonGroup>
+      {children}
+    </Box>
+  );
 }
 
 // Modern node component for individual pods
@@ -348,22 +452,43 @@ function TopologyFlow({ kafka }: TopologyProps) {
         label: (
           <div
             style={{
-              fontSize: theme.typography.fontSize.medium,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '18px',
               fontFamily: theme.typography.fontFamily,
-              color: theme.colors.nodeTextSecondary,
               fontWeight: theme.typography.fontWeight.medium,
             }}
           >
-            Namespace: {namespace}
+            <div
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                background: 'rgba(150, 150, 150, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Icon
+                icon="mdi:folder-outline"
+                width="20px"
+                height="20px"
+                style={{ color: '#999' }}
+              />
+            </div>
+            <span style={{ opacity: 0.6 }}>Namespace</span>
+            <span>{namespace}</span>
           </div>
         ),
       },
       style: {
-        background: hexToRgba(colors.cluster.label, 0.95),
-        border: `1px solid ${hexToRgba(colors.cluster.border, 0.3)}`,
-        borderRadius: '10px',
-        padding: '6px 10px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        background: 'transparent',
+        border: 'none',
+        borderRadius: '4px',
+        padding: '8px 12px',
         minWidth: 'fit-content',
       },
       parentId: 'namespace',
@@ -745,36 +870,11 @@ function TopologyFlow({ kafka }: TopologyProps) {
       }}
     >
       <style>{`
-        /* Theme-aware ReactFlow Controls */
+        /* Hide ReactFlow default controls background */
         .react-flow__controls {
-          background-color: ${theme.colors.controlsBg} !important;
-          border: 1px solid ${theme.colors.controlsBorder} !important;
-          box-shadow: ${theme.colors.nodeShadow} !important;
-        }
-        .react-flow__controls-button {
-          background-color: ${theme.colors.controlsBg} !important;
-          border-bottom: 1px solid ${theme.colors.controlsBorder} !important;
-          color: ${theme.colors.controlsText} !important;
-        }
-        .react-flow__controls-button:hover {
-          background-color: ${theme.colors.controlsHover} !important;
-        }
-        .react-flow__controls-button svg {
-          fill: ${theme.colors.controlsText} !important;
-        }
-
-        /* Theme-aware ReactFlow attribution */
-        .react-flow__attribution {
-          background-color: ${theme.colors.controlsBg} !important;
-          padding: 4px 8px !important;
-          border-radius: 4px !important;
-          border: 1px solid ${theme.colors.controlsBorder} !important;
-          box-shadow: ${theme.colors.nodeShadow} !important;
-        }
-        .react-flow__attribution a {
-          color: ${theme.colors.nodeText} !important;
-          text-decoration: none !important;
-          font-size: ${theme.typography.fontSize.small} !important;
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
         }
 
         /* Hide connection handles */
@@ -797,7 +897,9 @@ function TopologyFlow({ kafka }: TopologyProps) {
         panOnScroll={true}
       >
         <Background color={theme.colors.gridColor} gap={20} size={1} />
-        <Controls />
+        <Controls showInteractive={false} showFitView={false} showZoom={false}>
+          <GraphControls />
+        </Controls>
         <Panel position="top-right">
           <div
             style={{
