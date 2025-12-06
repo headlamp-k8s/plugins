@@ -88,16 +88,16 @@ function createPodNode(params: {
             }}
           >
             <div>
-              <strong style={{ color: theme.colors.nodeText }}>ID:</strong> {nodeId}
+              <strong style={{ color: theme.colors.nodeText }}>ID: </strong> {nodeId}
             </div>
             <div>
-              <strong style={{ color: theme.colors.nodeText }}>Role:</strong> {role}
+              <strong style={{ color: theme.colors.nodeText }}>Role: </strong> {role}
             </div>
             <div>
-              <strong style={{ color: theme.colors.nodeText }}>IP:</strong> {podIP}
+              <strong style={{ color: theme.colors.nodeText }}>IP: </strong> {podIP}
             </div>
             <div>
-              <strong style={{ color: theme.colors.nodeText }}>Phase:</strong> {phase}
+              <strong style={{ color: theme.colors.nodeText }}>Phase: </strong> {phase}
             </div>
           </div>
           <div
@@ -126,8 +126,8 @@ function createPodNode(params: {
       border: `2px solid ${color.border}`,
       borderRadius: '12px',
       padding: theme.spacing.md,
-      width: 180,
-      minHeight: 160,
+      width: 'fit-content',
+      minHeight: 'fit-content',
       boxShadow: theme.colors.nodeShadow,
     },
     parentId,
@@ -267,12 +267,15 @@ function TopologyFlow({ kafka }: TopologyProps) {
     if (loading) return;
 
     const clusterName = kafka.metadata.name;
+    const namespace = kafka.metadata.namespace;
     const generatedNodes: Node[] = [];
 
     // Calculate dimensions - horizontal pod layout
     const podNodeWidth = 180;
     const podNodeHeight = 200;
     const nodeSpacing = 24;
+    const namespaceLabelHeight = 80;
+    const clusterLabelHeight = 120;
     const labelHeight = 150;
     const groupLabelHeight = 95;
     const groupPadding = { top: groupLabelHeight + 25, right: 30, bottom: 30, left: 30 };
@@ -296,14 +299,14 @@ function TopologyFlow({ kafka }: TopologyProps) {
       });
 
       clusterWidth = Math.max(maxGroupWidth + 80, 600);
-      clusterHeight = labelHeight + 40 + totalGroupHeight;
+      clusterHeight = clusterLabelHeight + 40 + totalGroupHeight;
     } else if (isKRaft) {
       // KRaft legacy - single group with horizontal pods
       const brokerCount = kafka.spec.kafka.replicas;
       const groupWidth = groupPadding.left + groupPadding.right + brokerCount * (podNodeWidth + nodeSpacing) - nodeSpacing;
       const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
       clusterWidth = Math.max(groupWidth + 80, 600);
-      clusterHeight = labelHeight + 60 + groupHeight;
+      clusterHeight = clusterLabelHeight + 60 + groupHeight;
     } else {
       // ZooKeeper mode - two groups stacked vertically
       const zkCount = kafka.spec.zookeeper?.replicas || 0;
@@ -312,14 +315,67 @@ function TopologyFlow({ kafka }: TopologyProps) {
       const groupWidth = groupPadding.left + groupPadding.right + maxPods * (podNodeWidth + nodeSpacing) - nodeSpacing;
       const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
       clusterWidth = Math.max(groupWidth + 80, 600);
-      clusterHeight = labelHeight + 60 + (zkCount > 0 ? 2 : 1) * (groupHeight + groupSpacing);
+      clusterHeight = clusterLabelHeight + 60 + (zkCount > 0 ? 2 : 1) * (groupHeight + groupSpacing);
     }
+
+    // Namespace dimensions
+    const namespacePadding = 40;
+    const namespaceWidth = clusterWidth + 2 * namespacePadding;
+    const namespaceHeight = namespaceLabelHeight + 40 + clusterHeight + namespacePadding;
+
+    // Namespace node (root)
+    generatedNodes.push({
+      id: 'namespace',
+      type: 'group',
+      position: { x: 0, y: 0 },
+      data: { label: '' },
+      style: {
+        width: namespaceWidth,
+        height: namespaceHeight,
+        backgroundColor: hexToRgba(colors.cluster.border, 0.05),
+        border: `3px solid ${hexToRgba(colors.cluster.border, 0.3)}`,
+        borderRadius: '20px',
+        padding: `${namespaceLabelHeight + 20}px ${namespacePadding}px ${namespacePadding}px ${namespacePadding}px`,
+      },
+    });
+
+    // Namespace label
+    generatedNodes.push({
+      id: 'namespace-label',
+      type: 'default',
+      position: { x: 10, y: 10 },
+      data: {
+        label: (
+          <div
+            style={{
+              fontSize: theme.typography.fontSize.medium,
+              fontFamily: theme.typography.fontFamily,
+              color: theme.colors.nodeTextSecondary,
+              fontWeight: theme.typography.fontWeight.medium,
+            }}
+          >
+            Namespace: {namespace}
+          </div>
+        ),
+      },
+      style: {
+        background: hexToRgba(colors.cluster.label, 0.95),
+        border: `1px solid ${hexToRgba(colors.cluster.border, 0.3)}`,
+        borderRadius: '10px',
+        padding: '6px 10px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        minWidth: 'fit-content',
+      },
+      parentId: 'namespace',
+      draggable: false,
+      selectable: false,
+    });
 
     // Cluster node
     generatedNodes.push({
       id: 'cluster',
       type: 'group',
-      position: { x: 0, y: 0 },
+      position: { x: 20, y: namespaceLabelHeight + 10 },
       data: { label: '' },
       style: {
         width: clusterWidth,
@@ -327,26 +383,25 @@ function TopologyFlow({ kafka }: TopologyProps) {
         backgroundColor: colors.cluster.bg,
         border: `3px solid ${colors.cluster.border}`,
         borderRadius: '16px',
-        padding: `${labelHeight + 20}px 20px 20px 20px`,
+        padding: `${clusterLabelHeight + 20}px 20px 20px 20px`,
       },
+      parentId: 'namespace',
+      extent: 'parent' as const,
     });
 
     // Cluster label
     generatedNodes.push({
       id: 'cluster-label',
       type: 'default',
-      position: { x: 20, y: 16 },
+      position: { x: 10, y: 10 },
       data: {
         label: (
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: theme.colors.nodeText, marginBottom: '5px', letterSpacing: '0.4px' }}>
-              {clusterName}
-            </div>
-            <div style={{ fontSize: '16px', color: theme.colors.nodeText, fontWeight: 500, marginBottom: '4px' }}>
-              Mode: {isKRaft ? 'KRaft' : 'ZooKeeper'}
+            <div style={{ fontSize: '20px', fontWeight: 700, color: theme.colors.nodeText, marginBottom: '3px', letterSpacing: '0.4px' }}>
+              Kafka: {clusterName}
             </div>
             <div style={{ fontSize: '16px', color: theme.colors.nodeText, fontWeight: 500, marginBottom: '8px' }}>
-              Namespace: {kafka.metadata.namespace}
+              Mode: {isKRaft ? 'KRaft' : 'ZooKeeper'}
             </div>
             <div>
               <span
@@ -374,14 +429,14 @@ function TopologyFlow({ kafka }: TopologyProps) {
         borderRadius: '10px',
         padding: '12px 20px',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        minWidth: '300px',
+        minWidth: 'fit-content',
       },
       parentId: 'cluster',
       draggable: false,
       selectable: false,
     });
 
-    const startY = labelHeight + 40;
+    const startY = clusterLabelHeight + 40;
 
     if (nodePools.length > 0) {
       // KRaft with KafkaNodePools - groups stacked vertically, pods horizontal
@@ -721,13 +776,16 @@ function TopologyFlow({ kafka }: TopologyProps) {
           text-decoration: none !important;
           font-size: ${theme.typography.fontSize.small} !important;
         }
+
+        /* Hide connection handles */
+        .react-flow__handle {
+          opacity: 0 !important;
+        }
       `}</style>
       <ReactFlow
         nodes={nodes}
         edges={[]}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={true}
+        nodesFocusable={false}
         fitView
         fitViewOptions={{
           minZoom: 1.0,
@@ -749,7 +807,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
               boxShadow: theme.colors.nodeShadow,
               fontSize: theme.typography.fontSize.medium,
               fontFamily: theme.typography.fontFamily,
-              minWidth: '180px',
+              minWidth: 'fit-content',
               border: `1px solid ${theme.colors.nodeBorder}`,
             }}
           >
