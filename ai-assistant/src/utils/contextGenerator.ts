@@ -1,5 +1,5 @@
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
-
+import type { HeadlampEventPayload } from '../utils';
 /**
  * Context Generator - Creates human-readable context descriptions for the AI
  * This replaces the complex JSON context system with simple, natural language descriptions
@@ -10,19 +10,6 @@ import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
  * - event.resources: Array of full resource objects (automatically minimized)
  * - event.resourceKind: Type of resources in event.resources
  */
-
-interface HeadlampEvent {
-  type?: string;
-  title?: string;
-  resource?: any;
-  items?: any[];
-  resources?: any[];
-  resourceKind?: string;
-  errors?: any[];
-  objectEvent?: {
-    events?: any[];
-  };
-}
 
 /**
  * Minimizes resource data to only include essential fields
@@ -51,7 +38,7 @@ export function minimizeResourceList(resources: any[]): any[] {
 }
 
 export function generateContextDescription(
-  event: HeadlampEvent,
+  event: HeadlampEventPayload | null,
   currentCluster?: string,
   clusterWarnings?: Record<string, { warnings: Event[]; error?: Error | null }>,
   selectedClusters?: string[]

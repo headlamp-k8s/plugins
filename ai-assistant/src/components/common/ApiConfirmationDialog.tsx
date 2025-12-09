@@ -216,8 +216,7 @@ export default function ApiConfirmationDialog({
             </Typography>
           </Box>
         }
-        confirmButtonProps={{ color: 'error' }}
-        confirmButtonText={`Yes, Delete ${resourceInfo?.kind || 'Resource'}`}
+        confirmLabel={`Yes, Delete ${resourceInfo?.kind || 'Resource'}`}
       />
     );
   }
@@ -225,6 +224,7 @@ export default function ApiConfirmationDialog({
   if (method.toUpperCase() === 'PUT' && showUpdateConfirm) {
     return (
       <ConfirmDialog
+        // @todo: open does exist on ConfirmDialog, but TS is not recognizing it.
         // @ts-ignore
         open={showUpdateConfirm}
         handleClose={() => {
@@ -249,7 +249,7 @@ export default function ApiConfirmationDialog({
             </Typography>
           </Box>
         }
-        confirmButtonText="Yes, Apply Patch"
+        confirmLabel="Yes, Apply Patch"
       />
     );
   }

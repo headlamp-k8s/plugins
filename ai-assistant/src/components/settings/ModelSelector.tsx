@@ -1020,7 +1020,7 @@ export default function ModelSelector({
         title="Delete Configuration"
         description="Are you sure you want to delete this configuration?"
         cancelLabel="Cancel"
-        confirmButtonText="Delete"
+        confirmLabel="Delete"
       />
     </Box>
   );
