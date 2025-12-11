@@ -4,11 +4,11 @@ import React from 'react';
 import { NotSupported } from '../checkflux';
 import { HelmRelease } from '../common/Resources';
 import Table from '../common/Table';
-import { NameLink } from '../helpers';
+import { NameLink, useNamespaces } from '../helpers';
 
 export function HelmReleases() {
   const filterFunction = useFilterFunc();
-  const [resources, error] = HelmRelease.useList();
+  const [resources, error] = HelmRelease.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Helm Releases" />;
