@@ -1,6 +1,6 @@
 # Radius
 
-The Radius plugin provides a way visualize and manage Radius applications. It builds upon the work of [Radius](https://radapp.io/) .
+The Radius plugin provides a way to visualize and manage Radius applications. It builds upon the work of [Radius](https://radapp.io/) .
 
 Radius is a cloud-native application platform that enables developers to collaborate with platform engineers to deliver and manage cloud-native applications across public clouds and private infrastructure.
 

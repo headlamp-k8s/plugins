@@ -88,16 +88,21 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
   const status = getResourceStatus(resources);
 
   // Calculate percentages ensuring they sum to 100%
-  const successPercentage = Math.round((status.success / total) * 100);
-  const failedPercentage = Math.round((status.failed / total) * 100);
-  const processingPercentage = Math.round((status.processing / total) * 100);
-  let suspendedPercentage = Math.round((status.suspended / total) * 100);
+  let percentages = [  
+    Math.round((status.success / total) * 100),  
+    Math.round((status.failed / total) * 100),  
+    Math.round((status.processing / total) * 100),  
+    Math.round((status.suspended / total) * 100),  
+  ];  
 
-  // Adjust to ensure total is 100%
-  const sum = successPercentage + failedPercentage + processingPercentage + suspendedPercentage;
-  if (sum !== 100) {
-    suspendedPercentage += 100 - sum;
-  }
+  // Adjust to ensure total is 100% by modifying the largest percentage  
+  const sum = percentages.reduce((a, b) => a + b, 0);  
+  if (sum !== 100) {  
+    const idx = percentages.indexOf(Math.max(...percentages));  
+    percentages[idx] += 100 - sum;  
+  }  
+
+  const [successPercentage, failedPercentage, processingPercentage, suspendedPercentage] = percentages;
 
   const data = [
     {
