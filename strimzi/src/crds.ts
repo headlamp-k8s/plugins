@@ -174,6 +174,35 @@ export interface KafkaNodePool {
   };
 }
 
+export interface StrimziPodSetSpec {
+  selector: {
+    matchLabels: Record<string, string>;
+  };
+  pods: Array<{
+    name: string;
+    [key: string]: unknown;
+  }>;
+}
+
+export interface StrimziPodSet {
+  apiVersion: string;
+  kind: string;
+  metadata: {
+    name: string;
+    namespace: string;
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+    creationTimestamp?: string;
+    [key: string]: unknown;
+  };
+  spec: StrimziPodSetSpec;
+  status?: StrimziStatus & {
+    pods?: number;
+    readyPods?: number;
+    currentPods?: number;
+  };
+}
+
 // Helper functions
 export function isKRaftMode(kafka: Kafka): boolean {
   return !kafka.spec.zookeeper;
