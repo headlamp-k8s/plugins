@@ -68,6 +68,18 @@ interface ResourceStatusChartProps {
   readonly title: string;
 }
 
+/**  
+ * Displays a tile chart summarizing the distribution of resource statuses.
+ *
+ * This component receives a list of resources and a title. It calculates the number of resources
+ * in each status category (success, failed, processing, suspended) using the getResourceStatus function,
+ * which maps the provisioningState of each resource to a status category. The component then displays
+ * the distribution as a TileChart, showing the percentage of resources in each status.
+ *
+ * @param {ResourceStatusChartProps} props - The props for the component.
+ * @param {UCPResource[]} props.resources - The list of resources to analyze.
+ * @param {string} props.title - The title to display with the chart.
+ */
 function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
   const theme = useTheme();
   const total = resources.length;
@@ -97,7 +109,7 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
 
   // Adjust to ensure total is 100% by modifying the largest percentage  
   const sum = percentages.reduce((a, b) => a + b, 0);  
-  if (sum !== 100) {  
+  if (sum !== 100 && sum > 0) {  
     const idx = percentages.indexOf(Math.max(...percentages));  
     percentages[idx] += 100 - sum;  
   }  
@@ -113,17 +125,17 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
     {
       name: 'failed',
       value: failedPercentage,
-      fill: '#DC7501',
+      fill: theme.palette.error.main,
     },
     {
       name: 'processing',
       value: processingPercentage,
-      fill: '#2196F3',
+      fill: theme.palette.info.main,
     },
     {
       name: 'suspended',
       value: suspendedPercentage,
-      fill: '#FDE100',
+      fill: theme.palette.warning.main,
     },
   ].filter(item => item.value > 0);
 
@@ -226,8 +238,9 @@ export default function Overview() {
   const appsByEnvironment = new Map<string, number>();
   if (applications) {
     for (const app of applications) {
-      const env = app.properties.environment || 'N/A';
-      appsByEnvironment.set(env, (appsByEnvironment.get(env) || 0) + 1);
+      const env = app.properties.environment;  
+      const envName = env ? env.split('/').pop() : 'N/A';  
+      appsByEnvironment.set(envName, (appsByEnvironment.get(envName) || 0) + 1)
     }
   }
 
@@ -244,10 +257,17 @@ export default function Overview() {
   // Transform environments for table display
   const environmentTableData: EnvironmentTableData[] = (environments || []).map(env => {
     const envName = env.name;
+     let provider = 'N/A';
+    if (env.properties.providers && typeof env.properties.providers === 'object') {
+      const providerNames = Object.keys(env.properties.providers).filter(
+        key => !!env.properties.providers[key]
+      );
+      provider = providerNames.length > 0 ? providerNames.map(name => name.charAt(0).toUpperCase() + name.slice(1)).join(', ') : 'N/A';
+    }
     return {
       name: envName,
       namespace: env.properties.compute?.namespace || 'N/A',
-      provider: env.properties.providers?.azure?.scope ? 'Azure' : 'Kubernetes',
+      provider,
       applications: appsByEnvironment.get(envName) || 0,
       provisioningState: env.properties.provisioningState,
       created: env.systemData?.createdAt || 'N/A',
