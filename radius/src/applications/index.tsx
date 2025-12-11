@@ -105,8 +105,16 @@ export default function Applications() {
             accessorKey: 'environment',
             Cell: ({ row }: any) => {
               const environmentName = row.original.environment;
-              return (
-                <Link routeName="environment-detail" params={{ environmentName: environmentName }}>
+              return environmentName === 'N/A' ? (
+                <Typography>{environmentName}</Typography>
+              ) : (
+                <Link
+                  href={`/environments/${environmentName}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // Navigate to environment
+                  }}
+                >
                   {environmentName}
                 </Link>
               );

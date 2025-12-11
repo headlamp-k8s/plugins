@@ -170,9 +170,13 @@ function ApplicationContent({
                 <Typography variant="subtitle2" color="textSecondary">
                   Environment
                 </Typography>
-                <Link routeName="environment-detail" params={{ environmentName }}>
-                  {environmentName}
-                </Link>
+                {environmentName === "N/A" ? (  
+                  <Typography variant="body1">{environmentName}</Typography>  
+                ) : (  
+                  <Link routeName="environment-detail" params={{ environmentName }}>  
+                    {environmentName}  
+                  </Link>  
+                )} 
               </Box>
               {application.properties.status?.compute?.kind && (
                 <Box>
