@@ -15,7 +15,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Icon } from '@iconify/react';
 import { Button, ButtonGroup, Box } from '@mui/material';
-import { Kafka, KafkaNodePool, isKRaftMode } from '../crds';
+import { Kafka, KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
 import { getSemanticColors, SemanticColors } from '../utils/topologyColors';
@@ -38,11 +38,197 @@ interface Pod {
   };
 }
 
+// Layout constants - centralized configuration
+const LAYOUT = {
+  // Label heights
+  CLUSTER_LABEL_HEIGHT: 85,
+  GROUP_LABEL_HEIGHT: 85,
+  PODSET_LABEL_HEIGHT: 95,
+
+  // Padding offsets
+  LABEL_TOP_OFFSET: 25,
+  PADDING_HORIZONTAL: 30,
+  PADDING_VERTICAL: 30,
+
+  // Node dimensions (base values for dynamic calculation)
+  POD_NODE_MIN_WIDTH: 200,
+  POD_NODE_BASE_HEIGHT: 180,
+  POD_NODE_PADDING: 12,
+  POD_CONTENT_CHAR_WIDTH: 8, // Average character width for width calculation
+  NODE_SPACING: 20,
+
+  // Group spacing
+  GROUP_SPACING: 30,
+
+  // Cluster dimensions
+  CLUSTER_MIN_WIDTH: 600,
+  CLUSTER_HORIZONTAL_MARGIN: 80,
+  CLUSTER_VERTICAL_MARGIN_START: 40,
+  CLUSTER_VERTICAL_MARGIN_LEGACY: 60,
+  CLUSTER_VERTICAL_MARGIN_END: 40,
+
+  // Namespace dimensions
+  NAMESPACE_PADDING: 30,
+  NAMESPACE_LABEL_HEIGHT: 50,
+
+  // Background grid
+  GRID_DOT_COLOR: 'rgba(255, 255, 255, 0.3)',
+  GRID_GAP: 20,
+  GRID_SIZE: 1,
+
+  // Namespace styling
+  NAMESPACE_BORDER_COLOR: 'rgba(200, 200, 200, 0.3)',
+  NAMESPACE_BORDER_WIDTH: 2,
+  NAMESPACE_BG_OPACITY: 0.02,
+
+  // Block background opacity (per vedere poco i puntini)
+  CLUSTER_BG_OPACITY: 0.95,
+  GROUP_BG_OPACITY: 0.9,
+
+  // Icon sizes for labels
+  NAMESPACE_ICON_SIZE: 26,
+  CLUSTER_ICON_SIZE: 60,
+  GROUP_ICON_SIZE: 52,
+  POD_ICON_SIZE: 50,
+} as const;
+
+// Computed padding configurations
+const PADDING = {
+  group: {
+    top: LAYOUT.GROUP_LABEL_HEIGHT + LAYOUT.LABEL_TOP_OFFSET,
+    right: LAYOUT.PADDING_HORIZONTAL,
+    bottom: LAYOUT.PADDING_VERTICAL,
+    left: LAYOUT.PADDING_HORIZONTAL,
+  },
+  podSet: {
+    top: LAYOUT.PODSET_LABEL_HEIGHT + LAYOUT.LABEL_TOP_OFFSET,
+    right: LAYOUT.PADDING_HORIZONTAL,
+    bottom: LAYOUT.PADDING_VERTICAL,
+    left: LAYOUT.PADDING_HORIZONTAL,
+  },
+} as const;
+
+/**
+ * Helper function to convert hex color to rgba with opacity
+ */
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+interface PodDimensions {
+  width: number;
+  height: number;
+}
+
+interface NodePoolDimensions {
+  podSetInnerWidth: number;
+  podSetInnerHeight: number;
+  poolWidth: number;
+  poolHeight: number;
+}
+
+/**
+ * Calculate optimal dimensions for a pod based on its content
+ * Uses configurable character width heuristic from LAYOUT constant
+ */
+function calculatePodDimensions(params: {
+  name: string;
+  nodeId: number;
+  role: string;
+  podIP: string;
+  phase: string;
+}): PodDimensions {
+  const { name, nodeId, role, podIP, phase } = params;
+
+  // Calculate width based on longest content line
+  const titleText = `Pod: ${name}-${nodeId}`;
+  const idText = `ID: ${nodeId}`;
+  const roleText = `Role: ${role}`;
+  const ipText = `IP: ${podIP}`;
+  const phaseText = `Phase: ${phase}`;
+  const statusText = '✗ Not Ready'; // Longest status text
+
+  const maxTextLength = Math.max(
+    titleText.length,
+    idText.length,
+    roleText.length,
+    ipText.length,
+    phaseText.length,
+    statusText.length
+  );
+
+  // Calculate width: icon + text + padding
+  const calculatedWidth =
+    LAYOUT.POD_ICON_SIZE + // Icon
+    20 + // Gap between icon and text
+    (maxTextLength * LAYOUT.POD_CONTENT_CHAR_WIDTH) + // Text content
+    (LAYOUT.POD_NODE_PADDING * 3); // Padding
+
+  const width = Math.max(LAYOUT.POD_NODE_MIN_WIDTH, calculatedWidth);
+  const height = LAYOUT.POD_NODE_BASE_HEIGHT;
+
+  return { width, height };
+}
+
+/**
+ * Calculate dimensions for KafkaNodePool with nested StrimziPodSet structure
+ * Now accepts array of pod dimensions to accommodate variable pod sizes
+ */
+function calculateNodePoolDimensions(podDimensions: PodDimensions[]): NodePoolDimensions {
+  const totalPodsWidth = podDimensions.reduce((sum, dim) => sum + dim.width, 0);
+  const maxPodHeight = Math.max(...podDimensions.map(dim => dim.height));
+  const spacing = (podDimensions.length - 1) * LAYOUT.NODE_SPACING;
+
+  const podSetInnerWidth = PADDING.podSet.left + PADDING.podSet.right + totalPodsWidth + spacing;
+  const podSetInnerHeight = PADDING.podSet.top + PADDING.podSet.bottom + maxPodHeight;
+
+  const poolWidth = PADDING.group.left + PADDING.group.right + podSetInnerWidth;
+  const poolHeight = PADDING.group.top + PADDING.group.bottom + podSetInnerHeight;
+
+  return { podSetInnerWidth, podSetInnerHeight, poolWidth, poolHeight };
+}
+
 // Helper to determine if pod is ready
 function isPodReady(pod: Pod | undefined): boolean {
   if (!pod?.status?.conditions) return false;
   const readyCondition = pod.status.conditions.find(c => c.type === 'Ready');
   return readyCondition?.status === 'True';
+}
+
+// Resource icon component with colored circle background
+function ResourceIcon({
+  icon,
+  color,
+  size = '24px',
+}: {
+  icon: string;
+  color: string;
+  size?: string;
+}) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: `${color}20`, // 12% opacity
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      <Icon
+        icon={icon}
+        width={`calc(${size} * 0.6)`}
+        height={`calc(${size} * 0.6)`}
+        style={{ color }}
+      />
+    </div>
+  );
 }
 
 // Custom control button component
@@ -153,11 +339,12 @@ function createPodNode(params: {
   role: string;
   parentId: string;
   position: { x: number; y: number };
-  color: { border: string; bg: string; label: string };
   pod?: Pod;
   theme: ReturnType<typeof useTopologyTheme>;
+  width: number;
+  height: number;
 }): Node {
-  const { id, name, nodeId, role, parentId, position, color, pod, theme } = params;
+  const { id, name, nodeId, role, parentId, position, pod, theme, width, height } = params;
   const podIP = pod?.status?.podIP || 'N/A';
   const ready = isPodReady(pod);
   const phase = pod?.status?.phase || 'Unknown';
@@ -168,27 +355,32 @@ function createPodNode(params: {
     position,
     data: {
       label: (
-        <div style={{ padding: theme.spacing.sm }}>
+        <div style={{ padding: '6px', width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div
             style={{
-              fontSize: theme.typography.fontSize.medium,
+              fontSize: theme.typography.fontSize.large,
               fontWeight: theme.typography.fontWeight.bold,
               fontFamily: theme.typography.fontFamily,
               color: theme.colors.nodeText,
-              marginBottom: theme.spacing.sm,
-              textAlign: 'center',
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
               letterSpacing: theme.typography.letterSpacing,
             }}
           >
-            {name}-{nodeId}
+            <ResourceIcon icon="mdi:cube" color="#00ACC1" size={`${LAYOUT.POD_ICON_SIZE}px`} />
+            <span style={{ whiteSpace: 'nowrap' }}>Pod: {name}-{nodeId}</span>
           </div>
           <div
             style={{
-              fontSize: theme.typography.fontSize.small,
+              fontSize: '13px',
               fontFamily: theme.typography.fontFamily,
               color: theme.colors.nodeTextSecondary,
-              lineHeight: theme.typography.lineHeight.relaxed,
+              lineHeight: '1.5',
               fontWeight: theme.typography.fontWeight.medium,
+              flex: 1,
             }}
           >
             <div>
@@ -197,110 +389,113 @@ function createPodNode(params: {
             <div>
               <strong style={{ color: theme.colors.nodeText }}>Role: </strong> {role}
             </div>
-            <div>
+            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               <strong style={{ color: theme.colors.nodeText }}>IP: </strong> {podIP}
             </div>
             <div>
               <strong style={{ color: theme.colors.nodeText }}>Phase: </strong> {phase}
             </div>
           </div>
-          <div
-            style={{
-              marginTop: theme.spacing.sm,
-              padding: `${theme.spacing.xs}px ${theme.spacing.sm}px`,
-              borderRadius: '5px',
-              fontSize: theme.typography.fontSize.small,
-              fontFamily: theme.typography.fontFamily,
-              fontWeight: theme.typography.fontWeight.bold,
-              textAlign: 'center',
-              backgroundColor: ready
-                ? theme.colors.statusReadyBg
-                : theme.colors.statusNotReadyBg,
-              color: ready ? theme.colors.statusReady : theme.colors.statusNotReady,
-              letterSpacing: theme.typography.letterSpacing,
-            }}
-          >
-            {ready ? '✓ Ready' : '✗ Not Ready'}
+          <div style={{ marginTop: '6px', textAlign: 'center' }}>
+            <StatusBadge ready={ready} theme={theme} />
           </div>
         </div>
       ),
     },
     style: {
-      background: color.bg,
-      border: `2px solid ${color.border}`,
+      background: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+      border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
       borderRadius: '12px',
-      padding: theme.spacing.md,
-      width: 'fit-content',
-      minHeight: 'fit-content',
+      padding: 0,
+      width,
+      height,
       boxShadow: theme.colors.nodeShadow,
+      overflow: 'hidden',
     },
     parentId,
     extent: 'parent' as const,
   };
 }
 
+// Status badge component for consistent styling
+function StatusBadge({
+  ready,
+  theme,
+}: {
+  ready: boolean;
+  theme: ReturnType<typeof useTopologyTheme>;
+}) {
+  return (
+    <span
+      style={{
+        padding: '6px 14px',
+        borderRadius: '6px',
+        fontSize: '13px',
+        fontFamily: theme.typography.fontFamily,
+        backgroundColor: ready
+          ? theme.colors.statusReadyBg
+          : theme.colors.statusNotReadyBg,
+        fontWeight: theme.typography.fontWeight.bold,
+        letterSpacing: '0.3px',
+        color: ready ? theme.colors.statusReady : theme.colors.statusNotReady,
+      }}
+    >
+      {ready ? '✓ Ready' : '✗ Not Ready'}
+    </span>
+  );
+}
+
 // Modern group label component
 function createGroupLabel(params: {
   id: string;
   title: string;
-  role: string;
-  replicas: number;
   parentId: string;
-  color: { border: string; bg: string; label: string };
   theme: ReturnType<typeof useTopologyTheme>;
+  resourceType: 'KafkaNodePool' | 'StrimziPodSet';
 }): Node {
-  const { id, title, role, replicas, parentId, color, theme } = params;
+  const { id, title, parentId, theme, resourceType } = params;
+
+  // Icon and color based on resource type
+  const getResourceIconConfig = () => {
+    switch (resourceType) {
+      case 'KafkaNodePool':
+        return { icon: 'mdi:server', color: '#0baf9e' }; // Cyan/Teal
+      case 'StrimziPodSet':
+        return { icon: 'mdi:view-grid-outline', color: '#0baf9e' }; // Orange
+      default:
+        return { icon: 'mdi:cube', color: '#0baf9e' };
+    }
+  };
+
+  const iconConfig = getResourceIconConfig();
 
   return {
     id,
     type: 'default',
-    position: { x: 16, y: 16 },
+    position: { x: 20, y: 20 },
     data: {
       label: (
-        <div>
-          <div
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+          <ResourceIcon icon={iconConfig.icon} color={iconConfig.color} size={`${LAYOUT.GROUP_ICON_SIZE}px`} />
+          <span
             style={{
               fontSize: theme.typography.fontSize.large,
               fontWeight: theme.typography.fontWeight.bold,
               fontFamily: theme.typography.fontFamily,
               color: theme.colors.nodeText,
-              marginBottom: theme.spacing.xs,
               letterSpacing: theme.typography.letterSpacing,
+              whiteSpace: 'nowrap',
             }}
           >
-            {title}
-          </div>
-          <div
-            style={{
-              fontSize: theme.typography.fontSize.medium,
-              fontFamily: theme.typography.fontFamily,
-              color: theme.colors.nodeText,
-              fontWeight: theme.typography.fontWeight.medium,
-              letterSpacing: theme.typography.letterSpacing,
-            }}
-          >
-            {role}
-          </div>
-          <div
-            style={{
-              fontSize: theme.typography.fontSize.medium,
-              fontFamily: theme.typography.fontFamily,
-              color: theme.colors.nodeText,
-              fontWeight: theme.typography.fontWeight.medium,
-              letterSpacing: theme.typography.letterSpacing,
-            }}
-          >
-            Replicas: {replicas}
-          </div>
+            {resourceType}: {title}
+          </span>
         </div>
       ),
     },
     style: {
-      background: color.label,
+      background: 'transparent',
       border: 'none',
-      borderRadius: '8px',
-      padding: `${theme.spacing.sm}px ${theme.spacing.md}px`,
-      boxShadow: theme.colors.nodeShadow,
+      padding: 0,
     },
     parentId,
     draggable: false,
@@ -310,6 +505,7 @@ function createGroupLabel(params: {
 
 function TopologyFlow({ kafka }: TopologyProps) {
   const [nodePools, setNodePools] = React.useState<KafkaNodePool[]>([]);
+  const [podSets, setPodSets] = React.useState<StrimziPodSet[]>([]);
   const [pods, setPods] = React.useState<Pod[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [nodes, setNodes] = React.useState<Node[]>([]);
@@ -317,14 +513,6 @@ function TopologyFlow({ kafka }: TopologyProps) {
   // Get theme and semantic colors
   const theme = useTopologyTheme();
   const colors = React.useMemo(() => getSemanticColors(theme), [theme]);
-
-  // Helper to convert hex color to rgba with opacity
-  const hexToRgba = React.useCallback((hex: string, alpha: number): string => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }, []);
 
   // Legend colors - same color palette as topology, higher opacity for visibility
   // In light mode: 0.5 for legend visibility, in dark mode: use solid colors
@@ -336,32 +524,48 @@ function TopologyFlow({ kafka }: TopologyProps) {
     [kafka.status]
   );
 
-  // Fetch node pools and pods
+  // Fetch node pools, pod sets, and pods
   React.useEffect(() => {
     const clusterName = kafka.metadata.name;
     const namespace = kafka.metadata.namespace;
 
     Promise.all([
       ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkanodepools'),
+      ApiProxy.request('/apis/core.strimzi.io/v1beta2/strimzipodsets'),
       ApiProxy.request(
         `/api/v1/namespaces/${namespace}/pods?labelSelector=strimzi.io/cluster=${clusterName}`
       ),
     ])
-      .then(([nodePoolData, podData]: [{ items?: KafkaNodePool[] }, { items?: Pod[] }]) => {
-        if (nodePoolData?.items) {
-          const pools = nodePoolData.items.filter(
-            (pool: KafkaNodePool) =>
-              pool.metadata.labels?.['strimzi.io/cluster'] === clusterName &&
-              pool.metadata.namespace === namespace
-          );
-          setNodePools(pools);
+      .then(
+        ([nodePoolData, podSetData, podData]: [
+          { items?: KafkaNodePool[] },
+          { items?: StrimziPodSet[] },
+          { items?: Pod[] }
+        ]) => {
+          if (nodePoolData?.items) {
+            const pools = nodePoolData.items.filter(
+              (pool: KafkaNodePool) =>
+                pool.metadata.labels?.['strimzi.io/cluster'] === clusterName &&
+                pool.metadata.namespace === namespace
+            );
+            setNodePools(pools);
+          }
+          if (podSetData?.items) {
+            const sets = podSetData.items.filter(
+              (set: StrimziPodSet) =>
+                set.metadata.labels?.['strimzi.io/cluster'] === clusterName &&
+                set.metadata.namespace === namespace
+            );
+            setPodSets(sets);
+          }
+          if (podData?.items) {
+            setPods(podData.items);
+          }
+          setLoading(false);
         }
-        if (podData?.items) {
-          setPods(podData.items);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
+      )
+      .catch((err) => {
+        console.error('Failed to fetch Kafka topology data:', err);
         setLoading(false);
       });
   }, [kafka.metadata.name, kafka.metadata.namespace]);
@@ -374,58 +578,186 @@ function TopologyFlow({ kafka }: TopologyProps) {
     const namespace = kafka.metadata.namespace;
     const generatedNodes: Node[] = [];
 
-    // Calculate dimensions - horizontal pod layout
-    const podNodeWidth = 180;
-    const podNodeHeight = 200;
-    const nodeSpacing = 24;
-    const namespaceLabelHeight = 80;
-    const clusterLabelHeight = 120;
-    const labelHeight = 150;
-    const groupLabelHeight = 95;
-    const groupPadding = { top: groupLabelHeight + 25, right: 30, bottom: 30, left: 30 };
-    const groupSpacing = 30;
+    // PHASE 1: Calculate ALL pod dimensions first (based on real data)
+    // This ensures cluster/namespace dimensions are accurate
+    let allPoolDimensions: Array<{ poolName: string; podDimensions: PodDimensions[]; dimensions: NodePoolDimensions }> = [];
+    let kraftLegacyDimensions: { podDimensions: PodDimensions[]; groupWidth: number; groupHeight: number } | null = null;
+    let zkDimensions: { podDimensions: PodDimensions[]; groupWidth: number; groupHeight: number } | null = null;
+    let zkBrokerDimensions: { podDimensions: PodDimensions[]; groupWidth: number; groupHeight: number } | null = null;
 
-    // Root cluster node
+    if (nodePools.length > 0) {
+      // Calculate dimensions for all NodePools
+      allPoolDimensions = nodePools.map((pool) => {
+        const poolName = pool.metadata.name;
+        const roles = pool.spec.roles || [];
+        const replicas = pool.spec.replicas;
+        const nodeIds = pool.status?.nodeIds || Array.from({ length: replicas }, (_, i) => i);
+        const isController = roles.includes('controller');
+        const isBroker = roles.includes('broker');
+        const isDual = isController && isBroker;
+
+        const podDimensions = nodeIds.map((nodeId) => {
+          const podName = `${clusterName}-${poolName}-${nodeId}`;
+          const pod = pods.find(p => p.metadata?.name === podName);
+          return calculatePodDimensions({
+            name: poolName,
+            nodeId,
+            role: isDual ? 'C+B' : isController ? 'Ctrl' : 'Broker',
+            podIP: pod?.status?.podIP || 'N/A',
+            phase: pod?.status?.phase || 'Unknown',
+          });
+        });
+
+        return {
+          poolName,
+          podDimensions,
+          dimensions: calculateNodePoolDimensions(podDimensions)
+        };
+      });
+    } else if (isKRaft) {
+      // KRaft legacy - calculate broker dimensions
+      const brokerCount = kafka.spec.kafka.replicas;
+      const brokerPodDimensions: PodDimensions[] = [];
+      for (let i = 0; i < brokerCount; i++) {
+        const podName = `${clusterName}-kafka-${i}`;
+        const pod = pods.find(p => p.metadata?.name === podName);
+        brokerPodDimensions.push(
+          calculatePodDimensions({
+            name: 'kafka',
+            nodeId: i,
+            role: 'C+B',
+            podIP: pod?.status?.podIP || 'N/A',
+            phase: pod?.status?.phase || 'Unknown',
+          })
+        );
+      }
+      const totalBrokerWidth = brokerPodDimensions.reduce((sum, dim) => sum + dim.width, 0);
+      const maxBrokerHeight = Math.max(...brokerPodDimensions.map(dim => dim.height));
+      const brokerSpacing = (brokerCount - 1) * LAYOUT.NODE_SPACING;
+
+      kraftLegacyDimensions = {
+        podDimensions: brokerPodDimensions,
+        groupWidth: PADDING.group.left + PADDING.group.right + totalBrokerWidth + brokerSpacing,
+        groupHeight: PADDING.group.top + PADDING.group.bottom + maxBrokerHeight,
+      };
+    } else {
+      // ZooKeeper mode - calculate both ZK and Kafka broker dimensions
+      const zkCount = kafka.spec.zookeeper?.replicas || 0;
+      const brokerCount = kafka.spec.kafka.replicas;
+
+      // Calculate ZooKeeper dimensions
+      if (zkCount > 0) {
+        const zkPodDimensions: PodDimensions[] = [];
+        for (let i = 0; i < zkCount; i++) {
+          const podName = `${clusterName}-zookeeper-${i}`;
+          const pod = pods.find(p => p.metadata?.name === podName);
+          zkPodDimensions.push(
+            calculatePodDimensions({
+              name: 'zookeeper',
+              nodeId: i,
+              role: 'Metadata',
+              podIP: pod?.status?.podIP || 'N/A',
+              phase: pod?.status?.phase || 'Unknown',
+            })
+          );
+        }
+        const totalZkWidth = zkPodDimensions.reduce((sum, dim) => sum + dim.width, 0);
+        const maxZkHeight = Math.max(...zkPodDimensions.map(dim => dim.height));
+        const zkSpacing = (zkCount - 1) * LAYOUT.NODE_SPACING;
+
+        zkDimensions = {
+          podDimensions: zkPodDimensions,
+          groupWidth: PADDING.group.left + PADDING.group.right + totalZkWidth + zkSpacing,
+          groupHeight: PADDING.group.top + PADDING.group.bottom + maxZkHeight,
+        };
+      }
+
+      // Calculate Kafka broker dimensions
+      const brokerPodDimensions: PodDimensions[] = [];
+      for (let i = 0; i < brokerCount; i++) {
+        const podName = `${clusterName}-kafka-${i}`;
+        const pod = pods.find(p => p.metadata?.name === podName);
+        brokerPodDimensions.push(
+          calculatePodDimensions({
+            name: 'kafka',
+            nodeId: i,
+            role: 'Broker',
+            podIP: pod?.status?.podIP || 'N/A',
+            phase: pod?.status?.phase || 'Unknown',
+          })
+        );
+      }
+      const totalBrokerWidth = brokerPodDimensions.reduce((sum, dim) => sum + dim.width, 0);
+      const maxBrokerHeight = Math.max(...brokerPodDimensions.map(dim => dim.height));
+      const brokerSpacing = (brokerCount - 1) * LAYOUT.NODE_SPACING;
+
+      zkBrokerDimensions = {
+        podDimensions: brokerPodDimensions,
+        groupWidth: PADDING.group.left + PADDING.group.right + totalBrokerWidth + brokerSpacing,
+        groupHeight: PADDING.group.top + PADDING.group.bottom + maxBrokerHeight,
+      };
+    }
+
+    // PHASE 2: Calculate cluster dimensions using REAL pod dimensions
     let clusterWidth = 400;
     let clusterHeight = 400;
 
     if (nodePools.length > 0) {
-      // KRaft with KafkaNodePools - stack groups vertically
-      let maxGroupWidth = 0;
-      let totalGroupHeight = 0;
+      // KRaft with KafkaNodePools
+      let maxPoolWidth = 0;
+      let totalPoolHeight = 0;
 
-      nodePools.forEach((pool) => {
-        const replicas = pool.spec.replicas;
-        const groupWidth = groupPadding.left + groupPadding.right + replicas * (podNodeWidth + nodeSpacing) - nodeSpacing;
-        const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
-        maxGroupWidth = Math.max(maxGroupWidth, groupWidth);
-        totalGroupHeight += groupHeight + groupSpacing;
+      allPoolDimensions.forEach(({ dimensions }) => {
+        maxPoolWidth = Math.max(maxPoolWidth, dimensions.poolWidth);
+        totalPoolHeight += dimensions.poolHeight + LAYOUT.GROUP_SPACING;
       });
 
-      clusterWidth = Math.max(maxGroupWidth + 80, 600);
-      clusterHeight = clusterLabelHeight + 40 + totalGroupHeight;
-    } else if (isKRaft) {
-      // KRaft legacy - single group with horizontal pods
-      const brokerCount = kafka.spec.kafka.replicas;
-      const groupWidth = groupPadding.left + groupPadding.right + brokerCount * (podNodeWidth + nodeSpacing) - nodeSpacing;
-      const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
-      clusterWidth = Math.max(groupWidth + 80, 600);
-      clusterHeight = clusterLabelHeight + 60 + groupHeight;
+      clusterWidth = Math.max(maxPoolWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
+      clusterHeight = LAYOUT.CLUSTER_LABEL_HEIGHT + LAYOUT.CLUSTER_VERTICAL_MARGIN_START + totalPoolHeight + LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
+    } else if (isKRaft && kraftLegacyDimensions) {
+      // KRaft legacy
+      clusterWidth = Math.max(kraftLegacyDimensions.groupWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
+      clusterHeight = LAYOUT.CLUSTER_LABEL_HEIGHT + LAYOUT.CLUSTER_VERTICAL_MARGIN_LEGACY + kraftLegacyDimensions.groupHeight + LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
     } else {
-      // ZooKeeper mode - two groups stacked vertically
-      const zkCount = kafka.spec.zookeeper?.replicas || 0;
+      // ZooKeeper mode
       const brokerCount = kafka.spec.kafka.replicas;
-      const maxPods = Math.max(zkCount, brokerCount);
-      const groupWidth = groupPadding.left + groupPadding.right + maxPods * (podNodeWidth + nodeSpacing) - nodeSpacing;
-      const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
-      clusterWidth = Math.max(groupWidth + 80, 600);
-      clusterHeight = clusterLabelHeight + 60 + (zkCount > 0 ? 2 : 1) * (groupHeight + groupSpacing);
+      const brokerPodDimensions: PodDimensions[] = [];
+      for (let i = 0; i < brokerCount; i++) {
+        const podName = `${clusterName}-kafka-${i}`;
+        const pod = pods.find(p => p.metadata?.name === podName);
+        brokerPodDimensions.push(
+          calculatePodDimensions({
+            name: 'kafka',
+            nodeId: i,
+            role: 'Broker',
+            podIP: pod?.status?.podIP || 'N/A',
+            phase: pod?.status?.phase || 'Unknown',
+          })
+        );
+      }
+      const totalBrokerWidth = brokerPodDimensions.reduce((sum, dim) => sum + dim.width, 0);
+      const maxBrokerHeight = Math.max(...brokerPodDimensions.map(dim => dim.height));
+      const brokerSpacing = (brokerCount - 1) * LAYOUT.NODE_SPACING;
+
+      const brokerGroupWidth = PADDING.group.left + PADDING.group.right + totalBrokerWidth + brokerSpacing;
+      const brokerGroupHeight = PADDING.group.top + PADDING.group.bottom + maxBrokerHeight;
+
+      const zkGroupWidth = zkDimensions?.groupWidth || 0;
+      const zkGroupHeight = zkDimensions?.groupHeight || 0;
+
+      const maxWidth = Math.max(zkGroupWidth, brokerGroupWidth);
+      clusterWidth = Math.max(maxWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
+      clusterHeight =
+        LAYOUT.CLUSTER_LABEL_HEIGHT +
+        LAYOUT.CLUSTER_VERTICAL_MARGIN_START +
+        (zkGroupHeight > 0 ? zkGroupHeight + LAYOUT.GROUP_SPACING : 0) +
+        brokerGroupHeight +
+        LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
     }
 
     // Namespace dimensions
-    const namespacePadding = 40;
-    const namespaceWidth = clusterWidth + 2 * namespacePadding;
-    const namespaceHeight = namespaceLabelHeight + 40 + clusterHeight + namespacePadding;
+    const namespaceWidth = clusterWidth + LAYOUT.NAMESPACE_PADDING * 2;
+    const namespaceHeight = clusterHeight + LAYOUT.NAMESPACE_PADDING * 2 + LAYOUT.NAMESPACE_LABEL_HEIGHT + 10;
 
     // Namespace node (root)
     generatedNodes.push({
@@ -436,10 +768,10 @@ function TopologyFlow({ kafka }: TopologyProps) {
       style: {
         width: namespaceWidth,
         height: namespaceHeight,
-        backgroundColor: hexToRgba(colors.cluster.border, 0.05),
-        border: `3px solid ${hexToRgba(colors.cluster.border, 0.3)}`,
-        borderRadius: '20px',
-        padding: `${namespaceLabelHeight + 20}px ${namespacePadding}px ${namespacePadding}px ${namespacePadding}px`,
+        backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+        border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
+        borderRadius: '16px',
+        padding: `${LAYOUT.NAMESPACE_LABEL_HEIGHT + 20}px ${LAYOUT.NAMESPACE_PADDING}px ${LAYOUT.NAMESPACE_PADDING}px ${LAYOUT.NAMESPACE_PADDING}px`,
       },
     });
 
@@ -447,68 +779,73 @@ function TopologyFlow({ kafka }: TopologyProps) {
     generatedNodes.push({
       id: 'namespace-label',
       type: 'default',
-      position: { x: 10, y: 10 },
+      position: { x: 20, y: 20 },
       data: {
         label: (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '18px',
-              fontFamily: theme.typography.fontFamily,
-              fontWeight: theme.typography.fontWeight.medium,
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
             <div
               style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: '50%',
-                background: 'rgba(150, 150, 150, 0.12)',
+                width: `${LAYOUT.NAMESPACE_ICON_SIZE}px`,
+                height: `${LAYOUT.NAMESPACE_ICON_SIZE}px`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
               }}
             >
-              <Icon
-                icon="mdi:folder-outline"
-                width="20px"
-                height="20px"
-                style={{ color: '#999' }}
-              />
+              <svg
+                width={LAYOUT.NAMESPACE_ICON_SIZE}
+                height={LAYOUT.NAMESPACE_ICON_SIZE}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                style={{ opacity: 0.6 }}
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 4" />
+              </svg>
             </div>
-            <span style={{ opacity: 0.6 }}>Namespace</span>
-            <span>{namespace}</span>
+            <span
+              style={{
+                fontSize: theme.typography.fontSize.large,
+                fontWeight: theme.typography.fontWeight.bold,
+                fontFamily: theme.typography.fontFamily,
+                color: theme.colors.nodeText,
+                letterSpacing: theme.typography.letterSpacing,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Namespace: {namespace}
+            </span>
           </div>
         ),
       },
       style: {
         background: 'transparent',
         border: 'none',
-        borderRadius: '4px',
-        padding: '8px 12px',
-        minWidth: 'fit-content',
+        padding: 0,
       },
       parentId: 'namespace',
       draggable: false,
       selectable: false,
     });
 
-    // Cluster node
+    // Cluster node (inside namespace)
     generatedNodes.push({
       id: 'cluster',
       type: 'group',
-      position: { x: 20, y: namespaceLabelHeight + 10 },
+      position: {
+        x: LAYOUT.NAMESPACE_PADDING,
+        y: LAYOUT.NAMESPACE_LABEL_HEIGHT + 20,
+      },
       data: { label: '' },
       style: {
         width: clusterWidth,
         height: clusterHeight,
-        backgroundColor: colors.cluster.bg,
-        border: `3px solid ${colors.cluster.border}`,
+        backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+        border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
         borderRadius: '16px',
-        padding: `${clusterLabelHeight + 20}px 20px 20px 20px`,
+        padding: `${LAYOUT.CLUSTER_LABEL_HEIGHT + 20}px 20px 20px 20px`,
       },
       parentId: 'namespace',
       extent: 'parent' as const,
@@ -518,74 +855,66 @@ function TopologyFlow({ kafka }: TopologyProps) {
     generatedNodes.push({
       id: 'cluster-label',
       type: 'default',
-      position: { x: 10, y: 10 },
+      position: { x: 20, y: 20 },
       data: {
         label: (
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: theme.colors.nodeText, marginBottom: '3px', letterSpacing: '0.4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+            <ResourceIcon icon="mdi:apache-kafka" color="#0baf9e" size={`${LAYOUT.CLUSTER_ICON_SIZE}px`} />
+            <span
+              style={{
+                fontSize: theme.typography.fontSize.large,
+                fontWeight: theme.typography.fontWeight.bold,
+                fontFamily: theme.typography.fontFamily,
+                color: theme.colors.nodeText,
+                letterSpacing: theme.typography.letterSpacing,
+                whiteSpace: 'nowrap',
+              }}
+            >
               Kafka: {clusterName}
-            </div>
-            <div style={{ fontSize: '16px', color: theme.colors.nodeText, fontWeight: 500, marginBottom: '8px' }}>
-              Mode: {isKRaft ? 'KRaft' : 'ZooKeeper'}
-            </div>
-            <div>
-              <span
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '5px',
-                  fontSize: '14px',
-                  backgroundColor: clusterReady
-                    ? 'rgba(16, 185, 129, 0.35)'
-                    : 'rgba(239, 68, 68, 0.35)',
-                  fontWeight: 600,
-                  letterSpacing: '0.3px',
-                  color: clusterReady ? theme.colors.statusReady : theme.colors.statusNotReady,
-                }}
-              >
-                {clusterReady ? '✓ Ready' : '✗ Not Ready'}
-              </span>
-            </div>
+            </span>
           </div>
         ),
       },
       style: {
-        background: colors.cluster.label,
+        background: 'transparent',
         border: 'none',
-        borderRadius: '10px',
-        padding: '12px 20px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        minWidth: 'fit-content',
+        padding: 0,
       },
       parentId: 'cluster',
       draggable: false,
       selectable: false,
     });
 
-    const startY = clusterLabelHeight + 40;
+    const startY = LAYOUT.CLUSTER_LABEL_HEIGHT + LAYOUT.CLUSTER_VERTICAL_MARGIN_START;
 
     if (nodePools.length > 0) {
-      // KRaft with KafkaNodePools - groups stacked vertically, pods horizontal
+      // PHASE 3: Create nodes using pre-calculated dimensions
+      // KRaft with KafkaNodePools - KafkaNodePool → StrimziPodSet → Pod structure
       // Sort: controllers first, then brokers (brokers always last)
-      const sortedPools = [...nodePools].sort((a, b) => {
-        const aRoles = a.spec.roles || [];
-        const bRoles = b.spec.roles || [];
-        const aIsController = aRoles.includes('controller');
-        const bIsController = bRoles.includes('controller');
-        const aIsBroker = aRoles.includes('broker') && !aIsController;
-        const bIsBroker = bRoles.includes('broker') && !bIsController;
+      const sortedPoolData = allPoolDimensions
+        .map(poolData => {
+          const pool = nodePools.find(p => p.metadata.name === poolData.poolName)!;
+          return { ...poolData, pool };
+        })
+        .sort((a, b) => {
+          const aRoles = a.pool.spec.roles || [];
+          const bRoles = b.pool.spec.roles || [];
+          const aIsController = aRoles.includes('controller');
+          const bIsController = bRoles.includes('controller');
+          const aIsBroker = aRoles.includes('broker') && !aIsController;
+          const bIsBroker = bRoles.includes('broker') && !bIsController;
 
-        // Controllers first, pure brokers last
-        if (aIsController && !bIsController) return -1;
-        if (!aIsController && bIsController) return 1;
-        if (aIsBroker && !bIsBroker) return 1;
-        if (!aIsBroker && bIsBroker) return -1;
-        return 0;
-      });
+          // Controllers first, pure brokers last
+          if (aIsController && !bIsController) return -1;
+          if (!aIsController && bIsController) return 1;
+          if (aIsBroker && !bIsBroker) return 1;
+          if (!aIsBroker && bIsBroker) return -1;
+          return 0;
+        });
 
       let currentY = startY;
 
-      sortedPools.forEach((pool) => {
-        const poolName = pool.metadata.name;
+      sortedPoolData.forEach(({ poolName, podDimensions, dimensions, pool }) => {
         const roles = pool.spec.roles || [];
         const replicas = pool.spec.replicas;
         const nodeIds = pool.status?.nodeIds || Array.from({ length: replicas }, (_, i) => i);
@@ -597,24 +926,27 @@ function TopologyFlow({ kafka }: TopologyProps) {
         const roleLabel = isDual ? 'Controller + Broker' : isController ? 'Controller' : 'Broker';
         const poolColor = isDual ? colors.dual : isController ? colors.controller : colors.broker;
 
-        // Horizontal layout: width based on number of pods
-        const groupWidth = groupPadding.left + groupPadding.right + replicas * (podNodeWidth + nodeSpacing) - nodeSpacing;
-        const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
+        // Find the StrimziPodSet for this pool
+        // Name pattern: {strimzi.io/cluster}-{strimzi.io/pool-name}
+        const podSet = podSets.find(ps => ps.metadata.name === `${clusterName}-${poolName}`);
 
-        // Center the group horizontally in the cluster
-        const groupX = (clusterWidth - groupWidth) / 2;
+        // Use pre-calculated dimensions
+        const { podSetInnerWidth, podSetInnerHeight, poolWidth, poolHeight } = dimensions;
 
-        // Node pool group
+        // Center the pool group horizontally in the cluster
+        const poolX = (clusterWidth - poolWidth) / 2;
+
+        // Node pool group (outer)
         generatedNodes.push({
           id: `pool-${poolName}`,
           type: 'group',
-          position: { x: groupX, y: currentY },
+          position: { x: poolX, y: currentY },
           data: { label: '' },
           style: {
-            width: groupWidth,
-            height: groupHeight,
-            backgroundColor: colors.nodePool.bg,
-            border: `2px solid ${colors.nodePool.border}`,
+            width: poolWidth,
+            height: poolHeight,
+            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+            border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
             borderRadius: '12px',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           },
@@ -622,119 +954,169 @@ function TopologyFlow({ kafka }: TopologyProps) {
           extent: 'parent' as const,
         });
 
-        // Pool label - centered
+        // Pool label
         generatedNodes.push(
           createGroupLabel({
             id: `pool-label-${poolName}`,
             title: poolName,
-            role: roleLabel,
-            replicas: replicas,
             parentId: `pool-${poolName}`,
-            color: colors.nodePool,
             theme,
+            resourceType: 'KafkaNodePool',
           })
         );
 
-        // Individual pod nodes - horizontal layout
-        nodeIds.forEach((nodeId, index) => {
-          const podName = `${clusterName}-${poolName}-${nodeId}`;
+        // StrimziPodSet group (inner, nested in pool)
+        if (podSet) {
+          generatedNodes.push({
+            id: `podset-${poolName}`,
+            type: 'group',
+            position: { x: PADDING.group.left, y: PADDING.group.top },
+            data: { label: '' },
+            style: {
+              width: podSetInnerWidth,
+              height: podSetInnerHeight,
+              backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+              border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+            },
+            parentId: `pool-${poolName}`,
+            extent: 'parent' as const,
+          });
+
+          generatedNodes.push(
+            createGroupLabel({
+              id: `podset-label-${poolName}`,
+              title: podSet.metadata.name,
+              parentId: `podset-${poolName}`,
+              theme,
+              resourceType: 'StrimziPodSet',
+            })
+          );
+
+          // Individual pod nodes - horizontal layout inside StrimziPodSet
+          let cumulativeX = PADDING.podSet.left;
+          nodeIds.forEach((nodeId, index) => {
+            const podName = `${clusterName}-${poolName}-${nodeId}`;
+            const pod = pods.find(p => p.metadata?.name === podName);
+            const dimensions = podDimensions[index];
+
+            generatedNodes.push(
+              createPodNode({
+                id: `pod-${poolName}-${nodeId}`,
+                name: poolName,
+                nodeId,
+                role: isDual ? 'C+B' : isController ? 'Ctrl' : 'Broker',
+                parentId: `podset-${poolName}`,
+                position: {
+                  x: cumulativeX,
+                  y: PADDING.podSet.top,
+                },
+                pod,
+                theme,
+                width: dimensions.width,
+                height: dimensions.height,
+              })
+            );
+
+            cumulativeX += dimensions.width + LAYOUT.NODE_SPACING;
+          });
+        }
+
+        currentY += poolHeight + LAYOUT.GROUP_SPACING;
+      });
+    } else if (isKRaft && kraftLegacyDimensions) {
+      // KRaft legacy (no node pools) - StrimziPodSet → Pod structure
+      // Use pre-calculated dimensions
+      const brokerCount = kafka.spec.kafka.replicas;
+      const { podDimensions: brokerPodDimensions, groupWidth, groupHeight } = kraftLegacyDimensions;
+      const groupX = (clusterWidth - groupWidth) / 2;
+
+      // Find the StrimziPodSet for KRaft legacy mode
+      const kafkaPodSet = podSets.find(ps => ps.metadata.name === `${clusterName}-kafka`);
+
+      if (kafkaPodSet) {
+        generatedNodes.push({
+          id: 'podset-kafka',
+          type: 'group',
+          position: { x: groupX, y: startY },
+          data: { label: '' },
+          style: {
+            width: groupWidth,
+            height: groupHeight,
+            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+            border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          },
+          parentId: 'cluster',
+          extent: 'parent' as const,
+        });
+
+        generatedNodes.push(
+          createGroupLabel({
+            id: 'podset-kafka-label',
+            title: kafkaPodSet.metadata.name,
+            parentId: 'podset-kafka',
+            theme,
+            resourceType: 'StrimziPodSet',
+          })
+        );
+
+        let cumulativeX = PADDING.group.left;
+        for (let i = 0; i < brokerCount; i++) {
+          const podName = `${clusterName}-kafka-${i}`;
           const pod = pods.find(p => p.metadata?.name === podName);
+          const dimensions = brokerPodDimensions[i];
 
           generatedNodes.push(
             createPodNode({
-              id: `pod-${poolName}-${nodeId}`,
-              name: poolName,
-              nodeId,
-              role: isDual ? 'C+B' : isController ? 'Ctrl' : 'Broker',
-              parentId: `pool-${poolName}`,
-              position: { x: groupPadding.left + index * (podNodeWidth + nodeSpacing), y: groupPadding.top },
-              color: poolColor,
+              id: `pod-broker-${i}`,
+              name: 'kafka',
+              nodeId: i,
+              role: 'C+B',
+              parentId: 'podset-kafka',
+              position: {
+                x: cumulativeX,
+                y: PADDING.group.top,
+              },
               pod,
               theme,
+              width: dimensions.width,
+              height: dimensions.height,
             })
           );
-        });
 
-        currentY += groupHeight + groupSpacing;
-      });
-    } else if (isKRaft) {
-      // KRaft legacy (no node pools) - single group, horizontal pods
-      const brokerCount = kafka.spec.kafka.replicas;
-      const groupWidth = groupPadding.left + groupPadding.right + brokerCount * (podNodeWidth + nodeSpacing) - nodeSpacing;
-      const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
-      const groupX = (clusterWidth - groupWidth) / 2;
-
-      generatedNodes.push({
-        id: 'broker-group',
-        type: 'group',
-        position: { x: groupX, y: startY },
-        data: { label: '' },
-        style: {
-          width: groupWidth,
-          height: groupHeight,
-          backgroundColor: colors.nodePool.bg,
-          border: `2px solid ${colors.controller.border}`,
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        },
-        parentId: 'cluster',
-        extent: 'parent' as const,
-      });
-
-      generatedNodes.push(
-        createGroupLabel({
-          id: 'broker-group-label',
-          title: 'KRaft Brokers',
-          role: 'Controller + Broker',
-          replicas: brokerCount,
-          parentId: 'broker-group',
-          color: colors.controller,
-          theme,
-        })
-      );
-
-      for (let i = 0; i < brokerCount; i++) {
-        const podName = `${clusterName}-kafka-${i}`;
-        const pod = pods.find(p => p.metadata?.name === podName);
-
-        generatedNodes.push(
-          createPodNode({
-            id: `pod-broker-${i}`,
-            name: 'kafka',
-            nodeId: i,
-            role: 'C+B',
-            parentId: 'broker-group',
-            position: { x: groupPadding.left + i * (podNodeWidth + nodeSpacing), y: groupPadding.top },
-            color: colors.controller,
-            pod,
-            theme,
-          })
-        );
+          cumulativeX += dimensions.width + LAYOUT.NODE_SPACING;
+        }
       }
     } else {
-      // ZooKeeper mode - two groups stacked vertically (ZK on top, Brokers below), horizontal pods
+      // ZooKeeper mode - StrimziPodSets stacked vertically (ZK on top, Kafka below), horizontal pods
       const zkCount = kafka.spec.zookeeper?.replicas || 0;
       const brokerCount = kafka.spec.kafka.replicas;
 
-      const groupHeight = groupPadding.top + groupPadding.bottom + podNodeHeight;
-
       let currentY = startY;
 
-      // ZooKeeper group (on top)
-      if (zkCount > 0) {
-        const zkGroupWidth = groupPadding.left + groupPadding.right + zkCount * (podNodeWidth + nodeSpacing) - nodeSpacing;
+      // Find StrimziPodSets for ZooKeeper and Kafka
+      const zkPodSet = podSets.find(ps => ps.metadata.name === `${clusterName}-zookeeper`);
+      const kafkaPodSet = podSets.find(ps => ps.metadata.name === `${clusterName}-kafka`);
+
+      // ZooKeeper StrimziPodSet (on top)
+      if (zkCount > 0 && zkPodSet && zkDimensions) {
+        // Use pre-calculated dimensions
+        const { podDimensions: zkPodDimensions, groupWidth: zkGroupWidth, groupHeight: zkGroupHeight } = zkDimensions;
         const groupX = (clusterWidth - zkGroupWidth) / 2;
 
         generatedNodes.push({
-          id: 'zk-group',
+          id: 'podset-zk',
           type: 'group',
           position: { x: groupX, y: currentY },
           data: { label: '' },
           style: {
             width: zkGroupWidth,
-            height: groupHeight,
-            backgroundColor: colors.nodePool.bg,
-            border: `2px solid ${colors.zookeeper.border}`,
+            height: zkGroupHeight,
+            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+            border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
             borderRadius: '12px',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           },
@@ -744,19 +1126,19 @@ function TopologyFlow({ kafka }: TopologyProps) {
 
         generatedNodes.push(
           createGroupLabel({
-            id: 'zk-group-label',
-            title: 'ZooKeeper',
-            role: 'Ensemble',
-            replicas: zkCount,
-            parentId: 'zk-group',
-            color: colors.zookeeper,
+            id: 'podset-zk-label',
+            title: zkPodSet.metadata.name,
+            parentId: 'podset-zk',
             theme,
+            resourceType: 'StrimziPodSet',
           })
         );
 
+        let cumulativeX = PADDING.group.left;
         for (let i = 0; i < zkCount; i++) {
           const podName = `${clusterName}-zookeeper-${i}`;
           const pod = pods.find(p => p.metadata?.name === podName);
+          const dimensions = zkPodDimensions[i];
 
           generatedNodes.push(
             createPodNode({
@@ -764,73 +1146,108 @@ function TopologyFlow({ kafka }: TopologyProps) {
               name: 'zookeeper',
               nodeId: i,
               role: 'Metadata',
-              parentId: 'zk-group',
-              position: { x: groupPadding.left + i * (podNodeWidth + nodeSpacing), y: groupPadding.top },
-              color: colors.zookeeper,
+              parentId: 'podset-zk',
+              position: {
+                x: cumulativeX,
+                y: PADDING.group.top,
+              },
               pod,
               theme,
+              width: dimensions.width,
+              height: dimensions.height,
+            })
+          );
+
+          cumulativeX += dimensions.width + LAYOUT.NODE_SPACING;
+        }
+
+        currentY += zkGroupHeight + LAYOUT.GROUP_SPACING;
+      }
+
+      // Kafka StrimziPodSet (below ZK)
+      if (kafkaPodSet) {
+        // Calculate dimensions for all Kafka broker pods
+        const brokerPodDimensions: PodDimensions[] = [];
+        for (let i = 0; i < brokerCount; i++) {
+          const podName = `${clusterName}-kafka-${i}`;
+          const pod = pods.find(p => p.metadata?.name === podName);
+          brokerPodDimensions.push(
+            calculatePodDimensions({
+              name: 'kafka',
+              nodeId: i,
+              role: 'Broker',
+              podIP: pod?.status?.podIP || 'N/A',
+              phase: pod?.status?.phase || 'Unknown',
             })
           );
         }
 
-        currentY += groupHeight + groupSpacing;
-      }
+        const totalBrokerWidth = brokerPodDimensions.reduce((sum, dim) => sum + dim.width, 0);
+        const maxBrokerHeight = Math.max(...brokerPodDimensions.map(dim => dim.height));
+        const brokerSpacing = (brokerCount - 1) * LAYOUT.NODE_SPACING;
 
-      // Broker group (below ZK)
-      const brokerGroupWidth = groupPadding.left + groupPadding.right + brokerCount * (podNodeWidth + nodeSpacing) - nodeSpacing;
-      const brokerGroupX = (clusterWidth - brokerGroupWidth) / 2;
+        const brokerGroupWidth = PADDING.group.left + PADDING.group.right + totalBrokerWidth + brokerSpacing;
+        const brokerGroupHeight = PADDING.group.top + PADDING.group.bottom + maxBrokerHeight;
+        const brokerGroupX = (clusterWidth - brokerGroupWidth) / 2;
 
-      generatedNodes.push({
-        id: 'broker-group',
-        type: 'group',
-        position: { x: brokerGroupX, y: currentY },
-        data: { label: '' },
-        style: {
-          width: brokerGroupWidth,
-          height: groupHeight,
-          backgroundColor: colors.nodePool.bg,
-          border: `2px solid ${colors.broker.border}`,
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        },
-        parentId: 'cluster',
-        extent: 'parent' as const,
-      });
-
-      generatedNodes.push(
-        createGroupLabel({
-          id: 'broker-group-label',
-          title: 'Kafka Brokers',
-          role: 'Data Nodes',
-          replicas: brokerCount,
-          parentId: 'broker-group',
-          color: colors.broker,
-          theme,
-        })
-      );
-
-      for (let i = 0; i < brokerCount; i++) {
-        const podName = `${clusterName}-kafka-${i}`;
-        const pod = pods.find(p => p.metadata?.name === podName);
+        generatedNodes.push({
+          id: 'podset-kafka',
+          type: 'group',
+          position: { x: brokerGroupX, y: currentY },
+          data: { label: '' },
+          style: {
+            width: brokerGroupWidth,
+            height: brokerGroupHeight,
+            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+            border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          },
+          parentId: 'cluster',
+          extent: 'parent' as const,
+        });
 
         generatedNodes.push(
-          createPodNode({
-            id: `pod-broker-${i}`,
-            name: 'kafka',
-            nodeId: i,
-            role: 'Broker',
-            parentId: 'broker-group',
-            position: { x: groupPadding.left + i * (podNodeWidth + nodeSpacing), y: groupPadding.top },
-            color: colors.broker,
-            pod,
+          createGroupLabel({
+            id: 'podset-kafka-label',
+            title: kafkaPodSet.metadata.name,
+            parentId: 'podset-kafka',
             theme,
+            resourceType: 'StrimziPodSet',
           })
         );
+
+        let cumulativeX = PADDING.group.left;
+        for (let i = 0; i < brokerCount; i++) {
+          const podName = `${clusterName}-kafka-${i}`;
+          const pod = pods.find(p => p.metadata?.name === podName);
+          const dimensions = brokerPodDimensions[i];
+
+          generatedNodes.push(
+            createPodNode({
+              id: `pod-broker-${i}`,
+              name: 'kafka',
+              nodeId: i,
+              role: 'Broker',
+              parentId: 'podset-kafka',
+              position: {
+                x: cumulativeX,
+                y: PADDING.group.top,
+              },
+              pod,
+              theme,
+              width: dimensions.width,
+              height: dimensions.height,
+            })
+          );
+
+          cumulativeX += dimensions.width + LAYOUT.NODE_SPACING;
+        }
       }
     }
 
     setNodes(generatedNodes);
-  }, [kafka, isKRaft, nodePools, pods, loading, clusterReady, colors, theme]);
+  }, [kafka, isKRaft, nodePools, podSets, pods, loading, clusterReady, colors, theme]);
 
   if (loading) {
     return (
@@ -888,15 +1305,14 @@ function TopologyFlow({ kafka }: TopologyProps) {
         nodesFocusable={false}
         fitView
         fitViewOptions={{
-          minZoom: 1.0,
-          maxZoom: 1.0,
-          padding: 0.1
+          padding: 0.2,
+          includeHiddenNodes: false,
         }}
-        minZoom={0.5}
+        minZoom={0.1}
         maxZoom={2.0}
         panOnScroll={true}
       >
-        <Background color={theme.colors.gridColor} gap={20} size={1} />
+        <Background color={LAYOUT.GRID_DOT_COLOR} gap={LAYOUT.GRID_GAP} size={LAYOUT.GRID_SIZE} />
         <Controls showInteractive={false} showFitView={false} showZoom={false}>
           <GraphControls />
         </Controls>
