@@ -25,11 +25,15 @@ interface CopyToClipboardProps {
 
 export function CopyToClipboard({ text, maxDisplayLength = 30 }: CopyToClipboardProps) {
   const [showError, setShowError] = useState(false);
+  const displayText =
+    text.length > maxDisplayLength ? `${text.substring(0, maxDisplayLength)}...` : text;
 
   return (
     <>
       <div>
-        <Tooltip title={text}>{text.substring(0, maxDisplayLength)}...</Tooltip>
+        <Tooltip title={text}>
+          <span>{displayText}</span>
+        </Tooltip>
         <IconButton
           onClick={async () => {
             try {

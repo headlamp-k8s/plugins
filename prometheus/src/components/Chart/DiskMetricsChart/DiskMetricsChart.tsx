@@ -1,9 +1,8 @@
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Icon } from '@iconify/react';
+import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/lib/k8s';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Icon from '@mui/material/Icon';
 import IconButton from '@mui/material/IconButton';
 import { useEffect, useState } from 'react';
 import {
@@ -37,7 +36,8 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
 
   const cluster = useCluster();
   const configStore = getConfigStore();
-  const clusterConfig = configStore.useConfig();
+  const useClusterConfig = configStore.useConfig();
+  const clusterConfig = useClusterConfig();
 
   const [refresh, setRefresh] = useState<boolean>(true);
   const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
   const [isVisible, setIsVisible] = useState<boolean>(false);
 
   useEffect(() => {
-    const isEnabled = clusterConfig?.clusters?.[cluster]?.enableMetrics || false;
+    const isEnabled = cluster ? clusterConfig?.[cluster]?.isMetricsEnabled ?? false : false;
     setIsVisible(isEnabled);
 
     if (!isEnabled) {
@@ -86,21 +86,25 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
         alignItems="center"
         style={{ marginBottom: '0.5rem', margin: '0 auto', width: '0%' }}
       >
-        {state === prometheusState.INSTALLED
-          ? [
-              <Box>Disk</Box>,
-              <Box pl={2}>
-                <IconButton
-                  onClick={() => {
-                    setRefresh(refresh => !refresh);
-                  }}
-                  size="Big"
-                >
-                  {refresh ? <Icon icon="mdi:pause" /> : <Icon icon="mdi:play" />}
-                </IconButton>
-              </Box>,
-            ]
-          : []}
+        {state === prometheusState.INSTALLED && (
+          <>
+            <Box>Disk</Box>
+            <Box pl={2}>
+              <IconButton
+                onClick={() => {
+                  setRefresh(prev => !prev);
+                }}
+                size="large"
+              >
+                {refresh ? (
+                  <Icon icon="mdi:pause" width="20px" height="20px" />
+                ) : (
+                  <Icon icon="mdi:play" width="20px" height="20px" />
+                )}
+              </IconButton>
+            </Box>
+          </>
+        )}
       </Box>
 
       {state === prometheusState.INSTALLED ? (

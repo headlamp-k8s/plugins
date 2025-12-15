@@ -36,7 +36,7 @@ function registerCertManagerResource(config: ResourceRegistrationConfig) {
     path: `/cert-manager/${path}/${hasNamespace ? ':namespace/:name' : ':name'}`,
     sidebar: name,
     name: name.slice(0, -1), // Remove 's' from plural form
-    component: DetailComponent,
+    component: () => <DetailComponent />,
   });
 
   // Register list route
@@ -44,7 +44,7 @@ function registerCertManagerResource(config: ResourceRegistrationConfig) {
     path: `/cert-manager/${path}`,
     sidebar: name,
     name,
-    component: ListComponent,
+    component: () => <ListComponent />,
   });
 }
 
