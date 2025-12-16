@@ -211,7 +211,7 @@ export function useTopologyTheme(): TopologyTheme {
       fontSize: {
         small: muiTheme.typography.caption.fontSize || '12px',
         medium: muiTheme.typography.body2.fontSize || '14px',
-        large: muiTheme.typography.body1.fontSize || '16px',
+        large: muiTheme.typography.body1.fontSize || '18px',
         xlarge: muiTheme.typography.h6.fontSize || '20px',
       },
       fontWeight: {
