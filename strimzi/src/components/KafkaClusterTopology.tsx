@@ -78,11 +78,12 @@ const LAYOUT = {
   // Namespace styling
   NAMESPACE_BORDER_COLOR: 'rgba(200, 200, 200, 0.3)',
   NAMESPACE_BORDER_WIDTH: 2,
-  NAMESPACE_BG_OPACITY: 0.02,
+  NAMESPACE_BG_OPACITY: 0.35,
 
-  // Block background opacity (per vedere poco i puntini)
-  CLUSTER_BG_OPACITY: 0.95,
-  GROUP_BG_OPACITY: 0.9,
+  // Progressive opacity for nested blocks
+  CLUSTER_BG_OPACITY: 0.40,
+  GROUP_BG_OPACITY: 0.45,
+  POD_BG_OPACITY: 0.50,
 
   // Icon sizes for labels
   NAMESPACE_ICON_SIZE: 40,
@@ -422,7 +423,7 @@ function createPodNode(params: {
       ),
     },
     style: {
-      background: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+      background: hexToRgba(theme.colors.nodeBackground, LAYOUT.POD_BG_OPACITY),
       border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
       borderRadius: '12px',
       padding: 0,
@@ -860,7 +861,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
       style: {
         width: clusterWidth,
         height: clusterHeight,
-        backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+        backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.CLUSTER_BG_OPACITY),
         border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
         borderRadius: '16px',
         padding: `${LAYOUT.CLUSTER_LABEL_HEIGHT + 20}px 20px 20px 20px`,
@@ -998,7 +999,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
           style: {
             width: maxPoolWidth,
             height: poolHeight,
-            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
             border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
             borderRadius: '12px',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
@@ -1029,7 +1030,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
             style: {
               width: podSetInnerWidth,
               height: podSetInnerHeight,
-              backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+              backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
               border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
               borderRadius: '12px',
               boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
@@ -1106,7 +1107,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
           style: {
             width: groupWidth,
             height: groupHeight,
-            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
             border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
             borderRadius: '12px',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
@@ -1186,7 +1187,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
           style: {
             width: zkGroupWidth,
             height: zkGroupHeight,
-            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
             border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
             borderRadius: '12px',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
@@ -1258,7 +1259,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
           style: {
             width: brokerGroupWidth,
             height: brokerGroupHeight,
-            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
+            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
             border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
             borderRadius: '12px',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
