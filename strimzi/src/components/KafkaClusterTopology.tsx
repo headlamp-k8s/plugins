@@ -364,7 +364,7 @@ function createPodNode(params: {
               marginBottom: '6px',
               display: 'flex',
               alignItems: 'flex-start',
-              justifyContent: 'center',
+              justifyContent: 'flex-start',
               gap: '8px',
               letterSpacing: theme.typography.letterSpacing,
             }}
@@ -399,6 +399,7 @@ function createPodNode(params: {
               lineHeight: '1.5',
               fontWeight: theme.typography.fontWeight.medium,
               flex: 1,
+              textAlign: 'left',
             }}
           >
             <div>
@@ -470,8 +471,9 @@ function createGroupLabel(params: {
   parentId: string;
   theme: ReturnType<typeof useTopologyTheme>;
   resourceType: 'KafkaNodePool' | 'StrimziPodSet';
+  replicaInfo?: string;
 }): Node {
-  const { id, title, parentId, theme, resourceType } = params;
+  const { id, title, parentId, theme, resourceType, replicaInfo } = params;
 
   // Icon and color based on resource type
   const getResourceIconConfig = () => {
@@ -520,6 +522,21 @@ function createGroupLabel(params: {
             >
               {title}
             </span>
+            {replicaInfo && (
+              <span
+                style={{
+                  fontSize: theme.typography.fontSize.small,
+                  fontWeight: theme.typography.fontWeight.medium,
+                  fontFamily: theme.typography.fontFamily,
+                  color: theme.colors.nodeTextSecondary,
+                  letterSpacing: theme.typography.letterSpacing,
+                  whiteSpace: 'nowrap',
+                  marginTop: '2px',
+                }}
+              >
+                {replicaInfo}
+              </span>
+            )}
           </div>
         </div>
       ),
@@ -630,7 +647,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
           return calculatePodDimensions({
             name: poolName,
             nodeId,
-            role: isDual ? 'C+B' : isController ? 'Ctrl' : 'Broker',
+            role: isDual ? 'Controller + Broker' : isController ? 'Controller' : 'Broker',
             podIP: pod?.status?.podIP || 'N/A',
             phase: pod?.status?.phase || 'Unknown',
           });
@@ -653,7 +670,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
           calculatePodDimensions({
             name: 'kafka',
             nodeId: i,
-            role: 'C+B',
+            role: 'Controller + Broker',
             podIP: pod?.status?.podIP || 'N/A',
             phase: pod?.status?.phase || 'Unknown',
           })
@@ -729,10 +746,10 @@ function TopologyFlow({ kafka }: TopologyProps) {
     // PHASE 2: Calculate cluster dimensions using REAL pod dimensions
     let clusterWidth = 400;
     let clusterHeight = 400;
+    let maxPoolWidth = 0; // Maximum width among all NodePools (for alignment)
 
     if (nodePools.length > 0) {
       // KRaft with KafkaNodePools
-      let maxPoolWidth = 0;
       let totalPoolHeight = 0;
 
       allPoolDimensions.forEach(({ dimensions }) => {
@@ -886,6 +903,26 @@ function TopologyFlow({ kafka }: TopologyProps) {
               >
                 {clusterName}
               </span>
+              {nodePools.length === 0 && (
+                <span
+                  style={{
+                    fontSize: theme.typography.fontSize.small,
+                    fontWeight: theme.typography.fontWeight.medium,
+                    fontFamily: theme.typography.fontFamily,
+                    color: theme.colors.nodeTextSecondary,
+                    letterSpacing: theme.typography.letterSpacing,
+                    whiteSpace: 'nowrap',
+                    marginTop: '2px',
+                  }}
+                >
+                  {isKRaft
+                    ? `Replicas: ${kafka.spec.kafka.replicas}`
+                    : `Brokers: ${kafka.spec.kafka.replicas}, ZooKeeper: ${kafka.spec.zookeeper?.replicas || 0}`}
+                </span>
+              )}
+              <div style={{ marginTop: '6px' }}>
+                <StatusBadge ready={clusterReady} theme={theme} />
+              </div>
             </div>
           </div>
         ),
@@ -946,10 +983,11 @@ function TopologyFlow({ kafka }: TopologyProps) {
         const podSet = podSets.find(ps => ps.metadata.name === `${clusterName}-${poolName}`);
 
         // Use pre-calculated dimensions
-        const { podSetInnerWidth, podSetInnerHeight, poolWidth, poolHeight } = dimensions;
+        const { podSetInnerWidth, podSetInnerHeight, poolHeight } = dimensions;
 
+        // Use maxPoolWidth for all pools to align them
         // Center the pool group horizontally in the cluster
-        const poolX = (clusterWidth - poolWidth) / 2;
+        const poolX = (clusterWidth - maxPoolWidth) / 2;
 
         // Node pool group (outer)
         generatedNodes.push({
@@ -958,7 +996,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
           position: { x: poolX, y: currentY },
           data: { label: '' },
           style: {
-            width: poolWidth,
+            width: maxPoolWidth,
             height: poolHeight,
             backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.NAMESPACE_BG_OPACITY),
             border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
@@ -977,6 +1015,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
             parentId: `pool-${poolName}`,
             theme,
             resourceType: 'KafkaNodePool',
+            replicaInfo: `Replicas: ${replicas}`,
           })
         );
 
@@ -999,6 +1038,13 @@ function TopologyFlow({ kafka }: TopologyProps) {
             extent: 'parent' as const,
           });
 
+          // Calculate ready pods count
+          const readyPodsCount = nodeIds.filter(nodeId => {
+            const podName = `${clusterName}-${poolName}-${nodeId}`;
+            const pod = pods.find(p => p.metadata?.name === podName);
+            return isPodReady(pod);
+          }).length;
+
           generatedNodes.push(
             createGroupLabel({
               id: `podset-label-${poolName}`,
@@ -1006,6 +1052,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
               parentId: `podset-${poolName}`,
               theme,
               resourceType: 'StrimziPodSet',
+              replicaInfo: `Ready Pods: ${readyPodsCount}/${nodeIds.length}`,
             })
           );
 
@@ -1021,7 +1068,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
                 id: `pod-${poolName}-${nodeId}`,
                 name: poolName,
                 nodeId,
-                role: isDual ? 'C+B' : isController ? 'Ctrl' : 'Broker',
+                role: isDual ? 'Controller + Broker' : isController ? 'Controller' : 'Broker',
                 parentId: `podset-${poolName}`,
                 position: {
                   x: cumulativeX,
@@ -1068,6 +1115,14 @@ function TopologyFlow({ kafka }: TopologyProps) {
           extent: 'parent' as const,
         });
 
+        // Calculate ready pods count
+        let readyPodsCount = 0;
+        for (let i = 0; i < brokerCount; i++) {
+          const podName = `${clusterName}-kafka-${i}`;
+          const pod = pods.find(p => p.metadata?.name === podName);
+          if (isPodReady(pod)) readyPodsCount++;
+        }
+
         generatedNodes.push(
           createGroupLabel({
             id: 'podset-kafka-label',
@@ -1075,6 +1130,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
             parentId: 'podset-kafka',
             theme,
             resourceType: 'StrimziPodSet',
+            replicaInfo: `Ready Pods: ${readyPodsCount}/${brokerCount}`,
           })
         );
 
@@ -1089,7 +1145,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
               id: `pod-broker-${i}`,
               name: 'kafka',
               nodeId: i,
-              role: 'C+B',
+              role: 'Controller + Broker',
               parentId: 'podset-kafka',
               position: {
                 x: cumulativeX,
@@ -1139,6 +1195,14 @@ function TopologyFlow({ kafka }: TopologyProps) {
           extent: 'parent' as const,
         });
 
+        // Calculate ready pods count for ZooKeeper
+        let zkReadyPodsCount = 0;
+        for (let i = 0; i < zkCount; i++) {
+          const podName = `${clusterName}-zookeeper-${i}`;
+          const pod = pods.find(p => p.metadata?.name === podName);
+          if (isPodReady(pod)) zkReadyPodsCount++;
+        }
+
         generatedNodes.push(
           createGroupLabel({
             id: 'podset-zk-label',
@@ -1146,6 +1210,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
             parentId: 'podset-zk',
             theme,
             resourceType: 'StrimziPodSet',
+            replicaInfo: `Ready Pods: ${zkReadyPodsCount}/${zkCount}`,
           })
         );
 
@@ -1202,6 +1267,14 @@ function TopologyFlow({ kafka }: TopologyProps) {
           extent: 'parent' as const,
         });
 
+        // Calculate ready pods count for Kafka brokers
+        let kafkaReadyPodsCount = 0;
+        for (let i = 0; i < brokerCount; i++) {
+          const podName = `${clusterName}-kafka-${i}`;
+          const pod = pods.find(p => p.metadata?.name === podName);
+          if (isPodReady(pod)) kafkaReadyPodsCount++;
+        }
+
         generatedNodes.push(
           createGroupLabel({
             id: 'podset-kafka-label',
@@ -1209,6 +1282,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
             parentId: 'podset-kafka',
             theme,
             resourceType: 'StrimziPodSet',
+            replicaInfo: `Ready Pods: ${kafkaReadyPodsCount}/${brokerCount}`,
           })
         );
 
