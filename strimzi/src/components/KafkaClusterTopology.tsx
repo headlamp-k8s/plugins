@@ -364,14 +364,33 @@ function createPodNode(params: {
               color: theme.colors.nodeText,
               marginBottom: '6px',
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               justifyContent: 'center',
               gap: '8px',
               letterSpacing: theme.typography.letterSpacing,
             }}
           >
             <ResourceIcon icon="mdi:cube" color="#00ACC1" size={`${LAYOUT.POD_ICON_SIZE}px`} />
-            <span style={{ whiteSpace: 'nowrap' }}>Pod: {name}-{nodeId}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
+              <span
+                style={{
+                  fontSize: theme.typography.fontSize.large,
+                  fontWeight: theme.typography.fontWeight.bold,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Pod
+              </span>
+              <span
+                style={{
+                  fontSize: theme.typography.fontSize.medium,
+                  fontWeight: theme.typography.fontWeight.medium,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {name}-{nodeId}
+              </span>
+            </div>
           </div>
           <div
             style={{
@@ -475,20 +494,34 @@ function createGroupLabel(params: {
     position: { x: 20, y: 20 },
     data: {
       label: (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
           <ResourceIcon icon={iconConfig.icon} color={iconConfig.color} size={`${LAYOUT.GROUP_ICON_SIZE}px`} />
-          <span
-            style={{
-              fontSize: theme.typography.fontSize.large,
-              fontWeight: theme.typography.fontWeight.bold,
-              fontFamily: theme.typography.fontFamily,
-              color: theme.colors.nodeText,
-              letterSpacing: theme.typography.letterSpacing,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {resourceType}: {title}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
+            <span
+              style={{
+                fontSize: theme.typography.fontSize.large,
+                fontWeight: theme.typography.fontWeight.bold,
+                fontFamily: theme.typography.fontFamily,
+                color: theme.colors.nodeText,
+                letterSpacing: theme.typography.letterSpacing,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {resourceType}
+            </span>
+            <span
+              style={{
+                fontSize: theme.typography.fontSize.medium,
+                fontWeight: theme.typography.fontWeight.medium,
+                fontFamily: theme.typography.fontFamily,
+                color: theme.colors.nodeText,
+                letterSpacing: theme.typography.letterSpacing,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {title}
+            </span>
+          </div>
         </div>
       ),
     },
@@ -782,7 +815,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
       position: { x: 20, y: 20 },
       data: {
         label: (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <div
               style={{
                 width: `${LAYOUT.NAMESPACE_ICON_SIZE}px`,
@@ -805,18 +838,32 @@ function TopologyFlow({ kafka }: TopologyProps) {
                 <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 4" />
               </svg>
             </div>
-            <span
-              style={{
-                fontSize: theme.typography.fontSize.large,
-                fontWeight: theme.typography.fontWeight.bold,
-                fontFamily: theme.typography.fontFamily,
-                color: theme.colors.nodeText,
-                letterSpacing: theme.typography.letterSpacing,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Namespace: {namespace}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
+              <span
+                style={{
+                  fontSize: theme.typography.fontSize.large,
+                  fontWeight: theme.typography.fontWeight.bold,
+                  fontFamily: theme.typography.fontFamily,
+                  color: theme.colors.nodeText,
+                  letterSpacing: theme.typography.letterSpacing,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Namespace
+              </span>
+              <span
+                style={{
+                  fontSize: theme.typography.fontSize.medium,
+                  fontWeight: theme.typography.fontWeight.medium,
+                  fontFamily: theme.typography.fontFamily,
+                  color: theme.colors.nodeText,
+                  letterSpacing: theme.typography.letterSpacing,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {namespace}
+              </span>
+            </div>
           </div>
         ),
       },
@@ -858,20 +905,34 @@ function TopologyFlow({ kafka }: TopologyProps) {
       position: { x: 20, y: 20 },
       data: {
         label: (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <ResourceIcon icon="mdi:apache-kafka" color="#0baf9e" size={`${LAYOUT.CLUSTER_ICON_SIZE}px`} />
-            <span
-              style={{
-                fontSize: theme.typography.fontSize.large,
-                fontWeight: theme.typography.fontWeight.bold,
-                fontFamily: theme.typography.fontFamily,
-                color: theme.colors.nodeText,
-                letterSpacing: theme.typography.letterSpacing,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Kafka: {clusterName}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
+              <span
+                style={{
+                  fontSize: theme.typography.fontSize.large,
+                  fontWeight: theme.typography.fontWeight.bold,
+                  fontFamily: theme.typography.fontFamily,
+                  color: theme.colors.nodeText,
+                  letterSpacing: theme.typography.letterSpacing,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Kafka
+              </span>
+              <span
+                style={{
+                  fontSize: theme.typography.fontSize.medium,
+                  fontWeight: theme.typography.fontWeight.medium,
+                  fontFamily: theme.typography.fontFamily,
+                  color: theme.colors.nodeText,
+                  letterSpacing: theme.typography.letterSpacing,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {clusterName}
+              </span>
+            </div>
           </div>
         ),
       },
