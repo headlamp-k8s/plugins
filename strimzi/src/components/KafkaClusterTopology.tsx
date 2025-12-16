@@ -60,7 +60,7 @@ const LAYOUT = {
   GROUP_SPACING: 30,
 
   // Cluster dimensions
-  CLUSTER_MIN_WIDTH: 600,
+  CLUSTER_MIN_WIDTH: 300,
   CLUSTER_HORIZONTAL_MARGIN: 80,
   CLUSTER_VERTICAL_MARGIN_START: 40,
   CLUSTER_VERTICAL_MARGIN_LEGACY: 60,
@@ -986,8 +986,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
         const { podSetInnerWidth, podSetInnerHeight, poolHeight } = dimensions;
 
         // Use maxPoolWidth for all pools to align them
-        // Center the pool group horizontally in the cluster
-        const poolX = (clusterWidth - maxPoolWidth) / 2;
+        // Use consistent left margin for all pools
+        const poolX = LAYOUT.CLUSTER_HORIZONTAL_MARGIN / 2;
 
         // Node pool group (outer)
         generatedNodes.push({
