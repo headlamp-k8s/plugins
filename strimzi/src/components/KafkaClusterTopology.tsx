@@ -8,7 +8,6 @@ import {
   Background,
   Controls,
   ReactFlowProvider,
-  Panel,
   useReactFlow,
   useStore,
 } from '@xyflow/react';
@@ -86,10 +85,10 @@ const LAYOUT = {
   GROUP_BG_OPACITY: 0.9,
 
   // Icon sizes for labels
-  NAMESPACE_ICON_SIZE: 26,
-  CLUSTER_ICON_SIZE: 60,
-  GROUP_ICON_SIZE: 52,
-  POD_ICON_SIZE: 50,
+  NAMESPACE_ICON_SIZE: 40,
+  CLUSTER_ICON_SIZE: 40,
+  GROUP_ICON_SIZE: 40,
+  POD_ICON_SIZE: 40,
 } as const;
 
 // Computed padding configurations
@@ -547,10 +546,6 @@ function TopologyFlow({ kafka }: TopologyProps) {
   const theme = useTopologyTheme();
   const colors = React.useMemo(() => getSemanticColors(theme), [theme]);
 
-  // Legend colors - same color palette as topology, higher opacity for visibility
-  // In light mode: 0.5 for legend visibility, in dark mode: use solid colors
-  const legendOpacity = theme.isDark ? 1.0 : 0.5;
-
   const isKRaft = React.useMemo(() => isKRaftMode(kafka), [kafka]);
   const clusterReady = React.useMemo(
     () => kafka.status?.conditions?.find(c => c.type === 'Ready')?.status === 'True',
@@ -752,31 +747,11 @@ function TopologyFlow({ kafka }: TopologyProps) {
       clusterWidth = Math.max(kraftLegacyDimensions.groupWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
       clusterHeight = LAYOUT.CLUSTER_LABEL_HEIGHT + LAYOUT.CLUSTER_VERTICAL_MARGIN_LEGACY + kraftLegacyDimensions.groupHeight + LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
     } else {
-      // ZooKeeper mode
-      const brokerCount = kafka.spec.kafka.replicas;
-      const brokerPodDimensions: PodDimensions[] = [];
-      for (let i = 0; i < brokerCount; i++) {
-        const podName = `${clusterName}-kafka-${i}`;
-        const pod = pods.find(p => p.metadata?.name === podName);
-        brokerPodDimensions.push(
-          calculatePodDimensions({
-            name: 'kafka',
-            nodeId: i,
-            role: 'Broker',
-            podIP: pod?.status?.podIP || 'N/A',
-            phase: pod?.status?.phase || 'Unknown',
-          })
-        );
-      }
-      const totalBrokerWidth = brokerPodDimensions.reduce((sum, dim) => sum + dim.width, 0);
-      const maxBrokerHeight = Math.max(...brokerPodDimensions.map(dim => dim.height));
-      const brokerSpacing = (brokerCount - 1) * LAYOUT.NODE_SPACING;
-
-      const brokerGroupWidth = PADDING.group.left + PADDING.group.right + totalBrokerWidth + brokerSpacing;
-      const brokerGroupHeight = PADDING.group.top + PADDING.group.bottom + maxBrokerHeight;
-
+      // ZooKeeper mode - use pre-calculated dimensions
       const zkGroupWidth = zkDimensions?.groupWidth || 0;
       const zkGroupHeight = zkDimensions?.groupHeight || 0;
+      const brokerGroupWidth = zkBrokerDimensions?.groupWidth || 0;
+      const brokerGroupHeight = zkBrokerDimensions?.groupHeight || 0;
 
       const maxWidth = Math.max(zkGroupWidth, brokerGroupWidth);
       clusterWidth = Math.max(maxWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
@@ -816,28 +791,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
       data: {
         label: (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <div
-              style={{
-                width: `${LAYOUT.NAMESPACE_ICON_SIZE}px`,
-                height: `${LAYOUT.NAMESPACE_ICON_SIZE}px`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <svg
-                width={LAYOUT.NAMESPACE_ICON_SIZE}
-                height={LAYOUT.NAMESPACE_ICON_SIZE}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                style={{ opacity: 0.6 }}
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 4" />
-              </svg>
-            </div>
+            <ResourceIcon icon="mdi:square-rounded-outline" color="#0baf9e" size={`${LAYOUT.NAMESPACE_ICON_SIZE}px`} />
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
               <span
                 style={{
@@ -1226,29 +1180,9 @@ function TopologyFlow({ kafka }: TopologyProps) {
       }
 
       // Kafka StrimziPodSet (below ZK)
-      if (kafkaPodSet) {
-        // Calculate dimensions for all Kafka broker pods
-        const brokerPodDimensions: PodDimensions[] = [];
-        for (let i = 0; i < brokerCount; i++) {
-          const podName = `${clusterName}-kafka-${i}`;
-          const pod = pods.find(p => p.metadata?.name === podName);
-          brokerPodDimensions.push(
-            calculatePodDimensions({
-              name: 'kafka',
-              nodeId: i,
-              role: 'Broker',
-              podIP: pod?.status?.podIP || 'N/A',
-              phase: pod?.status?.phase || 'Unknown',
-            })
-          );
-        }
-
-        const totalBrokerWidth = brokerPodDimensions.reduce((sum, dim) => sum + dim.width, 0);
-        const maxBrokerHeight = Math.max(...brokerPodDimensions.map(dim => dim.height));
-        const brokerSpacing = (brokerCount - 1) * LAYOUT.NODE_SPACING;
-
-        const brokerGroupWidth = PADDING.group.left + PADDING.group.right + totalBrokerWidth + brokerSpacing;
-        const brokerGroupHeight = PADDING.group.top + PADDING.group.bottom + maxBrokerHeight;
+      if (kafkaPodSet && zkBrokerDimensions) {
+        // Use pre-calculated dimensions
+        const { podDimensions: brokerPodDimensions, groupWidth: brokerGroupWidth, groupHeight: brokerGroupHeight } = zkBrokerDimensions;
         const brokerGroupX = (clusterWidth - brokerGroupWidth) / 2;
 
         generatedNodes.push({
@@ -1377,144 +1311,6 @@ function TopologyFlow({ kafka }: TopologyProps) {
         <Controls showInteractive={false} showFitView={false} showZoom={false}>
           <GraphControls />
         </Controls>
-        <Panel position="top-right">
-          <div
-            style={{
-              backgroundColor: theme.colors.nodeBackground,
-              padding: theme.spacing.md,
-              borderRadius: '10px',
-              boxShadow: theme.colors.nodeShadow,
-              fontSize: theme.typography.fontSize.medium,
-              fontFamily: theme.typography.fontFamily,
-              minWidth: 'fit-content',
-              border: `1px solid ${theme.colors.nodeBorder}`,
-            }}
-          >
-            <div
-              style={{
-                fontWeight: theme.typography.fontWeight.bold,
-                marginBottom: theme.spacing.sm,
-                color: theme.colors.nodeText,
-                fontSize: theme.typography.fontSize.medium,
-              }}
-            >
-              Legend
-            </div>
-
-            {nodePools.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: theme.spacing.xs }}>
-                <span
-                  style={{
-                    width: '16px',
-                    height: '16px',
-                    backgroundColor: theme.isDark ? theme.colors.nodePool : hexToRgba(theme.colors.nodePool, legendOpacity),
-                    borderRadius: '3px',
-                    marginRight: theme.spacing.sm,
-                  }}
-                />
-                <span
-                  style={{
-                    color: theme.colors.nodeTextSecondary,
-                    fontSize: theme.typography.fontSize.small,
-                    fontWeight: theme.typography.fontWeight.medium,
-                  }}
-                >
-                  KafkaNodePool
-                </span>
-              </div>
-            )}
-
-            {isKRaft && (
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: theme.spacing.xs }}>
-                <span
-                  style={{
-                    width: '16px',
-                    height: '16px',
-                    backgroundColor: theme.isDark ? theme.colors.controller : hexToRgba(theme.colors.controller, legendOpacity),
-                    borderRadius: '3px',
-                    marginRight: theme.spacing.sm,
-                  }}
-                />
-                <span
-                  style={{
-                    color: theme.colors.nodeTextSecondary,
-                    fontSize: theme.typography.fontSize.small,
-                    fontWeight: theme.typography.fontWeight.medium,
-                  }}
-                >
-                  Controller
-                </span>
-              </div>
-            )}
-
-            {isKRaft && (
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: theme.spacing.xs }}>
-                <span
-                  style={{
-                    width: '16px',
-                    height: '16px',
-                    backgroundColor: theme.isDark ? theme.colors.dual : hexToRgba(theme.colors.dual, legendOpacity),
-                    borderRadius: '3px',
-                    marginRight: theme.spacing.sm,
-                  }}
-                />
-                <span
-                  style={{
-                    color: theme.colors.nodeTextSecondary,
-                    fontSize: theme.typography.fontSize.small,
-                    fontWeight: theme.typography.fontWeight.medium,
-                  }}
-                >
-                  Controller + Broker
-                </span>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: theme.spacing.xs }}>
-              <span
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  backgroundColor: theme.isDark ? theme.colors.broker : hexToRgba(theme.colors.broker, legendOpacity),
-                  borderRadius: '3px',
-                  marginRight: theme.spacing.sm,
-                }}
-              />
-              <span
-                style={{
-                  color: theme.colors.nodeTextSecondary,
-                  fontSize: theme.typography.fontSize.small,
-                  fontWeight: theme.typography.fontWeight.medium,
-                }}
-              >
-                Broker
-              </span>
-            </div>
-
-            {!isKRaft && (
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span
-                  style={{
-                    width: '16px',
-                    height: '16px',
-                    backgroundColor: theme.isDark ? theme.colors.zookeeper : hexToRgba(theme.colors.zookeeper, legendOpacity),
-                    borderRadius: '3px',
-                    marginRight: theme.spacing.sm,
-                  }}
-                />
-                <span
-                  style={{
-                    color: theme.colors.nodeTextSecondary,
-                    fontSize: theme.typography.fontSize.small,
-                    fontWeight: theme.typography.fontWeight.medium,
-                  }}
-                >
-                  ZooKeeper
-                </span>
-              </div>
-            )}
-          </div>
-        </Panel>
       </ReactFlow>
     </div>
   );
