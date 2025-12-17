@@ -142,7 +142,8 @@ export function useTopologyTheme(): TopologyTheme {
     const colors: TopologyColors = {
       // Canvas - white for light mode, dark for dark mode
       canvasBackground: isDark ? '#1a1a1a' : '#ffffff',
-      gridColor: muiTheme.palette.divider,
+      // Grid dots - visible in both modes
+      gridColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(80, 80, 80, 0.55)',
 
       // Nodes - using MUI palette
       nodeBackground: muiTheme.palette.background.paper,
