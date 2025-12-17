@@ -71,7 +71,6 @@ const LAYOUT = {
   NAMESPACE_LABEL_HEIGHT: 50,
 
   // Background grid
-  GRID_DOT_COLOR: 'rgba(255, 255, 255, 0.3)',
   GRID_GAP: 20,
   GRID_SIZE: 1,
 
@@ -1371,7 +1370,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
         maxZoom={2.0}
         panOnScroll={true}
       >
-        <Background color={LAYOUT.GRID_DOT_COLOR} gap={LAYOUT.GRID_GAP} size={LAYOUT.GRID_SIZE} />
+        <Background color={theme.colors.gridColor} gap={LAYOUT.GRID_GAP} size={LAYOUT.GRID_SIZE} />
         <Controls showInteractive={false} showFitView={false} showZoom={false}>
           <GraphControls />
         </Controls>
