@@ -78,12 +78,12 @@ const LAYOUT = {
   // Namespace styling
   NAMESPACE_BORDER_COLOR: 'rgba(200, 200, 200, 0.3)',
   NAMESPACE_BORDER_WIDTH: 2,
-  NAMESPACE_BG_OPACITY: 0.35,
+  NAMESPACE_BG_OPACITY: 0.25,
 
   // Progressive opacity for nested blocks
-  CLUSTER_BG_OPACITY: 0.40,
-  GROUP_BG_OPACITY: 0.45,
-  POD_BG_OPACITY: 0.50,
+  CLUSTER_BG_OPACITY: 0.30,
+  GROUP_BG_OPACITY: 0.35,
+  POD_BG_OPACITY: 0.40,
 
   // Icon sizes for labels
   NAMESPACE_ICON_SIZE: 40,
@@ -748,6 +748,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
     let clusterWidth = 400;
     let clusterHeight = 400;
     let maxPoolWidth = 0; // Maximum width among all NodePools (for alignment)
+    let maxPodSetWidth = 0; // Maximum width among all PodSets in ZK mode (for alignment)
+    let maxPodSetInnerWidth = 0; // Maximum width among all PodSets in NodePools mode (for alignment)
 
     if (nodePools.length > 0) {
       // KRaft with KafkaNodePools
@@ -755,6 +757,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
 
       allPoolDimensions.forEach(({ dimensions }) => {
         maxPoolWidth = Math.max(maxPoolWidth, dimensions.poolWidth);
+        maxPodSetInnerWidth = Math.max(maxPodSetInnerWidth, dimensions.podSetInnerWidth);
         totalPoolHeight += dimensions.poolHeight + LAYOUT.GROUP_SPACING;
       });
 
@@ -771,8 +774,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
       const brokerGroupWidth = zkBrokerDimensions?.groupWidth || 0;
       const brokerGroupHeight = zkBrokerDimensions?.groupHeight || 0;
 
-      const maxWidth = Math.max(zkGroupWidth, brokerGroupWidth);
-      clusterWidth = Math.max(maxWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
+      maxPodSetWidth = Math.max(zkGroupWidth, brokerGroupWidth);
+      clusterWidth = Math.max(maxPodSetWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
       clusterHeight =
         LAYOUT.CLUSTER_LABEL_HEIGHT +
         LAYOUT.CLUSTER_VERTICAL_MARGIN_START +
@@ -984,7 +987,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
         const podSet = podSets.find(ps => ps.metadata.name === `${clusterName}-${poolName}`);
 
         // Use pre-calculated dimensions
-        const { podSetInnerWidth, podSetInnerHeight, poolHeight } = dimensions;
+        const { podSetInnerHeight, poolHeight } = dimensions;
 
         // Use maxPoolWidth for all pools to align them
         // Use consistent left margin for all pools
@@ -1028,7 +1031,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
             position: { x: PADDING.group.left, y: PADDING.group.top },
             data: { label: '' },
             style: {
-              width: podSetInnerWidth,
+              width: maxPodSetInnerWidth,
               height: podSetInnerHeight,
               backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
               border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
@@ -1176,8 +1179,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
       // ZooKeeper StrimziPodSet (on top)
       if (zkCount > 0 && zkPodSet && zkDimensions) {
         // Use pre-calculated dimensions
-        const { podDimensions: zkPodDimensions, groupWidth: zkGroupWidth, groupHeight: zkGroupHeight } = zkDimensions;
-        const groupX = (clusterWidth - zkGroupWidth) / 2;
+        const { podDimensions: zkPodDimensions, groupHeight: zkGroupHeight } = zkDimensions;
+        const groupX = (clusterWidth - maxPodSetWidth) / 2;
 
         generatedNodes.push({
           id: 'podset-zk',
@@ -1185,7 +1188,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
           position: { x: groupX, y: currentY },
           data: { label: '' },
           style: {
-            width: zkGroupWidth,
+            width: maxPodSetWidth,
             height: zkGroupHeight,
             backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
             border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
@@ -1248,8 +1251,8 @@ function TopologyFlow({ kafka }: TopologyProps) {
       // Kafka StrimziPodSet (below ZK)
       if (kafkaPodSet && zkBrokerDimensions) {
         // Use pre-calculated dimensions
-        const { podDimensions: brokerPodDimensions, groupWidth: brokerGroupWidth, groupHeight: brokerGroupHeight } = zkBrokerDimensions;
-        const brokerGroupX = (clusterWidth - brokerGroupWidth) / 2;
+        const { podDimensions: brokerPodDimensions, groupHeight: brokerGroupHeight } = zkBrokerDimensions;
+        const brokerGroupX = (clusterWidth - maxPodSetWidth) / 2;
 
         generatedNodes.push({
           id: 'podset-kafka',
@@ -1257,7 +1260,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
           position: { x: brokerGroupX, y: currentY },
           data: { label: '' },
           style: {
-            width: brokerGroupWidth,
+            width: maxPodSetWidth,
             height: brokerGroupHeight,
             backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
             border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${LAYOUT.NAMESPACE_BORDER_COLOR}`,
