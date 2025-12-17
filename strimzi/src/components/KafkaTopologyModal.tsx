@@ -2,6 +2,7 @@
 // Copyright 2025 Angelo Cesaro
 
 import React from 'react';
+import { useTheme } from '@mui/material/styles';
 import { Kafka } from '../crds';
 import { KafkaClusterTopology } from './KafkaClusterTopology';
 
@@ -12,6 +13,9 @@ interface KafkaTopologyModalProps {
 }
 
 export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
   if (!kafka || !open) return null;
 
   return (
@@ -22,7 +26,7 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)',
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
@@ -33,14 +37,16 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
     >
       <div
         style={{
-          backgroundColor: '#1e293b',
+          backgroundColor: theme.palette.background.paper,
           borderRadius: '12px',
           width: '95vw',
           maxWidth: '1600px',
           height: '90vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3)',
+          boxShadow: isDark
+            ? '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3)'
+            : '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -48,17 +54,17 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
         <div
           style={{
             padding: '20px 24px',
-            borderBottom: '1px solid #334155',
+            borderBottom: `1px solid ${theme.palette.divider}`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
         >
           <div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#f1f5f9' }}>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: theme.palette.text.primary }}>
               {kafka.metadata.name}
             </div>
-            <div style={{ fontSize: '14px', fontWeight: 400, color: '#94a3b8', marginTop: '4px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 400, color: theme.palette.text.secondary, marginTop: '4px' }}>
               {kafka.metadata.namespace} • Cluster Topology
             </div>
           </div>
@@ -69,8 +75,8 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
               height: '32px',
               borderRadius: '6px',
               border: 'none',
-              backgroundColor: '#334155',
-              color: '#94a3b8',
+              backgroundColor: isDark ? '#334155' : '#e2e8f0',
+              color: theme.palette.text.secondary,
               cursor: 'pointer',
               fontSize: '20px',
               display: 'flex',
@@ -79,12 +85,12 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
               transition: 'all 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#475569';
-              e.currentTarget.style.color = '#f1f5f9';
+              e.currentTarget.style.backgroundColor = isDark ? '#475569' : '#cbd5e1';
+              e.currentTarget.style.color = theme.palette.text.primary;
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#334155';
-              e.currentTarget.style.color = '#94a3b8';
+              e.currentTarget.style.backgroundColor = isDark ? '#334155' : '#e2e8f0';
+              e.currentTarget.style.color = theme.palette.text.secondary;
             }}
           >
             ×
@@ -97,7 +103,7 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
             flex: 1,
             overflow: 'auto',
             padding: '24px',
-            backgroundColor: '#0f172a',
+            backgroundColor: theme.palette.background.default,
           }}
         >
           <KafkaClusterTopology kafka={kafka} />
