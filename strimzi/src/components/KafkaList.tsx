@@ -2,7 +2,7 @@
 // Copyright 2025 Angelo Cesaro
 
 import React from 'react';
-import { Kafka as K8sKafka, K8sListResponse } from '../crds';
+import { Kafka as K8sKafka, K8sListResponse, KafkaNodePool } from '../crds';
 import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
@@ -12,6 +12,7 @@ import { Toast, ToastMessage } from './Toast';
 
 export function KafkaList() {
   const [kafkas, setKafkas] = React.useState<K8sKafka[]>([]);
+  const [nodePools, setNodePools] = React.useState<KafkaNodePool[]>([]);
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
 
   // Search and Filter state
@@ -43,18 +44,31 @@ export function KafkaList() {
       });
   }, []);
 
+  const fetchNodePools = React.useCallback(() => {
+    ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkanodepools')
+      .then((data: K8sListResponse<KafkaNodePool>) => {
+        setNodePools(data.items);
+      })
+      .catch(() => {
+        // Silently ignore - NodePools might not exist in ZK mode or older Strimzi versions
+        setNodePools([]);
+      });
+  }, []);
+
   React.useEffect(() => {
     // Initial fetch
     fetchKafkas();
+    fetchNodePools();
 
     // Auto-refresh every 5 seconds
     const intervalId = setInterval(() => {
       fetchKafkas();
+      fetchNodePools();
     }, 5000);
 
     // Cleanup interval on unmount
     return () => clearInterval(intervalId);
-  }, [fetchKafkas]);
+  }, [fetchKafkas, fetchNodePools]);
 
   // Filter kafkas based on search and filters
   const filteredKafkas = React.useMemo(() => {
@@ -85,6 +99,64 @@ export function KafkaList() {
       return true;
     });
   }, [kafkas, searchTerm, modeFilter, statusFilter]);
+
+  // Helper function to calculate replicas display
+  const getReplicasDisplay = (kafka: K8sKafka): string => {
+    const clusterName = kafka.metadata.name;
+    const namespace = kafka.metadata.namespace;
+    const kafkaReplicas = kafka.spec?.kafka?.replicas;
+    const zkReplicas = kafka.spec?.zookeeper?.replicas;
+
+    // ZooKeeper mode: show ZK and Kafka replicas
+    if (zkReplicas !== undefined) {
+      return `${zkReplicas} Zookeeper / ${kafkaReplicas} Kafka`;
+    }
+
+    // KRaft mode with replicas defined (no NodePools)
+    if (kafkaReplicas !== undefined) {
+      return kafkaReplicas.toString();
+    }
+
+    // KRaft mode with NodePools: calculate by role
+    const clusterNodePools = nodePools.filter(
+      (np) =>
+        np.metadata.namespace === namespace &&
+        np.metadata.labels?.['strimzi.io/cluster'] === clusterName
+    );
+
+    if (clusterNodePools.length === 0) {
+      return 'N/A';
+    }
+
+    // Count replicas by role
+    let controllerReplicas = 0;
+    let brokerReplicas = 0;
+    let dualReplicas = 0;
+
+    clusterNodePools.forEach((np) => {
+      const roles = np.spec.roles || [];
+      const replicas = np.spec.replicas;
+
+      const isController = roles.includes('controller');
+      const isBroker = roles.includes('broker');
+
+      if (isController && isBroker) {
+        dualReplicas += replicas;
+      } else if (isController) {
+        controllerReplicas += replicas;
+      } else if (isBroker) {
+        brokerReplicas += replicas;
+      }
+    });
+
+    // Build display string based on what roles exist
+    const parts: string[] = [];
+    if (controllerReplicas > 0) parts.push(`${controllerReplicas} Controller`);
+    if (brokerReplicas > 0) parts.push(`${brokerReplicas} Broker`);
+    if (dualReplicas > 0) parts.push(`${dualReplicas} Dual`);
+
+    return parts.length > 0 ? parts.join(' / ') : 'N/A';
+  };
 
   return (
     <div style={{ padding: '20px' }}>
@@ -147,10 +219,7 @@ export function KafkaList() {
               const mode = getClusterMode(kafka);
               const isKRaft = isKRaftMode(kafka);
               const ready = isKafkaReady(kafka);
-
-              // Check if cluster uses KafkaNodePools (replicas might be undefined)
-              const replicas = kafka.spec?.kafka?.replicas;
-              const replicasDisplay = replicas !== undefined ? replicas : 'KafkaNodePool';
+              const replicasDisplay = getReplicasDisplay(kafka);
 
               return (
                 <tr key={`${kafka.metadata.namespace}/${kafka.metadata.name}`} style={{ borderBottom: '1px solid #eee' }}>
