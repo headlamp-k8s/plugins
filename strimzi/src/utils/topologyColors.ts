@@ -3,6 +3,16 @@
 
 import { TopologyTheme } from '../hooks/useTopologyTheme';
 
+/**
+ * Helper function to convert hex color to rgba with opacity
+ */
+export function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export interface SemanticColors {
   cluster: {
     border: string;
@@ -51,14 +61,6 @@ export function getSemanticColors(theme: TopologyTheme): SemanticColors {
   const bgOpacity = isDark ? 0.1 : 0.08;
   const gradientOpacity1 = isDark ? 0.25 : 0.12;
   const gradientOpacity2 = isDark ? 0.2 : 0.08;
-
-  // Helper to create rgba from hex
-  const hexToRgba = (hex: string, alpha: number): string => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  };
 
   // Helper to darken color for label backgrounds in light mode
   const getLabelBackground = (baseColor: string): string => {
