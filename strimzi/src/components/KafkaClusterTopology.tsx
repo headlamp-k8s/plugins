@@ -17,7 +17,7 @@ import { Button, ButtonGroup, Box } from '@mui/material';
 import { Kafka, KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
-import { getSemanticColors, SemanticColors, hexToRgba } from '../utils/topologyColors';
+import { getSemanticColors, hexToRgba } from '../utils/topologyColors';
 
 interface TopologyProps {
   kafka: Kafka;
@@ -967,9 +967,6 @@ function TopologyFlow({ kafka }: TopologyProps) {
         const isController = roles.includes('controller');
         const isBroker = roles.includes('broker');
         const isDual = isController && isBroker;
-
-        const roleLabel = isDual ? 'Controller + Broker' : isController ? 'Controller' : 'Broker';
-        const poolColor = isDual ? colors.dual : isController ? colors.controller : colors.broker;
 
         // Find the StrimziPodSet for this pool
         // Name pattern: {strimzi.io/cluster}-{strimzi.io/pool-name}

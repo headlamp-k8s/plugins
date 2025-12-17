@@ -130,15 +130,6 @@ export function useTopologyTheme(): TopologyTheme {
   const isDark = muiTheme.palette.mode === 'dark';
 
   return useMemo(() => {
-    // Helper function to adjust color brightness for better contrast
-    const adjustColorBrightness = (hexColor: string, amount: number): string => {
-      const hex = hexColor.replace('#', '');
-      const r = Math.min(255, Math.max(0, parseInt(hex.slice(0, 2), 16) + amount));
-      const g = Math.min(255, Math.max(0, parseInt(hex.slice(2, 4), 16) + amount));
-      const b = Math.min(255, Math.max(0, parseInt(hex.slice(4, 6), 16) + amount));
-      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-    };
-
     // Semantic colors with theme-aware brightness
     const semanticColors = {
       broker: isDark ? '#60a5fa' : '#2563eb',
