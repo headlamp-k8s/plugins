@@ -17,7 +17,7 @@ import { Button, ButtonGroup, Box } from '@mui/material';
 import { Kafka, KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
-import { getSemanticColors, SemanticColors } from '../utils/topologyColors';
+import { getSemanticColors, SemanticColors, hexToRgba } from '../utils/topologyColors';
 
 interface TopologyProps {
   kafka: Kafka;
@@ -107,16 +107,6 @@ const PADDING = {
     left: LAYOUT.PADDING_HORIZONTAL,
   },
 } as const;
-
-/**
- * Helper function to convert hex color to rgba with opacity
- */
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 interface PodDimensions {
   width: number;
