@@ -446,7 +446,17 @@ function StatusBadge({
       size="medium"
       color={ready ? 'success' : 'warning'}
       sx={{
-        borderRadius: isDark ? undefined : '4px',
+        borderRadius: '4px',
+        ...(isDark && ready && {
+          borderColor: '#34d399',
+          color: '#34d399',
+          backgroundColor: 'rgba(52, 211, 153, 0.15)',
+        }),
+        ...(isDark && !ready && {
+          borderColor: '#f87171',
+          color: '#f87171',
+          backgroundColor: 'rgba(248, 113, 113, 0.15)',
+        }),
       }}
     />
   );

@@ -629,7 +629,17 @@ export function KafkaUserList() {
                       size="medium"
                       color={ready ? 'success' : 'warning'}
                       sx={{
-                        borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',
+                        borderRadius: '4px',
+                        ...(theme.palette.mode === 'dark' && ready && {
+                          borderColor: '#34d399',
+                          color: '#34d399',
+                          backgroundColor: 'rgba(52, 211, 153, 0.15)',
+                        }),
+                        ...(theme.palette.mode === 'dark' && !ready && {
+                          borderColor: '#f87171',
+                          color: '#f87171',
+                          backgroundColor: 'rgba(248, 113, 113, 0.15)',
+                        }),
                       }}
                     />
                   </td>
