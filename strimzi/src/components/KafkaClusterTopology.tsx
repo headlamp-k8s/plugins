@@ -13,7 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Icon } from '@iconify/react';
-import { Button, ButtonGroup, Box, useTheme } from '@mui/material';
+import { Button, ButtonGroup, Box, useTheme, Chip } from '@mui/material';
 import { Kafka, KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
@@ -409,7 +409,7 @@ function createPodNode(params: {
             </div>
           </div>
           <div style={{ marginTop: '6px', textAlign: 'center' }}>
-            <StatusBadge ready={ready} theme={theme} />
+            <StatusBadge ready={ready} />
           </div>
         </div>
       ),
@@ -432,28 +432,23 @@ function createPodNode(params: {
 // Status badge component for consistent styling
 function StatusBadge({
   ready,
-  theme,
 }: {
   ready: boolean;
-  theme: ReturnType<typeof useTopologyTheme>;
+  theme?: ReturnType<typeof useTopologyTheme>;
 }) {
+  const muiTheme = useTheme();
+  const isDark = muiTheme.palette.mode === 'dark';
+
   return (
-    <span
-      style={{
-        padding: '6px 14px',
-        borderRadius: '6px',
-        fontSize: '13px',
-        fontFamily: theme.typography.fontFamily,
-        backgroundColor: ready
-          ? theme.colors.statusReadyBg
-          : theme.colors.statusNotReadyBg,
-        fontWeight: theme.typography.fontWeight.bold,
-        letterSpacing: '0.3px',
-        color: ready ? theme.colors.statusReady : theme.colors.statusNotReady,
+    <Chip
+      label={ready ? 'Ready' : 'Not Ready'}
+      variant={isDark ? 'outlined' : 'filled'}
+      size="small"
+      color={ready ? 'success' : 'warning'}
+      sx={{
+        borderRadius: isDark ? undefined : '4px',
       }}
-    >
-      {ready ? '✓ Ready' : '✗ Not Ready'}
-    </span>
+    />
   );
 }
 
@@ -917,7 +912,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
                 </span>
               )}
               <div style={{ marginTop: '6px' }}>
-                <StatusBadge ready={clusterReady} theme={theme} />
+                <StatusBadge ready={clusterReady} />
               </div>
             </div>
           </div>

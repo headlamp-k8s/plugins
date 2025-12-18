@@ -2,6 +2,7 @@
 // Copyright 2025 Angelo Cesaro
 
 import React from 'react';
+import { useTheme } from '@mui/material/styles';
 import { KafkaUser, K8sListResponse } from '../crds';
 import { isUserReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
@@ -32,6 +33,7 @@ interface UserFormData {
 }
 
 export function KafkaUserList() {
+  const theme = useTheme();
   const [users, setUsers] = React.useState<KafkaUser[]>([]);
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -623,9 +625,12 @@ export function KafkaUserList() {
                   <td style={{ padding: '12px' }}>
                     <Chip
                       label={ready ? 'Ready' : 'Not Ready'}
-                      variant="outlined"
+                      variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
                       size="small"
                       color={ready ? 'success' : 'warning'}
+                      sx={{
+                        borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',
+                      }}
                     />
                   </td>
                   <td style={{ padding: '12px' }}>
