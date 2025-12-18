@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { useTheme } from '@mui/material/styles';
+import { Link } from '@mui/material';
 import { Kafka as K8sKafka, K8sListResponse, KafkaNodePool } from '../crds';
 import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
@@ -226,22 +227,20 @@ export function KafkaList() {
               return (
                 <tr key={`${kafka.metadata.namespace}/${kafka.metadata.name}`} style={{ borderBottom: '1px solid #eee' }}>
                   <td style={{ padding: '12px' }}>
-                    <span
+                    <Link
+                      component="button"
+                      variant="body2"
                       onClick={() => {
                         setSelectedKafka(kafka);
                         setIsTopologyModalOpen(true);
                       }}
-                      style={{
-                        color: theme.palette.primary.main,
-                        textDecoration: 'none',
+                      sx={{
+                        textAlign: 'left',
                         fontWeight: 500,
-                        cursor: 'pointer',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                     >
                       {kafka.metadata.name}
-                    </span>
+                    </Link>
                   </td>
                   <td style={{ padding: '12px' }}>{kafka.metadata.namespace}</td>
                   <td style={{ padding: '12px' }}>
