@@ -5,7 +5,7 @@ import React from 'react';
 import { useTheme } from '@mui/material/styles';
 import { Link, Chip } from '@mui/material';
 import { Kafka as K8sKafka, K8sListResponse, KafkaNodePool } from '../crds';
-import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
+import { getClusterMode, isKafkaReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
 import { KafkaTopologyModal } from './KafkaTopologyModal';
@@ -220,7 +220,6 @@ export function KafkaList() {
           <tbody>
             {filteredKafkas.map((kafka) => {
               const mode = getClusterMode(kafka);
-              const isKRaft = isKRaftMode(kafka);
               const ready = isKafkaReady(kafka);
               const replicasDisplay = getReplicasDisplay(kafka);
 
