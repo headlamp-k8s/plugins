@@ -513,7 +513,7 @@ export function KafkaTopicList() {
                     <Chip
                       label={ready ? 'Ready' : 'Not Ready'}
                       variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
-                      size="small"
+                      size="medium"
                       color={ready ? 'success' : 'warning'}
                       sx={{
                         borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',
