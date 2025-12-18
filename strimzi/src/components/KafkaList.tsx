@@ -246,9 +246,12 @@ export function KafkaList() {
                   <td style={{ padding: '12px' }}>
                     <Chip
                       label={mode}
-                      variant="outlined"
+                      variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
                       size="small"
                       color={isKRaft ? 'success' : 'info'}
+                      sx={{
+                        borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',
+                      }}
                     />
                   </td>
                   <td style={{ padding: '12px' }}>{kafka.spec.kafka.version || 'N/A'}</td>
@@ -256,9 +259,12 @@ export function KafkaList() {
                   <td style={{ padding: '12px' }}>
                     <Chip
                       label={ready ? 'Ready' : 'Not Ready'}
-                      variant="outlined"
+                      variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
                       size="small"
                       color={ready ? 'success' : 'warning'}
+                      sx={{
+                        borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',
+                      }}
                     />
                   </td>
                 </tr>

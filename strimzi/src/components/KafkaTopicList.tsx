@@ -242,9 +242,9 @@ export function KafkaTopicList() {
       cluster: topic.metadata.labels?.['strimzi.io/cluster'] || 'my-cluster',
       partitions: topic.spec.partitions || 3,
       replicas: topic.spec.replicas || 3,
-      retentionMs: topic.spec.config?.['retention.ms'] ? parseInt(topic.spec.config['retention.ms']) : undefined,
+      retentionMs: topic.spec.config?.['retention.ms'] ? parseInt(topic.spec.config['retention.ms'] as string) : undefined,
       compressionType: topic.spec.config?.['compression.type'] as string | undefined,
-      minInSyncReplicas: topic.spec.config?.['min.insync.replicas'] ? parseInt(topic.spec.config['min.insync.replicas']) : undefined,
+      minInSyncReplicas: topic.spec.config?.['min.insync.replicas'] ? parseInt(topic.spec.config['min.insync.replicas'] as string) : undefined,
     });
     setShowEditDialog(true);
   };
@@ -512,9 +512,12 @@ export function KafkaTopicList() {
                   <td style={{ padding: '12px' }}>
                     <Chip
                       label={ready ? 'Ready' : 'Not Ready'}
-                      variant="outlined"
+                      variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
                       size="small"
                       color={ready ? 'success' : 'warning'}
+                      sx={{
+                        borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',
+                      }}
                     />
                   </td>
                   <td style={{ padding: '12px' }}>
