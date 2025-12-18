@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useTheme } from '@mui/material/styles';
-import { Link } from '@mui/material';
+import { Link, Chip } from '@mui/material';
 import { Kafka as K8sKafka, K8sListResponse, KafkaNodePool } from '../crds';
 import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
@@ -244,32 +244,22 @@ export function KafkaList() {
                   </td>
                   <td style={{ padding: '12px' }}>{kafka.metadata.namespace}</td>
                   <td style={{ padding: '12px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      backgroundColor: isKRaft ? theme.palette.success.main : theme.palette.info.main,
-                      color: isKRaft
-                        ? theme.palette.getContrastText(theme.palette.success.main)
-                        : theme.palette.getContrastText(theme.palette.info.main),
-                      fontSize: '12px'
-                    }}>
-                      {mode}
-                    </span>
+                    <Chip
+                      label={mode}
+                      variant="outlined"
+                      size="small"
+                      color={isKRaft ? 'success' : 'info'}
+                    />
                   </td>
                   <td style={{ padding: '12px' }}>{kafka.spec.kafka.version || 'N/A'}</td>
                   <td style={{ padding: '12px' }}>{replicasDisplay}</td>
                   <td style={{ padding: '12px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      backgroundColor: ready ? theme.palette.success.main : theme.palette.warning.main,
-                      color: ready
-                        ? theme.palette.getContrastText(theme.palette.success.main)
-                        : theme.palette.getContrastText(theme.palette.warning.main),
-                      fontSize: '12px'
-                    }}>
-                      {ready ? 'Ready' : 'Not Ready'}
-                    </span>
+                    <Chip
+                      label={ready ? 'Ready' : 'Not Ready'}
+                      variant="outlined"
+                      size="small"
+                      color={ready ? 'success' : 'warning'}
+                    />
                   </td>
                 </tr>
               );

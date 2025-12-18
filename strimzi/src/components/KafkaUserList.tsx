@@ -10,7 +10,7 @@ import { useThemeColors } from '../utils/theme';
 import { getErrorMessage } from '../utils/errors';
 import { SecureSecretDisplay } from './SecureSecretDisplay';
 import { Toast, ToastMessage } from './Toast';
-import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Chip } from '@mui/material';
 
 interface ACL {
   resource: {
@@ -621,15 +621,12 @@ export function KafkaUserList() {
                   </td>
                   <td style={{ padding: '12px' }}>{user.spec.authorization?.type || 'None'}</td>
                   <td style={{ padding: '12px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      backgroundColor: ready ? '#4caf50' : '#ff9800',
-                      color: 'white',
-                      fontSize: '12px'
-                    }}>
-                      {ready ? 'Ready' : 'Not Ready'}
-                    </span>
+                    <Chip
+                      label={ready ? 'Ready' : 'Not Ready'}
+                      variant="outlined"
+                      size="small"
+                      color={ready ? 'success' : 'warning'}
+                    />
                   </td>
                   <td style={{ padding: '12px' }}>
                     <button

@@ -10,7 +10,7 @@ import { SearchFilter, FilterGroup, FilterSelect, FilterNumberRange } from './Se
 import { useThemeColors } from '../utils/theme';
 import { getErrorMessage } from '../utils/errors';
 import { Toast, ToastMessage } from './Toast';
-import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Chip } from '@mui/material';
 
 interface TopicFormData {
   name: string;
@@ -510,17 +510,12 @@ export function KafkaTopicList() {
                   <td style={{ padding: '12px' }}>{topic.spec.partitions || 'N/A'}</td>
                   <td style={{ padding: '12px' }}>{topic.spec.replicas || 'N/A'}</td>
                   <td style={{ padding: '12px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      backgroundColor: ready ? theme.palette.success.main : theme.palette.warning.main,
-                      color: ready
-                        ? theme.palette.getContrastText(theme.palette.success.main)
-                        : theme.palette.getContrastText(theme.palette.warning.main),
-                      fontSize: '12px'
-                    }}>
-                      {ready ? 'Ready' : 'Not Ready'}
-                    </span>
+                    <Chip
+                      label={ready ? 'Ready' : 'Not Ready'}
+                      variant="outlined"
+                      size="small"
+                      color={ready ? 'success' : 'warning'}
+                    />
                   </td>
                   <td style={{ padding: '12px' }}>
                     <button
