@@ -247,7 +247,7 @@ export function KafkaList() {
                     <Chip
                       label={mode}
                       variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
-                      size="small"
+                      size="medium"
                       color={isKRaft ? 'success' : 'info'}
                       sx={{
                         borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',
@@ -260,7 +260,7 @@ export function KafkaList() {
                     <Chip
                       label={ready ? 'Ready' : 'Not Ready'}
                       variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
-                      size="small"
+                      size="medium"
                       color={ready ? 'success' : 'warning'}
                       sx={{
                         borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',

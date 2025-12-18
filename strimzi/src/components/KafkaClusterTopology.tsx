@@ -443,7 +443,7 @@ function StatusBadge({
     <Chip
       label={ready ? 'Ready' : 'Not Ready'}
       variant={isDark ? 'outlined' : 'filled'}
-      size="small"
+      size="medium"
       color={ready ? 'success' : 'warning'}
       sx={{
         borderRadius: isDark ? undefined : '4px',
