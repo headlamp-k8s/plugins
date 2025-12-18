@@ -249,7 +249,9 @@ export function KafkaList() {
                       padding: '4px 8px',
                       borderRadius: '4px',
                       backgroundColor: isKRaft ? theme.palette.success.main : theme.palette.info.main,
-                      color: theme.palette.common.white,
+                      color: isKRaft
+                        ? theme.palette.getContrastText(theme.palette.success.main)
+                        : theme.palette.getContrastText(theme.palette.info.main),
                       fontSize: '12px'
                     }}>
                       {mode}
@@ -262,7 +264,9 @@ export function KafkaList() {
                       padding: '4px 8px',
                       borderRadius: '4px',
                       backgroundColor: ready ? theme.palette.success.main : theme.palette.warning.main,
-                      color: theme.palette.common.white,
+                      color: ready
+                        ? theme.palette.getContrastText(theme.palette.success.main)
+                        : theme.palette.getContrastText(theme.palette.warning.main),
                       fontSize: '12px'
                     }}>
                       {ready ? 'Ready' : 'Not Ready'}

@@ -514,7 +514,9 @@ export function KafkaTopicList() {
                       padding: '4px 8px',
                       borderRadius: '4px',
                       backgroundColor: ready ? theme.palette.success.main : theme.palette.warning.main,
-                      color: theme.palette.common.white,
+                      color: ready
+                        ? theme.palette.getContrastText(theme.palette.success.main)
+                        : theme.palette.getContrastText(theme.palette.warning.main),
                       fontSize: '12px'
                     }}>
                       {ready ? 'Ready' : 'Not Ready'}

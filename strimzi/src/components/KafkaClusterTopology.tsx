@@ -362,7 +362,7 @@ function createPodNode(params: {
               letterSpacing: theme.typography.letterSpacing,
             }}
           >
-            <ResourceIcon icon="mdi:cube" color={theme.colors.nodePool} size={`${LAYOUT.POD_ICON_SIZE}px`} />
+            <ResourceIcon icon="mdi:cube" color="#00ACC1" size={`${LAYOUT.POD_ICON_SIZE}px`} />
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
               <span
                 style={{
@@ -472,11 +472,11 @@ function createGroupLabel(params: {
   const getResourceIconConfig = () => {
     switch (resourceType) {
       case 'KafkaNodePool':
-        return { icon: 'mdi:server', color: theme.colors.nodePool };
+        return { icon: 'mdi:server', color: '#0baf9e' };
       case 'StrimziPodSet':
-        return { icon: 'mdi:view-grid-outline', color: theme.colors.nodePool };
+        return { icon: 'mdi:view-grid-outline', color: '#0baf9e' };
       default:
-        return { icon: 'mdi:cube', color: theme.colors.nodePool };
+        return { icon: 'mdi:cube', color: '#0baf9e' };
     }
   };
 
@@ -804,7 +804,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
       data: {
         label: (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <ResourceIcon icon="mdi:square-rounded-outline" color={theme.colors.nodePool} size={`${LAYOUT.NAMESPACE_ICON_SIZE}px`} />
+            <ResourceIcon icon="mdi:square-rounded-outline" color="#0baf9e" size={`${LAYOUT.NAMESPACE_ICON_SIZE}px`} />
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
               <span
                 style={{
@@ -873,7 +873,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
       data: {
         label: (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <ResourceIcon icon="mdi:apache-kafka" color={theme.colors.nodePool} size={`${LAYOUT.CLUSTER_ICON_SIZE}px`} />
+            <ResourceIcon icon="mdi:apache-kafka" color="#0baf9e" size={`${LAYOUT.CLUSTER_ICON_SIZE}px`} />
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
               <span
                 style={{
