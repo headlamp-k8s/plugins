@@ -2,6 +2,7 @@
 // Copyright 2025 Angelo Cesaro
 
 import React from 'react';
+import { useTheme } from '@mui/material/styles';
 import { Kafka as K8sKafka, K8sListResponse, KafkaNodePool } from '../crds';
 import { getClusterMode, isKRaftMode, isKafkaReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
@@ -11,6 +12,7 @@ import { getErrorMessage } from '../utils/errors';
 import { Toast, ToastMessage } from './Toast';
 
 export function KafkaList() {
+  const theme = useTheme();
   const [kafkas, setKafkas] = React.useState<K8sKafka[]>([]);
   const [nodePools, setNodePools] = React.useState<KafkaNodePool[]>([]);
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
@@ -199,7 +201,7 @@ export function KafkaList() {
       </SearchFilter>
 
       {filteredKafkas.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
+        <p style={{ textAlign: 'center', color: theme.palette.text.secondary, padding: '40px' }}>
           {kafkas.length === 0 ? 'No Kafka clusters found' : 'No clusters match your search criteria'}
         </p>
       ) : (
@@ -230,7 +232,7 @@ export function KafkaList() {
                         setIsTopologyModalOpen(true);
                       }}
                       style={{
-                        color: '#2563eb',
+                        color: theme.palette.primary.main,
                         textDecoration: 'none',
                         fontWeight: 500,
                         cursor: 'pointer',
@@ -246,8 +248,8 @@ export function KafkaList() {
                     <span style={{
                       padding: '4px 8px',
                       borderRadius: '4px',
-                      backgroundColor: isKRaft ? '#4caf50' : '#2196f3',
-                      color: 'white',
+                      backgroundColor: isKRaft ? theme.palette.success.main : theme.palette.info.main,
+                      color: theme.palette.common.white,
                       fontSize: '12px'
                     }}>
                       {mode}
@@ -259,8 +261,8 @@ export function KafkaList() {
                     <span style={{
                       padding: '4px 8px',
                       borderRadius: '4px',
-                      backgroundColor: ready ? '#4caf50' : '#ff9800',
-                      color: 'white',
+                      backgroundColor: ready ? theme.palette.success.main : theme.palette.warning.main,
+                      color: theme.palette.common.white,
                       fontSize: '12px'
                     }}>
                       {ready ? 'Ready' : 'Not Ready'}

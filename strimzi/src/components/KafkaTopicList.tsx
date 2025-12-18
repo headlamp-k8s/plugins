@@ -2,6 +2,7 @@
 // Copyright 2025 Angelo Cesaro
 
 import React from 'react';
+import { useTheme } from '@mui/material/styles';
 import { KafkaTopic, K8sListResponse } from '../crds';
 import { isTopicReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
@@ -23,6 +24,7 @@ interface TopicFormData {
 }
 
 export function KafkaTopicList() {
+  const theme = useTheme();
   const [topics, setTopics] = React.useState<KafkaTopic[]>([]);
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -390,9 +392,10 @@ export function KafkaTopicList() {
                 padding: '8px 16px',
                 border: 'none',
                 borderRadius: '4px',
-                backgroundColor: '#2196f3',
-                color: 'white',
+                backgroundColor: theme.palette.primary.main,
+                color: theme.palette.common.white,
                 cursor: loading || !formData.name ? 'not-allowed' : 'pointer',
+                opacity: loading || !formData.name ? 0.5 : 1,
               }}
             >
               {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
@@ -408,7 +411,7 @@ export function KafkaTopicList() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <h1 style={{ margin: 0 }}>Kafka Topics</h1>
-          <p style={{ margin: '8px 0 0 0', color: '#666' }}>Strimzi Kafka topics</p>
+          <p style={{ margin: '8px 0 0 0', color: theme.palette.text.secondary }}>Strimzi Kafka topics</p>
         </div>
         <button
           onClick={() => {
@@ -423,8 +426,8 @@ export function KafkaTopicList() {
           }}
           style={{
             padding: '10px 20px',
-            backgroundColor: '#4caf50',
-            color: 'white',
+            backgroundColor: theme.palette.success.main,
+            color: theme.palette.common.white,
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',
@@ -481,7 +484,7 @@ export function KafkaTopicList() {
       </SearchFilter>
 
       {filteredTopics.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
+        <p style={{ textAlign: 'center', color: theme.palette.text.secondary, padding: '40px' }}>
           {topics.length === 0 ? 'No Kafka topics found' : 'No topics match your search criteria'}
         </p>
       ) : (
@@ -510,8 +513,8 @@ export function KafkaTopicList() {
                     <span style={{
                       padding: '4px 8px',
                       borderRadius: '4px',
-                      backgroundColor: ready ? '#4caf50' : '#ff9800',
-                      color: 'white',
+                      backgroundColor: ready ? theme.palette.success.main : theme.palette.warning.main,
+                      color: theme.palette.common.white,
                       fontSize: '12px'
                     }}>
                       {ready ? 'Ready' : 'Not Ready'}
@@ -523,8 +526,8 @@ export function KafkaTopicList() {
                       style={{
                         padding: '6px 12px',
                         marginRight: '8px',
-                        backgroundColor: '#2196f3',
-                        color: 'white',
+                        backgroundColor: theme.palette.primary.main,
+                        color: theme.palette.common.white,
                         border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',
@@ -537,8 +540,8 @@ export function KafkaTopicList() {
                       onClick={() => openDeleteDialog(topic)}
                       style={{
                         padding: '6px 12px',
-                        backgroundColor: '#f44336',
-                        color: 'white',
+                        backgroundColor: theme.palette.error.main,
+                        color: theme.palette.common.white,
                         border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',
