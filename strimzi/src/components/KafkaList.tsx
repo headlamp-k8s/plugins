@@ -248,9 +248,14 @@ export function KafkaList() {
                       label={mode}
                       variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
                       size="medium"
-                      color={isKRaft ? 'success' : 'info'}
+                      color="info"
                       sx={{
-                        borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',
+                        borderRadius: '4px',
+                        ...(theme.palette.mode === 'dark' && {
+                          borderColor: '#60a5fa',
+                          color: '#60a5fa',
+                          backgroundColor: 'rgba(96, 165, 250, 0.15)',
+                        }),
                       }}
                     />
                   </td>
@@ -263,7 +268,17 @@ export function KafkaList() {
                       size="medium"
                       color={ready ? 'success' : 'warning'}
                       sx={{
-                        borderRadius: theme.palette.mode === 'dark' ? undefined : '4px',
+                        borderRadius: '4px',
+                        ...(theme.palette.mode === 'dark' && ready && {
+                          borderColor: '#34d399',
+                          color: '#34d399',
+                          backgroundColor: 'rgba(52, 211, 153, 0.15)',
+                        }),
+                        ...(theme.palette.mode === 'dark' && !ready && {
+                          borderColor: '#f87171',
+                          color: '#f87171',
+                          backgroundColor: 'rgba(248, 113, 113, 0.15)',
+                        }),
                       }}
                     />
                   </td>
