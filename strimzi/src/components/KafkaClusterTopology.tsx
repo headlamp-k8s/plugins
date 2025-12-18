@@ -13,7 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Icon } from '@iconify/react';
-import { Button, ButtonGroup, Box } from '@mui/material';
+import { Button, ButtonGroup, Box, useTheme } from '@mui/material';
 import { Kafka, KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
@@ -231,6 +231,8 @@ function GraphControlButton({
   title: string;
   disabled?: boolean;
 }) {
+  const theme = useTheme();
+
   const sx = {
     width: '32px',
     height: '32px',
@@ -239,16 +241,18 @@ function GraphControlButton({
     borderRadius: '50%',
     '> svg': { width: '14px', height: '14px' },
     fontSize: 'x-small',
-    backgroundColor: '#fff',
-    color: '#000',
+    backgroundColor: theme.palette.background.paper,
+    color: theme.palette.text.primary,
     border: 'none',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    boxShadow: theme.palette.mode === 'dark'
+      ? '0 2px 4px rgba(0,0,0,0.3)'
+      : '0 2px 4px rgba(0,0,0,0.1)',
     '&:hover': {
-      backgroundColor: '#f5f5f5',
+      backgroundColor: theme.palette.action.hover,
     },
     '&.Mui-disabled': {
-      backgroundColor: '#e0e0e0',
-      color: '#9e9e9e',
+      backgroundColor: theme.palette.action.disabledBackground,
+      color: theme.palette.action.disabled,
     },
   };
 
@@ -358,7 +362,7 @@ function createPodNode(params: {
               letterSpacing: theme.typography.letterSpacing,
             }}
           >
-            <ResourceIcon icon="mdi:cube" color="#00ACC1" size={`${LAYOUT.POD_ICON_SIZE}px`} />
+            <ResourceIcon icon="mdi:cube" color={theme.colors.nodePool} size={`${LAYOUT.POD_ICON_SIZE}px`} />
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
               <span
                 style={{
@@ -468,11 +472,11 @@ function createGroupLabel(params: {
   const getResourceIconConfig = () => {
     switch (resourceType) {
       case 'KafkaNodePool':
-        return { icon: 'mdi:server', color: '#0baf9e' }; // Cyan/Teal
+        return { icon: 'mdi:server', color: theme.colors.nodePool };
       case 'StrimziPodSet':
-        return { icon: 'mdi:view-grid-outline', color: '#0baf9e' }; // Orange
+        return { icon: 'mdi:view-grid-outline', color: theme.colors.nodePool };
       default:
-        return { icon: 'mdi:cube', color: '#0baf9e' };
+        return { icon: 'mdi:cube', color: theme.colors.nodePool };
     }
   };
 
@@ -800,7 +804,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
       data: {
         label: (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <ResourceIcon icon="mdi:square-rounded-outline" color="#0baf9e" size={`${LAYOUT.NAMESPACE_ICON_SIZE}px`} />
+            <ResourceIcon icon="mdi:square-rounded-outline" color={theme.colors.nodePool} size={`${LAYOUT.NAMESPACE_ICON_SIZE}px`} />
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
               <span
                 style={{
@@ -869,7 +873,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
       data: {
         label: (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <ResourceIcon icon="mdi:apache-kafka" color="#0baf9e" size={`${LAYOUT.CLUSTER_ICON_SIZE}px`} />
+            <ResourceIcon icon="mdi:apache-kafka" color={theme.colors.nodePool} size={`${LAYOUT.CLUSTER_ICON_SIZE}px`} />
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
               <span
                 style={{
