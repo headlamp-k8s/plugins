@@ -523,20 +523,14 @@ export function KafkaUserList() {
           <h1 style={{ margin: 0 }}>Kafka Users</h1>
           <p style={{ margin: '8px 0 0 0', color: '#666' }}>Strimzi Kafka users</p>
         </div>
-        <button
+        <Button
           onClick={() => setShowCreateDialog(true)}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#4caf50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
+          variant="contained"
+          color="primary"
+          size="medium"
         >
           + Create User
-        </button>
+        </Button>
       </div>
 
       {/* Search and Filter */}
@@ -644,36 +638,24 @@ export function KafkaUserList() {
                     />
                   </td>
                   <td style={{ padding: '12px' }}>
-                    <button
+                    <Button
                       onClick={() => fetchUserSecret(user)}
                       disabled={loading}
-                      style={{
-                        padding: '6px 12px',
-                        marginRight: '8px',
-                        backgroundColor: '#ff9800',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        fontSize: '12px',
-                      }}
+                      variant="contained"
+                      color="warning"
+                      size="small"
+                      sx={{ marginRight: 1 }}
                     >
                       View Secret
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => openDeleteDialog(user)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                      }}
+                      variant="contained"
+                      color="error"
+                      size="small"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               );
