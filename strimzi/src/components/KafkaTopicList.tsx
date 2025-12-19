@@ -413,7 +413,7 @@ export function KafkaTopicList() {
           <h1 style={{ margin: 0 }}>Kafka Topics</h1>
           <p style={{ margin: '8px 0 0 0', color: theme.palette.text.secondary }}>Strimzi Kafka topics</p>
         </div>
-        <button
+        <Button
           onClick={() => {
             setFormData({
               name: '',
@@ -424,18 +424,12 @@ export function KafkaTopicList() {
             });
             setShowCreateDialog(true);
           }}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: theme.palette.success.main,
-            color: theme.palette.common.white,
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
+          variant="contained"
+          color="primary"
+          size="medium"
         >
           + Create Topic
-        </button>
+        </Button>
       </div>
 
       {/* Search and Filter */}
@@ -531,35 +525,23 @@ export function KafkaTopicList() {
                     />
                   </td>
                   <td style={{ padding: '12px' }}>
-                    <button
+                    <Button
                       onClick={() => openEditDialog(topic)}
-                      style={{
-                        padding: '6px 12px',
-                        marginRight: '8px',
-                        backgroundColor: theme.palette.primary.main,
-                        color: theme.palette.common.white,
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                      }}
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      sx={{ marginRight: 1 }}
                     >
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => openDeleteDialog(topic)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: theme.palette.error.main,
-                        color: theme.palette.common.white,
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                      }}
+                      variant="contained"
+                      color="error"
+                      size="small"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               );
