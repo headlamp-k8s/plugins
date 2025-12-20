@@ -55,6 +55,7 @@ export function KafkaUserList() {
 
   // Search and Filter state
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [namespaceFilter, setNamespaceFilter] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [authTypeFilter, setAuthTypeFilter] = React.useState('all');
   const [hasAclsFilter, setHasAclsFilter] = React.useState('all');
@@ -92,6 +93,17 @@ export function KafkaUserList() {
     return () => clearInterval(intervalId);
   }, [fetchUsers]);
 
+  // Calculate available namespaces from fetched users
+  const availableNamespaces = React.useMemo(() => {
+    return [...new Set(users.map(u => u.metadata.namespace))].sort();
+  }, [users]);
+
+  // Namespace filter options
+  const namespaceOptions = React.useMemo(() => [
+    { value: 'all', label: 'All' },
+    ...availableNamespaces.map(ns => ({ value: ns, label: ns }))
+  ], [availableNamespaces]);
+
   // Filter users based on search and filters
   const filteredUsers = React.useMemo(() => {
     return users.filter((user) => {
@@ -103,6 +115,11 @@ export function KafkaUserList() {
         user.metadata.namespace.toLowerCase().includes(searchLower);
 
       if (!matchesSearch) return false;
+
+      // Namespace filter
+      if (namespaceFilter !== 'all' && user.metadata.namespace !== namespaceFilter) {
+        return false;
+      }
 
       // Status filter
       if (statusFilter !== 'all') {
@@ -128,7 +145,7 @@ export function KafkaUserList() {
 
       return true;
     });
-  }, [users, searchTerm, statusFilter, authTypeFilter, hasAclsFilter]);
+  }, [users, searchTerm, namespaceFilter, statusFilter, authTypeFilter, hasAclsFilter]);
 
   const fetchUserSecret = async (user: KafkaUser) => {
     try {
@@ -541,7 +558,17 @@ export function KafkaUserList() {
         resultCount={filteredUsers.length}
         totalCount={users.length}
       >
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+          {availableNamespaces.length > 0 && (
+            <FilterGroup label="Namespace">
+              <FilterSelect
+                value={namespaceFilter}
+                onChange={setNamespaceFilter}
+                options={namespaceOptions}
+              />
+            </FilterGroup>
+          )}
+
           <FilterGroup label="Status">
             <FilterSelect
               value={statusFilter}
