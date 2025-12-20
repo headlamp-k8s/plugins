@@ -20,6 +20,7 @@ export function KafkaList() {
 
   // Search and Filter state
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [namespaceFilter, setNamespaceFilter] = React.useState('all');
   const [modeFilter, setModeFilter] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
 
@@ -73,6 +74,17 @@ export function KafkaList() {
     return () => clearInterval(intervalId);
   }, [fetchKafkas, fetchNodePools]);
 
+  // Calculate available namespaces from fetched kafkas
+  const availableNamespaces = React.useMemo(() => {
+    return [...new Set(kafkas.map(k => k.metadata.namespace))].sort();
+  }, [kafkas]);
+
+  // Namespace filter options
+  const namespaceOptions = React.useMemo(() => [
+    { value: 'all', label: 'All' },
+    ...availableNamespaces.map(ns => ({ value: ns, label: ns }))
+  ], [availableNamespaces]);
+
   // Filter kafkas based on search and filters
   const filteredKafkas = React.useMemo(() => {
     return kafkas.filter((kafka) => {
@@ -84,6 +96,11 @@ export function KafkaList() {
         kafka.metadata.namespace.toLowerCase().includes(searchLower);
 
       if (!matchesSearch) return false;
+
+      // Namespace filter
+      if (namespaceFilter !== 'all' && kafka.metadata.namespace !== namespaceFilter) {
+        return false;
+      }
 
       // Mode filter
       if (modeFilter !== 'all') {
@@ -101,7 +118,7 @@ export function KafkaList() {
 
       return true;
     });
-  }, [kafkas, searchTerm, modeFilter, statusFilter]);
+  }, [kafkas, searchTerm, namespaceFilter, modeFilter, statusFilter]);
 
   // Helper function to calculate replicas display
   const getReplicasDisplay = (kafka: K8sKafka): string => {
@@ -174,7 +191,17 @@ export function KafkaList() {
         resultCount={filteredKafkas.length}
         totalCount={kafkas.length}
       >
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: availableNamespaces.length > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: '15px' }}>
+          {availableNamespaces.length > 0 && (
+            <FilterGroup label="Namespace">
+              <FilterSelect
+                value={namespaceFilter}
+                onChange={setNamespaceFilter}
+                options={namespaceOptions}
+              />
+            </FilterGroup>
+          )}
+
           <FilterGroup label="Mode">
             <FilterSelect
               value={modeFilter}

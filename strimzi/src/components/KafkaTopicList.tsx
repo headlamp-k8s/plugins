@@ -44,6 +44,7 @@ export function KafkaTopicList() {
 
   // Search and Filter state
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [namespaceFilter, setNamespaceFilter] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [minPartitions, setMinPartitions] = React.useState<number | ''>('');
   const [maxPartitions, setMaxPartitions] = React.useState<number | ''>('');
@@ -83,6 +84,17 @@ export function KafkaTopicList() {
     return () => clearInterval(intervalId);
   }, [fetchTopics]);
 
+  // Calculate available namespaces from fetched topics
+  const availableNamespaces = React.useMemo(() => {
+    return [...new Set(topics.map(t => t.metadata.namespace))].sort();
+  }, [topics]);
+
+  // Namespace filter options
+  const namespaceOptions = React.useMemo(() => [
+    { value: 'all', label: 'All' },
+    ...availableNamespaces.map(ns => ({ value: ns, label: ns }))
+  ], [availableNamespaces]);
+
   // Filter topics based on search and filters
   const filteredTopics = React.useMemo(() => {
     return topics.filter((topic) => {
@@ -94,6 +106,11 @@ export function KafkaTopicList() {
         topic.metadata.namespace.toLowerCase().includes(searchLower);
 
       if (!matchesSearch) return false;
+
+      // Namespace filter
+      if (namespaceFilter !== 'all' && topic.metadata.namespace !== namespaceFilter) {
+        return false;
+      }
 
       // Status filter
       if (statusFilter !== 'all') {
@@ -114,7 +131,7 @@ export function KafkaTopicList() {
 
       return true;
     });
-  }, [topics, searchTerm, statusFilter, minPartitions, maxPartitions, minReplicas, maxReplicas]);
+  }, [topics, searchTerm, namespaceFilter, statusFilter, minPartitions, maxPartitions, minReplicas, maxReplicas]);
 
   const handleCreate = async () => {
     setLoading(true);
@@ -441,6 +458,16 @@ export function KafkaTopicList() {
         totalCount={topics.length}
       >
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+          {availableNamespaces.length > 0 && (
+            <FilterGroup label="Namespace">
+              <FilterSelect
+                value={namespaceFilter}
+                onChange={setNamespaceFilter}
+                options={namespaceOptions}
+              />
+            </FilterGroup>
+          )}
+
           <FilterGroup label="Status">
             <FilterSelect
               value={statusFilter}
