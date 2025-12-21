@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useTheme } from '@mui/material/styles';
-import { KafkaTopic, K8sListResponse } from '../crds';
+import { KafkaTopic, Kafka, K8sListResponse } from '../crds';
 import { isTopicReady } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { SearchFilter, FilterGroup, FilterSelect, FilterNumberRange } from './SearchFilter';
@@ -26,6 +26,7 @@ interface TopicFormData {
 export function KafkaTopicList() {
   const theme = useTheme();
   const [topics, setTopics] = React.useState<KafkaTopic[]>([]);
+  const [kafkaClusters, setKafkaClusters] = React.useState<Kafka[]>([]);
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [showEditDialog, setShowEditDialog] = React.useState(false);
@@ -34,8 +35,8 @@ export function KafkaTopicList() {
   const [deletingTopic, setDeletingTopic] = React.useState<KafkaTopic | null>(null);
   const [formData, setFormData] = React.useState<TopicFormData>({
     name: '',
-    namespace: 'kafka',
-    cluster: 'my-cluster',
+    namespace: '',
+    cluster: '',
     partitions: 3,
     replicas: 3,
   });
@@ -71,20 +72,35 @@ export function KafkaTopicList() {
       });
   }, []);
 
+  const fetchKafkaClusters = React.useCallback(() => {
+    ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkas')
+      .then((data: K8sListResponse<Kafka>) => {
+        setKafkaClusters(data.items);
+      })
+      .catch((err: unknown) => {
+        const message = getErrorMessage(err);
+        if (!message.includes('404') && message !== 'Not Found') {
+          console.error('Failed to fetch Kafka clusters:', message);
+        }
+      });
+  }, []);
+
   React.useEffect(() => {
     // Initial fetch
     fetchTopics();
+    fetchKafkaClusters();
 
     // Auto-refresh every 5 seconds
     const intervalId = setInterval(() => {
       fetchTopics();
+      fetchKafkaClusters();
     }, 5000);
 
     // Cleanup interval on unmount
     return () => clearInterval(intervalId);
-  }, [fetchTopics]);
+  }, [fetchTopics, fetchKafkaClusters]);
 
-  // Calculate available namespaces from fetched topics
+  // Calculate available namespaces from fetched topics (for filtering)
   const availableNamespaces = React.useMemo(() => {
     return [...new Set(topics.map(t => t.metadata.namespace))].sort();
   }, [topics]);
@@ -94,6 +110,24 @@ export function KafkaTopicList() {
     { value: 'all', label: 'All' },
     ...availableNamespaces.map(ns => ({ value: ns, label: ns }))
   ], [availableNamespaces]);
+
+  // Calculate available namespaces and cluster names for create dialog
+  const availableNamespacesForCreate = React.useMemo(() => {
+    return [...new Set(kafkaClusters.map(k => k.metadata.namespace))].sort();
+  }, [kafkaClusters]);
+
+  const availableClusterNames = React.useMemo(() => {
+    return kafkaClusters.map(k => k.metadata.name).sort();
+  }, [kafkaClusters]);
+
+  // Filter clusters based on selected namespace (for create dialog)
+  const filteredClusterNames = React.useMemo(() => {
+    if (!formData.namespace) return [];
+    return kafkaClusters
+      .filter(k => k.metadata.namespace === formData.namespace)
+      .map(k => k.metadata.name)
+      .sort();
+  }, [kafkaClusters, formData.namespace]);
 
   // Filter topics based on search and filters
   const filteredTopics = React.useMemo(() => {
@@ -169,8 +203,8 @@ export function KafkaTopicList() {
       setShowCreateDialog(false);
       setFormData({
         name: '',
-        namespace: 'kafka',
-        cluster: 'my-cluster',
+        namespace: availableNamespacesForCreate.length > 0 ? availableNamespacesForCreate[0] : '',
+        cluster: availableClusterNames.length > 0 ? availableClusterNames[0] : '',
         partitions: 3,
         replicas: 3,
       });
@@ -306,24 +340,65 @@ export function KafkaTopicList() {
 
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Namespace</label>
-            <input
-              type="text"
-              value={formData.namespace}
-              disabled={isEdit}
-              onChange={(e) => setFormData({ ...formData, namespace: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
-            />
+            {isEdit ? (
+              <input
+                type="text"
+                value={formData.namespace}
+                disabled={true}
+                style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
+              />
+            ) : (
+              <select
+                value={formData.namespace}
+                onChange={(e) => {
+                  const newNamespace = e.target.value;
+                  const clustersInNamespace = kafkaClusters
+                    .filter(k => k.metadata.namespace === newNamespace)
+                    .map(k => k.metadata.name)
+                    .sort();
+                  setFormData({
+                    ...formData,
+                    namespace: newNamespace,
+                    cluster: clustersInNamespace.length > 0 ? clustersInNamespace[0] : ''
+                  });
+                }}
+                style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text, cursor: 'pointer' }}
+              >
+                {availableNamespacesForCreate.length === 0 ? (
+                  <option value="">No namespaces available</option>
+                ) : (
+                  availableNamespacesForCreate.map(ns => (
+                    <option key={ns} value={ns}>{ns}</option>
+                  ))
+                )}
+              </select>
+            )}
           </div>
 
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Cluster</label>
-            <input
-              type="text"
-              value={formData.cluster}
-              disabled={isEdit}
-              onChange={(e) => setFormData({ ...formData, cluster: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
-            />
+            {isEdit ? (
+              <input
+                type="text"
+                value={formData.cluster}
+                disabled={true}
+                style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text }}
+              />
+            ) : (
+              <select
+                value={formData.cluster}
+                onChange={(e) => setFormData({ ...formData, cluster: e.target.value })}
+                style={{ width: '100%', padding: '8px', border: `1px solid ${colors.inputBorder}`, borderRadius: '4px', backgroundColor: colors.inputBg, color: colors.text, cursor: 'pointer' }}
+              >
+                {filteredClusterNames.length === 0 ? (
+                  <option value="">No clusters available in this namespace</option>
+                ) : (
+                  filteredClusterNames.map(cluster => (
+                    <option key={cluster} value={cluster}>{cluster}</option>
+                  ))
+                )}
+              </select>
+            )}
           </div>
 
           <div style={{ marginBottom: '16px' }}>
@@ -434,8 +509,8 @@ export function KafkaTopicList() {
           onClick={() => {
             setFormData({
               name: '',
-              namespace: 'kafka',
-              cluster: 'my-cluster',
+              namespace: availableNamespacesForCreate.length > 0 ? availableNamespacesForCreate[0] : '',
+              cluster: availableClusterNames.length > 0 ? availableClusterNames[0] : '',
               partitions: 3,
               replicas: 3,
             });
