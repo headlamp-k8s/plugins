@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2025 Angelo Cesaro
-
 /**
  * Utility functions for type-safe error handling.
  * These functions help extract error messages from unknown error types
