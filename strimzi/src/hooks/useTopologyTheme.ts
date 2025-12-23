@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2025 Angelo Cesaro
-
 import { useTheme } from '@mui/material/styles';
 import { useMemo } from 'react';
 
