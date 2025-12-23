@@ -233,7 +233,7 @@ tar -xzf headlamp-k8s-strimzi-*.tar.gz -C plugins/
 # Restart Headlamp deployment
 kubectl rollout restart deployment/headlamp -n headlamp
 
-# Clear browser cache: Cmd+Shift+R (macOS) or Ctrl+Shift+R (Windows/Linux)
+# Clear browser cache: Cmd+Shift+R (macOS) or Ctrl+Shift+R (Linux)
 ```
 
 To uninstall: `kubectl delete -f deploy/headlamp.yaml`
