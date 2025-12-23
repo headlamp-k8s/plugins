@@ -1,0 +1,138 @@
+---
+# Namespace for Headlamp
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: headlamp
+---
+# ServiceAccount for Headlamp
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp
+  namespace: headlamp
+---
+# ClusterRole with minimal permissions required for the Strimzi Headlamp plugin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: headlamp-strimzi-plugin
+rules:
+  # Permissions for Strimzi Kafka resources
+  - apiGroups:
+      - kafka.strimzi.io
+    resources:
+      - kafkas
+      - kafkatopics
+      - kafkausers
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+
+  # Permissions to read Secrets (needed to display Kafka user credentials)
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+---
+# ClusterRoleBinding to assign the minimal role to Headlamp ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-strimzi-plugin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: headlamp-strimzi-plugin
+subjects:
+  - kind: ServiceAccount
+    name: headlamp
+    namespace: headlamp
+---
+# Deployment for Headlamp with Strimzi plugin
+# IMPORTANT: Update the hostPath below to match your local plugins directory
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headlamp
+  namespace: headlamp
+  labels:
+    app: headlamp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: headlamp
+  template:
+    metadata:
+      labels:
+        app: headlamp
+    spec:
+      serviceAccountName: headlamp
+      containers:
+        - name: headlamp
+          image: ghcr.io/headlamp-k8s/headlamp:v0.38.0
+          ports:
+            - containerPort: 4466
+              name: http
+          args:
+            - "-in-cluster"
+            - "-plugins-dir=/plugins"
+          volumeMounts:
+            - name: plugins
+              mountPath: /plugins
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4466
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4466
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: plugins
+          hostPath:
+            # Docker Desktop on macOS with VirtioFS: use direct path
+            # For older Docker Desktop versions, may need /run/desktop/mnt/host prefix
+            path: /Users/angelo/Downloads/github/strimzi-headlamp/plugins
+            type: Directory
+---
+# Service to expose Headlamp
+apiVersion: v1
+kind: Service
+metadata:
+  name: headlamp
+  namespace: headlamp
+  labels:
+    app: headlamp
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 4466
+      nodePort: 30080
+      protocol: TCP
+      name: http
+  selector:
+    app: headlamp
