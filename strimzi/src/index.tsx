@@ -10,22 +10,25 @@ import { KafkaUserList } from './components/KafkaUserList';
 // Register routes
 registerRoute({
   path: '/strimzi/kafkas',
-  sidebar: 'strimzi',
+  sidebar: 'kafkas',
   name: 'Kafka Clusters',
+  exact: true,
   component: () => React.createElement(KafkaList),
 });
 
 registerRoute({
   path: '/strimzi/topics',
-  sidebar: 'strimzi',
+  sidebar: 'topics',
   name: 'Kafka Topics',
+  exact: true,
   component: () => React.createElement(KafkaTopicList),
 });
 
 registerRoute({
   path: '/strimzi/users',
-  sidebar: 'strimzi',
+  sidebar: 'users',
   name: 'Kafka Users',
+  exact: true,
   component: () => React.createElement(KafkaUserList),
 });
 
@@ -35,6 +38,7 @@ registerSidebarEntry({
   name: 'strimzi',
   label: 'Strimzi',
   url: '/strimzi/kafkas',
+  icon: 'mdi:apache-kafka',
 });
 
 registerSidebarEntry({
