@@ -38,7 +38,7 @@ registerSidebarEntry({
   name: 'strimzi',
   label: 'Strimzi',
   url: '/strimzi/kafkas',
-  icon: 'mdi:apache-kafka',
+  icon: 'streamline-ultimate:share',
 });
 
 registerSidebarEntry({
