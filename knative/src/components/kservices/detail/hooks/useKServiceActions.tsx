@@ -1,9 +1,9 @@
-import React from 'react';
+import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import type { SnackbarKey } from 'notistack';
 import { useSnackbar } from 'notistack';
-import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
-import { useNotify } from '../../../common/notifications/useNotify';
+import React from 'react';
 import type { KService } from '../../../../resources/knative';
+import { useNotify } from '../../../common/notifications/useNotify';
 
 type KServiceActionId = 'redeploy' | 'restart';
 

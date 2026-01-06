@@ -1,5 +1,5 @@
-import GatewayApiIngressSection from './ingress/gateway-api/GatewayApiIngressSection';
 import { INGRESS_CLASS_GATEWAY_API } from '../../../../../config/ingress';
+import GatewayApiIngressSection from './ingress/gateway-api/GatewayApiIngressSection';
 
 type IngressIntegrationsSectionProps = {
   namespace: string;

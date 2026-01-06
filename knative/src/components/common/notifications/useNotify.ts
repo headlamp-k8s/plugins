@@ -1,6 +1,6 @@
-import * as React from 'react';
 import type { OptionsObject, SnackbarKey, SnackbarMessage } from 'notistack';
 import { useSnackbar } from 'notistack';
+import * as React from 'react';
 
 type NotifyVariant = 'success' | 'error' | 'warning' | 'info';
 

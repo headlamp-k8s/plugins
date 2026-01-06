@@ -1,6 +1,6 @@
-import React from 'react';
-import { Stack } from '@mui/material';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
+import { Stack } from '@mui/material';
+import React from 'react';
 import { KService } from '../../../../../resources/knative';
 import { isNullable } from '../../../../../utils/nullable';
 import AutoscalingSettings from './AutoscalingSettings';

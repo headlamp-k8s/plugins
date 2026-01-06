@@ -1,5 +1,5 @@
-import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 
 /**
  * Hook to get cluster names based on selected clusters or current cluster.

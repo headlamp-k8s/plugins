@@ -1,5 +1,3 @@
-import React from 'react';
-import { Chip, Stack, Typography } from '@mui/material';
 import {
   ActionButton,
   CreateResourceButton,
@@ -8,11 +6,13 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
-import { NotInstalledBanner } from '../common/NotInstalledBanner';
+import { Chip, Stack, Typography } from '@mui/material';
+import React from 'react';
 import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
-import { KService, KnativeDomainMapping } from '../../resources/knative';
+import { KnativeDomainMapping, KService } from '../../resources/knative';
+import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { useKServiceActions } from './detail/hooks/useKServiceActions';
 
 type IngressClassWithCluster = {
@@ -181,7 +181,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       ingressClassData?.map(({ cluster, ingressClass }) => {
         const formatted = formatIngressClass(ingressClass);
         const isGatewayApi = ingressClass === INGRESS_CLASS_GATEWAY_API;
-        const isSet = ingressClass != null;
+        const isSet = ingressClass !== null;
 
         const color: 'default' | 'success' | 'warning' = isGatewayApi
           ? 'success'

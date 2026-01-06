@@ -16,8 +16,8 @@
 
 import { addIcon } from '@iconify/react';
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
-import { KServicesList } from './components/kservices/List';
 import { KServiceDetail } from './components/kservices/Detail';
+import { KServicesList } from './components/kservices/List';
 import { NetworkingOverview } from './components/networking/Overview';
 
 addIcon('custom:knative', {

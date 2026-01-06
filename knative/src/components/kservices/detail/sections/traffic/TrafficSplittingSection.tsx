@@ -1,4 +1,4 @@
-import React from 'react';
+import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Autocomplete,
   Box,
@@ -15,10 +15,10 @@ import {
   Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useNotify } from '../../../../common/notifications/useNotify';
+import React from 'react';
 import type { KRevisionResource, KService, Traffic } from '../../../../../resources/knative';
 import { getAge } from '../../../../../utils/time';
+import { useNotify } from '../../../../common/notifications/useNotify';
 
 type Props = {
   cluster: string;

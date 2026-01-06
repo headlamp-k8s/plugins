@@ -1,6 +1,6 @@
-import { Alert, Stack } from '@mui/material';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
-import { INGRESS_CLASS_GATEWAY_API, formatIngressClass } from '../../../../../config/ingress';
+import { Alert, Stack } from '@mui/material';
+import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../../../../config/ingress';
 import { KService } from '../../../../../resources/knative';
 import DomainMappingSection from './DomainMappingSection';
 import IngressIntegrationsSection from './IngressIntegrationsSection';
@@ -76,7 +76,7 @@ export function NetworkingSection({ kservice }: KServiceSectionProps) {
         <Alert severity="warning" variant="filled">
           Gateway API integration may be limited because Knative "config-network" ConfigMap
           ingress.class
-          {ingressClass == null
+          {ingressClass === null
             ? ' is not set.'
             : ` is set to "${ingressClass}", not "${INGRESS_CLASS_GATEWAY_API}".`}
         </Alert>

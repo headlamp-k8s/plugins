@@ -1,24 +1,24 @@
-import { Box } from '@mui/material';
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box } from '@mui/material';
 import { useParams } from 'react-router-dom';
+import { useClusters } from '../../hooks/useClusters';
+import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
+import { KService } from '../../resources/knative';
 import {
   ActivitiesProvider,
   ActivitiesRenderer,
   KNATIVE_ACTIVITY_CONTAINER_ID,
 } from '../common/activity/Activity';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
-import { useClusters } from '../../hooks/useClusters';
-import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
-import { KService } from '../../resources/knative';
 import { KServiceHeaderActions } from './detail/header/KServiceHeaderActions';
 import { KServiceLogsHeaderButton } from './detail/header/KServiceLogsHeaderButton';
 import { KServiceViewYamlHeaderButton } from './detail/header/KServiceViewYamlHeaderButton';
+import { AutoscalingSection } from './detail/sections/autoscaling/AutoscalingSection';
 import { IngressClassValue } from './detail/sections/networking/NetworkingSection';
+import { NetworkingSection } from './detail/sections/networking/NetworkingSection';
 import { OverviewSection } from './detail/sections/overview/OverviewSection';
 import { PodsSection } from './detail/sections/pods/PodsSection';
 import { TrafficSection } from './detail/sections/traffic/TrafficSection';
-import { NetworkingSection } from './detail/sections/networking/NetworkingSection';
-import { AutoscalingSection } from './detail/sections/autoscaling/AutoscalingSection';
 
 export function KServiceDetail() {
   const { name, namespace } = useParams<{ namespace: string; name: string }>();

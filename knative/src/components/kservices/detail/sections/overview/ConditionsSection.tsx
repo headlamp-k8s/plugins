@@ -1,3 +1,4 @@
+import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Chip,
   Table,
@@ -9,7 +10,6 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import type { Condition } from '../../../../../resources/knative/common';
 import { getAge } from '../../../../../utils/time';
 

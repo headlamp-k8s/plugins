@@ -1,8 +1,8 @@
-import React from 'react';
-import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useNotify } from '../../../../common/notifications/useNotify';
+import { Box, Button, Stack, TextField, Typography } from '@mui/material';
+import React from 'react';
 import { KService } from '../../../../../resources/knative';
+import { useNotify } from '../../../../common/notifications/useNotify';
 
 type AutoscalingDefaults = {
   concurrencyTarget: number;
@@ -122,7 +122,7 @@ export default function ScaleBoundsSection({
             value={minScale}
             onChange={e => setMinScale(e.target.value)}
             inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
-            helperText={resolvedMinScale != null ? `Default: ${resolvedMinScale}` : undefined}
+            helperText={resolvedMinScale !== null ? `Default: ${resolvedMinScale}` : undefined}
           />
           <TextField
             size="small"
@@ -132,7 +132,7 @@ export default function ScaleBoundsSection({
             onChange={e => setMaxScale(e.target.value)}
             inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
             helperText={
-              resolvedMaxScale != null
+              resolvedMaxScale !== null
                 ? resolvedMaxScaleLimit && resolvedMaxScaleLimit > 0
                   ? `Default: ${resolvedMaxScale} (cluster limit: ${resolvedMaxScaleLimit})${
                       resolvedMaxScale === 0 ? ' — 0 = unlimited (no upper bound)' : ''
@@ -156,7 +156,7 @@ export default function ScaleBoundsSection({
             onChange={e => setInitialScale(e.target.value)}
             inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
             helperText={
-              resolvedInitialScale != null
+              resolvedInitialScale !== null
                 ? resolvedAllowZeroInitial
                   ? `Default: ${resolvedInitialScale} (zero allowed)`
                   : `Default: ${resolvedInitialScale}`

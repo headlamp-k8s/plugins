@@ -1,9 +1,9 @@
-import { Box, CircularProgress, Paper, Typography } from '@mui/material';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
-import { NotInstalledBanner } from '../common/NotInstalledBanner';
-import { INGRESS_CLASS_GATEWAY_API, formatIngressClass } from '../../config/ingress';
+import { Box, CircularProgress, Paper, Typography } from '@mui/material';
+import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
+import { NotInstalledBanner } from '../common/NotInstalledBanner';
 
 type GatewayConfig = {
   class: string;

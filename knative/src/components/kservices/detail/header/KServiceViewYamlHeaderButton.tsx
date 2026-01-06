@@ -1,7 +1,7 @@
-import { ActionButton, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Icon } from '@iconify/react';
-import { Activity } from '../../../common/activity/Activity';
+import { ActionButton, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KService } from '../../../../resources/knative';
+import { Activity } from '../../../common/activity/Activity';
 
 type KServiceViewYamlHeaderButtonProps = {
   kservice: KService;

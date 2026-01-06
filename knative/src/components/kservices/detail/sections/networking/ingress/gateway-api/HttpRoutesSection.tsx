@@ -1,11 +1,11 @@
-import { Chip, Stack, Typography } from '@mui/material';
-import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import {
   ResourceTable,
   type ResourceTableColumn,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { Chip, Stack, Typography } from '@mui/material';
 
 const { HTTPRoute } = ResourceClasses;
 type HttpRoute = InstanceType<typeof HTTPRoute>;

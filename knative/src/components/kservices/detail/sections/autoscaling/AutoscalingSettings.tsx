@@ -1,4 +1,4 @@
-import React from 'react';
+import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
@@ -11,9 +11,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useNotify } from '../../../../common/notifications/useNotify';
+import React from 'react';
 import { KService } from '../../../../../resources/knative';
+import { useNotify } from '../../../../common/notifications/useNotify';
 
 type MetricType = '' | 'concurrency' | 'rps';
 
@@ -146,7 +146,7 @@ export default function AutoscalingSettings({
               <MenuItem value="">
                 <em>
                   Unset
-                  {resolvedDefaultTarget != null
+                  {resolvedDefaultTarget !== null
                     ? ` (default target: ${resolvedDefaultTarget})`
                     : ' (use cluster default)'}
                 </em>
@@ -165,10 +165,10 @@ export default function AutoscalingSettings({
             inputProps={{ min: 1, step: 1, inputMode: 'numeric' }}
             helperText={
               metric
-                ? resolvedDefaultTarget != null
+                ? resolvedDefaultTarget !== null
                   ? `Per-revision soft limit target (default: ${resolvedDefaultTarget})`
                   : 'Per-revision soft limit target'
-                : resolvedDefaultTarget != null
+                : resolvedDefaultTarget !== null
                 ? `Disabled when Metric is unset (default: ${resolvedDefaultTarget})`
                 : 'Disabled when Metric is unset'
             }
@@ -183,7 +183,7 @@ export default function AutoscalingSettings({
             onChange={e => setUtil(e.target.value)}
             inputProps={{ min: 1, max: 100, step: 1, inputMode: 'numeric' }}
             helperText={
-              resolvedDefaultUtil != null
+              resolvedDefaultUtil !== null
                 ? `Optional (default: ${resolvedDefaultUtil}%)`
                 : 'Optional'
             }
@@ -199,7 +199,7 @@ export default function AutoscalingSettings({
             onChange={e => setHard(e.target.value)}
             inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
             helperText={
-              resolvedDefaultHard != null
+              resolvedDefaultHard !== null
                 ? `0 = no limit (default: ${resolvedDefaultHard})`
                 : '0 = no limit. Enforced upper bound per replica.'
             }

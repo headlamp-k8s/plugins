@@ -1,6 +1,6 @@
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useKServiceActions } from '../hooks/useKServiceActions';
 import { KService } from '../../../../resources/knative';
+import { useKServiceActions } from '../hooks/useKServiceActions';
 
 type KServiceHeaderActionsProps = {
   kservice: KService;

@@ -22,8 +22,8 @@ import type { SelectChangeEvent } from '@mui/material/Select';
 import type { Terminal as XTerm } from '@xterm/xterm';
 import { useSnackbar } from 'notistack';
 import React from 'react';
-import { Activity, useActivity } from '../../../common/activity/Activity';
 import { KService } from '../../../../resources/knative';
+import { Activity, useActivity } from '../../../common/activity/Activity';
 
 type KServiceLogsHeaderButtonProps = {
   kservice: KService;

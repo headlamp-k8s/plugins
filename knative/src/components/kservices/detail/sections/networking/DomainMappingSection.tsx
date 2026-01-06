@@ -1,5 +1,3 @@
-import React from 'react';
-import { Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import {
   ActionButton,
   ResourceTable,
@@ -7,10 +5,12 @@ import {
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
+import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { useNotify } from '../../../../common/notifications/useNotify';
 import { ClusterDomainClaim } from '../../../../../resources/knative/clusterDomainClaim';
 import { KnativeDomainMapping } from '../../../../../resources/knative/domainMapping';
+import { useNotify } from '../../../../common/notifications/useNotify';
 
 type Props = {
   namespace: string;

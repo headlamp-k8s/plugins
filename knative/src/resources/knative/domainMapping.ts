@@ -1,8 +1,8 @@
 import { Router } from '@kinvolk/headlamp-plugin/lib';
-import { KubeObject, type KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import type { DeleteParameters } from '@kinvolk/headlamp-plugin/lib/k8s/apiProxy';
-import type { Condition } from './common';
+import { KubeObject, type KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { ClusterDomainClaim } from './clusterDomainClaim';
+import type { Condition } from './common';
 
 interface DomainMappingResource extends KubeObjectInterface {
   spec: {
