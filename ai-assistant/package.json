@@ -37,8 +37,8 @@
   },
   "dependencies": {
     "@langchain/anthropic": "^1.1.1",
-    "@langchain/core": "^1.0.6",
-    "@langchain/google-genai": "^1.0.3",
+    "@langchain/core": "^1.1.8",
+    "@langchain/google-genai": "^2.1.4",
     "@langchain/mistralai": "^1.0.0",
     "@langchain/ollama": "^1.0.1",
     "@langchain/openai": "^1.1.2",
