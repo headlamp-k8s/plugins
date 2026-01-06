@@ -142,7 +142,7 @@ export default function AIPrompt(props: {
     if (active) {
       setActiveConfig(active);
       // Set the default model for the active provider
-      const defaultModel = getProviderModels(active)[0] || 'default';
+      const defaultModel = resolveSelectedModel(active);
       setSelectedModel(defaultModel);
 
       // Update global state with all providers and active one
@@ -178,7 +178,7 @@ export default function AIPrompt(props: {
           _pluginSetting.setActiveProvider(newActive);
 
           // Set the default model for the new provider
-          const defaultModel = getProviderModels(newActive)[0] || 'default';
+          const defaultModel = resolveSelectedModel(newActive);
           setSelectedModel(defaultModel);
 
           // Clear history and show provider change message
@@ -224,20 +224,35 @@ export default function AIPrompt(props: {
   // Handle changing the active configuration
   const [selectedModel, setSelectedModel] = useState<string>('default');
 
+  const resolveSelectedModel = (config: StoredProviderConfig, explicitModel?: string) => {
+    if (explicitModel && explicitModel.trim().length > 0) {
+      return explicitModel;
+    }
+
+    const savedModel = config.config?.model;
+    if (savedModel && savedModel.trim().length > 0) {
+      return savedModel;
+    }
+
+    const providerModels = getProviderModels(config);
+    return providerModels[0] || 'default';
+  };
+
   const handleChangeConfig = (config: StoredProviderConfig, model?: string) => {
     if (!config) return;
+
+    const resolvedModel = resolveSelectedModel(config, model);
+
     if (
       !activeConfig ||
       activeConfig.providerId !== config.providerId ||
       activeConfig.config.apiKey !== config.config.apiKey ||
       JSON.stringify(activeConfig.config) !== JSON.stringify(config.config) ||
-      selectedModel !== model
+      selectedModel !== resolvedModel
     ) {
-      setPromptHistory([]);
-      setPromptVal('');
       setApiError(null);
       setActiveConfig(config);
-      setSelectedModel(model || getProviderModels(config)[0] || 'default');
+      setSelectedModel(resolvedModel);
       _pluginSetting.setActiveProvider(config);
       if (aiManager) {
         aiManager.reset();
@@ -245,22 +260,22 @@ export default function AIPrompt(props: {
         setTimeout(() => {
           const providerName =
             config.displayName || getProviderById(config.providerId)?.name || config.providerId;
-          setPromptHistory([
+          setPromptHistory(prev => [
+            ...prev,
             {
               role: 'system',
-              content: `Switched to ${providerName}${
-                model ? ' / ' + model : ''
-              }. History has been cleared.`,
+              content: `Switched to ${providerName}${resolvedModel ? ' / ' + resolvedModel : ''}.`,
             },
           ]);
         }, 100);
       } else {
         const providerName =
           config.displayName || getProviderById(config.providerId)?.name || config.providerId;
-        setPromptHistory([
+        setPromptHistory(prev => [
+          ...prev,
           {
             role: 'system',
-            content: `Using ${providerName}${model ? ' / ' + model : ''}.`,
+            content: `Using ${providerName}${resolvedModel ? ' / ' + resolvedModel : ''}.`,
           },
         ]);
       }
