@@ -65,20 +65,34 @@ function getTags(svc: KService): string[] {
   return tags;
 }
 
-function getLatestRevisionShort(svc: KService): string {
-  const name = svc.metadata.name;
-  const latestRevisionFull =
-    svc.status?.latestCreatedRevisionName ?? svc.status?.latestReadyRevisionName ?? '';
-
-  if (!latestRevisionFull) {
+function getRevisionShort(svc: KService, revisionName: string | undefined): string {
+  if (!revisionName) {
     return '';
   }
 
-  if (latestRevisionFull.startsWith(`${name}-`)) {
-    return latestRevisionFull.slice(name.length + 1);
+  const name = svc.metadata.name;
+  if (revisionName.startsWith(`${name}-`)) {
+    return revisionName.slice(name.length + 1);
   }
 
-  return latestRevisionFull;
+  return revisionName;
+}
+
+function getReadyCondition(svc: KService): { status: string; reason?: string } | null {
+  const conditions = svc.status?.conditions;
+  if (!conditions) {
+    return null;
+  }
+
+  const readyCondition = conditions.find(c => c.type === 'Ready');
+  if (!readyCondition) {
+    return null;
+  }
+
+  return {
+    status: readyCondition.status || 'Unknown',
+    reason: readyCondition.reason,
+  };
 }
 
 function getServiceUrls(svc: KService, domainByServiceKey: Record<string, string[]>): string[] {
@@ -341,14 +355,16 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
         },
       },
       {
-        id: 'latestRevision',
-        label: 'Latest Revision',
+        id: 'latestCreated',
+        label: 'LatestCreated',
         gridTemplate: 'min-content',
-        getValue: svc => getLatestRevisionShort(svc).toLowerCase(),
+        getValue: svc => {
+          const revisionName = svc.status?.latestCreatedRevisionName;
+          return revisionName ? revisionName.toLowerCase() : '';
+        },
         render: svc => {
-          const latestRevisionShort = getLatestRevisionShort(svc);
-
-          if (!latestRevisionShort) {
+          const revisionName = svc.status?.latestCreatedRevisionName;
+          if (!revisionName) {
             return (
               <Typography variant="body2" color="text.secondary">
                 -
@@ -356,16 +372,89 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
             );
           }
 
+          const shortName = getRevisionShort(svc, revisionName);
           return (
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <Typography variant="body2">{latestRevisionShort}</Typography>
-              <Chip
-                label={svc.isReady ? 'Ready' : 'Not Ready'}
-                color={svc.isReady ? 'success' : 'warning'}
-                size="small"
-              />
-            </Stack>
+            <Typography variant="body2" title={revisionName}>
+              {shortName}
+            </Typography>
           );
+        },
+      },
+      {
+        id: 'latestReady',
+        label: 'LatestReady',
+        gridTemplate: 'min-content',
+        getValue: svc => {
+          const revisionName = svc.status?.latestReadyRevisionName;
+          return revisionName ? revisionName.toLowerCase() : '';
+        },
+        render: svc => {
+          const revisionName = svc.status?.latestReadyRevisionName;
+          if (!revisionName) {
+            return (
+              <Typography variant="body2" color="text.secondary">
+                -
+              </Typography>
+            );
+          }
+
+          const shortName = getRevisionShort(svc, revisionName);
+          return (
+            <Typography variant="body2" title={revisionName}>
+              {shortName}
+            </Typography>
+          );
+        },
+      },
+      {
+        id: 'ready',
+        label: 'Ready',
+        gridTemplate: 'min-content',
+        filterVariant: 'multi-select',
+        filterSelectOptions: [
+          { label: 'True', value: 'True' },
+          { label: 'False', value: 'False' },
+          { label: 'Unknown', value: 'Unknown' },
+        ],
+        getValue: svc => {
+          const readyCondition = getReadyCondition(svc);
+          return readyCondition?.status || 'Unknown';
+        },
+        render: svc => {
+          const readyCondition = getReadyCondition(svc);
+          const status = readyCondition?.status || 'Unknown';
+
+          let color: 'success' | 'warning' | 'error' | 'default' = 'default';
+          if (status === 'True') {
+            color = 'success';
+          } else if (status === 'False') {
+            color = 'error';
+          }
+
+          return <Chip label={status} color={color} size="small" variant="outlined" />;
+        },
+      },
+      {
+        id: 'reason',
+        label: 'Reason',
+        gridTemplate: '2fr',
+        getValue: svc => {
+          const readyCondition = getReadyCondition(svc);
+          return readyCondition?.reason?.toLowerCase() || '';
+        },
+        render: svc => {
+          const readyCondition = getReadyCondition(svc);
+          const reason = readyCondition?.reason;
+
+          if (!reason) {
+            return (
+              <Typography variant="body2" color="text.secondary">
+                -
+              </Typography>
+            );
+          }
+
+          return <Typography variant="body2">{reason}</Typography>;
         },
       },
       {
