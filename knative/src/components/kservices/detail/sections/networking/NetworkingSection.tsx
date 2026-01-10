@@ -82,7 +82,12 @@ export function NetworkingSection({ kservice }: KServiceSectionProps) {
         </Alert>
       )}
 
-      <DomainMappingSection namespace={namespace} serviceName={name} cluster={cluster} />
+      <DomainMappingSection
+        namespace={namespace}
+        serviceName={name}
+        cluster={cluster}
+        kservice={kservice}
+      />
 
       <IngressIntegrationsSection
         namespace={namespace}

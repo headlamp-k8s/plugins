@@ -21,6 +21,7 @@
     "notistack",
     "react-router-dom",
     "lodash",
-    "@xterm/xterm"
+    "@xterm/xterm",
+    "@tanstack/react-query"
   ]
 }

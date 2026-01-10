@@ -1,5 +1,4 @@
 import {
-  ActionButton,
   ResourceTable,
   type ResourceTableColumn,
   SectionBox,
@@ -8,14 +7,17 @@ import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { KnativeDomainMapping, KService } from '../../../../../resources/knative';
 import { ClusterDomainClaim } from '../../../../../resources/knative/clusterDomainClaim';
-import { KnativeDomainMapping } from '../../../../../resources/knative/domainMapping';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
+import { DomainMappingRowAction } from './DomainMappingRowAction';
 
 type Props = {
   namespace: string;
   serviceName: string;
   cluster: string;
+  kservice: KService;
 };
 
 function isReady(dm: KnativeDomainMapping): boolean {
@@ -28,6 +30,7 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
   const [creating, setCreating] = React.useState<boolean>(false);
   const [domainInput, setDomainInput] = React.useState<string>('');
   const { pathname } = useLocation();
+  const { canCreateDomainMapping, canCreateClusterDomainClaim } = useKServicePermissions();
 
   const domainMappingListResult = KnativeDomainMapping.useList({ clusters, namespace });
   const domainMappingsData = domainMappingListResult.items;
@@ -296,9 +299,11 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
             disabled={creating}
             fullWidth
           />
-          <Button variant="contained" onClick={handleCreate} disabled={creating}>
-            Create
-          </Button>
+          {canCreateClusterDomainClaim === true && canCreateDomainMapping === true && (
+            <Button variant="contained" onClick={handleCreate} disabled={creating}>
+              Create
+            </Button>
+          )}
         </Stack>
 
         <Box>
@@ -319,14 +324,12 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
                   const { state } = getClusterDomainClaim(dm);
                   if (state === 'missing') {
                     return (
-                      <ActionButton
-                        description="Create ClusterDomainClaim"
-                        buttonStyle="menu"
-                        onClick={async () => {
+                      <DomainMappingRowAction
+                        dm={dm}
+                        onAction={async () => {
                           await handleCreateClusterDomainClaim(dm);
                           context.closeMenu?.();
                         }}
-                        icon="mdi:plus-circle"
                       />
                     );
                   }

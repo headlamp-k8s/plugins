@@ -3,6 +3,7 @@ import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
 import { KService } from '../../../../../resources/knative';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
 type AutoscalingDefaults = {
   concurrencyTarget: number;
@@ -29,6 +30,8 @@ export default function ScaleBoundsSection({
   cluster: string;
 }) {
   const [saving, setSaving] = React.useState(false);
+  const { canPatchKService, isLoading } = useKServicePermissions();
+  const isReadOnly = canPatchKService !== true || isLoading;
   const anns = kservice.spec.template.metadata?.annotations ?? {};
 
   const [minScale, setMinScale] = React.useState<string>(
@@ -123,6 +126,7 @@ export default function ScaleBoundsSection({
             onChange={e => setMinScale(e.target.value)}
             inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
             helperText={resolvedMinScale !== null ? `Default: ${resolvedMinScale}` : undefined}
+            disabled={isReadOnly}
           />
           <TextField
             size="small"
@@ -144,6 +148,7 @@ export default function ScaleBoundsSection({
                 ? `Cluster limit: ${resolvedMaxScaleLimit}`
                 : undefined
             }
+            disabled={isReadOnly}
           />
         </Stack>
 
@@ -162,6 +167,7 @@ export default function ScaleBoundsSection({
                   : `Default: ${resolvedInitialScale}`
                 : undefined
             }
+            disabled={isReadOnly}
           />
           <TextField
             size="small"
@@ -171,6 +177,7 @@ export default function ScaleBoundsSection({
             onChange={e => setActivationScale(e.target.value)}
             inputProps={{ min: 1, step: 1, inputMode: 'numeric' }}
             helperText={`Default: ${resolvedActivationScaleDefault ?? 1}`}
+            disabled={isReadOnly}
           />
         </Stack>
 
@@ -182,6 +189,7 @@ export default function ScaleBoundsSection({
             value={scaleDownDelay}
             onChange={e => setScaleDownDelay(e.target.value)}
             helperText={`Default: ${resolvedScaleDownDelay ?? '0s'} (0s to 1h)`}
+            disabled={isReadOnly}
           />
           <TextField
             size="small"
@@ -190,6 +198,7 @@ export default function ScaleBoundsSection({
             value={stableWindow}
             onChange={e => setStableWindow(e.target.value)}
             helperText={`Default: ${resolvedStableWindow ?? '60s'} (6s to 1h)`}
+            disabled={isReadOnly}
           />
         </Stack>
 
@@ -198,17 +207,21 @@ export default function ScaleBoundsSection({
             {isValid() ? 'All inputs valid' : 'Fix invalid inputs'}
           </Typography>
           <Box display="flex" gap={1}>
-            <Button variant="text" onClick={resetSection} aria-label="Reset (scale bounds)">
-              Reset
-            </Button>
-            <Button
-              variant="contained"
-              onClick={onSave}
-              disabled={!isValid() || saving}
-              aria-label="Save autoscaling (scale bounds)"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
+            {!isReadOnly && (
+              <Button variant="text" onClick={resetSection} aria-label="Reset (scale bounds)">
+                Reset
+              </Button>
+            )}
+            {!isReadOnly && (
+              <Button
+                variant="contained"
+                onClick={onSave}
+                disabled={!isValid() || saving}
+                aria-label="Save autoscaling (scale bounds)"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </Button>
+            )}
           </Box>
         </Box>
       </Stack>

@@ -6,9 +6,11 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
+import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Chip, Stack, Typography } from '@mui/material';
 import React from 'react';
 import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
+import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeDomainMapping, KService } from '../../resources/knative';
@@ -94,23 +96,44 @@ function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
     },
   });
   const disabled = acting !== null;
+  const namespace = kservice.metadata.namespace;
+  const cluster = kservice.cluster;
+
+  // Check permissions using hook
+  const canPatchKService = useAuthorization({
+    item: KService,
+    authVerb: 'patch',
+    namespace,
+    cluster,
+  });
+
+  const canDeletePods = useAuthorization({
+    item: Pod,
+    authVerb: 'delete',
+    namespace,
+    cluster,
+  });
 
   return (
     <>
-      <ActionButton
-        description="Redeploy Latest Revision"
-        buttonStyle="menu"
-        onClick={handleRedeploy}
-        icon="mdi:update"
-        iconButtonProps={{ disabled }}
-      />
-      <ActionButton
-        description="Restart"
-        buttonStyle="menu"
-        onClick={handleRestart}
-        icon="mdi:restart"
-        iconButtonProps={{ disabled }}
-      />
+      {canPatchKService.allowed === true && (
+        <ActionButton
+          description="Redeploy Latest Revision"
+          buttonStyle="menu"
+          onClick={handleRedeploy}
+          icon="mdi:update"
+          iconButtonProps={{ disabled }}
+        />
+      )}
+      {canDeletePods.allowed === true && (
+        <ActionButton
+          description="Restart"
+          buttonStyle="menu"
+          onClick={handleRestart}
+          icon="mdi:restart"
+          iconButtonProps={{ disabled }}
+        />
+      )}
     </>
   );
 }

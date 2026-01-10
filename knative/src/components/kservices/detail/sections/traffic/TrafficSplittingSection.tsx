@@ -19,6 +19,7 @@ import React from 'react';
 import type { KRevisionResource, KService, Traffic } from '../../../../../resources/knative';
 import { getAge } from '../../../../../utils/time';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
 type Props = {
   cluster: string;
@@ -28,6 +29,8 @@ type Props = {
 
 export default function TrafficSplittingSection({ cluster, kservice, revisions }: Props) {
   const [savingTraffic, setSavingTraffic] = React.useState(false);
+  const { canPatchKService, isLoading } = useKServicePermissions();
+  const isReadOnly = canPatchKService !== true || isLoading;
   const [revPercents, setRevPercents] = React.useState<Record<string, number>>({});
   const [revTags, setRevTags] = React.useState<Record<string, string[]>>({});
   const [latestPercent, setLatestPercent] = React.useState<number>(0);
@@ -403,6 +406,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
                             }))
                           }
                           sx={{ width: 100 }}
+                          disabled={isReadOnly}
                         />
                       </TableCell>
                       <TableCell>
@@ -413,6 +417,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
                           value={revTags[r.metadata.name] || []}
                           options={[]}
                           filterSelectedOptions
+                          disabled={isReadOnly}
                           onChange={(_, newValue) => {
                             const unique = Array.from(
                               new Set(newValue.map(v => v.trim()).filter(Boolean))
@@ -537,6 +542,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
                           setLatestPercent(Number.isNaN(numeric) ? 0 : numeric);
                         }}
                         sx={{ width: 100 }}
+                        disabled={isReadOnly}
                       />
                     </TableCell>
                     <TableCell>
@@ -547,6 +553,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
                         value={latestTags}
                         options={[]}
                         filterSelectedOptions
+                        disabled={isReadOnly}
                         onChange={(_, newValue) => {
                           const unique = Array.from(
                             new Set(newValue.map(v => v.trim()).filter(Boolean))
@@ -619,17 +626,21 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
             )}
           </Box>
           <Box display="flex" gap={1}>
-            <Button variant="text" onClick={resetSection} aria-label="Reset traffic">
-              Reset
-            </Button>
-            <Button
-              variant="contained"
-              onClick={onSaveTraffic}
-              disabled={!isTrafficValid || savingTraffic}
-              aria-label="Save traffic"
-            >
-              {savingTraffic ? 'Saving…' : 'Save'}
-            </Button>
+            {!isReadOnly && (
+              <Button variant="text" onClick={resetSection} aria-label="Reset traffic">
+                Reset
+              </Button>
+            )}
+            {!isReadOnly && (
+              <Button
+                variant="contained"
+                onClick={onSaveTraffic}
+                disabled={!isTrafficValid || savingTraffic}
+                aria-label="Save traffic"
+              >
+                {savingTraffic ? 'Saving…' : 'Save'}
+              </Button>
+            )}
           </Box>
         </Box>
       </Stack>

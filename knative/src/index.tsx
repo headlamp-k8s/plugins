@@ -16,9 +16,23 @@
 
 import { addIcon } from '@iconify/react';
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
 import { KServiceDetail } from './components/kservices/Detail';
 import { KServicesList } from './components/kservices/List';
 import { NetworkingOverview } from './components/networking/Overview';
+
+const queryClient = new QueryClient();
+
+function withQueryClient(Component: React.ComponentType) {
+  return React.memo(function WithQueryClient() {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Component />
+      </QueryClientProvider>
+    );
+  });
+}
 
 addIcon('custom:knative', {
   body: `<svg viewBox="0 0 735 593.5" xmlns="http://www.w3.org/2000/svg">
@@ -67,19 +81,19 @@ registerRoute({
   path: '/knative/services/:namespace/:name',
   sidebar: 'kservices',
   name: 'kserviceDetails',
-  component: KServiceDetail,
+  component: withQueryClient(KServiceDetail),
 });
 
 registerRoute({
   path: '/knative/services',
   sidebar: 'kservices',
   name: 'kservices',
-  component: KServicesList,
+  component: withQueryClient(KServicesList),
 });
 
 registerRoute({
   path: '/knative/networking',
   sidebar: 'knetworking',
   name: 'knetworking',
-  component: NetworkingOverview,
+  component: withQueryClient(NetworkingOverview),
 });

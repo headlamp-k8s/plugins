@@ -24,6 +24,7 @@ import { useSnackbar } from 'notistack';
 import React from 'react';
 import { KService } from '../../../../resources/knative';
 import { Activity, useActivity } from '../../../common/activity/Activity';
+import { useKServicePermissions } from '../permissions/KServicePermissionsProvider';
 
 type KServiceLogsHeaderButtonProps = {
   kservice: KService;
@@ -846,6 +847,8 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
 }
 
 export function KServiceLogsHeaderButton({ kservice }: KServiceLogsHeaderButtonProps) {
+  const { canGetPodLogs } = useKServicePermissions();
+
   const onClick = () => {
     const name = kservice.metadata.name;
     if (!name) return;
@@ -859,6 +862,10 @@ export function KServiceLogsHeaderButton({ kservice }: KServiceLogsHeaderButtonP
       content: <KServiceLogsActivityContent kservice={kservice} />,
     });
   };
+
+  if (canGetPodLogs !== true) {
+    return null;
+  }
 
   return (
     <ActionButton icon="mdi:file-document-box-outline" onClick={onClick} description="Show logs" />

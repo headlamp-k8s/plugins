@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react';
 import { ActionButton, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KService } from '../../../../resources/knative';
 import { Activity } from '../../../common/activity/Activity';
+import { useKServicePermissions } from '../permissions/KServicePermissionsProvider';
 
 type KServiceViewYamlHeaderButtonProps = {
   kservice: KService;
@@ -33,6 +34,16 @@ function KServiceYamlActivityContent({
 }
 
 export function KServiceViewYamlHeaderButton({ kservice }: KServiceViewYamlHeaderButtonProps) {
+  const { canPatchKService } = useKServicePermissions();
+
+  // Hide in read-only mode (no patch permission).
+  // Reason: this view renders header actions and can end up showing the same "View YAML"
+  // button twice. Keeping the decision inside this *HeaderButton* component makes it
+  // consistent wherever it is rendered.
+  if (canPatchKService !== true) {
+    return null;
+  }
+
   const activityId = `kservice-yaml-${kservice.metadata.uid ?? kservice.metadata.name}`;
 
   const openYaml = () => {

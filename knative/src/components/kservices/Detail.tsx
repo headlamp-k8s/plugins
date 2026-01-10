@@ -13,6 +13,7 @@ import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { KServiceHeaderActions } from './detail/header/KServiceHeaderActions';
 import { KServiceLogsHeaderButton } from './detail/header/KServiceLogsHeaderButton';
 import { KServiceViewYamlHeaderButton } from './detail/header/KServiceViewYamlHeaderButton';
+import { KServicePermissionsProvider } from './detail/permissions/KServicePermissionsProvider';
 import { AutoscalingSection } from './detail/sections/autoscaling/AutoscalingSection';
 import { IngressClassValue } from './detail/sections/networking/NetworkingSection';
 import { NetworkingSection } from './detail/sections/networking/NetworkingSection';
@@ -60,15 +61,27 @@ export function KServiceDetail() {
                 ? [
                     {
                       id: 'knative.kservice-redeploy',
-                      action: <KServiceHeaderActions kservice={resource} />,
+                      action: (
+                        <KServicePermissionsProvider kservice={resource}>
+                          <KServiceHeaderActions kservice={resource} />
+                        </KServicePermissionsProvider>
+                      ),
                     },
                     {
                       id: 'knative-kservice-logs',
-                      action: <KServiceLogsHeaderButton kservice={resource} />,
+                      action: (
+                        <KServicePermissionsProvider kservice={resource}>
+                          <KServiceLogsHeaderButton kservice={resource} />
+                        </KServicePermissionsProvider>
+                      ),
                     },
                     {
                       id: 'knative.kservice-view-yaml',
-                      action: <KServiceViewYamlHeaderButton kservice={resource} />,
+                      action: (
+                        <KServicePermissionsProvider kservice={resource}>
+                          <KServiceViewYamlHeaderButton kservice={resource} />
+                        </KServicePermissionsProvider>
+                      ),
                     },
                   ]
                 : null
@@ -96,15 +109,27 @@ export function KServiceDetail() {
                     },
                     {
                       id: 'knative.kservice-traffic',
-                      section: <TrafficSection kservice={item} />,
+                      section: (
+                        <KServicePermissionsProvider kservice={item}>
+                          <TrafficSection kservice={item} />
+                        </KServicePermissionsProvider>
+                      ),
                     },
                     {
                       id: 'knative.kservice-networking',
-                      section: <NetworkingSection kservice={item} />,
+                      section: (
+                        <KServicePermissionsProvider kservice={item}>
+                          <NetworkingSection kservice={item} />
+                        </KServicePermissionsProvider>
+                      ),
                     },
                     {
                       id: 'knative.kservice-autoscaling',
-                      section: <AutoscalingSection kservice={item} />,
+                      section: (
+                        <KServicePermissionsProvider kservice={item}>
+                          <AutoscalingSection kservice={item} />
+                        </KServicePermissionsProvider>
+                      ),
                     },
                   ]
                 : []

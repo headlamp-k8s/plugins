@@ -14,6 +14,7 @@ import {
 import React from 'react';
 import { KService } from '../../../../../resources/knative';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
 type MetricType = '' | 'concurrency' | 'rps';
 
@@ -44,6 +45,8 @@ export default function AutoscalingSettings({
   defaults,
 }: AutoscalingSettingsProps) {
   const [saving, setSaving] = React.useState(false);
+  const { canPatchKService, isLoading } = useKServicePermissions();
+  const isReadOnly = canPatchKService !== true || isLoading;
   const anns = kservice.spec.template?.metadata?.annotations ?? {};
   const templateSpec = kservice.spec.template?.spec;
 
@@ -142,6 +145,7 @@ export default function AutoscalingSettings({
               onChange={(e: SelectChangeEvent<string>) =>
                 setMetric((e.target.value as MetricType) || '')
               }
+              disabled={isReadOnly}
             >
               <MenuItem value="">
                 <em>
@@ -172,7 +176,7 @@ export default function AutoscalingSettings({
                 ? `Disabled when Metric is unset (default: ${resolvedDefaultTarget})`
                 : 'Disabled when Metric is unset'
             }
-            disabled={!metric}
+            disabled={!metric || isReadOnly}
           />
 
           <TextField
@@ -187,6 +191,7 @@ export default function AutoscalingSettings({
                 ? `Optional (default: ${resolvedDefaultUtil}%)`
                 : 'Optional'
             }
+            disabled={isReadOnly}
           />
         </Stack>
 
@@ -203,6 +208,7 @@ export default function AutoscalingSettings({
                 ? `0 = no limit (default: ${resolvedDefaultHard})`
                 : '0 = no limit. Enforced upper bound per replica.'
             }
+            disabled={isReadOnly}
           />
         </Stack>
 
@@ -211,17 +217,21 @@ export default function AutoscalingSettings({
             {isValid() ? 'All inputs valid' : 'Fix invalid inputs'}
           </Typography>
           <Box display="flex" gap={1}>
-            <Button variant="text" onClick={resetSection} aria-label="Reset autoscaling">
-              Reset
-            </Button>
-            <Button
-              variant="contained"
-              onClick={onSave}
-              disabled={!isValid() || saving}
-              aria-label="Save autoscaling"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
+            {!isReadOnly && (
+              <Button variant="text" onClick={resetSection} aria-label="Reset autoscaling">
+                Reset
+              </Button>
+            )}
+            {!isReadOnly && (
+              <Button
+                variant="contained"
+                onClick={onSave}
+                disabled={!isValid() || saving}
+                aria-label="Save autoscaling"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </Button>
+            )}
           </Box>
         </Box>
       </Stack>
