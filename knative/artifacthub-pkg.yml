@@ -1,0 +1,11 @@
+version: 0.1.0-alpha
+name: "headlamp_knative"
+displayName: Knative
+createdAt: "2025-11-22T04:25:45Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/knative/logo.png"
+description: A UI for viewing and managing Knative.
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/knative-0.1.0-alpha/headlamp-k8s-knative-0.1.0-alpha.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:bdc0b463ec5d4c34364a4bcea9e33bfdbad45bf76ec64049edf4554e8c4ec620"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
