@@ -33,7 +33,7 @@ export function ReleaseFilters({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [inputValue, onNameFilterChange]);
+  }, [inputValue]);
 
   return (
     <Box display="flex" gap={2} alignItems="center">

@@ -50,7 +50,7 @@ export function ReleaseActionsMenu({
 
   return (
     <>
-      <IconButton onClick={handleMenuClick} size="small">
+      <IconButton onClick={handleMenuClick} size="small" aria-label="Release actions">
         <Icon icon="mdi:dots-vertical" />
       </IconButton>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>

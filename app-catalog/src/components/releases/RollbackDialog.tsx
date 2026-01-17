@@ -1,5 +1,5 @@
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Button, DialogActions, DialogContent, InputLabel, MenuItem, Select } from '@mui/material';
+import { Button, DialogActions, DialogContent, InputLabel, MenuItem, Select, useTheme } from '@mui/material';
 
 interface Release {
   version: number;
@@ -11,12 +11,6 @@ interface Release {
 interface ReleaseHistory {
   releases: Release[];
 }
-
-const BUTTON_STYLES = {
-  backgroundColor: '#000',
-  color: 'white',
-  textTransform: 'none' as const,
-};
 
 interface RollbackDialogProps {
   open: boolean;
@@ -35,6 +29,8 @@ export function RollbackDialog({
   onConfirm,
   onCancel,
 }: RollbackDialogProps) {
+  const theme = useTheme();
+
   return (
     <Dialog open={open} maxWidth="xs" onClose={onCancel} title="Rollback">
       <DialogContent
@@ -48,6 +44,7 @@ export function RollbackDialog({
           value={revertVersion}
           onChange={event => onVersionChange(event.target.value as string)}
           id="revert"
+          labelId="revert"
           fullWidth
         >
           {releaseHistory &&
@@ -61,10 +58,30 @@ export function RollbackDialog({
         </Select>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onConfirm} sx={BUTTON_STYLES}>
+        <Button
+          onClick={onConfirm}
+          sx={{
+            backgroundColor: theme.palette.primary.main,
+            color: theme.palette.primary.contrastText,
+            textTransform: 'none',
+            '&:hover': {
+              backgroundColor: theme.palette.primary.dark,
+            },
+          }}
+        >
           Revert
         </Button>
-        <Button sx={BUTTON_STYLES} onClick={onCancel}>
+        <Button
+          sx={{
+            backgroundColor: theme.palette.primary.main,
+            color: theme.palette.primary.contrastText,
+            textTransform: 'none',
+            '&:hover': {
+              backgroundColor: theme.palette.primary.dark,
+            },
+          }}
+          onClick={onCancel}
+        >
           Cancel
         </Button>
       </DialogActions>

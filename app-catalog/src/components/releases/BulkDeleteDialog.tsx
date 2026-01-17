@@ -24,7 +24,7 @@ export function BulkDeleteDialog({
         </DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>{isDeleting ? 'Close' : 'No'}</Button>
+        <Button disabled={isDeleting} onClick={onClose}>{isDeleting ? 'Close' : 'No'}</Button>
         <Button disabled={isDeleting} onClick={onConfirm} color="error">
           {isDeleting ? 'Deleting...' : 'Yes'}
         </Button>
