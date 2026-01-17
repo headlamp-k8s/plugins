@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Box, IconButton, Typography } from '@mui/material';
+import { useTheme } from '@mui/material';
 
 interface BulkActionsToolbarProps {
   selectedCount: number;
@@ -10,6 +11,7 @@ export function BulkActionsToolbar({ selectedCount, onDelete }: BulkActionsToolb
   if (selectedCount === 0) {
     return null;
   }
+  const theme = useTheme();
 
   return (
     <Box
@@ -18,7 +20,7 @@ export function BulkActionsToolbar({ selectedCount, onDelete }: BulkActionsToolb
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '8px 16px',
-        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+        backgroundColor: theme.palette.action.hover,
         borderRadius: '4px',
         marginBottom: '16px',
       }}

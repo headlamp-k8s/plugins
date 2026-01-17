@@ -60,9 +60,36 @@ interface ReleasesResponse {
 }
 
 const DELETE_STATUS_POLLING_INTERVAL = 1000;
+const DELETE_STATUS_MAX_RETRIES = 60;
+const RELEASE_KEY_DELIMITER = '|:|';
 
 interface ReleaseListProps {
   fetchReleases?: () => Promise<ReleasesResponse>;
+}
+
+/**
+ * Creates a unique key for a release by combining namespace and name.
+ * Uses a delimiter that is unlikely to appear in Kubernetes resource names.
+ * @param namespace - The namespace of the release
+ * @param name - The name of the release
+ * @returns A unique key string
+ */
+function createReleaseKey(namespace: string, name: string): string {
+  return `${namespace}${RELEASE_KEY_DELIMITER}${name}`;
+}
+
+/**
+ * Parses a release key back into namespace and name.
+ * @param key - The release key to parse
+ * @returns Object with namespace and name, or null if invalid
+ */
+function parseReleaseKey(key: string): { namespace: string; name: string } | null {
+  const parts = key.split(RELEASE_KEY_DELIMITER);
+  if (parts.length !== 2) {
+    console.error(`Invalid release key format: ${key}`);
+    return null;
+  }
+  return { namespace: parts[0], name: parts[1] };
 }
 
 /**
@@ -119,6 +146,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
         console.error('Failed to fetch releases:', error);
         enqueueSnackbar('Failed to load releases', { variant: 'error' });
         setReleases([]);
+        setLatestMap({});
       });
   }, [update, fetchReleases, enqueueSnackbar]);
 
@@ -195,12 +223,22 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
   }, []);
 
   const checkDeleteReleaseStatus = useCallback(
-    (name: string, namespace: string) => {
+    (name: string, namespace: string, retryCount = 0) => {
+      if (retryCount >= DELETE_STATUS_MAX_RETRIES) {
+        enqueueSnackbar(`Delete status check timeout for ${name}`, { variant: 'error' });
+        setIsDeleting(false);
+        if (deleteStatusTimeoutRef.current) {
+          clearTimeout(deleteStatusTimeoutRef.current);
+          deleteStatusTimeoutRef.current = null;
+        }
+        return;
+      }
+
       getActionStatus(name, 'uninstall')
         .then(response => {
           if (response.status === 'processing') {
             deleteStatusTimeoutRef.current = setTimeout(
-              () => checkDeleteReleaseStatus(name, namespace),
+              () => checkDeleteReleaseStatus(name, namespace, retryCount + 1),
               DELETE_STATUS_POLLING_INTERVAL
             );
           } else if (response.status !== 'success') {
@@ -208,11 +246,19 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
               variant: 'error',
             });
             setIsDeleting(false);
+            if (deleteStatusTimeoutRef.current) {
+              clearTimeout(deleteStatusTimeoutRef.current);
+              deleteStatusTimeoutRef.current = null;
+            }
           } else {
             enqueueSnackbar(`Successfully deleted release ${name}`, { variant: 'success' });
             setOpenDeleteAlert(false);
             setIsDeleting(false);
             setUpdate(prev => !prev);
+            if (deleteStatusTimeoutRef.current) {
+              clearTimeout(deleteStatusTimeoutRef.current);
+              deleteStatusTimeoutRef.current = null;
+            }
           }
         })
         .catch(error => {
@@ -221,21 +267,28 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
           setIsDeleting(false);
           if (deleteStatusTimeoutRef.current) {
             clearTimeout(deleteStatusTimeoutRef.current);
+            deleteStatusTimeoutRef.current = null;
           }
         });
     },
-    [enqueueSnackbar]
+    [enqueueSnackbar, update, setUpdate]
   );
 
   const handleConfirmDelete = useCallback(() => {
     if (selectedRelease) {
+      // Clear any existing timeout to prevent race conditions
+      if (deleteStatusTimeoutRef.current) {
+        clearTimeout(deleteStatusTimeoutRef.current);
+        deleteStatusTimeoutRef.current = null;
+      }
+
       deleteRelease(selectedRelease.namespace, selectedRelease.name)
         .then(() => {
           setIsDeleting(true);
           enqueueSnackbar(`Delete request for release ${selectedRelease.name} accepted`, {
             variant: 'info',
           });
-          setOpenDeleteAlert(false);
+          // Keep dialog open while polling - it will close on success in checkDeleteReleaseStatus
           checkDeleteReleaseStatus(selectedRelease.name, selectedRelease.namespace);
         })
         .catch(error => {
@@ -267,7 +320,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
   }, [selectedRelease, revertVersion, enqueueSnackbar]);
 
   const handleSelectRelease = useCallback((releaseName: string, namespace: string) => {
-    const key = `${namespace}/${releaseName}`;
+    const key = createReleaseKey(namespace, releaseName);
     setSelectedReleases(prev => {
       const newSet = new Set(prev);
       if (newSet.has(key)) {
@@ -286,42 +339,123 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
       if (prev.size === filteredReleases.length) {
         return new Set();
       } else {
-        const allKeys = filteredReleases.map(r => `${r.namespace}/${r.name}`);
+        const allKeys = filteredReleases.map(r => createReleaseKey(r.namespace, r.name));
         return new Set(allKeys);
       }
     });
   }, [filteredReleases]);
+
+  const checkBulkDeleteComplete = useCallback(
+    (deletedKeys: string[], retryCount = 0) => {
+      if (retryCount >= DELETE_STATUS_MAX_RETRIES) {
+        enqueueSnackbar('Bulk delete verification timeout, please refresh the page', {
+          variant: 'warning',
+        });
+        setIsBulkDeleting(false);
+        setUpdate(prev => !prev);
+        return;
+      }
+
+      // If releases is null or empty, consider all deletions complete
+      if (!releases || releases.length === 0) {
+        setIsBulkDeleting(false);
+        return;
+      }
+
+      // Check if any deleted releases still exist in the list
+      const stillExist = deletedKeys.some(key => {
+        const parsed = parseReleaseKey(key);
+        if (!parsed) return false;
+        const release = releases.find(
+          r => r.namespace === parsed.namespace && r.name === parsed.name
+        );
+        return release !== undefined;
+      });
+
+      if (stillExist) {
+        setTimeout(() => {
+          setUpdate(prev => !prev); // Trigger fetch
+          setTimeout(() => checkBulkDeleteComplete(deletedKeys, retryCount + 1), 500);
+        }, DELETE_STATUS_POLLING_INTERVAL);
+      } else {
+        setIsBulkDeleting(false);
+      }
+    },
+    [releases, enqueueSnackbar]
+  );
 
   const handleBulkDelete = useCallback(() => {
     setOpenBulkDeleteAlert(true);
   }, []);
 
   const handleConfirmBulkDelete = useCallback(() => {
-    if (selectedReleases.size === 0 || !releases) return;
+    if (selectedReleases.size === 0) return;
 
     setIsBulkDeleting(true);
-    const releasesToDelete = Array.from(selectedReleases).map(key => {
-      const [namespace, name] = key.split('/');
-      return { namespace, name };
-    });
+    const releasesToDelete = Array.from(selectedReleases)
+      .map(key => {
+        const parsed = parseReleaseKey(key);
+        if (!parsed) return null;
+        return { namespace: parsed.namespace, name: parsed.name, key };
+      })
+      .filter((item): item is { namespace: string; name: string; key: string } => item !== null);
 
-    Promise.all(releasesToDelete.map(({ namespace, name }) => deleteRelease(namespace, name)))
-      .then(() => {
-        enqueueSnackbar(
-          `Successfully initiated deletion of ${releasesToDelete.length} release(s)`,
-          { variant: 'info' }
-        );
+    if (releasesToDelete.length === 0) {
+      enqueueSnackbar('No valid releases to delete', { variant: 'error' });
+      setIsBulkDeleting(false);
+      setOpenBulkDeleteAlert(false);
+      return;
+    }
+
+    Promise.allSettled(
+      releasesToDelete.map(({ namespace, name }) => deleteRelease(namespace, name))
+    )
+      .then(results => {
+        const succeeded = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+
+        const successfullyDeletedKeys = releasesToDelete
+          .filter((_, index) => results[index].status === 'fulfilled')
+          .map(item => item.key);
+
+        if (failed === 0) {
+          enqueueSnackbar(
+            `Successfully initiated deletion of ${succeeded} release(s)`,
+            { variant: 'info' }
+          );
+        } else if (succeeded === 0) {
+          enqueueSnackbar(`Failed to delete all ${failed} release(s)`, { variant: 'error' });
+          setIsBulkDeleting(false);
+          setOpenBulkDeleteAlert(false);
+          setSelectedReleases(new Set());
+          return;
+        } else {
+          enqueueSnackbar(
+            `Initiated deletion of ${succeeded} release(s), failed ${failed}`,
+            { variant: 'warning' }
+          );
+        }
+
         setOpenBulkDeleteAlert(false);
         setSelectedReleases(new Set());
-        setIsBulkDeleting(false);
-        setUpdate(prev => !prev);
+
+        if (successfullyDeletedKeys.length > 0) {
+          setUpdate(prev => !prev);
+          setTimeout(
+            () => checkBulkDeleteComplete(successfullyDeletedKeys),
+            DELETE_STATUS_POLLING_INTERVAL
+          );
+        } else {
+          setIsBulkDeleting(false);
+        }
       })
       .catch(error => {
-        console.error('Failed to delete releases:', error);
-        enqueueSnackbar('Failed to delete some releases', { variant: 'error' });
+        console.error('Unexpected error in bulk delete:', error);
+        enqueueSnackbar('Unexpected error during bulk deletion', { variant: 'error' });
         setIsBulkDeleting(false);
+        setOpenBulkDeleteAlert(false);
       });
-  }, [selectedReleases, releases, enqueueSnackbar]);
+  }, [selectedReleases, enqueueSnackbar, checkBulkDeleteComplete]);
 
   return (
     <>
@@ -390,17 +524,19 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
                       : false
                   }
                   onChange={handleSelectAll}
+                  aria-label="Select all releases"
                 />
               ),
               gridTemplate: 'min-content',
               getter: (release: Release) => {
-                const key = `${release.namespace}/${release.name}`;
+                const key = createReleaseKey(release.namespace, release.name);
                 const isSelected = selectedReleases.has(key);
                 return (
                   <Checkbox
                     size="small"
                     checked={isSelected}
                     onChange={() => handleSelectRelease(release.name, release.namespace)}
+                    aria-label={`Select ${release.name}`}
                   />
                 );
               },
