@@ -1,5 +1,5 @@
 {
-  "name": "knative-headlamp-plugin",
+  "name": "@headlamp-k8s/knative",
   "version": "0.1.0",
   "description": "A Headlamp plugin for visualizing and managing Knative Services. Provides GUI functionality to list and view service details, edit traffic splitting, update concurrency settings, perform redeploy/restart operations, and reference external/internal HTTPRoutes.",
   "scripts": {
