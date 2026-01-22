@@ -1,5 +1,8 @@
+import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { Button } from '@mui/material';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import ListSubheader from '@mui/material/ListSubheader';
 import MenuItem from '@mui/material/MenuItem';
@@ -49,6 +52,9 @@ export function Settings(props: SettingsProps) {
   const { data, onDataChange } = props;
   const [selectedCluster, setSelectedCluster] = useState('');
   const [addressError, setAddressError] = useState(false);
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
+  const request = ApiProxy.request;
 
   const clusters = useClustersConf() || {};
 
@@ -80,10 +86,45 @@ export function Settings(props: SettingsProps) {
   useEffect(() => {
     if (selectedClusterData.address) {
       setAddressError(!isValidAddress(selectedClusterData.address));
+      setTestStatus('idle');
+      setTestMessage('');
     } else {
       setAddressError(false);
     }
   }, [selectedClusterData.address]);
+
+  const handleTestConnection = async () => {
+    if (!selectedClusterData.address || !isValidAddress(selectedClusterData.address)) {
+      setAddressError(true);
+      setTestMessage('Invalid Address Format');
+      setTestStatus('error');
+      return;
+    }
+
+    setTestStatus('testing');
+    setTestMessage('Testing Connection');
+
+    try {
+      const [namespace, serviceAndPort] = selectedClusterData.address.split('/');
+      const [service, port] = serviceAndPort.split(':');
+
+      let subPath = selectedClusterData.subPath || '';
+      if (subPath && !subPath.startsWith('/')) {
+        subPath = '/' + subPath;
+      }
+
+      const proxyUrl = `/clusters/${selectedCluster}/api/v1/namespaces/${namespace}/services/${service}:${port}/proxy${subPath}/-/healthy`;
+      await request(proxyUrl);
+
+      setTestStatus('success');
+      setTestMessage('Connection successful!');
+    } catch (err) {
+      setTestStatus('error');
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setTestMessage(`Connection failed: ${errorMessage}`);
+      console.error(err);
+    }
+  };
 
   const settingsRows = [
     {
@@ -126,27 +167,52 @@ export function Settings(props: SettingsProps) {
     {
       name: 'Prometheus Service Address',
       value: (
-        <TextField
-          disabled={!isAddressFieldEnabled}
-          helperText={
-            addressError
-              ? 'Invalid format. Use: namespace/service-name:port'
-              : 'Address of the Prometheus Service, only used when auto-detection is disabled. Format: namespace/service-name:port'
-          }
-          error={addressError}
-          value={selectedClusterData.address || ''}
-          onChange={e => {
-            const newAddress = e.target.value;
-            onDataChange({
-              ...(data || {}),
-              [selectedCluster]: {
-                ...((data || {})[selectedCluster] || {}),
-                address: newAddress,
-              },
-            });
-            setAddressError(!isValidAddress(newAddress));
-          }}
-        />
+        <Box display="flex" flexDirection="column" width="100%">
+          <Box display="flex" gap={2} alignItems="flex-start">
+            <TextField
+              disabled={!isAddressFieldEnabled}
+              helperText={
+                addressError
+                  ? 'Invalid format. Use: namespace/service-name:port'
+                  : 'Address of the Prometheus Service, only used when auto-detection is disabled. Format: namespace/service-name:port'
+              }
+              error={addressError}
+              value={selectedClusterData.address || ''}
+              onChange={e => {
+                const newAddress = e.target.value;
+                onDataChange({
+                  ...(data || {}),
+                  [selectedCluster]: {
+                    ...((data || {})[selectedCluster] || {}),
+                    address: newAddress,
+                  },
+                });
+                setAddressError(!isValidAddress(newAddress));
+              }}
+            />
+            <Button
+              variant="contained"
+              disabled={
+                !isAddressFieldEnabled ||
+                addressError ||
+                !selectedClusterData.address ||
+                testStatus === 'testing'
+              }
+              onClick={handleTestConnection}
+              sx={{ mt: 1, minWidth: '100px' }}
+            >
+              Test Connection
+            </Button>
+          </Box>
+          {testStatus !== 'idle' && testMessage && (
+            <Alert
+              severity={testStatus === 'success' ? 'success' : 'error'}
+              sx={{ mt: 2, width: 'fit-content' }}
+            >
+              {testMessage}
+            </Alert>
+          )}
+        </Box>
       ),
     },
     {
