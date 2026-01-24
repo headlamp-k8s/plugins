@@ -115,7 +115,9 @@ export function isMetricsEnabled(cluster: string): boolean {
 }
 
 /**
- * getPrometheusPrefix returns the prefix for the Prometheus metrics.
+ * Resolves the base address for accessing Prometheus for a cluster.
+ * Supports full HTTP/HTTPS URLs or `namespace/service` Kubernetes service proxy paths.
+ *
  * @param {string} cluster - The name of the cluster.
  * @returns {Promise<string | null>} The prefix for the Prometheus metrics, or null if not found.
  */

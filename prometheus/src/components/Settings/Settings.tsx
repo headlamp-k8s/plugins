@@ -14,18 +14,12 @@ import { useEffect, useState } from 'react';
 import { isHttpUrl } from '../../util';
 
 /**
- * Validates if the given address string is in a supported format.
+ * Validates whether the given address is in a supported format.
+ * Supports namespace/service:port and HTTP/HTTPS URLs.
+ * Examples: monitoring/prometheus:9090, https://prometheus.example.com
  *
- * Supported formats:
- *  - Kubernetes Service address: namespace/service-name:port
- *    Example: monitoring/prometheus:9090
- *
- *  - HTTP or HTTPS URL:
- *    Example: https://prometheus.example.com
- *    Example: http://mimir.company.net:9009
- *
- * @param {string} address - The address string to validate.
- * @returns {boolean} True if the address is valid, false otherwise.
+ * @param address - The address string to validate.
+ * @returns True if the address is valid, false otherwise.
  */
 function isValidAddress(address: string): boolean {
   if (!address) return true;
