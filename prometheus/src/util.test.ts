@@ -1,4 +1,4 @@
-import { getTimeRangeAndStepSize } from './util';
+import { getTimeRangeAndStepSize, getPrometheusPrefix } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -101,5 +101,62 @@ describe('getTimeRangeAndStepSize', () => {
       to: specificTime,
       step: 14,
     });
+  });
+});
+
+describe('getPrometheusPrefix', () => {
+  afterEach(() => {
+    vitest.restoreAllMocks();
+  });
+
+  test('returns external Prometheus URL and trims trailing slash', async () => {
+    vitest.spyOn(require('./cluster'), 'getClusterConfig').mockReturnValue({
+      address: 'https://prometheus.example.com/',
+    });
+
+    const result = await getPrometheusPrefix('test');
+    expect(result).toBe('https://prometheus.example.com');
+  });
+
+  test('returns kubernetes service prefix for namespace/service', async () => {
+    vitest.spyOn(require('./cluster'), 'getClusterConfig').mockReturnValue({
+      address: 'monitoring/prometheus',
+    });
+
+    const result = await getPrometheusPrefix('test');
+    expect(result).toBe('monitoring/services/prometheus');
+  });
+
+  test('auto-detects prometheus when enabled', async () => {
+    vitest.spyOn(require('./cluster'), 'getClusterConfig').mockReturnValue({
+      autoDetect: true,
+    });
+
+    vitest
+      .spyOn(require('./prometheus'), 'isPrometheusInstalled')
+      .mockResolvedValue({
+        namespace: 'monitoring',
+        type: 'services',
+        name: 'prometheus',
+        port: 9090,
+      });
+
+    const result = await getPrometheusPrefix('test');
+    expect(result).toBe('monitoring/services/prometheus:9090');
+  });
+
+  test('returns null when auto-detect finds no prometheus', async () => {
+    vitest.spyOn(require('./cluster'), 'getClusterConfig').mockReturnValue({
+      autoDetect: true,
+    });
+
+    vitest
+      .spyOn(require('./prometheus'), 'isPrometheusInstalled')
+      .mockResolvedValue({
+        type: 'none',
+      });
+
+    const result = await getPrometheusPrefix('test');
+    expect(result).toBeNull();
   });
 });

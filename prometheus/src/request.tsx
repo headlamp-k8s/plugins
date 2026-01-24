@@ -1,4 +1,5 @@
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { isHttpUrl } from './util';
 
 const request = ApiProxy.request;
 
@@ -280,7 +281,7 @@ async function testPrometheusQuery(
 /**
  * Fetches metrics data from Prometheus using the provided parameters.
  * @param {object} data - The parameters for fetching metrics.
- * @param {string} data.prefix - The namespace prefix.
+ * @param {string} data.prefix - Either a Kubernetes proxy prefix (namespace/services/service-name:port) or a full HTTP/HTTPS Prometheus base URL.
  * @param {string} data.query - The Prometheus query string.
  * @param {number} data.from - The start time for the query (Unix timestamp).
  * @param {number} data.to - The end time for the query (Unix timestamp).
@@ -297,39 +298,58 @@ export async function fetchMetrics(data: {
   subPath?: string;
 }): Promise<object> {
   const params = new URLSearchParams();
-  if (data.from) {
-    params.append('start', data.from.toString());
-  }
-  if (data.to) {
-    params.append('end', data.to.toString());
-  }
-  if (data.step) {
-    params.append('step', data.step.toString());
-  }
-  if (data.query) {
-    params.append('query', data.query);
-  }
-  var url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
-  if (data.subPath && data.subPath !== '') {
-    if (data.subPath.startsWith('/')) {
-      data.subPath = data.subPath.slice(1);
+  if (data.from) params.append('start', data.from.toString());
+  if (data.to) params.append('end', data.to.toString());
+  if (data.step) params.append('step', data.step.toString());
+  if (data.query) params.append('query', data.query);
+
+  const isExternal = isHttpUrl(data.prefix);
+  let url: string;
+
+  // 1. Construct the URL based on connection type
+  if (isExternal) {
+    // --- EXTERNAL URL LOGIC ---
+    const base = data.prefix.replace(/\/$/, '');
+    let apiPath = 'api/v1/query_range';
+    if (data.subPath && data.subPath !== '') {
+      const sub = data.subPath.replace(/^\/|\/$/g, '');
+      apiPath = `${sub}/api/v1/query_range`;
     }
-    if (data.subPath.endsWith('/')) {
-      data.subPath = data.subPath.slice(0, -1);
-    }
-    url = `/api/v1/namespaces/${data.prefix}/proxy/${
-      data.subPath
-    }/api/v1/query_range?${params.toString()}`;
+    url = `${base}/${apiPath}?${params.toString()}`;
+  } else {
+    // --- KUBERNETES PROXY LOGIC (FIXED) ---
+    const sub = data.subPath ? data.subPath.replace(/^\/|\/$/g, '') : '';
+    const apiPath = sub ? `${sub}/api/v1/query_range` : 'api/v1/query_range';
+
+    // data.prefix is expected as "namespace/services/service-name:port"
+    url = `/api/v1/namespaces/${data.prefix}/proxy/${apiPath}?${params.toString()}`;
   }
 
-  const response = await request(url, {
-    method: 'GET',
-    isJSON: false,
-  });
-  if (response.status === 200) {
-    return response.json();
-  } else {
-    const error = new Error(response.statusText);
-    return Promise.reject(error);
+  try {
+    if (isExternal) {
+      // Direct fetch for external/local URL
+      const response = await fetch(url, { method: 'GET' });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`404 Not Found at: ${url}. Check your Endpoint and Subpath.`);
+        }
+        throw new Error(`Prometheus Error (${response.status}): ${response.statusText}`);
+      }
+      return await response.json();
+    } else {
+      // Headlamp Proxy for K8s services
+      const response = await request(url, { method: 'GET', isJSON: false });
+
+      if (response.status !== 200) {
+        throw new Error(`K8s Proxy Error ${response.status}: Path was ${url}`);
+      }
+      return await response.json();
+    }
+  } catch (err: any) {
+    if (err.message.includes('Failed to fetch')) {
+      throw new Error(`Connection refused to ${url}. Did you enable --web.cors.origin=".*"?`);
+    }
+    throw err;
   }
 }

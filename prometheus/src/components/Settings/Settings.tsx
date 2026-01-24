@@ -11,18 +11,37 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
+import { isHttpUrl } from '../../util';
 
 /**
- * Validates if the given address string is in the correct format.
- * The format should be: namespace/service:port
+ * Validates if the given address string is in a supported format.
+ *
+ * Supported formats:
+ *  - Kubernetes Service address: namespace/service-name:port
+ *    Example: monitoring/prometheus:9090
+ *
+ *  - HTTP or HTTPS URL:
+ *    Example: https://prometheus.example.com
+ *    Example: http://mimir.company.net:9009
  *
  * @param {string} address - The address string to validate.
  * @returns {boolean} True if the address is valid, false otherwise.
  */
 function isValidAddress(address: string): boolean {
-  const regex = /^[a-z0-9-]+\/[a-z0-9-]+:[0-9]+$/;
-  return regex.test(address);
+  if (!address) return true;
+
+  const value = address.trim();
+
+  // namespace/service:port
+  const k8sRegex = /^[a-z0-9-]+\/[a-z0-9-]+:[0-9]+$/;
+  if (k8sRegex.test(value)) {
+    return true;
+  }
+
+  // http(s)://...
+  return isHttpUrl(value);
 }
+
 
 /**
  * Props for the Settings component.
@@ -173,8 +192,8 @@ export function Settings(props: SettingsProps) {
               disabled={!isAddressFieldEnabled}
               helperText={
                 addressError
-                  ? 'Invalid format. Use: namespace/service-name:port'
-                  : 'Address of the Prometheus Service, only used when auto-detection is disabled. Format: namespace/service-name:port'
+                  ? 'Invalid format. Use: namespace/service-name:port or https://prometheus.example.com'
+                  : 'Address of Prometheus. Used only when auto-detection is disabled. Examples: namespace/service-name:port or https://prometheus.example.com'
               }
               error={addressError}
               value={selectedClusterData.address || ''}

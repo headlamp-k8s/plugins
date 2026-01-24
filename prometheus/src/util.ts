@@ -42,6 +42,21 @@ export function getConfigStore(): ConfigStore<Conf> {
 }
 
 /**
+ * Checks whether the given string is a valid HTTP or HTTPS URL.
+ *
+ * @param {string} value - The value to validate.
+ * @returns {boolean} True if the value is a valid http/https URL, otherwise false.
+ */
+export function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * getClusterConfig returns the configuration for a specific cluster.
  * @param {string} cluster - The name of the cluster.
  * @returns {ClusterData | null} The configuration for the cluster, or null if not found.
@@ -105,22 +120,37 @@ export function isMetricsEnabled(cluster: string): boolean {
  * @returns {Promise<string | null>} The prefix for the Prometheus metrics, or null if not found.
  */
 export async function getPrometheusPrefix(cluster: string): Promise<string | null> {
-  // check if cluster has autoDetect enabled
-  // if so return the prometheus pod address
   const clusterData = getClusterConfig(cluster);
+
+  // 1. Manual address (external URL or service)
+  if (clusterData?.address) {
+    const address = clusterData.address.trim().replace(/\/$/, '');
+
+    if (address.startsWith('http://') || address.startsWith('https://')) {
+      return address;
+    }
+
+    const parts = address.split('/');
+    if (parts.length === 2) {
+      const [namespace, service] = parts;
+      return `${namespace}/services/${service}`;
+    }
+  }
+
+  // 2. Auto-detect (restore previous behavior)
   if (clusterData?.autoDetect) {
     const prometheusEndpoint = await isPrometheusInstalled();
     if (prometheusEndpoint.type === KubernetesType.none) {
       return null;
     }
-    const prometheusPortStr = prometheusEndpoint.port ? `:${prometheusEndpoint.port}` : '';
+
+    const prometheusPortStr = prometheusEndpoint.port
+      ? `:${prometheusEndpoint.port}`
+      : '';
+
     return `${prometheusEndpoint.namespace}/${prometheusEndpoint.type}/${prometheusEndpoint.name}${prometheusPortStr}`;
   }
 
-  if (clusterData?.address) {
-    const [namespace, service] = clusterData?.address.split('/');
-    return `${namespace}/services/${service}`;
-  }
   return null;
 }
 
