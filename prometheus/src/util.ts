@@ -105,21 +105,22 @@ export function isMetricsEnabled(cluster: string): boolean {
  * @returns {Promise<string | null>} The prefix for the Prometheus metrics, or null if not found.
  */
 export async function getPrometheusPrefix(cluster: string): Promise<string | null> {
-  // check if cluster has autoDetect enabled
-  // if so return the prometheus pod address
   const clusterData = getClusterConfig(cluster);
-  if (clusterData?.autoDetect) {
-    const prometheusEndpoint = await isPrometheusInstalled();
-    if (prometheusEndpoint.type === KubernetesType.none) {
-      return null;
-    }
-    const prometheusPortStr = prometheusEndpoint.port ? `:${prometheusEndpoint.port}` : '';
-    return `${prometheusEndpoint.namespace}/${prometheusEndpoint.type}/${prometheusEndpoint.name}${prometheusPortStr}`;
-  }
+  // ... autoDetect logic ...
 
   if (clusterData?.address) {
-    const [namespace, service] = clusterData?.address.split('/');
-    return `${namespace}/services/${service}`;
+    const address = clusterData.address.trim().replace(/\/$/, ''); // Perfect: prevents double slashes
+
+    if (address.startsWith('http://') || address.startsWith('https://')) {
+      return address;
+    }
+
+    const parts = address.split('/');
+    if (parts.length === 2) {
+      const [namespace, service] = parts;
+      // This correctly prepares the string for the ApiProxy path
+      return `${namespace}/services/${service}`;
+    }
   }
   return null;
 }

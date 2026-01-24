@@ -8,6 +8,15 @@ const COMMON_PROMETHEUS_SERVICE_LABEL =
   'app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server';
 const DEFAULT_PROMETHEUS_PORT = '9090';
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export type KubernetesPodListResponseItem = {
   metadata: {
     name: string;
@@ -297,39 +306,58 @@ export async function fetchMetrics(data: {
   subPath?: string;
 }): Promise<object> {
   const params = new URLSearchParams();
-  if (data.from) {
-    params.append('start', data.from.toString());
-  }
-  if (data.to) {
-    params.append('end', data.to.toString());
-  }
-  if (data.step) {
-    params.append('step', data.step.toString());
-  }
-  if (data.query) {
-    params.append('query', data.query);
-  }
-  var url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
-  if (data.subPath && data.subPath !== '') {
-    if (data.subPath.startsWith('/')) {
-      data.subPath = data.subPath.slice(1);
+  if (data.from) params.append('start', data.from.toString());
+  if (data.to) params.append('end', data.to.toString());
+  if (data.step) params.append('step', data.step.toString());
+  if (data.query) params.append('query', data.query);
+
+  const isExternal = isHttpUrl(data.prefix);
+  let url: string;
+
+  // 1. Construct the URL based on connection type
+  if (isExternal) {
+    // --- EXTERNAL URL LOGIC ---
+    const base = data.prefix.replace(/\/$/, '');
+    let apiPath = 'api/v1/query_range';
+    if (data.subPath && data.subPath !== '') {
+      const sub = data.subPath.replace(/^\/|\/$/g, '');
+      apiPath = `${sub}/api/v1/query_range`;
     }
-    if (data.subPath.endsWith('/')) {
-      data.subPath = data.subPath.slice(0, -1);
-    }
-    url = `/api/v1/namespaces/${data.prefix}/proxy/${
-      data.subPath
-    }/api/v1/query_range?${params.toString()}`;
+    url = `${base}/${apiPath}?${params.toString()}`;
+  } else {
+    // --- KUBERNETES PROXY LOGIC (FIXED) ---
+    const sub = data.subPath ? data.subPath.replace(/^\/|\/$/g, '') : '';
+    const apiPath = sub ? `${sub}/api/v1/query_range` : 'api/v1/query_range';
+
+    // data.prefix is expected as "namespace/services/service-name:port"
+    url = `/api/v1/namespaces/${data.prefix}/proxy/${apiPath}?${params.toString()}`;
   }
 
-  const response = await request(url, {
-    method: 'GET',
-    isJSON: false,
-  });
-  if (response.status === 200) {
-    return response.json();
-  } else {
-    const error = new Error(response.statusText);
-    return Promise.reject(error);
+  try {
+    if (isExternal) {
+      // Direct fetch for external/local URL
+      const response = await fetch(url, { method: 'GET' });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`404 Not Found at: ${url}. Check your Endpoint and Subpath.`);
+        }
+        throw new Error(`Prometheus Error (${response.status}): ${response.statusText}`);
+      }
+      return await response.json();
+    } else {
+      // Headlamp Proxy for K8s services
+      const response = await request(url, { method: 'GET', isJSON: false });
+
+      if (response.status !== 200) {
+        throw new Error(`K8s Proxy Error ${response.status}: Path was ${url}`);
+      }
+      return await response.json();
+    }
+  } catch (err: any) {
+    if (err.message.includes('Failed to fetch')) {
+      throw new Error(`Connection refused to ${url}. Did you enable --web.cors.origin=".*"?`);
+    }
+    throw err;
   }
 }
