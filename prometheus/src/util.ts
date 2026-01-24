@@ -4,7 +4,6 @@ import { NodeClaimCreationChart } from './components/Chart/KarpenterNodeClaimCre
 import { KarpenterNodeClaimsProvisionChart } from './components/Chart/KarpenterNodeClaimProvisionChart/KarpenterNodeClaimProvisionChart';
 import { KarpenterNodePoolResourceChart } from './components/Chart/KarpenterNodePoolResourceChart/KarpenterNodePoolResourceChart';
 import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/KarpenterPendingPods';
-import { isPrometheusInstalled, KubernetesType } from './request';
 
 export const PLUGIN_NAME = 'prometheus';
 
@@ -100,16 +99,16 @@ export function isMetricsEnabled(cluster: string): boolean {
 }
 
 /**
- * getPrometheusPrefix returns the prefix for the Prometheus metrics.
+ * Resolves the base address for accessing Prometheus for a cluster.
+ * Supports full HTTP/HTTPS URLs or `namespace/service` Kubernetes service proxy paths.
+ *
  * @param {string} cluster - The name of the cluster.
  * @returns {Promise<string | null>} The prefix for the Prometheus metrics, or null if not found.
  */
 export async function getPrometheusPrefix(cluster: string): Promise<string | null> {
   const clusterData = getClusterConfig(cluster);
-  // ... autoDetect logic ...
-
   if (clusterData?.address) {
-    const address = clusterData.address.trim().replace(/\/$/, ''); // Perfect: prevents double slashes
+    const address = clusterData.address.trim().replace(/\/$/, '');
 
     if (address.startsWith('http://') || address.startsWith('https://')) {
       return address;
@@ -118,7 +117,6 @@ export async function getPrometheusPrefix(cluster: string): Promise<string | nul
     const parts = address.split('/');
     if (parts.length === 2) {
       const [namespace, service] = parts;
-      // This correctly prepares the string for the ApiProxy path
       return `${namespace}/services/${service}`;
     }
   }
