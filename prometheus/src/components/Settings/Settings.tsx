@@ -18,8 +18,8 @@ import { isHttpUrl } from '../../util';
  * Supports namespace/service:port and HTTP/HTTPS URLs.
  * Examples: monitoring/prometheus:9090, https://prometheus.example.com
  *
- * @param address - The address string to validate.
- * @returns True if the address is valid, false otherwise.
+ * @param {string} address - The address string to validate.
+ * @returns {boolean} True if the address is valid, false otherwise.
  */
 function isValidAddress(address: string): boolean {
   if (!address) return true;
