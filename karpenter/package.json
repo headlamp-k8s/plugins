@@ -2,6 +2,7 @@
   "name": "@headlamp-k8s/karpenter",
   "version": "0.1.0",
   "description": "A Headlamp plugin that provides a UI for visualizing and managing Karpenter's autoscaling decisions, custom resources, and provisioning behavior in real-time. (Alpha Release)",
+  "main": "dist/main.js",
   "scripts": {
     "start": "headlamp-plugin start",
     "build": "headlamp-plugin build",
@@ -36,6 +37,9 @@
   },
   "devDependencies": {
     "@kinvolk/headlamp-plugin": "^0.13.0"
+  },
+  "engines": {
+    "headlamp": ">=0.20.0"
   },
   "dependencies": {
     "ajv-formats": "^3.0.1"
