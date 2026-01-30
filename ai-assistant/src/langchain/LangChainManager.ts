@@ -170,15 +170,21 @@ export default class LangChainManager extends AIManager {
             verbose: true,
           });
         }
-        case 'local':
+        case 'local': {
           if (!sanitizedConfig.baseUrl) {
             throw new Error('Base URL is required for local models');
+          }
+          const headers: Record<string, string> = {};
+          if (sanitizedConfig.apiKey) {
+            headers['Authorization'] = `Bearer ${sanitizedConfig.apiKey}`;
           }
           return new ChatOllama({
             baseUrl: sanitizedConfig.baseUrl,
             model: sanitizedConfig.model,
             verbose: true,
+            headers: Object.keys(headers).length ? headers : undefined,
           });
+        }
         default:
           throw new Error(`Unsupported provider: ${providerId}`);
       }

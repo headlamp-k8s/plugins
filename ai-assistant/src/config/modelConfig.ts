@@ -189,6 +189,13 @@ export const modelProviders: ModelProvider[] = [
     description: 'Integration with locally hosted models (Ollama or similar)',
     fields: [
       {
+        name: 'apiKey',
+        label: 'API Key',
+        type: 'text',
+        required: false,
+        placeholder: 'Your Local Model API key',
+      },
+      {
         name: 'baseUrl',
         label: 'Base URL',
         type: 'text',
