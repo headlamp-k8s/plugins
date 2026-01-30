@@ -11,7 +11,7 @@ import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import { ImagePolicy, ImageRepository, ImageUpdateAutomation } from '../common/Resources';
 import Table from '../common/Table';
-import { NameLink } from '../helpers';
+import { NameLink, useNamespaces } from '../helpers';
 
 export function ImageAutomation() {
   return (
@@ -25,7 +25,7 @@ export function ImageAutomation() {
 
 function ImageUpdateAutomationList() {
   const filterFunction = useFilterFunc();
-  const [resources, error] = ImageUpdateAutomation.useList();
+  const [resources, error] = ImageUpdateAutomation.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Image Update Automations" />;
@@ -74,7 +74,7 @@ function ImageUpdateAutomationList() {
 
 function ImagePolicyList() {
   const filterFunction = useFilterFunc();
-  const [resources, error] = ImagePolicy.useList();
+  const [resources, error] = ImagePolicy.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Image Update Policies" />;
@@ -107,7 +107,7 @@ function ImagePolicyList() {
 
 function ImageRepositoryList() {
   const filterFunction = useFilterFunc();
-  const [resources, error] = ImageRepository.useList();
+  const [resources, error] = ImageRepository.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Image Repositories" />;

@@ -9,6 +9,7 @@ import React from 'react';
 import { NotSupported } from '../checkflux';
 import { AlertNotification, ProviderNotification, ReceiverNotification } from '../common/Resources';
 import Table from '../common/Table';
+import { useNamespaces } from '../helpers';
 
 export function Notifications() {
   return (
@@ -22,7 +23,7 @@ export function Notifications() {
 
 function Alerts() {
   const filterFunction = useFilterFunc();
-  const [resources, error] = AlertNotification.useList();
+  const [resources, error] = AlertNotification.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Alerts" />;
@@ -90,7 +91,7 @@ function Alerts() {
 
 function Providers() {
   const filterFunction = useFilterFunc();
-  const [resources, error] = ProviderNotification.useList();
+  const [resources, error] = ProviderNotification.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Providers" />;
@@ -174,7 +175,7 @@ function Providers() {
 
 function Receivers() {
   const filterFunction = useFilterFunc();
-  const [resources, error] = ReceiverNotification.useList();
+  const [resources, error] = ReceiverNotification.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Receivers" />;

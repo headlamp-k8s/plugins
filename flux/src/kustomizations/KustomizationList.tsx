@@ -4,11 +4,11 @@ import React from 'react';
 import { NotSupported } from '../checkflux';
 import { Kustomization } from '../common/Resources';
 import Table from '../common/Table';
-import { NameLink } from '../helpers';
+import { NameLink, useNamespaces } from '../helpers';
 
 export function Kustomizations() {
   const filterFunction = useFilterFunc();
-  const [resources, error] = Kustomization.useList();
+  const [resources, error] = Kustomization.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Kustomizations" />;
