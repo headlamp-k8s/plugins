@@ -8,6 +8,15 @@ const COMMON_PROMETHEUS_SERVICE_LABEL =
   'app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server';
 const DEFAULT_PROMETHEUS_PORT = '9090';
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export type KubernetesPodListResponseItem = {
   metadata: {
     name: string;
@@ -309,17 +318,46 @@ export async function fetchMetrics(data: {
   if (data.query) {
     params.append('query', data.query);
   }
-  var url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
-  if (data.subPath && data.subPath !== '') {
-    if (data.subPath.startsWith('/')) {
-      data.subPath = data.subPath.slice(1);
+
+  const isExternal = isHttpUrl(data.prefix);
+  var url: string;
+
+  if (isExternal) {
+    let base = data.prefix;
+    if (base.endsWith('/')) {
+      base = base.slice(0, -1);
     }
-    if (data.subPath.endsWith('/')) {
-      data.subPath = data.subPath.slice(0, -1);
+
+    let apiPath = 'api/v1/query_range';
+    if (data.subPath && data.subPath !== '') {
+      if (data.subPath.startsWith('/')) {
+        data.subPath = data.subPath.slice(1);
+      }
+      if (data.subPath.endsWith('/')) {
+        data.subPath = data.subPath.slice(0, -1);
+      }
+      apiPath = `${data.subPath}/api/v1/query_range`;
     }
-    url = `/api/v1/namespaces/${data.prefix}/proxy/${
-      data.subPath
-    }/api/v1/query_range?${params.toString()}`;
+
+    url = `${base}/${apiPath}?${params.toString()}`;
+  } else {
+    url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
+    if (data.subPath && data.subPath !== '') {
+      if (data.subPath.startsWith('/')) {
+        data.subPath = data.subPath.slice(1);
+      }
+      if (data.subPath.endsWith('/')) {
+        data.subPath = data.subPath.slice(0, -1);
+      }
+      url = `/api/v1/namespaces/${data.prefix}/proxy/${
+        data.subPath
+      }/api/v1/query_range?${params.toString()}`;
+    }
+  }
+
+  if (isExternal) {
+    const response = await fetch(url, { method: 'GET' });
+    return response.json();
   }
 
   const response = await request(url, {
