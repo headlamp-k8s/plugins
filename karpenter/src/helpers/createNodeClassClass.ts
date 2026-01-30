@@ -1,7 +1,7 @@
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 
+// Create the NodeClass resource class with the specified configuration
 export function createNodeClassClass(config) {
-  // Create the NodeClass resource class with the specified configuration
   const NodeClass = makeCustomResourceClass({
     apiInfo: [
       {
@@ -13,7 +13,9 @@ export function createNodeClassClass(config) {
     singularName: config.singularName,
     pluralName: config.pluralName,
     kind: config.kind,
-    customResourceDefinition: undefined as any,
+    customResourceDefinition: {
+      getMainAPIGroup: () => [config.group, config.version],
+    } as any,
   });
 
   return class extends NodeClass {
@@ -32,6 +34,10 @@ export function createNodeClassClass(config) {
 
     static get kind() {
       return config.kind;
+    }
+
+    static getMainAPIGroup() {
+      return [config.group, config.version];
     }
   };
 }

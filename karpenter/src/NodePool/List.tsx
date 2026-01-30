@@ -25,12 +25,18 @@ export function nodePoolClass() {
     singularName: 'NodePool',
     pluralName: 'nodepools',
     kind: 'NodePool',
-    customResourceDefinition: undefined as any,
+    customResourceDefinition: {
+      getMainAPIGroup: () => [nodePoolGroup, nodePoolVersion],
+    } as any,
   });
 
   return class extendedNodePoolClass extends NodePool {
     static get detailsRoute() {
       return 'nodepools-detail';
+    }
+
+    static getMainAPIGroup() {
+      return [nodePoolGroup, nodePoolVersion];
     }
   };
 }

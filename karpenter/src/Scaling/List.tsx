@@ -11,12 +11,18 @@ export function nodeClaimClass() {
     singularName: 'NodeClaim',
     pluralName: 'nodeclaims',
     kind: 'NodeClaim',
-    customResourceDefinition: undefined as any,
+    customResourceDefinition: {
+      getMainAPIGroup: () => [nodeClaimGroup, nodeClaimVersion],
+    } as any,
   });
 
   return class extendedNodeClaim extends NodeClaim {
     static get detailsRoute() {
       return 'nodeclaims-detail';
+    }
+
+    static getMainAPIGroup() {
+      return [nodeClaimGroup, nodeClaimVersion];
     }
   };
 }
