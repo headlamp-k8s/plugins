@@ -8,7 +8,8 @@ import K8s from '@kinvolk/headlamp-plugin/lib/k8s';
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import { KubeObject, KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import Table from '../common/Table';
 import { PluralName } from './pluralName';
 
@@ -243,3 +244,12 @@ export function useFluxCheck() {
     allCrdsSuccessful,
   };
 }
+
+export const useNamespaces = () => {
+  interface FilterState {
+    namespaces: Set<string>;
+  }
+
+  const namespacesSet = useSelector(({ filter }: { filter: FilterState }) => filter.namespaces);
+  return useMemo(() => [...namespacesSet], [namespacesSet]);
+};
