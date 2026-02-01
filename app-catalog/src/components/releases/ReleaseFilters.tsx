@@ -20,6 +20,10 @@ export function ReleaseFilters({
   const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
+    setInputValue(nameFilter);
+  }, [nameFilter]);
+
+  useEffect(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -33,14 +37,14 @@ export function ReleaseFilters({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [inputValue]);
+  }, [inputValue, onNameFilterChange]);
 
   return (
     <Box display="flex" gap={2} alignItems="center">
       <TextField
         sx={{
-          width: '20vw',
-          margin: '0 1rem',
+          width: { xs: '100%', sm: '200px', md: '250px' },
+          margin: { xs: '0.5rem 0', sm: '0 1rem' },
         }}
         id="outlined-basic"
         label="Search"
@@ -50,7 +54,7 @@ export function ReleaseFilters({
         }}
       />
       <Autocomplete
-        sx={{ width: '20vw' }}
+        sx={{ width: { xs: '100%', sm: '200px', md: '250px' } }}
         options={['', ...availableNamespaces]}
         getOptionLabel={option => option || 'All Namespaces'}
         value={namespaceFilter}
