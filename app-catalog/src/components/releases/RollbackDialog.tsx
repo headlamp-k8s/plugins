@@ -1,5 +1,13 @@
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Button, DialogActions, DialogContent, InputLabel, MenuItem, Select, useTheme } from '@mui/material';
+import {
+  Button,
+  DialogActions,
+  DialogContent,
+  InputLabel,
+  MenuItem,
+  Select,
+  useTheme,
+} from '@mui/material';
 
 interface Release {
   version: number;
@@ -35,8 +43,8 @@ export function RollbackDialog({
     <Dialog open={open} maxWidth="xs" onClose={onCancel} title="Rollback">
       <DialogContent
         sx={{
-          width: '400px',
-          height: '100px',
+          width: { xs: '100%', sm: '400px' },
+          minHeight: '100px',
         }}
       >
         <InputLabel id="revert">Select a version</InputLabel>
@@ -45,16 +53,16 @@ export function RollbackDialog({
           onChange={event => onVersionChange(event.target.value as string)}
           id="revert"
           labelId="revert"
+          label="Select a version"
           fullWidth
         >
-          {releaseHistory &&
-            releaseHistory.releases.map((release: Release) => {
-              return (
-                <MenuItem key={release.version} value={release.version.toString()}>
-                  {release.version} - {new Date(release.info.last_deployed).toLocaleString()}
-                </MenuItem>
-              );
-            })}
+          {releaseHistory?.releases?.map((release: Release) => {
+            return (
+              <MenuItem key={release.version} value={release.version.toString()}>
+                {release.version} - {new Date(release.info.last_deployed).toLocaleString()}
+              </MenuItem>
+            );
+          })}
         </Select>
       </DialogContent>
       <DialogActions>

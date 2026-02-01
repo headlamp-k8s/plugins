@@ -128,12 +128,13 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdateRelease, setIsUpdateRelease] = useState(false);
-  const [update, setUpdate] = useState<boolean>(false);
+  const [refetchCounter, setRefetchCounter] = useState<number>(0);
   const [selectedReleases, setSelectedReleases] = useState<Set<string>>(new Set());
   const [openBulkDeleteAlert, setOpenBulkDeleteAlert] = useState<boolean>(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const deleteStatusTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const bulkDeleteTimeoutsRef = React.useRef<NodeJS.Timeout[]>([]);
 
   useEffect(() => {
     fetchReleases()
@@ -150,13 +151,15 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
         setReleases([]);
         setLatestMap({});
       });
-  }, [update, fetchReleases, enqueueSnackbar]);
+  }, [refetchCounter, fetchReleases, enqueueSnackbar]);
 
   useEffect(() => {
     return () => {
       if (deleteStatusTimeoutRef.current) {
         clearTimeout(deleteStatusTimeoutRef.current);
       }
+      bulkDeleteTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      bulkDeleteTimeoutsRef.current = [];
     };
   }, []);
 
@@ -256,7 +259,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
             enqueueSnackbar(`Successfully deleted release ${name}`, { variant: 'success' });
             setOpenDeleteAlert(false);
             setIsDeleting(false);
-            setUpdate(prev => !prev);
+            setRefetchCounter(prev => prev + 1);
             if (deleteStatusTimeoutRef.current) {
               clearTimeout(deleteStatusTimeoutRef.current);
               deleteStatusTimeoutRef.current = null;
@@ -273,7 +276,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
           }
         });
     },
-    [enqueueSnackbar, update, setUpdate]
+    [enqueueSnackbar, setRefetchCounter]
   );
 
   const handleConfirmDelete = useCallback(() => {
@@ -298,6 +301,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
           enqueueSnackbar(`Failed to delete release ${selectedRelease.name}`, {
             variant: 'error',
           });
+          setIsDeleting(false);
         });
     }
   }, [selectedRelease, enqueueSnackbar, checkDeleteReleaseStatus]);
@@ -310,7 +314,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
           enqueueSnackbar(`Rollback successful for ${selectedRelease.name}`, {
             variant: 'success',
           });
-          setUpdate(prev => !prev);
+          setRefetchCounter(prev => prev + 1);
         })
         .catch(error => {
           console.error('Failed to rollback release:', error);
@@ -354,7 +358,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
           variant: 'warning',
         });
         setIsBulkDeleting(false);
-        setUpdate(prev => !prev);
+        setRefetchCounter(prev => prev + 1);
         return;
       }
 
@@ -375,15 +379,19 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
       });
 
       if (stillExist) {
-        setTimeout(() => {
-          setUpdate(prev => !prev); // Trigger fetch
-          setTimeout(() => checkBulkDeleteComplete(deletedKeys, retryCount + 1), 500);
+        const outerTimeout = setTimeout(() => {
+          setRefetchCounter(prev => prev + 1); // Trigger fetch
+          const innerTimeout = setTimeout(() => {
+            checkBulkDeleteComplete(deletedKeys, retryCount + 1);
+          }, 500);
+          bulkDeleteTimeoutsRef.current.push(innerTimeout);
         }, DELETE_STATUS_POLLING_INTERVAL);
+        bulkDeleteTimeoutsRef.current.push(outerTimeout);
       } else {
         setIsBulkDeleting(false);
       }
     },
-    [releases, enqueueSnackbar]
+    [releases, enqueueSnackbar, setRefetchCounter, setIsBulkDeleting]
   );
 
   const handleBulkDelete = useCallback(() => {
@@ -421,10 +429,9 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
           .map(item => item.key);
 
         if (failed === 0) {
-          enqueueSnackbar(
-            `Successfully initiated deletion of ${succeeded} release(s)`,
-            { variant: 'info' }
-          );
+          enqueueSnackbar(`Successfully initiated deletion of ${succeeded} release(s)`, {
+            variant: 'info',
+          });
         } else if (succeeded === 0) {
           enqueueSnackbar(`Failed to delete all ${failed} release(s)`, { variant: 'error' });
           setIsBulkDeleting(false);
@@ -432,17 +439,16 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
           setSelectedReleases(new Set());
           return;
         } else {
-          enqueueSnackbar(
-            `Initiated deletion of ${succeeded} release(s), failed ${failed}`,
-            { variant: 'warning' }
-          );
+          enqueueSnackbar(`Initiated deletion of ${succeeded} release(s), failed ${failed}`, {
+            variant: 'warning',
+          });
         }
 
         setOpenBulkDeleteAlert(false);
         setSelectedReleases(new Set());
 
         if (successfullyDeletedKeys.length > 0) {
-          setUpdate(prev => !prev);
+          setRefetchCounter(prev => prev + 1);
           setTimeout(
             () => checkBulkDeleteComplete(successfullyDeletedKeys),
             DELETE_STATUS_POLLING_INTERVAL
@@ -468,7 +474,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
         release={selectedRelease}
         releaseName={selectedRelease?.name}
         releaseNamespace={selectedRelease?.namespace}
-        handleUpdate={() => setUpdate(prev => !prev)}
+        handleUpdate={() => setRefetchCounter(prev => prev + 1)}
       />
       <DeleteConfirmDialog
         open={openDeleteAlert}
