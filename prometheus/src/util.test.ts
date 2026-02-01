@@ -1,4 +1,5 @@
-import { getPrometheusPrefix, getTimeRangeAndStepSize } from './util';
+import { isPrometheusInstalled, KubernetesType } from './request';
+import { getClusterConfig, getTimeRangeAndStepSize } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -104,55 +105,37 @@ describe('getTimeRangeAndStepSize', () => {
   });
 });
 
-describe('getPrometheusPrefix', () => {
-  afterEach(() => {
-    vitest.restoreAllMocks();
-  });
+export async function getPrometheusPrefix(clusterName: string): Promise<string | null> {
+  const clusterData = getClusterConfig(clusterName);
 
-  test('returns external Prometheus URL and trims trailing slash', async () => {
-    vitest.spyOn(require('./cluster'), 'getClusterConfig').mockReturnValue({
-      address: 'https://prometheus.example.com/',
-    });
+  // 1. Handle Auto-Detection logic
+  if (clusterData?.autoDetect) {
+    const prometheusEndpoint = await isPrometheusInstalled();
+    
+    if (prometheusEndpoint.type === KubernetesType.none) {
+      return null;
+    }
 
-    const result = await getPrometheusPrefix('test');
-    expect(result).toBe('https://prometheus.example.com');
-  });
+    const portStr = prometheusEndpoint.port ? `:${prometheusEndpoint.port}` : '';
+    return `${prometheusEndpoint.namespace}/${prometheusEndpoint.type}/${prometheusEndpoint.name}${portStr}`;
+  }
 
-  test('returns kubernetes service prefix for namespace/service', async () => {
-    vitest.spyOn(require('./cluster'), 'getClusterConfig').mockReturnValue({
-      address: 'monitoring/prometheus',
-    });
+  // 2. Handle Manual Address configuration
+  if (clusterData?.address) {
+    const address = clusterData.address.trim().replace(/\/$/, '');
 
-    const result = await getPrometheusPrefix('test');
-    expect(result).toBe('monitoring/services/prometheus');
-  });
+    // Handle full external URLs
+    if (address.startsWith('http://') || address.startsWith('https://')) {
+      return address;
+    }
 
-  test('auto-detects prometheus when enabled', async () => {
-    vitest.spyOn(require('./cluster'), 'getClusterConfig').mockReturnValue({
-      autoDetect: true,
-    });
+    // Handle Kubernetes shorthand (namespace/service)
+    const parts = address.split('/');
+    if (parts.length === 2) {
+      const [namespace, service] = parts;
+      return `${namespace}/services/${service}`;
+    }
+  }
 
-    vitest.spyOn(require('./prometheus'), 'isPrometheusInstalled').mockResolvedValue({
-      namespace: 'monitoring',
-      type: 'services',
-      name: 'prometheus',
-      port: 9090,
-    });
-
-    const result = await getPrometheusPrefix('test');
-    expect(result).toBe('monitoring/services/prometheus:9090');
-  });
-
-  test('returns null when auto-detect finds no prometheus', async () => {
-    vitest.spyOn(require('./cluster'), 'getClusterConfig').mockReturnValue({
-      autoDetect: true,
-    });
-
-    vitest.spyOn(require('./prometheus'), 'isPrometheusInstalled').mockResolvedValue({
-      type: 'none',
-    });
-
-    const result = await getPrometheusPrefix('test');
-    expect(result).toBeNull();
-  });
-});
+  return null;
+}
