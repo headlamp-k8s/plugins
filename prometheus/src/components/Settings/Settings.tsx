@@ -36,7 +36,6 @@ function isValidAddress(address: string): boolean {
   return isHttpUrl(value);
 }
 
-
 /**
  * Props for the Settings component.
  * @interface SettingsProps

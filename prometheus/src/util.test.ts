@@ -1,4 +1,4 @@
-import { getPrometheusPrefix,getTimeRangeAndStepSize } from './util';
+import { getPrometheusPrefix, getTimeRangeAndStepSize } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -132,14 +132,12 @@ describe('getPrometheusPrefix', () => {
       autoDetect: true,
     });
 
-    vitest
-      .spyOn(require('./prometheus'), 'isPrometheusInstalled')
-      .mockResolvedValue({
-        namespace: 'monitoring',
-        type: 'services',
-        name: 'prometheus',
-        port: 9090,
-      });
+    vitest.spyOn(require('./prometheus'), 'isPrometheusInstalled').mockResolvedValue({
+      namespace: 'monitoring',
+      type: 'services',
+      name: 'prometheus',
+      port: 9090,
+    });
 
     const result = await getPrometheusPrefix('test');
     expect(result).toBe('monitoring/services/prometheus:9090');
@@ -150,11 +148,9 @@ describe('getPrometheusPrefix', () => {
       autoDetect: true,
     });
 
-    vitest
-      .spyOn(require('./prometheus'), 'isPrometheusInstalled')
-      .mockResolvedValue({
-        type: 'none',
-      });
+    vitest.spyOn(require('./prometheus'), 'isPrometheusInstalled').mockResolvedValue({
+      type: 'none',
+    });
 
     const result = await getPrometheusPrefix('test');
     expect(result).toBeNull();
