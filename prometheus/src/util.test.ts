@@ -1,4 +1,4 @@
-import { getTimeRangeAndStepSize, getPrometheusPrefix } from './util';
+import { getPrometheusPrefix,getTimeRangeAndStepSize } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
