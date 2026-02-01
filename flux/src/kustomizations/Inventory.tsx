@@ -7,16 +7,22 @@ import Table from '../common/Table';
 import { PluralName } from '../helpers/pluralName';
 
 function parseID(id: string) {
-  /* ID is the string representation of the Kubernetes resource object's
-    metadata,
-    in the format '<namespace>_<name>_<group>_<kind>'.
-    */
-  const parsedID = id.split('_');
-  const namespace = parsedID[0] === '' ? undefined : parsedID[0];
-  const name = parsedID[1];
-  const group = parsedID[2];
-  const kind = parsedID[3];
-  return { name, namespace, group, kind };
+  const parts = id.split('_');
+  const isClusterScoped = id.startsWith('_');
+  if (isClusterScoped) {
+    return {
+      namespace: undefined,
+      group: parts[1],
+      kind: parts[2],
+      name: parts[3],
+    };
+  }
+  return {
+    namespace: parts[0],
+    name: parts[1],
+    group: parts[2],
+    kind: parts[3],
+  };
 }
 
 export function GetResourcesFromInventory(
@@ -78,7 +84,8 @@ export function GetResourcesFromInventory(
         },
         {
           header: 'Namespace',
-          accessorKey: 'metadata.namespace',
+          accessorFn: item => item.metadata?.namespace ?? '',
+          id: 'namespace',
           Cell: ({ row: { original: item } }) =>
             item.metadata.namespace ? (
               <Link
@@ -155,7 +162,21 @@ function inventoryNameLink(item: KubeObject) {
     );
   }
 
-  // standard k8s types
+  // CRD
+  if (kind === 'CustomResourceDefinition') {
+    return (
+      <Link
+        routeName="crd"
+        params={{
+          name: item.metadata.name,
+        }}
+      >
+        {item.metadata.name}
+      </Link>
+    );
+  }
+
+  // Standard k8s types
   const resourceKind = K8s.ResourceClasses[kind];
   if (resourceKind) {
     const resource = new resourceKind(item);
