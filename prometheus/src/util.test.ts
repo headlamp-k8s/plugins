@@ -111,7 +111,7 @@ export async function getPrometheusPrefix(clusterName: string): Promise<string |
   // 1. Handle Auto-Detection logic
   if (clusterData?.autoDetect) {
     const prometheusEndpoint = await isPrometheusInstalled();
-    
+
     if (prometheusEndpoint.type === KubernetesType.none) {
       return null;
     }
