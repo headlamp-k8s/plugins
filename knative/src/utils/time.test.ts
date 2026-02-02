@@ -61,4 +61,81 @@ describe('getAge', () => {
     const fiveDaysAgo = MOCK_NOW - 5 * 24 * 60 * 60 * 1000;
     expect(getAge(new Date(fiveDaysAgo).toISOString())).toBe('5d');
   });
+
+  it('should handle edge case: 1 minute duration', () => {
+    const oneMinAgo = MOCK_NOW - 60 * 1000;
+    expect(getAge(new Date(oneMinAgo).toISOString())).toBe('1m');
+  });
+
+  it('should handle edge case: 59 minutes duration', () => {
+    const fiftyNineMinsAgo = MOCK_NOW - 59 * 60 * 1000;
+    expect(getAge(new Date(fiftyNineMinsAgo).toISOString())).toBe('59m');
+  });
+
+  it('should handle boundary: 60 minutes (1 hour)', () => {
+    const sixtyMinsAgo = MOCK_NOW - 60 * 60 * 1000;
+    expect(getAge(new Date(sixtyMinsAgo).toISOString())).toBe('1h');
+  });
+
+  it('should handle boundary: 47 hours (just before 48h cutoff)', () => {
+    const fortySevenHoursAgo = MOCK_NOW - 47 * 60 * 60 * 1000;
+    expect(getAge(new Date(fortySevenHoursAgo).toISOString())).toBe('47h');
+  });
+
+  it('should handle boundary: 48 hours (day cutoff)', () => {
+    const fortyEightHoursAgo = MOCK_NOW - 48 * 60 * 60 * 1000;
+    expect(getAge(new Date(fortyEightHoursAgo).toISOString())).toBe('2d');
+  });
+
+  it('should handle very large durations (100+ days)', () => {
+    const hundredDaysAgo = MOCK_NOW - 100 * 24 * 60 * 60 * 1000;
+    expect(getAge(new Date(hundredDaysAgo).toISOString())).toBe('100d');
+  });
+
+  it('should handle very large durations (1 year)', () => {
+    const oneYearAgo = MOCK_NOW - 365 * 24 * 60 * 60 * 1000;
+    expect(getAge(new Date(oneYearAgo).toISOString())).toBe('365d');
+  });
+
+  it('should handle future timestamps (returns negative minutes)', () => {
+    const futureTimestamp = MOCK_NOW + 1000; // 1 second in the future
+    const result = getAge(new Date(futureTimestamp).toISOString());
+    // The function returns negative minutes for future timestamps
+    expect(result).toMatch(/^-\d+m$/);
+  });
+
+  it('should handle malformed ISO string (returns NaN days)', () => {
+    const result = getAge('not-a-valid-timestamp');
+    // When parsing fails, new Date() returns Invalid Date,
+    // which leads to NaN arithmetic resulting in 'NaNd'
+    expect(result).toBe('NaNd');
+  });
+
+  it('should handle null timestamp', () => {
+    expect(getAge(null as any)).toBe('');
+  });
+
+  it('should be deterministic with mocked time', () => {
+    const timestamp = new Date(MOCK_NOW - 30 * 60 * 1000).toISOString();
+    expect(getAge(timestamp)).toBe('30m');
+    expect(getAge(timestamp)).toBe('30m');
+    expect(getAge(timestamp)).toBe('30m');
+  });
+
+  it('should correctly handle sub-second precision', () => {
+    const almostOneMinAgo = MOCK_NOW - 59999; // 59.999 seconds
+    expect(getAge(new Date(almostOneMinAgo).toISOString())).toBe('0m');
+  });
+
+  it('should round down minute calculations', () => {
+    const oneMinThirtySecsAgo = MOCK_NOW - 90 * 1000; // 1m 30s
+    expect(getAge(new Date(oneMinThirtySecsAgo).toISOString())).toBe('1m');
+  });
+
+  it('should handle ISO timestamps with different formats', () => {
+    const isoString1 = new Date(MOCK_NOW - 2 * 60 * 1000).toISOString();
+    const isoString2 = new Date(MOCK_NOW - 2 * 60 * 1000).toISOString().replace('Z', '+00:00');
+    expect(getAge(isoString1)).toBe('2m');
+    expect(getAge(isoString2)).toBe('2m');
+  });
 });
