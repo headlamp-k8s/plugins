@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/K8s/cluster';
 import { Tooltip } from '@mui/material';
@@ -12,6 +13,7 @@ export interface VisibilityButtonProps {
 }
 
 export function VisibilityButton(props: VisibilityButtonProps) {
+  const { t } = useTranslation();
   const { resource } = props;
   const cluster = useCluster();
   const [isEnabled, setIsEnabled] = useState(false);
@@ -27,10 +29,10 @@ export function VisibilityButton(props: VisibilityButtonProps) {
 
   const [description, icon] = React.useMemo(() => {
     if (isEnabled) {
-      return ['Hide Prometheus metrics', 'mdi:chart-box-outline'];
+      return [t('Hide Prometheus metrics'), 'mdi:chart-box-outline'];
     }
-    return ['Show Prometheus metrics', 'mdi:chart-box'];
-  }, [isEnabled]);
+    return [t('Show Prometheus metrics'), 'mdi:chart-box'];
+  }, [isEnabled, t]);
 
   if (!ChartEnabledKinds.includes(resource?.jsonData?.kind)) {
     return null;

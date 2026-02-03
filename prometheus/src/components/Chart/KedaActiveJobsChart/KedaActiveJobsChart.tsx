@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { alpha, useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
 import { blue } from '@mui/material/colors';
@@ -19,6 +20,7 @@ interface KedaActiveJobsChartProps extends KedaChartProps {
 }
 
 export function KedaActiveJobsChart(props: KedaActiveJobsChartProps) {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
@@ -55,7 +57,7 @@ export function KedaActiveJobsChart(props: KedaActiveJobsChartProps) {
             borderRadius: theme.shape.borderRadius,
           }}
         >
-          <p>{`Time: ${formatter(label)}`}</p>
+          <p>{t('Time: {{ time }}', { time: formatter(label) })}</p>
           {payload.map((p, i) => (
             <p key={i} style={{ color: p.color }}>
               {`${p.name}: ${p.value}`}
@@ -91,7 +93,7 @@ export function KedaActiveJobsChart(props: KedaActiveJobsChartProps) {
           plots={[
             {
               query: props.activeJobsQuery,
-              name: 'Num Active Jobs',
+              name: t('Num Active Jobs'),
               strokeColor: alpha(blue[600], 0.8),
               fillColor: alpha(blue[400], 0.1),
               dataProcessor: dataProcessor,

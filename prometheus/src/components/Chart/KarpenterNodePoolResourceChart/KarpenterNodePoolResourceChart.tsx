@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { blue, red } from '@mui/material/colors';
 import { alpha, useTheme } from '@mui/material/styles';
 import { fetchMetrics } from '../../../request';
@@ -16,20 +17,21 @@ interface KarpenterNodePoolResourceChartProps {
 }
 
 export const KarpenterNodePoolResourceChart = (props: KarpenterNodePoolResourceChartProps) => {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.timespan);
   const theme = useTheme();
 
   const plots = [
     {
       query: props.usageQuery,
-      name: 'Resource Usage',
+      name: t('Resource Usage'),
       strokeColor: alpha(blue[600], 0.8),
       fillColor: alpha(blue[400], 0.1),
       dataProcessor: createDataProcessor(0),
     },
     {
       query: props.limitQuery,
-      name: 'Resource Limit',
+      name: t('Resource Limit'),
       strokeColor: alpha(red[600], 0.8),
       fillColor: alpha(red[400], 0.1),
       dataProcessor: createDataProcessor(0),

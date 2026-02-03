@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { Button, Grid, Link, Paper, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -30,6 +31,7 @@ const DismissButton = styled(Button)(({ theme }) => ({
  * @returns {JSX.Element}
  */
 export function PrometheusNotFoundBanner() {
+  const { t } = useTranslation();
   const cluster = useCluster();
   const history = useHistory();
 
@@ -42,9 +44,9 @@ export function PrometheusNotFoundBanner() {
       alignItems="center"
     >
       <Grid item>
-        <Typography variant="h5">Couldn't detect Prometheus in your cluster.</Typography>
+        <Typography variant="h5">{t("Couldn't detect Prometheus in your cluster.")}</Typography>
         <Typography variant="h6">
-          Either configure prometheus plugin or install prometheus in your cluster.
+          {t('Either configure prometheus plugin or install prometheus in your cluster.')}
         </Typography>
       </Grid>
       <Grid item>
@@ -52,20 +54,20 @@ export function PrometheusNotFoundBanner() {
           <Link
             onClick={() => history.push(`/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`)}
           >
-            Configure Prometheus plugin.
+            {t('Configure Prometheus plugin.')}
           </Link>
         </Typography>
       </Grid>
       <Grid item>
         <Typography>
           <Link href={learnMoreLink} target="_blank">
-            Learn more about enabling advanced charts.
+            {t('Learn more about enabling advanced charts.')}
           </Link>
         </Typography>
       </Grid>
       <Grid item>
         <DismissButton size="small" variant="contained" onClick={() => disableMetrics(cluster)}>
-          Dismiss
+          {t('Dismiss')}
         </DismissButton>
       </Grid>
     </StyledGrid>
@@ -73,12 +75,13 @@ export function PrometheusNotFoundBanner() {
 }
 
 export function CustomTooltip({ active, payload, label }) {
+  const { t } = useTranslation();
   if (active && payload && payload.length) {
     const timestamp = new Date(label * 1000); // Convert epoch to milliseconds
 
     return (
       <Paper variant="outlined" sx={{ p: 0.5, opacity: 0.8 }}>
-        <b>{`Date: ${timestamp.toLocaleString()}`}</b>
+        <b>{t('Date: {{ date }}', { date: timestamp.toLocaleString() })}</b>
         {payload.map(data => (
           <div>{`${data.name}: ${data.value}`}</div>
         ))}
@@ -90,12 +93,13 @@ export function CustomTooltip({ active, payload, label }) {
 }
 
 export function CustomTooltipFormatBytes({ active, payload, label }) {
+  const { t } = useTranslation();
   if (active && payload && payload.length) {
     const timestamp = new Date(label * 1000); // Convert epoch to milliseconds
 
     return (
       <Paper variant="outlined" sx={{ p: 0.5, opacity: 0.8 }}>
-        <b>{`Date: ${timestamp.toLocaleString()}`}</b>
+        <b>{t('Date: {{ date }}', { date: timestamp.toLocaleString() })}</b>
         {payload.map(data => (
           <div>{`${data.name}: ${formatBytes(data.value)}`}</div>
         ))}
