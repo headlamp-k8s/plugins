@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { Meta, StoryFn } from '@storybook/react/types-6-0';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
@@ -57,25 +57,38 @@ const mockCharts = [
   },
 ];
 
+const mockFacets = [{ title: 'Category', options: [{ name: 'All', total: 0 }] }];
+
+function fetchMockCharts(_search: string | undefined, verified: boolean) {
+  const packages = verified ? mockCharts.filter(c => c.repository.verified_publisher) : mockCharts;
+  return Promise.resolve({ data: { packages, facets: mockFacets }, total: packages.length });
+}
+
 const initialStateTrue = {
-  config: {
-    showOnlyVerified: true,
-    settings: {
-      tableRowsPerPageOptions: [15, 25, 50],
-    },
-  },
+  pluginConfigs: { 'app-catalog': { showOnlyVerified: true } },
+  config: { settings: { tableRowsPerPageOptions: [15, 25, 50] } },
 };
 
 const initialStateFalse = {
-  config: {
-    showOnlyVerified: false,
-    settings: {
-      tableRowsPerPageOptions: [15, 25, 50],
-    },
-  },
+  pluginConfigs: { 'app-catalog': { showOnlyVerified: false } },
+  config: { settings: { tableRowsPerPageOptions: [15, 25, 50] } },
 };
 
-const Template: StoryFn = ({ initialState, ...args }) => {
+interface TemplateProps {
+  initialState?: {
+    pluginConfigs: { 'app-catalog': { showOnlyVerified: boolean } };
+    config: { settings: { tableRowsPerPageOptions: number[] } };
+  };
+  fetchCharts?: (
+    search: string | undefined,
+    verified: boolean,
+    category: { title: string; value: number },
+    page: number,
+    limit?: number
+  ) => Promise<{ data: { packages: unknown[]; facets: unknown[] }; total: number }>;
+}
+
+const Template: StoryFn<TemplateProps> = ({ initialState, fetchCharts, ...args }) => {
   const mockStore = configureStore({
     reducer: (state = { ...initialState, drawerMode: { isDetailDrawerEnabled: false } }) => state,
   });
@@ -83,7 +96,7 @@ const Template: StoryFn = ({ initialState, ...args }) => {
   return (
     <Provider store={mockStore}>
       <BrowserRouter>
-        <ChartsList {...args} />
+        <ChartsList fetchCharts={fetchCharts} {...args} />
       </BrowserRouter>
     </Provider>
   );
@@ -91,58 +104,24 @@ const Template: StoryFn = ({ initialState, ...args }) => {
 
 export const EmptyCharts = Template.bind({});
 EmptyCharts.args = {
-  fetchCharts: () =>
-    Promise.resolve({
-      packages: [],
-      facets: [
-        {
-          title: 'Category',
-          options: [{ name: 'All', total: 0 }],
-        },
-      ],
-    }),
+  initialState: initialStateFalse,
+  fetchCharts: () => Promise.resolve({ data: { packages: [], facets: mockFacets }, total: 0 }),
 };
 
 export const SomeCharts = Template.bind({});
 SomeCharts.args = {
-  fetchCharts: () =>
-    Promise.resolve({
-      packages: mockCharts,
-      facets: [
-        {
-          title: 'Category',
-          options: [{ name: 'All', total: 0 }],
-        },
-      ],
-    }),
+  initialState: initialStateFalse,
+  fetchCharts: fetchMockCharts,
 };
 
 export const WithShowOnlyVerifiedTrue = Template.bind({});
 WithShowOnlyVerifiedTrue.args = {
   initialState: initialStateTrue,
-  fetchCharts: () =>
-    Promise.resolve({
-      packages: mockCharts,
-      facets: [
-        {
-          title: 'Category',
-          options: [{ name: 'All', total: 0 }],
-        },
-      ],
-    }),
+  fetchCharts: fetchMockCharts,
 };
 
 export const WithShowOnlyVerifiedFalse = Template.bind({});
 WithShowOnlyVerifiedFalse.args = {
   initialState: initialStateFalse,
-  fetchCharts: () =>
-    Promise.resolve({
-      packages: mockCharts,
-      facets: [
-        {
-          title: 'Category',
-          options: [{ name: 'All', total: 0 }],
-        },
-      ],
-    }),
+  fetchCharts: fetchMockCharts,
 };
