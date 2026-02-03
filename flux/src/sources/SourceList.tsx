@@ -13,6 +13,7 @@ import {
   OCIRepository,
 } from '../common/Resources';
 import Table, { TableProps } from '../common/Table';
+import { useNamespaces } from '../helpers';
 
 export function FluxSources() {
   return (
@@ -52,7 +53,7 @@ interface FluxSourceCustomResourceRendererProps {
 function FluxSource(props: FluxSourceCustomResourceRendererProps) {
   const filterFunction = useFilterFunc();
   const { resourceClass, title, pluralName } = props;
-  const [resources, error] = resourceClass.useList();
+  const [resources, error] = resourceClass.useList({ namespace: useNamespaces() });
 
   function prepareColumns() {
     const columns: TableProps['columns'] = [
