@@ -17,11 +17,12 @@ const mockReleases = [
     chart: {
       metadata: {
         name: 'example-chart-1',
+        version: '1.0.0',
         appVersion: '1.0.0',
         icon: 'https://via.placeholder.com/50',
       },
     },
-    version: '1.0',
+    version: 1,
     info: {
       status: 'deployed',
       last_deployed: '2023-10-23T12:00:00Z',
@@ -33,11 +34,12 @@ const mockReleases = [
     chart: {
       metadata: {
         name: 'example-chart-2',
+        version: '2.0.0',
         appVersion: '2.0.0',
         icon: 'https://via.placeholder.com/50',
       },
     },
-    version: '2.0',
+    version: 2,
     info: {
       status: 'error',
       last_deployed: '2023-10-24T12:00:00Z',
