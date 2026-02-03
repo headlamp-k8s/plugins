@@ -1,4 +1,5 @@
-import { getTimeRangeAndStepSize } from './util';
+import { isPrometheusInstalled, KubernetesType } from './request';
+import { getClusterConfig, getTimeRangeAndStepSize } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -103,3 +104,38 @@ describe('getTimeRangeAndStepSize', () => {
     });
   });
 });
+
+export async function getPrometheusPrefix(clusterName: string): Promise<string | null> {
+  const clusterData = getClusterConfig(clusterName);
+
+  // 1. Handle Auto-Detection logic
+  if (clusterData?.autoDetect) {
+    const prometheusEndpoint = await isPrometheusInstalled();
+
+    if (prometheusEndpoint.type === KubernetesType.none) {
+      return null;
+    }
+
+    const portStr = prometheusEndpoint.port ? `:${prometheusEndpoint.port}` : '';
+    return `${prometheusEndpoint.namespace}/${prometheusEndpoint.type}/${prometheusEndpoint.name}${portStr}`;
+  }
+
+  // 2. Handle Manual Address configuration
+  if (clusterData?.address) {
+    const address = clusterData.address.trim().replace(/\/$/, '');
+
+    // Handle full external URLs
+    if (address.startsWith('http://') || address.startsWith('https://')) {
+      return address;
+    }
+
+    // Handle Kubernetes shorthand (namespace/service)
+    const parts = address.split('/');
+    if (parts.length === 2) {
+      const [namespace, service] = parts;
+      return `${namespace}/services/${service}`;
+    }
+  }
+
+  return null;
+}
