@@ -1,4 +1,5 @@
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { isHttpUrl } from './util';
 
 const request = ApiProxy.request;
 
@@ -280,7 +281,7 @@ async function testPrometheusQuery(
 /**
  * Fetches metrics data from Prometheus using the provided parameters.
  * @param {object} data - The parameters for fetching metrics.
- * @param {string} data.prefix - The namespace prefix.
+ * @param {string} data.prefix - Either a Kubernetes proxy prefix (namespace/services/service-name:port) or a full HTTP/HTTPS Prometheus base URL.
  * @param {string} data.query - The Prometheus query string.
  * @param {number} data.from - The start time for the query (Unix timestamp).
  * @param {number} data.to - The end time for the query (Unix timestamp).
@@ -309,17 +310,46 @@ export async function fetchMetrics(data: {
   if (data.query) {
     params.append('query', data.query);
   }
-  var url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
-  if (data.subPath && data.subPath !== '') {
-    if (data.subPath.startsWith('/')) {
-      data.subPath = data.subPath.slice(1);
+
+  const isExternal = isHttpUrl(data.prefix);
+  var url: string;
+
+  if (isExternal) {
+    let base = data.prefix;
+    if (base.endsWith('/')) {
+      base = base.slice(0, -1);
     }
-    if (data.subPath.endsWith('/')) {
-      data.subPath = data.subPath.slice(0, -1);
+
+    let apiPath = 'api/v1/query_range';
+    if (data.subPath && data.subPath !== '') {
+      if (data.subPath.startsWith('/')) {
+        data.subPath = data.subPath.slice(1);
+      }
+      if (data.subPath.endsWith('/')) {
+        data.subPath = data.subPath.slice(0, -1);
+      }
+      apiPath = `${data.subPath}/api/v1/query_range`;
     }
-    url = `/api/v1/namespaces/${data.prefix}/proxy/${
-      data.subPath
-    }/api/v1/query_range?${params.toString()}`;
+
+    url = `${base}/${apiPath}?${params.toString()}`;
+  } else {
+    url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
+    if (data.subPath && data.subPath !== '') {
+      if (data.subPath.startsWith('/')) {
+        data.subPath = data.subPath.slice(1);
+      }
+      if (data.subPath.endsWith('/')) {
+        data.subPath = data.subPath.slice(0, -1);
+      }
+      url = `/api/v1/namespaces/${data.prefix}/proxy/${
+        data.subPath
+      }/api/v1/query_range?${params.toString()}`;
+    }
+  }
+
+  if (isExternal) {
+    const response = await fetch(url, { method: 'GET' });
+    return response.json();
   }
 
   const response = await request(url, {
