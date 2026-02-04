@@ -110,19 +110,23 @@ describe('isNullable', () => {
     expect(isNullable(Symbol('test'))).toBe(false);
   });
 
-  it('should correctly type-guard null', () => {
-    const value: unknown = null;
+  const assertNullableTypeGuard = (value: unknown) => {
     if (isNullable(value)) {
       // TypeScript should infer value as null | undefined here
       expect(value === null || value === undefined).toBe(true);
+    } else {
+      expect(value === null || value === undefined).toBe(false);
     }
+  };
+
+  it('should correctly type-guard null', () => {
+    const value: unknown = null;
+    assertNullableTypeGuard(value);
   });
 
   it('should correctly type-guard undefined', () => {
     const value: unknown = undefined;
-    if (isNullable(value)) {
-      expect(value === null || value === undefined).toBe(true);
-    }
+    assertNullableTypeGuard(value);
   });
 
   it('should handle values with custom toString', () => {
