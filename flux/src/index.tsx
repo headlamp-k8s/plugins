@@ -20,6 +20,12 @@ import { FluxOverview } from './overview';
 import { FluxRunTime } from './runtime/RuntimeList';
 import { FluxSources } from './sources/SourceList';
 import { FluxSourceDetailView } from './sources/SourceSingle';
+import { ExternalArtifacts } from './sources/types/ExternalArtifacts';
+import { GitRepositories } from './sources/types/GitRepositories';
+import { OCIRepositories } from './sources/types/OCIRepositories';
+import { Buckets } from './sources/types/Buckets';
+import { HelmRepositories } from './sources/types/HelmRepositories';
+import { HelmCharts } from './sources/types/HelmCharts';
 
 registerHelmRelease();
 
@@ -95,6 +101,54 @@ registerRoute({
   component: () => <FluxSources />,
   exact: true,
   name: 'sources',
+});
+
+registerRoute({
+  path: '/flux/sources/externalartifacts',
+  sidebar: 'sources',
+  component: () => <ExternalArtifacts />,
+  exact: true,
+  name: 'externalartifacts',
+});
+
+registerRoute({
+  path: '/flux/sources/gitrepositories',
+  sidebar: 'sources',
+  component: () => <GitRepositories />,
+  exact: true,
+  name: 'gitrepositories',
+});
+
+registerRoute({
+  path: '/flux/sources/ocirepositories',
+  sidebar: 'sources',
+  component: () => <OCIRepositories />,
+  exact: true,
+  name: 'ocirepositories',
+});
+
+registerRoute({
+  path: '/flux/sources/buckets',
+  sidebar: 'sources',
+  component: () => <Buckets />,
+  exact: true,
+  name: 'buckets',
+});
+
+registerRoute({
+  path: '/flux/sources/helmrepositories',
+  sidebar: 'sources',
+  component: () => <HelmRepositories />,
+  exact: true,
+  name: 'helmrepositories',
+});
+
+registerRoute({
+  path: '/flux/sources/helmcharts',
+  sidebar: 'sources',
+  component: () => <HelmCharts />,
+  exact: true,
+  name: 'helmcharts',
 });
 
 registerRoute({
