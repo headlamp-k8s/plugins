@@ -12,7 +12,8 @@
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
-    "test": "headlamp-plugin test"
+    "test": "headlamp-plugin test",
+    "i18n": "headlamp-plugin i18n"
   },
   "keywords": [
     "headlamp",
@@ -22,6 +23,30 @@
     "kubernetes-debugging",
     "plugins"
   ],
+  "headlamp": {
+    "i18n": [
+      "en",
+      "de",
+      "es",
+      "fr",
+      "it",
+      "ja",
+      "id",
+      "ko",
+      "pt-BR",
+      "ru",
+      "zh-Hans",
+      "zh-Hant",
+      "cs",
+      "nl",
+      "hu",
+      "pt-PT",
+      "pl",
+      "sv",
+      "tr"
+    ],
+    "fallbackLng": "en"
+  },
   "prettier": "@headlamp-k8s/eslint-config/prettier-config",
   "eslintConfig": {
     "extends": [

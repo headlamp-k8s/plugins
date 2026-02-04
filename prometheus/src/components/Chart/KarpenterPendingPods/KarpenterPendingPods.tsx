@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { green } from '@mui/material/colors';
 import { alpha, useTheme } from '@mui/material/styles';
 import { fetchMetrics } from '../../../request';
@@ -15,13 +16,14 @@ interface KarpenterPendingPodsProps {
 }
 
 export const KarpenterPendingPods = (props: KarpenterPendingPodsProps) => {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.timespan);
   const theme = useTheme();
 
   const plots = [
     {
       query: props.pendingPodsQuery,
-      name: 'Pending Pods',
+      name: t('Pending Pods'),
       strokeColor: alpha(green[600], 0.8),
       fillColor: alpha(green[400], 0.1),
       dataProcessor: createDataProcessor(0),

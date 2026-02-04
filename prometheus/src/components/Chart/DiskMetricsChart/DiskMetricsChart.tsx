@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/lib/k8s';
 import Alert from '@mui/material/Alert';
@@ -27,6 +28,8 @@ interface DiskMetricsChartProps {
 }
 
 export function DiskMetricsChart(props: DiskMetricsChartProps) {
+  const { t } = useTranslation();
+
   enum prometheusState {
     UNKNOWN,
     LOADING,
@@ -88,7 +91,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
       >
         {state === prometheusState.INSTALLED && (
           <>
-            <Box>Disk</Box>
+            <Box>{t('Disk')}</Box>
             <Box pl={2}>
               <IconButton
                 onClick={() => {
@@ -129,11 +132,11 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
         </Box>
       ) : state === prometheusState.LOADING ? (
         <Box m={2}>
-          <Loader title="Loading Prometheus Info" />
+          <Loader title={t('Loading Prometheus Info')} />
         </Box>
       ) : state === prometheusState.ERROR ? (
         <Box m={2}>
-          <Alert severity="warning">Error fetching prometheus Info</Alert>
+          <Alert severity="warning">{t('Error fetching prometheus Info')}</Alert>
         </Box>
       ) : (
         <PrometheusNotFoundBanner />
