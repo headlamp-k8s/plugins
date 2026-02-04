@@ -1,5 +1,5 @@
 import React from 'react';
-import { BucketRepository } from '../common/Resources';
+import { BucketRepository } from '../../common/Resources';
 import { SourceTypePage } from '../SourceTypePage';
 
 export function Buckets() {

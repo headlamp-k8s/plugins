@@ -1,5 +1,5 @@
 import React from 'react';
-import { HelmChart } from '../common/Resources';
+import { HelmChart } from '../../common/Resources';
 import { SourceTypePage } from '../SourceTypePage';
 
 export function HelmCharts() {

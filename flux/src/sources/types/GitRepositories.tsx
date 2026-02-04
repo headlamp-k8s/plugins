@@ -1,5 +1,5 @@
 import React from 'react';
-import { GitRepository } from '../common/Resources';
+import { GitRepository } from '../../common/Resources';
 import { SourceTypePage } from '../SourceTypePage';
 
 export function GitRepositories() {
