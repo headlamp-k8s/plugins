@@ -81,57 +81,51 @@ export default function Applications() {
   return (
     <SectionBox title={`Applications (${tableData.length})`}>
       <Table
-        data={tableData}
-        columns={[
-          {
-            header: 'Name',
-            accessorKey: 'name',
-            gridTemplate: 'auto',
-            Cell: ({ row }: any) => {
-              const appName = row.original.name;
-              return (
-                <Link routeName="application-detail" params={{ applicationName: appName }}>
-                  {appName}
-                </Link>
-              );
-            },
-          },
-          {
-            header: 'Namespace',
-            accessorKey: 'namespace',
-          },
-          {
-            header: 'Environment',
-            accessorKey: 'environment',
-            Cell: ({ row }: any) => {
-              const environmentName = row.original.environment;
-              return environmentName === 'N/A' ? (
-                <Typography>{environmentName}</Typography>
-              ) : (
-                <Link
-                  href={`/environments/${environmentName}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Navigate to environment
-                  }}
-                >
-                  {environmentName}
-                </Link>
-              );
-            },
-          },
-          {
-            header: 'Provisioning State',
-            accessorKey: 'provisioningState',
-            accessorFn: item => {
-              return <RadiusStatusLabel status={item.provisioningState} />;
-            },
-          },
-          {
-            header: 'Created',
-            accessorKey: 'created',
-          },
-        ]}
+      data={tableData}
+      columns={[
+        {
+        header: 'Name',
+        accessorKey: 'name',
+        gridTemplate: 'auto',
+        Cell: ({ row }: { row: { original: ApplicationTableData } }) => {
+          const appName = row.original.name;
+          return (
+          <Link routeName="application-detail" params={{ applicationName: appName }}>
+            {appName}
+          </Link>
+          );
+        },
+        },
+        {
+        header: 'Namespace',
+        accessorKey: 'namespace',
+        },
+        {
+        header: 'Environment',
+        accessorKey: 'environment',
+        Cell: ({ row }: { row: { original: ApplicationTableData } }) => {
+          const environmentName = row.original.environment;
+          return environmentName === 'N/A' ? (
+          <Typography>{environmentName}</Typography>
+          ) : (
+          <Link routeName="environment-detail" params={{ environmentName }}>
+            {environmentName}
+          </Link>
+          );
+        },
+        },
+        {
+        header: 'Provisioning State',
+        accessorKey: 'provisioningState',
+        accessorFn: (item: ApplicationTableData) => {
+          return <RadiusStatusLabel status={item.provisioningState} />;
+        },
+        },
+        {
+        header: 'Created',
+        accessorKey: 'created',
+        },
+      ]}
       />
     </SectionBox>
   );

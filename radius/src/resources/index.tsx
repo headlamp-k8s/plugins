@@ -137,67 +137,67 @@ export default function Resources() {
   return (
     <SectionBox title={`Resources (${tableData.length})`}>
       <Table
-        data={tableData}
-        columns={[
-          {
-            header: 'Resource Name',
-            accessorKey: 'name',
-            gridTemplate: 'auto',
-            Cell: ({ row }: any) => {
-              const resourceName = row.original.name;
-              return (
-                <Link routeName="resource-detail" params={{ resourceName }}>
-                  {resourceName}
-                </Link>
-              );
-            },
-          },
-          {
-            header: 'Resource Group',
-            accessorKey: 'resourceGroup',
-          },
-          {
-            header: 'Type',
-            accessorKey: 'type',
-          },
-          {
-            header: 'Application',
-            accessorKey: 'application',
-            Cell: ({ row }: any) => {
-              const appName = row.original.application;
-              if (appName === 'N/A' || appName === '-') {
-                return <Typography variant="body2">{appName}</Typography>;
-              }
-              return (
-                <Link routeName="application-detail" params={{ applicationName: appName }}>
-                  {appName}
-                </Link>
-              );
-            },
-          },
-          {
-            header: 'Environment',
-            accessorKey: 'environment',
-            Cell: ({ row }: any) => {
-              const envName = row.original.environment;
-              if (envName === 'N/A' || envName === '-') {
-                return <Typography variant="body2">{envName}</Typography>;
-              }
-              return (
-                <Link routeName="environment-detail" params={{ environmentName: envName }}>
-                  {envName}
-                </Link>
-              );
-            },
-          },
-          {
-            header: 'Status',
-            accessorKey: 'provisioningState',
-            accessorFn: item => {
-              return <RadiusStatusLabel status={item.provisioningState} />;
-            },
-          },
-        ]}
+      data={tableData}
+      columns={[
+      {
+      header: 'Resource Name',
+      accessorKey: 'name',
+      gridTemplate: 'auto',
+      Cell: ({ row }: { row: { original: ResourceTableData } }) => {
+        const resourceName = row.original.name;
+        return (
+        <Link routeName="resource-detail" params={{ resourceName }}>
+        {resourceName}
+        </Link>
+        );
+      },
+      },
+      {
+      header: 'Resource Group',
+      accessorKey: 'resourceGroup',
+      },
+      {
+      header: 'Type',
+      accessorKey: 'type',
+      },
+      {
+      header: 'Application',
+      accessorKey: 'application',
+      Cell: ({ row }: { row: { original: ResourceTableData } }) => {
+        const appName = row.original.application;
+        if (appName === 'N/A' || appName === '-') {
+        return <Typography variant="body2">{appName}</Typography>;
+        }
+        return (
+        <Link routeName="application-detail" params={{ applicationName: appName }}>
+        {appName}
+        </Link>
+        );
+      },
+      },
+      {
+      header: 'Environment',
+      accessorKey: 'environment',
+      Cell: ({ row }: { row: { original: ResourceTableData } }) => {
+        const envName = row.original.environment;
+        if (envName === 'N/A' || envName === '-') {
+        return <Typography variant="body2">{envName}</Typography>;
+        }
+        return (
+        <Link routeName="environment-detail" params={{ environmentName: envName }}>
+        {envName}
+        </Link>
+        );
+      },
+      },
+      {
+      header: 'Status',
+      accessorKey: 'provisioningState',
+      accessorFn: (item: ResourceTableData) => {
+        return <RadiusStatusLabel status={item.provisioningState} />;
+      },
+      },
+      ]}
       />
     </SectionBox>
   );

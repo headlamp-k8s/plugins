@@ -91,7 +91,17 @@ export default function ResourceDetailView() {
 
   // Check if this is a container resource with Kubernetes compute information
   const isContainer = resource.type === 'Applications.Core/containers';
-  const computeStatus = resource.properties.status?.compute as any;
+  interface ComputeStatus {
+    namespace?: string;
+    resourceId?: string;
+    kind?: string;
+  }
+
+  interface ResourceProperty {
+    name?: string;
+  }
+
+  const computeStatus = resource.properties.status?.compute as ComputeStatus | undefined;
   const computeNamespace = computeStatus?.namespace;
 
   let k8sResourceName: string | undefined;
@@ -99,7 +109,7 @@ export default function ResourceDetailView() {
 
   // Check for resource property which might contain the K8s resource name
   if (isContainer && resource.properties.resource) {
-    k8sResourceName = (resource.properties.resource as Record<string, any>)?.name || resource.name;
+    k8sResourceName = (resource.properties.resource as ResourceProperty)?.name || resource.name;
     k8sResourceType = 'deployment'; // Containers typically map to deployments
   } else if (isContainer && computeStatus?.resourceId) {
     // Try to parse resourceId if it exists

@@ -110,8 +110,11 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
   // Adjust to ensure total is 100% by modifying the largest percentage  
   const sum = percentages.reduce((a, b) => a + b, 0);  
   if (sum !== 100 && sum > 0) {  
-    const idx = percentages.indexOf(Math.max(...percentages));  
-    percentages[idx] += 100 - sum;  
+    const maxValue = Math.max(...percentages);
+    if (maxValue > 0) {
+      const idx = percentages.indexOf(maxValue);  
+      percentages[idx] += 100 - sum;  
+    }
   }  
 
   const [successPercentage, failedPercentage, processingPercentage, suspendedPercentage] = percentages;
@@ -300,42 +303,42 @@ export default function Overview() {
         <Table
           data={applicationTableData}
           columns={[
-            {
-              header: 'Name',
-              accessorKey: 'name',
-              Cell: ({ row }: any) => {
-                const appName = row.original.name;
-                return (
-                  <Link routeName="application-detail" params={{ applicationName: appName }}>
-                    {appName}
-                  </Link>
-                );
-              },
-            },
-            {
-              header: 'Environment',
-              accessorKey: 'environment',
-              Cell: ({ row }: any) => {
-                const envName = row.original.environment;
-                if (envName === 'N/A') {
-                  return <Typography variant="body2">{envName}</Typography>;
-                }
-                return (
-                  <Link routeName="environment-detail" params={{ environmentName: envName }}>
-                    {envName}
-                  </Link>
-                );
-              },
-            },
-            {
-              header: 'Provisioning State',
-              accessorKey: 'provisioningState',
-              Cell: ({ row }: any) => <RadiusStatusLabel status={row.original.provisioningState} />,
-            },
-            {
-              header: 'Created',
-              accessorKey: 'created',
-            },
+        {
+          header: 'Name',
+          accessorKey: 'name',
+          Cell: ({ row }: { row: { original: ApplicationTableData } }) => {
+            const appName = row.original.name;
+            return (
+          <Link routeName="application-detail" params={{ applicationName: appName }}>
+            {appName}
+          </Link>
+            );
+          },
+        },
+        {
+          header: 'Environment',
+          accessorKey: 'environment',
+          Cell: ({ row }: { row: { original: ApplicationTableData } }) => {
+            const envName = row.original.environment;
+            if (envName === 'N/A') {
+          return <Typography variant="body2">{envName}</Typography>;
+            }
+            return (
+          <Link routeName="environment-detail" params={{ environmentName: envName }}>
+            {envName}
+          </Link>
+            );
+          },
+        },
+        {
+          header: 'Provisioning State',
+          accessorKey: 'provisioningState',
+          Cell: ({ row }: { row: { original: ApplicationTableData } }) => <RadiusStatusLabel status={row.original.provisioningState} />,
+        },
+        {
+          header: 'Created',
+          accessorKey: 'created',
+        },
           ]}
         />
       </SectionBox>
@@ -344,39 +347,39 @@ export default function Overview() {
         <Table
           data={environmentTableData}
           columns={[
-            {
-              header: 'Name',
-              accessorKey: 'name',
-              Cell: ({ row }: any) => {
-                const envName = row.original.name;
-                return (
-                  <Link routeName="environment-detail" params={{ environmentName: envName }}>
-                    {envName}
-                  </Link>
-                );
-              },
-            },
-            {
-              header: 'Namespace',
-              accessorKey: 'namespace',
-            },
-            {
-              header: 'Provider',
-              accessorKey: 'provider',
-            },
-            {
-              header: 'Applications',
-              accessorKey: 'applications',
-            },
-            {
-              header: 'Provisioning State',
-              accessorKey: 'provisioningState',
-              Cell: ({ row }: any) => <RadiusStatusLabel status={row.original.provisioningState} />,
-            },
-            {
-              header: 'Created',
-              accessorKey: 'created',
-            },
+        {
+          header: 'Name',
+          accessorKey: 'name',
+          Cell: ({ row }: { row: { original: EnvironmentTableData } }) => {
+            const envName = row.original.name;
+            return (
+          <Link routeName="environment-detail" params={{ environmentName: envName }}>
+            {envName}
+          </Link>
+            );
+          },
+        },
+        {
+          header: 'Namespace',
+          accessorKey: 'namespace',
+        },
+        {
+          header: 'Provider',
+          accessorKey: 'provider',
+        },
+        {
+          header: 'Applications',
+          accessorKey: 'applications',
+        },
+        {
+          header: 'Provisioning State',
+          accessorKey: 'provisioningState',
+          Cell: ({ row }: { row: { original: EnvironmentTableData } }) => <RadiusStatusLabel status={row.original.provisioningState} />,
+        },
+        {
+          header: 'Created',
+          accessorKey: 'created',
+        },
           ]}
         />
       </SectionBox>

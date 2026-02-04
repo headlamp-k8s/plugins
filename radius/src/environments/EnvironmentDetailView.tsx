@@ -62,6 +62,23 @@ interface RouteParams {
  * Environment Detail View Component
  * Shows detailed information about a specific Radius environment
  */
+/**
+ * A component that conditionally renders its children based on the current tab value.
+ * Used to implement tab panels in a tabbed interface.
+ * 
+ * @param props - The component props
+ * @param props.children - The content to render when this tab panel is active
+ * @param props.value - The currently selected tab index
+ * @param props.index - The index of this tab panel
+ * @returns The tab panel content when active, or null when inactive
+ * 
+ * @example
+ * ```tsx
+ * <TabPanel value={currentTab} index={0}>
+ *   <div>Content for first tab</div>
+ * </TabPanel>
+ * ```
+ */
 export default function EnvironmentDetailView() {
   const { environmentName } = useParams<RouteParams>();
   const [environments, error, loading] = useRadiusEnvironments();
@@ -142,6 +159,10 @@ export default function EnvironmentDetailView() {
     recipeName: string;
     templateKind: string;
     templatePath: string;
+  }
+
+  interface RecipeTableRow {
+    original: RecipeTableData;
   }
 
   const recipeTableData: RecipeTableData[] = [];
@@ -336,7 +357,7 @@ export default function EnvironmentDetailView() {
               {
                 header: 'Recipe Kind',
                 accessorKey: 'templateKind',
-                Cell: ({ row }: any) => <Chip label={row.original.templateKind} size="small" />,
+                Cell: ({ row }: { row: RecipeTableRow }) => <Chip label={row.original.templateKind} size="small" />,
               },
               {
                 header: 'Recipe Location',

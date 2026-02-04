@@ -95,6 +95,33 @@ export default function ApplicationDetailView() {
  * Separate component for application content
  * This allows us to use the hook conditionally only when we have a valid application
  */
+/**
+ * Displays the detailed content view for a Radius application.
+ * 
+ * This component is separated from ApplicationDetailView to provide a focused,
+ * self-contained view of application details including general information,
+ * environment configuration, associated resources, and system metadata.
+ * 
+ * The component fetches and displays:
+ * - General application information (name, type, location, provisioning state)
+ * - Environment and compute configuration (environment reference, compute kind, namespace)
+ * - Associated resources in a table format with links to individual resource details
+ * - System metadata (creation and modification timestamps and actors)
+ * 
+ * @param props - Component properties
+ * @param props.application - The UCP application object containing all application details
+ * @param props.environmentName - The name of the environment this application belongs to
+ * 
+ * @returns A React component rendering the complete application detail view
+ * 
+ * @example
+ * ```tsx
+ * <ApplicationContent 
+ *   application={ucpApplicationData} 
+ *   environmentName="production"
+ * />
+ * ```
+ */
 function ApplicationContent({
   application,
   environmentName,

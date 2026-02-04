@@ -26,6 +26,12 @@ interface EnvironmentTableData {
   recipesCount: number;
 }
 
+interface TableRowProps {
+  row: {
+    original: EnvironmentTableData;
+  };
+}
+
 /**
  * Environments component displays a list of all Radius environments
  */
@@ -65,7 +71,9 @@ export default function Environments() {
     const compute = env.properties.compute?.kind || 'N/A';
     const namespace = env.properties.compute?.namespace || 'N/A';
     const recipesCount = Object.keys(env.properties.recipes || {}).length;
-    const provisioningState = (env.properties as any).provisioningState || 'Unknown';
+    const provisioningState = 'provisioningState' in env.properties 
+      ? (env.properties as { provisioningState?: string }).provisioningState || 'Unknown'
+      : 'Unknown';
 
     return {
       name: env.name,
@@ -85,7 +93,7 @@ export default function Environments() {
             header: 'Name',
             accessorKey: 'name',
             gridTemplate: 'auto',
-            Cell: ({ row }: any) => {
+            Cell: ({ row }: TableRowProps) => {
               const envName = row.original.name;
               return (
                 <Link routeName="environment-detail" params={{ environmentName: envName }}>

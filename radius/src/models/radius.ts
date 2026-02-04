@@ -500,83 +500,47 @@ export function useRadiusResources(): [UCPResource[] | null, Error | null, boole
         const promises: Promise<UCPResource[]>[] = [];
 
         // Fetch Applications.Core resources
+        // Helper function to fetch resources for a provider
+        const fetchProviderResources = async (
+          provider: string,
+          resourceType: string
+        ): Promise<UCPResource[]> => {
+          try {
+            const path = `/apis/api.ucp.dev/v1alpha3/planes/radius/local/providers/${provider}/${resourceType}?api-version=${apiVersion}`;
+            const data: UCPListResponse<UCPResource> = await ApiProxy.request(
+              path,
+              {},
+              true,
+              true
+            );
+            return data.value || [];
+          } catch (err) {
+            console.warn(
+              `Failed to fetch ${provider}/${resourceType}:`,
+              err instanceof Error ? err.message : String(err)
+            );
+            return [];
+          }
+        };
+
+        // Fetch Applications.Core resources
         coreResourceTypes.forEach(resourceType => {
-          promises.push(
-            (async () => {
-              try {
-                const path = `/apis/api.ucp.dev/v1alpha3/planes/radius/local/providers/Applications.Core/${resourceType}?api-version=${apiVersion}`;
-                const data: UCPListResponse<UCPResource> = await ApiProxy.request(
-                  path,
-                  {},
-                  true,
-                  true
-                );
-                return data.value || [];
-              } catch {
-                return [];
-              }
-            })()
-          );
+          promises.push(fetchProviderResources('Applications.Core', resourceType));
         });
 
         // Fetch Applications.Datastores resources
         datastoreResourceTypes.forEach(resourceType => {
-          promises.push(
-            (async () => {
-              try {
-                const path = `/apis/api.ucp.dev/v1alpha3/planes/radius/local/providers/Applications.Datastores/${resourceType}?api-version=${apiVersion}`;
-                const data: UCPListResponse<UCPResource> = await ApiProxy.request(
-                  path,
-                  {},
-                  true,
-                  true
-                );
-                return data.value || [];
-              } catch {
-                return [];
-              }
-            })()
-          );
+          promises.push(fetchProviderResources('Applications.Datastores', resourceType));
         });
 
         // Fetch Applications.Messaging resources
         messagingResourceTypes.forEach(resourceType => {
-          promises.push(
-            (async () => {
-              try {
-                const path = `/apis/api.ucp.dev/v1alpha3/planes/radius/local/providers/Applications.Messaging/${resourceType}?api-version=${apiVersion}`;
-                const data: UCPListResponse<UCPResource> = await ApiProxy.request(
-                  path,
-                  {},
-                  true,
-                  true
-                );
-                return data.value || [];
-              } catch {
-                return [];
-              }
-            })()
-          );
+          promises.push(fetchProviderResources('Applications.Messaging', resourceType));
         });
 
         // Fetch Applications.Dapr resources
         daprResourceTypes.forEach(resourceType => {
-          promises.push(
-            (async () => {
-              try {
-                const path = `/apis/api.ucp.dev/v1alpha3/planes/radius/local/providers/Applications.Dapr/${resourceType}?api-version=${apiVersion}`;
-                const data: UCPListResponse<UCPResource> = await ApiProxy.request(
-                  path,
-                  {},
-                  true,
-                  true
-                );
-                return data.value || [];
-              } catch {
-                return [];
-              }
-            })()
-          );
+          promises.push(fetchProviderResources('Applications.Dapr', resourceType));
         });
 
         const results = await Promise.all(promises);
