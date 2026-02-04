@@ -1,63 +1,21 @@
-import { SourceOverview } from './SourceOverview';
-
-export function FluxSources() {
-  return <SourceOverview />;
-import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { SectionBox, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
-import {
-  BucketRepository,
-  ExternalArtifact,
-  GitRepository,
-  HelmChart,
-  HelmRepository,
-  OCIRepository,
-} from '../common/Resources';
 import Table, { TableProps } from '../common/Table';
-import { useNamespaces } from '../helpers';
 
-export function FluxSources() {
-  return (
-    <>
-      <FluxSource
-        resourceClass={ExternalArtifact}
-        pluralName="externalartifacts"
-        title={'External Artifacts'}
-      />
-      <FluxSource
-        resourceClass={GitRepository}
-        pluralName="gitrepositories"
-        title={'Git Repositories'}
-      />
-      <FluxSource
-        resourceClass={OCIRepository}
-        pluralName="ocirepositories"
-        title={'OCI Repositories'}
-      />
-      <FluxSource resourceClass={BucketRepository} pluralName="buckets" title={'Buckets'} />
-      <FluxSource
-        resourceClass={HelmRepository}
-        pluralName="helmrepositories"
-        title={'Helm Repositories'}
-      />
-      <FluxSource resourceClass={HelmChart} pluralName="helmcharts" title={'Helm Charts'} />
-    </>
-  );
-}
-
-interface FluxSourceCustomResourceRendererProps {
+interface SourceTypePageProps {
   resourceClass: KubeObjectClass;
   title: string;
   pluralName: string;
 }
 
-function FluxSource(props: FluxSourceCustomResourceRendererProps) {
+export function SourceTypePage(props: SourceTypePageProps) {
   const filterFunction = useFilterFunc();
   const { resourceClass, title, pluralName } = props;
-  const [resources, error] = resourceClass.useList({ namespace: useNamespaces() });
+  const [resources, error] = resourceClass.useList();
 
   function prepareColumns() {
     const columns: TableProps['columns'] = [
@@ -84,9 +42,11 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
 
     return columns;
   }
+
   const isHelmChart = resources?.[0]?.jsonData?.kind === 'HelmChart';
   const columns = prepareColumns();
   let colIndexToInsert = columns.length - 2;
+
   if (isHelmChart) {
     // add chart column to second index
     columns.splice(colIndexToInsert++, 0, {
@@ -97,7 +57,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
       },
     });
 
-    // add Version  column to third index
+    // add Version column to third index
     columns.splice(colIndexToInsert++, 0, {
       header: 'Version',
       accessorFn: item => {
@@ -107,7 +67,6 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
     });
 
     // add source kind column to fourth index
-
     columns.splice(colIndexToInsert++, 0, {
       header: 'Source Kind',
       accessorFn: item => {
@@ -117,7 +76,6 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
     });
 
     // add source name column to fifth index
-
     columns.splice(colIndexToInsert++, 0, {
       header: 'Source Name',
       accessorFn: item => {
