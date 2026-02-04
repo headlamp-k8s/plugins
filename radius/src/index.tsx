@@ -28,6 +28,8 @@ import ApplicationDetailView from './applications/ApplicationDetailView';
 import Environments from './environments';
 import EnvironmentDetailView from './environments/EnvironmentDetailView';
 import Overview from './radius-overview';
+import ResourceTypes from './resource-types';
+import ResourceTypeDetailView from './resource-types/ResourceTypeDetailView';
 import Resources from './resources';
 import ResourceDetailView from './resources/ResourceDetailView';
 
@@ -52,6 +54,13 @@ addIcon('radius:environment', {
 // SVG logo sourced from assets/application.svg
 addIcon('radius:application', {
   body: '<g><path d="m910.77,167.2H169.23c-35.47,0-64.23,28.76-64.23,64.23v92.56h870v-92.56c0-35.47-28.76-64.23-64.23-64.23Z" fill="currentColor" opacity="0.5"/><path d="m105,324v524.57c0,35.47,28.76,64.23,64.23,64.23h741.55c35.47,0,64.23-28.76,64.23-64.23V324H105Z" fill="currentColor"/><path d="m575.51,647.28c-19.93,19.61-51.98,19.36-71.59-.57-19.61-19.93-19.36-51.98.57-71.59,13.83-13.61,33.5-17.65,50.8-12.18l105.32-103.66c-30.74-24.45-69.13-39.86-111.36-41.87-107.03-5.11-197.94,77.51-203.05,184.54-5.11,107.03,77.51,197.94,184.54,203.05,107.03,5.11,197.94-77.51,203.05-184.54,2.3-48.14-13.19-92.98-40.62-128.26l-105.02,103.37c5.72,17.66,1.49,37.81-12.64,51.71Z" fill="#fff"/></g><path d="m712.3,271.75c-11.17,0-20.23-9.06-20.23-20.23s9.06-20.23,20.23-20.23,20.23,9.06,20.23,20.23-9.06,20.23-20.23,20.23Z" fill="currentColor"/><path d="m803.02,271.75c-11.17,0-20.23-9.06-20.23-20.23s9.06-20.23,20.23-20.23,20.23,9.06,20.23,20.23-9.06,20.23-20.23,20.23Z" fill="currentColor"/><path d="m893.74,271.75c-11.17,0-20.23-9.06-20.23-20.23s9.06-20.23,20.23-20.23,20.23,9.06,20.23,20.23-9.06,20.23-20.23,20.23Z" fill="currentColor"/>',
+  width: 1080,
+  height: 1080,
+});
+
+// SVG logo sourced from assets/resource-types.svg
+addIcon('radius:resource-types', {
+  body: '<path d="m940,722.58v-365.16c0-29.93-15.97-57.58-41.88-72.54l-316.24-182.58c-25.92-14.96-57.85-14.96-83.76,0l-316.24,182.58c-25.92,14.96-41.88,42.62-41.88,72.54v365.16c0,29.93,15.97,57.58,41.88,72.54l316.24,182.58c25.92,14.96,57.85,14.96,83.76,0l316.24-182.58c25.92-14.96,41.88-42.62,41.88-72.54Z" fill="currentColor"/>',
   width: 1080,
   height: 1080,
 });
@@ -101,6 +110,13 @@ const sidebarEntries: SidebarEntry[] = [
     url: '/resources',
     icon: 'mdi:cube-outline',
   },
+  {
+    parent: 'radius',
+    name: 'resource-types',
+    label: 'Resource Types',
+    url: '/resource-types',
+    icon: 'radius:resource-types',
+  },
 ];
 
 // Register sidebar entries using the map
@@ -140,6 +156,11 @@ for (const entry of sidebarEntries) {
       // Use the Resources component for the resources route
       if (entry.name === 'resources') {
         return <Resources />;
+      }
+
+      // Use the ResourceTypes component for the resource-types route
+      if (entry.name === 'resource-types') {
+        return <ResourceTypes />;
       }
 
       // Placeholder for other routes
@@ -214,4 +235,13 @@ registerRoute({
   name: 'resource-detail',
   exact: true,
   component: () => <ResourceDetailView />,
+});
+
+// Register resource type detail route
+registerRoute({
+  path: '/resource-types/:resourceTypeName',
+  sidebar: 'resource-types',
+  name: 'resource-type-detail',
+  exact: true,
+  component: () => <ResourceTypeDetailView />,
 });

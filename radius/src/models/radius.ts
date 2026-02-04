@@ -648,3 +648,197 @@ export function useApplicationResources(
 
   return [filteredResources, error, loading];
 }
+
+/**
+ * Interface for Radius Resource Type
+ */
+export interface UCPResourceType {
+  id: string;
+  name: string;
+  type: string;
+  apiVersions: {
+    [version: string]: any;
+  };
+  capabilities: string[];
+  description?: string;
+  resourceProvider?: string;
+}
+
+/**
+ * Interface for Radius Resource Provider
+ */
+interface UCPResourceProvider {
+  name: string;
+  locations?: {
+    [location: string]: any;
+  };
+  resourceTypes: {
+    [key: string]: {
+      apiVersions: {
+        [version: string]: any;
+      };
+      capabilities: string[];
+      description?: string;
+    };
+  };
+}
+
+/**
+ * Hook to fetch Radius resource types from UCP API
+ * Fetches all providers and extracts resource types from each provider
+ */
+export function useRadiusResourceTypes(): [UCPResourceType[] | null, Error | null, boolean] {
+  const [resourceTypes, setResourceTypes] = useState<UCPResourceType[] | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchResourceTypes() {
+      try {
+        // Get the configured UCP API version from plugin settings
+        const apiVersion = getUCPApiVersion();
+
+        // Query all providers - each provider includes its resource types
+        const path = `/apis/api.ucp.dev/v1alpha3/planes/radius/local/providers?api-version=${apiVersion}`;
+
+        const data: UCPListResponse<UCPResourceProvider> = await ApiProxy.request(
+          path,
+          {}, // request params
+          true, // autoLogoutOnAuthError
+          true // useCluster
+        );
+
+        // Extract resource types from each provider
+        const allResourceTypes: UCPResourceType[] = [];
+        
+        (data.value || []).forEach(provider => {
+          const providerName = provider.name;
+          const resourceTypesObj = provider.resourceTypes || {};
+          
+          // Convert resource types object to array and add provider name
+          Object.entries(resourceTypesObj).forEach(([typeName, resourceType]) => {
+            allResourceTypes.push({
+              id: `/planes/radius/local/providers/${providerName}/resourcetypes/${typeName}`,
+              name: typeName,
+              type: `${providerName}/${typeName}`,
+              apiVersions: resourceType.apiVersions || {},
+              capabilities: resourceType.capabilities || [],
+              description: resourceType.description,
+              resourceProvider: providerName,
+            });
+          });
+        });
+
+        if (mounted) {
+          setResourceTypes(allResourceTypes);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err : new Error(String(err)));
+          setResourceTypes(null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchResourceTypes();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return [resourceTypes, error, loading];
+}
+
+/**
+ * Hook to fetch a specific Radius resource type detail
+ * Uses the same providers endpoint as the list to ensure we get complete data including schemas
+ * @param provider - The resource provider (e.g., "Applications.Core")
+ * @param typeName - The resource type name (e.g., "applications")
+ */
+export function useRadiusResourceTypeDetail(
+  provider: string,
+  typeName: string
+): [UCPResourceType | null, Error | null, boolean] {
+  const [resourceType, setResourceType] = useState<UCPResourceType | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchResourceTypeDetail() {
+      try {
+        const apiVersion = getUCPApiVersion();
+
+        // Use the same providers endpoint as the list
+        const path = `/apis/api.ucp.dev/v1alpha3/planes/radius/local/providers?api-version=${apiVersion}`;
+
+        const data: UCPListResponse<UCPResourceProvider> = await ApiProxy.request(
+          path,
+          {}, // request params
+          true, // autoLogoutOnAuthError
+          true // useCluster
+        );
+
+        // Find the specific provider and resource type
+        const targetProvider = data.value?.find(p => p.name === provider);
+        if (!targetProvider) {
+          throw new Error(`Provider ${provider} not found`);
+        }
+
+        const resourceTypesObj = targetProvider.resourceTypes || {};
+        const targetResourceType = resourceTypesObj[typeName];
+        
+        if (!targetResourceType) {
+          throw new Error(`Resource type ${typeName} not found in provider ${provider}`);
+        }
+
+        // Construct the full resource type object
+        const fullResourceType: UCPResourceType = {
+          id: `/planes/radius/local/providers/${provider}/resourcetypes/${typeName}`,
+          name: typeName,
+          type: `${provider}/${typeName}`,
+          apiVersions: targetResourceType.apiVersions || {},
+          capabilities: targetResourceType.capabilities || [],
+          description: targetResourceType.description,
+          resourceProvider: provider,
+        };
+
+        if (mounted) {
+          setResourceType(fullResourceType);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err : new Error(String(err)));
+          setResourceType(null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    if (provider && typeName) {
+      fetchResourceTypeDetail();
+    } else {
+      setLoading(false);
+      setError(new Error('Provider and type name are required'));
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [provider, typeName]);
+
+  return [resourceType, error, loading];
+}

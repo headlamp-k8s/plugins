@@ -100,7 +100,7 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
   const status = getResourceStatus(resources);
 
   // Calculate percentages ensuring they sum to 100%
-  let percentages = [  
+  const percentages = [  
     Math.round((status.success / total) * 100),  
     Math.round((status.failed / total) * 100),  
     Math.round((status.processing / total) * 100),  
