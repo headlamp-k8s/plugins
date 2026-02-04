@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { green } from '@mui/material/colors';
 import { alpha, useTheme } from '@mui/material/styles';
 import { fetchMetrics } from '../../../request';
@@ -15,13 +16,14 @@ interface NodeClaimCreationChartProps {
 }
 
 export const NodeClaimCreationChart = (props: NodeClaimCreationChartProps) => {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.timespan);
   const theme = useTheme();
 
   const plots = [
     {
       query: props.nodeClaimCreationQuery,
-      name: 'NodeClaim Creation Rate',
+      name: t('NodeClaim Creation Rate'),
       strokeColor: alpha(green[600], 0.8),
       fillColor: alpha(green[400], 0.1),
       dataProcessor: createDataProcessor(0),
@@ -55,7 +57,7 @@ export const NodeClaimCreationChart = (props: NodeClaimCreationChartProps) => {
         domain: [0, 'auto'],
         width: 80,
         label: {
-          value: 'Creations/sec',
+          value: t('Creations/sec'),
           angle: -90,
           position: 'insideLeft',
           style: { textAnchor: 'middle' },

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -68,6 +69,8 @@ export interface ChartProps {
 }
 
 export default function Chart(props: ChartProps) {
+  const { t } = useTranslation();
+
   enum ChartState {
     LOADING,
     ERROR,
@@ -252,7 +255,7 @@ export default function Chart(props: ChartProps) {
       </AreaChart>
     );
   } else if (state === ChartState.LOADING) {
-    chartContent = <Loader title="Fetching Data" />;
+    chartContent = <Loader title={t('Fetching Data')} />;
   } else if (state === ChartState.ERROR) {
     chartContent = (
       <Box
@@ -264,7 +267,7 @@ export default function Chart(props: ChartProps) {
         alignItems="center"
       >
         <Box>
-          <EmptyContent color="error">Error: {error}</EmptyContent>
+          <EmptyContent color="error">{t('Error: {{ error }}', { error })}</EmptyContent>
         </Box>
       </Box>
     );
@@ -279,7 +282,7 @@ export default function Chart(props: ChartProps) {
         alignItems="center"
       >
         <Box>
-          <EmptyContent>No Data</EmptyContent>
+          <EmptyContent>{t('No Data')}</EmptyContent>
         </Box>
       </Box>
     );

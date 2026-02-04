@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
@@ -45,6 +46,8 @@ interface GenericMetricsChartProps {
 }
 
 export function GenericMetricsChart(props: GenericMetricsChartProps) {
+  const { t } = useTranslation();
+
   enum prometheusState {
     UNKNOWN,
     LOADING,
@@ -117,7 +120,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
               startIcon={<Icon icon={refresh ? 'mdi:pause' : 'mdi:play'} />}
               sx={{ filter: 'grayscale(1.0)' }}
             >
-              {refresh ? 'Pause' : 'Resume'}
+              {refresh ? t('Pause') : t('Resume')}
             </Button>
             <ToggleButtonGroup
               onChange={handleChartVariantChange}
@@ -126,14 +129,14 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
               value={chartVariant}
               exclusive
             >
-              <CustomToggleButton label="CPU" value="cpu" icon="mdi:chip" />
-              <CustomToggleButton label="Memory" value="memory" icon="mdi:memory" />
+              <CustomToggleButton label={t('CPU')} value="cpu" icon="mdi:chip" />
+              <CustomToggleButton label={t('Memory')} value="memory" icon="mdi:memory" />
               <CustomToggleButton
-                label="Network"
+                label={t('Network')}
                 value="network"
                 icon="mdi:folder-network-outline"
               />
-              <CustomToggleButton label="Filesystem" value="filesystem" icon="mdi:database" />
+              <CustomToggleButton label={t('Filesystem')} value="filesystem" icon="mdi:database" />
             </ToggleButtonGroup>
             <Box>
               <Select
@@ -143,20 +146,20 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 value={timespan}
                 onChange={e => setTimespan(e.target.value)}
               >
-                <MenuItem value={'10m'}>10 minutes</MenuItem>
-                <MenuItem value={'30m'}>30 minutes</MenuItem>
-                <MenuItem value={'1h'}>1 hour</MenuItem>
-                <MenuItem value={'3h'}>3 hours</MenuItem>
-                <MenuItem value={'6h'}>6 hours</MenuItem>
-                <MenuItem value={'12h'}>12 hours</MenuItem>
-                <MenuItem value={'24h'}>24 hours</MenuItem>
-                <MenuItem value={'48h'}>48 hours</MenuItem>
-                <MenuItem value={'today'}>Today</MenuItem>
-                <MenuItem value={'yesterday'}>Yesterday</MenuItem>
-                <MenuItem value={'week'}>Week</MenuItem>
-                <MenuItem value={'lastweek'}>Last week</MenuItem>
-                <MenuItem value={'7d'}>7 days</MenuItem>
-                <MenuItem value={'14d'}>14 days</MenuItem>
+                <MenuItem value={'10m'}>{t('10 minutes')}</MenuItem>
+                <MenuItem value={'30m'}>{t('30 minutes')}</MenuItem>
+                <MenuItem value={'1h'}>{t('1 hour')}</MenuItem>
+                <MenuItem value={'3h'}>{t('3 hours')}</MenuItem>
+                <MenuItem value={'6h'}>{t('6 hours')}</MenuItem>
+                <MenuItem value={'12h'}>{t('12 hours')}</MenuItem>
+                <MenuItem value={'24h'}>{t('24 hours')}</MenuItem>
+                <MenuItem value={'48h'}>{t('48 hours')}</MenuItem>
+                <MenuItem value={'today'}>{t('Today')}</MenuItem>
+                <MenuItem value={'yesterday'}>{t('Yesterday')}</MenuItem>
+                <MenuItem value={'week'}>{t('Week')}</MenuItem>
+                <MenuItem value={'lastweek'}>{t('Last week')}</MenuItem>
+                <MenuItem value={'7d'}>{t('7 days')}</MenuItem>
+                <MenuItem value={'14d'}>{t('14 days')}</MenuItem>
               </Select>
             </Box>
             <Box>
@@ -167,12 +170,12 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 value={resolution}
                 onChange={e => setResolution(e.target.value)}
               >
-                <ListSubheader>Automatic resolution</ListSubheader>
-                <MenuItem value="low">Low res.</MenuItem>
-                <MenuItem value="medium">Medium res.</MenuItem>
-                <MenuItem value="high">High res.</MenuItem>
+                <ListSubheader>{t('Automatic resolution')}</ListSubheader>
+                <MenuItem value="low">{t('Low res.')}</MenuItem>
+                <MenuItem value="medium">{t('Medium res.')}</MenuItem>
+                <MenuItem value="high">{t('High res.')}</MenuItem>
 
-                <ListSubheader>Fixed resolution</ListSubheader>
+                <ListSubheader>{t('Fixed resolution')}</ListSubheader>
                 <MenuItem value="10s">10s</MenuItem>
                 <MenuItem value="30s">30s</MenuItem>
                 <MenuItem value="1m">1m</MenuItem>
@@ -234,11 +237,11 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
           </Box>
         ) : state === prometheusState.LOADING ? (
           <Box m={2}>
-            <Loader title="Loading Prometheus Info" />
+            <Loader title={t('Loading Prometheus Info')} />
           </Box>
         ) : state === prometheusState.ERROR ? (
           <Box m={2}>
-            <Alert severity="warning">Error fetching prometheus Info</Alert>
+            <Alert severity="warning">{t('Error fetching prometheus Info')}</Alert>
           </Box>
         ) : (
           <PrometheusNotFoundBanner />

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { alpha, useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
 import { green } from '@mui/material/colors';
@@ -43,6 +44,7 @@ interface KedaScalerMetricsChartProps extends KedaChartProps {
 }
 
 export function KedaScalerMetricsChart(props: KedaScalerMetricsChartProps) {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
@@ -188,7 +190,7 @@ export function KedaScalerMetricsChart(props: KedaScalerMetricsChartProps) {
             borderRadius: theme.shape.borderRadius,
           }}
         >
-          <p>{`Time: ${formatter(label)}`}</p>
+          <p>{t('Time: {{ time }}', { time: formatter(label) })}</p>
           {payload.map((p, i) => (
             <p key={i} style={{ color: p.color }}>
               {`${p.name}: ${p.value}`}
@@ -224,12 +226,12 @@ export function KedaScalerMetricsChart(props: KedaScalerMetricsChartProps) {
         >
           {instanceGroups.length > 1 && (
             <FormControl size="medium" sx={{ minWidth: 180 }}>
-              <InputLabel id="instance-select-label">Scaler Instance</InputLabel>
+              <InputLabel id="instance-select-label">{t('Scaler Instance')}</InputLabel>
               <Select
                 id="instance-select"
                 labelId="instance-select-label"
                 value={selectedInstanceIndex}
-                label="Scaler Instance"
+                label={t('Scaler Instance')}
                 onChange={e => setSelectedInstanceIndex(Number(e.target.value))}
               >
                 {instanceGroups.map((group, index) => (
@@ -256,12 +258,12 @@ export function KedaScalerMetricsChart(props: KedaScalerMetricsChartProps) {
 
           {currentInstanceGroup && currentInstanceGroup.series.length > 0 && (
             <FormControl size="medium" sx={{ minWidth: 160 }}>
-              <InputLabel id="series-select-label">Metric</InputLabel>
+              <InputLabel id="series-select-label">{t('Metric')}</InputLabel>
               <Select
                 id="series-select"
                 labelId="series-select-label"
                 value={selectedScalerSeriesIndex}
-                label="Metric"
+                label={t('Metric')}
                 onChange={e => setSelectedScalerSeriesIndex(Number(e.target.value))}
               >
                 {currentInstanceGroup.series.map((series, index) => (

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { alpha, useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
 import { blue } from '@mui/material/colors';
@@ -41,6 +42,7 @@ interface KedaHPAReplicasChartProps extends KedaChartProps {
 }
 
 export function KedaHPAReplicasChart(props: KedaHPAReplicasChartProps) {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
@@ -103,7 +105,7 @@ export function KedaHPAReplicasChart(props: KedaHPAReplicasChartProps) {
     () => [
       {
         query: props.hpaReplicasQuery,
-        name: 'Num Replicas',
+        name: t('Num Replicas'),
         strokeColor: alpha(blue[600], 0.8),
         fillColor: alpha(blue[400], 0.1),
         dataProcessor: hpaReplicasDataProcessor,
@@ -151,7 +153,7 @@ export function KedaHPAReplicasChart(props: KedaHPAReplicasChartProps) {
             borderRadius: theme.shape.borderRadius,
           }}
         >
-          <p>{`Time: ${formatter(label)}`}</p>
+          <p>{t('Time: {{ time }}', { time: formatter(label) })}</p>
           {payload.map((p, i) => (
             <p key={i} style={{ color: p.color }}>
               {`${p.name}: ${p.value}`}
@@ -169,12 +171,12 @@ export function KedaHPAReplicasChart(props: KedaHPAReplicasChartProps) {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'start' }}>
         {instanceGroups.length > 1 ? (
           <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel id="instance-select-label">Instance</InputLabel>
+            <InputLabel id="instance-select-label">{t('Instance')}</InputLabel>
             <Select
               id="instance-select"
               labelId="instance-select-label"
               value={selectedInstanceIndex}
-              label="Instance"
+              label={t('Instance')}
               onChange={e => setSelectedInstanceIndex(Number(e.target.value))}
             >
               {instanceGroups.map((group, index) => (

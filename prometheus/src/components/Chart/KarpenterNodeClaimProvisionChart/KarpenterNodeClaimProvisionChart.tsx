@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { orange } from '@mui/material/colors';
 import { alpha, useTheme } from '@mui/material/styles';
 import { fetchMetrics } from '../../../request';
@@ -17,13 +18,14 @@ interface KarpenterNodeClaimsProvisionChartProps {
 export const KarpenterNodeClaimsProvisionChart = (
   props: KarpenterNodeClaimsProvisionChartProps
 ) => {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.timespan);
   const theme = useTheme();
 
   const plots = [
     {
       query: props.provisioningDurationQuery,
-      name: 'Average Provisioning Duration (seconds)',
+      name: t('Average Provisioning Duration (seconds)'),
       strokeColor: alpha(orange[600], 0.8),
       fillColor: alpha(orange[400], 0.1),
       dataProcessor: createDataProcessor(0),
@@ -57,7 +59,7 @@ export const KarpenterNodeClaimsProvisionChart = (
         domain: [0, 'auto'],
         width: 80,
         label: {
-          value: 'Duration (s)',
+          value: t('Duration (s)'),
           angle: -90,
           position: 'insideLeft',
           style: { textAnchor: 'middle' },
