@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalArtifact } from '../common/Resources';
+import { ExternalArtifact } from '../../common/Resources';
 import { SourceTypePage } from '../SourceTypePage';
 
 export function ExternalArtifacts() {

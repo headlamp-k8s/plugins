@@ -1,5 +1,5 @@
 import React from 'react';
-import { OCIRepository } from '../common/Resources';
+import { OCIRepository } from '../../common/Resources';
 import { SourceTypePage } from '../SourceTypePage';
 
 export function OCIRepositories() {
