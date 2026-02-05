@@ -24,7 +24,7 @@ import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
 import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Chip, Stack, Typography } from '@mui/material';
-import React from 'react';
+import React, {useMemo} from 'react';
 import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
 import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
@@ -500,68 +500,87 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
     return cols;
   }, [showClusterColumn, domainByServiceKey]);
 
+  const headerProps = useMemo(
+    () => ({
+      noNamespaceFilter: false,
+      subtitle: !ingressClassLoading && (
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', fontStyle: 'normal' }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {ingressClassLabel}:
+          </Typography>
+          {ingressClasses.length > 0 ? (
+            <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
+              {ingressClasses.map(item => (
+                <Chip
+                  key={item.key}
+                  label={item.label}
+                  size="small"
+                  color={item.color}
+                  variant={item.variant}
+                />
+              ))}
+            </Stack>
+          ) : (
+            <Chip label={formatIngressClass(null)} size="small" variant="outlined" />
+          )}
+          {domainMappingsError && (
+            <Chip
+              label="Domain mappings unavailable"
+              size="small"
+              color="warning"
+              variant="outlined"
+            />
+          )}
+        </Stack>
+      ),
+      titleSideActions:
+        clusters.length === 0
+          ? undefined
+          : [
+              <CreateResourceButton
+                key="kservices-create-button"
+                resourceClass={KService}
+                resourceName="KService"
+              />,
+            ],
+    }),
+    [
+      ingressClassLoading,
+      ingressClassLabel,
+      ingressClasses,
+      domainMappingsError,
+      clusters.length,
+    ]
+  );
+
+  const actions = useMemo(
+    () => [
+      {
+        id: 'knative.kservice-actions',
+        action: (context: any) => (
+          <KServiceRowActions
+            kservice={context.item as KService}
+            closeMenu={context.closeMenu}
+          />
+        ),
+      },
+    ],
+    []
+  );
+
   return (
     <ResourceListView
       title="KServices"
-      headerProps={{
-        noNamespaceFilter: false,
-        subtitle: !ingressClassLoading && (
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ alignItems: 'center', flexWrap: 'wrap', fontStyle: 'normal' }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              {ingressClassLabel}:
-            </Typography>
-            {ingressClasses.length > 0 ? (
-              <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
-                {ingressClasses.map(item => (
-                  <Chip
-                    key={item.key}
-                    label={item.label}
-                    size="small"
-                    color={item.color}
-                    variant={item.variant}
-                  />
-                ))}
-              </Stack>
-            ) : (
-              <Chip label={formatIngressClass(null)} size="small" variant="outlined" />
-            )}
-            {domainMappingsError && (
-              <Chip
-                label="Domain mappings unavailable"
-                size="small"
-                color="warning"
-                variant="outlined"
-              />
-            )}
-          </Stack>
-        ),
-        titleSideActions:
-          clusters.length === 0
-            ? undefined
-            : [
-                <CreateResourceButton
-                  key="kservices-create-button"
-                  resourceClass={KService}
-                  resourceName="KService"
-                />,
-              ],
-      }}
+      headerProps={headerProps}
       resourceClass={KService}
       columns={columns}
       reflectInURL="knative-kservices"
       id="knative-kservices"
-      actions={[
-        {
-          id: 'knative.kservice-actions',
-          action: context => (
-            <KServiceRowActions kservice={context.item as KService} closeMenu={context.closeMenu} />
-          ),
-        },
-      ]}
+      actions={actions}
     />
   );
 }
