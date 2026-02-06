@@ -1,4 +1,4 @@
-import { SectionBox, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Link,SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';

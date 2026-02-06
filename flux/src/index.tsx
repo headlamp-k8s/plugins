@@ -20,12 +20,12 @@ import { FluxOverview } from './overview';
 import { FluxRunTime } from './runtime/RuntimeList';
 import { FluxSources } from './sources/SourceList';
 import { FluxSourceDetailView } from './sources/SourceSingle';
+import { Buckets } from './sources/types/Buckets';
 import { ExternalArtifacts } from './sources/types/ExternalArtifacts';
 import { GitRepositories } from './sources/types/GitRepositories';
-import { OCIRepositories } from './sources/types/OCIRepositories';
-import { Buckets } from './sources/types/Buckets';
-import { HelmRepositories } from './sources/types/HelmRepositories';
 import { HelmCharts } from './sources/types/HelmCharts';
+import { HelmRepositories } from './sources/types/HelmRepositories';
+import { OCIRepositories } from './sources/types/OCIRepositories';
 
 registerHelmRelease();
 

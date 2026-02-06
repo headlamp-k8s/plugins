@@ -1,7 +1,8 @@
+import './SourceOverview.css';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
-import { useNavigate } from 'react-router-dom';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BucketRepository,
   ExternalArtifact,
@@ -10,7 +11,6 @@ import {
   HelmRepository,
   OCIRepository,
 } from '../common/Resources';
-import './SourceOverview.css';
 
 interface SourceTypeCard {
   title: string;
