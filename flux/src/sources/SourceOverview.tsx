@@ -2,7 +2,7 @@ import './SourceOverview.css';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
   BucketRepository,
   ExternalArtifact,
@@ -66,10 +66,10 @@ const sourceTypes: SourceTypeCard[] = [
 ];
 
 export function SourceOverview() {
-  const navigate = useNavigate();
+  const history = useHistory();
 
   const handleCardClick = (path: string) => {
-    navigate(path);
+    history.push(path);
   };
 
   return (
