@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { Meta, StoryFn } from '@storybook/react/types-6-0';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
@@ -51,6 +51,9 @@ const initialState = {
       tableRowsPerPageOptions: [15, 25, 50],
     },
   },
+  drawerMode: {
+    isDetailDrawerEnabled: false,
+  },
 };
 
 // a mock store that is completely empty
@@ -58,13 +61,19 @@ const mockStore = configureStore({
   reducer: (state = initialState) => state,
 });
 
-const Template: StoryFn = args => (
+interface TemplateProps {
+  fetchReleases?: () => Promise<any>;
+}
+
+const Template: StoryFn<TemplateProps> = args => (
   <Provider store={mockStore}>
     <BrowserRouter>
-      <ReleaseList {...args} fetchReleases={() => Promise.resolve({ releases: mockReleases })} />
+      <ReleaseList fetchReleases={args.fetchReleases || (() => Promise.resolve({ releases: mockReleases }))} />
     </BrowserRouter>
   </Provider>
 );
 
 export const Default = Template.bind({});
-Default.args = {};
+Default.args = {
+  fetchReleases: () => Promise.resolve({ releases: mockReleases }),
+};
