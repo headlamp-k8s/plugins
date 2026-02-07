@@ -1,6 +1,7 @@
 import {
   ConditionsSection,
   DetailsGrid,
+  Link,
   MetadataDictGrid,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router';
@@ -20,12 +21,23 @@ export function MachineSetDetail({ node }: { node: any }) {
         extraInfo={item =>
           item && [
             {
-              name: 'Cluster Name',
-              value: item.spec?.clusterName,
+              name: 'Cluster',
+              value: item.spec?.clusterName && (
+                <Link
+                  routeName="capicluster"
+                  params={{
+                    name: item.spec.clusterName,
+                    namespace: item.metadata.namespace,
+                  }}
+                >
+                  {item.spec.clusterName}
+                </Link>
+              ),
             },
             {
               name: 'Replicas',
-              value: `${item.status?.replicas} / ${item.spec?.replicas}`,
+              value: renderReplicas(item),
+              hide: !showReplicas(item),
             },
             {
               name: 'Min Ready Seconds',
@@ -42,11 +54,6 @@ export function MachineSetDetail({ node }: { node: any }) {
                   dict={item.spec?.selector.matchLabels as Record<string, string>}
                 />
               ),
-            },
-            {
-              name: 'Replicas',
-              value: renderReplicas(item),
-              hide: !showReplicas(item),
             },
             {
               name: 'Machine Template',

@@ -266,11 +266,15 @@ registerMapSource({
 });
 
 // Register on-hover "glance" tooltips
+import { ClusterGlance } from './components/clusters/Glance';
 import { KubeadmControlPlaneGlance } from './components/kubeadmcontrolplanes/Glance';
 import { MachineDeploymentGlance } from './components/machinedeployments/Glance';
 import { MachinePoolGlance } from './components/machinepools/Glance';
+import { MachineGlance } from './components/machines/Glance';
 import { MachineSetGlance } from './components/machinesets/Glance';
+registerKubeObjectGlance({ id: 'cluster-glance', component: ClusterGlance });
 registerKubeObjectGlance({ id: 'kcp-glance', component: KubeadmControlPlaneGlance });
+registerKubeObjectGlance({ id: 'machine-glance', component: MachineGlance });
 registerKubeObjectGlance({ id: 'machineset-glance', component: MachineSetGlance });
 registerKubeObjectGlance({ id: 'machinedeployment-glance', component: MachineDeploymentGlance });
 registerKubeObjectGlance({ id: 'machinepool-glance', component: MachinePoolGlance });

@@ -1,6 +1,7 @@
 import {
   ConditionsSection,
   DetailsGrid,
+  Link,
   MetadataDictGrid,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router';
@@ -20,8 +21,18 @@ export function MachineDeploymentDetail({ node }: { node: any }) {
         extraInfo={item =>
           item && [
             {
-              name: 'Cluster Name',
-              value: item.spec?.clusterName,
+              name: 'Cluster',
+              value: item.spec?.clusterName && (
+                <Link
+                  routeName="capicluster"
+                  params={{
+                    name: item.spec.clusterName,
+                    namespace: item.metadata.namespace,
+                  }}
+                >
+                  {item.spec.clusterName}
+                </Link>
+              ),
             },
             {
               name: 'Rollout After',
