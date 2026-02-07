@@ -42,6 +42,7 @@
     "@langchain/mistralai": "^1.0.0",
     "@langchain/ollama": "^1.0.1",
     "@langchain/openai": "^1.1.2",
+    "@langchain/deepseek": "^1.0.8",
     "@monaco-editor/react": "^4.5.2",
     "@types/prismjs": "^1.26.5",
     "@types/react-syntax-highlighter": "^15.5.13",
