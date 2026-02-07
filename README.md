@@ -23,6 +23,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [opencost](./opencost) | See the costs of your workloads in Headlamp. | | [@yolossn](https://github.com/yolossn) |
 | [plugin-catalog](./plugin-catalog) | Install Headlamp plugins with one click. | Shipped with Headlamp desktop builds by default. |[@yolossn](https://github.com/yolossn) |
 | [prometheus](./prometheus) | Provides a Prometheus-powered chart in the details views of workloads. | Needs Prometheus installed in the cluster for the chart to be shown. Shipped with Headlamp desktop and CI builds by default. | [@yolossn](https://github.com/yolossn) |
+| [radius](./radius) | Visualize and manage Radius applications. |  | [@filiperevez](https://github.com/filiperevez) |
 
 ## External plugins
 
