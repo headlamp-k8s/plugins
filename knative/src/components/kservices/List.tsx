@@ -500,68 +500,82 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
     return cols;
   }, [showClusterColumn, domainByServiceKey]);
 
+  const headerProps = React.useMemo(
+    () => ({
+      noNamespaceFilter: false,
+      subtitle: !ingressClassLoading && (
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', fontStyle: 'normal' }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {ingressClassLabel}:
+          </Typography>
+          {ingressClasses.length > 0 ? (
+            <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
+              {ingressClasses.map(item => (
+                <Chip
+                  key={item.key}
+                  label={item.label}
+                  size="small"
+                  color={item.color}
+                  variant={item.variant}
+                />
+              ))}
+            </Stack>
+          ) : (
+            <Chip label={formatIngressClass(null)} size="small" variant="outlined" />
+          )}
+          {domainMappingsError && (
+            <Chip
+              label="Domain mappings unavailable"
+              size="small"
+              color="warning"
+              variant="outlined"
+            />
+          )}
+        </Stack>
+      ),
+      titleSideActions:
+        clusters.length === 0
+          ? undefined
+          : [
+              <CreateResourceButton
+                key="kservices-create-button"
+                resourceClass={KService}
+                resourceName="KService"
+              />,
+            ],
+    }),
+    [ingressClassLoading, ingressClassLabel, ingressClasses, domainMappingsError, clusters.length]
+  );
+
+  type ResourceListActions = React.ComponentProps<typeof ResourceListView>['actions'];
+  type ResourceListAction = NonNullable<ResourceListActions>[number];
+  type ResourceListActionContext = Parameters<ResourceListAction['action']>[0];
+
+  const actions: ResourceListActions = React.useMemo(
+    () => [
+      {
+        id: 'knative.kservice-actions',
+        action: (context: ResourceListActionContext) => (
+          <KServiceRowActions kservice={context.item as KService} closeMenu={context.closeMenu} />
+        ),
+      },
+    ],
+    []
+  );
+
   return (
     <ResourceListView
       title="KServices"
-      headerProps={{
-        noNamespaceFilter: false,
-        subtitle: !ingressClassLoading && (
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ alignItems: 'center', flexWrap: 'wrap', fontStyle: 'normal' }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              {ingressClassLabel}:
-            </Typography>
-            {ingressClasses.length > 0 ? (
-              <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
-                {ingressClasses.map(item => (
-                  <Chip
-                    key={item.key}
-                    label={item.label}
-                    size="small"
-                    color={item.color}
-                    variant={item.variant}
-                  />
-                ))}
-              </Stack>
-            ) : (
-              <Chip label={formatIngressClass(null)} size="small" variant="outlined" />
-            )}
-            {domainMappingsError && (
-              <Chip
-                label="Domain mappings unavailable"
-                size="small"
-                color="warning"
-                variant="outlined"
-              />
-            )}
-          </Stack>
-        ),
-        titleSideActions:
-          clusters.length === 0
-            ? undefined
-            : [
-                <CreateResourceButton
-                  key="kservices-create-button"
-                  resourceClass={KService}
-                  resourceName="KService"
-                />,
-              ],
-      }}
+      headerProps={headerProps}
       resourceClass={KService}
       columns={columns}
       reflectInURL="knative-kservices"
       id="knative-kservices"
-      actions={[
-        {
-          id: 'knative.kservice-actions',
-          action: context => (
-            <KServiceRowActions kservice={context.item as KService} closeMenu={context.closeMenu} />
-          ),
-        },
-      ]}
+      actions={actions}
     />
   );
 }
