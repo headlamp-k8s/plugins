@@ -37,13 +37,11 @@ export function EditorDialog(props: {
     handleUpdate,
   } = props;
 
-  // 🔧 FIX 1: guard deeper than just `release`
   if (!release || !release.chart) return null;
 
   const themeName = localStorage.getItem('headlampThemePreference');
   const { enqueueSnackbar } = useSnackbar();
 
-  // 🔧 FIX 2: safe fallbacks for chart values
   const chartValues = release.chart?.values ?? {};
   const releaseConfig = release.config ?? {};
 
@@ -56,14 +54,12 @@ export function EditorDialog(props: {
   const [isUserValues, setIsUserValues] = useState(false);
   const [releaseUpdateDescription, setReleaseUpdateDescription] = useState('');
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [yamlError, setYamlError] = useState<string | null>(null);
+
   const checkBoxRef = useRef<HTMLInputElement | null>(null);
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const [versions, setVersions] = useState<any[]>([]);
-  const [selectedVersion, setSelectedVersion] = useState<{
-    value: string;
-    title: string;
-    version: string;
-  }>();
+  const [selectedVersion, setSelectedVersion] = useState<any>();
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -71,57 +67,42 @@ export function EditorDialog(props: {
 
     if (isUpdateRelease) {
       const fetchChartVersions = async () => {
-        let response;
-        let error: Error | null = null;
-
         try {
-          // 🔧 FIX 3: safe metadata access
           const metadataName =
             release.chart?.metadata?.name === APP_CATALOG_HELM_REPOSITORY
               ? '/' + release.chart.metadata.name
-              : release.chart?.metadata?.name ?? '';
+              : release.chart?.metadata?.name;
 
           if (!metadataName) {
-            throw new Error('Chart metadata name is missing');
+            throw new Error('Chart metadata name missing');
           }
 
-          response = await fetchChart(metadataName);
-        } catch (err: any) {
-          error = err;
-        }
+          const response = await fetchChart(metadataName);
+          if (!isMounted) return;
 
-        if (!isMounted) return;
-
-        if (error) {
-          enqueueSnackbar(`Error fetching chart versions: ${error.message}`, {
-            variant: 'error',
-            autoHideDuration: 5000,
+          const charts = response?.charts ?? [];
+          const sorted = _.cloneDeep(charts).sort((a: any, b: any) => {
+            let cmp = semver.compare(
+              semver.coerce(a.version),
+              semver.coerce(b.version)
+            );
+            return cmp === 0 ? a.version.localeCompare(b.version) : -cmp;
           });
-          return;
-        }
 
-        setIsLoading(false);
-
-        const charts = response?.charts ?? [];
-
-        const chartsCopy = _.cloneDeep(charts).sort((a: any, b: any) => {
-          let compareValue = semver.compare(
-            semver.coerce(a.version),
-            semver.coerce(b.version)
+          setVersions(
+            sorted.map((chart: any) => ({
+              title: `${chart.name} v${chart.version}`,
+              value: chart.name,
+              version: chart.version,
+            }))
           );
-          if (compareValue === 0) {
-            compareValue = a.version.localeCompare(b.version);
-          }
-          return -compareValue;
-        });
-
-        setVersions(
-          chartsCopy.map((chart: any) => ({
-            title: `${chart.name} v${chart.version}`,
-            value: chart.name,
-            version: chart.version,
-          }))
-        );
+        } catch (err: any) {
+          enqueueSnackbar(`Error fetching chart versions: ${err.message}`, {
+            variant: 'error',
+          });
+        } finally {
+          setIsLoading(false);
+        }
       };
 
       setIsLoading(true);
@@ -139,116 +120,62 @@ export function EditorDialog(props: {
     setValuesToShow(checked ? userValues : values);
   }
 
+  
   function handleEditorChange(value?: string) {
-    // 🔧 FIX 4: Monaco can emit undefined
     if (!value) return;
 
-    const parsed = yamlToJSON(value);
+    try {
+      const parsed = yamlToJSON(value);
+      setYamlError(null);
 
-    if (checkBoxRef.current?.checked) {
-      setUserValues(parsed);
-    } else {
-      setValues(parsed);
+      if (checkBoxRef.current?.checked) {
+        setUserValues(parsed);
+      } else {
+        setValues(parsed);
+      }
+    } catch {
+      setYamlError('Invalid YAML format');
     }
-  }
-
-  function checkUpgradeStatus() {
-    setTimeout(() => {
-      getActionStatus(releaseName, 'upgrade')
-        .then((response: any) => {
-          if (response.status === 'processing') {
-            checkUpgradeStatus();
-          } else if (response.status === 'failed') {
-            enqueueSnackbar(`Error upgrading release ${releaseName} ${response.message}`, {
-              variant: 'error',
-              autoHideDuration: 5000,
-            });
-            handleEditor(false);
-            setUpgradeLoading(false);
-          } else if (response.status !== 'success') {
-            enqueueSnackbar(`Error upgrading release ${releaseName}`, {
-              variant: 'error',
-              autoHideDuration: 5000,
-            });
-            handleEditor(false);
-          } else {
-            enqueueSnackbar(`Release ${releaseName} upgraded successfully`, {
-              variant: 'success',
-              autoHideDuration: 5000,
-            });
-            handleEditor(false);
-            setUpgradeLoading(false);
-            handleUpdate();
-          }
-        })
-        .catch(() => {
-          setUpgradeLoading(false);
-          handleEditor(false);
-        });
-    }, 1000);
   }
 
   function upgradeReleaseHandler() {
     setIsFormSubmitting(true);
 
     if (!releaseUpdateDescription) {
-      enqueueSnackbar('Please add release description', {
-        variant: 'error',
-        autoHideDuration: 5000,
-      });
+      enqueueSnackbar('Please add release description', { variant: 'error' });
       return;
     }
 
     if (!selectedVersion) {
-      enqueueSnackbar('Please select a version', {
-        variant: 'error',
-        autoHideDuration: 5000,
-      });
+      enqueueSnackbar('Please select a version', { variant: 'error' });
       return;
     }
 
     setUpgradeLoading(true);
 
-    const chartDefaultValuesDiff = _.omitBy(values, (value, key) =>
-      _.isEqual(value, chartValues[key])
-    );
-
-    const chartUserValuesDiff = _.omitBy(userValues, (value, key) =>
-      _.isEqual(value, releaseConfig[key])
-    );
-
-    const chartValuesDIFF = Object.assign(
+    const diff = Object.assign(
       {},
-      chartDefaultValuesDiff,
-      chartUserValuesDiff
+      _.omitBy(values, (v, k) => _.isEqual(v, chartValues[k])),
+      _.omitBy(userValues, (v, k) => _.isEqual(v, releaseConfig[k]))
     );
 
-    const chartYAML = btoa(
-      unescape(encodeURIComponent(jsonToYAML(chartValuesDIFF)))
-    );
+    const yaml = btoa(unescape(encodeURIComponent(jsonToYAML(diff))));
 
     upgradeRelease(
       releaseName,
       releaseNamespace,
-      chartYAML,
+      yaml,
       selectedVersion.value,
       releaseUpdateDescription,
       selectedVersion.version
     )
       .then(() => {
-        enqueueSnackbar(`Upgrade request for release ${releaseName} sent successfully`, {
-          variant: 'info',
-        });
+        enqueueSnackbar('Upgrade request sent', { variant: 'info' });
         handleEditor(false);
-        checkUpgradeStatus();
       })
       .catch(() => {
+        enqueueSnackbar('Upgrade failed', { variant: 'error' });
         setUpgradeLoading(false);
-        handleEditor(false);
-        enqueueSnackbar(`Error upgrading release ${releaseName}`, {
-          variant: 'error',
-          autoHideDuration: 5000,
-        });
       });
   }
 
@@ -258,7 +185,6 @@ export function EditorDialog(props: {
       maxWidth="lg"
       fullWidth
       withFullScreen
-      style={{ overflow: 'hidden' }}
       onClose={() => handleEditor(false)}
       title={`Release Name: ${releaseName} / Namespace: ${releaseNamespace}`}
     >
@@ -266,7 +192,30 @@ export function EditorDialog(props: {
         <Loader title="Loading Chart Versions" />
       ) : (
         <>
-          {/* UI unchanged */}
+          <DialogContent>
+            <Editor
+              value={jsonToYAML(valuesToShow)}
+              language="yaml"
+              height="400px"
+              theme={themeName === 'dark' ? 'vs-dark' : 'light'}
+              onChange={handleEditorChange}
+            />
+            {yamlError && (
+              <Box color="error.main" mt={1}>
+                {yamlError}
+              </Box>
+            )}
+          </DialogContent>
+
+          <DialogActions>
+            <Button onClick={() => handleEditor(false)}>Close</Button>
+            <Button
+              onClick={upgradeReleaseHandler}
+              disabled={upgradeLoading || !!yamlError}
+            >
+              Upgrade
+            </Button>
+          </DialogActions>
         </>
       )}
     </Dialog>
