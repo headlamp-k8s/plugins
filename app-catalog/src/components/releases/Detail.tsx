@@ -31,6 +31,7 @@ import {
 import { EditorDialog } from './EditorDialog';
 
 const { createRouteURL } = Router;
+
 export default function ReleaseDetail() {
   const [update, setUpdate] = useState<boolean>(false);
   const { namespace, releaseName } = useParams<{ namespace: string; releaseName: string }>();
@@ -49,13 +50,13 @@ export default function ReleaseDetail() {
     getRelease(namespace, releaseName).then(response => {
       setRelease(response);
     });
-  }, [update]);
+  }, [update, namespace, releaseName]);
 
   useEffect(() => {
     getReleaseHistory(namespace, releaseName).then(response => {
       setReleaseHistory(response);
     });
-  }, [update]);
+  }, [update, namespace, releaseName]);
 
   function checkDeleteReleaseStatus(name: string) {
     getActionStatus(name, 'uninstall').then(response => {
@@ -90,6 +91,7 @@ export default function ReleaseDetail() {
         releaseNamespace={release?.namespace}
         handleUpdate={() => setUpdate(!update)}
       />
+
       <Dialog
         open={openDeleteAlert}
         maxWidth="sm"
@@ -97,10 +99,14 @@ export default function ReleaseDetail() {
         title="Uninstall App"
       >
         <DialogContent>
-          <DialogContentText>Are you sure you want to uninstall this release?</DialogContentText>
+          <DialogContentText>
+            Are you sure you want to uninstall this release?
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDeleteAlert(false)}>{isDeleting ? 'Close' : 'No'}</Button>
+          <Button onClick={() => setOpenDeleteAlert(false)}>
+            {isDeleting ? 'Close' : 'No'}
+          </Button>
           <Button
             disabled={isDeleting}
             onClick={() => {
@@ -118,58 +124,43 @@ export default function ReleaseDetail() {
           </Button>
         </DialogActions>
       </Dialog>
+
       <Dialog
         open={rollbackPopup}
         maxWidth="xs"
         onClose={() => setRollbackPopup(false)}
         title="Rollback"
       >
-        <DialogContent
-          style={{
-            width: '400px',
-            height: '100px',
-          }}
-        >
+        <DialogContent style={{ width: '400px', height: '100px' }}>
           <InputLabel id="revert">Select a version</InputLabel>
           <Select
             value={revertVersion}
-            defaultValue={releaseHistory?.releases[0]?.version}
+            defaultValue={releaseHistory?.releases?.[0]?.version}
             onChange={event => setRevertVersion(event.target.value as string)}
             id="revert"
             fullWidth
           >
-            {releaseHistory &&
-              releaseHistory.releases.map((release: any) => {
-                return (
-                  <MenuItem value={release?.version}>
-                    {release?.version} . {release?.info.description}
-                  </MenuItem>
-                );
-              })}
+            {releaseHistory?.releases?.map((rel: any) => (
+              <MenuItem key={rel?.version} value={rel?.version}>
+                {rel?.version} . {rel?.info?.description ?? '—'}
+              </MenuItem>
+            ))}
           </Select>
         </DialogContent>
         <DialogActions>
           <Button
             onClick={() => {
-              rollbackRelease(release.namespace, release.name, revertVersion).then(() => {
+              rollbackRelease(release?.namespace, release?.name, revertVersion).then(() => {
                 setRollbackPopup(false);
                 setUpdate(!update);
               });
             }}
-            style={{
-              backgroundColor: '#000',
-              color: 'white',
-              textTransform: 'none',
-            }}
+            style={{ backgroundColor: '#000', color: 'white', textTransform: 'none' }}
           >
             Revert
           </Button>
           <Button
-            style={{
-              backgroundColor: '#000',
-              color: 'white',
-              textTransform: 'none',
-            }}
+            style={{ backgroundColor: '#000', color: 'white', textTransform: 'none' }}
             onClick={() => setRollbackPopup(false)}
           >
             Cancel
@@ -182,10 +173,11 @@ export default function ReleaseDetail() {
           backLink={createRouteURL('Releases')}
           title={
             <SectionHeader
-              title={`App: ${release.name}`}
+              title={`App: ${release?.name ?? '—'}`}
               actions={[
                 <ActionButton
-                  description={'Values'}
+                  key="values"
+                  description="Values"
                   onClick={() => {
                     setIsUpdateRelease(false);
                     setIsEditorOpen(true);
@@ -193,18 +185,21 @@ export default function ReleaseDetail() {
                   icon="mdi:file-document-box-outline"
                 />,
                 <ActionButton
-                  description={'Upgrade'}
-                  onClick={() => updateReleaseHandler()}
+                  key="upgrade"
+                  description="Upgrade"
+                  onClick={updateReleaseHandler}
                   icon="mdi:arrow-up-bold"
                 />,
                 <ActionButton
-                  description={'Rollback'}
+                  key="rollback"
+                  description="Rollback"
                   onClick={() => setRollbackPopup(true)}
                   icon="mdi:undo"
-                  iconButtonProps={{ disabled: release.version === 1 }}
+                  iconButtonProps={{ disabled: release?.version === 1 }}
                 />,
                 <ActionButton
-                  description={'Delete'}
+                  key="delete"
+                  description="Delete"
                   onClick={() => setOpenDeleteAlert(true)}
                   icon="mdi:delete"
                 />,
@@ -214,31 +209,24 @@ export default function ReleaseDetail() {
         >
           <NameValueTable
             rows={[
-              {
-                name: 'Name',
-                value: release.name,
-              },
-              {
-                name: 'Namespace',
-                value: release.namespace,
-              },
-              {
-                name: 'Revisions',
-                value: release.version,
-              },
+              { name: 'Name', value: release?.name ?? '—' },
+              { name: 'Namespace', value: release?.namespace ?? '—' },
+              { name: 'Revisions', value: release?.version ?? '—' },
               {
                 name: 'Chart Version',
-                value: release.chart.metadata.version,
+                value: release?.chart?.metadata?.version ?? '—',
               },
               {
                 name: 'App Version',
-                value: release.chart.metadata.appVersion,
+                value: release?.chart?.metadata?.appVersion ?? '—',
               },
               {
                 name: 'Status',
                 value: (
-                  <StatusLabel status={release?.info.status === 'deployed' ? 'success' : 'error'}>
-                    {release?.info.status}
+                  <StatusLabel
+                    status={release?.info?.status === 'deployed' ? 'success' : 'error'}
+                  >
+                    {release?.info?.status ?? 'unknown'}
                   </StatusLabel>
                 ),
               },
@@ -250,41 +238,42 @@ export default function ReleaseDetail() {
       {releaseHistory && (
         <SectionBox title="History">
           <SimpleTable
-            data={
-              releaseHistory === null
-                ? null
-                : [...releaseHistory.releases].sort((a, b) => b.version - a.version)
-            }
+            data={[...(releaseHistory?.releases ?? [])].sort(
+              (a, b) => b.version - a.version
+            )}
             defaultSortingColumn={1}
             columns={[
-              {
-                label: 'Revision',
-                getter: data => data.version,
-                sort: (n1, n2) => n2.version - n1.version,
-              },
+              { label: 'Revision', getter: data => data.version },
               {
                 label: 'Description',
-                getter: data => data.info.description,
+                getter: data => data.info?.description ?? '—',
               },
               {
                 label: 'Status',
                 getter: data => (
-                  <StatusLabel status={release?.info.status === 'deployed' ? 'success' : 'error'}>
-                    {data.info.status}
+                  <StatusLabel
+                    status={data.info?.status === 'deployed' ? 'success' : 'error'}
+                  >
+                    {data.info?.status ?? 'unknown'}
                   </StatusLabel>
                 ),
               },
               {
                 label: 'Chart',
-                getter: data => data.chart.metadata.name,
+                getter: data => data.chart?.metadata?.name ?? '—',
               },
               {
                 label: 'App Version',
-                getter: data => data.chart.metadata.appVersion,
+                getter: data => data.chart?.metadata?.appVersion ?? '—',
               },
               {
                 label: 'Updated',
-                getter: data => <DateLabel date={data.info.last_deployed} format="mini" />,
+                getter: data =>
+                  data.info?.last_deployed ? (
+                    <DateLabel date={data.info.last_deployed} format="mini" />
+                  ) : (
+                    '—'
+                  ),
               },
             ]}
           />
