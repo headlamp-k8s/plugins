@@ -2,36 +2,57 @@ import { ApiProxy, getHeadlampAPIHeaders } from '@kinvolk/headlamp-plugin/lib';
 
 const request = ApiProxy.request;
 
+/**
+ * Helper to ensure API errors are surfaced clearly
+ */
+async function safeRequest(url: string, options: any) {
+  try {
+    const response = await request(url, options);
+
+    if (!response) {
+      throw new Error('Empty response from Helm API');
+    }
+
+    if (response.error) {
+      throw new Error(response.error);
+    }
+
+    return response;
+  } catch (error: any) {
+    throw new Error(error?.message || 'Helm API request failed');
+  }
+}
+
 export function listReleases() {
-  return request('/helm/releases/list', {
+  return safeRequest('/helm/releases/list', {
     method: 'GET',
     headers: { ...getHeadlampAPIHeaders() },
   });
 }
 
 export function getRelease(namespace: string, releaseName: string) {
-  return request(`/helm/releases?name=${releaseName}&namespace=${namespace}`, {
+  return safeRequest(`/helm/releases?name=${releaseName}&namespace=${namespace}`, {
     method: 'GET',
     headers: { ...getHeadlampAPIHeaders() },
   });
 }
 
 export function getReleaseHistory(namespace: string, releaseName: string) {
-  return request(`/helm/release/history?name=${releaseName}&namespace=${namespace}`, {
+  return safeRequest(`/helm/release/history?name=${releaseName}&namespace=${namespace}`, {
     method: 'GET',
     headers: { ...getHeadlampAPIHeaders() },
   });
 }
 
 export function deleteRelease(namespace: string, releaseName: string) {
-  return request(`/helm/releases/uninstall?name=${releaseName}&namespace=${namespace}`, {
+  return safeRequest(`/helm/releases/uninstall?name=${releaseName}&namespace=${namespace}`, {
     method: 'DELETE',
     headers: { ...getHeadlampAPIHeaders() },
   });
 }
 
 export function rollbackRelease(namespace: string, releaseName: string, version: string) {
-  return request(`/helm/releases/rollback?name=${releaseName}&namespace=${namespace}`, {
+  return safeRequest(`/helm/releases/rollback?name=${releaseName}&namespace=${namespace}`, {
     method: 'PUT',
     headers: { ...getHeadlampAPIHeaders() },
     body: JSON.stringify({
@@ -50,7 +71,7 @@ export function createRelease(
   version: string,
   description: string
 ) {
-  return request(`/helm/release/install?namespace=${namespace}`, {
+  return safeRequest(`/helm/release/install?namespace=${namespace}`, {
     method: 'POST',
     headers: { ...getHeadlampAPIHeaders() },
     body: JSON.stringify({
@@ -65,7 +86,7 @@ export function createRelease(
 }
 
 export function getActionStatus(name: string, action: string) {
-  return request(`/helm/action/status?name=${name}&action=${action}`, {
+  return safeRequest(`/helm/action/status?name=${name}&action=${action}`, {
     method: 'GET',
     headers: { ...getHeadlampAPIHeaders() },
   });
@@ -79,7 +100,7 @@ export function upgradeRelease(
   description: string,
   version: string
 ) {
-  return request(`/helm/releases/upgrade?name=${name}&namespace=${namespace}`, {
+  return safeRequest(`/helm/releases/upgrade?name=${name}&namespace=${namespace}`, {
     method: 'PUT',
     headers: { ...getHeadlampAPIHeaders() },
     body: JSON.stringify({
@@ -94,7 +115,7 @@ export function upgradeRelease(
 }
 
 export function fetchChart(name: string) {
-  return request(`/helm/charts?filter=${name}`, {
+  return safeRequest(`/helm/charts?filter=${name}`, {
     method: 'GET',
     headers: { ...getHeadlampAPIHeaders() },
   });
