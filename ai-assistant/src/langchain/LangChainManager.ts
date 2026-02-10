@@ -102,6 +102,22 @@ export default class LangChainManager extends AIManager {
     return this.promptTemplate.pipe(modelToUse).pipe(this.outputParser);
   }
 
+  /**
+   * Extract the base URL from an Azure OpenAI endpoint.
+   * Users may paste the full API URL (e.g., https://xxx.openai.azure.com/openai/v1/chat/completions)
+   * but the SDK expects only the base URL (e.g., https://xxx.openai.azure.com).
+   */
+  private extractAzureBaseUrl(endpoint: string): string {
+    try {
+      const url = new URL(endpoint);
+      // Return only the origin (protocol + host), stripping any path
+      return url.origin;
+    } catch {
+      // If URL parsing fails, fall back to stripping trailing slashes
+      return endpoint.replace(/\/+$/, '');
+    }
+  }
+
   private createModel(providerId: string, config: Record<string, any>): BaseChatModel {
     const sanitizeString = (value: unknown): string =>
       typeof value === 'string' ? value.trim() : '';
@@ -122,7 +138,7 @@ export default class LangChainManager extends AIManager {
           }
           return new ChatOpenAI({
             apiKey: sanitizedConfig.apiKey,
-            modelName: sanitizedConfig.model,
+            model: sanitizedConfig.model,
             verbose: true,
           });
         case 'azure':
@@ -134,12 +150,13 @@ export default class LangChainManager extends AIManager {
             throw new Error('Incomplete Azure OpenAI configuration');
           }
           return new AzureChatOpenAI({
-            // Strip trailing slashes only
-            azureOpenAIEndpoint: sanitizedConfig.endpoint.replace(/\/+$/, ''),
+            // Extract only the base URL (protocol + host), stripping any path
+            // e.g. "https://xxx.openai.azure.com/openai/v1/chat/completions" → "https://xxx.openai.azure.com"
+            azureOpenAIEndpoint: this.extractAzureBaseUrl(sanitizedConfig.endpoint),
             azureOpenAIApiKey: sanitizedConfig.apiKey,
             azureOpenAIApiDeploymentName: sanitizedConfig.deploymentName,
-            azureOpenAIApiVersion: '2024-12-01-preview',
-            modelName: sanitizedConfig.model,
+            azureOpenAIApiVersion: '2025-04-01-preview',
+            model: sanitizedConfig.model,
             verbose: true,
           });
         case 'anthropic':
@@ -148,7 +165,7 @@ export default class LangChainManager extends AIManager {
           }
           return new ChatAnthropic({
             apiKey: sanitizedConfig.apiKey,
-            modelName: sanitizedConfig.model,
+            model: sanitizedConfig.model,
             verbose: true,
           });
         case 'mistral':
@@ -157,7 +174,7 @@ export default class LangChainManager extends AIManager {
           }
           return new ChatMistralAI({
             apiKey: sanitizedConfig.apiKey,
-            modelName: sanitizedConfig.model,
+            model: sanitizedConfig.model,
             verbose: true,
           });
         case 'gemini': {
