@@ -55,7 +55,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.13.0"
+    "@kinvolk/headlamp-plugin": "^0.13.1"
   },
   "dependencies": {
     "react-syntax-highlighter": "^15.6.6",
