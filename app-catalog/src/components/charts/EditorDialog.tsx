@@ -1,4 +1,4 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Dialog, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Editor from '@monaco-editor/react';
 import { Box, Button, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
@@ -27,6 +27,7 @@ export function EditorDialog(props: {
   if (!props.chart) return null;
 
   const { openEditor, handleEditor, chart, chartProfile } = props;
+  const { t } = useTranslation();
   const [installLoading, setInstallLoading] = useState(false);
   const [namespaces, error] = K8s.ResourceClasses.Namespace.useList();
   const [chartValues, setChartValues] = useState<string>('');
@@ -65,7 +66,7 @@ export function EditorDialog(props: {
         setDefaultChartValues(yamlToJSON(response));
       })
       .catch(error => {
-        enqueueSnackbar(`Error fetching chart values ${error}`, {
+        enqueueSnackbar(t('Error fetching chart values {{ error }}', { error }), {
           variant: 'error',
         });
       });
@@ -84,7 +85,7 @@ export function EditorDialog(props: {
       .catch(error => {
         setChartValuesLoading(false);
         setChartValuesFetchError(error);
-        enqueueSnackbar(`Error fetching chart values ${error}`, {
+        enqueueSnackbar(t('Error fetching chart values {{ error }}', { error }), {
           variant: 'error',
         });
       });
@@ -132,13 +133,16 @@ export function EditorDialog(props: {
         if (response.status === 'processing') {
           checkInstallStatus(releaseName);
         } else if (!response.status || response.status !== 'success') {
-          enqueueSnackbar(`Error creating release ${response.message}`, {
-            variant: 'error',
-          });
+          enqueueSnackbar(
+            t('Error creating release {{ message }}', { message: response.message }),
+            {
+              variant: 'error',
+            }
+          );
           handleEditor(false);
           setInstallLoading(false);
         } else {
-          enqueueSnackbar(`Release ${releaseName} created successfully`, {
+          enqueueSnackbar(t('Release {{ releaseName }} created successfully', { releaseName }), {
             variant: 'success',
           });
           handleEditor(false);
@@ -151,28 +155,28 @@ export function EditorDialog(props: {
   function installAndCreateReleaseHandler() {
     setIsFormSubmitting(true);
     if (!validateFormField(releaseName)) {
-      enqueueSnackbar('Release name is required', {
+      enqueueSnackbar(t('Release name is required'), {
         variant: 'error',
       });
       return;
     }
 
     if (!validateFormField(selectedNamespace)) {
-      enqueueSnackbar('Namespace is required', {
+      enqueueSnackbar(t('Namespace is required'), {
         variant: 'error',
       });
       return;
     }
 
     if (!validateFormField(selectedVersion)) {
-      enqueueSnackbar('Version is required', {
+      enqueueSnackbar(t('Version is required'), {
         variant: 'error',
       });
       return;
     }
 
     if (!validateFormField(chartInstallDescription)) {
-      enqueueSnackbar('Description is required', {
+      enqueueSnackbar(t('Description is required'), {
         variant: 'error',
       });
       return;
@@ -204,22 +208,25 @@ export function EditorDialog(props: {
           chartInstallDescription
         )
           .then(() => {
-            enqueueSnackbar(`Installation request for ${releaseName} accepted`, {
-              variant: 'info',
-            });
+            enqueueSnackbar(
+              t('Installation request for {{ releaseName }} accepted', { releaseName }),
+              {
+                variant: 'info',
+              }
+            );
             handleEditor(false);
             checkInstallStatus(releaseName);
           })
           .catch(error => {
             handleEditor(false);
-            enqueueSnackbar(`Error creating release request ${error}`, {
+            enqueueSnackbar(t('Error creating release request {{ error }}', { error }), {
               variant: 'error',
             });
           });
       })
       .catch(error => {
         handleEditor(false);
-        enqueueSnackbar(`Error adding repository ${error}`, {
+        enqueueSnackbar(t('Error adding repository {{ error }}', { error }), {
           variant: 'error',
         });
       });
@@ -248,7 +255,7 @@ export function EditorDialog(props: {
       style={{
         overflow: 'hidden',
       }}
-      title={`App: ${chart.name}`}
+      title={t('App: {{ name }}', { name: chart.name })}
       onClose={() => {
         handleEditor(false);
       }}
@@ -263,9 +270,9 @@ export function EditorDialog(props: {
                 style={{
                   width: '15vw',
                 }}
-                label="Release Name *"
+                label={t('Release Name *')}
                 value={releaseName}
-                placeholder="Enter a name for the release"
+                placeholder={t('Enter a name for the release')}
                 onChange={event => {
                   setReleaseName(event.target.value);
                 }}
@@ -287,8 +294,8 @@ export function EditorDialog(props: {
                   renderInput={params => (
                     <TextField
                       {...params}
-                      label="Namespaces *"
-                      placeholder="Select Namespace"
+                      label={t('Namespaces *')}
+                      placeholder={t('Select Namespace')}
                       error={isFormSubmitting && !validateFormField(selectedNamespace)}
                     />
                   )}
@@ -314,8 +321,8 @@ export function EditorDialog(props: {
                 renderInput={params => (
                   <TextField
                     {...params}
-                    label="Versions *"
-                    placeholder="Select Version"
+                    label={t('Versions *')}
+                    placeholder={t('Select Version')}
                     error={isFormSubmitting && !validateFormField(selectedVersion)}
                   />
                 )}
@@ -328,7 +335,7 @@ export function EditorDialog(props: {
                   width: '15vw',
                 }}
                 error={isFormSubmitting && !validateFormField(chartInstallDescription)}
-                label="Release Description *"
+                label={t('Release Description *')}
                 value={chartInstallDescription}
                 onChange={event => setChartInstallDescription(event.target.value)}
               />
@@ -377,14 +384,14 @@ export function EditorDialog(props: {
                 handleEditor(false);
               }}
             >
-              Close
+              {t('Close')}
             </Button>
           </Box>
           <Box>
             {installLoading || chartValuesLoading || !!chartValuesFetchError ? (
               <>
                 <Button disabled variant="contained">
-                  {installLoading ? 'Installing' : 'Install'}
+                  {installLoading ? t('Installing') : t('Install')}
                 </Button>
               </>
             ) : (
@@ -397,7 +404,7 @@ export function EditorDialog(props: {
                   textTransform: 'none',
                 }}
               >
-                Install{installLoading && 'ing'}
+                {installLoading ? t('Installing') : t('Install')}
               </Button>
             )}
           </Box>

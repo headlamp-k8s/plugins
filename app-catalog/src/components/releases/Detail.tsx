@@ -1,4 +1,4 @@
-import { Router } from '@kinvolk/headlamp-plugin/lib';
+import { Router, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   DateLabel,
@@ -32,6 +32,7 @@ import { EditorDialog } from './EditorDialog';
 
 const { createRouteURL } = Router;
 export default function ReleaseDetail() {
+  const { t } = useTranslation();
   const [update, setUpdate] = useState<boolean>(false);
   const { namespace, releaseName } = useParams<{ namespace: string; releaseName: string }>();
   const [release, setRelease] = useState<any>(null);
@@ -62,11 +63,19 @@ export default function ReleaseDetail() {
       if (response.status === 'processing') {
         setTimeout(() => checkDeleteReleaseStatus(name), 1000);
       } else if (response.status !== 'success') {
-        enqueueSnackbar(`Failed to delete release ${name}` + response.message, {
-          variant: 'error',
-        });
+        enqueueSnackbar(
+          t('Failed to delete release {{ name }}{{ message }}', {
+            name,
+            message: response.message,
+          }),
+          {
+            variant: 'error',
+          }
+        );
       } else {
-        enqueueSnackbar(`Successfully deleted release ${name}`, { variant: 'success' });
+        enqueueSnackbar(t('Successfully deleted release {{ name }}', { name }), {
+          variant: 'success',
+        });
         setOpenDeleteAlert(false);
         history.replace(createRouteURL('/apps/installed'));
         setIsDeleting(false);
@@ -94,27 +103,34 @@ export default function ReleaseDetail() {
         open={openDeleteAlert}
         maxWidth="sm"
         onClose={() => setOpenDeleteAlert(false)}
-        title="Uninstall App"
+        title={t('Uninstall App')}
       >
         <DialogContent>
-          <DialogContentText>Are you sure you want to uninstall this release?</DialogContentText>
+          <DialogContentText>
+            {t('Are you sure you want to uninstall this release?')}
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDeleteAlert(false)}>{isDeleting ? 'Close' : 'No'}</Button>
+          <Button onClick={() => setOpenDeleteAlert(false)}>
+            {isDeleting ? t('Close') : t('No')}
+          </Button>
           <Button
             disabled={isDeleting}
             onClick={() => {
               deleteRelease(namespace, releaseName).then(() => {
                 setIsDeleting(true);
-                enqueueSnackbar(`Delete request for release ${releaseName} accepted`, {
-                  variant: 'info',
-                });
+                enqueueSnackbar(
+                  t('Delete request for release {{ releaseName }} accepted', { releaseName }),
+                  {
+                    variant: 'info',
+                  }
+                );
                 setOpenDeleteAlert(false);
                 checkDeleteReleaseStatus(releaseName);
               });
             }}
           >
-            {isDeleting ? 'Deleting' : 'Yes'}
+            {isDeleting ? t('Deleting') : t('Yes')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -122,7 +138,7 @@ export default function ReleaseDetail() {
         open={rollbackPopup}
         maxWidth="xs"
         onClose={() => setRollbackPopup(false)}
-        title="Rollback"
+        title={t('Rollback')}
       >
         <DialogContent
           style={{
@@ -130,7 +146,7 @@ export default function ReleaseDetail() {
             height: '100px',
           }}
         >
-          <InputLabel id="revert">Select a version</InputLabel>
+          <InputLabel id="revert">{t('Select a version')}</InputLabel>
           <Select
             value={revertVersion}
             defaultValue={releaseHistory?.releases[0]?.version}
@@ -162,7 +178,7 @@ export default function ReleaseDetail() {
               textTransform: 'none',
             }}
           >
-            Revert
+            {t('Revert')}
           </Button>
           <Button
             style={{
@@ -172,7 +188,7 @@ export default function ReleaseDetail() {
             }}
             onClick={() => setRollbackPopup(false)}
           >
-            Cancel
+            {t('Cancel')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -182,10 +198,10 @@ export default function ReleaseDetail() {
           backLink={createRouteURL('Releases')}
           title={
             <SectionHeader
-              title={`App: ${release.name}`}
+              title={t('App: {{ name }}', { name: release.name })}
               actions={[
                 <ActionButton
-                  description={'Values'}
+                  description={t('Values')}
                   onClick={() => {
                     setIsUpdateRelease(false);
                     setIsEditorOpen(true);
@@ -193,18 +209,18 @@ export default function ReleaseDetail() {
                   icon="mdi:file-document-box-outline"
                 />,
                 <ActionButton
-                  description={'Upgrade'}
+                  description={t('Upgrade')}
                   onClick={() => updateReleaseHandler()}
                   icon="mdi:arrow-up-bold"
                 />,
                 <ActionButton
-                  description={'Rollback'}
+                  description={t('Rollback')}
                   onClick={() => setRollbackPopup(true)}
                   icon="mdi:undo"
                   iconButtonProps={{ disabled: release.version === 1 }}
                 />,
                 <ActionButton
-                  description={'Delete'}
+                  description={t('Delete')}
                   onClick={() => setOpenDeleteAlert(true)}
                   icon="mdi:delete"
                 />,
@@ -215,27 +231,27 @@ export default function ReleaseDetail() {
           <NameValueTable
             rows={[
               {
-                name: 'Name',
+                name: t('Name'),
                 value: release.name,
               },
               {
-                name: 'Namespace',
+                name: t('Namespace'),
                 value: release.namespace,
               },
               {
-                name: 'Revisions',
+                name: t('Revisions'),
                 value: release.version,
               },
               {
-                name: 'Chart Version',
+                name: t('Chart Version'),
                 value: release.chart.metadata.version,
               },
               {
-                name: 'App Version',
+                name: t('App Version'),
                 value: release.chart.metadata.appVersion,
               },
               {
-                name: 'Status',
+                name: t('Status'),
                 value: (
                   <StatusLabel status={release?.info.status === 'deployed' ? 'success' : 'error'}>
                     {release?.info.status}
@@ -248,7 +264,7 @@ export default function ReleaseDetail() {
       )}
 
       {releaseHistory && (
-        <SectionBox title="History">
+        <SectionBox title={t('History')}>
           <SimpleTable
             data={
               releaseHistory === null
@@ -258,16 +274,16 @@ export default function ReleaseDetail() {
             defaultSortingColumn={1}
             columns={[
               {
-                label: 'Revision',
+                label: t('Revision'),
                 getter: data => data.version,
                 sort: (n1, n2) => n2.version - n1.version,
               },
               {
-                label: 'Description',
+                label: t('Description'),
                 getter: data => data.info.description,
               },
               {
-                label: 'Status',
+                label: t('Status'),
                 getter: data => (
                   <StatusLabel status={release?.info.status === 'deployed' ? 'success' : 'error'}>
                     {data.info.status}
@@ -275,15 +291,15 @@ export default function ReleaseDetail() {
                 ),
               },
               {
-                label: 'Chart',
+                label: t('Chart'),
                 getter: data => data.chart.metadata.name,
               },
               {
-                label: 'App Version',
+                label: t('App Version'),
                 getter: data => data.chart.metadata.appVersion,
               },
               {
-                label: 'Updated',
+                label: t('Updated'),
                 getter: data => <DateLabel date={data.info.last_deployed} format="mini" />,
               },
             ]}
