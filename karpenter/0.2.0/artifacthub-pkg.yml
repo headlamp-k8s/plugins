@@ -1,0 +1,11 @@
+version: 0.2.0
+name: headlamp_karpenter
+displayName: Karpenter alpha for testing only
+createdAt: "2026-02-10T13:35:50Z"
+logoURL: "https://raw.githubusercontent.com/aws/karpenter-provider-aws/refs/heads/main/website/assets/icons/logo.svg"
+description: A UI for viewing and managing Karpenter resources in Headlamp.
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/karpenter-0.2.0/headlamp-k8s-karpenter-0.2.0.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:5c00da78e573cb1263c6e27bc1430c0ccede50556e215ffa46f3750debaf731b"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
