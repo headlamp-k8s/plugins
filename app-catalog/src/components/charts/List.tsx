@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
+import { ConfigStore, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as RouterLink,
   Loader,
@@ -51,6 +51,7 @@ interface SearchProps {
 }
 
 function Search({ search, setSearch }: SearchProps) {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState(search);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
@@ -77,7 +78,7 @@ function Search({ search, setSearch }: SearchProps) {
         margin: '0 1rem',
       }}
       id="outlined-basic"
-      label="Search"
+      label={t('Search')}
       value={inputValue}
       onChange={event => {
         setInputValue(event.target.value);
@@ -97,6 +98,7 @@ function CategoryForCharts({
   chartCategory,
   setChartCategory,
 }: CategoryForChartsProps) {
+  const { t } = useTranslation();
   return (
     <Autocomplete
       sx={{
@@ -129,7 +131,7 @@ function CategoryForCharts({
           //   ? params.InputLabelProps.htmlFor.replace(/[0-9]/g, '')
           //   : params.InputLabelProps.htmlFor;
         }
-        return <TextField {...params} label="Categories" placeholder="Favorites" />;
+        return <TextField {...params} label={t('Categories')} placeholder={t('Favorites')} />;
       }}
     />
   );
@@ -141,6 +143,7 @@ interface OnlyVerifiedSwitchProps {
 }
 
 function OnlyVerifiedSwitch({ checked, onChange }: OnlyVerifiedSwitchProps) {
+  const { t } = useTranslation();
   return (
     <FormControlLabel
       control={
@@ -155,8 +158,8 @@ function OnlyVerifiedSwitch({ checked, onChange }: OnlyVerifiedSwitchProps) {
       sx={{ gap: 1 }}
       label={
         <HoverInfoLabel
-          label="Only verified"
-          hoverInfo="Show charts from verified publishers only"
+          label={t('Only verified')}
+          hoverInfo={t('Show charts from verified publishers only')}
         />
       }
     />
@@ -164,16 +167,17 @@ function OnlyVerifiedSwitch({ checked, onChange }: OnlyVerifiedSwitchProps) {
 }
 
 export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
+  const { t } = useTranslation();
   const helmChartCategoryList = [
-    { title: 'All', value: 0 },
-    { title: 'AI / Machine learning', value: 1 },
-    { title: 'Database', value: 2 },
-    { title: 'Integration and delivery', value: 3 },
-    { title: 'Monitoring and logging', value: 4 },
-    { title: 'Networking', value: 5 },
-    { title: 'Security', value: 6 },
-    { title: 'Storage', value: 7 },
-    { title: 'Streaming and messaging', value: 8 },
+    { title: t('All'), value: 0 },
+    { title: t('AI / Machine learning'), value: 1 },
+    { title: t('Database'), value: 2 },
+    { title: t('Integration and delivery'), value: 3 },
+    { title: t('Monitoring and logging'), value: 4 },
+    { title: t('Networking'), value: 5 },
+    { title: t('Security'), value: 6 },
+    { title: t('Storage'), value: 7 },
+    { title: t('Streaming and messaging'), value: 8 },
   ];
   const [charts, setCharts] = useState<any | null>(null);
   const [openEditor, setEditorOpen] = useState<boolean>(false);
@@ -303,7 +307,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         chartProfile={VANILLA_HELM_REPO}
       />
       <SectionHeader
-        title="Applications"
+        title={t('Applications')}
         titleSideActions={[
           <Box key="verified-switch" pl={2}>
             <OnlyVerifiedSwitch
@@ -336,9 +340,11 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
         ) : charts.length === 0 ? (
           <Box mt={2} mx={2}>
             <Typography variant="h5" component="h2">
-              {`No charts found for ${
-                search ? `search term: ${search}` : `category: ${chartCategory.title}`
-              }`}
+              {search
+                ? t('No charts found for search term: {{ search }}', { search })
+                : t('No charts found for category: {{ category }}', {
+                    category: chartCategory.title,
+                  })}
             </Typography>
           </Box>
         ) : (
@@ -423,7 +429,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                           marginRight="10px"
                         >
                           {(chart?.cncf || chart?.repository?.cncf) && (
-                            <Tooltip title="CNCF Project">
+                            <Tooltip title={t('CNCF Project')}>
                               <Icon
                                 icon="simple-icons:cncf"
                                 style={{
@@ -434,7 +440,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                             </Tooltip>
                           )}
                           {(chart?.official || chart?.repository?.official) && (
-                            <Tooltip title="Official Chart">
+                            <Tooltip title={t('Official Chart')}>
                               <Icon
                                 icon="mdi:star-circle"
                                 style={{
@@ -445,7 +451,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                             </Tooltip>
                           )}
                           {chart?.repository?.verified_publisher && (
-                            <Tooltip title="Verified Publisher">
+                            <Tooltip title={t('Verified Publisher')}>
                               <Icon
                                 icon="mdi:check-decagram"
                                 style={{
@@ -555,7 +561,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                             setEditorOpen(true);
                           }}
                         >
-                          Install
+                          {t('Install')}
                         </Button>
                         {/*
                             Provide Learn More link only when the chart has source
@@ -566,16 +572,16 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                             ''
                           ) : chart?.sources?.length === 1 ? (
                             <Link href={chart?.sources} target="_blank">
-                              Learn More
+                              {t('Learn More')}
                             </Link>
                           ) : (
                             <Link href={chart?.sources[0]} target="_blank">
-                              Learn More
+                              {t('Learn More')}
                             </Link>
                           )
                         ) : (
                           <Link href={chart?.repository?.url} target="_blank">
-                            Learn More
+                            {t('Learn More')}
                           </Link>
                         )}
                       </CardActions>
@@ -604,7 +610,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
       {chartCfg.chartProfile !== VANILLA_HELM_REPO && (
         <Box textAlign="right">
           <Link href="https://artifacthub.io/" target="_blank">
-            Powered by ArtifactHub
+            {t('Powered by ArtifactHub')}
           </Link>
         </Box>
       )}

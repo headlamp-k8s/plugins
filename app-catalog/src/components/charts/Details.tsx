@@ -1,4 +1,4 @@
-import { Router } from '@kinvolk/headlamp-plugin/lib';
+import { Router, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Loader,
   NameValueTable,
@@ -29,6 +29,7 @@ type ChartDetailsProps = {
  * @returns The chart details component.
  */
 export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
+  const { t } = useTranslation();
   const { chartName, repoName } = useParams<{ chartName: string; repoName: string }>();
   const [chart, setChart] = useState<{
     name: string;
@@ -85,7 +86,7 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
                   setOpenEditor(true);
                 }}
               >
-                Install
+                {t('Install')}
               </Button>,
             ]}
           />
@@ -98,7 +99,7 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
           <NameValueTable
             rows={[
               {
-                name: 'Name',
+                name: t('Name'),
                 value: (
                   <Box display="flex" alignItems="center">
                     {chart.logo_image_id && (
@@ -125,7 +126,7 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
                 ),
               },
               {
-                name: 'Description',
+                name: t('Description'),
                 value: (
                   <Box overflow="auto" width="80%">
                     {chart.description}
@@ -133,15 +134,15 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
                 ),
               },
               {
-                name: 'App Version',
+                name: t('App Version'),
                 value: chart.app_version,
               },
               {
-                name: 'Repository',
+                name: t('Repository'),
                 value: repoName,
               },
               {
-                name: 'Maintainers',
+                name: t('Maintainers'),
                 value: chart?.maintainers?.map(maintainer => (
                   <Box display="flex" alignItems="center" mt={1}>
                     <Box mr={1}>{maintainer.name}</Box>
@@ -150,7 +151,7 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
                 )),
               },
               {
-                name: 'URL',
+                name: t('URL'),
                 value: (
                   <Link href={chart.home_url} target="_blank">
                     {chart.home_url}
@@ -161,7 +162,7 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
           />
         )}
       </SectionBox>
-      <SectionBox title="Readme">
+      <SectionBox title={t('Readme')}>
         {!chart ? (
           <Loader title="" />
         ) : (

@@ -23,6 +23,29 @@
     "kubernetes-debugging",
     "plugins"
   ],
+  "headlamp": {
+    "i18n": [
+      "en",
+      "de",
+      "es",
+      "fr",
+      "it",
+      "ja",
+      "id",
+      "ko",
+      "pt-BR",
+      "ru",
+      "zh-Hans",
+      "zh-Hant",
+      "cs",
+      "nl",
+      "hu",
+      "pt-PT",
+      "pl",
+      "sv",
+      "tr"
+    ]
+  },
   "prettier": "@headlamp-k8s/eslint-config/prettier-config",
   "eslintConfig": {
     "extends": [

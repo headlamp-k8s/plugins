@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 // import { getCluster } from '@kinvolk/headlamp-plugin/lib/util';
 import {
   DateLabel,
@@ -33,6 +34,7 @@ function formatVersion(v?: string) {
  * @returns ReleaseList component.
  */
 export default function ReleaseList({ fetchReleases = listReleases }) {
+  const { t } = useTranslation();
   const [releases, setReleases] = useState<Array<any> | null>(null);
   const [latestMap, setLatestMap] = useState<Record<string, string>>({});
 
@@ -62,11 +64,11 @@ export default function ReleaseList({ fetchReleases = listReleases }) {
   }, [releases]);
 
   return (
-    <SectionBox title="Installed" textAlign="center" paddingTop={2}>
+    <SectionBox title={t('Installed')} textAlign="center" paddingTop={2}>
       <SimpleTable
         columns={[
           {
-            label: 'Name',
+            label: t('Name'),
             getter: release => (
               <Box display="flex" alignItems="center">
                 {release.chart.metadata.icon && (
@@ -90,24 +92,24 @@ export default function ReleaseList({ fetchReleases = listReleases }) {
             ),
           },
           {
-            label: 'Namespace',
+            label: t('Namespace'),
             getter: release => release.namespace,
           },
           {
-            label: 'Current Version',
+            label: t('Current Version'),
             getter: release => formatVersion(release.chart.metadata.appVersion),
           },
           {
-            label: 'Latest Version',
+            label: t('Latest Version'),
             getter: release => formatVersion(latestMap[release?.name]),
           },
           {
-            label: 'Version',
+            label: t('Version'),
             getter: release => release.version,
             sort: true,
           },
           {
-            label: 'Status',
+            label: t('Status'),
             getter: release => (
               <StatusLabel status={release.info.status === 'deployed' ? 'success' : 'error'}>
                 {release.info.status}
@@ -115,7 +117,7 @@ export default function ReleaseList({ fetchReleases = listReleases }) {
             ),
           },
           {
-            label: 'Updated',
+            label: t('Updated'),
             getter: release => <DateLabel date={release.info.last_deployed} format="mini" />,
           },
         ]}
