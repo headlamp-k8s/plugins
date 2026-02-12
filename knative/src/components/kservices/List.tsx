@@ -24,7 +24,7 @@ import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
 import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Chip, Stack, Typography } from '@mui/material';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
 import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
@@ -500,7 +500,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
     return cols;
   }, [showClusterColumn, domainByServiceKey]);
 
-  const headerProps = React.useMemo(
+  const headerProps = useMemo(
     () => ({
       noNamespaceFilter: false,
       subtitle: !ingressClassLoading && (
@@ -551,15 +551,11 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
     [ingressClassLoading, ingressClassLabel, ingressClasses, domainMappingsError, clusters.length]
   );
 
-  type ResourceListActions = React.ComponentProps<typeof ResourceListView>['actions'];
-  type ResourceListAction = NonNullable<ResourceListActions>[number];
-  type ResourceListActionContext = Parameters<ResourceListAction['action']>[0];
-
-  const actions: ResourceListActions = React.useMemo(
+  const actions: React.ComponentProps<typeof ResourceListView>['actions'] = useMemo(
     () => [
       {
         id: 'knative.kservice-actions',
-        action: (context: ResourceListActionContext) => (
+        action: context => (
           <KServiceRowActions kservice={context.item as KService} closeMenu={context.closeMenu} />
         ),
       },
