@@ -1,4 +1,4 @@
-import { Meta, StoryFn } from '@storybook/react/types-6-0';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { TestContext } from '@kinvolk/headlamp-plugin/lib/testLib';
 import AIAssistantHeader from './AIAssistantHeader';
