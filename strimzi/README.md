@@ -42,13 +42,13 @@ npm install strimzi-headlamp
 **macOS:**
 ```bash
 mkdir -p ~/Library/Application\ Support/Headlamp/plugins/strimzi
-tar -xzf headlamp-k8s-strimzi-*.tar.gz -C ~/Library/Application\ Support/Headlamp/plugins/strimzi --strip-components=1
+tar -xzf strimzi-headlamp-*.tar.gz -C ~/Library/Application\ Support/Headlamp/plugins/strimzi --strip-components=1
 ```
 
 **Linux:**
 ```bash
 mkdir -p ~/.config/Headlamp/plugins/strimzi
-tar -xzf headlamp-k8s-strimzi-*.tar.gz -C ~/.config/Headlamp/plugins/strimzi --strip-components=1
+tar -xzf strimzi-headlamp-*.tar.gz -C ~/.config/Headlamp/plugins/strimzi --strip-components=1
 ```
 
 3. Restart Headlamp
@@ -97,7 +97,7 @@ To create a distributable package with all required files:
 npm run package
 ```
 
-This creates a tarball `headlamp-k8s-strimzi-<version>.tar.gz` containing:
+This creates a tarball `strimzi-headlamp-<version>.tar.gz` containing:
 - `strimzi-headlamp/main.js` - Compiled plugin
 - `strimzi-headlamp/package.json` - Plugin metadata
 
@@ -189,7 +189,7 @@ npm run package
 
 # Extract to plugins directory
 mkdir -p plugins
-tar -xzf headlamp-k8s-strimzi-*.tar.gz -C plugins/
+tar -xzf strimzi-headlamp-*.tar.gz -C plugins/
 ```
 
 **Step 2: Update the manifest path**
@@ -228,7 +228,7 @@ npm run build && npm run package
 
 # Remove old version and extract new
 rm -rf plugins/strimzi-headlamp
-tar -xzf headlamp-k8s-strimzi-*.tar.gz -C plugins/
+tar -xzf strimzi-headlamp-*.tar.gz -C plugins/
 
 # Restart Headlamp deployment
 kubectl rollout restart deployment/headlamp -n headlamp
@@ -336,7 +336,7 @@ The `release.yml` workflow automatically:
 - ✅ Creates `.tar.gz` package
 - ✅ Calculates SHA-256 checksum
 - ✅ Creates GitHub Release with artifacts
-- ✅ Publishes to npm (if `NPM_TOKEN` secret is configured)
+- ✅ Publishes to npm via Trusted Publishing (OIDC)
 
 ### Version Verification
 
@@ -349,16 +349,6 @@ The release workflow enforces version consistency. If `package.json` version doe
 # Tag: v0.1.1
 # package.json: "version": "0.1.0"  ❌ Mismatch - workflow fails
 ```
-
-### NPM Publishing (Optional)
-
-To enable automatic npm publishing:
-
-1. Generate npm token at https://www.npmjs.com/settings/tokens
-2. Add `NPM_TOKEN` as repository secret in GitHub Settings → Secrets
-3. The workflow will automatically publish on release
-
-If `NPM_TOKEN` is not configured, the workflow skips npm publishing (no error).
 
 ## 📦 Publishing to npm
 
