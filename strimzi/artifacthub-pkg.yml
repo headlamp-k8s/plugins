@@ -1,7 +1,7 @@
 version: 0.3.6
 name: headlamp_strimzi
 displayName: Strimzi
-createdAt: 2025-01-30T00:00:00Z
+createdAt: 2025-10-15T00:00:00Z
 description: A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources
 logoURL: https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/main/documentation/logo/strimzi_logo.png
 license: Apache-2.0
