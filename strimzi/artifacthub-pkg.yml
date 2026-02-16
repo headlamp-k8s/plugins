@@ -1,4 +1,4 @@
-version: 0.3.3
+version: 0.3.6
 name: headlamp_strimzi
 displayName: Strimzi
 createdAt: 2025-01-30T00:00:00Z
@@ -18,7 +18,7 @@ maintainers:
 provider:
   name: Angelo Cesaro
 annotations:
-  headlamp/plugin/archive-url: https://github.com/cesaroangelo/strimzi-headlamp/releases/download/v0.3.3/strimzi-headlamp-0.3.3.tar.gz
-  headlamp/plugin/archive-checksum: "sha256:TODO-calculate-after-release"
+  headlamp/plugin/archive-url: https://github.com/cesaroangelo/strimzi-headlamp/releases/download/v0.3.6/strimzi-headlamp-0.3.6.tar.gz
+  headlamp/plugin/archive-checksum: "sha256:a330a8b80e0111a7b506c6455d5a270265742c2f0eb9e22c353c8dd3a661efbb"
   headlamp/plugin/version-compat: ">=0.22"
   headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
