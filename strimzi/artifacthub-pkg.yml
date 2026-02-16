@@ -3,7 +3,7 @@ name: headlamp_strimzi
 displayName: Strimzi
 createdAt: 2025-01-30T00:00:00Z
 description: A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources
-logoURL: https://strimzi.io/assets/images/strimzi_logo.png
+logoURL: https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/main/documentation/logo/strimzi_logo.png
 license: Apache-2.0
 homeURL: https://github.com/cesaroangelo/strimzi-headlamp
 keywords:
@@ -12,6 +12,39 @@ keywords:
   - kubernetes
   - strimzi
   - kafka
+screenshots:
+  - title: Plugin Demo
+    url: https://img.youtube.com/vi/MNt28s6b5d8/maxresdefault.jpg
+readme: |
+  # Strimzi Headlamp Plugin
+
+  A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources directly from the Headlamp UI.
+
+  ## Demo
+
+  [![Plugin Demo](https://img.youtube.com/vi/MNt28s6b5d8/maxresdefault.jpg)](https://www.youtube.com/watch?v=MNt28s6b5d8)
+
+  ## Features
+
+  - **Kafka Clusters**: View Kafka cluster resources with KRaft/ZooKeeper mode detection
+  - **Kafka Topics**: Full CRUD operations (Create, Read, Update, Delete)
+    - Create topics with custom partitions, replicas, retention, and compression
+    - Edit topic configurations (partitions, replicas, retention, min ISR)
+    - Delete topics with confirmation
+  - **Kafka Users**: Complete user management with security
+    - Create users with SCRAM-SHA-512 or TLS authentication
+    - Configure ACLs for fine-grained authorization
+    - View passwords and certificates (secrets)
+    - Delete users with confirmation
+  - **Search & Filter**: Real-time search and advanced filtering on all lists
+    - Filter by status, mode, authentication type, partitions, replicas, and more
+  - Real-time status monitoring for all Strimzi resources
+  - Multi-namespace support - view resources across all namespaces
+
+  ## Prerequisites
+
+  - [Headlamp](https://headlamp.dev/) installed
+  - A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) deployed
 maintainers:
   - name: Angelo Cesaro
     email: cesaro.angelo@gmail.com
