@@ -85,6 +85,7 @@ jobs:
 
       - name: Publish to npm
         if: steps.check-npm.outputs.npm_available == 'true'
+        continue-on-error: true
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
