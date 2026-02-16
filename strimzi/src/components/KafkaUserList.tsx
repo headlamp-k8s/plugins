@@ -188,13 +188,17 @@ export function KafkaUserList() {
         `/api/v1/namespaces/${namespace}/secrets/${secretName}`
       );
 
-      if (user.spec.authentication.type === 'scram-sha-512') {
-        const password = atob(secret.data.password || '');
-        setUserSecret(password);
-      } else if (user.spec.authentication.type === 'tls') {
-        const cert = atob(secret.data['user.crt'] || '');
-        const key = atob(secret.data['user.key'] || '');
-        setUserSecret(`Certificate:\n${cert}\n\nPrivate Key:\n${key}`);
+      try {
+        if (user.spec.authentication.type === 'scram-sha-512') {
+          const password = atob(secret.data.password || '');
+          setUserSecret(password);
+        } else if (user.spec.authentication.type === 'tls') {
+          const cert = atob(secret.data['user.crt'] || '');
+          const key = atob(secret.data['user.key'] || '');
+          setUserSecret(`Certificate:\n${cert}\n\nPrivate Key:\n${key}`);
+        }
+      } catch {
+        setUserSecret('Failed to decode secret data');
       }
 
       setSelectedUser(user);
