@@ -31,7 +31,7 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 #### 📦 Install from npm
 
 ```bash
-npm install @headlamp-k8s/strimzi
+npm install strimzi-headlamp
 ```
 
 #### 💾 Manual Installation
@@ -120,7 +120,7 @@ This creates a tarball `headlamp-k8s-strimzi-<version>.tar.gz` containing:
    # Create package.json (required)
    cat > ~/Library/Application\ Support/Headlamp/plugins/strimzi/package.json << 'EOF'
    {
-     "name": "@headlamp-k8s/strimzi",
+     "name": "strimzi-headlamp",
      "version": "0.1.0",
      "main": "main.js"
    }
@@ -135,7 +135,7 @@ This creates a tarball `headlamp-k8s-strimzi-<version>.tar.gz` containing:
    # Create package.json (required)
    cat > ~/.config/Headlamp/plugins/strimzi/package.json << 'EOF'
    {
-     "name": "@headlamp-k8s/strimzi",
+     "name": "strimzi-headlamp",
      "version": "0.1.0",
      "main": "main.js"
    }
