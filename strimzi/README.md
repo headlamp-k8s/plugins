@@ -4,6 +4,10 @@
 
 A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources directly from the Headlamp UI.
 
+## 🎬 Demo
+
+[![Plugin Demo](https://img.youtube.com/vi/MNt28s6b5d8/maxresdefault.jpg)](https://www.youtube.com/watch?v=MNt28s6b5d8)
+
 ## ✨ Features
 
 - **Kafka Clusters**: View Kafka cluster resources with KRaft/ZooKeeper mode detection
