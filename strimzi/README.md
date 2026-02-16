@@ -6,7 +6,7 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 
 ## 🎬 Demo
 
-[![Plugin Demo](https://img.youtube.com/vi/MNt28s6b5d8/maxresdefault.jpg)](https://www.youtube.com/watch?v=MNt28s6b5d8)
+[![Plugin Demo](https://img.youtube.com/vi/MNt28s6b5d8/sddefault.jpg)](https://www.youtube.com/watch?v=MNt28s6b5d8)
 
 ## ✨ Features
 
