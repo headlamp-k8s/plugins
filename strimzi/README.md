@@ -336,7 +336,6 @@ The `release.yml` workflow automatically:
 - ✅ Creates `.tar.gz` package
 - ✅ Calculates SHA-256 checksum
 - ✅ Creates GitHub Release with artifacts
-- ✅ Publishes to npm via Trusted Publishing (OIDC)
 
 ### Version Verification
 
@@ -350,25 +349,13 @@ The release workflow enforces version consistency. If `package.json` version doe
 # package.json: "version": "0.1.0"  ❌ Mismatch - workflow fails
 ```
 
-## 📦 Publishing to npm
+## 📦 Publishing to npm (Manual)
 
-This plugin is published to npm for easy installation:
+After creating a GitHub Release, publish to npm manually:
 
 ```bash
-# Login to npm (first time only)
-npm login
-
-# Build the plugin
-npm run build
-
-# Publish to npm
 npm publish --access public
 ```
-
-The `files` field in `package.json` ensures only these are published:
-- `dist/**/*` (compiled JavaScript)
-- `README.md`
-- `LICENSE`
 
 ## 📄 License
 
