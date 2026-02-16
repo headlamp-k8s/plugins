@@ -62,7 +62,7 @@ jobs:
       - name: Calculate checksum
         id: checksum
         run: |
-          TARBALL=$(ls headlamp-k8s-strimzi-*.tar.gz)
+          TARBALL=$(ls strimzi-headlamp-*.tar.gz)
           CHECKSUM=$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)
           echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
           echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
@@ -100,7 +100,7 @@ jobs:
 
             **From npm:**
             ```bash
-            npm install @headlamp-k8s/strimzi@${{ steps.version.outputs.version }}
+            npm install strimzi-headlamp@${{ steps.version.outputs.version }}
             ```
 
             **Manual installation:**
