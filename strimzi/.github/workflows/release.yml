@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   release:
@@ -69,26 +70,9 @@ jobs:
           echo "📋 Checksum: $CHECKSUM"
           echo "📦 Tarball: $TARBALL"
 
-      - name: Check NPM Token
-        id: check-npm
-        run: |
-          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "npm_available=true" >> $GITHUB_OUTPUT
-            echo "✅ NPM_TOKEN configured - will publish to npm"
-          else
-            echo "npm_available=false" >> $GITHUB_OUTPUT
-            echo "⚠️  NPM_TOKEN not configured - skipping npm publish"
-            echo "ℹ️  To enable npm publishing:"
-            echo "   1. Generate token at https://www.npmjs.com/settings/tokens"
-            echo "   2. Add as NPM_TOKEN secret in repository settings"
-          fi
-
       - name: Publish to npm
-        if: steps.check-npm.outputs.npm_available == 'true'
         continue-on-error: true
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -127,9 +111,4 @@ jobs:
           echo "**Tarball:** ${{ steps.checksum.outputs.tarball }}" >> $GITHUB_STEP_SUMMARY
           echo "**Checksum:** \`${{ steps.checksum.outputs.checksum }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.check-npm.outputs.npm_available }}" == "true" ]; then
-            echo "- ✅ Published to npm" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- ⚠️  NPM publish skipped (NPM_TOKEN not configured)" >> $GITHUB_STEP_SUMMARY
-          fi
           echo "- ✅ GitHub Release created" >> $GITHUB_STEP_SUMMARY
