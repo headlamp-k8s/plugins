@@ -7,10 +7,7 @@ import type {
 import React from 'react';
 import { useBetween } from 'use-between';
 import { SavedConfigurations, StoredProviderConfig } from './utils/ProviderConfigManager';
-import {
-  getAllAvailableToolsIncludingMCP,
-  initializeToolsState,
-} from './utils/ToolConfigManager';
+import { getAllAvailableToolsIncludingMCP, initializeToolsState } from './utils/ToolConfigManager';
 
 export const PLUGIN_NAME = '@headlamp-k8s/ai-assistant';
 export const getSettingsURL = () => `/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`;
@@ -141,8 +138,8 @@ interface PluginConfig extends SavedConfigurations {
   testMode?: boolean;
   /** Latest Headlamp event payload */
   event?: HeadlampEventPayload | null; //@todo: should this be HeadlampEventPayload?
-  /** Enabled tool IDs */
-  enabledTools?: string[];
+  /** Enabled tool IDs - can be either array of tool IDs or map of tool ID to enabled state */
+  enabledTools?: string[] | Record<string, boolean>;
   /** MCP configuration */
   mcpConfig?: any;
 }
@@ -185,8 +182,12 @@ function usePluginSettings() {
         })
         .catch(error => {
           console.error('Failed to initialize tools state:', error);
-          // Fallback to existing behavior
-          setEnabledToolsState(conf?.enabledTools ?? []);
+          // Fallback to existing behavior - convert to string[] if needed
+          const fallbackTools = conf?.enabledTools ?? [];
+          const toolsArray = Array.isArray(fallbackTools)
+            ? fallbackTools
+            : Object.keys(fallbackTools).filter(key => fallbackTools[key]);
+          setEnabledToolsState(toolsArray);
           setToolsInitialized(true);
         });
     }

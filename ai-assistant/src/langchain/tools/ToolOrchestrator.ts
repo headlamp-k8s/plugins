@@ -42,10 +42,7 @@ const ToolRecommendationSchema = z.object({
           tool_name: z.string().optional().describe('Alternative field for tool name'),
           description: z.string().describe('What this tool will do'),
           arguments: z
-            .union([
-              z.record(z.string(), z.any()),
-              z.string(),
-            ])
+            .union([z.record(z.string(), z.any()), z.string()])
             .default({})
             .describe('Arguments needed for this tool'),
           priority: z

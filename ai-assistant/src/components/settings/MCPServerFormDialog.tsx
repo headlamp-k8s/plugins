@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   DialogActions,
   DialogContent,
   DialogTitle,
@@ -76,9 +75,7 @@ export default function MCPServerFormDialog({
         name: server.name,
         command: server.command,
         args: server.args.join(' '),
-        env: server.env
-          ? Object.entries(server.env).map(([key, value]) => ({ key, value }))
-          : [],
+        env: server.env ? Object.entries(server.env).map(([key, value]) => ({ key, value })) : [],
         enabled: server.enabled,
       }));
       setServers(formData);
@@ -415,7 +412,9 @@ export default function MCPServerFormDialog({
                 control={
                   <Switch
                     checked={currentServer.enabled}
-                    onChange={e => setCurrentServer({ ...currentServer, enabled: e.target.checked })}
+                    onChange={e =>
+                      setCurrentServer({ ...currentServer, enabled: e.target.checked })
+                    }
                   />
                 }
                 label="Enable this server"
