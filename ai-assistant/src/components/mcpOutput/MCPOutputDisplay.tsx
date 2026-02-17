@@ -306,7 +306,7 @@ const MarkdownRenderer: React.FC<{ data: any; width: string; syntaxTheme: any }>
             code({ className, children, ...props }) {
               const match = /language-(\w+)/.exec(className || '');
               const language = match ? match[1] : '';
-              const isInline = !className && !String(children).includes('\n');
+              const isInline = !language && !String(children).includes('\n');
 
               if (!isInline && language) {
                 return (

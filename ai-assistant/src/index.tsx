@@ -405,7 +405,7 @@ function Settings() {
 
     // If savedConfigs were changed, update the store
     if (changes.savedConfigs) {
-      pluginStore.update(changes.savedConfigs);
+      pluginStore.update(changes.savedConfigs as any);
     }
   };
 
@@ -497,7 +497,7 @@ function Settings() {
         isConfigView
         onChange={handleModelSelectorChange}
         onTermsAccept={updatedConfigs => {
-          pluginStore.update(updatedConfigs);
+          pluginStore.update(updatedConfigs as any);
         }}
       />
       {/* AI Tools Section */}

@@ -46,15 +46,12 @@ export class ToolManager {
         continue; // Skip tools not enabled
       }
       try {
-        const tool = tempTool;
-        this.addTool(tool);
+        this.addTool(tempTool);
       } catch (error) {
         console.error(`Failed to load tool ${ToolClass.name}:`, error);
       }
     }
-
-    // Initialize MCP tools asynchronously but start immediately
-    this.initializeMCPTools();
+    // MCP tools are initialized via mcpInitializationPromise in the constructor
   }
 
   /**
@@ -68,18 +65,49 @@ export class ToolManager {
         return;
       }
 
-      // Get tools configuration (source of truth)
-      const toolsConfigResponse = await this.mcpClient.getToolsConfig();
+      // First check the server config to know which servers are actually configured.
+      // This is the user's source of truth — getToolsConfig() may return stale/cached
+      // tools from servers that have been removed but not yet fully disconnected.
+      const serverConfigResponse = await this.mcpClient.getConfig();
+      const configuredServerNames = new Set<string>();
 
-      if (!toolsConfigResponse.success || !toolsConfigResponse.config) {
+      if (serverConfigResponse.success && serverConfigResponse.config?.servers) {
+        for (const server of serverConfigResponse.config.servers as any[]) {
+          if (server.enabled !== false && server.name) {
+            configuredServerNames.add(server.name);
+          }
+        }
+      }
+
+      // If no servers are configured (or all disabled), clear MCP tools immediately
+      // regardless of what getToolsConfig() might return (stale cache)
+      if (configuredServerNames.size === 0) {
+        this.mcpTools = [];
         this.mcpToolsInitialized = true;
         return;
       }
 
-      // Create tools from configuration
+      // Get tools configuration (discovered tools from connected servers)
+      const toolsConfigResponse = await this.mcpClient.getToolsConfig();
+
+      if (
+        !toolsConfigResponse.success ||
+        !toolsConfigResponse.config ||
+        Object.keys(toolsConfigResponse.config).length === 0
+      ) {
+        this.mcpTools = []; // Ensure MCP tools are cleared
+        this.mcpToolsInitialized = true;
+        return;
+      }
+
+      // Create tools from configuration, but only from servers that are actually configured
       const mcpToolsData: any[] = [];
       Object.entries(toolsConfigResponse.config).forEach(
         ([serverName, serverTools]: [string, any]) => {
+          // Skip tools from servers that are no longer in the user's config
+          if (!configuredServerNames.has(serverName)) {
+            return;
+          }
           Object.entries(serverTools).forEach(([toolName, toolConfig]: [string, any]) => {
             const fullToolName = `${serverName}__${toolName}`;
             mcpToolsData.push({
@@ -118,7 +146,7 @@ export class ToolManager {
           toolData =>
             new DynamicStructuredTool({
               name: toolData.name,
-              description: toolData.description || `MCP tool: ${toolData.name}`,
+              description: this.buildMCPToolDescription(toolData),
               schema:
                 toolData.inputSchema && Object.keys(toolData.inputSchema).length > 0
                   ? toolData.inputSchema
@@ -162,6 +190,25 @@ export class ToolManager {
       this.mcpToolsInitialized = true;
       // Continue without MCP tools - this is not a fatal error
     }
+  }
+
+  /**
+   * Build a rich description for MCP tools that includes parameter info.
+   * Since DynamicTool doesn't support 'schema', we embed parameter details in the description.
+   */
+  private buildMCPToolDescription(toolData: any): string {
+    let desc = toolData.description || `MCP tool: ${toolData.name}`;
+    const schema = toolData.inputSchema;
+    if (schema?.properties && Object.keys(schema.properties).length > 0) {
+      const params = Object.entries(schema.properties)
+        .map(([name, prop]: [string, any]) => {
+          const required = schema.required?.includes(name) ? ' (required)' : '';
+          return `  - ${name}${required}: ${prop.description || prop.type || 'any'}`;
+        })
+        .join('\n');
+      desc += `\n\nParameters:\n${params}`;
+    }
+    return desc;
   }
 
   /**
@@ -439,6 +486,21 @@ export class ToolManager {
 
     this.tools.push(tool);
     this.toolHandlers.set(tool.config.name, tool);
+  }
+
+  /**
+   * Refresh MCP tools by re-fetching configuration from the Electron backend.
+   * Call this when MCP configuration changes (servers added/removed/reset).
+   */
+  async refreshMCPTools(): Promise<void> {
+    this.mcpToolsInitialized = false;
+    this.mcpTools = [];
+    await this.initializeMCPTools();
+
+    // Rebind model if we have one, to update tool bindings
+    if (this.boundModel && this.providerId) {
+      await this.bindToModelAsync(this.boundModel, this.providerId);
+    }
   }
 
   /**

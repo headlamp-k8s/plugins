@@ -23,6 +23,15 @@ interface ElectronMCPApi {
   ) => Promise<MCPResponse>;
   getStatus: () => Promise<{ isInitialized: boolean; hasClient: boolean }>;
   resetClient: () => Promise<MCPResponse>;
+  getConfig: () => Promise<{ success: boolean; config?: any; error?: string }>;
+  updateConfig: (config: any) => Promise<MCPResponse>;
+  getToolsConfig: () => Promise<{ success: boolean; config?: any; error?: string }>;
+  updateToolsConfig: (config: any) => Promise<MCPResponse>;
+  setToolEnabled: (serverName: string, toolName: string, enabled: boolean) => Promise<MCPResponse>;
+  getToolStats: (
+    serverName: string,
+    toolName: string
+  ) => Promise<{ success: boolean; stats?: any; error?: string }>;
 }
 
 interface DesktopApi {
