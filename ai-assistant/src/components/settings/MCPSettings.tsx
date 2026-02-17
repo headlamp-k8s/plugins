@@ -96,6 +96,13 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
         if (response.success) {
           // Reload config from Electron after successful update
           await loadMCPConfigFromElectron();
+          // Also update plugin store so the UI (modal) detects the change
+          // and recreates the AI manager with fresh MCP tools
+          const currentConfig = pluginStore.get() || {};
+          pluginStore.update({
+            ...currentConfig,
+            mcpConfig: pendingConfig,
+          });
         } else {
           console.error('Error updating MCP config in Electron:', response.error);
         }
@@ -167,6 +174,12 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
         const response = await window.desktopApi!.mcp.updateConfig(newConfig);
         if (response.success) {
           await loadMCPConfigFromElectron();
+          // Also update plugin store so the UI detects the change
+          const currentConfig = pluginStore.get() || {};
+          pluginStore.update({
+            ...currentConfig,
+            mcpConfig: newConfig,
+          });
         } else {
           console.error('Error updating MCP config in Electron:', response.error);
         }

@@ -6,8 +6,11 @@ import type {
 } from '@kinvolk/headlamp-plugin/lib/plugin/registry';
 import React from 'react';
 import { useBetween } from 'use-between';
-import { StoredProviderConfig } from './utils/ProviderConfigManager';
-import { initializeToolsState } from './utils/ToolConfigManager';
+import { SavedConfigurations, StoredProviderConfig } from './utils/ProviderConfigManager';
+import {
+  getAllAvailableToolsIncludingMCP,
+  initializeToolsState,
+} from './utils/ToolConfigManager';
 
 export const PLUGIN_NAME = '@headlamp-k8s/ai-assistant';
 export const getSettingsURL = () => `/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`;
@@ -138,6 +141,10 @@ interface PluginConfig extends SavedConfigurations {
   testMode?: boolean;
   /** Latest Headlamp event payload */
   event?: HeadlampEventPayload | null; //@todo: should this be HeadlampEventPayload?
+  /** Enabled tool IDs */
+  enabledTools?: string[];
+  /** MCP configuration */
+  mcpConfig?: any;
 }
 
 export const pluginStore = new ConfigStore<PluginConfig>(PLUGIN_NAME);
@@ -197,13 +204,23 @@ function usePluginSettings() {
   };
 
   // Wrap setEnabledTools to also update the stored configuration
-  const setEnabledTools = (tools: string[]) => {
+  const setEnabledTools = async (tools: string[]) => {
     setEnabledToolsState(tools);
-    // Save the tools configuration
+
+    // Save the tools configuration with explicit enabled/disabled states
     const currentConf = pluginStore.get() || {};
+
+    // Get all available tools (built-in + MCP) and create explicit enabled/disabled map
+    const allTools = await getAllAvailableToolsIncludingMCP();
+    const enabledToolsMap: Record<string, boolean> = {};
+
+    allTools.forEach(tool => {
+      enabledToolsMap[tool.id] = tools.includes(tool.id);
+    });
+
     pluginStore.update({
       ...currentConf,
-      enabledTools: tools,
+      enabledTools: enabledToolsMap,
     });
   };
 
