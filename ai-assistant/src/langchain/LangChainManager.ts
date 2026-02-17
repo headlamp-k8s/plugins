@@ -169,14 +169,17 @@ export default class LangChainManager extends AIManager {
       const assistantPrompt: Prompt = {
         role: 'assistant',
         content: fullContent,
-        toolCalls: toolCalls.length > 0 ? toolCalls.map(tc => ({
-          type: 'function',
-          id: tc.id,
-          function: {
-            name: tc.name,
-            arguments: JSON.stringify(tc.args || {}),
-          },
-        })) : undefined,
+        toolCalls:
+          toolCalls.length > 0
+            ? toolCalls.map(tc => ({
+                type: 'function',
+                id: tc.id,
+                function: {
+                  name: tc.name,
+                  arguments: JSON.stringify(tc.args || {}),
+                },
+              }))
+            : undefined,
       };
 
       // If there are tool calls, handle them with streaming
@@ -209,7 +212,7 @@ export default class LangChainManager extends AIManager {
         }
 
         // Clear progress steps for non-tool responses
-          }
+      }
 
       return assistantPrompt;
     } catch (error) {
@@ -864,7 +867,7 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
         this.history.push(assistantPrompt);
 
         // Clear progress steps for non-tool responses
-    
+
         return assistantPrompt;
       }
     } catch (error) {
@@ -1103,12 +1106,10 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
         })
       );
 
-      let approvedToolIds: string[] = [];
+      const approvedToolIds: string[] = [];
 
       // Separate built-in tools from MCP tools (same pattern as handleToolCalls)
-      const builtInToolsForApproval = toolsForApproval.filter(tool =>
-        isBuiltInTool(tool.name)
-      );
+      const builtInToolsForApproval = toolsForApproval.filter(tool => isBuiltInTool(tool.name));
       const mcpToolsForApproval = toolsForApproval.filter(tool => !isBuiltInTool(tool.name));
 
       // Auto-approve all built-in tools (no user interaction needed)
@@ -1141,9 +1142,7 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
       // Match by checking if the approved ID contains the tool name as a suffix
       const approvedTools = recommendedTools.filter(tool => {
         const expectedIdPrefix = `orchestrated-${tool.name}-`;
-        return approvedToolIds.some(
-          id => id === tool.name || id.startsWith(expectedIdPrefix)
-        );
+        return approvedToolIds.some(id => id === tool.name || id.startsWith(expectedIdPrefix));
       });
 
       // Group tools by execution strategy (parallel vs sequential)
@@ -1411,7 +1410,7 @@ ${Object.entries(toolResults)
       this.history.push(assistantPrompt);
 
       // Clear progress steps when all tools are disabled
-  
+
       return assistantPrompt;
     }
 
@@ -1464,12 +1463,12 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
         this.history[this.history.length - 1] = updatedPrompt;
 
         // Clear progress steps when tools are disabled
-    
+
         return updatedPrompt;
       }
 
       // Clear progress steps when no tools to execute
-  
+
       return assistantPrompt;
     }
 
@@ -1625,7 +1624,10 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
    * Handle tool calls for streaming scenario - executes tools without generating response
    * (response will be streamed separately by processToolResponsesStream)
    */
-  private async handleToolCallsForStreaming(toolCalls: any[], assistantPrompt: Prompt): Promise<void> {
+  private async handleToolCallsForStreaming(
+    toolCalls: any[],
+    assistantPrompt: Prompt
+  ): Promise<void> {
     const enabledToolIds = this.toolManager.getToolNames();
 
     // Convert tool calls to expected format
@@ -1699,10 +1701,7 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
 
       // Request approval for MCP tools
       if (mcpTools.length > 0) {
-        const approvedMCPToolIds = await inlineToolApprovalManager.requestApproval(
-          mcpTools,
-          this
-        );
+        const approvedMCPToolIds = await inlineToolApprovalManager.requestApproval(mcpTools, this);
         approvedToolIds.push(...approvedMCPToolIds);
       }
 
@@ -2097,14 +2096,14 @@ Format your response to make the errors prominent and actionable.`,
       this.history.push(assistantPrompt);
 
       // Clear progress steps after streaming response
-  
+
       return assistantPrompt;
     } catch (error) {
       const errorPrompt = this.handleToolResponseError(error);
       yield errorPrompt.content;
 
       // Clear progress steps even on error
-  
+
       return errorPrompt;
     }
   }
@@ -2790,7 +2789,9 @@ Return the complete arguments object:`;
             key.toLowerCase().includes('max'))
         ) {
           sanitized[key] = parseFloat(value);
-          console.log(`[ArgSanitize] Converted ${key} from string "${value}" to number ${sanitized[key]}`);
+          console.log(
+            `[ArgSanitize] Converted ${key} from string "${value}" to number ${sanitized[key]}`
+          );
           continue;
         }
       }

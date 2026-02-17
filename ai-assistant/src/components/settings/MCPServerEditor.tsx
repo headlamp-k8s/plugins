@@ -9,7 +9,6 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
-  Paper,
   Switch,
   TextField,
   Typography,
@@ -244,7 +243,11 @@ export default function MCPServerEditor({
                       sx={{ flex: 2 }}
                       placeholder="e.g., HEADLAMP_CURRENT_CLUSTER"
                     />
-                    <IconButton size="small" onClick={() => handleRemoveEnvVar(index)} color="error">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemoveEnvVar(index)}
+                      color="error"
+                    >
                       <Icon icon="mdi:delete" />
                     </IconButton>
                   </Box>

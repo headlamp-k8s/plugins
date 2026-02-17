@@ -8,33 +8,6 @@ interface MCPTool {
   server?: string; // Add server information
 }
 
-interface MCPResponse {
-  success: boolean;
-  tools?: MCPTool[];
-  result?: any;
-  error?: string;
-  toolCallId?: string;
-}
-
-interface ElectronMCPApi {
-  executeTool: (
-    toolName: string,
-    args: Record<string, any>,
-    toolCallId?: string
-  ) => Promise<MCPResponse>;
-  getStatus: () => Promise<{ isInitialized: boolean; hasClient: boolean }>;
-  resetClient: () => Promise<MCPResponse>;
-  getConfig: () => Promise<{ success: boolean; config?: any; error?: string }>;
-  updateConfig: (config: any) => Promise<MCPResponse>;
-  getToolsConfig: () => Promise<{ success: boolean; config?: any; error?: string }>;
-  updateToolsConfig: (config: any) => Promise<MCPResponse>;
-  setToolEnabled: (serverName: string, toolName: string, enabled: boolean) => Promise<MCPResponse>;
-  getToolStats: (
-    serverName: string,
-    toolName: string
-  ) => Promise<{ success: boolean; stats?: any; error?: string }>;
-}
-
 // Type augmentation is handled by src/types/electron.d.ts
 
 class ElectronMCPClient {

@@ -41,6 +41,7 @@ interface MCPSettingsProps {
 }
 
 export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
+  console.log('config in MCPSettings', config);
   const [jsonEditorOpen, setJsonEditorOpen] = useState(false);
   const [serverEditorOpen, setServerEditorOpen] = useState(false);
   const [editingServer, setEditingServer] = useState<MCPServer | undefined>(undefined);
@@ -145,29 +146,6 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
     if (!pendingConfig) return;
     const newConfig = { ...mcpConfig, enabled: !mcpConfig.enabled };
 
-    // If enabling MCP for the first time and no servers exist, add default servers
-    if (newConfig.enabled && mcpConfig.servers.length === 0) {
-      const defaultServers: MCPServer[] = [
-        {
-          name: 'inspektor-gadget',
-          command: 'docker',
-          args: ['mcp', 'gateway', 'run'],
-          enabled: true,
-        },
-        {
-          name: 'flux-mcp',
-          command: 'flux-operator-mcp',
-          args: ['serve'],
-          env: {
-            KUBECONFIG: '/Users/ashughildiyal/.kube/config',
-          },
-          enabled: true,
-        },
-      ];
-
-      newConfig.servers = defaultServers;
-    }
-
     // Immediately save this change (bypass pending state)
     if (Headlamp.isRunningAsApp()) {
       try {
@@ -217,19 +195,20 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
 
   const handleSaveServer = (server: MCPServer) => {
     if (!pendingConfig) return;
-    
+
     let newServers: MCPServer[];
 
     if (editingServer) {
       // Check if the server actually changed
       const originalServer = pendingConfig.servers.find(s => s.name === editingServer.name);
-      const serverChanged = !originalServer || JSON.stringify(originalServer) !== JSON.stringify(server);
-      
+      const serverChanged =
+        !originalServer || JSON.stringify(originalServer) !== JSON.stringify(server);
+
       if (!serverChanged) {
         // No changes, just close the dialog
         return;
       }
-      
+
       // Update existing server
       newServers = pendingConfig.servers.map(s => (s.name === editingServer.name ? server : s));
     } else {
@@ -374,10 +353,7 @@ export function MCPSettings({ config, onConfigChange }: MCPSettingsProps) {
                       </TableCell>
                       <TableCell align="right">
                         <Tooltip title="Edit">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenServerEditor(server)}
-                          >
+                          <IconButton size="small" onClick={() => handleOpenServerEditor(server)}>
                             <Icon icon="mdi:pencil" />
                           </IconButton>
                         </Tooltip>
