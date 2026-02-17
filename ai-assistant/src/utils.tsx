@@ -139,8 +139,8 @@ interface PluginConfig extends SavedConfigurations {
   testMode?: boolean;
   /** Latest Headlamp event payload */
   event?: HeadlampEventPayload | null; //@todo: should this be HeadlampEventPayload?
-  /** Enabled tool IDs */
-  enabledTools?: string[];
+  /** Enabled tool IDs - can be either array of tool IDs or map of tool ID to enabled state */
+  enabledTools?: string[] | Record<string, boolean>;
   /** MCP configuration */
   mcpConfig?: MCPConfig;
 }
@@ -183,8 +183,12 @@ function usePluginSettings() {
         })
         .catch(error => {
           console.error('Failed to initialize tools state:', error);
-          // Fallback to existing behavior
-          setEnabledToolsState(conf?.enabledTools ?? []);
+          // Fallback to existing behavior - convert to string[] if needed
+          const fallbackTools = conf?.enabledTools ?? [];
+          const toolsArray = Array.isArray(fallbackTools)
+            ? fallbackTools
+            : Object.keys(fallbackTools).filter(key => fallbackTools[key]);
+          setEnabledToolsState(toolsArray);
           setToolsInitialized(true);
         });
     }
