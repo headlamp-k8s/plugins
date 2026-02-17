@@ -304,11 +304,12 @@ const MarkdownRenderer: React.FC<{ data: any; width: string; syntaxTheme: any }>
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
-            code({ inline, className, children, ...props }) {
+            code({ className, children, ...props }) {
               const match = /language-(\w+)/.exec(className || '');
               const language = match ? match[1] : '';
+              const isInline = !language && !String(children).includes('\n');
 
-              if (!inline && language) {
+              if (!isInline && language) {
                 return (
                   <SyntaxHighlighter
                     language={language}
@@ -319,7 +320,6 @@ const MarkdownRenderer: React.FC<{ data: any; width: string; syntaxTheme: any }>
                       borderRadius: '4px',
                     }}
                     wrapLongLines
-                    {...props}
                   >
                     {String(children).replace(/\n$/, '')}
                   </SyntaxHighlighter>

@@ -9,7 +9,7 @@ export interface StoredProviderConfig {
 }
 
 export interface SavedConfigurations {
-  providers: StoredProviderConfig[];
+  providers?: StoredProviderConfig[];
   defaultProviderIndex?: number;
   termsAccepted?: boolean;
 }

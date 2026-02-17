@@ -35,13 +35,7 @@ interface ElectronMCPApi {
   ) => Promise<{ success: boolean; stats?: any; error?: string }>;
 }
 
-declare global {
-  interface Window {
-    desktopApi?: {
-      mcp: ElectronMCPApi;
-    };
-  }
-}
+// Type augmentation is handled by src/types/electron.d.ts
 
 class ElectronMCPClient {
   private isElectron: boolean;
@@ -265,13 +259,22 @@ class ElectronMCPClient {
     }
 
     try {
-      const allTools = await this.getEnabledTools();
-      const enabledTools: MCPTool[] = [];
+      const toolsConfigResponse = await this.getToolsConfig();
+      if (!toolsConfigResponse.success || !toolsConfigResponse.config) {
+        return [];
+      }
 
-      for (const tool of allTools) {
-        const isEnabled = await this.isToolEnabled(tool.name);
-        if (isEnabled) {
-          enabledTools.push(tool);
+      const enabledTools: MCPTool[] = [];
+      for (const [serverName, serverTools] of Object.entries(toolsConfigResponse.config)) {
+        for (const [toolName, toolConfig] of Object.entries(serverTools as Record<string, any>)) {
+          if (toolConfig.enabled !== false) {
+            enabledTools.push({
+              name: `${serverName}__${toolName}`,
+              description: toolConfig.description,
+              inputSchema: toolConfig.inputSchema,
+              server: serverName,
+            });
+          }
         }
       }
 

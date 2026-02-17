@@ -114,14 +114,20 @@ export async function getAllAvailableToolsIncludingMCP(): Promise<ToolInfo[]> {
   // Try to get MCP tools if running in Electron environment
   try {
     if (typeof window !== 'undefined' && window.desktopApi?.mcp) {
-      const mcpResponse = await window.desktopApi.mcp.getTools();
-      if (mcpResponse.success && mcpResponse.tools) {
-        const mcpTools: ToolInfo[] = mcpResponse.tools.map(tool => ({
-          id: tool.name,
-          name: tool.name,
-          description: tool.description || `MCP tool: ${tool.name}`,
-          source: 'mcp' as const,
-        }));
+      const mcpResponse = await window.desktopApi.mcp.getToolsConfig();
+      if (mcpResponse.success && mcpResponse.config) {
+        const mcpTools: ToolInfo[] = [];
+        // Parse the structure: { serverName: { toolName: { enabled, description, ... } } }
+        for (const [serverName, serverTools] of Object.entries(mcpResponse.config)) {
+          for (const [toolName, toolConfig] of Object.entries(serverTools as Record<string, any>)) {
+            mcpTools.push({
+              id: `${serverName}__${toolName}`,
+              name: toolName,
+              description: toolConfig.description || `MCP tool: ${toolName}`,
+              source: 'mcp' as const,
+            });
+          }
+        }
         return [...builtInTools, ...mcpTools];
       }
     }

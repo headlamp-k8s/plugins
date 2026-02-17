@@ -43,15 +43,10 @@ const ToolRecommendationSchema = z.object({
           description: z.string().describe('What this tool will do'),
           arguments: z
             .union([
-              z.record(z.any()),
-              z.string().transform(v => {
-                try {
-                  return typeof v === 'string' ? JSON.parse(v) : v;
-                } catch {
-                  return v;
-                }
-              }),
+              z.record(z.string(), z.any()),
+              z.string(),
             ])
+            .default({})
             .describe('Arguments needed for this tool'),
           priority: z
             .enum(['high', 'medium', 'low'])
@@ -61,11 +56,10 @@ const ToolRecommendationSchema = z.object({
         })
         .transform(tool => ({
           ...tool,
-          name: tool.name || tool.tool_name,
+          name: tool.name || tool.tool_name || '',
           arguments:
             typeof tool.arguments === 'string' ? JSON.parse(tool.arguments) : tool.arguments,
         }))
-        .refine(tool => !!tool.name, { message: 'Tool must have either name or tool_name field' })
     )
     .describe('List of tools to execute'),
   shouldExecuteAll: z
@@ -265,11 +259,28 @@ Return your response as a valid JSON object. Include ONLY the JSON, no other tex
     parallel: RecommendedTool[];
     sequential: RecommendedTool[];
   } {
-    // Read-only tools (get_*) can execute in parallel
+    // Read-only tools can execute in parallel
     // Modification tools should execute sequentially
-    const parallelPatterns = ['get_', 'list_', 'search_', 'read'];
+    const readPatterns = ['get_', 'list_', 'search_', 'read', 'fetch', 'describe', 'show'];
+    const writePatterns = ['create', 'apply', 'update', 'patch', 'delete', 'remove', 'modify'];
 
-    const parallel = tools.filter(tool => parallelPatterns.some(p => tool.name.includes(p)));
+    const parallel = tools.filter(tool => {
+      const nameLower = tool.name.toLowerCase();
+      // If it matches a write pattern, it must be sequential
+      if (writePatterns.some(p => nameLower.includes(p))) {
+        return false;
+      }
+      // If it matches a read pattern or has GET-like arguments, it can be parallel
+      if (readPatterns.some(p => nameLower.includes(p))) {
+        return true;
+      }
+      // For kubernetes_api_request, check the method argument
+      if (tool.arguments?.method?.toUpperCase() === 'GET') {
+        return true;
+      }
+      // Default: treat as parallel (reads are more common in orchestration)
+      return true;
+    });
 
     const sequential = tools.filter(tool => !parallel.includes(tool));
 

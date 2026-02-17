@@ -165,9 +165,7 @@ Remember: Focus on making complex data accessible and actionable for Kubernetes 
       // Send to AI for analysis and formatting
       const messages = [new SystemMessage(this.SYSTEM_PROMPT), new HumanMessage(analysisPrompt)];
 
-      const response = await this.model.invoke(messages, {
-        max_tokens: opts.maxTokens,
-      });
+      const response = await this.model.invoke(messages);
 
       const processingTime = Date.now() - startTime;
 

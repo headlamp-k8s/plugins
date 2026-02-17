@@ -285,9 +285,18 @@ export default function AIPrompt(props: {
     }
   };
 
+  // Track MCP config to trigger manager recreation when MCP servers change
+  const mcpConfigKey = React.useMemo(() => {
+    try {
+      return JSON.stringify(pluginSettings?.mcpConfig || {});
+    } catch {
+      return '';
+    }
+  }, [pluginSettings?.mcpConfig]);
+
   React.useEffect(() => {
     // Recreate the manager whenever pluginSettings change (including tool settings)
-    // or when activeConfig/selectedModel changes
+    // or when activeConfig/selectedModel/mcpConfig changes
     if (activeConfig) {
       try {
         // Create config with selected model
@@ -306,7 +315,7 @@ export default function AIPrompt(props: {
         setApiError(`Failed to initialize AI model: ${error.message}`);
       }
     }
-  }, [enabledTools, activeConfig, selectedModel]);
+  }, [enabledTools, activeConfig, selectedModel, mcpConfigKey]);
 
   const updateHistory = React.useCallback(() => {
     if (!aiManager?.history) {
