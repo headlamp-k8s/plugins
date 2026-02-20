@@ -2,6 +2,7 @@ import { addIcon, Icon } from '@iconify/react';
 import {
   registerKindIcon,
   registerMapSource,
+  registerPluginSettings,
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
@@ -18,6 +19,7 @@ import { Notifications } from './notifications/NotificationList';
 import { Notification } from './notifications/NotificationSingle';
 import { FluxOverview } from './overview';
 import { FluxRunTime } from './runtime/RuntimeList';
+import { FluxSettings } from './settings';
 import { FluxSources } from './sources/SourceList';
 import { FluxSourceDetailView } from './sources/SourceSingle';
 
@@ -28,6 +30,8 @@ addIcon('simple-icons:flux', {
   width: 24,
   height: 24,
 });
+
+registerPluginSettings('@headlamp-k8s/flux', FluxSettings, false);
 
 registerSidebarEntry({
   parent: null,
@@ -201,6 +205,11 @@ registerRoute({
 });
 
 registerMapSource(fluxSource);
+
+registerKindIcon('GitRepository', {
+  icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
 
 registerKindIcon('HelmRelease', {
   icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
