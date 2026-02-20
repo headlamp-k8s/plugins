@@ -11,6 +11,7 @@ interface AIChatContentProps {
   onOperationSuccess: (response: any) => void;
   onOperationFailure: (error: any, operationType: string, resourceInfo?: any) => void;
   onYamlAction: (yaml: string, title: string, type: string, isDeleteOp: boolean) => void;
+  onRetryTool?: (toolName: string, args: Record<string, any>) => void;
 }
 
 export default function AIChatContent({
@@ -20,12 +21,18 @@ export default function AIChatContent({
   onOperationSuccess,
   onOperationFailure,
   onYamlAction,
+  onRetryTool,
 }: AIChatContentProps) {
   return (
     <Box
       sx={{
         height: '100%',
         overflowY: 'auto',
+        overflowX: 'auto', // Allow horizontal scrolling when needed
+        maxWidth: '100%',
+        minWidth: 0,
+        wordWrap: 'break-word',
+        overflowWrap: 'break-word',
       }}
     >
       {apiError && (
@@ -56,6 +63,7 @@ export default function AIChatContent({
         onOperationSuccess={onOperationSuccess}
         onOperationFailure={onOperationFailure}
         onYamlAction={onYamlAction}
+        onRetryTool={onRetryTool}
       />
     </Box>
   );

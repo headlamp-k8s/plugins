@@ -4,6 +4,7 @@ import { useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Prompt } from './ai/manager';
+import { InlineToolConfirmation } from './components';
 import ContentRenderer from './ContentRenderer';
 import EditorDialog from './editordialog';
 
@@ -27,6 +28,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   onOperationSuccess,
   onOperationFailure,
   onYamlAction,
+  onRetryTool,
 }: {
   history: Prompt[];
   isLoading: boolean;
@@ -34,6 +36,8 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   onOperationSuccess?: (response: any) => void;
   onOperationFailure?: (error: any, operationType: string, resourceInfo?: any) => void;
   onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
+  onRetryTool?: (toolName: string, args: Record<string, any>) => void;
+  promptWidth?: string;
 }) {
   const [showEditor, setShowEditor] = useState(false);
   const [editorContent, setEditorContent] = useState('');
@@ -242,6 +246,20 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         return null;
       }
 
+      // Extract message from tool response if it's JSON with shouldProcessFollowUp
+      let displayContent = prompt.content;
+      if (prompt.role === 'tool' && typeof prompt.content === 'string') {
+        try {
+          const parsed = JSON.parse(prompt.content);
+          if (parsed.shouldProcessFollowUp && parsed.message) {
+            // Use the message field for display
+            displayContent = parsed.message;
+          }
+        } catch (e) {
+          // Not JSON, use original content
+        }
+      }
+
       // Check if this is a content filter error or if the prompt has its own error
       const isContentFilterError = prompt.role === 'assistant' && prompt.contentFilterError;
       const hasError = prompt.error === true;
@@ -249,7 +267,8 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       const isJsonSuccess = prompt.success;
 
       if (prompt.content === '' && prompt.role === 'user') return null;
-      if (prompt.content === '' && prompt.role === 'assistant') return null;
+      if (displayContent === '' && prompt.role === 'assistant' && !prompt.toolConfirmation)
+        return null;
       return (
         <Box
           ref={history.length === index + 1 ? lastMessageRef : null}
@@ -277,19 +296,48 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
             ),
             ml: prompt.role === 'user' ? 3 : 0,
             mr: prompt.role !== 'user' ? 3 : 0,
+            // Add width constraints to prevent width expansion while allowing content wrapping
+            maxWidth: '100%',
+            minWidth: 0, // Allow shrinking
+            minHeight: 'auto', // Allow natural height expansion
+            height: 'auto', // Allow natural height
+            overflowWrap: 'break-word',
+            wordWrap: 'break-word',
+            wordBreak: 'break-word',
+            hyphens: 'auto',
           }}
         >
           <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
             {prompt.role === 'user' ? 'You' : 'AI Assistant'}
           </Typography>
-          <Box sx={{ whiteSpace: 'unset' }}>
+          <Box
+            sx={{
+              maxWidth: '100%',
+              minWidth: 0,
+              width: '100%', // Ensure full width usage
+              overflowWrap: 'break-word',
+              wordWrap: 'break-word',
+              wordBreak: 'break-word',
+              overflowX: 'auto', // Add horizontal scroll as fallback
+              overflowY: 'visible', // Allow vertical expansion
+            }}
+          >
             {prompt.role === 'user' ? (
-              prompt.content
+              displayContent
             ) : (
               <>
                 {isContentFilterError || hasError ? (
-                  <Alert severity="error" sx={{ mb: 1, overflowWrap: 'anywhere' }}>
-                    {prompt.content}
+                  <Alert
+                    severity="error"
+                    sx={{
+                      mb: 1,
+                      overflowWrap: 'anywhere',
+                      overflowX: 'auto',
+                      maxWidth: '100%',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {displayContent}
                     {isContentFilterError && (
                       <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
                         Tip: Focus your question specifically on Kubernetes administration tasks.
@@ -298,11 +346,25 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                   </Alert>
                 ) : (
                   <>
-                    {/* Use ContentRenderer for all assistant content */}
-                    <ContentRenderer
-                      content={prompt.content || ''}
-                      onYamlDetected={memoizedOnYamlDetected}
-                    />
+                    {/* Check if this is a tool confirmation message */}
+                    {prompt.toolConfirmation ? (
+                      <InlineToolConfirmation
+                        toolCalls={prompt.toolConfirmation.tools}
+                        onApprove={prompt.toolConfirmation.onApprove}
+                        onDeny={prompt.toolConfirmation.onDeny}
+                        loading={prompt.toolConfirmation.loading}
+                        // @ts-ignore
+                        userContext={prompt.toolConfirmation?.userContext}
+                        compact={false}
+                      />
+                    ) : (
+                      /* Use ContentRenderer for all assistant content */
+                      <ContentRenderer
+                        content={displayContent || ''}
+                        onYamlDetected={memoizedOnYamlDetected}
+                        onRetryTool={onRetryTool}
+                      />
+                    )}
                   </>
                 )}
               </>
@@ -315,16 +377,27 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   );
 
   return (
-    <Box sx={{ position: 'relative', height: '100%' }}>
+    <Box
+      sx={{
+        position: 'relative',
+        height: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflow: 'hidden',
+      }}
+    >
       <Box
         ref={containerRef}
         onScroll={handleScroll}
         sx={{
           maxHeight: '100%',
           height: '100%',
-          overflow: 'auto',
+          overflowY: 'auto',
+          overflowX: 'auto', // Allow horizontal scrolling when needed
           display: 'flex',
           flexDirection: 'column',
+          maxWidth: '100%',
+          minWidth: 0,
         }}
       >
         {/* Content filter guidance when errors are detected */}

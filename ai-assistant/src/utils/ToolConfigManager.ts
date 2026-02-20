@@ -5,6 +5,7 @@ export type ToolInfo = {
   id: string;
   name: string;
   description: string;
+  source: 'built-in' | 'mcp';
 };
 
 // List of all available tools (add more here as needed)
@@ -14,6 +15,7 @@ const AVAILABLE_TOOLS: ToolInfo[] = [
     name: 'Kubernetes API Request',
     description:
       'Make requests to the Kubernetes API server to fetch, create, update or delete resources.',
+    source: 'built-in',
   },
   // Add more tools here as needed
 ];
@@ -50,5 +52,109 @@ export function toggleTool(pluginSettings: any, toolId: string): any {
 // Returns a list of enabled tool IDs from plugin settings
 export function getEnabledToolIds(pluginSettings: any): string[] {
   const allTools = getAllAvailableTools();
+  return allTools.map(tool => tool.id).filter(toolId => isToolEnabled(pluginSettings, toolId));
+}
+
+// Sets the enabled tools list in plugin settings
+export function setEnabledTools(pluginSettings: any, enabledToolIds: string[]): any {
+  const enabledTools: Record<string, boolean> = {};
+
+  // Get all available tools and set their enabled state
+  const allTools = getAllAvailableTools();
+  allTools.forEach(tool => {
+    enabledTools[tool.id] = enabledToolIds.includes(tool.id);
+  });
+
+  return {
+    ...pluginSettings,
+    enabledTools,
+  };
+}
+
+// Check if a tool is a built-in tool (from AVAILABLE_TOOLS registry)
+export function isBuiltInTool(toolName: string): boolean {
+  return AVAILABLE_TOOLS.some(tool => tool.id === toolName);
+}
+
+// Check if a tool is an MCP tool by consulting the tool registry
+// This is async because we need to fetch MCP tools to check
+export async function isMCPTool(toolName: string): Promise<boolean> {
+  const allTools = await getAllAvailableToolsIncludingMCP();
+  const tool = allTools.find(t => t.id === toolName);
+  return tool?.source === 'mcp';
+}
+
+// Get the source of a tool (built-in or MCP)
+export async function getToolSource(toolName: string): Promise<'built-in' | 'mcp' | 'unknown'> {
+  const allTools = await getAllAvailableToolsIncludingMCP();
+  const tool = allTools.find(t => t.id === toolName);
+  return tool?.source || 'unknown';
+}
+
+// Parse MCP tool name to extract server and tool components
+export function parseMCPToolName(fullToolName: string): { serverName: string; toolName: string } {
+  const parts = fullToolName.split('__');
+  if (parts.length >= 2) {
+    return {
+      serverName: parts[0],
+      toolName: parts.slice(1).join('__'),
+    };
+  }
+  return {
+    serverName: 'default',
+    toolName: fullToolName,
+  };
+}
+
+// Get all available tools (both built-in and MCP tools)
+// This function needs to be async to fetch MCP tools
+export async function getAllAvailableToolsIncludingMCP(): Promise<ToolInfo[]> {
+  const builtInTools = getAllAvailableTools();
+
+  // Try to get MCP tools if running in Electron environment
+  try {
+    if (typeof window !== 'undefined' && window.desktopApi?.mcp) {
+      const mcpResponse = await window.desktopApi.mcp.getToolsConfig();
+      if (mcpResponse.success && mcpResponse.config) {
+        const mcpTools: ToolInfo[] = [];
+        // Parse the structure: { serverName: { toolName: { enabled, description, ... } } }
+        for (const [serverName, serverTools] of Object.entries(mcpResponse.config)) {
+          for (const [toolName, toolConfig] of Object.entries(serverTools as Record<string, any>)) {
+            mcpTools.push({
+              id: `${serverName}__${toolName}`,
+              name: toolName,
+              description: toolConfig.description || `MCP tool: ${toolName}`,
+              source: 'mcp' as const,
+            });
+          }
+        }
+        return [...builtInTools, ...mcpTools];
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to fetch MCP tools for tool config management:', error);
+  }
+
+  return builtInTools;
+}
+
+// Get enabled tool IDs including MCP tools
+export async function getEnabledToolIdsIncludingMCP(pluginSettings: any): Promise<string[]> {
+  const allTools = await getAllAvailableToolsIncludingMCP();
+  return allTools.map(tool => tool.id).filter(toolId => isToolEnabled(pluginSettings, toolId));
+}
+
+// Initialize tools state properly on app load
+// This ensures that on first load, all tools are enabled (default behavior)
+// but respects any saved configuration if it exists
+export async function initializeToolsState(pluginSettings: any): Promise<string[]> {
+  const allTools = await getAllAvailableToolsIncludingMCP();
+
+  // If we have no enabledTools config at all, enable all tools by default
+  if (!pluginSettings || !pluginSettings.enabledTools) {
+    return allTools.map(tool => tool.id);
+  }
+
+  // If we have partial config, use the isToolEnabled logic which defaults to true
   return allTools.map(tool => tool.id).filter(toolId => isToolEnabled(pluginSettings, toolId));
 }

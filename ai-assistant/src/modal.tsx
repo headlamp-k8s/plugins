@@ -2,7 +2,6 @@ import { Icon } from '@iconify/react';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button, Grid, Typography } from '@mui/material';
-import { isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AIManager, { Prompt } from './ai/manager';
@@ -21,6 +20,7 @@ import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import LangChainManager from './langchain/LangChainManager';
 import { getSettingsURL, useGlobalState } from './utils';
 import { generateContextDescription } from './utils/contextGenerator';
+import { inlineToolApprovalManager } from './utils/InlineToolApprovalManager';
 import { getProviderModels, parseSuggestionsFromResponse } from './utils/modalUtils';
 import { useDynamicPrompts } from './utils/promptGenerator';
 
@@ -31,19 +31,20 @@ const OPERATION_TYPES = {
   DELETION: 'deletion',
   GENERIC: 'operation',
 } as const;
+import { usePromptWidth } from './contexts/PromptWidthContext';
 import {
   getActiveConfig,
   getSavedConfigurations,
   StoredProviderConfig,
 } from './utils/ProviderConfigManager';
-import { getEnabledToolIds } from './utils/ToolConfigManager';
 
 export default function AIPrompt(props: {
   openPopup: boolean;
   setOpenPopup: (...args) => void;
   pluginSettings: any;
+  width: string;
 }) {
-  const { openPopup, setOpenPopup, pluginSettings } = props;
+  const { openPopup, setOpenPopup, pluginSettings, width } = props;
   const history = useHistory();
   const location = useLocation();
   const rootRef = React.useRef(null);
@@ -52,11 +53,17 @@ export default function AIPrompt(props: {
   const [apiError, setApiError] = React.useState(null);
   const [aiManager, setAiManager] = React.useState<AIManager | null>(null);
   const _pluginSetting = useGlobalState();
+  const { enabledTools, setEnabledTools } = _pluginSetting;
   const [promptHistory, setPromptHistory] = React.useState<Prompt[]>([]);
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
   const selectedClusters = useSelectedClusters();
   const clusters = useClustersConf() || {};
   const dynamicPrompts = useDynamicPrompts();
+  const prompWidthContext = usePromptWidth();
+
+  useEffect(() => {
+    prompWidthContext.setPromptWidth(width);
+  }, [width]);
   // Get cluster names for warning lookup - use selected clusters or current cluster only
   const clusterNames = useMemo(() => {
     const currentCluster = getCluster();
@@ -79,10 +86,6 @@ export default function AIPrompt(props: {
 
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
-
-  const [enabledTools, setEnabledTools] = React.useState<string[]>(
-    getEnabledToolIds(pluginSettings)
-  );
 
   // Test mode detection
   const isTestMode = isTestModeCheck();
@@ -282,9 +285,18 @@ export default function AIPrompt(props: {
     }
   };
 
+  // Track MCP config to trigger manager recreation when MCP servers change
+  const mcpConfigKey = React.useMemo(() => {
+    try {
+      return JSON.stringify(pluginSettings?.mcpConfig || {});
+    } catch {
+      return '';
+    }
+  }, [pluginSettings?.mcpConfig]);
+
   React.useEffect(() => {
     // Recreate the manager whenever pluginSettings change (including tool settings)
-    // or when activeConfig/selectedModel changes
+    // or when activeConfig/selectedModel/mcpConfig changes
     if (activeConfig) {
       try {
         // Create config with selected model
@@ -303,25 +315,13 @@ export default function AIPrompt(props: {
         setApiError(`Failed to initialize AI model: ${error.message}`);
       }
     }
-  }, [enabledTools, activeConfig, selectedModel]);
-
-  React.useEffect(() => {
-    // Only set if different
-    setEnabledTools(currentlyEnabledTools => {
-      const newEnabledTools = getEnabledToolIds(pluginSettings);
-      if (isEqual(currentlyEnabledTools, newEnabledTools)) {
-        return currentlyEnabledTools;
-      }
-      return newEnabledTools;
-    });
-  }, [pluginSettings]);
+  }, [enabledTools, activeConfig, selectedModel, mcpConfigKey]);
 
   const updateHistory = React.useCallback(() => {
     if (!aiManager?.history) {
       setPromptHistory([]);
       return;
     }
-
     // Process the history to extract suggestions and clean content
     const processedHistory = aiManager.history.map((prompt, index) => {
       if (prompt.role === 'assistant' && prompt.content && !prompt.error) {
@@ -348,34 +348,37 @@ export default function AIPrompt(props: {
   const { state: kubernetesUI, callbacks: kubernetesCallbacks } =
     useKubernetesToolUI(updateHistory);
 
-  const handleOperationSuccess = React.useCallback(
-    (response: any) => {
-      // Add the response to the conversation
-      const operationType = response.metadata?.deletionTimestamp ? 'deletion' : 'application';
+  // Set up event listeners for tool confirmation events
+  React.useEffect(() => {
+    const handleRequestConfirmation = () => {
+      // Clear loading state when tool approval is requested
+      setLoading(false);
+      // Force an immediate update of the history from the AI manager
+      updateHistory();
+      // Also force a re-render by updating the state
+      setPromptHistory(prev => [...prev]);
+    };
 
-      const toolPrompt: Prompt = {
-        role: 'tool',
-        content: `Resource ${operationType} completed successfully: ${JSON.stringify(
-          {
-            kind: response.kind,
-            name: response.metadata.name,
-            namespace: response.metadata.namespace,
-            status: 'Success',
-          },
-          null,
-          2
-        )}`,
-        name: 'kubernetes_api_request',
-        toolCallId: `${operationType}-${Date.now()}`,
-      };
+    const handleUpdateConfirmation = () => {
+      updateHistory();
+      setPromptHistory(prev => [...prev]);
+    };
 
-      if (aiManager) {
-        aiManager.history.push(toolPrompt);
-        updateHistory();
-      }
-    },
-    [aiManager, updateHistory]
-  );
+    const handleMessageUpdated = () => {
+      updateHistory();
+      setPromptHistory(prev => [...prev]);
+    };
+
+    inlineToolApprovalManager.on('request-confirmation', handleRequestConfirmation);
+    inlineToolApprovalManager.on('update-confirmation', handleUpdateConfirmation);
+    inlineToolApprovalManager.on('message-updated', handleMessageUpdated);
+
+    return () => {
+      inlineToolApprovalManager.removeListener('request-confirmation', handleRequestConfirmation);
+      inlineToolApprovalManager.removeListener('update-confirmation', handleUpdateConfirmation);
+      inlineToolApprovalManager.removeListener('message-updated', handleMessageUpdated);
+    };
+  }, [updateHistory]);
 
   const handleOperationFailure = React.useCallback(
     (error: any, operationType: string, resourceInfo?: any) => {
@@ -439,16 +442,32 @@ export default function AIPrompt(props: {
 
   // Function to handle test mode responses
   const handleTestModeResponse = (
-    content: string,
+    content: string | object,
     type: 'assistant' | 'user',
     hasError?: boolean
   ) => {
-    const newPrompt: Prompt = {
-      role: type,
-      content,
-      error: hasError || false,
-      ...(hasError && { contentFilterError: true }),
-    };
+    let newPrompt: Prompt;
+
+    // Handle tool confirmation objects
+    if (typeof content === 'object' && content && 'toolConfirmation' in content) {
+      newPrompt = {
+        role: type,
+        content: (content as any).content || '',
+        error: hasError || false,
+        toolConfirmation: (content as any).toolConfirmation,
+        isDisplayOnly: (content as any).isDisplayOnly,
+        requestId: (content as any).requestId,
+        ...(hasError && { contentFilterError: true }),
+      };
+    } else {
+      // Handle regular string content
+      newPrompt = {
+        role: type,
+        content: typeof content === 'string' ? content : JSON.stringify(content),
+        error: hasError || false,
+        ...(hasError && { contentFilterError: true }),
+      };
+    }
 
     setPromptHistory(prev => [...prev, newPrompt]);
     setOpenPopup(true);
@@ -508,6 +527,66 @@ export default function AIPrompt(props: {
       setLoading(false);
     }
   }
+
+  // Function to handle tool retry
+  const handleRetryTool = React.useCallback(
+    async (toolName: string, args: Record<string, any>) => {
+      if (!aiManager) {
+        console.error('Cannot retry tool: aiManager not available');
+        return;
+      }
+
+      try {
+        // Get the tool manager from the LangChain manager
+        const toolManager = (aiManager as any).toolManager;
+        if (!toolManager) {
+          console.error('Cannot retry tool: toolManager not available');
+          return;
+        }
+
+        // Execute the tool directly
+        const toolResponse = await toolManager.executeTool(toolName, args);
+
+        // Add the retry result to the conversation history
+        const retryPrompt: Prompt = {
+          role: 'tool',
+          content: toolResponse.content,
+          toolCallId: `retry-${Date.now()}`,
+          name: toolName,
+        };
+
+        aiManager.history.push(retryPrompt);
+        updateHistory();
+
+        // If the tool should process follow-up, trigger that
+        if (toolResponse.shouldProcessFollowUp) {
+          await aiManager.processToolResponses();
+          updateHistory();
+        }
+      } catch (error) {
+        console.error(`Error retrying tool ${toolName}:`, error);
+
+        // Add error to conversation
+        const errorPrompt: Prompt = {
+          role: 'tool',
+          content: JSON.stringify({
+            error: true,
+            message: `Failed to retry tool: ${
+              error instanceof Error ? error.message : 'Unknown error'
+            }`,
+            toolName,
+          }),
+          toolCallId: `retry-error-${Date.now()}`,
+          name: toolName,
+          error: true,
+        };
+
+        aiManager.history.push(errorPrompt);
+        updateHistory();
+      }
+    },
+    [aiManager, updateHistory]
+  );
 
   // Function to stop the current request
   const handleStopRequest = () => {
@@ -720,6 +799,13 @@ export default function AIPrompt(props: {
           height: '100vh',
           display: 'flex',
           flexDirection: 'column',
+          overflow: 'hidden', // Prevent horizontal overflow
+          maxWidth: '100%',
+          minWidth: 0,
+          // Global override for all MUI Grid items to prevent max-width: none
+          '& .MuiGrid-root > .MuiGrid-item': {
+            maxWidth: '100% !important',
+          },
         }}
       >
         <AIAssistantHeader
@@ -736,6 +822,12 @@ export default function AIPrompt(props: {
           sx={{
             height: '100%',
             padding: 1,
+            overflow: 'hidden', // Prevent overflow
+            maxWidth: '100%',
+            minWidth: 0,
+            '& > .MuiGrid-item': {
+              maxWidth: '100% !important',
+            },
           }}
         >
           <Grid
@@ -744,21 +836,29 @@ export default function AIPrompt(props: {
             sx={{
               height: '100%',
               overflowY: 'auto',
+              overflowX: 'auto', // Allow horizontal scrolling when needed
+              maxWidth: '100%',
+              minWidth: 0,
             }}
           >
             <AIChatContent
               history={memoizedHistory}
               isLoading={loading}
               apiError={apiError}
-              onOperationSuccess={handleOperationSuccess}
+              onOperationSuccess={() => {}}
               onOperationFailure={handleOperationFailure}
               onYamlAction={handleYamlAction}
+              onRetryTool={handleRetryTool}
             />
           </Grid>
           <Grid
             item
             sx={{
               paddingY: 1,
+              maxWidth: '100% !important',
+              '& .MuiGrid-item': {
+                maxWidth: '100% !important',
+              },
             }}
           >
             <PromptSuggestions
@@ -781,6 +881,7 @@ export default function AIPrompt(props: {
               activeConfig={activeConfig}
               availableConfigs={availableConfigs}
               selectedModel={selectedModel}
+              enabledTools={enabledTools}
               onSend={prompt => {
                 AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
                   setApiError(error.message);
@@ -794,6 +895,8 @@ export default function AIPrompt(props: {
                   aiManager?.reset();
                   updateHistory();
                 }
+                // Clear tool approval session when history is cleared
+                inlineToolApprovalManager.clearSession();
               }}
               onConfigChange={(config, model) => {
                 setActiveConfig(config);
@@ -801,6 +904,11 @@ export default function AIPrompt(props: {
                 handleChangeConfig(config, model);
               }}
               onTestModeResponse={handleTestModeResponse}
+              onToolsChange={newEnabledTools => {
+                setEnabledTools(newEnabledTools);
+                // Recreate AI manager with new tools
+                handleChangeConfig(activeConfig, selectedModel);
+              }}
             />
           </Grid>
         </Grid>
@@ -814,7 +922,7 @@ export default function AIPrompt(props: {
           yamlContent={editorContent}
           title={editorTitle}
           resourceType={resourceType}
-          onSuccess={handleOperationSuccess}
+          onSuccess={() => {}}
           onFailure={handleOperationFailure}
         />
       )}

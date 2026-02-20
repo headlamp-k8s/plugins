@@ -4,6 +4,7 @@ import { Prompt } from '../../ai/manager';
 
 export interface ToolConfig {
   name: string;
+  shortDescription: string;
   description: string;
   schema: z.ZodSchema;
 }

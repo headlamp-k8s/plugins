@@ -5,6 +5,7 @@ import { KubernetesToolContext } from './types';
 export class KubernetesTool extends ToolBase {
   readonly config: ToolConfig = {
     name: 'kubernetes_api_request',
+    shortDescription: 'Make requests to the Kubernetes API',
     description: `Make requests to the Kubernetes API server to fetch, create, update or delete resources.
 
 RESOURCE UPDATE GUIDELINES:
@@ -94,15 +95,8 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
     pendingPrompt
   ): Promise<ToolResponse> => {
     if (!this.context) {
-      console.error('Kubernetes tool context not configured');
       throw new Error('Kubernetes tool context not configured');
     }
-
-    console.log(`Processing kubernetes_api_request tool: ${method} ${url}`, {
-      hasContext: !!this.context,
-      toolCallId,
-      selectedClusters: this.context?.selectedClusters,
-    });
 
     // For GET requests, we can execute them immediately using the API helper
     if (method.toUpperCase() === 'GET') {

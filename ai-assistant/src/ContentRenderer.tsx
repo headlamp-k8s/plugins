@@ -6,6 +6,7 @@ import { Link as RouterLink, useHistory } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
 import YAML from 'yaml';
 import { LogsButton, YamlDisplay } from './components';
+import MCPFormattedMessage from './components/chat/MCPFormattedMessage';
 import { getHeadlampLink } from './utils/promptLinkHelper';
 import { parseKubernetesYAML } from './utils/SampleYamlLibrary';
 
@@ -87,6 +88,8 @@ const parseLogsButtonData = (content: string, logsButtonIndex: number): ParseRes
 interface ContentRendererProps {
   content: string;
   onYamlDetected?: (yaml: string, resourceType: string) => void;
+  promptWidth?: string; // Add width prop
+  onRetryTool?: (toolName: string, args: Record<string, any>) => void;
 }
 
 // Table wrapper component with show more functionality - moved outside to preserve state
@@ -96,7 +99,14 @@ const TableWrapper: React.FC<{ children: React.ReactNode }> = React.memo(({ chil
 
   // Extract table rows from children
   const tableElement = React.Children.only(children) as React.ReactElement;
-  const tbody = React.Children.toArray(tableElement.props.children).find(
+  const tableChildren = tableElement.props.children;
+
+  if (!tableChildren) {
+    // No children found, return table as is
+    return <Box sx={{ overflowX: 'auto', width: '100%', mb: 2 }}>{children}</Box>;
+  }
+
+  const tbody = React.Children.toArray(tableChildren).find(
     (child: any) => child?.type === 'tbody' || child?.props?.component === 'tbody'
   );
 
@@ -106,7 +116,8 @@ const TableWrapper: React.FC<{ children: React.ReactNode }> = React.memo(({ chil
   }
 
   const tbodyElement = tbody as React.ReactElement;
-  const rows = React.Children.toArray(tbodyElement.props.children);
+  const tbodyChildren = tbodyElement.props.children;
+  const rows = tbodyChildren ? React.Children.toArray(tbodyChildren) : [];
   const hasMoreRows = rows.length > maxRows;
   const visibleRows = showAll ? rows : rows.slice(0, maxRows);
 
@@ -117,7 +128,7 @@ const TableWrapper: React.FC<{ children: React.ReactNode }> = React.memo(({ chil
 
   // Clone the table with the limited tbody
   const limitedTable = React.cloneElement(tableElement, {
-    children: React.Children.map(tableElement.props.children, (child: any) => {
+    children: React.Children.map(tableChildren, (child: any) => {
       if (child?.type === 'tbody' || child?.props?.component === 'tbody') {
         return limitedTbody;
       }
@@ -276,7 +287,7 @@ markdownComponents.li.displayName = 'MarkdownLi';
 markdownComponents.blockquote.displayName = 'MarkdownBlockquote';
 
 const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
-  ({ content, onYamlDetected }) => {
+  ({ content, onYamlDetected, onRetryTool }) => {
     const history = useHistory();
     // Create code component that has access to onYamlDetected
     const CodeComponent = React.useMemo(() => {
@@ -524,7 +535,18 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
     const processedContent = useMemo(() => {
       if (!content) return null;
 
-      // First, check if content is a JSON response with error or success keys
+      // First, check if content is a formatted MCP output (pure JSON)
+      try {
+        const parsed = JSON.parse(content.trim());
+        if (parsed.formatted && parsed.mcpOutput) {
+          // This is a formatted MCP output, use our specialized component
+          return <MCPFormattedMessage content={content} isAssistant onRetryTool={onRetryTool} />;
+        }
+      } catch (error) {
+        // Not JSON or not formatted MCP output, continue with normal processing
+      }
+
+      // Second, check if content is a JSON response with error or success keys
       const jsonParseResult = parseJsonContent(content.trim());
       if (jsonParseResult.success) {
         const parsedContent = jsonParseResult.data;
@@ -556,8 +578,8 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
             <Box
               component="pre"
               sx={{
-                backgroundColor: theme => theme.palette.grey[100],
-                color: theme => theme.palette.grey[900],
+                backgroundColor: (theme: any) => theme.palette.grey[100],
+                color: (theme: any) => theme.palette.grey[900],
                 padding: 2,
                 borderRadius: 1,
                 overflowX: 'auto',
@@ -633,7 +655,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           {content}
         </ReactMarkdown>
       );
-    }, [content, onYamlDetected, processUnformattedYaml]);
+    }, [content, onYamlDetected, onRetryTool, processUnformattedYaml]);
 
     return (
       <Box sx={{ width: '100%', overflowWrap: 'break-word', wordWrap: 'break-word' }}>
@@ -645,7 +667,8 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
     // Only re-render if content or onYamlDetected actually changed
     return (
       prevProps.content === nextProps.content &&
-      prevProps.onYamlDetected === nextProps.onYamlDetected
+      prevProps.onYamlDetected === nextProps.onYamlDetected &&
+      prevProps.onRetryTool === nextProps.onRetryTool
     );
   }
 );
