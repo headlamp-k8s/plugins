@@ -237,7 +237,13 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     (prompt: Prompt, index: number) => {
       if (
         prompt.role === 'system' ||
-        (prompt.role === 'tool' && typeof prompt.content !== 'string')
+        (prompt.role === 'tool' && typeof prompt.content !== 'string') ||
+        // Hide tool responses that have a toolCallId — these are intermediate API data
+        // that the LLM will analyze and present as a descriptive response instead.
+        // Exception: LOGS_BUTTON entries should still render so the user can view/expand logs.
+        (prompt.role === 'tool' &&
+          prompt.toolCallId &&
+          !(typeof prompt.content === 'string' && prompt.content.includes('LOGS_BUTTON:')))
       ) {
         return null;
       }
