@@ -2,7 +2,7 @@ import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
 import { apply, clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
-import { isLogRequest, isSpecificResourceRequestHelper } from '.';
+import { isLogRequest, isSpecificResourceRequestHelper } from './index';
 
 // Deep merge function to merge patch with current resource
 function deepMerge(target: any, source: any): any {

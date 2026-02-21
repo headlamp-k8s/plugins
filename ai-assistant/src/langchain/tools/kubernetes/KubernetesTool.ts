@@ -118,7 +118,20 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
           undefined // No failure callback for GET requests (they're read-only)
         );
 
-        // The handleActualApiRequest already adds to history, so we return a simple response
+        // Tag the history entry pushed by handleActualApiRequest with the toolCallId
+        // so processToolResponses can pick it up and send it to the LLM for analysis.
+        if (this.context.aiManager?.history) {
+          const history = this.context.aiManager.history;
+          for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].role === 'tool' && !history[i].toolCallId) {
+              history[i].toolCallId = toolCallId;
+              history[i].name = 'kubernetes_api_request';
+              break;
+            }
+          }
+        }
+
+        // The handleActualApiRequest already adds to history (now tagged with toolCallId)
         return {
           content: typeof apiResponse === 'string' ? apiResponse : JSON.stringify(apiResponse),
           shouldAddToHistory: false, // Already added by handleActualApiRequest
