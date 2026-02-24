@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   release:
@@ -87,12 +88,21 @@ jobs:
           echo "   archive-checksum: ${CHECKSUM}"
 
       - name: Commit artifacthub-pkg.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          BRANCH="chore/artifacthub-v${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
           git add artifacthub-pkg.yml
           git commit -m "chore: update artifacthub metadata for v${{ steps.version.outputs.version }}"
-          git push origin HEAD:main
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: update artifacthub metadata for v${{ steps.version.outputs.version }}" \
+            --body "Automated update of artifacthub-pkg.yml for release v${{ steps.version.outputs.version }}" \
+            --base main \
+            --head "$BRANCH"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
