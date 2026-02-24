@@ -11,6 +11,7 @@ import {
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
 import { RunnablePassthrough, RunnableSequence } from '@langchain/core/runnables';
+import { ChatDeepSeek } from '@langchain/deepseek';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatMistralAI } from '@langchain/mistralai';
 import { ChatOllama } from '@langchain/ollama';
@@ -182,6 +183,16 @@ export default class LangChainManager extends AIManager {
             throw new Error('API key is required for Google Gemini');
           }
           return new ChatGoogleGenerativeAI({
+            apiKey: sanitizedConfig.apiKey,
+            model: sanitizedConfig.model,
+            verbose: true,
+          });
+        }
+        case 'deepseek': {
+          if (!sanitizedConfig.apiKey) {
+            throw new Error('API key is required for DeepSeek');
+          }
+          return new ChatDeepSeek({
             apiKey: sanitizedConfig.apiKey,
             model: sanitizedConfig.model,
             verbose: true,
