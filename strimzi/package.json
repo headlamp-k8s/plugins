@@ -1,6 +1,6 @@
 {
   "name": "strimzi-headlamp",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources",
   "main": "dist/main.js",
   "author": "Angelo Cesaro",
