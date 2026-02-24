@@ -68,6 +68,32 @@ jobs:
           echo "📋 Checksum: $CHECKSUM"
           echo "📦 Tarball: $TARBALL"
 
+      - name: Update artifacthub-pkg.yml
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          CURRENT_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          ARCHIVE_URL="https://github.com/cesaroangelo/strimzi-headlamp/releases/download/v${VERSION}/strimzi-headlamp-${VERSION}.tar.gz"
+          CHECKSUM="sha256:${{ steps.checksum.outputs.checksum }}"
+
+          sed -i "s/^version: .*/version: ${VERSION}/" artifacthub-pkg.yml
+          sed -i "s/^createdAt: .*/createdAt: ${CURRENT_DATE}/" artifacthub-pkg.yml
+          sed -i "s|headlamp/plugin/archive-url: .*|headlamp/plugin/archive-url: ${ARCHIVE_URL}|" artifacthub-pkg.yml
+          sed -i "s|headlamp/plugin/archive-checksum: .*|headlamp/plugin/archive-checksum: \"${CHECKSUM}\"|" artifacthub-pkg.yml
+
+          echo "✅ artifacthub-pkg.yml updated"
+          echo "   version: ${VERSION}"
+          echo "   createdAt: ${CURRENT_DATE}"
+          echo "   archive-url: ${ARCHIVE_URL}"
+          echo "   archive-checksum: ${CHECKSUM}"
+
+      - name: Commit artifacthub-pkg.yml
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add artifacthub-pkg.yml
+          git commit -m "chore: update artifacthub metadata for v${{ steps.version.outputs.version }}"
+          git push origin HEAD:main
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
