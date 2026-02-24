@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.8] - 2026-02-24
+
+### Changed
+- Automated Artifact Hub metadata update on release (version, date, archive URL, checksum)
+
+## [0.3.7] - 2026-02-16
+
+### Added
+- Artifact Hub badge in README
+- Demo video in README
+
+### Changed
+- Cleaned up repository documentation
+
+## [0.3.1 - 0.3.6] - 2026-02-16
+
+### Fixed
+- Release workflow fixes (package name, npm publish configuration)
+
 ## [0.3.0] - 2025-01-30
 
 ### Added
