@@ -1,7 +1,7 @@
-version: 0.3.7
+version: 0.3.8
 name: headlamp_strimzi
 displayName: Strimzi
-createdAt: 2026-02-24T00:00:00Z
+createdAt: 2026-02-24T22:50:18Z
 description: A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources
 logoURL: https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/main/documentation/logo/strimzi_logo.png
 license: Apache-2.0
@@ -51,7 +51,7 @@ maintainers:
 provider:
   name: Angelo Cesaro
 annotations:
-  headlamp/plugin/archive-url: https://github.com/cesaroangelo/strimzi-headlamp/releases/download/v0.3.7/strimzi-headlamp-0.3.7.tar.gz
-  headlamp/plugin/archive-checksum: "sha256:499b983932cfa033f538d4224d105445a5333817528b17bf9d5a520cb6c2e5ae"
+  headlamp/plugin/archive-url: https://github.com/cesaroangelo/strimzi-headlamp/releases/download/v0.3.8/strimzi-headlamp-0.3.8.tar.gz
+  headlamp/plugin/archive-checksum: "sha256:b5eadedf67b76cbb086d0a231a5437e529679f6e82a7f1dd9bef66d572c2f83f"
   headlamp/plugin/version-compat: ">=0.22"
   headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
