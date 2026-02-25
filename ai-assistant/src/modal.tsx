@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { HolmesAgent, DEFAULT_AGUI_URL } from './agent/holmesClient';
 import { Box, Button, Grid, Typography } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -89,6 +90,14 @@ export default function AIPrompt(props: {
 
   // Test mode detection
   const isTestMode = isTestModeCheck();
+
+  // Agent mode state
+  const [isAgentMode, setIsAgentMode] = React.useState(false);
+
+  const [agentModeStatus, setAgentModeStatus] = React.useState<
+    'idle' | 'checking' | 'found' | 'not-found'
+  >('idle');
+  const holmesAgentRef = React.useRef<HolmesAgent | null>(null);
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -588,9 +597,174 @@ export default function AIPrompt(props: {
     [aiManager, updateHistory]
   );
 
+  // Agent mode: toggle handler – connects directly to the Holmes ag-ui server.
+  const handleToggleAgentMode = React.useCallback(
+    async (enabled: boolean) => {
+      if (enabled) {
+        setAgentModeStatus('found');
+        setIsAgentMode(true);
+
+        // Create the HolmesAgent pointing directly at the ag-ui server
+        const agent = new HolmesAgent(DEFAULT_AGUI_URL);
+        agent.subscribe({
+          onEvent: ({ event }) => {
+            console.log('[AgentMode] onEvent:', event.type, event);
+          },
+          onRunInitialized: () => {
+            console.log('[AgentMode] onRunInitialized');
+          },
+          onRunFailed: ({ error }) => {
+            console.error('[AgentMode] onRunFailed:', error);
+          },
+          onRunFinalized: () => {
+            console.log('[AgentMode] onRunFinalized');
+          },
+          onRunStartedEvent: () => {
+            console.log('[AgentMode] onRunStartedEvent');
+            setLoading(true);
+          },
+          onRunFinishedEvent: () => {
+            console.log('[AgentMode] onRunFinishedEvent');
+            setLoading(false);
+          },
+          onRunErrorEvent: ({ event }) => {
+            console.error('[AgentMode] onRunErrorEvent:', event);
+            setLoading(false);
+            setPromptHistory(prev => [
+              ...prev,
+              {
+                role: 'assistant',
+                content: `Agent error: ${event.message}`,
+                error: true,
+              },
+            ]);
+          },
+          onTextMessageStartEvent: ({ event }) => {
+            console.log('[AgentMode] onTextMessageStartEvent:', event.messageId);
+            // Add a new empty assistant message that will be filled by content events
+            setPromptHistory(prev => [...prev, { role: 'assistant', content: '' }]);
+          },
+          onTextMessageContentEvent: ({ textMessageBuffer, event }) => {
+            console.log('[AgentMode] onTextMessageContentEvent:', { delta: event.delta, bufferLen: textMessageBuffer?.length });
+            // textMessageBuffer from the library is broken (always empty),
+            // so we accumulate event.delta ourselves.
+            setPromptHistory(prev => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (updated[i].role === 'assistant' && !updated[i].error) {
+                  updated[i] = {
+                    ...updated[i],
+                    content: (updated[i].content || '') + event.delta,
+                  };
+                  break;
+                }
+              }
+              return updated;
+            });
+          },
+          onTextMessageEndEvent: () => {
+            console.log('[AgentMode] onTextMessageEndEvent');
+            // Content is already up to date from the last content event
+          },
+          onToolCallStartEvent: ({ event }) => {
+            setPromptHistory(prev => [
+              ...prev,
+              {
+                role: 'system',
+                content: `🔧 Calling tool: ${event.toolCallName}…`,
+              },
+            ]);
+          },
+          onToolCallEndEvent: ({ toolCallName, toolCallArgs }) => {
+            // Update the last tool-call system message with the parsed result
+            setPromptHistory(prev => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (
+                  updated[i].role === 'system' &&
+                  updated[i].content?.includes('Calling tool:')
+                ) {
+                  updated[i] = {
+                    ...updated[i],
+                    content: `🔧 Tool: ${toolCallName}\n\`\`\`json\n${JSON.stringify(toolCallArgs, null, 2)}\n\`\`\``,
+                  };
+                  break;
+                }
+              }
+              return updated;
+            });
+          },
+        });
+        holmesAgentRef.current = agent;
+
+        setPromptHistory(prev => [
+          ...prev,
+          {
+            role: 'system',
+            content: `Agent mode active. Connected to Holmes ag-ui server at ${agent.connectionLabel}.`,
+          },
+        ]);
+      } else {
+        setIsAgentMode(false);
+        setAgentModeStatus('idle');
+        holmesAgentRef.current = null;
+        setPromptHistory(prev => [
+          ...prev,
+          { role: 'system', content: 'Switched back to AI Chat mode.' },
+        ]);
+      }
+    },
+    []
+  );
+
+  // Agent mode: send a message to Holmes via the ag-ui HolmesAgent.
+  // Events (text streaming, tool calls, errors) are handled by the subscriber
+  // set up in handleToggleAgentMode.
+  const handleAgentSend = React.useCallback(
+    async (prompt: string) => {
+      const agent = holmesAgentRef.current;
+      if (!agent) return;
+
+      setOpenPopup(true);
+      setPromptHistory(prev => [...prev, { role: 'user', content: prompt }]);
+      setLoading(true);
+
+      try {
+        console.log('[AgentMode] addMessage:', prompt);
+        agent.addMessage({
+          id: `msg-${Date.now()}`,
+          role: 'user',
+          content: prompt,
+        });
+
+        console.log('[AgentMode] runAgent starting...');
+        const result = await agent.runAgent({
+          runId: `run-${Date.now()}`,
+        });
+        console.log('[AgentMode] runAgent completed:', result);
+      } catch (error) {
+        console.error('[AgentMode] runAgent error:', error);
+        setPromptHistory(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            error: true,
+          },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setOpenPopup]
+  );
+
   // Function to stop the current request
   const handleStopRequest = () => {
-    if (aiManager && loading) {
+    if (isAgentMode && holmesAgentRef.current) {
+      holmesAgentRef.current.abortRun();
+      setLoading(false);
+    } else if (aiManager && loading) {
       aiManager.abort();
       setLoading(false);
     }
@@ -882,10 +1056,18 @@ export default function AIPrompt(props: {
               availableConfigs={availableConfigs}
               selectedModel={selectedModel}
               enabledTools={enabledTools}
+              isAgentMode={isAgentMode}
+              agentModeStatus={agentModeStatus}
               onSend={prompt => {
-                AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                  setApiError(error.message);
-                });
+                if (isAgentMode) {
+                  handleAgentSend(prompt).catch(error => {
+                    setApiError(error.message);
+                  });
+                } else {
+                  AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
+                    setApiError(error.message);
+                  });
+                }
               }}
               onStop={handleStopRequest}
               onClearHistory={() => {
@@ -909,6 +1091,7 @@ export default function AIPrompt(props: {
                 // Recreate AI manager with new tools
                 handleChangeConfig(activeConfig, selectedModel);
               }}
+              onToggleAgentMode={handleToggleAgentMode}
             />
           </Grid>
         </Grid>

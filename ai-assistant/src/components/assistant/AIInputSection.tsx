@@ -3,11 +3,13 @@ import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
+  Chip,
   Grid,
   ListSubheader,
   MenuItem,
   Select,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import React from 'react';
@@ -26,6 +28,8 @@ interface AIInputSectionProps {
   availableConfigs: StoredProviderConfig[];
   selectedModel: string;
   enabledTools: string[];
+  isAgentMode?: boolean;
+  agentModeStatus?: 'idle' | 'checking' | 'found' | 'not-found';
   onSend: (prompt: string) => void;
   onStop: () => void;
   onClearHistory: () => void;
@@ -36,6 +40,7 @@ interface AIInputSectionProps {
     hasError?: boolean
   ) => void;
   onToolsChange: (enabledTools: string[]) => void;
+  onToggleAgentMode?: (enabled: boolean) => void;
 }
 
 export const AIInputSection: React.FC<AIInputSectionProps> = ({
@@ -47,12 +52,15 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   availableConfigs,
   selectedModel,
   enabledTools,
+  isAgentMode = false,
+  agentModeStatus = 'idle',
   onSend,
   onStop,
   onClearHistory,
   onConfigChange,
   onTestModeResponse,
   onToolsChange,
+  onToggleAgentMode,
 }) => {
   const [showToolsDialog, setShowToolsDialog] = React.useState(false);
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -120,7 +128,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
         onKeyDown={handleKeyDown}
         variant="outlined"
         value={promptVal}
-        label={isTestMode ? 'Type user message (Test Mode)' : 'Ask AI'}
+        label={isTestMode ? 'Type user message (Test Mode)' : isAgentMode ? 'Ask Holmes (Agent Mode)' : 'Ask AI'}
         multiline
         fullWidth
         minRows={2}
@@ -145,6 +153,41 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
       >
         <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
           <ActionButton description="Clear History" onClick={onClearHistory} icon="mdi:broom" />
+
+          {/* Agent Mode Toggle */}
+          {!isTestMode && onToggleAgentMode && (
+            <Box ml={1}>
+              <Tooltip
+                title={
+                  isAgentMode
+                    ? 'Agent mode active – using Holmes. Click to switch back to AI Chat.'
+                    : 'Switch to Agent mode (requires Holmes)'
+                }
+              >
+                <Chip
+                  size="small"
+                  label={agentModeStatus === 'checking' ? 'Checking…' : 'Agent'}
+                  icon={
+                    <Icon
+                      icon={
+                        agentModeStatus === 'checking'
+                          ? 'mdi:loading'
+                          : isAgentMode
+                          ? 'mdi:robot'
+                          : 'mdi:robot-outline'
+                      }
+                      width="14px"
+                    />
+                  }
+                  onClick={() => onToggleAgentMode(!isAgentMode)}
+                  color={isAgentMode ? 'primary' : 'default'}
+                  variant={isAgentMode ? 'filled' : 'outlined'}
+                  disabled={agentModeStatus === 'checking'}
+                  sx={{ cursor: agentModeStatus === 'checking' ? 'default' : 'pointer' }}
+                />
+              </Tooltip>
+            </Box>
+          )}
 
           {/* Provider Selection Dropdown */}
           {availableConfigs.length > 0 && !isTestMode && (
