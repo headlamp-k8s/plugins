@@ -24,11 +24,20 @@ interface AIInputSectionProps {
   activeConfig: StoredProviderConfig | null;
   availableConfigs: StoredProviderConfig[];
   selectedModel: string;
+  enabledTools: string[];
+  isAgentMode?: boolean;
+  agentModeStatus?: 'idle' | 'checking' | 'found' | 'not-found';
   onSend: (prompt: string) => void;
   onStop: () => void;
   onClearHistory: () => void;
   onConfigChange: (config: StoredProviderConfig, model: string) => void;
-  onTestModeResponse: (content: string, type: 'assistant' | 'user', hasError?: boolean) => void;
+  onTestModeResponse: (
+    content: string | object,
+    type: 'assistant' | 'user',
+    hasError?: boolean
+  ) => void;
+  onToolsChange: (enabledTools: string[]) => void;
+  onToggleAgentMode?: (enabled: boolean) => void;
 }
 
 export const AIInputSection: React.FC<AIInputSectionProps> = ({
@@ -39,11 +48,16 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   activeConfig,
   availableConfigs,
   selectedModel,
+  enabledTools,
+  isAgentMode = false,
+  agentModeStatus = 'idle',
   onSend,
   onStop,
   onClearHistory,
   onConfigChange,
   onTestModeResponse,
+  onToolsChange,
+  onToggleAgentMode,
 }) => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -110,7 +124,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
         onKeyDown={handleKeyDown}
         variant="outlined"
         value={promptVal}
-        label={isTestMode ? 'Type user message (Test Mode)' : 'Ask AI'}
+        label={isTestMode ? 'Type user message (Test Mode)' : isAgentMode ? 'Ask Holmes (Agent Mode)' : 'Ask AI'}
         multiline
         fullWidth
         minRows={2}
@@ -127,8 +141,51 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
         <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
           <ActionButton description="Clear History" onClick={onClearHistory} icon="mdi:broom" />
 
-          {/* Provider Selection Dropdown */}
-          {availableConfigs.length > 0 && !isTestMode && (
+          {/* Mode Selector: Chat / Holmes Agent */}
+          {!isTestMode && onToggleAgentMode && (
+            <Box ml={1}>
+              <Select
+                value={isAgentMode ? 'agent' : 'chat'}
+                onChange={e => {
+                  const mode = e.target.value;
+                  onToggleAgentMode(mode === 'agent');
+                }}
+                size="small"
+                sx={{ minWidth: 150, height: 32 }}
+                variant="outlined"
+                disabled={agentModeStatus === 'checking'}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Icon
+                      icon={selected === 'agent' ? 'mdi:robot' : 'mdi:chat'}
+                      width="16px"
+                      height="16px"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Typography variant="body2">
+                      {selected === 'agent' ? 'Holmes Agent' : 'Chat'}
+                    </Typography>
+                  </Box>
+                )}
+              >
+                <MenuItem value="chat">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Icon icon="mdi:chat" width="16px" height="16px" />
+                    <Typography variant="body2">Chat</Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="agent">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Icon icon="mdi:robot" width="16px" height="16px" />
+                    <Typography variant="body2">Holmes Agent</Typography>
+                  </Box>
+                </MenuItem>
+              </Select>
+            </Box>
+          )}
+
+          {/* Provider Selection Dropdown – hidden in agent mode */}
+          {availableConfigs.length > 0 && !isTestMode && !isAgentMode && (
             <Box ml={2} sx={{ display: 'flex', alignItems: 'center' }}>
               <Select
                 value={getCurrentValue()}
@@ -186,6 +243,20 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
                   ];
                 })}
               </Select>
+            </Box>
+          )}
+
+          {/* Tools Button – hidden in agent mode */}
+          {!isTestMode && !isAgentMode && (
+            <Box ml={1}>
+              <ActionButton
+                description="Manage Tools"
+                onClick={() => setShowToolsDialog(true)}
+                icon="mdi:tools"
+                iconButtonProps={{
+                  size: 'small',
+                }}
+              />
             </Box>
           )}
         </Grid>
