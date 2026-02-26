@@ -91,8 +91,8 @@ export default function AIPrompt(props: {
   // Test mode detection
   const isTestMode = isTestModeCheck();
 
-  // Agent mode state
-  const [isAgentMode, setIsAgentMode] = React.useState(false);
+  // Agent mode state – default to agent mode so users can start immediately
+  const [isAgentMode, setIsAgentMode] = React.useState(true);
 
   const [agentModeStatus, setAgentModeStatus] = React.useState<
     'idle' | 'checking' | 'found' | 'not-found'
@@ -598,6 +598,21 @@ export default function AIPrompt(props: {
   );
 
   // Agent mode: toggle handler – connects directly to the Holmes ag-ui server.
+  // Ref to track the current agent message being built.
+  // Intermediate text messages are accumulated as thinking steps;
+  // the last message before RUN_FINISHED becomes the final answer.
+  const agentMessageIdRef = React.useRef<string | null>(null);
+  const agentTextBufferRef = React.useRef<string>('');
+  const agentCurrentMsgIdRef = React.useRef<string>('');
+
+  /** Classify an incoming text message from Holmes */
+  const classifyAgentText = (text: string): 'tool-start' | 'tool-result' | 'todo-update' | 'intermediate-text' => {
+    if (/^🔧\s*Using Agent tool:/.test(text)) return 'tool-start';
+    if (/^🔧\s*\S+\s+result:/.test(text)) return 'tool-result';
+    if (/^###\s*Investigation Tasks:/.test(text)) return 'todo-update';
+    return 'intermediate-text';
+  };
+
   const handleToggleAgentMode = React.useCallback(
     async (enabled: boolean) => {
       if (enabled) {
@@ -622,10 +637,40 @@ export default function AIPrompt(props: {
           onRunStartedEvent: () => {
             console.log('[AgentMode] onRunStartedEvent');
             setLoading(true);
+            // Create the placeholder assistant message with thinking steps
+            const placeholderId = `agent-response-${Date.now()}`;
+            agentMessageIdRef.current = placeholderId;
+            setPromptHistory(prev => [
+              ...prev,
+              {
+                role: 'assistant',
+                content: '',
+                agentThinkingSteps: [],
+                agentThinkingDone: false,
+              },
+            ]);
           },
           onRunFinishedEvent: () => {
             console.log('[AgentMode] onRunFinishedEvent');
             setLoading(false);
+            // Mark thinking as done on the placeholder message
+            setPromptHistory(prev => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (
+                  updated[i].role === 'assistant' &&
+                  updated[i].agentThinkingSteps !== undefined &&
+                  !updated[i].agentThinkingDone
+                ) {
+                  updated[i] = { ...updated[i], agentThinkingDone: true };
+                  break;
+                }
+              }
+              return updated;
+            });
+            agentMessageIdRef.current = null;
+            agentTextBufferRef.current = '';
+            agentCurrentMsgIdRef.current = '';
           },
           onRunErrorEvent: ({ event }) => {
             console.error('[AgentMode] onRunErrorEvent:', event);
@@ -638,56 +683,117 @@ export default function AIPrompt(props: {
                 error: true,
               },
             ]);
+            agentMessageIdRef.current = null;
           },
           onTextMessageStartEvent: ({ event }) => {
             console.log('[AgentMode] onTextMessageStartEvent:', event.messageId);
-            // Add a new empty assistant message that will be filled by content events
-            setPromptHistory(prev => [...prev, { role: 'assistant', content: '' }]);
+            agentTextBufferRef.current = '';
+            agentCurrentMsgIdRef.current = event.messageId;
           },
-          onTextMessageContentEvent: ({ textMessageBuffer, event }) => {
-            console.log('[AgentMode] onTextMessageContentEvent:', { delta: event.delta, bufferLen: textMessageBuffer?.length });
-            // textMessageBuffer from the library is broken (always empty),
-            // so we accumulate event.delta ourselves.
+          onTextMessageContentEvent: ({ event }) => {
+            console.log('[AgentMode] onTextMessageContentEvent:', { delta: event.delta });
+            agentTextBufferRef.current += event.delta || '';
+          },
+          onTextMessageEndEvent: () => {
+            console.log('[AgentMode] onTextMessageEndEvent');
+            const fullText = agentTextBufferRef.current;
+            const msgId = agentCurrentMsgIdRef.current;
+            const stepType = classifyAgentText(fullText);
+
+            // Update the placeholder assistant message:
+            // - Intermediate messages go into agentThinkingSteps
+            // - Each new message replaces content (final answer is the last one)
             setPromptHistory(prev => {
               const updated = [...prev];
               for (let i = updated.length - 1; i >= 0; i--) {
-                if (updated[i].role === 'assistant' && !updated[i].error) {
+                if (
+                  updated[i].role === 'assistant' &&
+                  updated[i].agentThinkingSteps !== undefined &&
+                  !updated[i].agentThinkingDone
+                ) {
+                  const existingSteps = updated[i].agentThinkingSteps || [];
+                  // Move the previous content (if any) into thinking steps
+                  const prevContent = updated[i].content || '';
+                  let newSteps = [...existingSteps];
+                  if (prevContent.trim()) {
+                    const prevType = classifyAgentText(prevContent);
+                    // Only add if it's not already the last step
+                    const lastStep = newSteps[newSteps.length - 1];
+                    if (!lastStep || lastStep.content !== prevContent) {
+                      newSteps.push({
+                        id: `step-prev-${i}-${newSteps.length}`,
+                        content: prevContent,
+                        type: prevType,
+                        timestamp: Date.now(),
+                      });
+                    }
+                  }
+                  // The new text becomes the current content (potential final answer)
+                  // We also add it as a thinking step since we don't know if it's final yet
+                  newSteps.push({
+                    id: `step-${msgId}`,
+                    content: fullText,
+                    type: stepType,
+                    timestamp: Date.now(),
+                  });
                   updated[i] = {
                     ...updated[i],
-                    content: (updated[i].content || '') + event.delta,
+                    content: fullText,
+                    agentThinkingSteps: newSteps,
                   };
                   break;
                 }
               }
               return updated;
             });
-          },
-          onTextMessageEndEvent: () => {
-            console.log('[AgentMode] onTextMessageEndEvent');
-            // Content is already up to date from the last content event
+
+            agentTextBufferRef.current = '';
+            agentCurrentMsgIdRef.current = '';
           },
           onToolCallStartEvent: ({ event }) => {
-            setPromptHistory(prev => [
-              ...prev,
-              {
-                role: 'system',
-                content: `🔧 Calling tool: ${event.toolCallName}…`,
-              },
-            ]);
-          },
-          onToolCallEndEvent: ({ toolCallName, toolCallArgs }) => {
-            // Update the last tool-call system message with the parsed result
+            console.log('[AgentMode] onToolCallStartEvent:', event.toolCallName);
+            // Add tool call as a thinking step
             setPromptHistory(prev => {
               const updated = [...prev];
               for (let i = updated.length - 1; i >= 0; i--) {
                 if (
-                  updated[i].role === 'system' &&
-                  updated[i].content?.includes('Calling tool:')
+                  updated[i].role === 'assistant' &&
+                  updated[i].agentThinkingSteps !== undefined &&
+                  !updated[i].agentThinkingDone
                 ) {
-                  updated[i] = {
-                    ...updated[i],
-                    content: `🔧 Tool: ${toolCallName}\n\`\`\`json\n${JSON.stringify(toolCallArgs, null, 2)}\n\`\`\``,
-                  };
+                  const steps = [...(updated[i].agentThinkingSteps || [])];
+                  steps.push({
+                    id: `tool-${event.toolCallId || event.toolCallName}-${Date.now()}`,
+                    content: `Calling tool: ${event.toolCallName}`,
+                    type: 'tool-start',
+                    timestamp: Date.now(),
+                  });
+                  updated[i] = { ...updated[i], agentThinkingSteps: steps };
+                  break;
+                }
+              }
+              return updated;
+            });
+          },
+          onToolCallEndEvent: ({ toolCallName, toolCallArgs }) => {
+            console.log('[AgentMode] onToolCallEndEvent:', toolCallName);
+            // Add tool result as a thinking step
+            setPromptHistory(prev => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (
+                  updated[i].role === 'assistant' &&
+                  updated[i].agentThinkingSteps !== undefined &&
+                  !updated[i].agentThinkingDone
+                ) {
+                  const steps = [...(updated[i].agentThinkingSteps || [])];
+                  steps.push({
+                    id: `tool-end-${toolCallName}-${Date.now()}`,
+                    content: `Tool ${toolCallName} completed`,
+                    type: 'tool-result',
+                    timestamp: Date.now(),
+                  });
+                  updated[i] = { ...updated[i], agentThinkingSteps: steps };
                   break;
                 }
               }
@@ -716,6 +822,14 @@ export default function AIPrompt(props: {
     },
     []
   );
+
+  // Auto-initialize agent mode on first mount (agent is default mode)
+  React.useEffect(() => {
+    if (isAgentMode && !holmesAgentRef.current) {
+      handleToggleAgentMode(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Agent mode: send a message to Holmes via the ag-ui HolmesAgent.
   // Events (text streaming, tool calls, errors) are handled by the subscriber
@@ -906,13 +1020,20 @@ export default function AIPrompt(props: {
   // If panel is not open, don't render
   if (!openPopup) return null;
 
-  // Check if we have any valid configuration
+  // Check if we have any valid configuration for chat mode
   const savedConfigs = getSavedConfigurations(pluginSettings);
   const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
   const hasValidConfig = hasAnyValidConfig;
 
   // Helper function to check if we should show greeting - memoized for performance
   const shouldShowGreeting = React.useMemo(() => {
+    // In agent mode, show greeting without requiring chat config
+    if (isAgentMode) {
+      const hasConversationMessages = promptHistory.some(
+        msg => (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
+      );
+      return !hasConversationMessages;
+    }
     // Only show greeting if we have a valid configuration
     if (!hasValidConfig || !activeConfig) return false;
 
@@ -921,7 +1042,7 @@ export default function AIPrompt(props: {
       msg => (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
     );
     return !hasConversationMessages; // Removed dependency on loading state
-  }, [hasValidConfig, activeConfig, promptHistory]); // Removed loading from dependencies
+  }, [hasValidConfig, activeConfig, promptHistory, isAgentMode]); // Removed loading from dependencies
 
   // Memoize the history array to prevent unnecessary re-renders of AIChatContent
   const memoizedHistory = React.useMemo(() => {
@@ -931,8 +1052,8 @@ export default function AIPrompt(props: {
     return promptHistory;
   }, [shouldShowGreeting, getGreetingMessage, promptHistory]);
 
-  // If no valid configuration, show setup message
-  if (!hasValidConfig) {
+  // If no valid configuration AND NOT in agent mode, show setup message
+  if (!hasValidConfig && !isAgentMode) {
     return (
       <Box
         sx={{
@@ -950,18 +1071,29 @@ export default function AIPrompt(props: {
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
           To use the AI Assistant, please configure your AI provider credentials in the settings
-          page.
+          page. Or switch to Holmes Agent mode.
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Icon icon="mdi:settings" />}
-          onClick={() => {
-            history.push(getSettingsURL());
-            setOpenPopup(false);
-          }}
-        >
-          Go to Settings
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<Icon icon="mdi:settings" />}
+            onClick={() => {
+              history.push(getSettingsURL());
+              setOpenPopup(false);
+            }}
+          >
+            Go to Settings
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Icon icon="mdi:robot" />}
+            onClick={() => {
+              handleToggleAgentMode(true);
+            }}
+          >
+            Use Holmes Agent
+          </Button>
+        </Box>
       </Box>
     );
   }

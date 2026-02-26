@@ -3,13 +3,11 @@ import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
-  Chip,
   Grid,
   ListSubheader,
   MenuItem,
   Select,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import React from 'react';
@@ -154,43 +152,51 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
         <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
           <ActionButton description="Clear History" onClick={onClearHistory} icon="mdi:broom" />
 
-          {/* Agent Mode Toggle */}
+          {/* Mode Selector: Chat / Holmes Agent */}
           {!isTestMode && onToggleAgentMode && (
             <Box ml={1}>
-              <Tooltip
-                title={
-                  isAgentMode
-                    ? 'Agent mode active – using Holmes. Click to switch back to AI Chat.'
-                    : 'Switch to Agent mode (requires Holmes)'
-                }
-              >
-                <Chip
-                  size="small"
-                  label={agentModeStatus === 'checking' ? 'Checking…' : 'Agent'}
-                  icon={
+              <Select
+                value={isAgentMode ? 'agent' : 'chat'}
+                onChange={e => {
+                  const mode = e.target.value;
+                  onToggleAgentMode(mode === 'agent');
+                }}
+                size="small"
+                sx={{ minWidth: 150, height: 32 }}
+                variant="outlined"
+                disabled={agentModeStatus === 'checking'}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Icon
-                      icon={
-                        agentModeStatus === 'checking'
-                          ? 'mdi:loading'
-                          : isAgentMode
-                          ? 'mdi:robot'
-                          : 'mdi:robot-outline'
-                      }
-                      width="14px"
+                      icon={selected === 'agent' ? 'mdi:robot' : 'mdi:chat'}
+                      width="16px"
+                      height="16px"
+                      style={{ marginRight: 6 }}
                     />
-                  }
-                  onClick={() => onToggleAgentMode(!isAgentMode)}
-                  color={isAgentMode ? 'primary' : 'default'}
-                  variant={isAgentMode ? 'filled' : 'outlined'}
-                  disabled={agentModeStatus === 'checking'}
-                  sx={{ cursor: agentModeStatus === 'checking' ? 'default' : 'pointer' }}
-                />
-              </Tooltip>
+                    <Typography variant="body2">
+                      {selected === 'agent' ? 'Holmes Agent' : 'Chat'}
+                    </Typography>
+                  </Box>
+                )}
+              >
+                <MenuItem value="chat">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Icon icon="mdi:chat" width="16px" height="16px" />
+                    <Typography variant="body2">Chat</Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="agent">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Icon icon="mdi:robot" width="16px" height="16px" />
+                    <Typography variant="body2">Holmes Agent</Typography>
+                  </Box>
+                </MenuItem>
+              </Select>
             </Box>
           )}
 
-          {/* Provider Selection Dropdown */}
-          {availableConfigs.length > 0 && !isTestMode && (
+          {/* Provider Selection Dropdown – hidden in agent mode */}
+          {availableConfigs.length > 0 && !isTestMode && !isAgentMode && (
             <Box ml={2} sx={{ display: 'flex', alignItems: 'center' }}>
               <Select
                 value={getCurrentValue()}
@@ -251,8 +257,8 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
             </Box>
           )}
 
-          {/* Tools Button */}
-          {!isTestMode && (
+          {/* Tools Button – hidden in agent mode */}
+          {!isTestMode && !isAgentMode && (
             <Box ml={1}>
               <ActionButton
                 description="Manage Tools"

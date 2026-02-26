@@ -1,40 +1,34 @@
 import { HttpAgent } from '@ag-ui/client';
-import type { AgentSubscriber, RunAgentParameters } from '@ag-ui/client';
 
 /**
  * Default base URL for the Holmes ag-ui server.
- * The experimental server (server-agui.py) runs on this port.
- * Change this if your ag-ui server runs on a different host/port.
  */
 export const DEFAULT_AGUI_URL = 'http://localhost:5050';
 
 /**
- * HolmesAgent wraps @ag-ui/client's HttpAgent to communicate directly with the
+ * HolmesAgent wraps @ag-ui/client's HttpAgent to communicate with the
  * Holmes ag-ui server via SSE.
- *
- * The agent connects to a running Holmes ag-ui server
- * (e.g. `http://localhost:5050/api/agui/chat`) and supports:
- * - Streaming text responses via SSE
- * - Tool call execution with streamed arguments
- * - Conversation history management
- * - Error handling and abort
  *
  * Usage:
  *   const agent = new HolmesAgent('http://localhost:5050');
- *   agent.subscribe({
- *     onTextMessageContentEvent: ({ textMessageBuffer }) => { ... },
- *     onToolCallEndEvent: ({ toolCallName, toolCallArgs }) => { ... },
- *   });
+ *   agent.subscribe({ onTextMessageContentEvent: ... });
  *   agent.addMessage({ id: '1', role: 'user', content: 'What pods are failing?' });
- *   await agent.runAgent();
+ *   await agent.runAgent({ runId: 'run-1' });
  */
 export class HolmesAgent {
   private agent: HttpAgent;
   private baseUrl: string;
-  private subscriberList: AgentSubscriber[] = [];
+  private threadId: string;
+  private subscriberList: any[] = [];
+
+  // Buffers for accumulating streamed content (since the library's buffers
+  // can be unreliable depending on version)
+  private toolArgsBuffers: Map<string, string> = new Map();
+  private toolNames: Map<string, string> = new Map();
 
   constructor(baseUrl: string = DEFAULT_AGUI_URL) {
     this.baseUrl = baseUrl;
+    this.threadId = `thread-${Date.now()}`;
     this.agent = this.createAgent();
   }
 
@@ -43,9 +37,10 @@ export class HolmesAgent {
     console.log('[HolmesAgent] Creating HttpAgent with URL:', url);
     return new HttpAgent({
       url,
-      threadId: `thread-${Date.now()}`,
-      headers: { 'Content-Type': 'application/json' },
-      debug: true,
+      threadId: this.threadId,
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
   }
 
@@ -57,15 +52,14 @@ export class HolmesAgent {
   }
 
   /**
-   * Subscribe to agent events (text messages, tool calls, errors, etc.).
-   * Returns an object with an unsubscribe method.
+   * Subscribe to agent events.
    *
-   * Key subscriber callbacks:
+   * Callbacks:
    * - onRunStartedEvent / onRunFinishedEvent / onRunErrorEvent
-   * - onTextMessageStartEvent / onTextMessageContentEvent (with textMessageBuffer) / onTextMessageEndEvent
-   * - onToolCallStartEvent / onToolCallArgsEvent (with toolCallBuffer) / onToolCallEndEvent (with toolCallName, toolCallArgs)
+   * - onTextMessageStartEvent / onTextMessageContentEvent / onTextMessageEndEvent
+   * - onToolCallStartEvent / onToolCallArgsEvent / onToolCallEndEvent
    */
-  subscribe(subscriber: AgentSubscriber): { unsubscribe: () => void } {
+  subscribe(subscriber: any): { unsubscribe: () => void } {
     this.subscriberList.push(subscriber);
     const sub = this.agent.subscribe(subscriber);
     return {
@@ -78,19 +72,21 @@ export class HolmesAgent {
 
   /**
    * Add a message to the agent's conversation history.
-   * Call before runAgent() to include the latest user message.
    */
   addMessage(message: { id: string; role: string; content: string }): void {
-    // Cast needed because @ag-ui/core Message is a Zod discriminated union by role
     this.agent.addMessage(message as any);
   }
 
   /**
-   * Run the agent with optional tools and context.
-   * Sends accumulated messages to Holmes and streams back ag-ui events
-   * to all registered subscribers.
+   * Run the agent — sends accumulated messages to Holmes and streams back
+   * ag-ui events to all registered subscribers.
    */
-  async runAgent(params?: RunAgentParameters): Promise<void> {
+  async runAgent(params?: {
+    runId?: string;
+    tools?: any[];
+    context?: any[];
+    forwardedProps?: Record<string, any>;
+  }): Promise<void> {
     await this.agent.runAgent({
       runId: params?.runId || `run-${Date.now()}`,
       tools: params?.tools,
@@ -111,16 +107,19 @@ export class HolmesAgent {
    * All existing subscribers are automatically re-attached.
    */
   resetThread(): void {
+    this.threadId = `thread-${Date.now()}`;
     this.agent = this.createAgent();
     for (const sub of this.subscriberList) {
       this.agent.subscribe(sub);
     }
+    this.toolArgsBuffers.clear();
+    this.toolNames.clear();
   }
 
   /**
    * Get the current thread ID.
    */
   getThreadId(): string {
-    return this.agent.threadId;
+    return this.threadId;
   }
 }
