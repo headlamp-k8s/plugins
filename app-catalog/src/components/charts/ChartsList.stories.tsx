@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { Meta, StoryFn } from '@storybook/react/types-6-0';
+import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
@@ -59,7 +59,9 @@ const mockCharts = [
 
 const initialStateTrue = {
   config: {
-    showOnlyVerified: true,
+    'app-catalog': {
+      showOnlyVerified: true,
+    },
     settings: {
       tableRowsPerPageOptions: [15, 25, 50],
     },
@@ -68,14 +70,21 @@ const initialStateTrue = {
 
 const initialStateFalse = {
   config: {
-    showOnlyVerified: false,
+    'app-catalog': {
+      showOnlyVerified: false,
+    },
     settings: {
       tableRowsPerPageOptions: [15, 25, 50],
     },
   },
 };
 
-const Template: StoryFn = ({ initialState, ...args }) => {
+interface TemplateProps {
+  initialState?: any;
+  fetchCharts?: () => Promise<any>;
+}
+
+const Template: StoryFn<TemplateProps> = ({ initialState, fetchCharts, ...args }) => {
   const mockStore = configureStore({
     reducer: (state = { ...initialState, drawerMode: { isDetailDrawerEnabled: false } }) => state,
   });
@@ -83,7 +92,7 @@ const Template: StoryFn = ({ initialState, ...args }) => {
   return (
     <Provider store={mockStore}>
       <BrowserRouter>
-        <ChartsList {...args} />
+        <ChartsList fetchCharts={fetchCharts} {...args} />
       </BrowserRouter>
     </Provider>
   );
@@ -91,6 +100,7 @@ const Template: StoryFn = ({ initialState, ...args }) => {
 
 export const EmptyCharts = Template.bind({});
 EmptyCharts.args = {
+  initialState: initialStateFalse,
   fetchCharts: () =>
     Promise.resolve({
       packages: [],
@@ -105,6 +115,7 @@ EmptyCharts.args = {
 
 export const SomeCharts = Template.bind({});
 SomeCharts.args = {
+  initialState: initialStateFalse,
   fetchCharts: () =>
     Promise.resolve({
       packages: mockCharts,
