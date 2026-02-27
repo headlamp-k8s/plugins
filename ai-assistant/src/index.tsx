@@ -29,6 +29,7 @@ import { getDefaultConfig } from './config/modelConfig';
 import { PromptWidthProvider } from './contexts/PromptWidthContext';
 import { isTestModeCheck } from './helper';
 import { ClusterChangeNotifier } from './hooks/useClusterChangeNotifier';
+import { DEFAULT_AGUI_URL } from './agent/holmesClient';
 import AIPrompt from './modal';
 import {
   getAllAvailableTools,
@@ -166,6 +167,20 @@ function HeadlampAIPrompt() {
 
   const hasAnyValidConfig = savedConfigData.providers && savedConfigData.providers.length > 0;
 
+  // Check if the Holmes agent is available
+  const [isAgentAvailable, setIsAgentAvailable] = React.useState(false);
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch(`${DEFAULT_AGUI_URL}/api/agui/chat`, { method: 'HEAD' })
+      .then(() => {
+        if (!cancelled) setIsAgentAvailable(true);
+      })
+      .catch(() => {
+        if (!cancelled) setIsAgentAvailable(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   // Reset popover shown state when configurations change from none to some
   React.useEffect(() => {
     if (hasAnyValidConfig && hasShownPopover) {
@@ -179,9 +194,9 @@ function HeadlampAIPrompt() {
     }
   }, [hasAnyValidConfig, hasShownPopover]);
 
-  // Show popover automatically if no configurations and hasn't been shown before
+  // Show popover automatically if no configurations, hasn't been shown before, and no agent available
   React.useEffect(() => {
-    if (!hasAnyValidConfig && !hasShownPopover && !pluginState.isUIPanelOpen) {
+    if (!hasAnyValidConfig && !hasShownPopover && !pluginState.isUIPanelOpen && !isAgentAvailable) {
       // Show popover after a short delay to ensure component is mounted
       const timer = setTimeout(() => {
         if (!!popoverAnchor) {
@@ -193,7 +208,7 @@ function HeadlampAIPrompt() {
       // Close popover if conditions are not met
       setShowPopover(false);
     }
-  }, [hasAnyValidConfig, popoverAnchor, hasShownPopover, pluginState.isUIPanelOpen]);
+  }, [hasAnyValidConfig, popoverAnchor, hasShownPopover, pluginState.isUIPanelOpen, isAgentAvailable]);
 
   const handleClosePopover = () => {
     setShowPopover(false);
