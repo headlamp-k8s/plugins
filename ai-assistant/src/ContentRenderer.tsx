@@ -280,28 +280,35 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
     const history = useHistory();
     // Create code component that has access to onYamlDetected
     const CodeComponent = React.useMemo(() => {
+      /** Extract a plain string from React children (may be string, array, or nested elements). */
+      const extractText = (node: any): string => {
+        if (typeof node === 'string') return node;
+        if (Array.isArray(node)) return node.map(extractText).join('');
+        if (node?.props?.children) return extractText(node.props.children);
+        return String(node ?? '');
+      };
+
       const component = React.memo(({ className, children, ...props }: any) => {
+        // Robustly get the text content from children (string or array)
+        const textContent = extractText(children);
+
         // Check if this is a YAML code block
         const isYamlBlock =
           !props.inline &&
           (className === 'language-yaml' ||
             className === 'language-yml' ||
-            (typeof children === 'string' &&
-              children.includes('apiVersion:') &&
-              children.includes('kind:')));
+            (textContent.includes('apiVersion:') && textContent.includes('kind:')));
 
         // Check if this is a JSON code block with Kubernetes resource
         const isJsonKubernetesBlock =
-          !props.inline &&
-          typeof children === 'string' &&
-          (className === 'language-json' || isJsonKubernetesResource(children));
+          !props.inline && (className === 'language-json' || isJsonKubernetesResource(textContent));
 
-        if (isYamlBlock && onYamlDetected && typeof children === 'string') {
-          const parsed = parseKubernetesYAML(children);
+        if (isYamlBlock && onYamlDetected && textContent) {
+          const parsed = parseKubernetesYAML(textContent);
           if (parsed.isValid) {
             return (
               <YamlDisplay
-                yaml={children}
+                yaml={textContent}
                 title={parsed.resourceType}
                 onOpenInEditor={onYamlDetected}
               />
@@ -309,9 +316,9 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
           }
         }
 
-        if (isJsonKubernetesBlock && onYamlDetected && typeof children === 'string') {
+        if (isJsonKubernetesBlock && onYamlDetected && textContent) {
           // Convert JSON to YAML and display
-          const yamlContent = convertJsonToYaml(children);
+          const yamlContent = convertJsonToYaml(textContent);
           const parsed = parseKubernetesYAML(yamlContent);
           if (parsed.isValid) {
             return (
@@ -325,7 +332,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
         }
 
         // Check if it's just one line of code
-        if (typeof children === 'string' && !children.trim().includes('\n')) {
+        if (textContent && !textContent.trim().includes('\n')) {
           // Display inline
           return <em>{children}</em>;
         }

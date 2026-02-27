@@ -4,7 +4,6 @@ import { useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Prompt } from './ai/manager';
-import { InlineToolConfirmation } from './components';
 import AgentThinkingBlock from './components/assistant/AgentThinkingBlock';
 import ContentRenderer from './ContentRenderer';
 import EditorDialog from './editordialog';
@@ -258,9 +257,8 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
 
       if (prompt.content === '' && prompt.role === 'user') return null;
       if (
-        displayContent === '' &&
+        prompt.content === '' &&
         prompt.role === 'assistant' &&
-        !prompt.toolConfirmation &&
         !prompt.agentThinkingSteps?.length
       )
         return null;
@@ -271,15 +269,12 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         prompt.agentThinkingSteps &&
         prompt.agentThinkingSteps.some(
           step =>
-            step.type === 'tool-start' ||
-            step.type === 'tool-result' ||
-            step.type === 'todo-update'
+            step.type === 'tool-start' || step.type === 'tool-result' || step.type === 'todo-update'
         );
       const thinkingDone = prompt.agentThinkingDone === true;
       // The final answer is the content, but only show it once thinking is done
       // or if it doesn't look like an intermediate message
-      const isFinalAnswer =
-        thinkingDone && displayContent.trim().length > 0;
+      const isFinalAnswer = thinkingDone && prompt.content.trim().length > 0;
       // While still thinking, show the thinking block but not the content
       const showContent = !hasThinkingSteps || isFinalAnswer;
 
@@ -322,10 +317,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
               <>
                 {/* Agent thinking block */}
                 {hasThinkingSteps && (
-                  <AgentThinkingBlock
-                    steps={prompt.agentThinkingSteps!}
-                    isActive={!thinkingDone}
-                  />
+                  <AgentThinkingBlock steps={prompt.agentThinkingSteps!} isActive={!thinkingDone} />
                 )}
 
                 {isContentFilterError || hasError ? (
@@ -339,23 +331,11 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                   </Alert>
                 ) : (
                   <>
-                    {/* Check if this is a tool confirmation message */}
-                    {prompt.toolConfirmation ? (
-                      <InlineToolConfirmation
-                        toolCalls={prompt.toolConfirmation.tools}
-                        onApprove={prompt.toolConfirmation.onApprove}
-                        onDeny={prompt.toolConfirmation.onDeny}
-                        loading={prompt.toolConfirmation.loading}
-                        // @ts-ignore
-                        userContext={prompt.toolConfirmation?.userContext}
-                        compact={false}
-                      />
-                    ) : showContent && displayContent ? (
+                    {showContent && prompt.content ? (
                       /* Use ContentRenderer for all assistant content */
                       <ContentRenderer
-                        content={displayContent || ''}
+                        content={prompt.content || ''}
                         onYamlDetected={memoizedOnYamlDetected}
-                        onRetryTool={onRetryTool}
                       />
                     ) : null}
                   </>
@@ -394,22 +374,23 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
 
         {history.map((prompt, index) => renderMessage(prompt, index))}
 
-        {isLoading && (() => {
-          // Hide the loader when an agent thinking block is already showing its own progress
-          const last = history[history.length - 1];
-          const agentThinking =
-            last?.role === 'assistant' &&
-            last?.agentThinkingSteps &&
-            last.agentThinkingSteps.length > 0 &&
-            !last.agentThinkingDone;
-          if (agentThinking) return null;
-          return (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2 }}>
-              <CircularProgress size={24} sx={{ mr: 1 }} />
-              <Typography>Processing your request...</Typography>
-            </Box>
-          );
-        })()}
+        {isLoading &&
+          (() => {
+            // Hide the loader when an agent thinking block is already showing its own progress
+            const last = history[history.length - 1];
+            const agentThinking =
+              last?.role === 'assistant' &&
+              last?.agentThinkingSteps &&
+              last.agentThinkingSteps.length > 0 &&
+              !last.agentThinkingDone;
+            if (agentThinking) return null;
+            return (
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2 }}>
+                <CircularProgress size={24} sx={{ mr: 1 }} />
+                <Typography>Processing your request...</Typography>
+              </Box>
+            );
+          })()}
 
         {/* This is an invisible element that we'll scroll to */}
         <div ref={messagesEndRef} />

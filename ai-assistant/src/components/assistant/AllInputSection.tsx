@@ -3,6 +3,7 @@ import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
+  CircularProgress,
   Grid,
   ListSubheader,
   MenuItem,
@@ -24,9 +25,9 @@ interface AIInputSectionProps {
   activeConfig: StoredProviderConfig | null;
   availableConfigs: StoredProviderConfig[];
   selectedModel: string;
-  enabledTools: string[];
   isAgentMode?: boolean;
   agentModeStatus?: 'idle' | 'checking' | 'found' | 'not-found';
+  isDiagnosisRunning?: boolean;
   onSend: (prompt: string) => void;
   onStop: () => void;
   onClearHistory: () => void;
@@ -36,7 +37,6 @@ interface AIInputSectionProps {
     type: 'assistant' | 'user',
     hasError?: boolean
   ) => void;
-  onToolsChange: (enabledTools: string[]) => void;
   onToggleAgentMode?: (enabled: boolean) => void;
 }
 
@@ -48,20 +48,20 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   activeConfig,
   availableConfigs,
   selectedModel,
-  enabledTools,
   isAgentMode = false,
   agentModeStatus = 'idle',
+  isDiagnosisRunning = false,
   onSend,
   onStop,
   onClearHistory,
   onConfigChange,
   onTestModeResponse,
-  onToolsChange,
   onToggleAgentMode,
 }) => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
+      if (isDiagnosisRunning) return; // Block send during diagnosis
       const prompt = promptVal;
       setPromptVal('');
       onSend(prompt);
@@ -69,6 +69,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   };
 
   const handleSendClick = () => {
+    if (isDiagnosisRunning) return; // Block send during diagnosis
     const prompt = promptVal;
     setPromptVal('');
     onSend(prompt);
@@ -118,15 +119,43 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
       {/* Test Mode Input Component */}
       <TestModeInput onAddTestResponse={onTestModeResponse} isTestMode={isTestMode} />
 
+      {/* Proactive diagnosis in-progress banner */}
+      {isDiagnosisRunning && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            p: 1,
+            mb: 1,
+            borderRadius: 1,
+            bgcolor: 'info.main',
+            color: 'info.contrastText',
+          }}
+        >
+          <CircularProgress size={16} sx={{ color: 'inherit' }} />
+          <Typography variant="body2">
+            Proactive diagnosis in progress — please wait for it to complete before chatting.
+          </Typography>
+        </Box>
+      )}
+
       <TextField
         id="deployment-ai-prompt"
         onChange={event => setPromptVal(event.target.value)}
         onKeyDown={handleKeyDown}
         variant="outlined"
         value={promptVal}
-        label={isTestMode ? 'Type user message (Test Mode)' : isAgentMode ? 'Ask Holmes (Agent Mode)' : 'Ask AI'}
+        label={
+          isTestMode
+            ? 'Type user message (Test Mode)'
+            : isAgentMode
+            ? 'Ask Holmes (Agent Mode)'
+            : 'Ask AI'
+        }
         multiline
         fullWidth
+        disabled={isDiagnosisRunning}
         minRows={2}
         sx={{
           width: '100%',
@@ -154,7 +183,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
                 sx={{ minWidth: 150, height: 32 }}
                 variant="outlined"
                 disabled={agentModeStatus === 'checking'}
-                renderValue={(selected) => (
+                renderValue={selected => (
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Icon
                       icon={selected === 'agent' ? 'mdi:robot' : 'mdi:chat'}
@@ -245,24 +274,10 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
               </Select>
             </Box>
           )}
-
-          {/* Tools Button – hidden in agent mode */}
-          {!isTestMode && !isAgentMode && (
-            <Box ml={1}>
-              <ActionButton
-                description="Manage Tools"
-                onClick={() => setShowToolsDialog(true)}
-                icon="mdi:tools"
-                iconButtonProps={{
-                  size: 'small',
-                }}
-              />
-            </Box>
-          )}
         </Grid>
 
         <Grid item>
-          {loading ? (
+          {loading && !isDiagnosisRunning ? (
             <Button
               variant="contained"
               color="secondary"
@@ -278,7 +293,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
               endIcon={<Icon icon="mdi:send" width="20px" />}
               onClick={handleSendClick}
               size="small"
-              disabled={loading || !promptVal}
+              disabled={loading || isDiagnosisRunning || !promptVal}
             >
               Send
             </Button>

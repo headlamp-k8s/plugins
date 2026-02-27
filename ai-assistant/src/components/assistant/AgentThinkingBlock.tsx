@@ -1,11 +1,5 @@
 import { Icon } from '@iconify/react';
-import {
-  Box,
-  CircularProgress,
-  Collapse,
-  LinearProgress,
-  Typography,
-} from '@mui/material';
+import { Box, CircularProgress, Collapse, LinearProgress, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import React, { useState } from 'react';
 

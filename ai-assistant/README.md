@@ -24,6 +24,7 @@ The plugin supports multiple AI providers, allowing you to choose the one that b
 - **Anthropic** (Claude models)
 - **Mistral AI**
 - **Google** (Gemini models)
+- **DeepSeek** (DeepSeek-Chat, DeepSeek-Reasoner)
 - **Local Models** (via Ollama)
 
 You will need to provide your own API keys and endpoint information for the provider you choose to use. Please note that using AI providers may incur costs, so check the pricing details of your chosen provider.
