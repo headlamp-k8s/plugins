@@ -319,18 +319,51 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
 
   const handleConfirmRollback = useCallback(() => {
     if (selectedRelease) {
-      rollbackRelease(selectedRelease.namespace, selectedRelease.name, revertVersion)
+      const releaseName = selectedRelease.name;
+      rollbackRelease(selectedRelease.namespace, releaseName, Number.parseInt(revertVersion, 10))
         .then(() => {
           setRollbackPopup(false);
-          enqueueSnackbar(`Rollback successful for ${selectedRelease.name}`, {
-            variant: 'success',
+          enqueueSnackbar(`Rollback in progress for ${releaseName}`, {
+            variant: 'info',
           });
-          setRefetchCounter(prev => prev + 1);
+          const checkRollbackStatus = (retryCount = 0) => {
+            if (retryCount >= DELETE_STATUS_MAX_RETRIES) {
+              enqueueSnackbar(`Rollback status check timeout for ${releaseName}`, {
+                variant: 'warning',
+              });
+              setRefetchCounter(prev => prev + 1);
+              return;
+            }
+            getActionStatus(releaseName, 'rollback')
+              .then(response => {
+                if (response.status === 'success') {
+                  enqueueSnackbar(`Rollback successful for ${releaseName}`, {
+                    variant: 'success',
+                  });
+                  setRefetchCounter(prev => prev + 1);
+                } else if (response.status === 'failed') {
+                  enqueueSnackbar(`Rollback failed for ${releaseName}`, { variant: 'error' });
+                  setRefetchCounter(prev => prev + 1);
+                } else {
+                  setTimeout(
+                    () => checkRollbackStatus(retryCount + 1),
+                    DELETE_STATUS_POLLING_INTERVAL
+                  );
+                }
+              })
+              .catch(() => {
+                setTimeout(
+                  () => checkRollbackStatus(retryCount + 1),
+                  DELETE_STATUS_POLLING_INTERVAL
+                );
+              });
+          };
+          checkRollbackStatus();
         })
         .catch(error => {
           console.error('Failed to rollback release:', error);
           setRollbackPopup(false);
-          enqueueSnackbar(`Failed to rollback ${selectedRelease.name}`, {
+          enqueueSnackbar(`Failed to rollback ${releaseName}`, {
             variant: 'error',
           });
         });

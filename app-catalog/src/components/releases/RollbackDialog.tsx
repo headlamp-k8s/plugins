@@ -5,6 +5,7 @@ interface Release {
   version: number;
   info: {
     last_deployed: string;
+    description?: string;
   };
 }
 
@@ -49,7 +50,8 @@ export function RollbackDialog({
           {releaseHistory?.releases?.map((release: Release) => {
             return (
               <MenuItem key={release.version} value={release.version.toString()}>
-                {release.version} - {new Date(release.info.last_deployed).toLocaleString()}
+                {release.version} - {release.info.description || 'N/A'} (
+                {new Date(release.info.last_deployed).toLocaleString()})
               </MenuItem>
             );
           })}
