@@ -8,10 +8,11 @@ interface BulkActionsToolbarProps {
 }
 
 export function BulkActionsToolbar({ selectedCount, onDelete }: BulkActionsToolbarProps) {
+  const theme = useTheme();
+
   if (selectedCount === 0) {
     return null;
   }
-  const theme = useTheme();
 
   return (
     <Box

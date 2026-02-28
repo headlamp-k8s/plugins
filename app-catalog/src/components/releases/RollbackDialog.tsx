@@ -1,13 +1,5 @@
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import {
-  Button,
-  DialogActions,
-  DialogContent,
-  InputLabel,
-  MenuItem,
-  Select,
-  useTheme,
-} from '@mui/material';
+import { Button, DialogActions, DialogContent, InputLabel, MenuItem, Select } from '@mui/material';
 
 interface Release {
   version: number;
@@ -37,8 +29,6 @@ export function RollbackDialog({
   onConfirm,
   onCancel,
 }: RollbackDialogProps) {
-  const theme = useTheme();
-
   return (
     <Dialog open={open} maxWidth="xs" onClose={onCancel} title="Rollback">
       <DialogContent
@@ -66,30 +56,10 @@ export function RollbackDialog({
         </Select>
       </DialogContent>
       <DialogActions>
-        <Button
-          onClick={onConfirm}
-          sx={{
-            backgroundColor: theme.palette.primary.main,
-            color: theme.palette.primary.contrastText,
-            textTransform: 'none',
-            '&:hover': {
-              backgroundColor: theme.palette.primary.dark,
-            },
-          }}
-        >
+        <Button variant="contained" onClick={onConfirm}>
           Revert
         </Button>
-        <Button
-          sx={{
-            backgroundColor: theme.palette.primary.main,
-            color: theme.palette.primary.contrastText,
-            textTransform: 'none',
-            '&:hover': {
-              backgroundColor: theme.palette.primary.dark,
-            },
-          }}
-          onClick={onCancel}
-        >
+        <Button variant="outlined" onClick={onCancel}>
           Cancel
         </Button>
       </DialogActions>

@@ -197,6 +197,13 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
     return Array.from(namespaces).sort();
   }, [releases]);
 
+  // Count how many of the currently visible (filtered) releases are selected
+  const selectedVisibleCount = useMemo(() => {
+    if (!filteredReleases) return 0;
+    return filteredReleases.filter(r => selectedReleases.has(createReleaseKey(r.namespace, r.name)))
+      .length;
+  }, [filteredReleases, selectedReleases]);
+
   const handleUpgrade = useCallback((release: Release) => {
     setSelectedRelease(release);
     setIsUpdateRelease(true);
@@ -247,7 +254,11 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
               DELETE_STATUS_POLLING_INTERVAL
             );
           } else if (response.status !== 'success') {
-            enqueueSnackbar(`Failed to delete release ${name}: ${response.message}`, {
+            const errorDetail =
+              typeof response.message === 'string' && response.message.trim()
+                ? `: ${response.message.trim()}`
+                : '';
+            enqueueSnackbar(`Failed to delete release ${name}${errorDetail}`, {
               variant: 'error',
             });
             setIsDeleting(false);
@@ -318,6 +329,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
         })
         .catch(error => {
           console.error('Failed to rollback release:', error);
+          setRollbackPopup(false);
           enqueueSnackbar(`Failed to rollback ${selectedRelease.name}`, {
             variant: 'error',
           });
@@ -341,15 +353,21 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
   const handleSelectAll = useCallback(() => {
     if (!filteredReleases) return;
 
+    const visibleKeys = filteredReleases.map(r => createReleaseKey(r.namespace, r.name));
+    const allVisibleSelected = visibleKeys.every(key => selectedReleases.has(key));
+
     setSelectedReleases(prev => {
-      if (prev.size === filteredReleases.length) {
-        return new Set();
+      const newSet = new Set(prev);
+      if (allVisibleSelected) {
+        // Deselect all visible releases
+        visibleKeys.forEach(key => newSet.delete(key));
       } else {
-        const allKeys = filteredReleases.map(r => createReleaseKey(r.namespace, r.name));
-        return new Set(allKeys);
+        // Select all visible releases (add to existing selection)
+        visibleKeys.forEach(key => newSet.add(key));
       }
+      return newSet;
     });
-  }, [filteredReleases]);
+  }, [filteredReleases, selectedReleases]);
 
   const checkBulkDeleteComplete = useCallback(
     (deletedKeys: string[], retryCount = 0) => {
@@ -383,8 +401,16 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
           setRefetchCounter(prev => prev + 1); // Trigger fetch
           const innerTimeout = setTimeout(() => {
             checkBulkDeleteComplete(deletedKeys, retryCount + 1);
+            // Remove executed timeout from tracking array
+            bulkDeleteTimeoutsRef.current = bulkDeleteTimeoutsRef.current.filter(
+              t => t !== innerTimeout
+            );
           }, 500);
           bulkDeleteTimeoutsRef.current.push(innerTimeout);
+          // Remove executed timeout from tracking array
+          bulkDeleteTimeoutsRef.current = bulkDeleteTimeoutsRef.current.filter(
+            t => t !== outerTimeout
+          );
         }, DELETE_STATUS_POLLING_INTERVAL);
         bulkDeleteTimeoutsRef.current.push(outerTimeout);
       } else {
@@ -449,10 +475,11 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
 
         if (successfullyDeletedKeys.length > 0) {
           setRefetchCounter(prev => prev + 1);
-          setTimeout(
+          const initialTimeout = setTimeout(
             () => checkBulkDeleteComplete(successfullyDeletedKeys),
             DELETE_STATUS_POLLING_INTERVAL
           );
+          bulkDeleteTimeoutsRef.current.push(initialTimeout);
         } else {
           setIsBulkDeleting(false);
         }
@@ -523,12 +550,12 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
                   checked={
                     filteredReleases
                       ? filteredReleases.length > 0 &&
-                        selectedReleases.size === filteredReleases.length
+                        selectedVisibleCount === filteredReleases.length
                       : false
                   }
                   indeterminate={
                     filteredReleases
-                      ? selectedReleases.size > 0 && selectedReleases.size < filteredReleases.length
+                      ? selectedVisibleCount > 0 && selectedVisibleCount < filteredReleases.length
                       : false
                   }
                   onChange={handleSelectAll}

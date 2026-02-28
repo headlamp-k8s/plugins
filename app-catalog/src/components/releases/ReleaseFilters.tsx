@@ -55,13 +55,13 @@ export function ReleaseFilters({
       />
       <Autocomplete
         sx={{ width: { xs: '100%', sm: '200px', md: '250px' } }}
-        options={['', ...availableNamespaces]}
-        getOptionLabel={option => option || 'All Namespaces'}
-        value={namespaceFilter}
+        options={availableNamespaces}
+        getOptionLabel={option => option || 'All'}
+        value={namespaceFilter || null}
         onChange={(event, newValue) => {
           onNamespaceFilterChange(newValue || '');
         }}
-        renderInput={params => <TextField {...params} label="Filter by Namespace" size="small" />}
+        renderInput={params => <TextField {...params} label="Namespace" size="small" />}
       />
     </Box>
   );
