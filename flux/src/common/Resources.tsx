@@ -24,7 +24,7 @@ export class GitRepository extends KubeObject {
 export class OCIRepository extends KubeObject {
   static kind = 'OCIRepository';
   static apiName = 'ocirepositories';
-  static apiVersion = 'source.toolkit.fluxcd.io/v1beta2';
+  static apiVersion = ['source.toolkit.fluxcd.io/v1', 'source.toolkit.fluxcd.io/v1beta2'];
   static isNamespaced = true;
 }
 
@@ -80,9 +80,9 @@ export class ReceiverNotification extends KubeObject {
   static kind = 'Receiver';
   static apiName = 'receivers';
   static apiVersion = [
+    'notification.toolkit.fluxcd.io/v1',
     'notification.toolkit.fluxcd.io/v1beta3',
     'notification.toolkit.fluxcd.io/v1beta2',
-    'notification.toolkit.fluxcd.io/v1',
   ];
   static isNamespaced = true;
 }
