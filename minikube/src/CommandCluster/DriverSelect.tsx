@@ -49,8 +49,12 @@ const driverLists = {
   unknown: [{ value: '', label: 'Autodetect' }],
 };
 
-function detectOS() {
-  const platform = navigator.platform.toLowerCase();
+function detectOS(): 'macos' | 'windows' | 'linux' | 'unknown' {
+  // Modern API (Chromium-based browsers / Electron)
+  const uaPlatform = (navigator as any).userAgentData?.platform?.toLowerCase();
+  // Fallback to deprecated navigator.platform
+  const platform = uaPlatform || navigator.platform?.toLowerCase() || '';
+
   if (platform.includes('mac')) return 'macos';
   if (platform.includes('win')) return 'windows';
   if (platform.includes('linux')) return 'linux';
@@ -70,8 +74,8 @@ interface DriverSelectProps {
 export default function DriverSelect({ setDriver, driver }: DriverSelectProps) {
   const drivers = driverLists[detectOS()];
 
-  function handleChange(event: SelectChangeEvent<{ value: string }>) {
-    setDriver(event.target.value as string);
+  function handleChange(event: SelectChangeEvent<string>) {
+    setDriver(event.target.value);
   }
 
   return (
@@ -84,7 +88,7 @@ export default function DriverSelect({ setDriver, driver }: DriverSelectProps) {
           <Select
             labelId="driver-select-label"
             id="driver-select"
-            value={{ value: driver }}
+            value={driver}
             label="Driver"
             displayEmpty
             onChange={handleChange}
