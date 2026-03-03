@@ -5,6 +5,7 @@ import CommandDialog from './CommandDialog';
 import { useInfo } from './useInfo';
 
 const DEBUG = false;
+const MAX_OUTPUT_LINES = 200;
 
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
@@ -89,11 +90,24 @@ export default function CommandCluster(props: CommandClusterProps) {
   const [running, setRunning] = React.useState(false);
   const [runningLines, setRunningLines] = React.useState<string[]>([]);
   const [commandDone, setCommandDone] = React.useState(false);
+  const [commandError, setCommandError] = React.useState(false);
   const [theCluster, setTheCluster] = React.useState<string | null>(null);
   const runningCommandsRef = React.useRef<RunningCommandType[]>(commandsRunning);
   const [runningCommand, setRunningCommand] = React.useState<RunningCommandType | null>(null);
   const info = useInfo();
   const minikubeProfiles = info ? info.minikubeProfiles : null;
+
+  const allDataRef = React.useRef<string[]>([]);
+  const processRef = React.useRef<{ kill?: () => void } | null>(null);
+
+  function killProcess() {
+    try {
+      processRef.current?.kill?.();
+    } catch {
+      // Process may have already exited
+    }
+    processRef.current = null;
+  }
 
   if (DEBUG) {
     console.log('CommandCluster 1', {
@@ -121,21 +135,13 @@ export default function CommandCluster(props: CommandClusterProps) {
   }, []);
 
   React.useEffect(function updateRunningLines() {
-    // Make sure react gets notified of the changes to the array
     const intervalId = setInterval(() => {
-      if (!runningCommandsRef) {
-        // if (DEBUG) {
-        //   console.log('CommandCluster updateRunningLines 2 returning');
-        // }
-        return;
+      const lines = allDataRef.current;
+      if (lines.length > MAX_OUTPUT_LINES) {
+        setRunningLines(lines.slice(-MAX_OUTPUT_LINES));
+      } else {
+        setRunningLines([...lines]);
       }
-      // last one on the list
-      const runningCommand = runningCommandsRef.current[runningCommandsRef.current.length - 1];
-      const lines = [...(runningCommand?.allData || [])];
-      // if (DEBUG) {
-      //   console.log('CommandCluster updateRunningLines 3, runningCommand:', runningCommand, lines);
-      // }
-      setRunningLines(lines);
     }, 500);
 
     return () => clearInterval(intervalId);
@@ -301,6 +307,7 @@ export default function CommandCluster(props: CommandClusterProps) {
 
         minikube = pluginRunCommand('minikube', args, {});
       }
+      processRef.current = minikube;
 
       const commandInfo: RunningCommandType = {
         clusterName,
@@ -328,6 +335,7 @@ export default function CommandCluster(props: CommandClusterProps) {
 
         commandInfo.stdoutData.push(data);
         commandInfo.allData.push(data);
+        allDataRef.current.push(data);
       });
       minikube.stderr.on('data', (data: string) => {
         if (DEBUG) {
@@ -335,13 +343,17 @@ export default function CommandCluster(props: CommandClusterProps) {
         }
         commandInfo.errorData.push(data);
         commandInfo.allData.push(data);
+        allDataRef.current.push(data);
       });
       minikube.on('exit', code => {
         if (DEBUG) {
           console.log('runFunc 15, exit code:', code);
         }
         commandInfo.exitCode = code;
-        // setCommandDone(true);
+        if (code !== 0 && code !== null) {
+          setCommandError(true);
+        }
+        setCommandDone(true);
       });
 
       onConfirm();
@@ -360,6 +372,7 @@ export default function CommandCluster(props: CommandClusterProps) {
       errorMessage: `Failed to ${command} ${clusterName}.`,
 
       cancelCallback: () => {
+        killProcess();
         setActing(false);
         setRunning(false);
         handleClose(false);
@@ -392,12 +405,18 @@ may keep running in the background. Leave?"
       <CommandDialog
         open={openDialog}
         onClose={cancel => {
+          if (!commandDone) {
+            killProcess();
+          }
           setOpenDialog(false);
           handleClose(cancel);
+          allDataRef.current = [];
+          setRunningLines([]);
           setActing(false);
+          setRunning(false);
           setCommandDone(false);
+          setCommandError(false);
           setRunningCommand(null);
-          //@todo: should this remove the running command?
 
           // If the runningCommand is not null, and the exitCode is not null,
           if (runningCommand && runningCommand.exitCode !== null) {
@@ -425,6 +444,7 @@ may keep running in the background. Leave?"
         running={running}
         actingLines={runningLines}
         commandDone={commandDone}
+        commandError={commandError}
         useGrid={props.useGrid}
         initialClusterName={initialClusterName}
         askClusterName={askClusterName}
