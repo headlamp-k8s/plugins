@@ -65,13 +65,25 @@ registerRoute({
 /**
  * @returns true if the cluster is a minikube cluster
  */
-export function isMinikube(cluster: { meta_data?: { extensions?: { context_info?: { provider?: string } } } }): boolean {
+export function isMinikube(cluster: {
+  meta_data?: { extensions?: { context_info?: { provider?: string } } };
+}): boolean {
   return cluster.meta_data?.extensions?.context_info?.provider === 'minikube.sigs.k8s.io';
 }
 
 const minikubeCommands = [
-  { key: 'deleteMinikube', label: 'Delete', command: 'delete', finishedText: 'Removed all traces of the' },
-  { key: 'startMinikube', label: 'Start', command: 'start', finishedText: 'Done! kubectl is now configured' },
+  {
+    key: 'deleteMinikube',
+    label: 'Delete',
+    command: 'delete',
+    finishedText: 'Removed all traces of the',
+  },
+  {
+    key: 'startMinikube',
+    label: 'Start',
+    command: 'start',
+    finishedText: 'Done! kubectl is now configured',
+  },
   { key: 'stopMinikube', label: 'Stop', command: 'stop', finishedText: 'node stopped.' },
 ];
 
@@ -112,7 +124,6 @@ for (const cmd of minikubeCommands) {
   });
 }
 
-
 // For the add cluster page, add a section for minikube
 registerAddClusterProvider({
   title: 'Create Local Cluster',
@@ -126,13 +137,15 @@ registerAddClusterProvider({
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
 const packagePath =
-  pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
-    ? pluginPath.substring(8)
-    : pluginPath.startsWith('user-plugins/') || pluginPath.startsWith('user-plugins\\')
-    ? pluginPath.substring(13)
-    : pluginPath.startsWith('static-plugins/') || pluginPath.startsWith('static-plugins\\')
-    ? pluginPath.substring(15)
-    : pluginPath;
+  typeof pluginPath !== 'undefined'
+    ? pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
+      ? pluginPath.substring(8)
+      : pluginPath.startsWith('user-plugins/') || pluginPath.startsWith('user-plugins\\')
+      ? pluginPath.substring(13)
+      : pluginPath.startsWith('static-plugins/') || pluginPath.startsWith('static-plugins\\')
+      ? pluginPath.substring(15)
+      : pluginPath
+    : '';
 
 function Command() {
   function handleClick() {

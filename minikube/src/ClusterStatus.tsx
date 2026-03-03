@@ -22,7 +22,7 @@ export default function ClusterStatus({ cluster, error }) {
           // reload the browser to refresh the cluster list
           window.location.reload();
         }}
-        onConfirm={() => {
+        onCommandDispatched={() => {
           setOpenConfirmDialog('');
         }}
         command={'stop'}
@@ -38,7 +38,7 @@ export default function ClusterStatus({ cluster, error }) {
           // reload the browser to refresh the cluster list
           window.location.reload();
         }}
-        onConfirm={() => {
+        onCommandDispatched={() => {
           setOpenConfirmDialog('');
         }}
         command={'start'}
