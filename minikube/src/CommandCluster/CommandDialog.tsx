@@ -1,5 +1,5 @@
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { Alert, Card } from '@mui/material';
 import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
@@ -93,7 +93,7 @@ export default function CommandDialog({
   const [nameError, setNameError] = React.useState<string | null>(null);
 
   const history = useHistory();
-  const clusters = useClustersConf();
+  const clusters = K8s.useClustersConf();
   const clusterNames = React.useMemo(() => Object.keys(clusters || {}), [clusters]);
 
   React.useEffect(() => {
