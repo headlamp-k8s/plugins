@@ -63,6 +63,8 @@ export default function CommandDialog({
   const [driver, setDriver] = React.useState('');
   const [nameTaken, setNameTaken] = React.useState(false);
 
+  const outputRef = React.useRef<HTMLDivElement>(null);
+
   const history = useHistory();
   const clusters = useClustersConf() || {};
   const clusterNames = Object.keys(clusters);
@@ -72,6 +74,15 @@ export default function CommandDialog({
       setClusterName(generateClusterName(clusterNames));
     }
   }, [initialClusterName, clusterNames]);
+
+  React.useEffect(
+    function scrollOutputToBottom() {
+      if (outputRef.current) {
+        outputRef.current.scrollTop = outputRef.current.scrollHeight;
+      }
+    },
+    [actingLines]
+  );
 
   function generateClusterName(existingNames: string[]): string {
     const baseName = 'minikube';
@@ -125,9 +136,29 @@ export default function CommandDialog({
         </>
       )}
       {acting && actingLines && Array.isArray(actingLines) && actingLines.length > 0 && (
-        <Card variant="outlined" sx={{ mt: 2, p: 2 }}>
+        <Card
+          ref={outputRef}
+          variant="outlined"
+          sx={{
+            mt: 2,
+            p: 2,
+            maxHeight: 300,
+            overflowY: 'auto',
+            fontFamily: 'monospace',
+            fontSize: '0.85rem',
+          }}
+        >
           {actingLines.map((line, index) => (
-            <Typography key={index} variant="body1">
+            <Typography
+              key={index}
+              variant="body2"
+              sx={{
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+              }}
+            >
               {line}
             </Typography>
           ))}
