@@ -1,0 +1,138 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2025 Angelo Cesaro
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Release version: $VERSION"
+
+      - name: Verify package.json version matches tag
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION=${{ steps.version.outputs.version }}
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "   package.json: $PACKAGE_VERSION"
+            echo "   Tag: $TAG_VERSION"
+            exit 1
+          fi
+          echo "✅ Version match: $PACKAGE_VERSION"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Package plugin
+        run: npm run package
+
+      - name: Calculate checksum
+        id: checksum
+        run: |
+          TARBALL=$(ls strimzi-headlamp-*.tar.gz)
+          CHECKSUM=$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)
+          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
+          echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
+          echo "📋 Checksum: $CHECKSUM"
+          echo "📦 Tarball: $TARBALL"
+
+      - name: Update artifacthub-pkg.yml
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          CURRENT_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          ARCHIVE_URL="https://github.com/cesaroangelo/strimzi-headlamp/releases/download/v${VERSION}/strimzi-headlamp-${VERSION}.tar.gz"
+          CHECKSUM="sha256:${{ steps.checksum.outputs.checksum }}"
+
+          sed -i "s/^version: .*/version: ${VERSION}/" artifacthub-pkg.yml
+          sed -i "s/^createdAt: .*/createdAt: ${CURRENT_DATE}/" artifacthub-pkg.yml
+          sed -i "s|headlamp/plugin/archive-url: .*|headlamp/plugin/archive-url: ${ARCHIVE_URL}|" artifacthub-pkg.yml
+          sed -i "s|headlamp/plugin/archive-checksum: .*|headlamp/plugin/archive-checksum: \"${CHECKSUM}\"|" artifacthub-pkg.yml
+
+          echo "✅ artifacthub-pkg.yml updated"
+          echo "   version: ${VERSION}"
+          echo "   createdAt: ${CURRENT_DATE}"
+          echo "   archive-url: ${ARCHIVE_URL}"
+          echo "   archive-checksum: ${CHECKSUM}"
+
+      - name: Commit artifacthub-pkg.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="chore/artifacthub-v${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add artifacthub-pkg.yml
+          git commit -m "chore: update artifacthub metadata for v${{ steps.version.outputs.version }}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: update artifacthub metadata for v${{ steps.version.outputs.version }}" \
+            --body "Automated update of artifacthub-pkg.yml for release v${{ steps.version.outputs.version }}" \
+            --base main \
+            --head "$BRANCH"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.version.outputs.tag }}
+          body: |
+            ## Strimzi Headlamp Plugin ${{ steps.version.outputs.version }}
+
+            ### Installation
+
+            Download the `.tar.gz` file below and extract to your Headlamp plugins directory.
+
+            ### Checksums
+
+            SHA-256: `${{ steps.checksum.outputs.checksum }}`
+
+            ### What's Changed
+            See [CHANGELOG.md](https://github.com/cesaroangelo/strimzi-headlamp/blob/main/CHANGELOG.md) for details.
+          files: ${{ steps.checksum.outputs.tarball }}
+          draft: false
+          prerelease: false
+
+      - name: Release Summary
+        if: always()
+        run: |
+          echo "### 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tarball:** ${{ steps.checksum.outputs.tarball }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Checksum:** \`${{ steps.checksum.outputs.checksum }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ GitHub Release created" >> $GITHUB_STEP_SUMMARY
