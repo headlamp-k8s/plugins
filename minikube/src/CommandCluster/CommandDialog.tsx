@@ -58,6 +58,8 @@ export interface CommandDialogProps {
   actingLines?: string[];
   /** Is the command done? */
   commandDone: boolean;
+  /** Did the command fail (non-zero exit)? */
+  commandError?: boolean;
   /** should it use a dialog or use a grid? */
   useGrid?: boolean;
   /** The cluster context to act on */
@@ -80,6 +82,7 @@ export default function CommandDialog({
   running,
   actingLines,
   commandDone,
+  commandError,
   useGrid,
   initialClusterName,
   askClusterName,
@@ -171,6 +174,13 @@ export default function CommandDialog({
             </Typography>
           ))}
         </Card>
+      )}
+      {commandDone && commandError && (
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'error.light', borderRadius: 1 }}>
+          <Typography color="error.contrastText">
+            Command failed. Check the output above for details.
+          </Typography>
+        </Box>
       )}
       {running && !commandDone && <Loader title={`Loading data for ${title}`} />}
     </>
