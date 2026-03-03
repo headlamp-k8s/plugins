@@ -32,8 +32,8 @@ interface CommandClusterProps {
   initialClusterName?: string;
   /** The function to call when the dialog is closed */
   handleClose: (cancel?: boolean) => void;
-  /** The function to call when the user confirms the action */
-  onConfirm: () => void;
+  /** Callback fired when the command has been dispatched (not necessarily completed) */
+  onCommandDispatched: () => void;
   /** Command to run (stop, start, delete, etc) */
   command: string;
   /** Ask for the cluster name. Otherwise the initialClusterName is used. */
@@ -82,7 +82,7 @@ export default function CommandCluster(props: CommandClusterProps) {
     open: startOpen,
     initialClusterName,
     handleClose,
-    onConfirm,
+    onCommandDispatched,
     command,
   } = props;
   const [openDialog, setOpenDialog] = React.useState(false);
@@ -356,7 +356,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         setCommandDone(true);
       });
 
-      onConfirm();
+      onCommandDispatched();
       if (DEBUG) {
         console.log('runFunc 16, finished');
       }
