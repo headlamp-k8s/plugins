@@ -22,13 +22,15 @@ export interface DriverInfo {
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
 const packagePath =
-  pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
-    ? pluginPath.substring(8)
-    : pluginPath.startsWith('user-plugins/') || pluginPath.startsWith('user-plugins\\')
-    ? pluginPath.substring(13)
-    : pluginPath.startsWith('static-plugins/') || pluginPath.startsWith('static-plugins\\')
-    ? pluginPath.substring(15)
-    : pluginPath;
+  typeof pluginPath !== 'undefined'
+    ? pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
+      ? pluginPath.substring(8)
+      : pluginPath.startsWith('user-plugins/') || pluginPath.startsWith('user-plugins\\')
+      ? pluginPath.substring(13)
+      : pluginPath.startsWith('static-plugins/') || pluginPath.startsWith('static-plugins\\')
+      ? pluginPath.substring(15)
+      : pluginPath
+    : '';
 
 /**
  * @returns {diskFree: '339.65', dockerRunning: false, hyperVRunning: true, hyperVEnabled: true, ram: '24.00'}
