@@ -3,8 +3,11 @@ import {
   registerAppBarAction,
   registerHeadlampEventCallback,
   registerPluginSettings,
+  registerResourceTableColumnsProcessor,
   registerUIPanel,
 } from '@kinvolk/headlamp-plugin/lib';
+import { ActionButton, ResourceTableColumn } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 // @todo: this HeadlampEventType import is weird. Maybe fix in headlamp to be better.
 import { DefaultHeadlampEvents as HeadlampEventType } from '@kinvolk/headlamp-plugin/lib/plugin/registry';
 import {
@@ -28,8 +31,9 @@ import { MCPSettings } from './components/settings';
 import { getDefaultConfig } from './config/modelConfig';
 import { PromptWidthProvider } from './contexts/PromptWidthContext';
 import { isTestModeCheck } from './helper';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { ClusterChangeNotifier } from './hooks/useClusterChangeNotifier';
-import { DEFAULT_AGUI_URL } from './agent/holmesClient';
+import { checkHolmesAgentHealth } from './agent/holmesClient';
 import AIPrompt from './modal';
 import {
   getAllAvailableTools,
@@ -167,16 +171,18 @@ function HeadlampAIPrompt() {
 
   const hasAnyValidConfig = savedConfigData.providers && savedConfigData.providers.length > 0;
 
-  // Check if the Holmes agent is available
+  // Check if the Holmes agent is available via K8s service proxy
   const [isAgentAvailable, setIsAgentAvailable] = React.useState(false);
   React.useEffect(() => {
     let cancelled = false;
-    fetch(`${DEFAULT_AGUI_URL}/api/agui/chat`, { method: 'HEAD' })
-      .then(() => {
-        if (!cancelled) setIsAgentAvailable(true);
-      })
-      .catch(() => {
-        if (!cancelled) setIsAgentAvailable(false);
+    const cluster = getCluster();
+    if (!cluster) {
+      setIsAgentAvailable(false);
+      return;
+    }
+    checkHolmesAgentHealth(cluster)
+      .then(available => {
+        if (!cancelled) setIsAgentAvailable(available);
       });
     return () => { cancelled = true; };
   }, []);
@@ -529,7 +535,86 @@ function Settings() {
   );
 }
 
+import {
+  proactiveDiagnosisManager,
+  ProactiveDiagnosisManager,
+} from './utils/ProactiveDiagnosisManager';
+
 registerPluginSettings(PLUGIN_NAME, Settings);
+
+/**
+ * Button component that triggers AI diagnosis for a specific event.
+ * When clicked, opens the AI Assistant panel and scrolls to the
+ * proactive diagnosis for this event (if already cached), or triggers
+ * a new diagnosis on the fly.
+ */
+function AIDiagnosisButton({ event }: { event: Event }) {
+  const pluginState = useGlobalState();
+
+  const handleDiagnose = () => {
+    const data = event.jsonData || {};
+    const eventUid = data?.metadata?.uid || `${data?.metadata?.name}-${data?.metadata?.namespace}`;
+    const involvedObject = data?.involvedObject || {};
+
+    // Build the event digest for the manager
+    const eventDigest = {
+      uid: eventUid,
+      name: data?.metadata?.name || 'unknown',
+      type: data?.type || 'Warning',
+      reason: data?.reason || '',
+      message: data?.message || '',
+      objectKind: involvedObject?.kind || '',
+      objectName: involvedObject?.name || '',
+      objectNamespace: involvedObject?.namespace || '',
+      lastTimestamp: data?.lastTimestamp || data?.metadata?.creationTimestamp || '',
+      rawEvent: data,
+    };
+
+    // If not already diagnosed, trigger a diagnosis
+    if (!proactiveDiagnosisManager.hasDiagnosis(eventUid)) {
+      proactiveDiagnosisManager.diagnoseSingleEvent(eventDigest).catch(err => {
+        console.error('[AIDiagnosisButton] Failed to diagnose event:', err);
+      });
+    }
+
+    // Tell the manager which event to scroll to
+    proactiveDiagnosisManager.setScrollToEventUid(eventUid);
+
+    // Open the AI panel
+    pluginState.setIsUIPanelOpen(true);
+  };
+
+  return (
+    <ActionButton
+      description="Diagnose with AI"
+      icon="mdi:robot-outline"
+      onClick={handleDiagnose}
+    />
+  );
+}
+
+// Add an "AI Diagnosis" column to the events table for Warning and Error events.
+registerResourceTableColumnsProcessor(function addAIDiagnosisToEvents({ id, columns }) {
+  if (id === 'headlamp-cluster.overview.events') {
+    const eventColumns = columns as ResourceTableColumn<Event>[];
+    eventColumns.push({
+      label: 'AI Diagnosis',
+      getValue: (event: Event) => {
+        const eventType = event.jsonData?.type || '';
+        return (eventType === 'Warning' || eventType === 'Error') ? eventType : '';
+      },
+      render: (event: Event) => {
+        const eventType = event.jsonData?.type || '';
+        if (eventType === 'Warning' || eventType === 'Error') {
+          return <AIDiagnosisButton event={event} />;
+        }
+        return null;
+      },
+    });
+  }
+
+  return columns;
+});
 
 // Export the cluster change notifier for external use
 export { useClusterChangeNotifier, ClusterChangeNotifier } from './hooks/useClusterChangeNotifier';

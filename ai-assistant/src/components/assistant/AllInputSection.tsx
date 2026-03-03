@@ -3,6 +3,7 @@ import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
+  CircularProgress,
   Grid,
   ListSubheader,
   MenuItem,
@@ -28,6 +29,7 @@ interface AIInputSectionProps {
   enabledTools: string[];
   isAgentMode?: boolean;
   agentModeStatus?: 'idle' | 'checking' | 'found' | 'not-found';
+  isDiagnosisRunning?: boolean;
   onSend: (prompt: string) => void;
   onStop: () => void;
   onClearHistory: () => void;
@@ -52,6 +54,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   enabledTools,
   isAgentMode = false,
   agentModeStatus = 'idle',
+  isDiagnosisRunning = false,
   onSend,
   onStop,
   onClearHistory,
@@ -64,6 +67,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
+      if (isDiagnosisRunning) return; // Block send during diagnosis
       const prompt = promptVal;
       setPromptVal('');
       onSend(prompt);
@@ -71,6 +75,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   };
 
   const handleSendClick = () => {
+    if (isDiagnosisRunning) return; // Block send during diagnosis
     const prompt = promptVal;
     setPromptVal('');
     onSend(prompt);
@@ -120,6 +125,27 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
       {/* Test Mode Input Component */}
       <TestModeInput onAddTestResponse={onTestModeResponse} isTestMode={isTestMode} />
 
+      {/* Proactive diagnosis in-progress banner */}
+      {isDiagnosisRunning && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            p: 1,
+            mb: 1,
+            borderRadius: 1,
+            bgcolor: 'info.main',
+            color: 'info.contrastText',
+          }}
+        >
+          <CircularProgress size={16} sx={{ color: 'inherit' }} />
+          <Typography variant="body2">
+            Proactive diagnosis in progress — please wait for it to complete before chatting.
+          </Typography>
+        </Box>
+      )}
+
       <TextField
         id="deployment-ai-prompt"
         onChange={event => setPromptVal(event.target.value)}
@@ -129,6 +155,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
         label={isTestMode ? 'Type user message (Test Mode)' : isAgentMode ? 'Ask Holmes (Agent Mode)' : 'Ask AI'}
         multiline
         fullWidth
+        disabled={isDiagnosisRunning}
         minRows={2}
         sx={{
           width: '100%',
@@ -273,7 +300,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
         </Grid>
 
         <Grid item>
-          {loading ? (
+          {loading && !isDiagnosisRunning ? (
             <Button
               variant="contained"
               color="secondary"
@@ -289,7 +316,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
               endIcon={<Icon icon="mdi:send" width="20px" />}
               onClick={handleSendClick}
               size="small"
-              disabled={loading || !promptVal}
+              disabled={loading || isDiagnosisRunning || !promptVal}
             >
               Send
             </Button>

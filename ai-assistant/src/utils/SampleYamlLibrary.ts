@@ -36,7 +36,29 @@ export function parseKubernetesYAML(yamlStr: string): {
       name,
       namespace,
     };
-  } catch (error) {
+  } catch (error: any) {
+    // Handle multi-document YAML (contains --- separators)
+    // Parse only the first document and validate it
+    if (error?.message?.includes('multiple documents') || yamlStr.includes('\n---\n') || yamlStr.includes('\n---')) {
+      try {
+        const docs = YAML.parseAllDocuments(yamlStr);
+        if (docs.length > 0) {
+          const firstDoc = docs[0].toJSON();
+          if (firstDoc && typeof firstDoc === 'object' && firstDoc.apiVersion && firstDoc.kind) {
+            const name = firstDoc.metadata?.name;
+            const namespace = firstDoc.metadata?.namespace || 'default';
+            return {
+              isValid: true,
+              resourceType: firstDoc.kind,
+              name,
+              namespace,
+            };
+          }
+        }
+      } catch (multiDocError) {
+        console.warn('Failed to parse multi-document YAML:', multiDocError);
+      }
+    }
     console.warn('Failed to parse YAML:', error);
     return { isValid: false };
   }

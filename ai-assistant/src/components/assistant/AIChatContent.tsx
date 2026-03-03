@@ -2,7 +2,9 @@ import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Alert, Box, Button } from '@mui/material';
 import React from 'react';
 import { Prompt } from '../../ai/manager';
+import { useProactiveDiagnosis } from '../../hooks/useProactiveDiagnosis';
 import TextStreamContainer from '../../textstream';
+import ProactiveDiagnosisSection from './ProactiveDiagnosisSection';
 
 interface AIChatContentProps {
   history: Prompt[];
@@ -23,6 +25,9 @@ export default function AIChatContent({
   onYamlAction,
   onRetryTool,
 }: AIChatContentProps) {
+  const { diagnoses, isCycleRunning, scrollToEventUid, clearScrollTarget } =
+    useProactiveDiagnosis();
+
   return (
     <Box
       sx={{
@@ -35,6 +40,15 @@ export default function AIChatContent({
         overflowWrap: 'break-word',
       }}
     >
+      {/* Proactive Diagnosis Section - always on top */}
+      <ProactiveDiagnosisSection
+        diagnoses={diagnoses}
+        scrollToEventUid={scrollToEventUid}
+        onScrollComplete={clearScrollTarget}
+        isCycleRunning={isCycleRunning}
+        onYamlAction={onYamlAction}
+      />
+
       {apiError && (
         <Alert
           severity="error"
