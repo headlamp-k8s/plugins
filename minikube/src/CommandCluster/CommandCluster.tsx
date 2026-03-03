@@ -4,6 +4,7 @@ import { Prompt } from 'react-router-dom';
 import CommandDialog from './CommandDialog';
 
 const DEBUG = false;
+const MAX_OUTPUT_LINES = 200;
 
 interface CommandClusterProps {
   /**
@@ -48,14 +49,29 @@ export default function CommandCluster(props: CommandClusterProps) {
   const [running, setRunning] = React.useState(false);
   const [runningLines, setRunningLines] = React.useState<string[]>([]);
   const [commandDone, setCommandDone] = React.useState(false);
+  const [commandError, setCommandError] = React.useState(false);
   const [theCluster, setTheCluster] = React.useState<string | null>(null);
 
   const allDataRef = React.useRef<string[]>([]);
+  const processRef = React.useRef<{ kill?: () => void } | null>(null);
+
+  function killProcess() {
+    try {
+      processRef.current?.kill?.();
+    } catch {
+      // Process may have already exited
+    }
+    processRef.current = null;
+  }
 
   React.useEffect(function updateRunningLines() {
-    // Make sure react gets notified of the changes to the array
     const intervalId = setInterval(() => {
-      setRunningLines([...allDataRef.current]);
+      const lines = allDataRef.current;
+      if (lines.length > MAX_OUTPUT_LINES) {
+        setRunningLines(lines.slice(-MAX_OUTPUT_LINES));
+      } else {
+        setRunningLines([...lines]);
+      }
     }, 500);
 
     return () => clearInterval(intervalId);
@@ -91,6 +107,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         args.push('--driver', driver);
       }
       const minikube = runCommand('minikube', args, {});
+      processRef.current = minikube;
       if (DEBUG) {
         console.log('runFunc after runCommand');
       }
@@ -120,6 +137,9 @@ export default function CommandCluster(props: CommandClusterProps) {
         if (DEBUG) {
           console.log('runFunc exit code:', code);
         }
+        if (code !== 0 && code !== null) {
+          setCommandError(true);
+        }
         setCommandDone(true);
       });
 
@@ -139,6 +159,7 @@ export default function CommandCluster(props: CommandClusterProps) {
       errorMessage: `Failed to ${command} ${clusterName}.`,
 
       cancelCallback: () => {
+        killProcess();
         setActing(false);
         setRunning(false);
         handleClose();
@@ -156,11 +177,17 @@ export default function CommandCluster(props: CommandClusterProps) {
       <CommandDialog
         open={openDialog}
         onClose={() => {
+          if (!commandDone) {
+            killProcess();
+          }
           setOpenDialog(false);
           handleClose();
           allDataRef.current = [];
+          setRunningLines([]);
           setActing(false);
+          setRunning(false);
           setCommandDone(false);
+          setCommandError(false);
         }}
         onConfirm={({ clusterName, driver }) => handleRunCommand({ clusterName, driver })}
         command={command}
@@ -177,6 +204,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         running={running}
         actingLines={runningLines}
         commandDone={commandDone}
+        commandError={commandError}
         useGrid={props.useGrid}
         initialClusterName={initialClusterName}
         askClusterName={askClusterName}
