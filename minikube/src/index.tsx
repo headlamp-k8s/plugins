@@ -175,6 +175,6 @@ registerAddClusterProvider({
   title: 'Minikube',
   icon: MinikubeIcon,
   description:
-    'Minikube is a lightweight tool that simplifies the process of setting up a Kubernetes environment on your local PC. It provides a localStorage, single-node Kubernetes cluster that you can use for learning, development, and testing purposes.',
+    'Minikube is a lightweight tool that simplifies the process of setting up a Kubernetes environment on your local PC. It provides a local, single-node Kubernetes cluster that you can use for learning, development, and testing purposes.',
   url: '/create-cluster-minikube',
 });

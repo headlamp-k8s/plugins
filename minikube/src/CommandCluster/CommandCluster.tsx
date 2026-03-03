@@ -151,8 +151,7 @@ export default function CommandCluster(props: CommandClusterProps) {
     <>
       <Prompt
         when={!commandDone && running}
-        message="The command is still running. If you leave, the command 
-may keep running in the background. Leave?"
+        message="The command is still running. If you leave, the command may keep running in the background. Leave?"
       />
       <CommandDialog
         open={openDialog}
@@ -171,8 +170,8 @@ may keep running in the background. Leave?"
               ? `Creating Minikube Cluster ${theCluster}...`
               : 'Create a New Minikube Cluster'
             : acting
-            ? `Running "${command}" on Minikube Cluster`
-            : `Running "${command}" on Minikube Cluster`
+            ? `Running "${command}" on Minikube Cluster...`
+            : `${command.charAt(0).toUpperCase() + command.slice(1)} Minikube Cluster`
         }
         acting={acting}
         running={running}
