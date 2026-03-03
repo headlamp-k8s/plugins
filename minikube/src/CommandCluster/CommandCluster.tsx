@@ -20,8 +20,8 @@ interface CommandClusterProps {
   initialClusterName?: string;
   /** The function to call when the dialog is closed */
   handleClose: () => void;
-  /** The function to call when the user confirms the action */
-  onConfirm: () => void;
+  /** Callback fired when the command has been dispatched (not necessarily completed) */
+  onCommandDispatched: () => void;
   /** Command to run (stop, start, delete, etc) */
   command: string;
   /** Text to look for in the output to determine if the command is finished */
@@ -39,7 +39,7 @@ export default function CommandCluster(props: CommandClusterProps) {
     open: startOpen,
     initialClusterName,
     handleClose,
-    onConfirm,
+    onCommandDispatched,
     command,
     finishedText,
     askClusterName,
@@ -143,7 +143,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         setCommandDone(true);
       });
 
-      onConfirm();
+      onCommandDispatched();
       if (DEBUG) {
         console.log('runFunc finished');
       }
