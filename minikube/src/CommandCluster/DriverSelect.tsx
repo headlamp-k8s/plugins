@@ -49,7 +49,7 @@ const driverLists = {
   unknown: [{ value: '', label: 'Autodetect' }],
 };
 
-function detectOS() {
+export function detectOS() {
   const platform = navigator.platform.toLowerCase();
   if (platform.includes('mac')) return 'macos';
   if (platform.includes('win')) return 'windows';
