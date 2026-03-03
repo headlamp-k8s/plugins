@@ -92,6 +92,8 @@ export default function CommandDialog({
   const [driver, setDriver] = React.useState('');
   const [nameError, setNameError] = React.useState<string | null>(null);
 
+  const outputRef = React.useRef<HTMLDivElement>(null);
+
   const history = useHistory();
   const clusters = K8s.useClustersConf();
   const clusterNames = React.useMemo(() => Object.keys(clusters || {}), [clusters]);
@@ -103,6 +105,15 @@ export default function CommandDialog({
     // Only generate a new name when dialog is opened, not on every clusterNames change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialClusterName, askClusterName]);
+
+  React.useEffect(
+    function scrollOutputToBottom() {
+      if (outputRef.current) {
+        outputRef.current.scrollTop = outputRef.current.scrollHeight;
+      }
+    },
+    [actingLines]
+  );
 
   if (acting && open && !running) {
     if (askClusterName) {
@@ -167,9 +178,29 @@ export default function CommandDialog({
         </>
       )}
       {acting && actingLines && Array.isArray(actingLines) && actingLines.length > 0 && (
-        <Card variant="outlined" sx={{ mt: 2, p: 2 }}>
+        <Card
+          ref={outputRef}
+          variant="outlined"
+          sx={{
+            mt: 2,
+            p: 2,
+            maxHeight: 300,
+            overflowY: 'auto',
+            fontFamily: 'monospace',
+            fontSize: '0.85rem',
+          }}
+        >
           {actingLines.map((line, index) => (
-            <Typography key={index} variant="body1">
+            <Typography
+              key={index}
+              variant="body2"
+              sx={{
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+              }}
+            >
               {line}
             </Typography>
           ))}
