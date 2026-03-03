@@ -10,6 +10,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import Grid from '@mui/material/Grid';
+import Link from '@mui/material/Link';
 import TextField from '@mui/material/TextField';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
@@ -42,6 +43,8 @@ export interface CommandDialogProps {
   initialClusterName?: string;
   /** Ask for the cluster name. Otherwise the initialClusterName is used. */
   askClusterName?: boolean;
+  /** Is minikube installed and available? null = checking, true = yes, false = no */
+  minikubeAvailable?: boolean | null;
 }
 
 /**
@@ -61,6 +64,7 @@ export default function CommandDialog({
   useGrid,
   initialClusterName,
   askClusterName,
+  minikubeAvailable,
 }: CommandDialogProps) {
   const [clusterName, setClusterName] = React.useState(initialClusterName);
   const [driver, setDriver] = React.useState('');
@@ -110,6 +114,27 @@ export default function CommandDialog({
 
   const content = (
     <>
+      {minikubeAvailable === null && !acting && (
+        <Loader title="Checking minikube availability..." />
+      )}
+      {minikubeAvailable === false && (
+        <Box sx={{ mt: 1, p: 2, bgcolor: 'warning.light', borderRadius: 1 }}>
+          <Typography color="warning.contrastText" gutterBottom>
+            minikube was not found on your system.
+          </Typography>
+          <Typography variant="body2" color="warning.contrastText">
+            Install it from{' '}
+            <Link
+              href="https://minikube.sigs.k8s.io/docs/start/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              minikube.sigs.k8s.io/docs/start
+            </Link>
+            {' '}and make sure the <code>minikube</code> command is in your PATH.
+          </Typography>
+        </Box>
+      )}
       {!askClusterName && !acting && (
         <Typography>
           {`Are you sure you want to "${command}" the cluster "${clusterName}"?`}
@@ -198,7 +223,7 @@ export default function CommandDialog({
             }}
             variant="contained"
             color="primary"
-            disabled={nameTaken && askClusterName}
+            disabled={(nameTaken && askClusterName) || minikubeAvailable === false}
           >
             {`${command}`}
           </Button>

@@ -49,6 +49,7 @@ export default function CommandCluster(props: CommandClusterProps) {
   const [runningLines, setRunningLines] = React.useState<string[]>([]);
   const [commandDone, setCommandDone] = React.useState(false);
   const [theCluster, setTheCluster] = React.useState<string | null>(null);
+  const [minikubeAvailable, setMinikubeAvailable] = React.useState<boolean | null>(null);
 
   const allDataRef = React.useRef<string[]>([]);
 
@@ -66,6 +67,25 @@ export default function CommandCluster(props: CommandClusterProps) {
       setOpenDialog(true);
     }
   }, [startOpen]);
+
+  React.useEffect(
+    function checkMinikubeAvailable() {
+      if (!openDialog) return;
+
+      try {
+        const proc = runCommand('minikube', ['version', '--short'], {});
+        proc.on('exit', code => {
+          setMinikubeAvailable(code === 0);
+        });
+        proc.on('error', () => {
+          setMinikubeAvailable(false);
+        });
+      } catch {
+        setMinikubeAvailable(false);
+      }
+    },
+    [openDialog]
+  );
 
   function handleRunCommand({ clusterName, driver }: { clusterName: string; driver: string }) {
     if (DEBUG) {
@@ -162,6 +182,7 @@ may keep running in the background. Leave?"
           allDataRef.current = [];
           setActing(false);
           setCommandDone(false);
+          setMinikubeAvailable(null);
         }}
         onConfirm={({ clusterName, driver }) => handleRunCommand({ clusterName, driver })}
         command={command}
@@ -178,6 +199,7 @@ may keep running in the background. Leave?"
         running={running}
         actingLines={runningLines}
         commandDone={commandDone}
+        minikubeAvailable={minikubeAvailable}
         useGrid={props.useGrid}
         initialClusterName={initialClusterName}
         askClusterName={askClusterName}
