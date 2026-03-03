@@ -213,6 +213,11 @@ export default function CommandDialog({
           </Typography>
         </Box>
       )}
+      {commandDone && !commandError && (
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
+          <Typography color="success.contrastText">Command completed successfully.</Typography>
+        </Box>
+      )}
       {running && !commandDone && <Loader title={`Loading data for ${title}`} />}
     </>
   );
