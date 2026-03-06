@@ -4,6 +4,7 @@ import { NodeClaimCreationChart } from './components/Chart/KarpenterNodeClaimCre
 import { KarpenterNodeClaimsProvisionChart } from './components/Chart/KarpenterNodeClaimProvisionChart/KarpenterNodeClaimProvisionChart';
 import { KarpenterNodePoolResourceChart } from './components/Chart/KarpenterNodePoolResourceChart/KarpenterNodePoolResourceChart';
 import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/KarpenterPendingPods';
+import { isHttpUrl } from './helpers';
 import { isPrometheusInstalled, KubernetesType } from './request';
 
 export const PLUGIN_NAME = 'prometheus';
@@ -100,27 +101,50 @@ export function isMetricsEnabled(cluster: string): boolean {
 }
 
 /**
- * getPrometheusPrefix returns the prefix for the Prometheus metrics.
+ * Resolves the base address for accessing Prometheus for a cluster.
+ *
+ * The configured `address` may be either:
+ *   - a full HTTP/HTTPS URL (returned as-is), or
+ *   - a Kubernetes service spec in the form `namespace/service:port`.
+ *
+ * For non-URL addresses, this function returns a Kubernetes API proxy prefix, e.g.:
+ *   - `{namespace}/services/{service}:{port}` for manually configured service addresses, or
+ *   - `{namespace}/{type}/{name}:{port}` when autodetected (where `type` may be `services` or `pods`).
+ *
  * @param {string} cluster - The name of the cluster.
- * @returns {Promise<string | null>} The prefix for the Prometheus metrics, or null if not found.
+ * @returns {Promise<string | null>} A full URL or Kubernetes API proxy prefix for Prometheus, or null if none is found.
  */
 export async function getPrometheusPrefix(cluster: string): Promise<string | null> {
-  // check if cluster has autoDetect enabled
-  // if so return the prometheus pod address
   const clusterData = getClusterConfig(cluster);
+
+  // 1. Auto-detect takes priority when enabled
   if (clusterData?.autoDetect) {
     const prometheusEndpoint = await isPrometheusInstalled();
     if (prometheusEndpoint.type === KubernetesType.none) {
       return null;
     }
+
     const prometheusPortStr = prometheusEndpoint.port ? `:${prometheusEndpoint.port}` : '';
     return `${prometheusEndpoint.namespace}/${prometheusEndpoint.type}/${prometheusEndpoint.name}${prometheusPortStr}`;
   }
 
+  // 2. Manual address (only when autoDetect is not enabled)
   if (clusterData?.address) {
-    const [namespace, service] = clusterData?.address.split('/');
-    return `${namespace}/services/${service}`;
+    const address = clusterData.address.trim().replace(/\/$/, '');
+
+    if (isHttpUrl(address)) {
+      return address;
+    }
+
+    // Expected Kubernetes service proxy format: namespace/service:port
+    // Validate that a numeric port is provided to avoid ambiguous multi-port services.
+    const serviceMatch = address.match(/^([^/]+)\/([^/:]+):(\d+)$/);
+    if (serviceMatch) {
+      const [, namespace, service, port] = serviceMatch;
+      return `${namespace}/services/${service}:${port}`;
+    }
   }
+
   return null;
 }
 
