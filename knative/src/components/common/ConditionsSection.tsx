@@ -26,8 +26,8 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import type { Condition } from '../../../../../resources/knative/common';
-import { getAge } from '../../../../../utils/time';
+import type { Condition } from '../../resources/knative/common';
+import { getAge } from '../../utils/time';
 
 type ConditionsSectionProps = {
   conditions: Condition[];
