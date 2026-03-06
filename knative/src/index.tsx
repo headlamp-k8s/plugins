@@ -21,6 +21,8 @@ import React from 'react';
 import { KServiceDetail } from './components/kservices/Detail';
 import { KServicesList } from './components/kservices/List';
 import { NetworkingOverview } from './components/networking/Overview';
+import { RevisionDetail } from './components/revisions/Detail';
+import { RevisionsList } from './components/revisions/List';
 
 const queryClient = new QueryClient();
 
@@ -72,6 +74,13 @@ registerSidebarEntry({
 
 registerSidebarEntry({
   parent: 'knative',
+  name: 'revisions',
+  label: 'Revisions',
+  url: '/knative/revisions',
+});
+
+registerSidebarEntry({
+  parent: 'knative',
   name: 'knetworking',
   label: 'Networking',
   url: '/knative/networking',
@@ -89,6 +98,20 @@ registerRoute({
   sidebar: 'kservices',
   name: 'kservices',
   component: withQueryClient(KServicesList),
+});
+
+registerRoute({
+  path: '/knative/revisions/:namespace/:name',
+  sidebar: 'revisions',
+  name: 'revisionDetails',
+  component: withQueryClient(RevisionDetail),
+});
+
+registerRoute({
+  path: '/knative/revisions',
+  sidebar: 'revisions',
+  name: 'revisions',
+  component: withQueryClient(RevisionsList),
 });
 
 registerRoute({
