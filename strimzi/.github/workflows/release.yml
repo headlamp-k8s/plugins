@@ -62,7 +62,7 @@ jobs:
       - name: Calculate checksum
         id: checksum
         run: |
-          TARBALL=$(ls strimzi-headlamp-*.tar.gz)
+          TARBALL=$(ls *strimzi-headlamp-*.tar.gz)
           CHECKSUM=$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)
           echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
           echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
@@ -73,7 +73,7 @@ jobs:
         run: |
           VERSION=${{ steps.version.outputs.version }}
           CURRENT_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          ARCHIVE_URL="https://github.com/cesaroangelo/strimzi-headlamp/releases/download/v${VERSION}/strimzi-headlamp-${VERSION}.tar.gz"
+          ARCHIVE_URL="https://github.com/cesaroangelo/strimzi-headlamp/releases/download/v${VERSION}/${{ steps.checksum.outputs.tarball }}"
           CHECKSUM="sha256:${{ steps.checksum.outputs.checksum }}"
 
           sed -i "s/^version: .*/version: ${VERSION}/" artifacthub-pkg.yml
