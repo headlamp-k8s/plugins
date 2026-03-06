@@ -16,7 +16,7 @@
 
 import { Stack } from '@mui/material';
 import { KService } from '../../../../../resources/knative';
-import ConditionsSection from './ConditionsSection';
+import ConditionsSection from '../../../../common/ConditionsSection';
 
 type KServiceSectionProps = {
   kservice: KService;
