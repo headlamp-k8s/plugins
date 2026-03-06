@@ -14,6 +14,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [app-catalog](./app-catalog) | Provides a new area where users can install Helm charts and manage releases. | Desktop only. Shipped with Headlamp desktop builds by default. | [@ashu8912](https://github.com/ashu8912) |
 | [backstage](./backstage) | Provides links to the resource's views in Backstage. | See also the [Headlamp integration for Backstage](https://github.com/headlamp-k8s/backstage-plugin). | [@yolossn](https://github.com/yolossn) |
 | [cert-manager](./cert-manager) | A UI for viewing and managing cert-manager. | | [@yolossn](https://github.com/yolossn) |
+| [cluster-api](./cluster-api) | See your Cluster API management clusters in Headlamp's sidebar and map. | Learn more about CAPI with the [Cluster API book](https://cluster-api.sigs.k8s.io/). |[@mboersma](https://github.com/mboersma) |
 | [flux](./flux) | Visualize Flux in Headlamp. | |[@ashu8912](https://github.com/ashu8912) |
 | [karpenter](./karpenter) | Adds Karpenter-specific custom resources to the Headlamp UI. | | [@SinghaAnirban005](https://github.com/SinghaAnirban005) |
 | [keda](./keda) | A UI for viewing and managing KEDA resources. | | [@adwait-godbole](https://github.com/adwait-godbole), [@yolossn](https://github.com/yolossn) |
