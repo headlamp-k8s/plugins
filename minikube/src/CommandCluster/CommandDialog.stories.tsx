@@ -137,3 +137,72 @@ GridCommandCompleted.args = {
   commandDone: true,
   useGrid: true,
 };
+
+export const CommandSucceeded = Template.bind({});
+CommandSucceeded.args = {
+  open: true,
+  initialClusterName: 'test-cluster',
+  command: 'start',
+  title: 'Start Cluster',
+  actingLines: [
+    'Starting cluster...',
+    'Done! kubectl is now configured to use "test-cluster" cluster',
+  ],
+  acting: true,
+  running: true,
+  commandDone: true,
+  commandError: false,
+  useGrid: false,
+};
+
+export const GridCommandSucceeded = Template.bind({});
+GridCommandSucceeded.args = {
+  ...CommandSucceeded.args,
+  useGrid: true,
+};
+
+export const CommandFailed = Template.bind({});
+CommandFailed.args = {
+  open: true,
+  initialClusterName: 'test-cluster',
+  command: 'start',
+  title: 'Start Cluster',
+  acting: true,
+  running: true,
+  actingLines: ['Starting cluster...', 'Error: unable to start host: provider not found'],
+  commandDone: true,
+  commandError: true,
+  useGrid: false,
+};
+
+export const GridCommandFailed = Template.bind({});
+GridCommandFailed.args = {
+  ...CommandFailed.args,
+  useGrid: true,
+};
+
+export const MinikubeNotFound = Template.bind({});
+MinikubeNotFound.args = {
+  open: true,
+  initialClusterName: 'test-cluster',
+  command: 'start',
+  title: 'Start Cluster',
+  acting: false,
+  running: false,
+  commandDone: false,
+  useGrid: false,
+  minikubeAvailable: false,
+};
+
+export const MinikubeChecking = Template.bind({});
+MinikubeChecking.args = {
+  open: true,
+  initialClusterName: 'test-cluster',
+  command: 'start',
+  title: 'Start Cluster',
+  acting: false,
+  running: false,
+  commandDone: false,
+  useGrid: false,
+  minikubeAvailable: null,
+};
