@@ -23,6 +23,9 @@ const aiProviderIcons = {
     google: {
       body: '<path fill="currentColor" d="M21.996 12.018a10.65 10.65 0 0 0-9.98 9.98h-.04c-.32-5.364-4.613-9.656-9.976-9.98v-.04c5.363-.32 9.656-4.613 9.98-9.976h.04c.324 5.363 4.617 9.656 9.98 9.98v.036z"/>',
     },
+    deepseek: {
+      body: '<path fill="currentColor" d="M5 4h6.5a6.5 6.5 0 0 1 0 16H5zm3 3v10h3.3a4 4 0 0 0 0-10z"/>',
+    },
     azure: {
       body: '<path fill="currentColor" d="M12.903 4.032L7 9.13l-5 9.065h4.548zm.839 1.226l-2.516 7.097L16 18.387l-9.355 1.58H22z"/>',
     },
