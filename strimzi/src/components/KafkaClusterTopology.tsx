@@ -18,6 +18,7 @@ import { getSemanticColors, hexToRgba } from '../utils/topologyColors';
 
 interface TopologyProps {
   kafka: Kafka;
+  onEditResource?: (resourceUrl: string, resourceName: string, resourceKind: string) => void;
 }
 
 interface Pod {
@@ -459,6 +460,13 @@ function StatusBadge({
   );
 }
 
+// Edit info stored in node data for onNodeClick handling
+interface EditInfo {
+  resourceUrl: string;
+  resourceName: string;
+  resourceKind: string;
+}
+
 // Modern group label component
 function createGroupLabel(params: {
   id: string;
@@ -467,8 +475,9 @@ function createGroupLabel(params: {
   theme: ReturnType<typeof useTopologyTheme>;
   resourceType: 'KafkaNodePool' | 'StrimziPodSet';
   replicaInfo?: string;
+  editInfo?: EditInfo;
 }): Node {
-  const { id, title, parentId, theme, resourceType, replicaInfo } = params;
+  const { id, title, parentId, theme, resourceType, replicaInfo, editInfo } = params;
 
   // Icon and color based on resource type
   const getResourceIconConfig = () => {
@@ -490,9 +499,9 @@ function createGroupLabel(params: {
     position: { x: 20, y: 20 },
     data: {
       label: (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: editInfo ? 'pointer' : 'default' }}>
           <ResourceIcon icon={iconConfig.icon} color={iconConfig.color} size={`${LAYOUT.GROUP_ICON_SIZE}px`} />
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start', flex: 1 }}>
             <span
               style={{
                 fontSize: theme.typography.fontSize.large,
@@ -533,8 +542,25 @@ function createGroupLabel(params: {
               </span>
             )}
           </div>
+          {editInfo && (
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                marginTop: '2px',
+              }}
+            >
+              <Icon icon="mdi:pencil-outline" width="16px" height="16px" style={{ color: iconConfig.color }} />
+            </div>
+          )}
         </div>
       ),
+      editInfo,
     },
     style: {
       background: 'transparent',
@@ -547,7 +573,7 @@ function createGroupLabel(params: {
   };
 }
 
-function TopologyFlow({ kafka }: TopologyProps) {
+function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
   const [nodePools, setNodePools] = React.useState<KafkaNodePool[]>([]);
   const [podSets, setPodSets] = React.useState<StrimziPodSet[]>([]);
   const [pods, setPods] = React.useState<Pod[]>([]);
@@ -876,7 +902,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
         label: (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <ResourceIcon icon="mdi:apache-kafka" color="#0baf9e" size={`${LAYOUT.CLUSTER_ICON_SIZE}px`} />
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start', flex: 1 }}>
               <span
                 style={{
                   fontSize: theme.typography.fontSize.large,
@@ -922,8 +948,29 @@ function TopologyFlow({ kafka }: TopologyProps) {
                 <StatusBadge ready={clusterReady} />
               </div>
             </div>
+            {onEditResource && (
+              <div
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginTop: '2px',
+                }}
+              >
+                <Icon icon="mdi:pencil-outline" width="16px" height="16px" style={{ color: '#0baf9e' }} />
+              </div>
+            )}
           </div>
         ),
+        editInfo: onEditResource ? {
+          resourceUrl: `/apis/kafka.strimzi.io/v1beta2/namespaces/${namespace}/kafkas/${clusterName}`,
+          resourceName: clusterName,
+          resourceKind: 'Kafka',
+        } : undefined,
       },
       style: {
         background: 'transparent',
@@ -1011,6 +1058,11 @@ function TopologyFlow({ kafka }: TopologyProps) {
             theme,
             resourceType: 'KafkaNodePool',
             replicaInfo: `Replicas: ${replicas}`,
+            editInfo: onEditResource ? {
+              resourceUrl: `/apis/kafka.strimzi.io/v1beta2/namespaces/${namespace}/kafkanodepools/${poolName}`,
+              resourceName: poolName,
+              resourceKind: 'KafkaNodePool',
+            } : undefined,
           })
         );
 
@@ -1048,6 +1100,11 @@ function TopologyFlow({ kafka }: TopologyProps) {
               theme,
               resourceType: 'StrimziPodSet',
               replicaInfo: `Ready Pods: ${readyPodsCount}/${nodeIds.length}`,
+              editInfo: onEditResource ? {
+                resourceUrl: `/apis/core.strimzi.io/v1beta2/namespaces/${namespace}/strimzipodsets/${podSet.metadata.name}`,
+                resourceName: podSet.metadata.name,
+                resourceKind: 'StrimziPodSet',
+              } : undefined,
             })
           );
 
@@ -1126,6 +1183,11 @@ function TopologyFlow({ kafka }: TopologyProps) {
             theme,
             resourceType: 'StrimziPodSet',
             replicaInfo: `Ready Pods: ${readyPodsCount}/${brokerCount}`,
+            editInfo: onEditResource ? {
+              resourceUrl: `/apis/core.strimzi.io/v1beta2/namespaces/${namespace}/strimzipodsets/${kafkaPodSet.metadata.name}`,
+              resourceName: kafkaPodSet.metadata.name,
+              resourceKind: 'StrimziPodSet',
+            } : undefined,
           })
         );
 
@@ -1206,6 +1268,11 @@ function TopologyFlow({ kafka }: TopologyProps) {
             theme,
             resourceType: 'StrimziPodSet',
             replicaInfo: `Ready Pods: ${zkReadyPodsCount}/${zkCount}`,
+            editInfo: onEditResource ? {
+              resourceUrl: `/apis/core.strimzi.io/v1beta2/namespaces/${namespace}/strimzipodsets/${zkPodSet.metadata.name}`,
+              resourceName: zkPodSet.metadata.name,
+              resourceKind: 'StrimziPodSet',
+            } : undefined,
           })
         );
 
@@ -1278,6 +1345,11 @@ function TopologyFlow({ kafka }: TopologyProps) {
             theme,
             resourceType: 'StrimziPodSet',
             replicaInfo: `Ready Pods: ${kafkaReadyPodsCount}/${brokerCount}`,
+            editInfo: onEditResource ? {
+              resourceUrl: `/apis/core.strimzi.io/v1beta2/namespaces/${namespace}/strimzipodsets/${kafkaPodSet.metadata.name}`,
+              resourceName: kafkaPodSet.metadata.name,
+              resourceKind: 'StrimziPodSet',
+            } : undefined,
           })
         );
 
@@ -1311,7 +1383,7 @@ function TopologyFlow({ kafka }: TopologyProps) {
     }
 
     setNodes(generatedNodes);
-  }, [kafka, isKRaft, nodePools, podSets, pods, loading, clusterReady, colors, theme]);
+  }, [kafka, isKRaft, nodePools, podSets, pods, loading, clusterReady, colors, theme, onEditResource]);
 
   if (loading) {
     return (
@@ -1395,6 +1467,12 @@ function TopologyFlow({ kafka }: TopologyProps) {
         minZoom={0.1}
         maxZoom={2.0}
         panOnScroll={true}
+        onNodeClick={(_event, node) => {
+          const info = (node.data as { editInfo?: EditInfo }).editInfo;
+          if (info && onEditResource) {
+            onEditResource(info.resourceUrl, info.resourceName, info.resourceKind);
+          }
+        }}
       >
         <Background color={theme.colors.gridColor} gap={LAYOUT.GRID_GAP} size={LAYOUT.GRID_SIZE} />
         <Controls showInteractive={false} showFitView={false} showZoom={false}>
@@ -1405,10 +1483,10 @@ function TopologyFlow({ kafka }: TopologyProps) {
   );
 }
 
-export function KafkaClusterTopology({ kafka }: TopologyProps) {
+export function KafkaClusterTopology({ kafka, onEditResource }: TopologyProps) {
   return (
     <ReactFlowProvider>
-      <TopologyFlow kafka={kafka} />
+      <TopologyFlow kafka={kafka} onEditResource={onEditResource} />
     </ReactFlowProvider>
   );
 }
