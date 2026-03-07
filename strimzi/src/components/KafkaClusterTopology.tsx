@@ -990,9 +990,10 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
       // Sort: controllers first, then brokers (brokers always last)
       const sortedPoolData = allPoolDimensions
         .map(poolData => {
-          const pool = nodePools.find(p => p.metadata.name === poolData.poolName)!;
-          return { ...poolData, pool };
+          const pool = nodePools.find(p => p.metadata.name === poolData.poolName);
+          return pool ? { ...poolData, pool } : null;
         })
+        .filter((item): item is NonNullable<typeof item> => item !== null)
         .sort((a, b) => {
           const aRoles = a.pool.spec.roles || [];
           const bRoles = b.pool.spec.roles || [];

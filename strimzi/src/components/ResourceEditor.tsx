@@ -20,20 +20,32 @@ export function ResourceEditor({ open, onClose, resourceUrl, resourceName, resou
   const [saving, setSaving] = React.useState(false);
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
 
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
+
   React.useEffect(() => {
     if (!open || !resourceUrl) return;
+    let cancelled = false;
     setLoading(true);
     ApiProxy.request(resourceUrl)
       .then((data: unknown) => {
-        setContent(JSON.stringify(data, null, 2));
-        setLoading(false);
+        if (!cancelled) {
+          setContent(JSON.stringify(data, null, 2));
+          setLoading(false);
+        }
       })
       .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err);
-        setToast({ message: `Failed to load resource: ${message}`, type: 'error' });
-        setLoading(false);
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : String(err);
+          setToast({ message: `Failed to load resource: ${message}`, type: 'error' });
+          setLoading(false);
+        }
       });
+    return () => { cancelled = true; };
   }, [open, resourceUrl]);
+
+  React.useEffect(() => {
+    return () => { clearTimeout(timeoutRef.current); };
+  }, []);
 
   const handleSave = () => {
     let parsed: unknown;
@@ -52,7 +64,7 @@ export function ResourceEditor({ open, onClose, resourceUrl, resourceName, resou
     })
       .then(() => {
         setToast({ message: `${resourceKind} "${resourceName}" updated`, type: 'success' });
-        setTimeout(onClose, 1000);
+        timeoutRef.current = setTimeout(onClose, 1000);
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
