@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.9] - 2026-03-07
+
+### Added
+- Edit buttons on topology nodes (Kafka, KafkaNodePool, StrimziPodSet)
+- Monaco editor for viewing/editing resources as JSON
+- Support for all topology modes: KRaft with NodePools, KRaft legacy, ZooKeeper
+
+### Fixed
+- Topology going blank after closing editor (event bubbling fix)
+- Memory leak on setTimeout cleanup
+- Unsafe non-null assertion in node pool lookup
+
 ## [0.3.8] - 2026-02-24
 
 ### Changed
