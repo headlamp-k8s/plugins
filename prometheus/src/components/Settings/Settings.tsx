@@ -12,17 +12,29 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
+import { isHttpUrl } from '../../helpers';
 
 /**
- * Validates if the given address string is in the correct format.
- * The format should be: namespace/service:port
+ * Validates whether the given address is in a supported format.
+ * Supports namespace/service:port and HTTP/HTTPS URLs.
+ * Examples: monitoring/prometheus:9090, https://prometheus.example.com
  *
  * @param {string} address - The address string to validate.
  * @returns {boolean} True if the address is valid, false otherwise.
  */
 function isValidAddress(address: string): boolean {
-  const regex = /^[a-z0-9-]+\/[a-z0-9-]+:[0-9]+$/;
-  return regex.test(address);
+  if (!address) return false;
+
+  const value = address.trim().replace(/\/$/, '');
+
+  // namespace/service:port
+  const k8sRegex = /^[a-z0-9-]+\/[a-z0-9-]+:[0-9]+$/;
+  if (k8sRegex.test(value)) {
+    return true;
+  }
+
+  // http(s)://...
+  return isHttpUrl(value);
 }
 
 /**
@@ -107,16 +119,32 @@ export function Settings(props: SettingsProps) {
     setTestMessage(t('Testing Connection'));
 
     try {
-      const [namespace, serviceAndPort] = selectedClusterData.address.split('/');
-      const [service, port] = serviceAndPort.split(':');
+      const address = selectedClusterData.address.trim().replace(/\/$/, '');
+      const normalizeSubPath = (value: string) => {
+        const trimmed = value.trim().replace(/^\/+|\/+$/g, '');
+        return trimmed ? `/${trimmed}` : '';
+      };
+      const subPath = normalizeSubPath(selectedClusterData.subPath || '');
 
-      let subPath = selectedClusterData.subPath || '';
-      if (subPath && !subPath.startsWith('/')) {
-        subPath = '/' + subPath;
+      if (isHttpUrl(address)) {
+        // External URL: direct fetch
+        const url = new URL(address);
+        const basePath = url.pathname.replace(/\/+$/g, '');
+        url.pathname = `${basePath}${subPath}/-/healthy`;
+        const response = await fetch(url.toString(), { method: 'GET' });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`);
+        }
+      } else {
+        // Kubernetes service proxy: namespace/service:port
+        const [namespace, serviceAndPort] = address.split('/');
+        const [service, port] = serviceAndPort.split(':');
+        const proxyUrl = `/clusters/${selectedCluster}/api/v1/namespaces/${namespace}/services/${service}:${port}/proxy${subPath}/-/healthy`;
+        const response = await request(proxyUrl, { method: 'GET', isJSON: false });
+        if (response.status !== 200) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`);
+        }
       }
-
-      const proxyUrl = `/clusters/${selectedCluster}/api/v1/namespaces/${namespace}/services/${service}:${port}/proxy${subPath}/-/healthy`;
-      await request(proxyUrl);
 
       setTestStatus('success');
       setTestMessage(t('Connection successful!'));
@@ -167,7 +195,7 @@ export function Settings(props: SettingsProps) {
       ),
     },
     {
-      name: t('Prometheus Service Address'),
+      name: t('Prometheus Address'),
       value: (
         <Box display="flex" flexDirection="column" width="100%">
           <Box display="flex" gap={2} alignItems="flex-start">
@@ -175,9 +203,11 @@ export function Settings(props: SettingsProps) {
               disabled={!isAddressFieldEnabled}
               helperText={
                 addressError
-                  ? t('Invalid format. Use: namespace/service-name:port')
+                  ? t(
+                      'Invalid format. Use: namespace/service-name:port or https://prometheus.example.com'
+                    )
                   : t(
-                      'Address of the Prometheus Service, only used when auto-detection is disabled. Format: namespace/service-name:port'
+                      'Prometheus address. Used only when auto-detection is disabled. Examples: namespace/service-name:port or https://prometheus.example.com. External URLs require CORS to be enabled on the Prometheus server.'
                     )
               }
               error={addressError}
@@ -220,16 +250,16 @@ export function Settings(props: SettingsProps) {
       ),
     },
     {
-      name: t('Prometheus Service Subpath'),
+      name: t('Prometheus Subpath'),
       value: (
         <TextField
           value={selectedClusterData.subPath || ''}
           disabled={!isAddressFieldEnabled}
           helperText={t(
-            "Optional subpath to the Prometheus Service endpoint. Only used when auto-detection is disabled. Examples: 'prometheus'."
+            "Optional subpath to the Prometheus endpoint. Only used when auto-detection is disabled. Examples: 'prometheus'."
           )}
           onChange={e => {
-            const newSubPath = e.target.value;
+            const newSubPath = e.target.value.trim().replace(/^\/+|\/+$/g, '');
             onDataChange({
               ...(data || {}),
               [selectedCluster]: { ...((data || {})[selectedCluster] || {}), subPath: newSubPath },
