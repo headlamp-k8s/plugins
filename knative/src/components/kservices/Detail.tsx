@@ -84,7 +84,7 @@ export function KServiceDetail() {
                       ),
                     },
                     {
-                      id: 'knative-kservice-logs',
+                      id: 'knative.kservice-logs',
                       action: (
                         <KServicePermissionsProvider kservice={resource}>
                           <KServiceLogsHeaderButton kservice={resource} />
