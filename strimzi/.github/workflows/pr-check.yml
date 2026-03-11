@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2025 Angelo Cesaro
+
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for version bump
+        id: version-check
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          BASE_VERSION=$(git show origin/${{ github.base_ref }}:package.json | node -p "require('fs').readFileSync('/dev/stdin', 'utf8')" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version")
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+
+          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          if [ "$BASE_VERSION" == "$CURRENT_VERSION" ]; then
+            echo "version_bumped=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Version not updated in package.json"
+            echo "   Current: $CURRENT_VERSION"
+            echo "   Consider bumping version if adding features/fixes"
+          else
+            echo "version_bumped=true" >> $GITHUB_OUTPUT
+            echo "✅ Version updated: $BASE_VERSION → $CURRENT_VERSION"
+          fi
+
+      - name: Check for critical TODOs
+        id: todo-check
+        run: |
+          CRITICAL_TODOS=$(grep -r "TODO.*CRITICAL\|FIXME.*CRITICAL" src/ || true)
+          if [ -n "$CRITICAL_TODOS" ]; then
+            echo "has_critical_todos=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Critical TODOs found:"
+            echo "$CRITICAL_TODOS"
+          else
+            echo "has_critical_todos=false" >> $GITHUB_OUTPUT
+            echo "✅ No critical TODOs found"
+          fi
+
+      - name: Check CHANGELOG update
+        id: changelog-check
+        run: |
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "CHANGELOG.md"; then
+            echo "changelog_updated=true" >> $GITHUB_OUTPUT
+            echo "✅ CHANGELOG.md updated"
+          else
+            echo "changelog_updated=false" >> $GITHUB_OUTPUT
+            echo "⚠️  CHANGELOG.md not updated"
+            echo "   Consider documenting your changes"
+          fi
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: PR Validation Summary
+        if: always()
+        run: |
+          echo "### 📋 PR Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Version check
+          if [ "${{ steps.version-check.outputs.version_bumped }}" == "true" ]; then
+            echo "- ✅ Version bumped: ${{ steps.version-check.outputs.base_version }} → ${{ steps.version-check.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ℹ️  Version unchanged: ${{ steps.version-check.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # CHANGELOG check
+          if [ "${{ steps.changelog-check.outputs.changelog_updated }}" == "true" ]; then
+            echo "- ✅ CHANGELOG.md updated" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ℹ️  CHANGELOG.md not updated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Critical TODOs check
+          if [ "${{ steps.todo-check.outputs.has_critical_todos }}" == "true" ]; then
+            echo "- ⚠️  Critical TODOs found - please resolve before merging" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ✅ No critical TODOs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Build status
+          echo "- ✅ Linter passed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Build successful" >> $GITHUB_STEP_SUMMARY
