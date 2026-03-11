@@ -11,13 +11,14 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Icon } from '@iconify/react';
 import { Button, ButtonGroup, Box, useTheme, Chip } from '@mui/material';
-import { Kafka, KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
+import type { KafkaInterface } from '../resources';
+import { KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
 import { getSemanticColors, hexToRgba } from '../utils/topologyColors';
 
 interface TopologyProps {
-  kafka: Kafka;
+  kafka: KafkaInterface;
   onEditResource?: (resourceUrl: string, resourceName: string, resourceKind: string) => void;
 }
 

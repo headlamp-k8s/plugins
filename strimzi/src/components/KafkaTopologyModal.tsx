@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useTheme } from '@mui/material/styles';
-import { Kafka } from '../crds';
+import type { KafkaInterface } from '../resources';
 import { KafkaClusterTopology } from './KafkaClusterTopology';
 import { ResourceEditor } from './ResourceEditor';
 
@@ -11,7 +11,7 @@ interface EditTarget {
 }
 
 interface KafkaTopologyModalProps {
-  kafka: Kafka | null;
+  kafka: KafkaInterface | null;
   open: boolean;
   onClose: () => void;
 }
