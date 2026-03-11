@@ -196,17 +196,17 @@ export function useTopologyTheme(): TopologyTheme {
     };
 
     const typography: TopologyTypography = {
-      fontFamily: muiTheme.typography.fontFamily,
+      fontFamily: muiTheme.typography.fontFamily ?? '',
       fontSize: {
-        small: muiTheme.typography.caption.fontSize || '12px',
-        medium: muiTheme.typography.body2.fontSize || '14px',
-        large: muiTheme.typography.body1.fontSize || '18px',
-        xlarge: muiTheme.typography.h6.fontSize || '20px',
+        small: String(muiTheme.typography.caption.fontSize ?? '12px'),
+        medium: String(muiTheme.typography.body2.fontSize ?? '14px'),
+        large: String(muiTheme.typography.body1.fontSize ?? '18px'),
+        xlarge: String(muiTheme.typography.h6.fontSize ?? '20px'),
       },
       fontWeight: {
-        regular: muiTheme.typography.fontWeightRegular,
-        medium: muiTheme.typography.fontWeightMedium,
-        bold: muiTheme.typography.fontWeightBold,
+        regular: Number(muiTheme.typography.fontWeightRegular) || 400,
+        medium: Number(muiTheme.typography.fontWeightMedium) || 500,
+        bold: Number(muiTheme.typography.fontWeightBold) || 700,
       },
       lineHeight: {
         tight: 1.2,
@@ -217,11 +217,11 @@ export function useTopologyTheme(): TopologyTheme {
     };
 
     const spacing: TopologySpacing = {
-      xs: muiTheme.spacing(0.5),
-      sm: muiTheme.spacing(1),
-      md: muiTheme.spacing(2),
-      lg: muiTheme.spacing(3),
-      xl: muiTheme.spacing(4),
+      xs: Number(muiTheme.spacing(0.5)),
+      sm: Number(muiTheme.spacing(1)),
+      md: Number(muiTheme.spacing(2)),
+      lg: Number(muiTheme.spacing(3)),
+      xl: Number(muiTheme.spacing(4)),
     };
 
     return {
