@@ -1,318 +1,68 @@
 import React from 'react';
-import { useTheme } from '@mui/material/styles';
-import { Link, Chip } from '@mui/material';
-import { Kafka as K8sKafka, K8sListResponse, KafkaNodePool } from '../crds';
-import { getClusterMode, isKafkaReady } from '../crds';
-import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
-import { SearchFilter, FilterGroup, FilterSelect } from './SearchFilter';
+import { Button } from '@mui/material';
+import {
+  ResourceListView,
+  type ColumnType,
+  type ResourceTableColumn,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Kafka } from '../resources/kafka';
 import { KafkaTopologyModal } from './KafkaTopologyModal';
-import { getErrorMessage } from '../utils/errors';
-import { Toast, ToastMessage } from './Toast';
+import type { KafkaInterface } from '../resources/kafka';
 
 export function KafkaList() {
-  const theme = useTheme();
-  const [kafkas, setKafkas] = React.useState<K8sKafka[]>([]);
-  const [nodePools, setNodePools] = React.useState<KafkaNodePool[]>([]);
-  const [toast, setToast] = React.useState<ToastMessage | null>(null);
-
-  // Search and Filter state
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [namespaceFilter, setNamespaceFilter] = React.useState('all');
-  const [modeFilter, setModeFilter] = React.useState('all');
-  const [statusFilter, setStatusFilter] = React.useState('all');
-
-  // Topology modal state
-  const [selectedKafka, setSelectedKafka] = React.useState<K8sKafka | null>(null);
+  const [selectedKafka, setSelectedKafka] = React.useState<KafkaInterface | null>(null);
   const [isTopologyModalOpen, setIsTopologyModalOpen] = React.useState(false);
 
-  const fetchKafkas = React.useCallback(() => {
-    ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkas')
-      .then((data: K8sListResponse<K8sKafka>) => {
-        setKafkas(data.items);
-      })
-      .catch((err: unknown) => {
-        // Handle case when Strimzi CRD is not installed
-        const message = getErrorMessage(err);
-        if (message === 'Not Found' || message.includes('404')) {
-          setToast({
-            message: 'Strimzi is not installed in this cluster. Please install the Strimzi operator first.',
-            type: 'error',
-            duration: 6000
-          });
-        } else {
-          setToast({ message, type: 'error' });
-        }
-      });
-  }, []);
-
-  const fetchNodePools = React.useCallback(() => {
-    ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkanodepools')
-      .then((data: K8sListResponse<KafkaNodePool>) => {
-        setNodePools(data.items);
-      })
-      .catch(() => {
-        // Silently ignore - NodePools might not exist in ZK mode or older Strimzi versions
-        setNodePools([]);
-      });
-  }, []);
-
-  React.useEffect(() => {
-    // Initial fetch
-    fetchKafkas();
-    fetchNodePools();
-
-    // Auto-refresh every 5 seconds
-    const intervalId = setInterval(() => {
-      fetchKafkas();
-      fetchNodePools();
-    }, 5000);
-
-    // Cleanup interval on unmount
-    return () => clearInterval(intervalId);
-  }, [fetchKafkas, fetchNodePools]);
-
-  // Calculate available namespaces from fetched kafkas
-  const availableNamespaces = React.useMemo(() => {
-    return [...new Set(kafkas.map(k => k.metadata.namespace))].sort();
-  }, [kafkas]);
-
-  // Namespace filter options
-  const namespaceOptions = React.useMemo(() => [
-    { value: 'all', label: 'All' },
-    ...availableNamespaces.map(ns => ({ value: ns, label: ns }))
-  ], [availableNamespaces]);
-
-  // Filter kafkas based on search and filters
-  const filteredKafkas = React.useMemo(() => {
-    return kafkas.filter((kafka) => {
-      // Search filter
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch =
-        searchTerm === '' ||
-        kafka.metadata.name.toLowerCase().includes(searchLower) ||
-        kafka.metadata.namespace.toLowerCase().includes(searchLower);
-
-      if (!matchesSearch) return false;
-
-      // Namespace filter
-      if (namespaceFilter !== 'all' && kafka.metadata.namespace !== namespaceFilter) {
-        return false;
-      }
-
-      // Mode filter
-      if (modeFilter !== 'all') {
-        const mode = getClusterMode(kafka);
-        if (modeFilter === 'kraft' && mode !== 'KRaft') return false;
-        if (modeFilter === 'zookeeper' && mode !== 'ZooKeeper') return false;
-      }
-
-      // Status filter
-      if (statusFilter !== 'all') {
-        const ready = isKafkaReady(kafka);
-        if (statusFilter === 'ready' && !ready) return false;
-        if (statusFilter === 'not-ready' && ready) return false;
-      }
-
-      return true;
-    });
-  }, [kafkas, searchTerm, namespaceFilter, modeFilter, statusFilter]);
-
-  // Helper function to calculate replicas display
-  const getReplicasDisplay = (kafka: K8sKafka): string => {
-    const clusterName = kafka.metadata.name;
-    const namespace = kafka.metadata.namespace;
-    const kafkaReplicas = kafka.spec?.kafka?.replicas;
-    const zkReplicas = kafka.spec?.zookeeper?.replicas;
-
-    // ZooKeeper mode: show ZK and Kafka replicas
-    if (zkReplicas !== undefined) {
-      return `${zkReplicas} Zookeeper / ${kafkaReplicas} Kafka`;
-    }
-
-    // KRaft mode with replicas defined (no NodePools)
-    if (kafkaReplicas !== undefined) {
-      return kafkaReplicas.toString();
-    }
-
-    // KRaft mode with NodePools: calculate by role
-    const clusterNodePools = nodePools.filter(
-      (np) =>
-        np.metadata.namespace === namespace &&
-        np.metadata.labels?.['strimzi.io/cluster'] === clusterName
-    );
-
-    if (clusterNodePools.length === 0) {
-      return 'N/A';
-    }
-
-    // Count replicas by role
-    let controllerReplicas = 0;
-    let brokerReplicas = 0;
-    let dualReplicas = 0;
-
-    clusterNodePools.forEach((np) => {
-      const roles = np.spec.roles || [];
-      const replicas = np.spec.replicas;
-
-      const isController = roles.includes('controller');
-      const isBroker = roles.includes('broker');
-
-      if (isController && isBroker) {
-        dualReplicas += replicas;
-      } else if (isController) {
-        controllerReplicas += replicas;
-      } else if (isBroker) {
-        brokerReplicas += replicas;
-      }
-    });
-
-    // Build display string based on what roles exist
-    const parts: string[] = [];
-    if (controllerReplicas > 0) parts.push(`${controllerReplicas} Controller`);
-    if (brokerReplicas > 0) parts.push(`${brokerReplicas} Broker`);
-    if (dualReplicas > 0) parts.push(`${dualReplicas} Dual`);
-
-    return parts.length > 0 ? parts.join(' / ') : 'N/A';
-  };
+  const columns: (ColumnType | ResourceTableColumn<Kafka>)[] = [
+    'name',
+    'namespace',
+    {
+      id: 'mode',
+      label: 'Mode',
+      getValue: (item: Kafka) => item.clusterMode,
+    },
+    {
+      id: 'version',
+      label: 'Version',
+      getValue: (item: Kafka) => item.kafkaVersion,
+    },
+    {
+      id: 'replicas',
+      label: 'Replicas',
+      getValue: (item: Kafka) => item.replicasDisplay,
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      getValue: (item: Kafka) => String(item.readyStatus ?? 'Unknown'),
+    },
+    {
+      id: 'topology',
+      label: 'Topology',
+      getValue: () => '',
+      render: (item: Kafka) => (
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => {
+            setSelectedKafka(item.jsonData);
+            setIsTopologyModalOpen(true);
+          }}
+        >
+          View
+        </Button>
+      ),
+    },
+    'age',
+  ];
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Kafka Clusters</h1>
-      <p>Strimzi Kafka clusters with KRaft and ZooKeeper support</p>
-
-      {/* Search and Filter */}
-      <SearchFilter
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        placeholder="Search clusters by name or namespace..."
-        resultCount={filteredKafkas.length}
-        totalCount={kafkas.length}
-      >
-        <div style={{ display: 'grid', gridTemplateColumns: availableNamespaces.length > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: '15px' }}>
-          {availableNamespaces.length > 0 && (
-            <FilterGroup label="Namespace">
-              <FilterSelect
-                value={namespaceFilter}
-                onChange={setNamespaceFilter}
-                options={namespaceOptions}
-              />
-            </FilterGroup>
-          )}
-
-          <FilterGroup label="Mode">
-            <FilterSelect
-              value={modeFilter}
-              onChange={setModeFilter}
-              options={[
-                { value: 'all', label: 'All' },
-                { value: 'kraft', label: 'KRaft' },
-                { value: 'zookeeper', label: 'ZooKeeper' },
-              ]}
-            />
-          </FilterGroup>
-
-          <FilterGroup label="Status">
-            <FilterSelect
-              value={statusFilter}
-              onChange={setStatusFilter}
-              options={[
-                { value: 'all', label: 'All' },
-                { value: 'ready', label: 'Ready' },
-                { value: 'not-ready', label: 'Not Ready' },
-              ]}
-            />
-          </FilterGroup>
-        </div>
-      </SearchFilter>
-
-      {filteredKafkas.length === 0 ? (
-        <p style={{ textAlign: 'center', color: theme.palette.text.secondary, padding: '40px' }}>
-          {kafkas.length === 0 ? 'No Kafka clusters found' : 'No clusters match your search criteria'}
-        </p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid #ddd', textAlign: 'left' }}>
-              <th style={{ padding: '12px' }}>Name</th>
-              <th style={{ padding: '12px' }}>Namespace</th>
-              <th style={{ padding: '12px' }}>Mode</th>
-              <th style={{ padding: '12px' }}>Version</th>
-              <th style={{ padding: '12px' }}>Replicas</th>
-              <th style={{ padding: '12px' }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredKafkas.map((kafka) => {
-              const mode = getClusterMode(kafka);
-              const ready = isKafkaReady(kafka);
-              const replicasDisplay = getReplicasDisplay(kafka);
-
-              return (
-                <tr key={`${kafka.metadata.namespace}/${kafka.metadata.name}`} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '12px' }}>
-                    <Link
-                      component="button"
-                      variant="body2"
-                      onClick={() => {
-                        setSelectedKafka(kafka);
-                        setIsTopologyModalOpen(true);
-                      }}
-                      sx={{
-                        textAlign: 'left',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {kafka.metadata.name}
-                    </Link>
-                  </td>
-                  <td style={{ padding: '12px' }}>{kafka.metadata.namespace}</td>
-                  <td style={{ padding: '12px' }}>
-                    <Chip
-                      label={mode}
-                      variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
-                      size="medium"
-                      color="info"
-                      sx={{
-                        borderRadius: '4px',
-                        ...(theme.palette.mode === 'dark' && {
-                          borderColor: '#60a5fa',
-                          color: '#60a5fa',
-                          backgroundColor: 'rgba(96, 165, 250, 0.15)',
-                        }),
-                      }}
-                    />
-                  </td>
-                  <td style={{ padding: '12px' }}>{kafka.spec.kafka.version || 'N/A'}</td>
-                  <td style={{ padding: '12px' }}>{replicasDisplay}</td>
-                  <td style={{ padding: '12px' }}>
-                    <Chip
-                      label={ready ? 'Ready' : 'Not Ready'}
-                      variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
-                      size="medium"
-                      color={ready ? 'success' : 'warning'}
-                      sx={{
-                        borderRadius: '4px',
-                        ...(theme.palette.mode === 'dark' && ready && {
-                          borderColor: '#34d399',
-                          color: '#34d399',
-                          backgroundColor: 'rgba(52, 211, 153, 0.15)',
-                        }),
-                        ...(theme.palette.mode === 'dark' && !ready && {
-                          borderColor: '#f87171',
-                          color: '#f87171',
-                          backgroundColor: 'rgba(248, 113, 113, 0.15)',
-                        }),
-                      }}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-
-      {/* Topology Modal */}
+    <>
+      <ResourceListView
+        title="Kafka Clusters"
+        resourceClass={Kafka}
+        columns={columns}
+      />
       <KafkaTopologyModal
         kafka={selectedKafka}
         open={isTopologyModalOpen}
@@ -321,8 +71,6 @@ export function KafkaList() {
           setSelectedKafka(null);
         }}
       />
-
-      <Toast toast={toast} onClose={() => setToast(null)} />
-    </div>
+    </>
   );
 }
