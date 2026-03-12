@@ -184,6 +184,29 @@ export const modelProviders: ModelProvider[] = [
     ],
   },
   {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    icon: 'ai-providers:deepseek',
+    description: 'Integration with DeepSeek models',
+    fields: [
+      {
+        name: 'apiKey',
+        label: 'API Key',
+        type: 'text',
+        required: true,
+        placeholder: 'Your DeepSeek API key',
+      },
+      {
+        name: 'model',
+        label: 'Model',
+        type: 'select',
+        required: true,
+        options: ['deepseek-chat', 'deepseek-reasoner'],
+        default: 'deepseek-chat',
+      },
+    ],
+  },
+  {
     id: 'local',
     name: 'Local Models',
     icon: 'ai-providers:local',
