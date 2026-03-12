@@ -1,0 +1,11 @@
+version: 0.1.0
+name: "headlamp_kueue"
+displayName: Kueue
+createdAt: "2024-10-24T12:00:00Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kueue/logo.png"
+description: A Headlamp plugin for visualizing and managing Kueue resources.
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/kueue-0.1.0/headlamp-k8s-kueue-0.1.0.tar.gz"
+  headlamp/plugin/archive-checksum: "" # Checksum will be added after release
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
