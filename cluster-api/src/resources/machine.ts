@@ -3,7 +3,7 @@ import { Condition, ReadinessGate } from './common';
 
 export class Machine extends KubeObject<ClusterApiMachine> {
   static readonly apiName = 'machines';
-  static readonly apiVersion = 'cluster.x-k8s.io/v1beta1';
+  static readonly apiVersion = 'cluster.x-k8s.io/v1beta2';
   static readonly isNamespaced = true;
   static readonly kind = 'Machine';
 
