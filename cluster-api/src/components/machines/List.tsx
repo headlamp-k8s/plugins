@@ -1,4 +1,4 @@
-import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Machine } from '../../resources/machine';
 
 const OWNER_ROUTE: Record<string, string> = {
@@ -34,6 +34,20 @@ function getHealth(machine: any): string {
   if (ready === 'True' && infraReady === true) return 'Healthy';
   if (ready === 'False' || (infraReady === false && ready !== 'True')) return 'Unhealthy';
   return 'Unknown';
+}
+
+function getPhaseStatus(phase: string): 'success' | 'warning' | 'error' | '' {
+  const normalized = phase.toLowerCase();
+  if (['running', 'provisioned', 'provisionedready', 'succeeded', 'ready'].includes(normalized)) {
+    return 'success';
+  }
+  if (['pending', 'provisioning', 'deleting', 'deletingnode', 'scaling', 'updating', 'draining'].includes(normalized)) {
+    return 'warning';
+  }
+  if (['failed', 'error', 'unknown', 'degraded'].includes(normalized)) {
+    return 'error';
+  }
+  return '';
 }
 
 
@@ -86,6 +100,12 @@ export function MachinesList() {
           id: 'phase',
           label: 'Phase',
           getValue: machine => machine.status?.phase ?? '-',
+          render: machine => {
+            const phase = machine.status?.phase as string | undefined;
+            if (!phase) return '-';
+            const status = getPhaseStatus(phase);
+            return <StatusLabel status={status}>{phase}</StatusLabel>;
+          },
         },
         {
           id: 'owner',
