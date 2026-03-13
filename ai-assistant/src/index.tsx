@@ -535,19 +535,16 @@ function Settings() {
   );
 }
 
-import {
-  proactiveDiagnosisManager,
-  ProactiveDiagnosisManager,
-} from './utils/ProactiveDiagnosisManager';
+// [PROACTIVE_DIAGNOSIS_DISABLED]
+// import {
+//   proactiveDiagnosisManager,
+//   ProactiveDiagnosisManager,
+// } from './utils/ProactiveDiagnosisManager';
 
 registerPluginSettings(PLUGIN_NAME, Settings);
 
-/**
- * Button component that triggers AI diagnosis for a specific event.
- * When clicked, opens the AI Assistant panel and scrolls to the
- * proactive diagnosis for this event (if already cached), or triggers
- * a new diagnosis on the fly.
- */
+/* [PROACTIVE_DIAGNOSIS_DISABLED] — AIDiagnosisButton & events table column
+
 function AIDiagnosisButton({ event }: { event: Event }) {
   const pluginState = useGlobalState();
 
@@ -556,7 +553,6 @@ function AIDiagnosisButton({ event }: { event: Event }) {
     const eventUid = data?.metadata?.uid || `${data?.metadata?.name}-${data?.metadata?.namespace}`;
     const involvedObject = data?.involvedObject || {};
 
-    // Build the event digest for the manager
     const eventDigest = {
       uid: eventUid,
       name: data?.metadata?.name || 'unknown',
@@ -570,17 +566,13 @@ function AIDiagnosisButton({ event }: { event: Event }) {
       rawEvent: data,
     };
 
-    // If not already diagnosed, trigger a diagnosis
     if (!proactiveDiagnosisManager.hasDiagnosis(eventUid)) {
       proactiveDiagnosisManager.diagnoseSingleEvent(eventDigest).catch(err => {
         console.error('[AIDiagnosisButton] Failed to diagnose event:', err);
       });
     }
 
-    // Tell the manager which event to scroll to
     proactiveDiagnosisManager.setScrollToEventUid(eventUid);
-
-    // Open the AI panel
     pluginState.setIsUIPanelOpen(true);
   };
 
@@ -593,7 +585,6 @@ function AIDiagnosisButton({ event }: { event: Event }) {
   );
 }
 
-// Add an "AI Diagnosis" column to the events table for Warning and Error events.
 registerResourceTableColumnsProcessor(function addAIDiagnosisToEvents({ id, columns }) {
   if (id === 'headlamp-cluster.overview.events') {
     const eventColumns = columns as ResourceTableColumn<Event>[];
@@ -615,6 +606,8 @@ registerResourceTableColumnsProcessor(function addAIDiagnosisToEvents({ id, colu
 
   return columns;
 });
+
+[PROACTIVE_DIAGNOSIS_DISABLED] */
 
 // Export the cluster change notifier for external use
 export { useClusterChangeNotifier, ClusterChangeNotifier } from './hooks/useClusterChangeNotifier';
