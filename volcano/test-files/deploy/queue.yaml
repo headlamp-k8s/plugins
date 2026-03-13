@@ -1,0 +1,7 @@
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: volcano-lab-queue
+spec:
+  weight: 1
+  reclaimable: true
