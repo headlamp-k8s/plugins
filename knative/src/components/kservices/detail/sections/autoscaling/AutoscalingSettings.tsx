@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
   Button,
@@ -30,6 +30,7 @@ import {
 import React from 'react';
 import { KService } from '../../../../../resources/knative';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
 type MetricType = '' | 'concurrency' | 'rps';
@@ -62,7 +63,8 @@ export default function AutoscalingSettings({
 }: AutoscalingSettingsProps) {
   const [saving, setSaving] = React.useState(false);
   const { canPatchKService, isLoading } = useKServicePermissions();
-  const isReadOnly = canPatchKService !== true || isLoading;
+  const { isEditMode } = useKServiceEditMode();
+  const isReadOnly = !isEditMode || canPatchKService !== true || isLoading;
   const anns = kservice.spec.template?.metadata?.annotations ?? {};
   const templateSpec = kservice.spec.template?.spec;
 
@@ -94,20 +96,15 @@ export default function AutoscalingSettings({
   }
 
   function isValid(): boolean {
-    // hard limit: integer >= 0 or empty
     if (hard !== '') {
       const n = Number(hard);
       if (!Number.isInteger(n) || n < 0) return false;
     }
-    // metric+target consistency
     if (metric) {
       if (target === '') return false;
       const t = Number(target);
       if (!Number.isFinite(t) || t <= 0) return false;
-    } else {
-      // when metric is unset, target should be empty (we allow user to clear)
     }
-    // utilization: 1-100 float, or empty
     if (util !== '') {
       const u = Number(util);
       if (!Number.isFinite(u) || u <= 0 || u > 100) return false;
@@ -147,98 +144,151 @@ export default function AutoscalingSettings({
   const resolvedDefaultUtil = defaults?.targetUtilizationPercentage;
   const resolvedDefaultHard = defaults?.containerConcurrency;
 
+  const renderReadonly = (value: string, fallbackInfo?: string) => (
+    <Typography variant="body2">
+      {value !== '' ? (
+        value
+      ) : (
+        <Typography component="span" color="text.secondary">
+          Not set {fallbackInfo ? `(${fallbackInfo})` : ''}
+        </Typography>
+      )}
+    </Typography>
+  );
+
   return (
     <SectionBox title="Autoscaling metrics & concurrency">
       <Stack spacing={2}>
-        <Stack direction="row" spacing={2}>
-          <FormControl sx={{ minWidth: 220 }}>
-            <InputLabel id="metric-label">Metric</InputLabel>
-            <Select
-              size="small"
-              labelId="metric-label"
-              label="Metric"
-              value={metric}
-              onChange={(e: SelectChangeEvent<string>) =>
-                setMetric((e.target.value as MetricType) || '')
-              }
-              disabled={isReadOnly}
-            >
-              <MenuItem value="">
-                <em>
-                  Unset
-                  {resolvedDefaultTarget !== null
-                    ? ` (default target: ${resolvedDefaultTarget})`
-                    : ' (use cluster default)'}
-                </em>
-              </MenuItem>
-              <MenuItem value="concurrency">Concurrency</MenuItem>
-              <MenuItem value="rps">RPS</MenuItem>
-            </Select>
-          </FormControl>
+        <NameValueTable
+          rows={[
+            {
+              name: 'Metric',
+              value: isReadOnly ? (
+                <Typography variant="body2">
+                  {metric === 'concurrency' ? (
+                    'Concurrency'
+                  ) : metric === 'rps' ? (
+                    'RPS'
+                  ) : (
+                    <Typography component="span" color="text.secondary">
+                      Unset (cluster default)
+                    </Typography>
+                  )}
+                </Typography>
+              ) : (
+                <FormControl sx={{ minWidth: 220 }}>
+                  <InputLabel id="metric-label">Metric</InputLabel>
+                  <Select
+                    size="small"
+                    labelId="metric-label"
+                    label="Metric"
+                    value={metric}
+                    onChange={(e: SelectChangeEvent<string>) =>
+                      setMetric((e.target.value as MetricType) || '')
+                    }
+                  >
+                    <MenuItem value="">
+                      <em>
+                        Unset
+                        {resolvedDefaultTarget !== null
+                          ? ` (default target: ${resolvedDefaultTarget})`
+                          : ' (use cluster default)'}
+                      </em>
+                    </MenuItem>
+                    <MenuItem value="concurrency">Concurrency</MenuItem>
+                    <MenuItem value="rps">RPS</MenuItem>
+                  </Select>
+                </FormControl>
+              ),
+            },
+            {
+              name: effectiveMetric === 'rps' ? 'RPS Target' : 'Concurrency Target',
+              value: isReadOnly ? (
+                renderReadonly(
+                  target,
+                  resolvedDefaultTarget !== undefined
+                    ? `Default: ${resolvedDefaultTarget}`
+                    : undefined
+                )
+              ) : (
+                <TextField
+                  size="small"
+                  type="number"
+                  value={target}
+                  onChange={e => setTarget(e.target.value)}
+                  inputProps={{ min: 1, step: 1, inputMode: 'numeric' }}
+                  helperText={
+                    metric
+                      ? resolvedDefaultTarget !== null
+                        ? `Per-revision soft limit target (default: ${resolvedDefaultTarget})`
+                        : 'Per-revision soft limit target'
+                      : resolvedDefaultTarget !== null
+                      ? `Disabled when Metric is unset (default: ${resolvedDefaultTarget})`
+                      : 'Disabled when Metric is unset'
+                  }
+                  disabled={!metric}
+                  sx={{ maxWidth: 400 }}
+                />
+              ),
+            },
+            {
+              name: 'Target Utilization %',
+              value: isReadOnly ? (
+                renderReadonly(
+                  util,
+                  resolvedDefaultUtil !== undefined ? `Default: ${resolvedDefaultUtil}%` : undefined
+                )
+              ) : (
+                <TextField
+                  size="small"
+                  type="number"
+                  value={util}
+                  onChange={e => setUtil(e.target.value)}
+                  inputProps={{ min: 1, max: 100, step: 1, inputMode: 'numeric' }}
+                  helperText={
+                    resolvedDefaultUtil !== null
+                      ? `Optional (default: ${resolvedDefaultUtil}%)`
+                      : 'Optional'
+                  }
+                  sx={{ maxWidth: 400 }}
+                />
+              ),
+            },
+            {
+              name: 'Hard limit (container concurrency)',
+              value: isReadOnly ? (
+                renderReadonly(
+                  hard,
+                  resolvedDefaultHard !== undefined ? `Default: ${resolvedDefaultHard}` : undefined
+                )
+              ) : (
+                <TextField
+                  size="small"
+                  type="number"
+                  value={hard}
+                  onChange={e => setHard(e.target.value)}
+                  inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
+                  helperText={
+                    resolvedDefaultHard !== null
+                      ? `0 = no limit (default: ${resolvedDefaultHard})`
+                      : '0 = no limit. Enforced upper bound per replica.'
+                  }
+                  sx={{ maxWidth: 400 }}
+                />
+              ),
+            },
+          ]}
+        />
 
-          <TextField
-            size="small"
-            type="number"
-            label={effectiveMetric === 'rps' ? 'RPS target' : 'Concurrency target'}
-            value={target}
-            onChange={e => setTarget(e.target.value)}
-            inputProps={{ min: 1, step: 1, inputMode: 'numeric' }}
-            helperText={
-              metric
-                ? resolvedDefaultTarget !== null
-                  ? `Per-revision soft limit target (default: ${resolvedDefaultTarget})`
-                  : 'Per-revision soft limit target'
-                : resolvedDefaultTarget !== null
-                ? `Disabled when Metric is unset (default: ${resolvedDefaultTarget})`
-                : 'Disabled when Metric is unset'
-            }
-            disabled={!metric || isReadOnly}
-          />
-
-          <TextField
-            size="small"
-            type="number"
-            label="Target utilization %"
-            value={util}
-            onChange={e => setUtil(e.target.value)}
-            inputProps={{ min: 1, max: 100, step: 1, inputMode: 'numeric' }}
-            helperText={
-              resolvedDefaultUtil !== null
-                ? `Optional (default: ${resolvedDefaultUtil}%)`
-                : 'Optional'
-            }
-            disabled={isReadOnly}
-          />
-        </Stack>
-
-        <Stack direction="row" spacing={2}>
-          <TextField
-            size="small"
-            type="number"
-            label="Hard limit (containerConcurrency)"
-            value={hard}
-            onChange={e => setHard(e.target.value)}
-            inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
-            helperText={
-              resolvedDefaultHard !== null
-                ? `0 = no limit (default: ${resolvedDefaultHard})`
-                : '0 = no limit. Enforced upper bound per replica.'
-            }
-            disabled={isReadOnly}
-          />
-        </Stack>
-
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" color={isValid() ? 'text.secondary' : 'error'}>
-            {isValid() ? 'All inputs valid' : 'Fix invalid inputs'}
-          </Typography>
-          <Box display="flex" gap={1}>
-            {!isReadOnly && (
+        {!isReadOnly && (
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="body2" color={isValid() ? 'text.secondary' : 'error'}>
+              {isValid() ? 'All inputs valid' : 'Fix invalid inputs'}
+            </Typography>
+            <Box display="flex" gap={1}>
               <Button variant="text" onClick={resetSection} aria-label="Reset autoscaling">
                 Reset
               </Button>
-            )}
-            {!isReadOnly && (
               <Button
                 variant="contained"
                 onClick={onSave}
@@ -247,9 +297,9 @@ export default function AutoscalingSettings({
               >
                 {saving ? 'Saving…' : 'Save'}
               </Button>
-            )}
+            </Box>
           </Box>
-        </Box>
+        )}
       </Stack>
     </SectionBox>
   );
