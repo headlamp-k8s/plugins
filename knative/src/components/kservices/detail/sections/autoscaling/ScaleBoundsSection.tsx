@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
 import { KService } from '../../../../../resources/knative';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
 type AutoscalingDefaults = {
@@ -47,7 +48,8 @@ export default function ScaleBoundsSection({
 }) {
   const [saving, setSaving] = React.useState(false);
   const { canPatchKService, isLoading } = useKServicePermissions();
-  const isReadOnly = canPatchKService !== true || isLoading;
+  const { isEditMode } = useKServiceEditMode();
+  const isReadOnly = !isEditMode || canPatchKService !== true || isLoading;
   const anns = kservice.spec.template.metadata?.annotations ?? {};
 
   const [minScale, setMinScale] = React.useState<string>(
@@ -126,109 +128,150 @@ export default function ScaleBoundsSection({
   const resolvedMaxScaleLimit = defaults?.maxScaleLimit;
   const resolvedInitialScale = defaults?.initialScale;
   const resolvedAllowZeroInitial = defaults?.allowZeroInitialScale;
-  const resolvedActivationScaleDefault = defaults?.activationScaleDefault;
   const resolvedScaleDownDelay = defaults?.scaleDownDelay;
   const resolvedStableWindow = defaults?.stableWindow;
+
+  // Helper to keep the rows array clean
+  const renderReadonly = (value: string, fallbackInfo?: string) => (
+    <Typography variant="body2">
+      {value !== '' ? (
+        value
+      ) : (
+        <Typography component="span" color="text.secondary">
+          Not set {fallbackInfo ? `(${fallbackInfo})` : ''}
+        </Typography>
+      )}
+    </Typography>
+  );
 
   return (
     <SectionBox title="Scale bounds & windows">
       <Stack spacing={2}>
-        <Stack direction="row" spacing={2}>
-          <TextField
-            size="small"
-            type="number"
-            label="Min replicas (min-scale)"
-            value={minScale}
-            onChange={e => setMinScale(e.target.value)}
-            inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
-            helperText={resolvedMinScale !== null ? `Default: ${resolvedMinScale}` : undefined}
-            disabled={isReadOnly}
-          />
-          <TextField
-            size="small"
-            type="number"
-            label="Max replicas (max-scale)"
-            value={maxScale}
-            onChange={e => setMaxScale(e.target.value)}
-            inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
-            helperText={
-              resolvedMaxScale !== null
-                ? resolvedMaxScaleLimit && resolvedMaxScaleLimit > 0
-                  ? `Default: ${resolvedMaxScale} (cluster limit: ${resolvedMaxScaleLimit})${
-                      resolvedMaxScale === 0 ? ' — 0 = unlimited (no upper bound)' : ''
-                    }`
-                  : `Default: ${resolvedMaxScale}${
-                      resolvedMaxScale === 0 ? ' — 0 = unlimited (no upper bound)' : ''
-                    }`
-                : resolvedMaxScaleLimit && resolvedMaxScaleLimit > 0
-                ? `Cluster limit: ${resolvedMaxScaleLimit}`
-                : undefined
-            }
-            disabled={isReadOnly}
-          />
-        </Stack>
+        <NameValueTable
+          rows={[
+            {
+              name: 'Min replicas (min-scale)',
+              value: isReadOnly ? (
+                renderReadonly(
+                  minScale,
+                  resolvedMinScale !== undefined ? `Default: ${resolvedMinScale}` : undefined
+                )
+              ) : (
+                <TextField
+                  size="small"
+                  type="number"
+                  value={minScale}
+                  onChange={e => setMinScale(e.target.value)}
+                  inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
+                  helperText={
+                    resolvedMinScale !== null ? `Default: ${resolvedMinScale}` : undefined
+                  }
+                  sx={{ maxWidth: 400 }}
+                />
+              ),
+            },
+            {
+              name: 'Max replicas (max-scale)',
+              value: isReadOnly ? (
+                renderReadonly(
+                  maxScale,
+                  resolvedMaxScale !== undefined ? `Default: ${resolvedMaxScale}` : undefined
+                )
+              ) : (
+                <TextField
+                  size="small"
+                  type="number"
+                  value={maxScale}
+                  onChange={e => setMaxScale(e.target.value)}
+                  inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
+                  helperText={
+                    resolvedMaxScale !== null
+                      ? resolvedMaxScaleLimit && resolvedMaxScaleLimit > 0
+                        ? `Default: ${resolvedMaxScale} (cluster limit: ${resolvedMaxScaleLimit})${
+                            resolvedMaxScale === 0 ? ' — 0 = unlimited' : ''
+                          }`
+                        : `Default: ${resolvedMaxScale}${
+                            resolvedMaxScale === 0 ? ' — 0 = unlimited' : ''
+                          }`
+                      : resolvedMaxScaleLimit && resolvedMaxScaleLimit > 0
+                      ? `Cluster limit: ${resolvedMaxScaleLimit}`
+                      : undefined
+                  }
+                />
+              ),
+            },
+            {
+              name: 'Initial scale',
+              value: isReadOnly ? (
+                renderReadonly(
+                  initialScale,
+                  resolvedInitialScale !== undefined
+                    ? `Default: ${resolvedInitialScale}`
+                    : undefined
+                )
+              ) : (
+                <TextField
+                  size="small"
+                  type="number"
+                  value={initialScale}
+                  onChange={e => setInitialScale(e.target.value)}
+                  inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
+                  helperText={
+                    resolvedInitialScale !== null
+                      ? resolvedAllowZeroInitial
+                        ? `Default: ${resolvedInitialScale} (zero allowed)`
+                        : `Default: ${resolvedInitialScale}`
+                      : undefined
+                  }
+                />
+              ),
+            },
+            {
+              name: 'Stable window',
+              value: isReadOnly ? (
+                renderReadonly(
+                  stableWindow,
+                  resolvedStableWindow ? `Default: ${resolvedStableWindow}` : undefined
+                )
+              ) : (
+                <TextField
+                  size="small"
+                  placeholder="e.g., 60s"
+                  value={stableWindow}
+                  onChange={e => setStableWindow(e.target.value)}
+                  helperText={`Default: ${resolvedStableWindow ?? '60s'} (6s to 1h)`}
+                />
+              ),
+            },
+            {
+              name: 'Scale down delay',
+              value: isReadOnly ? (
+                renderReadonly(
+                  scaleDownDelay,
+                  resolvedScaleDownDelay ? `Default: ${resolvedScaleDownDelay}` : undefined
+                )
+              ) : (
+                <TextField
+                  size="small"
+                  placeholder="e.g., 15m"
+                  value={scaleDownDelay}
+                  onChange={e => setScaleDownDelay(e.target.value)}
+                  helperText={`Default: ${resolvedScaleDownDelay ?? '0s'} (0s to 1h)`}
+                />
+              ),
+            },
+          ]}
+        />
 
-        <Stack direction="row" spacing={2}>
-          <TextField
-            size="small"
-            type="number"
-            label="Initial scale"
-            value={initialScale}
-            onChange={e => setInitialScale(e.target.value)}
-            inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
-            helperText={
-              resolvedInitialScale !== null
-                ? resolvedAllowZeroInitial
-                  ? `Default: ${resolvedInitialScale} (zero allowed)`
-                  : `Default: ${resolvedInitialScale}`
-                : undefined
-            }
-            disabled={isReadOnly}
-          />
-          <TextField
-            size="small"
-            type="number"
-            label="Activation scale"
-            value={activationScale}
-            onChange={e => setActivationScale(e.target.value)}
-            inputProps={{ min: 1, step: 1, inputMode: 'numeric' }}
-            helperText={`Default: ${resolvedActivationScaleDefault ?? 1}`}
-            disabled={isReadOnly}
-          />
-        </Stack>
-
-        <Stack direction="row" spacing={2}>
-          <TextField
-            size="small"
-            label="Scale down delay"
-            placeholder="e.g., 15m"
-            value={scaleDownDelay}
-            onChange={e => setScaleDownDelay(e.target.value)}
-            helperText={`Default: ${resolvedScaleDownDelay ?? '0s'} (0s to 1h)`}
-            disabled={isReadOnly}
-          />
-          <TextField
-            size="small"
-            label="Stable window"
-            placeholder="e.g., 60s"
-            value={stableWindow}
-            onChange={e => setStableWindow(e.target.value)}
-            helperText={`Default: ${resolvedStableWindow ?? '60s'} (6s to 1h)`}
-            disabled={isReadOnly}
-          />
-        </Stack>
-
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" color={isValid() ? 'text.secondary' : 'error'}>
-            {isValid() ? 'All inputs valid' : 'Fix invalid inputs'}
-          </Typography>
-          <Box display="flex" gap={1}>
-            {!isReadOnly && (
+        {!isReadOnly && (
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="body2" color={isValid() ? 'text.secondary' : 'error'}>
+              {isValid() ? 'All inputs valid' : 'Fix invalid inputs'}
+            </Typography>
+            <Box display="flex" gap={1}>
               <Button variant="text" onClick={resetSection} aria-label="Reset (scale bounds)">
                 Reset
               </Button>
-            )}
-            {!isReadOnly && (
               <Button
                 variant="contained"
                 onClick={onSave}
@@ -237,9 +280,9 @@ export default function ScaleBoundsSection({
               >
                 {saving ? 'Saving…' : 'Save'}
               </Button>
-            )}
+            </Box>
           </Box>
-        </Box>
+        )}
       </Stack>
     </SectionBox>
   );

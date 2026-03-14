@@ -14,27 +14,13 @@
  * limitations under the License.
  */
 
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Chip,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material';
-import { alpha } from '@mui/material/styles';
+import { Link, SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Autocomplete, Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
 import type { KRevisionResource, KService, Traffic } from '../../../../../resources/knative';
 import { getAge } from '../../../../../utils/time';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
 type Props = {
@@ -43,10 +29,23 @@ type Props = {
   revisions: KRevisionResource[];
 };
 
+interface TrafficTableRow {
+  id: string;
+  isLatestRow: boolean;
+  nameLabel: string;
+  showLatestBadge: boolean;
+  badgeLabel?: string;
+  showUnavailableBadge: boolean;
+  hasStatus: boolean;
+  readyCond?: { status?: string; reason?: string };
+  creationTimestamp?: string;
+}
+
 export default function TrafficSplittingSection({ cluster, kservice, revisions }: Props) {
   const [savingTraffic, setSavingTraffic] = React.useState(false);
   const { canPatchKService, isLoading } = useKServicePermissions();
-  const isReadOnly = canPatchKService !== true || isLoading;
+  const { isEditMode } = useKServiceEditMode();
+  const isReadOnly = !isEditMode || canPatchKService !== true || isLoading;
   const [revPercents, setRevPercents] = React.useState<Record<string, number>>({});
   const [revTags, setRevTags] = React.useState<Record<string, string[]>>({});
   const [latestPercent, setLatestPercent] = React.useState<number>(0);
@@ -55,13 +54,6 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
   const revTagInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const latestTagInputRef = React.useRef<HTMLInputElement | null>(null);
   const [pendingTagInputs, setPendingTagInputs] = React.useState<Record<string, string>>({});
-
-  const highlightedRowSx = {
-    backgroundColor: (theme: any) => alpha(theme.palette.primary.main, 0.06),
-    '&:hover': {
-      backgroundColor: (theme: any) => alpha(theme.palette.primary.main, 0.1),
-    },
-  } as const;
 
   const initializeFromKService = React.useCallback(() => {
     if (!kservice || !revisions) return;
@@ -228,7 +220,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
       );
       const total = revisionTotal + (Number(latestPercent) || 0);
       let validationError: string | null = null;
-      // 0-100 range check
+
       for (const key of Object.keys(revPercents)) {
         const val = Number(revPercents[key]);
         if (Number.isNaN(val) || val < 0 || val > 100) {
@@ -337,292 +329,237 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
     }
   }
 
+  const getTagUrl = (tagName: string) => {
+    const trafficEntry = kservice.status?.traffic?.find(t => t.tag === tagName);
+    return trafficEntry?.url;
+  };
+
+  const columns = [
+    {
+      label: 'Name',
+      getter: (original: TrafficTableRow) => {
+        const namespace = kservice.metadata.namespace!;
+        const revisionName = original.isLatestRow ? original.badgeLabel : original.id;
+        return (
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            {revisionName ? (
+              <Link
+                routeName="revisionDetails"
+                params={{ namespace: namespace, name: revisionName }}
+                activeCluster={cluster}
+              >
+                {original.nameLabel}
+              </Link>
+            ) : (
+              <Typography variant="body2">{original.nameLabel}</Typography>
+            )}
+
+            {original.showLatestBadge && original.badgeLabel && (
+              <Chip label={original.badgeLabel} color="info" size="small" variant="outlined" />
+            )}
+
+            {original.showUnavailableBadge && (
+              <Chip label="Unavailable" color="warning" size="small" variant="outlined" />
+            )}
+          </Stack>
+        );
+      },
+    },
+    {
+      label: 'Ready',
+      getter: (original: TrafficTableRow) => {
+        if (!original.hasStatus) {
+          return <Chip label="Unknown" color="warning" size="small" />;
+        }
+        const ready = original.readyCond?.status === 'True';
+        return ready ? (
+          <Chip label="Ready" color="success" size="small" />
+        ) : (
+          <Chip label={original.readyCond?.status || 'Unknown'} color="warning" size="small" />
+        );
+      },
+    },
+    {
+      label: 'Age',
+      getter: (original: TrafficTableRow) =>
+        original.creationTimestamp ? getAge(original.creationTimestamp) : '-',
+    },
+    {
+      label: 'Traffic',
+      getter: (original: TrafficTableRow) => {
+        const val = original.isLatestRow ? latestPercent : revPercents[original.id] ?? 0;
+
+        if (isReadOnly) {
+          return <Typography variant="body2">{val}%</Typography>;
+        }
+
+        return (
+          <TextField
+            type="number"
+            size="small"
+            inputProps={{ min: 0, max: 100, step: 1, inputMode: 'numeric' }}
+            onFocus={e => {
+              try {
+                (e.target as HTMLInputElement).select();
+              } catch {
+                // noop
+              }
+            }}
+            value={val}
+            onChange={e => {
+              const numeric = Number(e.target.value);
+              if (original.isLatestRow) {
+                setLatestPercent(Number.isNaN(numeric) ? 0 : numeric);
+              } else {
+                setRevPercents(prev => ({
+                  ...prev,
+                  [original.id]: numeric,
+                }));
+              }
+            }}
+            sx={{ width: 100 }}
+          />
+        );
+      },
+    },
+    {
+      label: 'Tags',
+      getter: (original: TrafficTableRow) => {
+        const tags = original.isLatestRow ? latestTags : revTags[original.id] || [];
+
+        if (isReadOnly) {
+          if (tags.length === 0) {
+            return (
+              <Typography variant="body2" color="text.secondary">
+                -
+              </Typography>
+            );
+          }
+          return (
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+              {tags.map((tag, i) => {
+                const url = getTagUrl(tag);
+                return url ? (
+                  <Chip
+                    key={i}
+                    label={tag}
+                    size="small"
+                    component="a"
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    clickable
+                    color="primary"
+                  />
+                ) : (
+                  <Chip key={i} label={tag} size="small" />
+                );
+              })}
+            </Stack>
+          );
+        }
+
+        return (
+          <Autocomplete<string, true, false, true>
+            multiple
+            freeSolo
+            size="small"
+            value={tags}
+            options={[]}
+            filterSelectedOptions
+            onChange={(_, newValue) => {
+              const unique = Array.from(new Set(newValue.map(v => v.trim()).filter(Boolean)));
+              if (original.isLatestRow) {
+                setLatestTags(unique);
+                setPendingTagInputs(prev => ({ ...prev, latest: '' }));
+              } else {
+                setRevTags(prev => ({ ...prev, [original.id]: unique }));
+                setPendingTagInputs(prev => ({ ...prev, [original.id]: '' }));
+              }
+            }}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  {...getTagProps({ index })}
+                  key={`${option}-${index}`}
+                  label={option}
+                  size="small"
+                />
+              ))
+            }
+            renderInput={params => {
+              const pendingKey = original.isLatestRow ? 'latest' : original.id;
+              const hasError = Boolean(pendingTagInputs[pendingKey]?.trim());
+
+              return (
+                <TextField
+                  {...params}
+                  placeholder="Add tag"
+                  inputRef={el => {
+                    if (original.isLatestRow) {
+                      latestTagInputRef.current = el;
+                    } else {
+                      revTagInputRefs.current[original.id] = el;
+                    }
+                  }}
+                  error={hasError}
+                  helperText={hasError ? 'Press Enter to confirm the tag' : undefined}
+                  onChange={e => {
+                    params.inputProps.onChange?.(e as React.ChangeEvent<HTMLInputElement>);
+                    setPendingTagInputs(prev => ({
+                      ...prev,
+                      [pendingKey]: e.target.value,
+                    }));
+                  }}
+                />
+              );
+            }}
+            sx={{ minWidth: 220 }}
+          />
+        );
+      },
+    },
+  ];
+
+  const sortedRevisions = [...revisions].sort((a, b) => {
+    const at = new Date(a.metadata.creationTimestamp || 0).getTime();
+    const bt = new Date(b.metadata.creationTimestamp || 0).getTime();
+    return bt - at;
+  });
+
+  const latestReadyCondition = latestReadyRevision?.status?.conditions?.find(
+    c => c.type === 'Ready'
+  );
+
+  const tableData: TrafficTableRow[] = [
+    {
+      id: 'latest',
+      isLatestRow: true,
+      nameLabel: 'Latest Ready Revision',
+      showLatestBadge: Boolean(latestReadyRevisionName),
+      badgeLabel: latestReadyRevisionName,
+      showUnavailableBadge: !latestReadyRevisionName,
+      hasStatus: Boolean(latestReadyRevision),
+      readyCond: latestReadyCondition,
+      creationTimestamp: latestReadyRevision?.metadata.creationTimestamp,
+    },
+    ...sortedRevisions.map(r => ({
+      id: r.metadata.name,
+      isLatestRow: false,
+      nameLabel: r.metadata.name,
+      showLatestBadge: latestReadyRevisionName === r.metadata.name,
+      badgeLabel: 'Latest Ready',
+      showUnavailableBadge: false,
+      hasStatus: true,
+      readyCond: r.status?.conditions?.find(c => c.type === 'Ready'),
+      creationTimestamp: r.metadata.creationTimestamp,
+    })),
+  ];
+
   return (
     <SectionBox title="Traffic Splitting">
       <Stack spacing={2}>
-        <TableContainer sx={{ maxHeight: 480 }}>
-          <Table size="small" stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Ready</TableCell>
-                <TableCell>Age</TableCell>
-                <TableCell>Traffic</TableCell>
-                <TableCell>Tags</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {(() => {
-                const sorted = [...revisions].sort((a, b) => {
-                  const at = new Date(a.metadata.creationTimestamp || 0).getTime();
-                  const bt = new Date(b.metadata.creationTimestamp || 0).getTime();
-                  // Newest first
-                  return bt - at;
-                });
-                const latestReadyCondition = latestReadyRevision?.status?.conditions?.find(
-                  c => c.type === 'Ready'
-                );
-                const rows = sorted.map(r => {
-                  const readyCond = r.status?.conditions?.find(c => c.type === 'Ready');
-                  const ready = readyCond?.status === 'True';
-                  const isLatest = latestReadyRevisionName === r.metadata.name;
-                  const percentValue = Number(revPercents[r.metadata.name] ?? 0);
-                  const hasTraffic = Number.isFinite(percentValue) && percentValue !== 0;
-                  const tags = revTags[r.metadata.name] || [];
-                  const hasTags = tags.some(t => Boolean(t?.trim()));
-                  const isHighlighted = hasTraffic || hasTags;
-                  return (
-                    <TableRow
-                      key={r.metadata.name}
-                      hover
-                      sx={isHighlighted ? highlightedRowSx : undefined}
-                    >
-                      <TableCell>
-                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                          <Typography variant="body2">{r.metadata.name}</Typography>
-                          {isLatest && (
-                            <Chip
-                              label="Latest Ready"
-                              color="info"
-                              size="small"
-                              variant="outlined"
-                            />
-                          )}
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        {ready ? (
-                          <Chip label="Ready" color="success" size="small" />
-                        ) : (
-                          <Chip
-                            label={readyCond?.status || 'Unknown'}
-                            color="warning"
-                            size="small"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>{getAge(r.metadata.creationTimestamp)}</TableCell>
-                      <TableCell>
-                        <TextField
-                          type="number"
-                          size="small"
-                          inputProps={{ min: 0, max: 100, step: 1, inputMode: 'numeric' }}
-                          onFocus={e => {
-                            try {
-                              (e.target as HTMLInputElement).select();
-                            } catch {
-                              // noop
-                            }
-                          }}
-                          value={revPercents[r.metadata.name] ?? 0}
-                          onChange={e =>
-                            setRevPercents(prev => ({
-                              ...prev,
-                              [r.metadata.name]: Number(e.target.value),
-                            }))
-                          }
-                          sx={{ width: 100 }}
-                          disabled={isReadOnly}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Autocomplete<string, true, false, true>
-                          multiple
-                          freeSolo
-                          size="small"
-                          value={revTags[r.metadata.name] || []}
-                          options={[]}
-                          filterSelectedOptions
-                          disabled={isReadOnly}
-                          onChange={(_, newValue) => {
-                            const unique = Array.from(
-                              new Set(newValue.map(v => v.trim()).filter(Boolean))
-                            );
-                            setRevTags(prev => ({
-                              ...prev,
-                              [r.metadata.name]: unique,
-                            }));
-                            // Clear pending input helper after tag is confirmed
-                            setPendingTagInputs(prev => ({
-                              ...prev,
-                              [r.metadata.name]: '',
-                            }));
-                          }}
-                          renderTags={(value, getTagProps) =>
-                            value.map((option, index) => (
-                              <Chip
-                                {...getTagProps({ index })}
-                                key={`${option}-${index}`}
-                                label={option}
-                                size="small"
-                              />
-                            ))
-                          }
-                          renderInput={params => (
-                            <TextField
-                              {...params}
-                              placeholder="Add tag"
-                              inputRef={el => {
-                                revTagInputRefs.current[r.metadata.name] = el;
-                              }}
-                              error={Boolean(pendingTagInputs[r.metadata.name]?.trim())}
-                              helperText={
-                                pendingTagInputs[r.metadata.name]?.trim()
-                                  ? 'Press Enter to confirm the tag'
-                                  : undefined
-                              }
-                              onChange={e => {
-                                // Preserve Autocomplete's internal onChange as well
-                                params.inputProps.onChange?.(
-                                  e as React.ChangeEvent<HTMLInputElement>
-                                );
-                                setPendingTagInputs(prev => ({
-                                  ...prev,
-                                  [r.metadata.name]: e.target.value,
-                                }));
-                              }}
-                            />
-                          )}
-                          sx={{ minWidth: 220 }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                });
-                rows.unshift(
-                  <TableRow
-                    key="latest-revision"
-                    hover={Boolean(latestReadyRevisionName)}
-                    sx={
-                      (Number.isFinite(Number(latestPercent)) && Number(latestPercent) !== 0) ||
-                      latestTags.some(t => Boolean(t?.trim()))
-                        ? highlightedRowSx
-                        : undefined
-                    }
-                  >
-                    <TableCell>
-                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                        <Typography variant="body2">Latest Ready Revision</Typography>
-                        {latestReadyRevisionName ? (
-                          <Chip
-                            label={latestReadyRevisionName}
-                            size="small"
-                            variant="outlined"
-                            color="info"
-                          />
-                        ) : (
-                          <Chip
-                            label="Unavailable"
-                            color="warning"
-                            size="small"
-                            variant="outlined"
-                          />
-                        )}
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      {latestReadyRevision ? (
-                        latestReadyCondition?.status === 'True' ? (
-                          <Chip label="Ready" color="success" size="small" />
-                        ) : (
-                          <Chip
-                            label={latestReadyCondition?.status || 'Unknown'}
-                            color="warning"
-                            size="small"
-                          />
-                        )
-                      ) : (
-                        <Chip label="Unknown" color="warning" size="small" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {latestReadyRevision
-                        ? getAge(latestReadyRevision.metadata.creationTimestamp)
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        type="number"
-                        size="small"
-                        inputProps={{ min: 0, max: 100, step: 1, inputMode: 'numeric' }}
-                        onFocus={e => {
-                          try {
-                            (e.target as HTMLInputElement).select();
-                          } catch {
-                            // noop
-                          }
-                        }}
-                        value={latestPercent}
-                        onChange={e => {
-                          const numeric = Number(e.target.value);
-                          setLatestPercent(Number.isNaN(numeric) ? 0 : numeric);
-                        }}
-                        sx={{ width: 100 }}
-                        disabled={isReadOnly}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Autocomplete<string, true, false, true>
-                        multiple
-                        freeSolo
-                        size="small"
-                        value={latestTags}
-                        options={[]}
-                        filterSelectedOptions
-                        disabled={isReadOnly}
-                        onChange={(_, newValue) => {
-                          const unique = Array.from(
-                            new Set(newValue.map(v => v.trim()).filter(Boolean))
-                          );
-                          setLatestTags(unique);
-                          // Clear the helper for unconfirmed input after tag confirmation
-                          setPendingTagInputs(prev => ({
-                            ...prev,
-                            latest: '',
-                          }));
-                        }}
-                        renderTags={(value, getTagProps) =>
-                          value.map((option, index) => (
-                            <Chip
-                              {...getTagProps({ index })}
-                              key={`${option}-${index}`}
-                              label={option}
-                              size="small"
-                            />
-                          ))
-                        }
-                        renderInput={params => (
-                          <TextField
-                            {...params}
-                            placeholder="Add tag"
-                            inputRef={latestTagInputRef}
-                            error={Boolean(pendingTagInputs.latest?.trim())}
-                            helperText={
-                              pendingTagInputs.latest?.trim()
-                                ? 'Press Enter to confirm the tag'
-                                : undefined
-                            }
-                            onChange={e => {
-                              params.inputProps.onChange?.(
-                                e as React.ChangeEvent<HTMLInputElement>
-                              );
-                              setPendingTagInputs(prev => ({
-                                ...prev,
-                                latest: e.target.value,
-                              }));
-                            }}
-                          />
-                        )}
-                        sx={{ minWidth: 220 }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-                return rows;
-              })()}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <SimpleTable columns={columns} data={tableData} />
         <Box
           mt={2}
           display="flex"
