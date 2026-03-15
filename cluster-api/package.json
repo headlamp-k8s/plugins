@@ -33,8 +33,10 @@
   "overrides": {
     "typescript": "5.6.2"
   },
-  "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.12.0",
+  "dependencies": {
     "jsonpath-plus": "^10.0.0"
+  },
+  "devDependencies": {
+    "@kinvolk/headlamp-plugin": "^0.12.0"
   }
 }
