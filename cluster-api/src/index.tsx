@@ -99,15 +99,7 @@ registerSidebarEntry({
 
 const clusterApiResources: ResourceRegistrationConfig[] = [
   {
-    name: 'Cluster Classes',
-    kind: 'ClusterClass',
-    path: 'clusterclasses',
-    DetailComponent: ClusterClassDetail,
-    ListComponent: ClusterClassesList,
-    icon: 'mdi:cloud-print-outline',
-  },
-  {
-    name: 'Clusters ', // Use a trailing space because "Clusters" is taken
+    name: 'Clusters ', // Trailing space: "Clusters" is reserved in Headlamp
     kind: 'Cluster',
     path: 'capiclusters',
     DetailComponent: ClusterDetail,
@@ -115,20 +107,12 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     icon: 'mdi:cloud',
   },
   {
-    name: 'Kubeadm Configs',
-    kind: 'KubeadmConfig',
-    path: 'kubeadmconfigs',
-    DetailComponent: KubeadmConfigDetail,
-    ListComponent: KubeadmConfigsList,
-    icon: 'mdi:list-box',
-  },
-  {
-    name: 'Kubeadm Config Templates',
-    kind: 'KubeadmConfigTemplate',
-    path: 'kubeadmconfigtemplates',
-    DetailComponent: KubeadmConfigTemplateDetail,
-    ListComponent: KubeadmConfigTemplatesList,
-    icon: 'mdi:list-box-outline',
+    name: 'Cluster Classes',
+    kind: 'ClusterClass',
+    path: 'clusterclasses',
+    DetailComponent: ClusterClassDetail,
+    ListComponent: ClusterClassesList,
+    icon: 'mdi:cloud-print-outline',
   },
   {
     name: 'Kubeadm Control Planes',
@@ -147,36 +131,12 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     icon: 'mdi:controller-classic-outline',
   },
   {
-    name: 'Machines',
-    kind: 'Machine',
-    path: 'machines',
-    DetailComponent: MachineDetail,
-    ListComponent: MachinesList,
-    icon: 'mdi:desktop-classic',
-  },
-  {
     name: 'Machine Deployments',
     kind: 'MachineDeployment',
     path: 'machinedeployments',
     DetailComponent: MachineDeploymentDetail,
     ListComponent: MachineDeploymentsList,
     icon: 'mdi:knob',
-  },
-  {
-    name: 'Machine Drain Rules',
-    kind: 'MachineDrainRule',
-    path: 'machinedrainrules',
-    DetailComponent: MachineDrainRuleDetail,
-    ListComponent: MachineDrainRulesList,
-    icon: 'mdi:vacuum-outline',
-  },
-  {
-    name: 'Machine Health Checks',
-    kind: 'MachineHealthCheck',
-    path: 'machinehealthchecks',
-    DetailComponent: MachineHealthCheckDetail,
-    ListComponent: MachineHealthChecksList,
-    icon: 'mdi:bottle-tonic-plus',
   },
   {
     name: 'Machine Pools',
@@ -193,6 +153,46 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: MachineSetDetail,
     ListComponent: MachineSetsList,
     icon: 'mdi:set-split',
+  },
+  {
+    name: 'Machines',
+    kind: 'Machine',
+    path: 'machines',
+    DetailComponent: MachineDetail,
+    ListComponent: MachinesList,
+    icon: 'mdi:desktop-classic',
+  },
+  {
+    name: 'Kubeadm Config Templates',
+    kind: 'KubeadmConfigTemplate',
+    path: 'kubeadmconfigtemplates',
+    DetailComponent: KubeadmConfigTemplateDetail,
+    ListComponent: KubeadmConfigTemplatesList,
+    icon: 'mdi:list-box-outline',
+  },
+  {
+    name: 'Kubeadm Configs',
+    kind: 'KubeadmConfig',
+    path: 'kubeadmconfigs',
+    DetailComponent: KubeadmConfigDetail,
+    ListComponent: KubeadmConfigsList,
+    icon: 'mdi:list-box',
+  },
+  {
+    name: 'Machine Health Checks',
+    kind: 'MachineHealthCheck',
+    path: 'machinehealthchecks',
+    DetailComponent: MachineHealthCheckDetail,
+    ListComponent: MachineHealthChecksList,
+    icon: 'mdi:bottle-tonic-plus',
+  },
+  {
+    name: 'Machine Drain Rules',
+    kind: 'MachineDrainRule',
+    path: 'machinedrainrules',
+    DetailComponent: MachineDrainRuleDetail,
+    ListComponent: MachineDrainRulesList,
+    icon: 'mdi:vacuum-outline',
   },
 ];
 
