@@ -21,7 +21,7 @@ import {
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { TextField, Typography } from '@mui/material';
+import { Box, TextField, Typography } from '@mui/material';
 import Applications from './applications';
 import ApplicationDetailView from './applications/ApplicationDetailView';
 import { DEFAULT_UCP_API_VERSION, PLUGIN_NAME } from './constants';
@@ -194,6 +194,7 @@ function RadiusPluginSettingsComponent(
   }
 
   return (
+    <Box sx={{ mt: 2 }}>
     <TextField
       value={data?.ucpApiVersion || DEFAULT_UCP_API_VERSION}
       onChange={e => handleApiVersionChange(e.target.value)}
@@ -202,6 +203,7 @@ function RadiusPluginSettingsComponent(
       variant="outlined"
       fullWidth
     />
+    </Box>
   );
 }
 
