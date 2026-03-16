@@ -75,7 +75,11 @@ function TabPanel(props: TabPanelProps) {
 /**
  * Helper function to render schema properties in a table
  */
-function renderPropertiesTable(properties: SchemaProperties, requiredFields: string[], title: string) {
+function renderPropertiesTable(
+  properties: SchemaProperties,
+  requiredFields: string[],
+  title: string
+) {
   if (!properties || Object.keys(properties).length === 0) {
     return (
       <Typography color="textSecondary" sx={{ py: 2 }}>
