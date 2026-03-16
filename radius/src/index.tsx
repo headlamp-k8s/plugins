@@ -87,35 +87,30 @@ const sidebarEntries: SidebarEntry[] = [
     name: 'radius-overview',
     label: 'Overview',
     url: '/radius-overview',
-    icon: 'mdi:view-dashboard',
   },
   {
     parent: 'radius',
     name: 'environments',
     label: 'Environments',
     url: '/environments',
-    icon: 'radius:environment',
   },
   {
     parent: 'radius',
     name: 'applications',
     label: 'Applications',
     url: '/applications',
-    icon: 'radius:application',
   },
   {
     parent: 'radius',
     name: 'resources',
     label: 'Resources',
     url: '/resources',
-    icon: 'mdi:cube-outline',
   },
   {
     parent: 'radius',
     name: 'resource-types',
     label: 'Resource Types',
     url: '/resource-types',
-    icon: 'radius:resource-types',
   },
 ];
 
