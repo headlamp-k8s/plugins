@@ -14,5 +14,5 @@
  * limitations under the License.
  */
 
-export const PLUGIN_NAME = 'radius-plugin';
+export const PLUGIN_NAME = '@headlamp-k8s/radius';
 export const DEFAULT_UCP_API_VERSION = '2023-10-01-preview';
