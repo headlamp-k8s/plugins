@@ -1,8 +1,8 @@
 import { MetadataDictGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeadmControlPlane } from '../resources/kubeadmcontrolplane';
-import { MachineDeployment } from '../resources/machinedeployment';
-import { MachinePool } from '../resources/machinepool';
-import { MachineSet } from '../resources/machineset';
+import { KubeadmControlPlane } from '../../resources/kubeadmcontrolplane';
+import { MachineDeployment } from '../../resources/machinedeployment';
+import { MachinePool } from '../../resources/machinepool';
+import { MachineSet } from '../../resources/machineset';
 
 export function renderUpdateStrategy(item: MachineDeployment) {
   if (!item?.spec?.strategy) {

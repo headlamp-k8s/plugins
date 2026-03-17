@@ -1,7 +1,7 @@
 import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router';
 import { KubeadmControlPlane } from '../../resources/kubeadmcontrolplane';
-import { renderReplicas, showReplicas } from '../common';
+import { renderReplicas, showReplicas } from '../common/index';
 
 export function KubeadmControlPlaneDetail({ node }: { node: any }) {
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
