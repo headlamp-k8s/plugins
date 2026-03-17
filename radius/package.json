@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/radius",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Headlamp plugin to manage Radius configurations",
   "scripts": {
     "start": "headlamp-plugin start",
