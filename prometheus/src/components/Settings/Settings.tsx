@@ -116,7 +116,10 @@ export function Settings(props: SettingsProps) {
       }
 
       const proxyUrl = `/clusters/${selectedCluster}/api/v1/namespaces/${namespace}/services/${service}:${port}/proxy${subPath}/-/healthy`;
-      await request(proxyUrl);
+      await request(proxyUrl, {
+        method: 'GET',
+        isJSON: false,
+      });
 
       setTestStatus('success');
       setTestMessage(t('Connection successful!'));
