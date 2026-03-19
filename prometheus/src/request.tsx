@@ -1,4 +1,5 @@
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { isHttpUrl } from './helpers';
 
 const request = ApiProxy.request;
 
@@ -280,7 +281,7 @@ async function testPrometheusQuery(
 /**
  * Fetches metrics data from Prometheus using the provided parameters.
  * @param {object} data - The parameters for fetching metrics.
- * @param {string} data.prefix - The namespace prefix.
+ * @param {string} data.prefix - Either a Kubernetes proxy prefix in the form {namespace}/{pods|services}/{name}:port, or a full HTTP/HTTPS Prometheus base URL.
  * @param {string} data.query - The Prometheus query string.
  * @param {number} data.from - The start time for the query (Unix timestamp).
  * @param {number} data.to - The end time for the query (Unix timestamp).
@@ -309,17 +310,52 @@ export async function fetchMetrics(data: {
   if (data.query) {
     params.append('query', data.query);
   }
-  var url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
-  if (data.subPath && data.subPath !== '') {
-    if (data.subPath.startsWith('/')) {
-      data.subPath = data.subPath.slice(1);
+
+  const isExternal = isHttpUrl(data.prefix);
+  var url: string;
+
+  if (isExternal) {
+    const baseUrl = new URL(data.prefix);
+
+    // Build the path segments
+    const pathSegments = [baseUrl.pathname.replace(/\/$/, '')];
+    if (data.subPath && data.subPath !== '') {
+      pathSegments.push(data.subPath.replace(/^\/+|\/+$/g, ''));
     }
-    if (data.subPath.endsWith('/')) {
-      data.subPath = data.subPath.slice(0, -1);
+    pathSegments.push('api/v1/query_range');
+    baseUrl.pathname = pathSegments.join('/');
+
+    // Merge query params (preserve any existing params in the URL)
+    params.forEach((value, key) => {
+      baseUrl.searchParams.set(key, value);
+    });
+
+    url = baseUrl.toString();
+  } else {
+    url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
+    if (data.subPath && data.subPath !== '') {
+      const normalizedSubPath = data.subPath.replace(/^\/+|\/+$/g, '');
+      url = `/api/v1/namespaces/${
+        data.prefix
+      }/proxy/${normalizedSubPath}/api/v1/query_range?${params.toString()}`;
     }
-    url = `/api/v1/namespaces/${data.prefix}/proxy/${
-      data.subPath
-    }/api/v1/query_range?${params.toString()}`;
+  }
+
+  if (isExternal) {
+    const response = await fetch(url, { method: 'GET' });
+    if (response.ok) {
+      return response.json();
+    }
+    let message = `Request failed with status ${response.status} ${response.statusText}`;
+    try {
+      const bodyText = await response.text();
+      if (bodyText) {
+        message += `: ${bodyText}`;
+      }
+    } catch {
+      // Ignore errors while reading the error body; fallback to status-only message.
+    }
+    throw new Error(message);
   }
 
   const response = await request(url, {
