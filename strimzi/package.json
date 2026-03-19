@@ -33,7 +33,7 @@
     "tsc": "headlamp-plugin tsc",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "lint": "eslint src --ext .ts,.tsx",
-    "storybook": "headlamp-plugin storybook",
+    "storybook": "storybook dev -p 6007 -c .storybook",
     "test": "headlamp-plugin test",
     "storybook-build": "headlamp-plugin storybook-build",
     "i18n": "headlamp-plugin i18n"
@@ -48,7 +48,8 @@
     "eslint": "^8.56.0",
     "eslint-plugin-react": "^7.33.2",
     "prettier": "^3.2.4",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "tty-browserify": "^0.0.1"
   },
   "eslintConfig": {
     "extends": [
@@ -59,5 +60,10 @@
   },
   "dependencies": {
     "@xyflow/react": "^12.9.3"
+  },
+  "msw": {
+    "workerDirectory": [
+      ".storybook/public"
+    ]
   }
 }
