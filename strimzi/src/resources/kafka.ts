@@ -1,6 +1,12 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { StrimziStatus } from './common';
 
+/**
+ * Kafka custom resource spec. Doc also defines clusterCa, clientsCa, cruiseControl,
+ * kafkaExporter, maintenanceTimeWindows; we type only the fields used by the plugin.
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaSpec-reference
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaClusterSpec-reference
+ */
 export interface KafkaSpec {
   kafka: {
     version?: string;
@@ -33,11 +39,17 @@ export interface KafkaSpec {
   };
 }
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-Kafka-reference
+ */
 export interface KafkaInterface extends KubeObjectInterface {
   spec: KafkaSpec;
   status?: StrimziStatus;
 }
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-Kafka-reference
+ */
 export class Kafka extends KubeObject<KafkaInterface> {
   static apiVersion = 'kafka.strimzi.io/v1beta2';
   static kind = 'Kafka';

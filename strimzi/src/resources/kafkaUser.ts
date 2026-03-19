@@ -1,6 +1,9 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { StrimziStatus } from './common';
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaUserSpec-reference
+ */
 export interface KafkaUserSpec {
   authentication: {
     type: string;
@@ -8,6 +11,8 @@ export interface KafkaUserSpec {
   authorization?: {
     type: string;
     acls?: Array<{
+      /** ACL rule type: allow or deny. Default is allow. */
+      type?: 'allow' | 'deny';
       resource: {
         type: string;
         name?: string;
@@ -24,12 +29,18 @@ export interface KafkaUserSpec {
   };
 }
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaUser-reference
+ */
 export interface KafkaUserInterface extends KubeObjectInterface {
   spec: KafkaUserSpec;
   status?: StrimziStatus;
 }
 
-/** Payload for creating a KafkaUser (POST). Server adds metadata.creationTimestamp, metadata.uid. */
+/**
+ * Payload for creating a KafkaUser (POST). Server adds metadata.creationTimestamp, metadata.uid.
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaUser-reference
+ */
 export interface CreateKafkaUserPayload {
   apiVersion: string;
   kind: string;
@@ -41,6 +52,9 @@ export interface CreateKafkaUserPayload {
   spec: KafkaUserSpec;
 }
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaUser-reference
+ */
 export class KafkaUser extends KubeObject<KafkaUserInterface> {
   static apiVersion = 'kafka.strimzi.io/v1beta2';
   static kind = 'KafkaUser';

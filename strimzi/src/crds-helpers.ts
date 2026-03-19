@@ -4,12 +4,20 @@
  * Re-exported from crds.ts for backward compatibility.
  */
 
+/**
+ * Minimal type for resources that have status.conditions (e.g. Ready).
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaStatus-reference
+ */
 export interface ReadyConditionResource {
   status?: {
     conditions?: Array<{ type: string; status: string }>;
   };
 }
 
+/**
+ * Minimal type for Kafka-like resources (spec.zookeeper, status.conditions).
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-Kafka-reference
+ */
 export interface KafkaLike {
   spec?: { zookeeper?: unknown };
   status?: {

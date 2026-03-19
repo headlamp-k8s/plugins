@@ -31,6 +31,10 @@ export {
 } from './resources';
 
 // Types only used by topology (not yet in resources)
+/**
+ * Doc also defines jvmOptions, template. Roles are 'broker' and/or 'controller'.
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaNodePoolSpec-reference
+ */
 export interface KafkaNodePoolSpec {
   replicas: number;
   roles: string[];
@@ -38,6 +42,9 @@ export interface KafkaNodePoolSpec {
   resources?: { requests?: Record<string, string>; limits?: Record<string, string> };
 }
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaNodePool-reference
+ */
 export interface KafkaNodePool {
   apiVersion: string;
   kind: string;
@@ -53,11 +60,17 @@ export interface KafkaNodePool {
   status?: import('./resources/common').StrimziStatus & { nodeIds?: number[] };
 }
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-StrimziPodSetSpec-reference
+ */
 export interface StrimziPodSetSpec {
   selector: { matchLabels: Record<string, string> };
   pods: Array<{ name: string; [key: string]: unknown }>;
 }
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-StrimziPodSet-reference
+ */
 export interface StrimziPodSet {
   apiVersion: string;
   kind: string;

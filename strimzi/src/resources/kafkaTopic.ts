@@ -1,6 +1,9 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { StrimziStatus } from './common';
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaTopicSpec-reference
+ */
 export interface KafkaTopicSpec {
   partitions?: number;
   replicas?: number;
@@ -8,11 +11,17 @@ export interface KafkaTopicSpec {
   topicName?: string;
 }
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaTopic-reference
+ */
 export interface KafkaTopicInterface extends KubeObjectInterface {
   spec: KafkaTopicSpec;
   status?: StrimziStatus;
 }
 
+/**
+ * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaTopic-reference
+ */
 export class KafkaTopic extends KubeObject<KafkaTopicInterface> {
   static apiVersion = 'kafka.strimzi.io/v1beta2';
   static kind = 'KafkaTopic';
