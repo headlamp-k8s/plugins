@@ -1,6 +1,6 @@
 {
-  "name": "@acesaro/strimzi-headlamp",
-  "version": "0.3.9",
+  "name": "@headlamp-k8s/strimzi",
+  "version": "0.3.9-alpha",
   "description": "Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources",
   "main": "dist/main.js",
   "author": "Angelo Cesaro",
@@ -15,11 +15,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/cesaroangelo/strimzi-headlamp.git"
+    "url": "https://github.com/headlamp-k8s/plugins.git"
   },
-  "homepage": "https://github.com/cesaroangelo/strimzi-headlamp#readme",
+  "homepage": "https://github.com/headlamp-k8s/plugins/tree/main/strimzi#readme",
   "bugs": {
-    "url": "https://github.com/cesaroangelo/strimzi-headlamp/issues"
+    "url": "https://github.com/headlamp-k8s/plugins/issues"
   },
   "files": [
     "dist/**/*",
@@ -57,7 +57,6 @@
       "plugin:jsx-a11y/recommended"
     ]
   },
-  "prettier": "@headlamp-k8s/eslint-config/prettier-config",
   "dependencies": {
     "@xyflow/react": "^12.9.3"
   }

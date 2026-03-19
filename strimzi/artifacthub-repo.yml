@@ -1,1 +1,2 @@
-repositoryID: c74fd395-d9bc-44f1-a00b-232cc955992f
+# Use the headlamp-k8s/plugins Artifact Hub repository (see repo root artifacthub-repo.yml)
+repositoryID: 767e1f40-ee09-401b-b8d4-930740da5a8a
