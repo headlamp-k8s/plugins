@@ -1,0 +1,8 @@
+version: 0.1.0
+name: headlamp_kubeflow
+displayName: Kubeflow
+createdAt: "2024-03-17T00:00:00Z"
+description: A UI for viewing and managing Kubeflow resources in Headlamp.
+annotations:
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
