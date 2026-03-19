@@ -28,3 +28,69 @@ The plugin supports multiple AI providers, allowing you to choose the one that b
 - **Local Models** (via Ollama)
 
 You will need to provide your own API keys and endpoint information for the provider you choose to use. Please note that using AI providers may incur costs, so check the pricing details of your chosen provider.
+
+## Adding Holmes Agent to Your Cluster
+
+The AI Assistant can connect to a [HolmesGPT](https://holmesgpt.dev) agent running in your cluster for enhanced Kubernetes diagnostics and troubleshooting. Follow the steps below to deploy Holmes.
+
+### 1. Add the Robusta Helm Repository
+
+```bash
+helm repo add robusta https://robusta-charts.storage.googleapis.com
+helm repo update
+```
+
+### 2. Create a `values.yaml`
+
+Below is an example using Azure OpenAI. For other providers (OpenAI, AWS Bedrock, etc.), see the [HolmesGPT installation docs](https://holmesgpt.dev/latest/installation/kubernetes-installation/#installation).
+
+```yaml
+# values.yaml
+image: robustadev/holmes:0.19.1
+
+additionalEnvVars:
+- name: AZURE_API_KEY
+  value: ""
+- name: AZURE_API_BASE
+  value: "https://<your-azure-endpoint>.openai.azure.com"
+- name: AZURE_API_VERSION
+  value: "2024-02-15-preview"
+# Or load from secret:
+# - name: AZURE_API_KEY
+#   valueFrom:
+#     secretKeyRef:
+#       name: holmes-secrets
+#       key: azure-api-key
+# - name: AZURE_API_BASE
+#   valueFrom:
+#     secretKeyRef:
+#       name: holmes-secrets
+#       key: azure-api-base
+
+modelList:
+  azure-gpt4:
+    api_key: "{{ env.AZURE_API_KEY }}"
+    model: azure/gpt-5
+    api_base: "{{ env.AZURE_API_BASE }}"
+    api_version: "{{ env.AZURE_API_VERSION }}"
+```
+
+### 3. Render and Patch the Helm Template
+
+Holmes requires enabling the AG-UI server for the AI Assistant to communicate with it. Render the template and update the container command:
+
+```bash
+helm template holmesgpt robusta/holmes -f values.yaml > rendered.yaml
+```
+
+In `rendered.yaml`, find the container command and change it to:
+
+```yaml
+command: ["python3", "-u", "/app/experimental/ag-ui/server-agui.py"]
+```
+
+### 4. Deploy to Your Cluster
+
+```bash
+kubectl apply -f rendered.yaml
+```
