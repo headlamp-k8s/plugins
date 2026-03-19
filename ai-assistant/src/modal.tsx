@@ -3,8 +3,9 @@ import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/l
 import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button, Grid, Typography } from '@mui/material';
 import { isEqual } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
+import { getHolmesProxyBaseUrl, HolmesAgent } from './agent/holmesClient';
 import AIManager, { Prompt } from './ai/manager';
 import {
   AIAssistantHeader,
@@ -16,12 +17,20 @@ import {
 import { getProviderById } from './config/modelConfig';
 import EditorDialog from './editordialog';
 import { isTestModeCheck } from './helper';
-import { useClusterWarnings } from './hooks/useClusterWarnings';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import LangChainManager from './langchain/LangChainManager';
 import { getSettingsURL, useGlobalState } from './utils';
 import { generateContextDescription } from './utils/contextGenerator';
+import {
+  /* [PROACTIVE_DIAGNOSIS_DISABLED] fetchWarningEventsForClusters, */ fetchClusterWarnings,
+} from './utils/EventFetcher';
 import { getProviderModels, parseSuggestionsFromResponse } from './utils/modalUtils';
+// [PROACTIVE_DIAGNOSIS_DISABLED]
+// import {
+//   DiagnosisStepCallback,
+//   proactiveDiagnosisManager,
+//   ProactiveDiagnosisManager,
+// } from './utils/ProactiveDiagnosisManager';
 import { useDynamicPrompts } from './utils/promptGenerator';
 
 // Operation type constants for translation
@@ -74,8 +83,132 @@ export default function AIPrompt(props: {
     return Object.keys(clusters);
   }, [selectedClusters, clusters]);
 
-  // Use the custom hook to get warnings for clusters
-  const clusterWarnings = useClusterWarnings(clusterNames);
+  // Keep a ref to clusterNames so the async proactive cycle can access the
+  // latest value without forcing the useCallback to re-create.
+  const clusterNamesRef = useRef(clusterNames);
+  clusterNamesRef.current = clusterNames;
+
+  // Fetch cluster warnings on-demand for context generation (replaces
+  // the continuous useClusterWarnings hook).
+  const clusterWarningsRef = useRef<Record<string, { warnings: any[]; error?: Error | null }>>({});
+
+  // ─── Proactive Diagnosis ────────────────────────────────────────────
+  // [PROACTIVE_DIAGNOSIS_DISABLED] — entire proactive diagnosis block commented out.
+  // To re-enable, uncomment the code below and the import above.
+  /*
+  // Wire the proactive diagnosis manager to the agent or AI manager.
+  // It runs a diagnosis cycle on-demand (with a 1-hour cooldown) on the
+  // top 3 warning/error events fetched via a one-shot API call.
+  const proactiveDiagIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Dedicated HolmesAgent for proactive diagnosis — one instance, reused sequentially.
+  const diagnosisAgentRef = useRef<HolmesAgent | null>(null);
+
+  // Build a stable diagnose function that uses the current agent or AI manager.
+  // This function is passed to the proactive diagnosis manager so it can call
+  // the AI without blocking the user's chat.
+  const diagnoseFnRef = useRef<((prompt: string) => Promise<string>) | null>(null);
+  // Track whether the diagnose function is ready (agent or AI manager available)
+  const [diagnoseFnReady, setDiagnoseFnReady] = useState(false);
+  // Track whether proactive diagnosis is currently running (blocks chat input)
+  const [isDiagnosisRunning, setIsDiagnosisRunning] = useState(
+    proactiveDiagnosisManager.isRunning()
+  );
+
+  // Subscribe to diagnosis cycle events so we can block chat
+  useEffect(() => {
+    const handleCycleStart = () => setIsDiagnosisRunning(true);
+    const handleCycleEnd = () => setIsDiagnosisRunning(false);
+    proactiveDiagnosisManager.on('cycle-start', handleCycleStart);
+    proactiveDiagnosisManager.on('cycle-end', handleCycleEnd);
+    return () => {
+      proactiveDiagnosisManager.removeListener('cycle-start', handleCycleStart);
+      proactiveDiagnosisManager.removeListener('cycle-end', handleCycleEnd);
+    };
+  }, []);
+
+  // We'll update diagnoseFnRef after the agent/aiManager are set up (further below).
+  // For now, set up the periodic trigger that runs every 5 minutes.
+
+  // Use refs for loading/isDiagnosisRunning so runProactiveCycle stays
+  // referentially stable and doesn't cause the scheduling effect to re-run.
+  const loadingRef = useRef(loading);
+  loadingRef.current = loading;
+  const isDiagnosisRunningRef = useRef(isDiagnosisRunning);
+  isDiagnosisRunningRef.current = isDiagnosisRunning;
+
+  const runProactiveCycle = useCallback(async () => {
+    if (!diagnoseFnRef.current) return; // Don't run if no AI is available yet
+    if (loadingRef.current || isDiagnosisRunningRef.current) return; // Don't run while user is chatting or another diagnosis is running
+
+    // Fetch events on-demand (one-shot API call — no continuous watch)
+    const clusters = clusterNamesRef.current;
+    if (!clusters || clusters.length === 0) return;
+
+    try {
+      const allWarningEvents = await fetchWarningEventsForClusters(clusters);
+      if (allWarningEvents.length === 0) return;
+
+      const topEvents = ProactiveDiagnosisManager.extractTopEvents(allWarningEvents, 3);
+      if (topEvents.length > 0) {
+        await proactiveDiagnosisManager.diagnoseEvents(topEvents);
+      }
+    } catch (err) {
+      console.error('[ProactiveDiagnosis] Cycle error:', err);
+    }
+  }, []); // stable — reads current values via refs
+
+  // Start/restart the interval whenever diagnoseFn becomes ready.
+  // After a cycle completes, wait 20 minutes before the next one.
+  const lastCycleEndRef = useRef<number>(0);
+  const initialCycleRanRef = useRef(false);
+  const DIAGNOSIS_COOLDOWN_MS = 20 * 60 * 1000; // 20 minutes
+
+  useEffect(() => {
+    // Don't start until the diagnose function is available
+    if (!diagnoseFnReady) return;
+
+    // Clear any existing interval
+    if (proactiveDiagIntervalRef.current) {
+      clearInterval(proactiveDiagIntervalRef.current);
+    }
+
+    // Track when a diagnosis cycle ends so we can enforce the cooldown
+    const handleCycleEnd = () => {
+      lastCycleEndRef.current = Date.now();
+    };
+    proactiveDiagnosisManager.on('cycle-end', handleCycleEnd);
+
+    // Run the first cycle only once after a short delay to let events load
+    let initialTimer: ReturnType<typeof setTimeout> | null = null;
+    if (!initialCycleRanRef.current) {
+      initialCycleRanRef.current = true;
+      initialTimer = setTimeout(() => {
+        console.log('[ProactiveDiagnosis] Running initial diagnosis cycle');
+        runProactiveCycle();
+      }, 3_000); // 3 seconds — agent is already connected
+    }
+
+    // Poll every minute but only actually run if the cooldown has elapsed
+    proactiveDiagIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - lastCycleEndRef.current;
+      if (lastCycleEndRef.current === 0 || elapsed >= DIAGNOSIS_COOLDOWN_MS) {
+        console.log('[ProactiveDiagnosis] Running scheduled diagnosis cycle');
+        runProactiveCycle();
+      }
+    }, 60 * 1000); // check every minute
+
+    return () => {
+      if (initialTimer) clearTimeout(initialTimer);
+      if (proactiveDiagIntervalRef.current) {
+        clearInterval(proactiveDiagIntervalRef.current);
+      }
+      proactiveDiagnosisManager.removeListener('cycle-end', handleCycleEnd);
+    };
+  }, [diagnoseFnReady]); // runProactiveCycle is now stable, no need in deps
+  */
+  // Stub: proactive diagnosis disabled — isDiagnosisRunning is always false
+  const isDiagnosisRunning = false;
+  // ─── End Proactive Diagnosis Setup ──────────────────────────────────
 
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
   const [availableConfigs, setAvailableConfigs] = useState<StoredProviderConfig[]>([]);
@@ -86,6 +219,14 @@ export default function AIPrompt(props: {
 
   // Test mode detection
   const isTestMode = isTestModeCheck();
+
+  // Agent mode state – default to agent mode so users can start immediately
+  const [isAgentMode, setIsAgentMode] = React.useState(true);
+
+  const [agentModeStatus, setAgentModeStatus] = React.useState<
+    'idle' | 'checking' | 'found' | 'not-found'
+  >('idle');
+  const holmesAgentRef = React.useRef<HolmesAgent | null>(null);
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -316,6 +457,60 @@ export default function AIPrompt(props: {
     });
   }, [pluginSettings]);
 
+  // [PROACTIVE_DIAGNOSIS_DISABLED] — LangChain fallback diagnosis connection
+  /*
+  // ─── Connect AI manager to proactive diagnosis (fallback for non-agent mode) ──
+  // When NOT in agent mode but an AI config is available, use LangChainManager as fallback.
+  // In agent mode, the diagnoseFn is already set by handleToggleAgentMode above.
+  useEffect(() => {
+    // Only set the LangChain fallback if agent mode is NOT active
+    if (!isAgentMode && activeConfig) {
+      const diagnoseFn = async (prompt: string, onStep?: DiagnosisStepCallback): Promise<string> => {
+        try {
+          const configWithModel = {
+            ...activeConfig.config,
+            model: selectedModel,
+          };
+          // Create an isolated manager instance for this single diagnosis
+          const isolatedManager = new LangChainManager(
+            activeConfig.providerId,
+            configWithModel,
+            enabledTools
+          );
+          // LangChain doesn't stream intermediate events, so just report start/end
+          onStep?.({
+            id: `lc-start-${Date.now()}`,
+            content: 'Sending diagnosis request…',
+            type: 'intermediate-text',
+            timestamp: Date.now(),
+          });
+          const response = await isolatedManager.userSend(prompt);
+          onStep?.({
+            id: `lc-done-${Date.now()}`,
+            content: 'Diagnosis response received',
+            type: 'tool-result',
+            timestamp: Date.now(),
+          });
+          return response.content || 'No diagnosis available.';
+        } catch (err: any) {
+          console.error('[ProactiveDiagnosis] diagnoseFn error:', err);
+          throw err;
+        }
+      };
+      diagnoseFnRef.current = diagnoseFn;
+      proactiveDiagnosisManager.setDiagnoseFn(diagnoseFn);
+      setDiagnoseFnReady(true);
+    } else if (!isAgentMode) {
+      // No agent and no AI config — clear
+      diagnoseFnRef.current = null;
+      proactiveDiagnosisManager.setDiagnoseFn(null);
+      setDiagnoseFnReady(false);
+    }
+    // If isAgentMode is true, diagnoseFn is managed by handleToggleAgentMode — don't touch it.
+  }, [isAgentMode, activeConfig, selectedModel, enabledTools]);
+  */
+  // ─── End proactive diagnosis connection ─────────────────────────────
+
   const updateHistory = React.useCallback(() => {
     if (!aiManager?.history) {
       setPromptHistory([]);
@@ -509,9 +704,453 @@ export default function AIPrompt(props: {
     }
   }
 
+  // Agent mode: toggle handler – connects directly to the Holmes ag-ui server.
+  // Ref to track the current agent message being built.
+  // Intermediate text messages are accumulated as thinking steps;
+  // the last message before RUN_FINISHED becomes the final answer.
+  const agentMessageIdRef = React.useRef<string | null>(null);
+  const agentTextBufferRef = React.useRef<string>('');
+  const agentCurrentMsgIdRef = React.useRef<string>('');
+
+  /** Classify an incoming text message from Holmes */
+  const classifyAgentText = (
+    text: string
+  ): 'tool-start' | 'tool-result' | 'todo-update' | 'intermediate-text' => {
+    if (/^🔧\s*Using Agent tool:/.test(text)) return 'tool-start';
+    if (/^🔧\s*\S+\s+result:/.test(text)) return 'tool-result';
+    if (/^###\s*Investigation Tasks:/.test(text)) return 'todo-update';
+    return 'intermediate-text';
+  };
+
+  /**
+   * Remove tool-call artifacts and raw CLI output that may leak into the
+   * final displayed content from the Holmes agent.
+   */
+  const sanitizeAgentContent = (text: string): string => {
+    if (!text) return text;
+
+    let cleaned = text;
+
+    // Remove 🔧 tool result blocks (🔧 <tool> result: ... up to the next ## heading)
+    cleaned = cleaned.replace(/🔧\s*\S+\s+result:[\s\S]*?(?=\n\s*##)/g, '');
+    // Also remove standalone 🔧 result blocks at the end (no ## heading follows)
+    cleaned = cleaned.replace(/🔧\s*\S+\s+result:[\s\S]*$/g, '');
+
+    // Remove 🔧 tool-start lines
+    cleaned = cleaned.replace(/🔧\s*Using Agent tool:.*\n?/g, '');
+
+    // If content starts with non-markdown text before a ## heading,
+    // check whether it looks like leaked tool/CLI output and strip it
+    const headingMatch = cleaned.match(/(^[\s\S]*?)(\n##\s)/m);
+    if (headingMatch && headingMatch[1]) {
+      const before = headingMatch[1].trim();
+      if (before && looksLikeToolOutput(before)) {
+        cleaned = cleaned.substring((headingMatch.index ?? 0) + headingMatch[1].length);
+      }
+    }
+
+    return cleaned.trim();
+  };
+
+  /** Heuristic: does this snippet look like raw CLI / tool output? */
+  const looksLikeToolOutput = (text: string): boolean => {
+    const t = text.trim();
+    if (!t) return false;
+    // Common CLI error lines
+    if (/^(error|Error|ERROR)\s*:/m.test(t)) return true;
+    // kubectl commands or output
+    if (/kubectl\s+\w+/m.test(t)) return true;
+    // Tool-result emoji markers
+    if (/🔧/.test(t)) return true;
+    // Shell prompts
+    if (/^\$\s+/m.test(t)) return true;
+    return false;
+  };
+
+  const handleToggleAgentMode = React.useCallback(async (enabled: boolean) => {
+    if (enabled) {
+      setAgentModeStatus('found');
+      setIsAgentMode(true);
+
+      // Create the HolmesAgent routing through K8s service proxy
+      const cluster = getCluster();
+      if (!cluster) {
+        console.error('[AgentMode] No cluster available');
+        return;
+      }
+      const agent = new HolmesAgent(getHolmesProxyBaseUrl(cluster));
+      agent.subscribe({
+        onEvent: ({ event }) => {
+          console.log('[AgentMode] onEvent:', event.type, event);
+        },
+        onRunInitialized: () => {
+          console.log('[AgentMode] onRunInitialized');
+        },
+        onRunFailed: ({ error }) => {
+          console.error('[AgentMode] onRunFailed:', error);
+        },
+        onRunFinalized: () => {
+          console.log('[AgentMode] onRunFinalized');
+        },
+        onRunStartedEvent: () => {
+          console.log('[AgentMode] onRunStartedEvent');
+          setLoading(true);
+          // Create the placeholder assistant message with thinking steps
+          const placeholderId = `agent-response-${Date.now()}`;
+          agentMessageIdRef.current = placeholderId;
+          setPromptHistory(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: '',
+              agentThinkingSteps: [],
+              agentThinkingDone: false,
+            },
+          ]);
+        },
+        onRunFinishedEvent: () => {
+          console.log('[AgentMode] onRunFinishedEvent');
+          setLoading(false);
+          // Mark thinking as done and sanitize the final displayed content
+          setPromptHistory(prev => {
+            const updated = [...prev];
+            for (let i = updated.length - 1; i >= 0; i--) {
+              if (
+                updated[i].role === 'assistant' &&
+                updated[i].agentThinkingSteps !== undefined &&
+                !updated[i].agentThinkingDone
+              ) {
+                const cleanContent = sanitizeAgentContent(updated[i].content || '');
+                updated[i] = {
+                  ...updated[i],
+                  content: cleanContent,
+                  agentThinkingDone: true,
+                };
+                break;
+              }
+            }
+            return updated;
+          });
+          agentMessageIdRef.current = null;
+          agentTextBufferRef.current = '';
+          agentCurrentMsgIdRef.current = '';
+        },
+        onRunErrorEvent: ({ event }) => {
+          console.error('[AgentMode] onRunErrorEvent:', event);
+          setLoading(false);
+          setPromptHistory(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: `Agent error: ${event.message}`,
+              error: true,
+            },
+          ]);
+          agentMessageIdRef.current = null;
+        },
+        onTextMessageStartEvent: ({ event }) => {
+          console.log('[AgentMode] onTextMessageStartEvent:', event.messageId);
+          agentTextBufferRef.current = '';
+          agentCurrentMsgIdRef.current = event.messageId;
+        },
+        onTextMessageContentEvent: ({ event }) => {
+          console.log('[AgentMode] onTextMessageContentEvent:', { delta: event.delta });
+          agentTextBufferRef.current += event.delta || '';
+        },
+        onTextMessageEndEvent: () => {
+          console.log('[AgentMode] onTextMessageEndEvent');
+          const fullText = agentTextBufferRef.current;
+          const msgId = agentCurrentMsgIdRef.current;
+          const stepType = classifyAgentText(fullText);
+          const isToolMessage = stepType === 'tool-result' || stepType === 'tool-start';
+
+          // Update the placeholder assistant message:
+          // - Tool-result / tool-start messages go ONLY into agentThinkingSteps
+          //   (they must never overwrite the displayed content).
+          // - Other messages replace content (final answer is the last non-tool one).
+          setPromptHistory(prev => {
+            const updated = [...prev];
+            for (let i = updated.length - 1; i >= 0; i--) {
+              if (
+                updated[i].role === 'assistant' &&
+                updated[i].agentThinkingSteps !== undefined &&
+                !updated[i].agentThinkingDone
+              ) {
+                const existingSteps = updated[i].agentThinkingSteps || [];
+                const prevContent = updated[i].content || '';
+                const newSteps = [...existingSteps];
+
+                // For non-tool messages, move previous content into thinking
+                // steps (if it hasn't already been added).
+                if (!isToolMessage && prevContent.trim()) {
+                  const prevType = classifyAgentText(prevContent);
+                  const alreadyInSteps = newSteps.some(step => step.content === prevContent);
+                  if (!alreadyInSteps) {
+                    newSteps.push({
+                      id: `step-prev-${i}-${newSteps.length}`,
+                      content: prevContent,
+                      type: prevType,
+                      timestamp: Date.now(),
+                    });
+                  }
+                }
+
+                // Always record the message as a thinking step
+                newSteps.push({
+                  id: `step-${msgId}`,
+                  content: fullText,
+                  type: stepType,
+                  timestamp: Date.now(),
+                });
+
+                // Only update displayed content for non-tool messages
+                const newContent = isToolMessage ? updated[i].content : fullText;
+
+                updated[i] = {
+                  ...updated[i],
+                  content: newContent,
+                  agentThinkingSteps: newSteps,
+                };
+                break;
+              }
+            }
+            return updated;
+          });
+
+          agentTextBufferRef.current = '';
+          agentCurrentMsgIdRef.current = '';
+        },
+        onToolCallStartEvent: ({ event }) => {
+          console.log('[AgentMode] onToolCallStartEvent:', event.toolCallName);
+          // Add tool call as a thinking step
+          setPromptHistory(prev => {
+            const updated = [...prev];
+            for (let i = updated.length - 1; i >= 0; i--) {
+              if (
+                updated[i].role === 'assistant' &&
+                updated[i].agentThinkingSteps !== undefined &&
+                !updated[i].agentThinkingDone
+              ) {
+                const steps = [...(updated[i].agentThinkingSteps || [])];
+                steps.push({
+                  id: `tool-${event.toolCallId || event.toolCallName}-${Date.now()}`,
+                  content: `Calling tool: ${event.toolCallName}`,
+                  type: 'tool-start',
+                  timestamp: Date.now(),
+                });
+                updated[i] = { ...updated[i], agentThinkingSteps: steps };
+                break;
+              }
+            }
+            return updated;
+          });
+        },
+        onToolCallEndEvent: ({ toolCallName }) => {
+          console.log('[AgentMode] onToolCallEndEvent:', toolCallName);
+          // Add tool result as a thinking step
+          setPromptHistory(prev => {
+            const updated = [...prev];
+            for (let i = updated.length - 1; i >= 0; i--) {
+              if (
+                updated[i].role === 'assistant' &&
+                updated[i].agentThinkingSteps !== undefined &&
+                !updated[i].agentThinkingDone
+              ) {
+                const steps = [...(updated[i].agentThinkingSteps || [])];
+                steps.push({
+                  id: `tool-end-${toolCallName}-${Date.now()}`,
+                  content: `Tool ${toolCallName} completed`,
+                  type: 'tool-result',
+                  timestamp: Date.now(),
+                });
+                updated[i] = { ...updated[i], agentThinkingSteps: steps };
+                break;
+              }
+            }
+            return updated;
+          });
+        },
+      });
+      holmesAgentRef.current = agent;
+
+      // [PROACTIVE_DIAGNOSIS_DISABLED] — agent diagnosis setup
+      /*
+        // ─── Set up proactive diagnosis via dedicated HolmesAgent ──────
+        // One HolmesAgent instance, reused sequentially for all diagnoses.
+        // Between each diagnosis we resetThread() to get a fresh conversation.
+        // Chat is blocked (loading=true) while diagnosis runs.
+        const diagAgent = new HolmesAgent(getHolmesProxyBaseUrl(cluster));
+        diagnosisAgentRef.current = diagAgent;
+
+        const agentDiagnoseFn = async (prompt: string, onStep?: DiagnosisStepCallback): Promise<string> => {
+          // Reset thread for a fresh conversation — no leftover history
+          diagAgent.resetThread();
+
+          let responseText = '';
+          let textMsgBuffer = '';
+          let textMsgId = '';
+
+          // Subscribe to collect text AND forward intermediate events
+          const sub = diagAgent.subscribe({
+            onTextMessageStartEvent: ({ event }: any) => {
+              textMsgBuffer = '';
+              textMsgId = event?.messageId || `msg-${Date.now()}`;
+            },
+            onTextMessageContentEvent: ({ event }: any) => {
+              if (event?.delta) {
+                textMsgBuffer += event.delta;
+              }
+            },
+            onTextMessageEndEvent: () => {
+              if (textMsgBuffer.trim()) {
+                const stepType = classifyAgentText(textMsgBuffer);
+
+                // Forward as a thinking step
+                if (onStep) {
+                  onStep({
+                    id: `diag-text-${textMsgId}`,
+                    content: textMsgBuffer,
+                    type: stepType,
+                    timestamp: Date.now(),
+                  });
+                }
+
+                // Only accumulate non-tool messages into the final response
+                if (stepType !== 'tool-result' && stepType !== 'tool-start') {
+                  responseText = textMsgBuffer;
+                }
+              }
+              textMsgBuffer = '';
+              textMsgId = '';
+            },
+            onToolCallStartEvent: ({ event }: any) => {
+              onStep?.({
+                id: `diag-tool-start-${event?.toolCallId || event?.toolCallName}-${Date.now()}`,
+                content: `Calling tool: ${event?.toolCallName || 'unknown'}`,
+                type: 'tool-start',
+                timestamp: Date.now(),
+              });
+            },
+            onToolCallEndEvent: ({ toolCallName }: any) => {
+              onStep?.({
+                id: `diag-tool-end-${toolCallName}-${Date.now()}`,
+                content: `Tool ${toolCallName || 'unknown'} completed`,
+                type: 'tool-result',
+                timestamp: Date.now(),
+              });
+            },
+          });
+
+          try {
+            const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+            diagAgent.addMessage({
+              id: `diag-msg-${uniqueId}`,
+              role: 'user',
+              content: prompt,
+            });
+
+            console.log(`[ProactiveDiagnosis] runAgent starting (${uniqueId})`);
+            await diagAgent.runAgent({
+              runId: `diag-run-${uniqueId}`,
+            });
+            console.log(`[ProactiveDiagnosis] runAgent completed (${uniqueId}), length=${responseText.length}`);
+
+            return sanitizeAgentContent(responseText) || 'No diagnosis available.';
+          } catch (err: any) {
+            console.error('[ProactiveDiagnosis] runAgent error:', err);
+            throw err;
+          } finally {
+            sub.unsubscribe();
+          }
+        };
+
+        diagnoseFnRef.current = agentDiagnoseFn;
+        proactiveDiagnosisManager.setDiagnoseFn(agentDiagnoseFn);
+        setDiagnoseFnReady(true);
+        console.log('[ProactiveDiagnosis] Agent diagnose function ready');
+        // ─── End proactive diagnosis agent setup ────────────────────
+        */
+
+      setPromptHistory(prev => [
+        ...prev,
+        {
+          role: 'system',
+          content: `Agent mode active. Connected to Holmes ag-ui server at ${agent.connectionLabel}.`,
+        },
+      ]);
+    } else {
+      setIsAgentMode(false);
+      setAgentModeStatus('idle');
+      holmesAgentRef.current = null;
+      // [PROACTIVE_DIAGNOSIS_DISABLED] — Clean up proactive diagnosis
+      // diagnoseFnRef.current = null;
+      // diagnosisAgentRef.current = null;
+      // proactiveDiagnosisManager.setDiagnoseFn(null);
+      // setDiagnoseFnReady(false);
+      setPromptHistory(prev => [
+        ...prev,
+        { role: 'system', content: 'Switched back to AI Chat mode.' },
+      ]);
+    }
+  }, []);
+
+  // Auto-initialize agent mode on first mount (agent is default mode)
+  React.useEffect(() => {
+    if (isAgentMode && !holmesAgentRef.current) {
+      handleToggleAgentMode(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Agent mode: send a message to Holmes via the ag-ui HolmesAgent.
+  // Events (text streaming, tool calls, errors) are handled by the subscriber
+  // set up in handleToggleAgentMode.
+  const handleAgentSend = React.useCallback(
+    async (prompt: string) => {
+      const agent = holmesAgentRef.current;
+      if (!agent) return;
+
+      setOpenPopup(true);
+      setPromptHistory(prev => [...prev, { role: 'user', content: prompt }]);
+      setLoading(true);
+
+      try {
+        console.log('[AgentMode] addMessage:', prompt);
+        agent.addMessage({
+          id: `msg-${Date.now()}`,
+          role: 'user',
+          content: prompt,
+        });
+
+        console.log('[AgentMode] runAgent starting...');
+        const result = await agent.runAgent({
+          runId: `run-${Date.now()}`,
+        });
+        console.log('[AgentMode] runAgent completed:', result);
+      } catch (error) {
+        console.error('[AgentMode] runAgent error:', error);
+        setPromptHistory(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            error: true,
+          },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setOpenPopup]
+  );
+
   // Function to stop the current request
   const handleStopRequest = () => {
-    if (aiManager && loading) {
+    if (isAgentMode && holmesAgentRef.current) {
+      holmesAgentRef.current.abortRun();
+      setLoading(false);
+    } else if (aiManager && loading) {
       aiManager.abort();
       setLoading(false);
     }
@@ -592,21 +1231,40 @@ export default function AIPrompt(props: {
     const event = _pluginSetting.event;
     const currentCluster = getCluster();
     const currentClusterGroup = getClusterGroup();
-    // Generate a human-readable context description
-    const contextDescription = generateContextDescription(
-      event,
-      currentCluster,
-      clusterWarnings,
-      selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
-    );
-    // Add cluster group info if relevant
-    let fullContext = contextDescription;
-    if (currentClusterGroup && currentClusterGroup.length > 1) {
-      fullContext = `Part of cluster group with ${currentClusterGroup.length} clusters\n${fullContext}`;
-    }
 
-    // Set the simplified context
-    aiManager.setContext(fullContext);
+    // Fetch warnings on-demand for context generation (one-shot, not continuous)
+    const clusters = clusterNames;
+    fetchClusterWarnings(clusters)
+      .then(warnings => {
+        clusterWarningsRef.current = warnings;
+
+        const contextDescription = generateContextDescription(
+          event,
+          currentCluster,
+          warnings,
+          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
+        );
+        let fullContext = contextDescription;
+        if (currentClusterGroup && currentClusterGroup.length > 1) {
+          fullContext = `Part of cluster group with ${currentClusterGroup.length} clusters\n${fullContext}`;
+        }
+        aiManager.setContext(fullContext);
+      })
+      .catch(err => {
+        console.error('[Context] Failed to fetch warnings for context:', err);
+        // Fall back to generating context without warnings
+        const contextDescription = generateContextDescription(
+          event,
+          currentCluster,
+          undefined,
+          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
+        );
+        let fullContext = contextDescription;
+        if (currentClusterGroup && currentClusterGroup.length > 1) {
+          fullContext = `Part of cluster group with ${currentClusterGroup.length} clusters\n${fullContext}`;
+        }
+        aiManager.setContext(fullContext);
+      });
 
     // Configure AI manager with tools
     if (aiManager.configureTools) {
@@ -615,7 +1273,7 @@ export default function AIPrompt(props: {
         kubernetesContext
       );
     }
-  }, [_pluginSetting.event, aiManager, clusterWarnings, selectedClusters, kubernetesContext]);
+  }, [_pluginSetting.event, aiManager, clusterNames, selectedClusters, kubernetesContext]);
 
   useEffect(() => {
     if (openPopup && aiManager) {
@@ -653,13 +1311,20 @@ export default function AIPrompt(props: {
   // If panel is not open, don't render
   if (!openPopup) return null;
 
-  // Check if we have any valid configuration
+  // Check if we have any valid configuration for chat mode
   const savedConfigs = getSavedConfigurations(pluginSettings);
   const hasAnyValidConfig = savedConfigs.providers && savedConfigs.providers.length > 0;
   const hasValidConfig = hasAnyValidConfig;
 
   // Helper function to check if we should show greeting - memoized for performance
   const shouldShowGreeting = React.useMemo(() => {
+    // In agent mode, show greeting without requiring chat config
+    if (isAgentMode) {
+      const hasConversationMessages = promptHistory.some(
+        msg => (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
+      );
+      return !hasConversationMessages;
+    }
     // Only show greeting if we have a valid configuration
     if (!hasValidConfig || !activeConfig) return false;
 
@@ -668,7 +1333,7 @@ export default function AIPrompt(props: {
       msg => (msg.role === 'user' || msg.role === 'assistant') && !msg.isDisplayOnly
     );
     return !hasConversationMessages; // Removed dependency on loading state
-  }, [hasValidConfig, activeConfig, promptHistory]); // Removed loading from dependencies
+  }, [hasValidConfig, activeConfig, promptHistory, isAgentMode]); // Removed loading from dependencies
 
   // Memoize the history array to prevent unnecessary re-renders of AIChatContent
   const memoizedHistory = React.useMemo(() => {
@@ -678,8 +1343,8 @@ export default function AIPrompt(props: {
     return promptHistory;
   }, [shouldShowGreeting, getGreetingMessage, promptHistory]);
 
-  // If no valid configuration, show setup message
-  if (!hasValidConfig) {
+  // If no valid configuration AND NOT in agent mode, show setup message
+  if (!hasValidConfig && !isAgentMode) {
     return (
       <Box
         sx={{
@@ -697,18 +1362,29 @@ export default function AIPrompt(props: {
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
           To use the AI Assistant, please configure your AI provider credentials in the settings
-          page.
+          page. Or switch to Holmes Agent mode.
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Icon icon="mdi:settings" />}
-          onClick={() => {
-            history.push(getSettingsURL());
-            setOpenPopup(false);
-          }}
-        >
-          Go to Settings
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<Icon icon="mdi:settings" />}
+            onClick={() => {
+              history.push(getSettingsURL());
+              setOpenPopup(false);
+            }}
+          >
+            Go to Settings
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Icon icon="mdi:robot" />}
+            onClick={() => {
+              handleToggleAgentMode(true);
+            }}
+          >
+            Use Holmes Agent
+          </Button>
+        </Box>
       </Box>
     );
   }
@@ -764,9 +1440,10 @@ export default function AIPrompt(props: {
             <PromptSuggestions
               suggestions={suggestions}
               apiError={apiError}
-              loading={loading}
+              loading={loading || isDiagnosisRunning}
               onPromptSelect={prompt => setPromptVal(prompt)}
               onPromptSend={prompt => {
+                if (isDiagnosisRunning) return;
                 AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
                   setApiError(error.message);
                 });
@@ -781,10 +1458,21 @@ export default function AIPrompt(props: {
               activeConfig={activeConfig}
               availableConfigs={availableConfigs}
               selectedModel={selectedModel}
+              isAgentMode={isAgentMode}
+              agentModeStatus={agentModeStatus}
+              isDiagnosisRunning={isDiagnosisRunning}
               onSend={prompt => {
-                AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                  setApiError(error.message);
-                });
+                // Block chat while proactive diagnosis is running
+                if (isDiagnosisRunning) return;
+                if (isAgentMode) {
+                  handleAgentSend(prompt).catch(error => {
+                    setApiError(error.message);
+                  });
+                } else {
+                  AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
+                    setApiError(error.message);
+                  });
+                }
               }}
               onStop={handleStopRequest}
               onClearHistory={() => {
@@ -801,6 +1489,7 @@ export default function AIPrompt(props: {
                 handleChangeConfig(config, model);
               }}
               onTestModeResponse={handleTestModeResponse}
+              onToggleAgentMode={handleToggleAgentMode}
             />
           </Grid>
         </Grid>

@@ -7,6 +7,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 // @todo: this HeadlampEventType import is weird. Maybe fix in headlamp to be better.
 import { DefaultHeadlampEvents as HeadlampEventType } from '@kinvolk/headlamp-plugin/lib/plugin/registry';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import {
   Box,
   Button,
@@ -23,6 +24,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
+import { checkHolmesAgentHealth } from './agent/holmesClient';
 import { ModelSelector } from './components';
 import { getDefaultConfig } from './config/modelConfig';
 import { isTestModeCheck } from './helper';
@@ -143,6 +145,23 @@ function HeadlampAIPrompt() {
 
   const hasAnyValidConfig = savedConfigData.providers && savedConfigData.providers.length > 0;
 
+  // Check if the Holmes agent is available via K8s service proxy
+  const [isAgentAvailable, setIsAgentAvailable] = React.useState(false);
+  React.useEffect(() => {
+    let cancelled = false;
+    const cluster = getCluster();
+    if (!cluster) {
+      setIsAgentAvailable(false);
+      return;
+    }
+    checkHolmesAgentHealth(cluster).then(available => {
+      if (!cancelled) setIsAgentAvailable(available);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Reset popover shown state when configurations change from none to some
   React.useEffect(() => {
     if (hasAnyValidConfig && hasShownPopover) {
@@ -156,9 +175,9 @@ function HeadlampAIPrompt() {
     }
   }, [hasAnyValidConfig, hasShownPopover]);
 
-  // Show popover automatically if no configurations and hasn't been shown before
+  // Show popover automatically if no configurations, hasn't been shown before, and no agent available
   React.useEffect(() => {
-    if (!hasAnyValidConfig && !hasShownPopover && !pluginState.isUIPanelOpen) {
+    if (!hasAnyValidConfig && !hasShownPopover && !pluginState.isUIPanelOpen && !isAgentAvailable) {
       // Show popover after a short delay to ensure component is mounted
       const timer = setTimeout(() => {
         if (!!popoverAnchor) {
@@ -170,7 +189,13 @@ function HeadlampAIPrompt() {
       // Close popover if conditions are not met
       setShowPopover(false);
     }
-  }, [hasAnyValidConfig, popoverAnchor, hasShownPopover, pluginState.isUIPanelOpen]);
+  }, [
+    hasAnyValidConfig,
+    popoverAnchor,
+    hasShownPopover,
+    pluginState.isUIPanelOpen,
+    isAgentAvailable,
+  ]);
 
   const handleClosePopover = () => {
     setShowPopover(false);
@@ -484,4 +509,76 @@ function Settings() {
   );
 }
 
+// [PROACTIVE_DIAGNOSIS_DISABLED]
+// import {
+//   proactiveDiagnosisManager,
+//   ProactiveDiagnosisManager,
+// } from './utils/ProactiveDiagnosisManager';
+
 registerPluginSettings(PLUGIN_NAME, Settings);
+
+/* [PROACTIVE_DIAGNOSIS_DISABLED] — AIDiagnosisButton & events table column
+
+function AIDiagnosisButton({ event }: { event: Event }) {
+  const pluginState = useGlobalState();
+
+  const handleDiagnose = () => {
+    const data = event.jsonData || {};
+    const eventUid = data?.metadata?.uid || `${data?.metadata?.name}-${data?.metadata?.namespace}`;
+    const involvedObject = data?.involvedObject || {};
+
+    const eventDigest = {
+      uid: eventUid,
+      name: data?.metadata?.name || 'unknown',
+      type: data?.type || 'Warning',
+      reason: data?.reason || '',
+      message: data?.message || '',
+      objectKind: involvedObject?.kind || '',
+      objectName: involvedObject?.name || '',
+      objectNamespace: involvedObject?.namespace || '',
+      lastTimestamp: data?.lastTimestamp || data?.metadata?.creationTimestamp || '',
+      rawEvent: data,
+    };
+
+    if (!proactiveDiagnosisManager.hasDiagnosis(eventUid)) {
+      proactiveDiagnosisManager.diagnoseSingleEvent(eventDigest).catch(err => {
+        console.error('[AIDiagnosisButton] Failed to diagnose event:', err);
+      });
+    }
+
+    proactiveDiagnosisManager.setScrollToEventUid(eventUid);
+    pluginState.setIsUIPanelOpen(true);
+  };
+
+  return (
+    <ActionButton
+      description="Diagnose with AI"
+      icon="mdi:robot-outline"
+      onClick={handleDiagnose}
+    />
+  );
+}
+
+registerResourceTableColumnsProcessor(function addAIDiagnosisToEvents({ id, columns }) {
+  if (id === 'headlamp-cluster.overview.events') {
+    const eventColumns = columns as ResourceTableColumn<Event>[];
+    eventColumns.push({
+      label: 'AI Diagnosis',
+      getValue: (event: Event) => {
+        const eventType = event.jsonData?.type || '';
+        return (eventType === 'Warning' || eventType === 'Error') ? eventType : '';
+      },
+      render: (event: Event) => {
+        const eventType = event.jsonData?.type || '';
+        if (eventType === 'Warning' || eventType === 'Error') {
+          return <AIDiagnosisButton event={event} />;
+        }
+        return null;
+      },
+    });
+  }
+
+  return columns;
+});
+
+[PROACTIVE_DIAGNOSIS_DISABLED] */
