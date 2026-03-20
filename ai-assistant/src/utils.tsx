@@ -6,7 +6,9 @@ import type {
 } from '@kinvolk/headlamp-plugin/lib/plugin/registry';
 import React from 'react';
 import { useBetween } from 'use-between';
-import type { SavedConfigurations, StoredProviderConfig } from './utils/ProviderConfigManager';
+import type { MCPConfig } from './components/settings/MCPSettings';
+import { SavedConfigurations, StoredProviderConfig } from './utils/ProviderConfigManager';
+import { getAllAvailableToolsIncludingMCP, initializeToolsState } from './utils/ToolConfigManager';
 
 export const PLUGIN_NAME = '@headlamp-k8s/ai-assistant';
 export const getSettingsURL = () => `/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`;
@@ -137,6 +139,10 @@ interface PluginConfig extends SavedConfigurations {
   testMode?: boolean;
   /** Latest Headlamp event payload */
   event?: HeadlampEventPayload | null; //@todo: should this be HeadlampEventPayload?
+  /** Enabled tool IDs - can be either array of tool IDs or map of tool ID to enabled state */
+  enabledTools?: string[] | Record<string, boolean>;
+  /** MCP configuration */
+  mcpConfig?: MCPConfig;
 }
 
 export const pluginStore = new ConfigStore<PluginConfig>(PLUGIN_NAME);
@@ -154,6 +160,40 @@ function usePluginSettings() {
   // Add state to control UI panel visibility - initialize from stored settings
   const [isUIPanelOpen, setIsUIPanelOpenState] = React.useState(conf?.isUIPanelOpen ?? false);
 
+  // Add state for enabled tools - will be initialized properly using initializeToolsState
+  const [enabledTools, setEnabledToolsState] = React.useState<string[]>([]);
+  const [toolsInitialized, setToolsInitialized] = React.useState(false);
+
+  // Initialize tools state properly on first load
+  React.useEffect(() => {
+    if (!toolsInitialized) {
+      initializeToolsState(conf)
+        .then(initializedTools => {
+          setEnabledToolsState(initializedTools);
+          setToolsInitialized(true);
+
+          // If this is the first time and we have tools to save, save them
+          if (!conf?.enabledTools && initializedTools.length > 0) {
+            const currentConf = pluginStore.get() || {};
+            pluginStore.update({
+              ...currentConf,
+              enabledTools: initializedTools,
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Failed to initialize tools state:', error);
+          // Fallback to existing behavior - convert to string[] if needed
+          const fallbackTools = conf?.enabledTools ?? [];
+          const toolsArray = Array.isArray(fallbackTools)
+            ? fallbackTools
+            : Object.keys(fallbackTools).filter(key => fallbackTools[key]);
+          setEnabledToolsState(toolsArray);
+          setToolsInitialized(true);
+        });
+    }
+  }, [conf, toolsInitialized]);
+
   // Wrap setIsUIPanelOpen to also update the stored configuration
   const setIsUIPanelOpen = (isOpen: boolean) => {
     setIsUIPanelOpenState(isOpen);
@@ -162,6 +202,30 @@ function usePluginSettings() {
     pluginStore.update({
       ...currentConf,
       isUIPanelOpen: isOpen,
+    });
+  };
+
+  // Wrap setEnabledTools to also update the stored configuration
+  const setEnabledTools = async (tools: string[]) => {
+    setEnabledToolsState(tools);
+
+    // Save the tools configuration with explicit enabled/disabled states
+    const currentConf = pluginStore.get() || {};
+
+    // Get all available tools (built-in + MCP) and create explicit enabled/disabled map
+    const allTools = await getAllAvailableToolsIncludingMCP();
+    const enabledToolsMap: Record<string, boolean> = {};
+
+    allTools.forEach(tool => {
+      enabledToolsMap[tool.id] = tools.includes(tool.id);
+    });
+
+    // Get the list of enabled tool IDs based on the map
+    const enabledToolIds = tools.filter(toolId => enabledToolsMap[toolId]);
+
+    pluginStore.update({
+      ...currentConf,
+      enabledTools: enabledToolIds,
     });
   };
 
@@ -174,8 +238,23 @@ function usePluginSettings() {
     setActiveProvider,
     isUIPanelOpen,
     setIsUIPanelOpen,
-    // @todo: should testMode setTestMode be added here?
+    enabledTools,
+    setEnabledTools,
+    toolsInitialized,
   };
 }
 
 export const useGlobalState = () => useBetween(usePluginSettings);
+
+// Export tool configuration utilities
+export {
+  getAllAvailableTools,
+  isToolEnabled,
+  toggleTool,
+  getAllAvailableToolsIncludingMCP,
+  getEnabledToolIdsIncludingMCP,
+  isMCPTool,
+  parseMCPToolName,
+  isBuiltInTool,
+  initializeToolsState,
+} from './utils/ToolConfigManager';

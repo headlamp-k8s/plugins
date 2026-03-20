@@ -26,16 +26,27 @@ import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { checkHolmesAgentHealth } from './agent/holmesClient';
 import { ModelSelector } from './components';
+import { MCPSettings } from './components/settings';
 import { getDefaultConfig } from './config/modelConfig';
+import { PromptWidthProvider } from './contexts/PromptWidthContext';
 import { isTestModeCheck } from './helper';
+import { ClusterChangeNotifier } from './hooks/useClusterChangeNotifier';
 import AIPrompt from './modal';
-import { getSettingsURL, PLUGIN_NAME, pluginStore, useGlobalState, usePluginConfig } from './utils';
+import {
+  getAllAvailableTools,
+  getSettingsURL,
+  isToolEnabled,
+  PLUGIN_NAME,
+  pluginStore,
+  toggleTool,
+  useGlobalState,
+  usePluginConfig,
+} from './utils';
 import {
   getActiveConfig,
   getSavedConfigurations,
   SavedConfigurations,
 } from './utils/ProviderConfigManager';
-import { getAllAvailableTools, isToolEnabled, toggleTool } from './utils/ToolConfigManager';
 
 // Memoized UI Panel component to prevent unnecessary re-renders
 const AIPanelComponent = React.memo(() => {
@@ -43,6 +54,13 @@ const AIPanelComponent = React.memo(() => {
   const conf = usePluginConfig();
   const [width, setWidth] = React.useState('35vw');
   const [isResizing, setIsResizing] = React.useState(false);
+
+  // Check if models are configured
+  const savedConfigData = React.useMemo(() => {
+    return getSavedConfigurations(conf);
+  }, [conf]);
+
+  const hasAnyValidConfig = savedConfigData.providers && savedConfigData.providers.length > 0;
 
   const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -99,6 +117,8 @@ const AIPanelComponent = React.memo(() => {
         },
       }}
     >
+      {/* Monitor cluster changes and notify electron - only when models are configured */}
+      {hasAnyValidConfig && <ClusterChangeNotifier />}
       <Box
         onMouseDown={handleMouseDown}
         sx={{
@@ -111,11 +131,14 @@ const AIPanelComponent = React.memo(() => {
           zIndex: 10,
         }}
       />
-      <AIPrompt
-        openPopup={pluginState.isUIPanelOpen}
-        setOpenPopup={pluginState.setIsUIPanelOpen}
-        pluginSettings={conf}
-      />
+      <PromptWidthProvider initialWidth={width}>
+        <AIPrompt
+          openPopup={pluginState.isUIPanelOpen}
+          setOpenPopup={pluginState.setIsUIPanelOpen}
+          pluginSettings={conf}
+          width={width}
+        />
+      </PromptWidthProvider>
     </Box>
   );
 });
@@ -382,7 +405,7 @@ function Settings() {
 
     // If savedConfigs were changed, update the store
     if (changes.savedConfigs) {
-      pluginStore.update(changes.savedConfigs);
+      pluginStore.update(changes.savedConfigs as any);
     }
   };
 
@@ -416,7 +439,7 @@ function Settings() {
   };
 
   return (
-    <Box width={'80%'}>
+    <Box width={'100%'}>
       <Typography variant="body1" sx={{ mb: 3 }}>
         This plugin is in early development and is not yet ready for production use. Using it may
         incur in costs from the AI provider! Use at your own risk.
@@ -474,7 +497,7 @@ function Settings() {
         isConfigView
         onChange={handleModelSelectorChange}
         onTermsAccept={updatedConfigs => {
-          pluginStore.update(updatedConfigs);
+          pluginStore.update(updatedConfigs as any);
         }}
       />
       {/* AI Tools Section */}
@@ -505,6 +528,13 @@ function Settings() {
           </Box>
         ))}
       </Box>
+
+      {/* MCP Servers Section */}
+      <Divider sx={{ my: 3 }} />
+      <MCPSettings />
+
+      {/* MCP Tool Configuration Section */}
+      <Divider sx={{ my: 3 }} />
     </Box>
   );
 }
@@ -582,3 +612,6 @@ registerResourceTableColumnsProcessor(function addAIDiagnosisToEvents({ id, colu
 });
 
 [PROACTIVE_DIAGNOSIS_DISABLED] */
+
+// Export the cluster change notifier for external use
+export { useClusterChangeNotifier, ClusterChangeNotifier } from './hooks/useClusterChangeNotifier';

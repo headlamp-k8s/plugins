@@ -3,7 +3,7 @@ export type ToolCall = {
   name: string;
   description?: string;
   arguments: Record<string, any>;
-  type: 'regular';
+  type: 'mcp' | 'regular';
 };
 
 export type AgentThinkingStep = {
@@ -29,6 +29,15 @@ export type Prompt = {
   agentThinkingSteps?: AgentThinkingStep[];
   /** Whether the agent run is complete (thinking block should collapse) */
   agentThinkingDone?: boolean;
+  // Add support for inline tool confirmations
+  toolConfirmation?: {
+    tools: ToolCall[];
+    onApprove: (approvedToolIds: string[]) => void;
+    onDeny: () => void;
+    loading?: boolean;
+    //TODO: added this, because there was no userContext
+    userContext?: any; // Additional context about the user or conversation for tool confirmation
+  };
 };
 
 export default abstract class AIManager {
