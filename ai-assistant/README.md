@@ -94,3 +94,37 @@ command: ["python3", "-u", "/app/experimental/ag-ui/server-agui.py"]
 ```bash
 kubectl apply -f rendered.yaml
 ```
+
+## MCP (Model Context Protocol) Server Support
+
+The AI Assistant supports [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers, allowing you to extend the assistant's capabilities by connecting it to external tools and data sources.
+
+> **Note:** MCP server support is currently available only in the **Headlamp desktop application**.
+
+### What is MCP?
+
+MCP is an open protocol that enables AI assistants to interact with external tools and services. By configuring MCP servers, you can give the AI Assistant access to specialized tools — for example, connecting it to [Flux](https://fluxcd.io/) for GitOps management or any other MCP-compatible tool.
+
+### Configuring MCP Servers
+
+Navigate to the AI Assistant settings to add and manage MCP servers. Each server is configured with:
+
+- **Name** — A unique identifier for the server.
+- **Command** — The executable to run (e.g., `flux-operator-mcp`).
+- **Args** — Command-line arguments (e.g., `serve --kube-context HEADLAMP_CURRENT_CLUSTER`).
+- **Environment Variables** — Optional env vars required by the server (e.g., `KUBECONFIG`).
+
+You can configure servers using the form-based UI or by editing the JSON configuration directly.
+
+![MCP Servers List](mcp-servers-list.png)
+
+![MCP Config Editor](mcp-config.png)
+
+### Managing MCP Tools
+
+Once servers are configured, the assistant automatically discovers the tools they expose. You can:
+
+- Enable or disable individual tools per server.
+- View tool descriptions and input schemas.
+- Track tool usage statistics.
+- Use bulk operations to enable or disable all tools at once.
