@@ -291,7 +291,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
           )}
 
           {/* Tools Button */}
-          {!isTestMode && (
+          {!isTestMode && !isAgentMode && (
             <Box ml={1}>
               <ActionButton
                 description="Manage Tools"
