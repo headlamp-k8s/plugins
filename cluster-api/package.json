@@ -1,5 +1,5 @@
 {
-  "name": "cluster-api",
+  "name": "@headlamp-k8s/cluster-api",
   "version": "0.1.0",
   "description": "Cluster API plugin for Headlamp",
   "scripts": {
