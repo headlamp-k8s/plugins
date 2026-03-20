@@ -5,7 +5,8 @@ import {
   ResourceListView,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { ApiError } from '@kinvolk/headlamp-plugin/lib/lib/k8s/apiProxy/index';
+import { ApiError } from '@kinvolk/headlamp-plugin/lib/k8s/api/v2/ApiError';
+import { useMemo } from 'react';
 import { Machine } from '../../resources/machine';
 import { useCapiApiVersion } from '../../utils/capiVersion';
 
@@ -183,7 +184,6 @@ export function MachinesList() {
   const version = useCapiApiVersion(Machine.crdName, 'v1beta1');
   if (!version) return <Loader title="Detecting Cluster API version" />;
 
-  // Derive a version-specific class instead of mutating the shared static property.
-  const VersionedMachine = Machine.withApiVersion(version);
+  const VersionedMachine = useMemo(() => Machine.withApiVersion(version), [version]);
   return <MachinesListWithData MachineClass={VersionedMachine} />;
 }

@@ -7,6 +7,7 @@ import {
   NameValueTableRow,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
+import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { Machine } from '../../resources/machine';
 import { useCapiApiVersion } from '../../utils/capiVersion';
@@ -135,7 +136,7 @@ function MachineDetailContent(props: MachineDetailContentProps) {
   if (!apiVersion) {
     return <Loader title="Detecting Cluster API version" />;
   }
-  const VersionedMachine = Machine.withApiVersion(apiVersion);
+  const VersionedMachine = useMemo(() => Machine.withApiVersion(apiVersion), [apiVersion]);
   return (
     <MachineDetailContentWithData
       {...props}

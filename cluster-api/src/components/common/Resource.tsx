@@ -1,5 +1,6 @@
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { useMemo } from 'react';
 import { Machine } from '../../resources/machine';
 import { useCapiApiVersion } from '../../utils/capiVersion';
 import { MachineListRenderer, MachineListRendererProps } from '../machines/List';
@@ -49,7 +50,7 @@ export function OwnedMachinesSection({
   if (!version) {
     return <Loader title="Detecting Cluster API version" />;
   }
-  const VersionedMachine = Machine.withApiVersion(version);
+  const VersionedMachine = useMemo(() => Machine.withApiVersion(version), [version]);
   return (
     <OwnedMachinesSectionWithData
       MachineClass={VersionedMachine}
