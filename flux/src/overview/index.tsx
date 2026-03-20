@@ -109,6 +109,7 @@ function getDisplayName(resourceClass: KubeObjectClass) {
 
 export function FluxOverview() {
   const [sortFilter, setSortFilter] = useState('failed');
+  const [showFilter, setShowFilter] = useState('configured');
   const fluxCheck = useFluxCheck();
   const namespace = fluxCheck.namespace;
 
@@ -179,13 +180,17 @@ export function FluxOverview() {
       { rc: ImageUpdateAutomation, items: imageUpdateAutomations },
     ];
 
-    const resourceData = itemsWithClass.map(({ rc, items }) => ({
+    let resourceData = itemsWithClass.map(({ rc, items }) => ({
       rc,
       failed: getFailedCount(items),
       total: items?.length ?? 0,
       success: getSuccessCount(items),
       name: getDisplayName(rc),
     }));
+
+    if (showFilter === 'configured') {
+      resourceData = resourceData.filter(({ total }) => total > 0);
+    }
 
     switch (sortFilter) {
       case 'failed':
@@ -250,6 +255,13 @@ export function FluxOverview() {
                 <MenuItem value="success-asc">Least Successful</MenuItem>
                 <MenuItem value="alphabetical">Alphabetical A-Z</MenuItem>
                 <MenuItem value="alphabetical-desc">Alphabetical Z-A</MenuItem>
+              </Select>
+            </FormControl>,
+            <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="show">
+              <InputLabel>Show</InputLabel>
+              <Select value={showFilter} label="Show" onChange={handleShowFilterChange}>
+                <MenuItem value="configured">Configured Only</MenuItem>
+                <MenuItem value="all">All Resources</MenuItem>
               </Select>
             </FormControl>,
           ],
