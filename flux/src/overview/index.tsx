@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
+  ActionButton,
   Link,
   NameValueTable,
   SectionBox,
@@ -39,6 +40,7 @@ import {
 } from '../common/Resources';
 import Table from '../common/Table';
 import { useFluxCheck } from '../helpers';
+import { store } from '../settings';
 
 // Helper to get failed count for a resource class
 function getFailedCount(items: KubeObject[] | null) {
@@ -108,7 +110,10 @@ function getDisplayName(resourceClass: KubeObjectClass) {
 }
 
 export function FluxOverview() {
-  const [sortFilter, setSortFilter] = useState('failed');
+  const [sortFilter, setSortFilter] = useState(() => store.get()?.overviewSortFilter ?? 'failed');
+  const [showFilter, setShowFilter] = useState(
+    () => store.get()?.overviewShowFilter ?? 'configured'
+  );
   const fluxCheck = useFluxCheck();
   const namespace = fluxCheck.namespace;
 
@@ -179,13 +184,17 @@ export function FluxOverview() {
       { rc: ImageUpdateAutomation, items: imageUpdateAutomations },
     ];
 
-    const resourceData = itemsWithClass.map(({ rc, items }) => ({
+    let resourceData = itemsWithClass.map(({ rc, items }) => ({
       rc,
       failed: getFailedCount(items),
       total: items?.length ?? 0,
       success: getSuccessCount(items),
       name: getDisplayName(rc),
     }));
+
+    if (showFilter === 'configured') {
+      resourceData = resourceData.filter(({ total }) => total > 0);
+    }
 
     switch (sortFilter) {
       case 'failed':
@@ -222,21 +231,28 @@ export function FluxOverview() {
     imagePolicies,
     imageUpdateAutomations,
     sortFilter,
+    showFilter,
   ]);
 
   const handleSortFilterChange = event => {
-    setSortFilter(event.target.value);
+    const value = event.target.value;
+    setSortFilter(value);
+    store.set({ ...store.get(), overviewSortFilter: value });
+  };
+
+  const handleShowFilterChange = event => {
+    const value = event.target.value;
+    setShowFilter(value);
+    store.set({ ...store.get(), overviewShowFilter: value });
   };
 
   return (
     <>
       <SectionBox
-        title={
-          <Box display="flex" alignItems="center" mt={2}>
-            <Box mr={2} ml={4}>
-              <h3>Flux Overview</h3>
-            </Box>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
+        title="Flux Overview"
+        headerProps={{
+          actions: [
+            <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="sort">
               <InputLabel>Sort By</InputLabel>
               <Select value={sortFilter} label="Sort By" onChange={handleSortFilterChange}>
                 <MenuItem value="failed">Most Failed First</MenuItem>
@@ -248,11 +264,26 @@ export function FluxOverview() {
                 <MenuItem value="alphabetical">Alphabetical A-Z</MenuItem>
                 <MenuItem value="alphabetical-desc">Alphabetical Z-A</MenuItem>
               </Select>
-            </FormControl>
-          </Box>
-        }
+            </FormControl>,
+            <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="show">
+              <InputLabel>Show</InputLabel>
+              <Select value={showFilter} label="Show" onChange={handleShowFilterChange}>
+                <MenuItem value="configured">Configured Only</MenuItem>
+                <MenuItem value="all">All Resources</MenuItem>
+              </Select>
+            </FormControl>,
+            <ActionButton
+              key="settings"
+              description="Flux Settings"
+              icon="mdi:cog"
+              onClick={() => {
+                window.location.href = '/settings/plugins/@headlamp-k8s%2Fflux';
+              }}
+            />,
+          ],
+        }}
       >
-        <Box display="flex" justifyContent="space-between" sx={{ flexWrap: 'wrap' }}>
+        <Box display="flex" sx={{ flexWrap: 'wrap' }}>
           {sortedResourceClasses.map((resourceClass, idx) => (
             <Box width="300px" m={2} key={resourceClass.apiName || idx}>
               <FluxOverviewChart resourceClass={resourceClass} />

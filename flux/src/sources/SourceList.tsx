@@ -19,15 +19,16 @@ export function FluxSources() {
   return (
     <>
       <FluxSource
-        resourceClass={ExternalArtifact}
-        pluralName="externalartifacts"
-        title={'External Artifacts'}
-      />
-      <FluxSource
         resourceClass={GitRepository}
         pluralName="gitrepositories"
         title={'Git Repositories'}
       />
+      <FluxSource
+        resourceClass={HelmRepository}
+        pluralName="helmrepositories"
+        title={'Helm Repositories'}
+      />
+      <FluxSource resourceClass={HelmChart} pluralName="helmcharts" title={'Helm Charts'} />
       <FluxSource
         resourceClass={OCIRepository}
         pluralName="ocirepositories"
@@ -35,11 +36,10 @@ export function FluxSources() {
       />
       <FluxSource resourceClass={BucketRepository} pluralName="buckets" title={'Buckets'} />
       <FluxSource
-        resourceClass={HelmRepository}
-        pluralName="helmrepositories"
-        title={'Helm Repositories'}
+        resourceClass={ExternalArtifact}
+        pluralName="externalartifacts"
+        title={'External Artifacts'}
       />
-      <FluxSource resourceClass={HelmChart} pluralName="helmcharts" title={'Helm Charts'} />
     </>
   );
 }
