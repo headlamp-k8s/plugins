@@ -222,21 +222,24 @@ export function FluxOverview() {
     imagePolicies,
     imageUpdateAutomations,
     sortFilter,
+    showFilter,
   ]);
 
   const handleSortFilterChange = event => {
     setSortFilter(event.target.value);
   };
 
+  const handleShowFilterChange = event => {
+    setShowFilter(event.target.value);
+  };
+
   return (
     <>
       <SectionBox
-        title={
-          <Box display="flex" alignItems="center" mt={2}>
-            <Box mr={2} ml={4}>
-              <h3>Flux Overview</h3>
-            </Box>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
+        title="Flux Overview"
+        headerProps={{
+          actions: [
+            <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="sort">
               <InputLabel>Sort By</InputLabel>
               <Select value={sortFilter} label="Sort By" onChange={handleSortFilterChange}>
                 <MenuItem value="failed">Most Failed First</MenuItem>
@@ -248,9 +251,9 @@ export function FluxOverview() {
                 <MenuItem value="alphabetical">Alphabetical A-Z</MenuItem>
                 <MenuItem value="alphabetical-desc">Alphabetical Z-A</MenuItem>
               </Select>
-            </FormControl>
-          </Box>
-        }
+            </FormControl>,
+          ],
+        }}
       >
         <Box display="flex" justifyContent="space-between" sx={{ flexWrap: 'wrap' }}>
           {sortedResourceClasses.map((resourceClass, idx) => (
