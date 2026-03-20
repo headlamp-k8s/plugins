@@ -281,7 +281,7 @@ export class MCPArgumentProcessor {
       if (lowerDesc.includes('home')) {
         return '~';
       }
-      return '/Users/ashughildiyal/Desktop'; // Safe default path
+      return undefined;
     }
 
     // File-related suggestions
