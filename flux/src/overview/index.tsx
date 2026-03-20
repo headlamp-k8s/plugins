@@ -40,6 +40,7 @@ import {
 } from '../common/Resources';
 import Table from '../common/Table';
 import { useFluxCheck } from '../helpers';
+import { store } from '../settings';
 
 // Helper to get failed count for a resource class
 function getFailedCount(items: KubeObject[] | null) {
@@ -109,8 +110,10 @@ function getDisplayName(resourceClass: KubeObjectClass) {
 }
 
 export function FluxOverview() {
-  const [sortFilter, setSortFilter] = useState('failed');
-  const [showFilter, setShowFilter] = useState('configured');
+  const [sortFilter, setSortFilter] = useState(() => store.get()?.overviewSortFilter ?? 'failed');
+  const [showFilter, setShowFilter] = useState(
+    () => store.get()?.overviewShowFilter ?? 'configured'
+  );
   const fluxCheck = useFluxCheck();
   const namespace = fluxCheck.namespace;
 
@@ -232,11 +235,15 @@ export function FluxOverview() {
   ]);
 
   const handleSortFilterChange = event => {
-    setSortFilter(event.target.value);
+    const value = event.target.value;
+    setSortFilter(value);
+    store.set({ ...store.get(), overviewSortFilter: value });
   };
 
   const handleShowFilterChange = event => {
-    setShowFilter(event.target.value);
+    const value = event.target.value;
+    setShowFilter(value);
+    store.set({ ...store.get(), overviewShowFilter: value });
   };
 
   return (

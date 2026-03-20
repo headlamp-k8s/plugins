@@ -50,12 +50,16 @@ function AutoSaveSwitch({
   );
 }
 
-interface PluginConfig {
+export interface PluginConfig {
   linkHRelToKs: boolean;
+  overviewShowFilter: 'configured' | 'all';
+  overviewSortFilter: string;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
   linkHRelToKs: false,
+  overviewShowFilter: 'configured',
+  overviewSortFilter: 'failed',
 };
 
 export const store = new ConfigStore<PluginConfig>('@headlamp-k8s/flux');
