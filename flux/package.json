@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/flux",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "A UI for viewing and managing Flux for Git Ops",
   "scripts": {
     "start": "headlamp-plugin start",
