@@ -5,7 +5,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router';
 import { MachineSet } from '../../resources/machineset';
-import { renderReplicas, showReplicas } from '../common';
+import { renderReplicas, showReplicas } from '../common/index';
 
 export function MachineSetDetail({ node }: { node: any }) {
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
