@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
+  ActionButton,
   Link,
   NameValueTable,
   SectionBox,
@@ -264,6 +265,14 @@ export function FluxOverview() {
                 <MenuItem value="all">All Resources</MenuItem>
               </Select>
             </FormControl>,
+            <ActionButton
+              key="settings"
+              description="Flux Settings"
+              icon="mdi:cog"
+              onClick={() => {
+                window.location.href = '/settings/plugins/@headlamp-k8s%2Fflux';
+              }}
+            />,
           ],
         }}
       >
