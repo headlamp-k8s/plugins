@@ -16,13 +16,17 @@ export function getStoredVersionFromCrd(
 
 /**
  * Resolves the API version for a CAPI resource from the CRD.
- * Use this so the plugin works on clusters with only v1beta1, only v1beta2, or both.
- * Returns undefined while the CRD is loading.
  */
 export function useCapiApiVersion(crdName: string, defaultVersion: string): string | undefined {
-  const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
+  const [crd, error] = CustomResourceDefinition.useGet(crdName, undefined);
   const stored = getStoredVersionFromCrd(crd);
-  return stored ?? (crd !== null && crd !== undefined ? defaultVersion : undefined);
+  if (stored) {
+    return stored;
+  }
+  if (error) {
+    return defaultVersion;
+  }
+  return crd !== null && crd !== undefined ? defaultVersion : undefined;
 }
 
 export { Loader as CapiVersionLoader };
