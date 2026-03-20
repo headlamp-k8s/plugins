@@ -1,9 +1,54 @@
 version: 0.6.0
 name: headlamp_flux
 displayName: Flux
-createdAt: "2024-11-07T15:34:00Z"
+createdAt: "2026-03-20T16:07:42Z"
 logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/flux/logo.png"
 description: A UI for viewing and managing Flux for Git Ops.
+changes:
+  - kind: changed
+    description: "Bump version to 0.6.0"
+  - kind: fixed
+    description: "Update deps with audit fix"
+  - kind: changed
+    description: "Persist overview filter preferences in plugin settings"
+  - kind: changed
+    description: "Do not separate charts with space between"
+  - kind: added
+    description: "Add a way to access plugins settings directly from the Overview"
+  - kind: added
+    description: "Add a way to show only charts for resources we use"
+  - kind: fixed
+    description: "Fix overview header title size"
+  - kind: added
+    description: "Reorder sources to show common types first"
+  - kind: changed
+    description: "Update headlamp-plugin to 0.13.1"
+  - kind: fixed
+    description: "fix api versions"
+  - kind: added
+    description: "add flux crds hierarchy in map feature"
+  - kind: changed
+    description: "Count Waiting as processing"
+  - kind: fixed
+    description: "fix namespaced crds fetching for users with limited permissions"
+  - kind: fixed
+    description: "kustomization: Fix parse ID for cluster scoped resources"
+  - kind: fixed
+    description: "overview: Fix error color for failed reconciliations (#493)"
+  - kind: changed
+    description: "9734acc Bump lodash to 4.17.23"
+  - kind: changed
+    description: "c6063f1 Bump glob to 10.5.0"
+  - kind: changed
+    description: "9fdd18e Bump tar to 7.5.3"
+  - kind: changed
+    description: "Update headlamp-plugin to 0.13.0"
+  - kind: changed
+    description: "Bump tar to 7.5.2"
+  - kind: added
+    description: "Overview: Flux Checks: Add source-watcher to list of controllers"
+  - kind: added
+    description: "Runtime: Add source-watcher to list of controllers"
 annotations:
   headlamp/plugin/archive-url: >-
     https://github.com/headlamp-k8s/plugins/releases/download/flux-0.6.0/headlamp-k8s-flux-0.6.0.tar.gz

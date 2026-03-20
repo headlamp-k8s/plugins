@@ -1,9 +1,30 @@
 version: 0.2.0
 name: headlamp_karpenter
 displayName: Karpenter alpha for testing only
-createdAt: "2026-02-10T13:35:50Z"
+createdAt: "2026-02-10T22:46:14Z"
 logoURL: "https://raw.githubusercontent.com/aws/karpenter-provider-aws/refs/heads/main/website/assets/icons/logo.svg"
 description: A UI for viewing and managing Karpenter resources in Headlamp.
+changes:
+  - kind: added
+    description: "New release of the [Headlamp](https://headlamp.dev) plugin for [Karpenter](https://karpenter.sh)."
+  - kind: changed
+    description: "Restore missing menu items & set engine compatibility. Thanks to @RachanaVenka #491"
+  - kind: added
+    description: "Enable EKS Auto Mode Support. Thanks to @awsfanboy https://github.com/headlamp-k8s/plugins/pull/409"
+  - kind: fixed
+    description: "Upgrade dependencies, and minor typescript fixes. Thanks to @skoeva and @illume"
+  - kind: changed
+    description: "Updates to README. Thanks to @SinghaAnirban005 #390"
+  - kind: changed
+    description: "Published [Karpenter container images](https://github.com/headlamp-k8s/plugins/pkgs/container/headlamp-plugin-karpenter) (for 0.1.0 and 0.2.0). Thanks to @illume"
+  - kind: added
+    description: "This release introduces comprehensive improvements to how the Headlamp Karpenter plugin detects and handles different Karpenter deployment types (EKS Auto Mode, self-installed), enhancing both the user experience and maintainability by improving detection logic, runtime behavior, and configuration clarity."
+  - kind: fixed
+    description: "addresses a runtime error causing the Karpenter menu to only display the NodeClass section. It resolves the `undefined` error on `getMainAPIGroup` to ensure NodePool, Pending Pods, and Scaling views render correctly."
+  - kind: fixed
+    description: "**Runtime Fix:** Patched `createNodeClassClass.ts` and List views to mock the `customResourceDefinition` property. This satisfies the Headlamp runtime requirement and prevents `getMainAPIGroup` failures."
+  - kind: fixed
+    description: "**Compatibility:** Added the `engines` field to `package.json` to declare support for Headlamp `>=0.20.0`. This resolves \"Incompatible\" errors on updated clusters."
 annotations:
   headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/karpenter-0.2.0/headlamp-k8s-karpenter-0.2.0.tar.gz"
   headlamp/plugin/archive-checksum: "SHA256:5c00da78e573cb1263c6e27bc1430c0ccede50556e215ffa46f3750debaf731b"

@@ -1,12 +1,21 @@
-version: 0.2.0
+version: 0.1.0-alpha-1
 name: headlamp_minikube
 displayName: minikube
-createdAt: "2025-03-28T09:35:50Z"
+createdAt: "2025-03-27T19:05:12Z"
 logoURL: "https://raw.githubusercontent.com/kubernetes/minikube/42aa2eab55893d852bf9bb17744c79e7b20f8f71/images/logo/logo.svg"
-description: A UI for managing local minikube clusters. This is an early release (alpha 0.1.0). Feedback welcome.
+description: A UI for managing local minikube clusters. Alpha release.
+changes:
+  - kind: added
+    description: "The [Minikube Headlamp Plugin](https://github.com/headlamp-k8s/plugins/tree/main/minikube) extends Headlamp so that it has support for the Minikube Kubernetes distribution."
+  - kind: changed
+    description: "[Minikube](https://minikube.sigs.k8s.io/) is a lightweight tool that simplifies the process of setting up a Kubernetes environment on your local PC. It provides a single-node Kubernetes cluster that you can use for learning, development, and testing purposes."
+  - kind: changed
+    description: "Use minikube to run kubernetes locally on your laptop! Start, stop, and delete clusters."
+  - kind: added
+    description: "This is an alpha release. Please leave any feedback as a [github issue](https://github.com/headlamp-k8s/plugins/issues/new), or drop by the `#headlamp` channel on the Kubernetes slack."
 annotations:
-  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/minikube-0.2.0/headlamp-k8s-minikube-0.2.0.tar.gz"
-  headlamp/plugin/archive-checksum: "SHA256:141e9a97af3c2da2d405faefb4aad624efcb6115277d379a0ee01fd68b763cff"
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/minikube-0.1.0-alpha-1/headlamp-k8s-minikube-0.1.0-alpha-1.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:38d36d8f2dcf1275cf62b8be097c04fb81abbdef6f39dab2d40f15670a7c4fe9"
   headlamp/plugin/version-compat: ">=0.30"
   headlamp/plugin/distro-compat: "desktop"
   headlamp/plugin/extra-files/0/url: "https://github.com/kubernetes/minikube/releases/download/v1.35.0/minikube-linux-amd64.tar.gz"

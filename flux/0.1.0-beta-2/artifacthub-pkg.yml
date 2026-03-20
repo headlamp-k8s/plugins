@@ -1,0 +1,22 @@
+version: 0.1.0-beta-2
+name: headlamp_flux
+displayName: Flux
+createdAt: "2024-12-20T15:54:12Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/flux/logo.png"
+description: A UI for viewing and managing Flux.
+changes:
+  - kind: changed
+    description: "Show suspend in status column in list views (thanks to @mgalesloot )"
+  - kind: added
+    description: "Add namespace filters (thanks to @mgalesloot )"
+  - kind: added
+    description: "Add header action for enabling/disabling force apply"
+  - kind: fixed
+    description: "Fix suspend/resume actions"
+  - kind: fixed
+    description: "Fix checking for installation"
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/flux-0.1.0-beta-2/flux-0.1.0-beta-2.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:83ffafbb4881c1125b743be6cb5dcf296c0b1bb1fd3256f551e31d6165591777"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"

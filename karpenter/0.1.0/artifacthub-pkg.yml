@@ -1,9 +1,86 @@
 version: 0.1.0
 name: headlamp_karpenter
 displayName: Karpenter alpha for testing only
-createdAt: "2025-07-25T05:35:50Z"
+createdAt: "2025-08-30T07:43:45Z"
 logoURL: "https://raw.githubusercontent.com/aws/karpenter-provider-aws/refs/heads/main/website/assets/icons/logo.svg"
 description: A UI for viewing and managing Karpenter resources in Headlamp.
+changes:
+  - kind: added
+    description: "This Headlamp plugin adds **Karpenter-specific custom resources** to the Headlamp UI, helping users visualize, understand, and manage **autoscaling decisions** in a more intuitive way."
+  - kind: added
+    description: "If you are new to Karpenter or its concepts, please see the [Karpenter website](https://karpenter.sh/docs/concepts/)."
+  - kind: changed
+    description: "> Karpenter automatically launches just the right compute resources to handle your cluster's applications. It is designed to let you take full advantage of the cloud with fast and simple compute provisioning for Kubernetes clusters."
+  - kind: changed
+    description: "The Karpenter plugin is a Linux Foundation mentorship project by [Anirban Singha](https://github.com/SinghaAnirban005) with guidance and input from Headlamp, and Karpenter community members."
+  - kind: changed
+    description: "Karpenter specific metrics provide more observability into the system. Now the Headlamp plugin allows viewing of these metrics stored in Prometheus by Karpenter."
+  - kind: changed
+    description: "[Demo of Visualization of NodePool resource](https://github.com/user-attachments/assets/042d8bfb-c59b-4b27-8e9b-cec6670226d7)"
+  - kind: changed
+    description: "Pull request: [Visualization of Karpenter NodePool Metrics (Prometheus)](https://github.com/headlamp-k8s/plugins/pull/353)"
+  - kind: changed
+    description: "Provides visualization for Resource Usage, Allowed disruptions and Pending Pods"
+  - kind: changed
+    description: "[Demo: Visualization of NodeClaim (Scaling view) resource metrics](https://github.com/user-attachments/assets/972764eb-0445-4bbe-8097-64dc4c3898d8)"
+  - kind: changed
+    description: "Pull request: [Visualization of NodeClaim (Scaling view) resource Metrics (Prometheus)](https://github.com/headlamp-k8s/plugins/pull/353)"
+  - kind: changed
+    description: "Provides visualization for Creation Rate and Provisioning latency"
+  - kind: added
+    description: "Until now the plugin supported viewing resources in data tables. Now people can see the resource relationships in a map view as well."
+  - kind: changed
+    description: "[Demo of Map View for Karpenter Resources](https://github.com/user-attachments/assets/8d7d35bd-e014-4824-bfe8-fe245adfdc65)"
+  - kind: added
+    description: "Pull request: [Add Map View for Resources](https://github.com/headlamp-k8s/plugins/pull/369)"
+  - kind: changed
+    description: "Provides a map view of Karpenter resources and their links to other Kubernetes resources"
+  - kind: added
+    description: "Karpenter supports a number of provider backends. Up until now the Karpenter plugin for Headlamp only supported AWS EKS specific resources. Now there is support for dynamically detecting the provider, and also for viewing Azure AKS Karpenter (NAP [Node Auto Provisioning]) resources as well."
+  - kind: changed
+    description: "[Demo of Azure AKS resources](https://github.com/user-attachments/assets/791a7fb3-6ae1-4963-9d18-69b1793e6de6)"
+  - kind: added
+    description: "Pull request: [Support Azure specific resources](https://github.com/headlamp-k8s/plugins/pull/378)"
+  - kind: added
+    description: "Provides support for Azure AKS specific resources and dynamically detecting the Cloud provider and displaying relevant resource data instead of throwing errors."
+  - kind: fixed
+    description: "There was a bug reported about the memory bar. Now where the memory bar now does not fill up when limit is not specified."
+  - kind: fixed
+    description: "[Demo of the memory limit fix](https://github.com/user-attachments/assets/896f6211-a79f-4f56-93e6-3e9e4fd0e2b1)"
+  - kind: fixed
+    description: "Pull request: [Fix memory limit view](https://github.com/headlamp-k8s/plugins/pull/371)"
+  - kind: changed
+    description: "The memory bar now does not fill up when limit is not specified"
+  - kind: changed
+    description: "See [previous release notes](https://github.com/headlamp-k8s/plugins/releases/tag/karpenter-0.1.0-alpha-0) to see a description and demos of other features of the Karpenter plugin for Headlamp."
+  - kind: added
+    description: "This plugin should work with most Karpenter providers, but has only so far been tested on the ones listed in the table. Additionally, each provider gives some extra information, and the ones in the table below are displayed by the plugin."
+  - kind: added
+    description: "Please [submit an issue](https://github.com/headlamp-k8s/plugins/issues) if you test one of the untested providers or if you want support for this provider (PRs also gladly accepted)."
+  - kind: added
+    description: "| Provider Name | Tested | Extra provider specific info supported |"
+  - kind: changed
+    description: "| --- | --- | --- |"
+  - kind: changed
+    description: "| [AWS](https://github.com/aws/karpenter-provider-aws) | ✅ | ✅ |"
+  - kind: changed
+    description: "| [Azure](https://github.com/Azure/karpenter-provider-azure) | ✅ | ✅ |"
+  - kind: changed
+    description: "| [AlibabaCloud](https://github.com/cloudpilot-ai/karpenter-provider-alibabacloud) | ❌ | ❌ |"
+  - kind: changed
+    description: "| [Bizfly Cloud](https://github.com/bizflycloud/karpenter-provider-bizflycloud) | ❌ | ❌ |"
+  - kind: changed
+    description: "| [Cluster API](https://github.com/kubernetes-sigs/karpenter-provider-cluster-api) | ❌ | ❌ |"
+  - kind: changed
+    description: "| [GCP](https://github.com/cloudpilot-ai/karpenter-provider-gcp) | ❌ | ❌ |"
+  - kind: changed
+    description: "| [Proxmox](https://github.com/sergelogvinov/karpenter-provider-proxmox) | ❌ | ❌ |"
+  - kind: changed
+    description: "| [Oracle Cloud Infrastructure (OCI)](https://github.com/zoom/karpenter-oci) | ❌ | ❌ |"
+  - kind: changed
+    description: "Please see the [plugins/karpenter/README.md](https://github.com/headlamp-k8s/plugins/tree/main/karpenter) for instructions on how to use. Please note that this is an alpha release for testing and feedback only."
+  - kind: changed
+    description: "Please [submit an issue](https://github.com/headlamp-k8s/plugins/issues) if you use Karpenter and have any other ideas or feedback. Or come to the [Kubernetes slack headlamp channel](https://kubernetes.slack.com/?redir=%2Fmessages%2Fheadlamp) for a chat."
 annotations:
   headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/karpenter-0.1.0/headlamp-k8s-karpenter-0.1.0.tar.gz"
   headlamp/plugin/archive-checksum: "SHA256:eb617ac08b5c097f1e79ccf15106aa26878302c6f73a381164b2b9784afba944"
