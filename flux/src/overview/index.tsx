@@ -276,7 +276,7 @@ export function FluxOverview() {
           ],
         }}
       >
-        <Box display="flex" justifyContent="space-between" sx={{ flexWrap: 'wrap' }}>
+        <Box display="flex" sx={{ flexWrap: 'wrap' }}>
           {sortedResourceClasses.map((resourceClass, idx) => (
             <Box width="300px" m={2} key={resourceClass.apiName || idx}>
               <FluxOverviewChart resourceClass={resourceClass} />
