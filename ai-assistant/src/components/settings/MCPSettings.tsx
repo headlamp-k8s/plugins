@@ -141,42 +141,9 @@ export function MCPSettings({ onConfigChange }: MCPSettingsProps) {
   };
 
   const handleToggleEnabled = async () => {
+    console.log('Toggling MCP enabled state', pendingConfig);
     if (!pendingConfig) return;
     const newConfig = { ...mcpConfig, enabled: !mcpConfig.enabled };
-
-    // If enabling MCP for the first time and no servers exist, add default servers
-    if (newConfig.enabled && mcpConfig.servers.length === 0) {
-      const defaultServers: MCPServer[] = [
-        {
-          name: 'inspektor-gadget',
-          command: 'docker',
-          args: [
-            'run',
-            '-i',
-            '--rm',
-            '--mount',
-            'type=bind,src=%USERPROFILE%\\.kube\\config,dst=/root/.kube/config,readonly',
-            '--mount',
-            'type=bind,src=%USERPROFILE%\\.minikube,dst=/root/.minikube,readonly',
-            'ghcr.io/inspektor-gadget/ig-mcp-server:latest',
-            '-gadget-discoverer=artifacthub',
-          ],
-          enabled: false, // Disabled by default to avoid errors
-        },
-        {
-          name: 'filesystem',
-          command: 'npx',
-          args: [
-            '-y',
-            '@danielsuguimoto/readonly-server-filesystem',
-            'C:\\Users\\username\\Desktop',
-          ],
-          enabled: true,
-        },
-      ];
-
-      newConfig.servers = defaultServers;
-    }
 
     // Immediately save this change (bypass pending state)
     if (Headlamp.isRunningAsApp()) {
