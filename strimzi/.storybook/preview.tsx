@@ -1,17 +1,25 @@
 /**
- * Local preview: theme + QueryClient only. MSW is disabled so the service worker
- * does not intercept requests and cause 500 / "Failed to fetch" on the iframe.
- * Add MSW per-story if a story needs API mocks.
+ * Local preview: theme, QueryClient, and Redux (headlamp SimpleTable uses useSettings → config slice).
+ * MSW is disabled; add per-story if needed.
  */
 import React from 'react';
+import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider } from '@mui/material/styles';
 import { Title, Subtitle, Description, Primary, Controls } from '@storybook/addon-docs/blocks';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Provider as ReduxProvider } from 'react-redux';
 import {
   darkTheme,
   lightTheme,
 } from '@kinvolk/headlamp-plugin/lib/components/App/defaultAppThemes';
 import { createMuiTheme } from '@kinvolk/headlamp-plugin/lib/lib/themes';
+import configReducer from '@kinvolk/headlamp-plugin/lib/redux/configSlice';
+
+const storybookStore = configureStore({
+  reducer: {
+    config: configReducer,
+  },
+});
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,11 +35,13 @@ export const queryClient = new QueryClient({
 const withThemeProvider = (Story: any, context: any) => {
   const theme = context.globals.backgrounds?.value === '#1f1f1f' ? darkTheme : lightTheme;
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={createMuiTheme(theme)}>
-        <Story {...context} />
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ReduxProvider store={storybookStore}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={createMuiTheme(theme)}>
+          <Story {...context} />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ReduxProvider>
   );
 };
 
