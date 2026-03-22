@@ -1,6 +1,7 @@
 import { PluginManager, Router } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
+  ConfirmDialog,
   Link as HeadlampLink,
   Loader,
   NameValueTable,
@@ -137,6 +138,8 @@ export function PurePluginDetail({
   onCancel,
   onAlertClose,
 }: PurePluginDetailProps) {
+  const [isUninstallConfirmOpen, setIsUninstallConfirmOpen] = React.useState(false);
+
   const [repoUrl, orgUrl] = React.useMemo(() => {
     const artifactHubURLBase = 'https://artifacthub.io/packages/search?sort=relevance&page=1';
     if (!pluginDetail) {
@@ -170,6 +173,18 @@ export function PurePluginDetail({
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         action={pluginSnackbarAction(onAlertClose)}
       />
+      <ConfirmDialog
+        // @ts-ignore
+        open={isUninstallConfirmOpen}
+        title="Uninstall Plugin"
+        description={`Are you sure you want to uninstall "${pluginDetail?.display_name || ''}"?`}
+        handleClose={() => setIsUninstallConfirmOpen(false)}
+        onConfirm={() => {
+          if (pluginDetail) {
+            onUninstall(pluginDetail.packageName);
+          }
+        }}
+      />
       <SectionBox
         title={
           <SectionHeader
@@ -202,7 +217,7 @@ export function PurePluginDetail({
                       )}
                       <ActionButton
                         description="Uninstall"
-                        onClick={() => onUninstall(pluginDetail.packageName)}
+                        onClick={() => setIsUninstallConfirmOpen(true)}
                         icon="mdi:delete"
                       />
                     </>
