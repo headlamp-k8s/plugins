@@ -111,7 +111,7 @@ async function fetchAllPlugins() {
   return allPlugins;
 }
 
-async function fetchOrgPlugins(org: string) {
+export async function fetchOrgPlugins(org: string) {
   const { packages } = await fetchPlugins(0, org);
   return packages;
 }

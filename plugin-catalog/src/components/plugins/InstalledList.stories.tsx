@@ -37,7 +37,8 @@ const samplePlugins = [
     pluginName: 'plugin1',
     pluginTitle: 'Plugin 1',
     pluginVersion: '1.0.0',
-    folderName: true,
+    artifacthubVersion: '1.0.0',
+    folderName: 'plugin1',
     repoName: 'repo1',
     author: 'Author 1',
   },
@@ -46,29 +47,46 @@ const samplePlugins = [
     pluginName: 'plugin2',
     pluginTitle: 'Plugin 2',
     pluginVersion: '1.2.0',
-    folderName: true,
+    artifacthubVersion: '1.2.0',
+    folderName: 'plugin2',
     repoName: 'repo2',
     author: 'Author 2',
   },
 ];
 
+const availableVersionsWithUpdate = {
+  plugin1: '2.0.0',
+  plugin2: '1.2.0',
+};
+
 export const Default = Template.bind({});
 Default.args = {
-  installedPlugins: samplePlugins,
+  catalogPlugins: samplePlugins,
+  nonCatalogPlugins: [],
+  availableVersions: {},
+  error: null,
+};
+
+export const WithUpdateAvailable = Template.bind({});
+WithUpdateAvailable.args = {
+  catalogPlugins: samplePlugins,
+  nonCatalogPlugins: [],
+  availableVersions: availableVersionsWithUpdate,
   error: null,
 };
 
 export const WithError = Template.bind({});
 WithError.args = {
-  installedPlugins: null,
-  error: 'Failed to load plugins.',
-};
-
-export const WithRepeatedPlugins = Template.bind({});
-WithRepeatedPlugins.args = {
-  installedPlugins: samplePlugins,
-  otherInstalledPlugins: [samplePlugins[1]],
+  catalogPlugins: null,
+  nonCatalogPlugins: [],
+  availableVersions: {},
   error: 'Failed to load plugins.',
 };
 
 export const Empty = Template.bind({});
+Empty.args = {
+  catalogPlugins: [],
+  nonCatalogPlugins: [],
+  availableVersions: {},
+  error: null,
+};
