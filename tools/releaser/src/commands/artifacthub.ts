@@ -44,8 +44,8 @@ export function updateArtifactHub(
 
   // If template option is provided, create a new template
   if (options.template) {
-    if (hasArtifactHubFile(pluginName)) {
-      console.error(chalk.red(`❌ artifacthub-pkg.yml already exists for ${pluginName}`));
+    if (hasArtifactHubFile(pluginName, targetVersion)) {
+      console.error(chalk.red(`❌ artifacthub-pkg.yml already exists for ${pluginName} v${targetVersion}`));
       console.error(chalk.red('Remove the existing file first or use without --template to update it'));
       process.exit(1);
     }
