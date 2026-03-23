@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/ai-assistant",
-  "version": "0.1.0-alpha",
+  "version": "0.2.0-alpha",
   "description": "Headlamp's AI Assistant",
   "type": "module",
   "scripts": {
