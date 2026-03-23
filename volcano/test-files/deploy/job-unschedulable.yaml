@@ -1,0 +1,23 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: volcano-job-unschedulable
+  namespace: volcano-lab
+spec:
+  schedulerName: volcano
+  queue: volcano-lab-queue
+  minAvailable: 1
+  tasks:
+    - name: worker
+      replicas: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: main
+              image: busybox
+              command: ["sh", "-c", "sleep 3600"]
+              resources:
+                requests:
+                  cpu: "1000"
+                  memory: "2Ti"
