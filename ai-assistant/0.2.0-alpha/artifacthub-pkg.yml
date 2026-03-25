@@ -1,7 +1,7 @@
-version: 0.1.0-alpha
+version: 0.2.0-alpha
 name: headlamp_ai_assistant
 displayName: AI Assistant
-createdAt: "2025-08-07T14:05:31.237Z"
+createdAt: "2026-03-25T12:53:06.387Z"
 logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/ai-assistant/logo.png"
 description: "The AI Assistant plugin for Headlamp provides an AI-powered assistant to help users interact with their Kubernetes clusters more efficiently."
 annotations:
