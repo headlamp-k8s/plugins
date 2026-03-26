@@ -37,7 +37,7 @@ function getOwnerLink(machine: {
   );
 }
 
-function getPhaseStatus(phase: string): 'success' | 'warning' | 'error' | '' {
+export function getPhaseStatus(phase: string): 'success' | 'warning' | 'error' | '' {
   const normalized = phase.toLowerCase();
   if (['running', 'provisioned', 'provisionedready', 'succeeded', 'ready'].includes(normalized)) {
     return 'success';
@@ -125,30 +125,27 @@ export function MachineListRenderer(props: MachineListRendererProps) {
           label: 'Phase',
           getValue: machine => machine.status?.phase ?? '-',
           render: machine => {
-            const phase = machine.status?.phase as string | undefined;
+            const phase = machine.status?.phase;
             if (!phase) return '-';
-            const status = getPhaseStatus(phase);
-            return <StatusLabel status={status}>{phase}</StatusLabel>;
+            return <StatusLabel status={getPhaseStatus(phase)}>{phase}</StatusLabel>;
           },
         },
         {
           id: 'ready',
           label: 'Ready',
           getValue: machine => {
-            const ready = machine.status?.conditions?.find(
-              (c: { type?: string; status?: string }) => c.type === 'Ready'
-            );
-            const isReady = ready?.status === 'True';
-            return ready ? `${isReady ? 1 : 0}/1` : '-';
+            const readyCondition = machine.conditions?.find(c => c.type === 'Ready');
+            return readyCondition ? (readyCondition.status === 'True' ? '1/1' : '0/1') : '-';
           },
           render: machine => {
-            const ready = machine.status?.conditions?.find(
-              (c: { type?: string; status?: string }) => c.type === 'Ready'
+            const readyCondition = machine.conditions?.find(c => c.type === 'Ready');
+            if (!readyCondition) return '-';
+            const isReady = readyCondition.status === 'True';
+            return (
+              <StatusLabel status={isReady ? 'success' : 'error'}>
+                {isReady ? '1/1' : '0/1'}
+              </StatusLabel>
             );
-            if (!ready) return '-';
-            const isReady = ready.status === 'True';
-            const text = `${isReady ? 1 : 0}/1`;
-            return <StatusLabel status={isReady ? 'success' : 'error'}>{text}</StatusLabel>;
           },
         },
         {
@@ -156,6 +153,11 @@ export function MachineListRenderer(props: MachineListRendererProps) {
           label: 'Owner',
           getValue: machine => machine.metadata?.ownerReferences?.[0]?.name ?? '-',
           render: machine => getOwnerLink(machine) ?? '-',
+        },
+        {
+          id: 'version',
+          label: 'Version',
+          getValue: machine => machine.spec?.version ?? '-',
         },
         'age',
       ]}
@@ -182,8 +184,11 @@ function MachinesListWithData({ MachineClass }: MachinesListWithDataProps) {
 
 export function MachinesList() {
   const version = useCapiApiVersion(Machine.crdName, 'v1beta1');
+  const VersionedMachine = useMemo(
+    () => (version ? Machine.withApiVersion(version) : Machine),
+    [version]
+  );
   if (!version) return <Loader title="Detecting Cluster API version" />;
 
-  const VersionedMachine = useMemo(() => Machine.withApiVersion(version), [version]);
   return <MachinesListWithData MachineClass={VersionedMachine} />;
 }

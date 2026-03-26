@@ -46,11 +46,11 @@ export function OwnedMachinesSection({
   const version = useCapiApiVersion(Machine.crdName, 'v1beta1');
   const namespace =
     resource.kind === 'Namespace' ? resource.metadata?.name : resource.metadata?.namespace;
-
-  if (!version) {
-    return <Loader title="Detecting Cluster API version" />;
-  }
-  const VersionedMachine = useMemo(() => Machine.withApiVersion(version), [version]);
+  const VersionedMachine = useMemo(
+    () => (version ? Machine.withApiVersion(version) : Machine),
+    [version]
+  );
+  if (!version) return <Loader title="Detecting Cluster API version" />;
   return (
     <OwnedMachinesSectionWithData
       MachineClass={VersionedMachine}
