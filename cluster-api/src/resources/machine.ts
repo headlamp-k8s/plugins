@@ -18,6 +18,12 @@ export interface MachineSpec {
   nodeDrainTimeout?: number;
   nodeVolumeDetachTimeout?: number;
   nodeDeletionTimeout?: number;
+  deletion?: {
+    order?: 'Random' | 'Newest' | 'Oldest';
+    nodeDrainTimeoutSeconds?: number;
+    nodeVolumeDetachTimeoutSeconds?: number;
+    nodeDeletionTimeoutSeconds?: number;
+  };
 }
 
 export interface MetaV1Condition {
