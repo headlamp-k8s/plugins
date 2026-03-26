@@ -1,4 +1,9 @@
-import { Link, Loader, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  Link,
+  Loader,
+  ResourceListView,
+  StatusLabel,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
 import { MachineSet } from '../../resources/machineset';
 import { useCapiApiVersion } from '../../utils/capiVersion';

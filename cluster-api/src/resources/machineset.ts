@@ -1,14 +1,9 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { LabelSelector, ObjectMeta } from './common';
-import {
-  ClusterV1Condition,
-  MachineSpec,
-  MetaV1Condition,
-} from './machine';
+import { ClusterV1Condition, MachineSpec, MetaV1Condition } from './machine';
 
 const MACHINESET_API_GROUP = 'cluster.x-k8s.io';
 const MACHINESET_CRD_NAME = 'machinesets.cluster.x-k8s.io';
-
 
 export interface MachineTemplateSpec {
   metadata?: ObjectMeta;
@@ -25,7 +20,8 @@ export interface MachineSetSpec {
     template?: string;
   };
   deletePolicy?: 'Random' | 'Newest' | 'Oldest'; // v1beta1 only — delete policy for scaling down
-  deletion?: { // v1beta2 only — replaces deletePolicy with richer deletion config
+  deletion?: {
+    // v1beta2 only — replaces deletePolicy with richer deletion config
     order?: 'Random' | 'Newest' | 'Oldest';
     nodeDrainTimeoutSeconds?: number;
     nodeVolumeDetachTimeoutSeconds?: number;
@@ -33,18 +29,15 @@ export interface MachineSetSpec {
   };
 }
 
-
 export interface MachineSetStatusV1Beta2Nested {
   conditions?: MetaV1Condition[];
 }
-
 
 export interface MachineSetStatusDeprecatedV1Beta1 {
   conditions?: ClusterV1Condition[];
   failureReason?: string;
   failureMessage?: string;
 }
-
 
 export interface MachineSetStatusCommon {
   selector?: string;
@@ -54,15 +47,14 @@ export interface MachineSetStatusCommon {
   observedGeneration?: number;
 }
 
-
-export interface MachineSetStatusV1Beta1 extends MachineSetStatusCommon {  // v1beta1 MachineSet status
+export interface MachineSetStatusV1Beta1 extends MachineSetStatusCommon {
+  // v1beta1 MachineSet status
   conditions?: ClusterV1Condition[];
   fullyLabeledReplicas?: number;
   failureReason?: string;
   failureMessage?: string;
   v1beta2?: MachineSetStatusV1Beta2Nested;
 }
-
 
 export interface MachineSetStatusV1Beta2 extends MachineSetStatusCommon {
   conditions?: MetaV1Condition[];
@@ -71,7 +63,6 @@ export interface MachineSetStatusV1Beta2 extends MachineSetStatusCommon {
     v1beta1?: MachineSetStatusDeprecatedV1Beta1;
   };
 }
-
 
 export interface ClusterApiMachineSetV1Beta1 extends KubeObjectInterface {
   spec: MachineSetSpec;
@@ -97,7 +88,6 @@ function isV1Beta2Status(
   return 'deprecated' in status;
 }
 
-
 export function getMachineSetStatus(
   item: ClusterApiMachineSet | null | undefined
 ): MachineSetStatusCommon | undefined {
@@ -121,7 +111,6 @@ export function getMachineSetConditions(
   return status.conditions;
 }
 
-
 export function getMachineSetMetaV1Conditions(
   item: ClusterApiMachineSet | null | undefined
 ): MetaV1Condition[] | undefined {
@@ -134,7 +123,6 @@ export function getMachineSetMetaV1Conditions(
 
   return status.v1beta2?.conditions;
 }
-
 
 export function getMachineSetFailure(
   item: ClusterApiMachineSet | null | undefined

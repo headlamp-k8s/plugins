@@ -24,7 +24,11 @@ interface RefInfo {
   name: string;
 }
 
-function toRefInfo(ref: { kind?: string; apiGroup?: string; apiVersion?: string; namespace?: string; name?: string } | undefined): RefInfo {
+function toRefInfo(
+  ref:
+    | { kind?: string; apiGroup?: string; apiVersion?: string; namespace?: string; name?: string }
+    | undefined
+): RefInfo {
   return {
     kind: ref?.kind ?? '-',
     apiGroup: ref?.apiGroup ?? ref?.apiVersion ?? '-',
@@ -43,7 +47,9 @@ export function MachineSetDetail({ node }: { node?: MachineSetNode }) {
 
   if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
 
-  return <MachineSetDetailContent crName={crName} namespace={namespace} crdName={MachineSet.crdName} />;
+  return (
+    <MachineSetDetailContent crName={crName} namespace={namespace} crdName={MachineSet.crdName} />
+  );
 }
 
 interface MachineSetDetailContentProps {
@@ -81,21 +87,24 @@ function MachineSetDetailContentWithData({
 
   const templateSpec = spec?.template?.spec;
   const templateDeletion = templateSpec?.deletion;
-  const nodeDrainTimeout = templateDeletion?.nodeDrainTimeoutSeconds !== undefined
-    ? `${templateDeletion.nodeDrainTimeoutSeconds}s`
-    : templateSpec?.nodeDrainTimeout !== undefined
-    ? String(templateSpec.nodeDrainTimeout)
-    : undefined;
-  const nodeVolumeDetachTimeout = templateDeletion?.nodeVolumeDetachTimeoutSeconds !== undefined
-    ? `${templateDeletion.nodeVolumeDetachTimeoutSeconds}s`
-    : templateSpec?.nodeVolumeDetachTimeout !== undefined
-    ? String(templateSpec.nodeVolumeDetachTimeout)
-    : undefined;
-  const nodeDeletionTimeout = templateDeletion?.nodeDeletionTimeoutSeconds !== undefined
-    ? `${templateDeletion.nodeDeletionTimeoutSeconds}s`
-    : templateSpec?.nodeDeletionTimeout !== undefined
-    ? String(templateSpec.nodeDeletionTimeout)
-    : undefined;
+  const nodeDrainTimeout =
+    templateDeletion?.nodeDrainTimeoutSeconds !== undefined
+      ? `${templateDeletion.nodeDrainTimeoutSeconds}s`
+      : templateSpec?.nodeDrainTimeout !== undefined
+      ? String(templateSpec.nodeDrainTimeout)
+      : undefined;
+  const nodeVolumeDetachTimeout =
+    templateDeletion?.nodeVolumeDetachTimeoutSeconds !== undefined
+      ? `${templateDeletion.nodeVolumeDetachTimeoutSeconds}s`
+      : templateSpec?.nodeVolumeDetachTimeout !== undefined
+      ? String(templateSpec.nodeVolumeDetachTimeout)
+      : undefined;
+  const nodeDeletionTimeout =
+    templateDeletion?.nodeDeletionTimeoutSeconds !== undefined
+      ? `${templateDeletion.nodeDeletionTimeoutSeconds}s`
+      : templateSpec?.nodeDeletionTimeout !== undefined
+      ? String(templateSpec.nodeDeletionTimeout)
+      : undefined;
 
   const bootstrap = toRefInfo(templateSpec?.bootstrap?.configRef);
   const infrastructure = toRefInfo(templateSpec?.infrastructureRef);
@@ -130,38 +139,55 @@ function MachineSetDetailContentWithData({
       name: 'Selector',
       value: spec?.selector?.matchLabels ? (
         <MetadataDictGrid dict={spec.selector.matchLabels as Record<string, string>} />
-      ) : '-',
+      ) : (
+        '-'
+      ),
     },
     {
       name: 'Observed Generation',
-      value: status?.observedGeneration !== undefined
-        ? `${status.observedGeneration} / ${item.metadata?.generation ?? '-'}`
-        : '-',
+      value:
+        status?.observedGeneration !== undefined
+          ? `${status.observedGeneration} / ${item.metadata?.generation ?? '-'}`
+          : '-',
       hide: status?.observedGeneration === undefined,
     },
     // Failure fields — resolved across v1beta1 (root) and v1beta2 (deprecated.v1beta1)
-    ...(failure?.failureReason ? [{
-      name: 'Failure Reason',
-      value: <StatusLabel status="error">{failure.failureReason}</StatusLabel>,
-    }] : []),
-    ...(failure?.failureMessage ? [{
-      name: 'Failure Message',
-      value: <span style={{ color: 'var(--error-color)' }}>{failure.failureMessage}</span>,
-    }] : []),
+    ...(failure?.failureReason
+      ? [
+          {
+            name: 'Failure Reason',
+            value: <StatusLabel status="error">{failure.failureReason}</StatusLabel>,
+          },
+        ]
+      : []),
+    ...(failure?.failureMessage
+      ? [
+          {
+            name: 'Failure Message',
+            value: <span style={{ color: 'var(--error-color)' }}>{failure.failureMessage}</span>,
+          },
+        ]
+      : []),
   ];
 
   const templateRows: NameValueTableRow[] = [
     {
       name: 'Labels',
-      value: Object.keys(templateLabels).length > 0
-        ? <MetadataDictGrid dict={templateLabels as Record<string, string>} />
-        : '-',
+      value:
+        Object.keys(templateLabels).length > 0 ? (
+          <MetadataDictGrid dict={templateLabels as Record<string, string>} />
+        ) : (
+          '-'
+        ),
     },
     {
       name: 'Annotations',
-      value: Object.keys(templateAnnotations).length > 0
-        ? <MetadataDictGrid dict={templateAnnotations as Record<string, string>} />
-        : '-',
+      value:
+        Object.keys(templateAnnotations).length > 0 ? (
+          <MetadataDictGrid dict={templateAnnotations as Record<string, string>} />
+        ) : (
+          '-'
+        ),
       hide: Object.keys(templateAnnotations).length === 0,
     },
     {
@@ -208,7 +234,11 @@ function MachineSetDetailContentWithData({
             { name: 'Kind', value: infrastructure.kind },
             { name: 'Name', value: infrastructure.name },
             { name: 'API Group', value: infrastructure.apiGroup },
-            { name: 'Namespace', value: infrastructure.namespace, hide: infrastructure.namespace === '-' },
+            {
+              name: 'Namespace',
+              value: infrastructure.namespace,
+              hide: infrastructure.namespace === '-',
+            },
           ]}
         />
       ),

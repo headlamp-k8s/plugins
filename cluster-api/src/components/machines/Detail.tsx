@@ -41,13 +41,7 @@ export function MachineDetail({ node }: { node?: MachineNode }) {
     return <EmptyContent color="error">Missing resource name</EmptyContent>;
   }
 
-  return (
-    <MachineDetailContent
-      crName={crName}
-      namespace={namespace}
-      crdName={Machine.crdName}
-    />
-  );
+  return <MachineDetailContent crName={crName} namespace={namespace} crdName={Machine.crdName} />;
 }
 
 interface MachineDetailContentProps {
@@ -97,7 +91,9 @@ function MachineDetailContentWithData({
             <StatusLabel status={status.bootstrapReady ? 'success' : 'warning'}>
               {status.bootstrapReady ? 'True' : 'False'}
             </StatusLabel>
-          ) : '-',
+          ) : (
+            '-'
+          ),
       },
       {
         name: 'Infrastructure Ready',
@@ -106,7 +102,9 @@ function MachineDetailContentWithData({
             <StatusLabel status={status.infrastructureReady ? 'success' : 'warning'}>
               {status.infrastructureReady ? 'True' : 'False'}
             </StatusLabel>
-          ) : '-',
+          ) : (
+            '-'
+          ),
       },
     ];
 
@@ -147,8 +145,14 @@ function MachineDetailContentWithData({
                   <SectionBox title="Addresses">
                     <SimpleTable
                       columns={[
-                        { label: 'Type', getter: (row: { type: string; address: string }) => row.type },
-                        { label: 'Address', getter: (row: { type: string; address: string }) => row.address },
+                        {
+                          label: 'Type',
+                          getter: (row: { type: string; address: string }) => row.type,
+                        },
+                        {
+                          label: 'Address',
+                          getter: (row: { type: string; address: string }) => row.address,
+                        },
                       ]}
                       data={status.addresses}
                     />
@@ -166,22 +170,36 @@ function MachineDetailContentWithData({
                   <SectionBox title="Node Info">
                     <SimpleTable
                       columns={[
-                        { label: 'Field', getter: (row: { field: string; value: string }) => row.field },
-                        { label: 'Value', getter: (row: { field: string; value: string }) => row.value },
+                        {
+                          label: 'Field',
+                          getter: (row: { field: string; value: string }) => row.field,
+                        },
+                        {
+                          label: 'Value',
+                          getter: (row: { field: string; value: string }) => row.value,
+                        },
                       ]}
                       data={[
                         { field: 'OS Image', value: status.nodeInfo.osImage },
                         { field: 'Operating System', value: status.nodeInfo.operatingSystem },
                         { field: 'Architecture', value: status.nodeInfo.architecture },
                         { field: 'Kernel Version', value: status.nodeInfo.kernelVersion },
-                        { field: 'Container Runtime', value: status.nodeInfo.containerRuntimeVersion },
+                        {
+                          field: 'Container Runtime',
+                          value: status.nodeInfo.containerRuntimeVersion,
+                        },
                         { field: 'Kubelet Version', value: status.nodeInfo.kubeletVersion },
                         { field: 'Kube Proxy Version', value: status.nodeInfo.kubeProxyVersion },
                         { field: 'Machine ID', value: status.nodeInfo.machineID },
                         { field: 'System UUID', value: status.nodeInfo.systemUUID },
                         { field: 'Boot ID', value: status.nodeInfo.bootID },
                         ...(status.nodeInfo.swap?.capacity !== undefined
-                          ? [{ field: 'Swap Capacity', value: String(status.nodeInfo.swap.capacity) }]
+                          ? [
+                              {
+                                field: 'Swap Capacity',
+                                value: String(status.nodeInfo.swap.capacity),
+                              },
+                            ]
                           : []),
                       ]}
                     />
