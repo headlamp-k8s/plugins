@@ -37,7 +37,7 @@ function getOwnerLink(machine: {
   );
 }
 
-function getPhaseStatus(phase: string): 'success' | 'warning' | 'error' | '' {
+export function getPhaseStatus(phase: string): 'success' | 'warning' | 'error' | '' {
   const normalized = phase.toLowerCase();
   if (['running', 'provisioned', 'provisionedready', 'succeeded', 'ready'].includes(normalized)) {
     return 'success';
