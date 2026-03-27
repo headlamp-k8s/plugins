@@ -4,6 +4,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { HeaderAction } from '@kinvolk/headlamp-plugin/lib/redux/actionButtonsSlice';
+import { Chip, Tooltip } from '@mui/material';
 
 const FLUX_OWNERSHIP_LABELS = ['kustomize.toolkit.fluxcd.io/name', 'helm.toolkit.fluxcd.io/name'];
 
@@ -23,6 +24,8 @@ function isManagedByFlux(resource: KubeObject | null): boolean {
   return FLUX_OWNERSHIP_LABELS.some(label => !!labels[label]);
 }
 
+const FLUX_MANAGED_ACTION_ID = 'flux-managed-indicator';
+
 export function registerFluxHeaderActionsProcessor() {
   registerDetailsViewHeaderActionsProcessor((resource, headerActions: HeaderAction[]) => {
     if (!resource || !isManagedByFlux(resource)) {
@@ -34,16 +37,25 @@ export function registerFluxHeaderActionsProcessor() {
       return headerActions;
     }
 
-    // Actions that mutate the desired state and would be reverted by Flux.
-    const disallowedActions = new Set<string>([
+    // Resolved inside the callback so the enum is guaranteed to be initialized.
+    const mutatingActions = new Set<string>([
       DetailsViewDefaultHeaderActions.DELETE,
       DetailsViewDefaultHeaderActions.EDIT,
       DetailsViewDefaultHeaderActions.SCALE,
       'rollback',
     ]);
 
-    const filtered = headerActions.filter(action => !disallowedActions.has(action.id));
+    const filtered = headerActions.filter(action => !mutatingActions.has(action.id));
 
-    return filtered;
+    const indicator: HeaderAction = {
+      id: FLUX_MANAGED_ACTION_ID,
+      action: (
+        <Tooltip title="This resource is managed by Flux. Some actions are hidden because changes would be reverted by Flux.">
+          <Chip label="Flux managed" size="small" variant="outlined" color="primary" />
+        </Tooltip>
+      ),
+    };
+
+    return [...filtered, indicator];
   });
 }
