@@ -18,6 +18,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
@@ -384,6 +385,29 @@ export function FluxOverview() {
     store.set({ ...store.get(), overviewShowFilter: value });
   };
 
+  // Only show the empty state once the CRD check has resolved; otherwise
+  // we'd briefly render "Flux is not installed" on clusters where it is.
+  if (fluxCheck.isFluxCheckLoaded && !fluxCheck.hasFluxCRDs) {
+    return (
+      <SectionBox title="Flux Overview">
+        <Box p={3} display="flex" flexDirection="column" alignItems="center" gap={2}>
+          <Icon icon="simple-icons:flux" width={48} height={48} />
+          <Typography variant="h6">Flux is not installed</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Flux is a set of continuous delivery solutions for Kubernetes.{' '}
+            <a
+              href="https://fluxcd.io/flux/installation/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn how to install Flux
+            </a>
+          </Typography>
+        </Box>
+      </SectionBox>
+    );
+  }
+
   return (
     <>
       <SectionBox
@@ -484,7 +508,6 @@ export function FluxOverview() {
           <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
             <Box p={1}>
               <Box>Controllers</Box>
-              {/* show status whether all controllers are ready or not */}
               {controllers?.length > 0 &&
                 (controllers?.every(controller => controller.status?.phase === 'Running') ? (
                   <StatusLabel status="success">
@@ -517,7 +540,6 @@ export function FluxOverview() {
           <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
             <Box p={1}>
               <Box>CRDs</Box>
-              {/* see if all crds check passed */}
               {fluxCheck.allCrdsSuccessful ? (
                 <StatusLabel status="success">
                   <Box display="flex" alignItems="center">
