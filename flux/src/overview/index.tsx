@@ -18,6 +18,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
@@ -384,6 +385,29 @@ export function FluxOverview() {
     store.set({ ...store.get(), overviewShowFilter: value });
   };
 
+  // Only show the empty state once the CRD check has resolved; otherwise
+  // we'd briefly render "Flux is not installed" on clusters where it is.
+  if (fluxCheck.isFluxCheckLoaded && !fluxCheck.hasFluxCRDs) {
+    return (
+      <SectionBox title="Flux Overview">
+        <Box p={3} display="flex" flexDirection="column" alignItems="center" gap={2}>
+          <Icon icon="simple-icons:flux" width={48} height={48} />
+          <Typography variant="h6">Flux is not installed</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Flux is a set of continuous delivery solutions for Kubernetes.{' '}
+            <a
+              href="https://fluxcd.io/flux/installation/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn how to install Flux
+            </a>
+          </Typography>
+        </Box>
+      </SectionBox>
+    );
+  }
+
   return (
     <>
       <SectionBox
@@ -435,64 +459,94 @@ export function FluxOverview() {
         </Box>
       </SectionBox>
       <SectionBox title="Flux Checks">
-        <Accordion>
-          <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
-            <Box p={1} sx={{ display: 'flex', alignItems: 'center' }} gap={1}>
-              <Box>Version Information</Box>
-              <Box>
-                <StatusLabel status={!!fluxCheck.version ? 'success' : 'warning'}>
-                  {fluxCheck.version || 'Unknown'}
-                </StatusLabel>
+          <Accordion>
+            <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
+              <Box p={1} sx={{ display: 'flex', alignItems: 'center' }} gap={1}>
+                <Box>Version Information</Box>
+                <Box>
+                  <StatusLabel status={!!fluxCheck.version ? 'success' : 'warning'}>
+                    {fluxCheck.version || 'Unknown'}
+                  </StatusLabel>
+                </Box>
               </Box>
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box p={2} display="flex" gap={2}>
-              {fluxCheck.isBoostrapped ? (
-                <StatusLabel status="success">
-                  <Box display="flex" alignItems="center">
-                    <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:check" width={16} height={16} />
-                    </Box>
-                    Bootstrapped
-                  </Box>{' '}
-                </StatusLabel>
-              ) : (
-                <StatusLabel status="error">
-                  <Box display="flex" alignItems="center">
-                    <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:close" width={16} height={16} />
-                    </Box>{' '}
-                    Not Bootstrapped
-                  </Box>
-                </StatusLabel>
-              )}
-              {fluxCheck.distribution && (
-                <StatusLabel status="success">
-                  <Box display="flex" alignItems="center">
-                    <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:check" width={16} height={16} />
-                    </Box>
-                    Distribution: {fluxCheck.distribution}
-                  </Box>{' '}
-                </StatusLabel>
-              )}
-            </Box>
-          </AccordionDetails>
-        </Accordion>
-        <Accordion>
-          <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
-            <Box p={1}>
-              <Box>Controllers</Box>
-              {/* show status whether all controllers are ready or not */}
-              {controllers?.length > 0 &&
-                (controllers?.every(controller => controller.status?.phase === 'Running') ? (
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box p={2} display="flex" gap={2}>
+                {fluxCheck.isBoostrapped ? (
                   <StatusLabel status="success">
                     <Box display="flex" alignItems="center">
                       <Box mt={0.2} mr={0.1}>
                         <Icon icon="mdi:check" width={16} height={16} />
                       </Box>
-                      All Controllers Ready
+                      Bootstrapped
+                    </Box>{' '}
+                  </StatusLabel>
+                ) : (
+                  <StatusLabel status="error">
+                    <Box display="flex" alignItems="center">
+                      <Box mt={0.2} mr={0.1}>
+                        <Icon icon="mdi:close" width={16} height={16} />
+                      </Box>{' '}
+                      Not Bootstrapped
+                    </Box>
+                  </StatusLabel>
+                )}
+                {fluxCheck.distribution && (
+                  <StatusLabel status="success">
+                    <Box display="flex" alignItems="center">
+                      <Box mt={0.2} mr={0.1}>
+                        <Icon icon="mdi:check" width={16} height={16} />
+                      </Box>
+                      Distribution: {fluxCheck.distribution}
+                    </Box>{' '}
+                  </StatusLabel>
+                )}
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+          <Accordion>
+            <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
+              <Box p={1}>
+                <Box>Controllers</Box>
+                {controllers?.length > 0 &&
+                  (controllers?.every(controller => controller.status?.phase === 'Running') ? (
+                    <StatusLabel status="success">
+                      <Box display="flex" alignItems="center">
+                        <Box mt={0.2} mr={0.1}>
+                          <Icon icon="mdi:check" width={16} height={16} />
+                        </Box>
+                        All Controllers Ready
+                      </Box>{' '}
+                    </StatusLabel>
+                  ) : (
+                    <StatusLabel status="warning">
+                      <Box display="flex" alignItems="center">
+                        <Box mt={0.2} mr={0.1}>
+                          <Icon icon="mdi:close" width={16} height={16} />
+                        </Box>{' '}
+                        Some Controllers Are Not Ready
+                      </Box>
+                    </StatusLabel>
+                  ))}
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box p={2}>
+                <Controllers controllers={controllers} />
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+          <Accordion>
+            <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
+              <Box p={1}>
+                <Box>CRDs</Box>
+                {fluxCheck.allCrdsSuccessful ? (
+                  <StatusLabel status="success">
+                    <Box display="flex" alignItems="center">
+                      <Box mt={0.2} mr={0.1}>
+                        <Icon icon="mdi:check" width={16} height={16} />
+                      </Box>
+                      All Checks Passed
                     </Box>{' '}
                   </StatusLabel>
                 ) : (
@@ -501,51 +555,19 @@ export function FluxOverview() {
                       <Box mt={0.2} mr={0.1}>
                         <Icon icon="mdi:close" width={16} height={16} />
                       </Box>{' '}
-                      Some Controllers Are Not Ready
+                      Some CRDs Are Not Ready
                     </Box>
                   </StatusLabel>
-                ))}
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box p={2}>
-              <Controllers controllers={controllers} />
-            </Box>
-          </AccordionDetails>
-        </Accordion>
-        <Accordion>
-          <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
-            <Box p={1}>
-              <Box>CRDs</Box>
-              {/* see if all crds check passed */}
-              {fluxCheck.allCrdsSuccessful ? (
-                <StatusLabel status="success">
-                  <Box display="flex" alignItems="center">
-                    <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:check" width={16} height={16} />
-                    </Box>
-                    All Checks Passed
-                  </Box>{' '}
-                </StatusLabel>
-              ) : (
-                <StatusLabel status="warning">
-                  <Box display="flex" alignItems="center">
-                    <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:close" width={16} height={16} />
-                    </Box>{' '}
-                    Some CRDs Are Not Ready
-                  </Box>
-                </StatusLabel>
-              )}
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box p={2}>
-              <CRDs />
-            </Box>
-          </AccordionDetails>
-        </Accordion>
-      </SectionBox>
+                )}
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box p={2}>
+                <CRDs />
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+        </SectionBox>
     </>
   );
 }
