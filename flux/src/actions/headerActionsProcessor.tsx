@@ -2,9 +2,10 @@ import {
   DetailsViewDefaultHeaderActions,
   registerDetailsViewHeaderActionsProcessor,
 } from '@kinvolk/headlamp-plugin/lib';
+import { ActionButton, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
-import { HeaderAction } from '@kinvolk/headlamp-plugin/lib/redux/actionButtonsSlice';
 import { Chip, Tooltip } from '@mui/material';
+import { useState } from 'react';
 
 const FLUX_OWNERSHIP_LABELS = ['kustomize.toolkit.fluxcd.io/name', 'helm.toolkit.fluxcd.io/name'];
 
@@ -25,9 +26,34 @@ function isManagedByFlux(resource: KubeObject | null): boolean {
 }
 
 const FLUX_MANAGED_ACTION_ID = 'flux-managed-indicator';
+const FLUX_VIEW_YAML_ACTION_ID = 'flux-view-yaml';
+
+function ViewYAMLButton({ item }: { item: KubeObject }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <ActionButton description="View YAML" icon="mdi:eye" onClick={() => setOpen(true)} />
+      <EditorDialog
+        item={item.jsonData}
+        open={open}
+        onClose={() => setOpen(false)}
+        onSave={null}
+        allowToHideManagedFields
+        PaperProps={{
+          sx: {
+            height: '90vh',
+            // Hide the "Upload File/URL" button in view-only mode.
+            '& .MuiFormGroup-row > .MuiButton-root': { display: 'none' },
+          },
+        }}
+      />
+    </>
+  );
+}
 
 export function registerFluxHeaderActionsProcessor() {
-  registerDetailsViewHeaderActionsProcessor((resource, headerActions: HeaderAction[]) => {
+  registerDetailsViewHeaderActionsProcessor((resource, headerActions) => {
     if (!resource || !isManagedByFlux(resource)) {
       return headerActions;
     }
@@ -47,7 +73,12 @@ export function registerFluxHeaderActionsProcessor() {
 
     const filtered = headerActions.filter(action => !mutatingActions.has(action.id));
 
-    const indicator: HeaderAction = {
+    const viewAction = {
+      id: FLUX_VIEW_YAML_ACTION_ID,
+      action: <ViewYAMLButton item={resource} />,
+    };
+
+    const indicator = {
       id: FLUX_MANAGED_ACTION_ID,
       action: (
         <Tooltip title="This resource is managed by Flux. Some actions are hidden because changes would be reverted by Flux.">
@@ -56,6 +87,6 @@ export function registerFluxHeaderActionsProcessor() {
       ),
     };
 
-    return [...filtered, indicator];
+    return [...filtered, viewAction, indicator];
   });
 }
