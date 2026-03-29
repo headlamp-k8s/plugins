@@ -24,6 +24,7 @@ import {
 import { CleanupPolicyList, ClusterCleanupPolicyList } from './components/CleanupPolicyList';
 import { ClusterPolicyList } from './components/ClusterPolicyList';
 import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
+import { CRDGuard } from './components/CRDGuard';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
@@ -58,7 +59,11 @@ registerRoute({
   path: '/kyverno/clusterpolicies',
   sidebar: 'ClusterPolicies',
   name: 'ClusterPolicies',
-  component: () => <ClusterPolicyList />,
+  component: () => (
+    <CRDGuard requires="legacy">
+      <ClusterPolicyList />
+    </CRDGuard>
+  ),
 });
 
 registerSidebarEntry({
@@ -72,7 +77,11 @@ registerRoute({
   path: '/kyverno/policies',
   sidebar: 'Policies',
   name: 'Policies',
-  component: () => <PolicyList />,
+  component: () => (
+    <CRDGuard requires="legacy">
+      <PolicyList />
+    </CRDGuard>
+  ),
 });
 
 registerSidebarEntry({
@@ -86,7 +95,11 @@ registerRoute({
   path: '/kyverno/validatingpolicies',
   sidebar: 'ValidatingPolicies',
   name: 'ValidatingPolicies',
-  component: () => <ValidatingPolicyList />,
+  component: () => (
+    <CRDGuard requires="cel">
+      <ValidatingPolicyList />
+    </CRDGuard>
+  ),
 });
 
 registerSidebarEntry({
@@ -100,7 +113,11 @@ registerRoute({
   path: '/kyverno/mutatingpolicies',
   sidebar: 'MutatingPolicies',
   name: 'MutatingPolicies',
-  component: () => <MutatingPolicyList />,
+  component: () => (
+    <CRDGuard requires="cel">
+      <MutatingPolicyList />
+    </CRDGuard>
+  ),
 });
 
 registerSidebarEntry({
@@ -114,7 +131,11 @@ registerRoute({
   path: '/kyverno/generatingpolicies',
   sidebar: 'GeneratingPolicies',
   name: 'GeneratingPolicies',
-  component: () => <GeneratingPolicyList />,
+  component: () => (
+    <CRDGuard requires="cel">
+      <GeneratingPolicyList />
+    </CRDGuard>
+  ),
 });
 
 registerSidebarEntry({
@@ -128,7 +149,11 @@ registerRoute({
   path: '/kyverno/deletingpolicies',
   sidebar: 'DeletingPolicies',
   name: 'DeletingPolicies',
-  component: () => <DeletingPolicyList />,
+  component: () => (
+    <CRDGuard requires="cel">
+      <DeletingPolicyList />
+    </CRDGuard>
+  ),
 });
 
 registerSidebarEntry({
@@ -142,7 +167,11 @@ registerRoute({
   path: '/kyverno/imagevalidatingpolicies',
   sidebar: 'ImageValidatingPolicies',
   name: 'ImageValidatingPolicies',
-  component: () => <ImageValidatingPolicyList />,
+  component: () => (
+    <CRDGuard requires="cel">
+      <ImageValidatingPolicyList />
+    </CRDGuard>
+  ),
 });
 
 registerSidebarEntry({
@@ -156,7 +185,11 @@ registerRoute({
   path: '/kyverno/clustercleanuppolicies',
   sidebar: 'ClusterCleanupPolicies',
   name: 'ClusterCleanupPolicies',
-  component: () => <ClusterCleanupPolicyList />,
+  component: () => (
+    <CRDGuard requires="cleanup">
+      <ClusterCleanupPolicyList />
+    </CRDGuard>
+  ),
 });
 
 registerSidebarEntry({
@@ -170,7 +203,11 @@ registerRoute({
   path: '/kyverno/cleanuppolicies',
   sidebar: 'CleanupPolicies',
   name: 'CleanupPolicies',
-  component: () => <CleanupPolicyList />,
+  component: () => (
+    <CRDGuard requires="cleanup">
+      <CleanupPolicyList />
+    </CRDGuard>
+  ),
 });
 
 // --- Reports group ---
@@ -192,7 +229,11 @@ registerRoute({
   path: '/kyverno/policyreports',
   sidebar: 'PolicyReports',
   name: 'PolicyReports',
-  component: () => <PolicyReportList />,
+  component: () => (
+    <CRDGuard requires="reports">
+      <PolicyReportList />
+    </CRDGuard>
+  ),
 });
 
 registerSidebarEntry({
@@ -206,7 +247,11 @@ registerRoute({
   path: '/kyverno/clusterpolicyreports',
   sidebar: 'ClusterPolicyReports',
   name: 'ClusterPolicyReports',
-  component: () => <ClusterPolicyReportList />,
+  component: () => (
+    <CRDGuard requires="reports">
+      <ClusterPolicyReportList />
+    </CRDGuard>
+  ),
 });
 
 // --- Violations ---
@@ -221,7 +266,11 @@ registerRoute({
   path: '/kyverno/violations',
   sidebar: 'KyvernoViolations',
   name: 'KyvernoViolations',
-  component: () => <ViolationsView />,
+  component: () => (
+    <CRDGuard requires="reports">
+      <ViolationsView />
+    </CRDGuard>
+  ),
 });
 
 // --- Exceptions ---
@@ -236,5 +285,9 @@ registerRoute({
   path: '/kyverno/exceptions',
   sidebar: 'KyvernoExceptions',
   name: 'KyvernoExceptions',
-  component: () => <PolicyExceptionList />,
+  component: () => (
+    <CRDGuard requires="exceptions">
+      <PolicyExceptionList />
+    </CRDGuard>
+  ),
 });
