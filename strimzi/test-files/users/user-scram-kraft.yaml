@@ -1,0 +1,10 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: headlamp-demo-scram
+  namespace: strimzi-headlamp-test
+  labels:
+    strimzi.io/cluster: strimzi-demo-kraft
+spec:
+  authentication:
+    type: scram-sha-512
