@@ -95,6 +95,10 @@ npm run test -- --coverage
 
 Tests are written using Vitest and cover utility functions and CRD helpers.
 
+### Sample manifests (real cluster)
+
+YAML for Kafka, KafkaTopic, and KafkaUser to exercise the plugin against a cluster with the Strimzi operator is in **[`test-files/`](test-files/README.md)** (apply order, cleanup, and Headlamp checks are documented there).
+
 ### Packaging the Plugin
 
 To create a distributable package with all required files:
