@@ -24,6 +24,7 @@ import {
 import { CleanupPolicyList, ClusterCleanupPolicyList } from './components/CleanupPolicyList';
 import { ClusterPolicyList } from './components/ClusterPolicyList';
 import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
+import { CRDGroup, CRDGuard } from './components/CRDGuard';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
@@ -47,11 +48,13 @@ interface KyvernoPageOptions {
   icon?: string;
   /** Component to render for the route. */
   component: () => JSX.Element;
+  /** Required Kyverno CRD group — wraps the component in CRDGuard. */
+  requires?: CRDGroup;
 }
 
 // Centralises the sidebar + route pair that every Kyverno page needs so each
-// call site can stay one block. Later commits add an optional CRD-guard wrap
-// at the call site; the helper itself stays presentation-agnostic.
+// call site stays one block. `requires` makes CRDGuard wrapping a single field
+// instead of a per-call-site `<CRDGuard>` block.
 export function registerKyvernoPage({
   name,
   parent,
@@ -61,9 +64,13 @@ export function registerKyvernoPage({
   exact,
   icon,
   component,
+  requires,
 }: KyvernoPageOptions) {
   registerSidebarEntry({ name, url: url ?? path, parent, label, icon });
-  registerRoute({ path, sidebar: name, name, exact, component });
+  const wrapped = requires
+    ? () => <CRDGuard requires={requires}>{component()}</CRDGuard>
+    : component;
+  registerRoute({ path, sidebar: name, name, exact, component: wrapped });
 }
 
 registerSidebarEntry({
@@ -87,6 +94,7 @@ registerKyvernoPage({
   parent: 'KyvernoPolicies',
   label: 'Cluster Policies',
   path: '/kyverno/clusterpolicies',
+  requires: 'legacy',
   component: () => <ClusterPolicyList />,
 });
 
@@ -95,6 +103,7 @@ registerKyvernoPage({
   parent: 'KyvernoPolicies',
   label: 'Policies',
   path: '/kyverno/policies',
+  requires: 'legacy',
   component: () => <PolicyList />,
 });
 
@@ -103,6 +112,7 @@ registerKyvernoPage({
   parent: 'KyvernoPolicies',
   label: 'Validating Policies',
   path: '/kyverno/validatingpolicies',
+  requires: 'cel',
   component: () => <ValidatingPolicyList />,
 });
 
@@ -111,6 +121,7 @@ registerKyvernoPage({
   parent: 'KyvernoPolicies',
   label: 'Mutating Policies',
   path: '/kyverno/mutatingpolicies',
+  requires: 'cel',
   component: () => <MutatingPolicyList />,
 });
 
@@ -119,6 +130,7 @@ registerKyvernoPage({
   parent: 'KyvernoPolicies',
   label: 'Generating Policies',
   path: '/kyverno/generatingpolicies',
+  requires: 'cel',
   component: () => <GeneratingPolicyList />,
 });
 
@@ -127,6 +139,7 @@ registerKyvernoPage({
   parent: 'KyvernoPolicies',
   label: 'Deleting Policies',
   path: '/kyverno/deletingpolicies',
+  requires: 'cel',
   component: () => <DeletingPolicyList />,
 });
 
@@ -135,6 +148,7 @@ registerKyvernoPage({
   parent: 'KyvernoPolicies',
   label: 'Image Validating Policies',
   path: '/kyverno/imagevalidatingpolicies',
+  requires: 'cel',
   component: () => <ImageValidatingPolicyList />,
 });
 
@@ -143,6 +157,7 @@ registerKyvernoPage({
   parent: 'KyvernoPolicies',
   label: 'Cluster Cleanup Policies',
   path: '/kyverno/clustercleanuppolicies',
+  requires: 'cleanup',
   component: () => <ClusterCleanupPolicyList />,
 });
 
@@ -151,6 +166,7 @@ registerKyvernoPage({
   parent: 'KyvernoPolicies',
   label: 'Cleanup Policies',
   path: '/kyverno/cleanuppolicies',
+  requires: 'cleanup',
   component: () => <CleanupPolicyList />,
 });
 
@@ -167,6 +183,7 @@ registerKyvernoPage({
   parent: 'KyvernoReports',
   label: 'Policy Reports',
   path: '/kyverno/policyreports',
+  requires: 'reports',
   component: () => <PolicyReportList />,
 });
 
@@ -175,6 +192,7 @@ registerKyvernoPage({
   parent: 'KyvernoReports',
   label: 'Cluster Policy Reports',
   path: '/kyverno/clusterpolicyreports',
+  requires: 'reports',
   component: () => <ClusterPolicyReportList />,
 });
 
@@ -184,6 +202,7 @@ registerKyvernoPage({
   parent: 'Kyverno',
   label: 'Violations',
   path: '/kyverno/violations',
+  requires: 'reports',
   component: () => <ViolationsView />,
 });
 
@@ -193,5 +212,6 @@ registerKyvernoPage({
   parent: 'Kyverno',
   label: 'Exceptions',
   path: '/kyverno/exceptions',
+  requires: 'exceptions',
   component: () => <PolicyExceptionList />,
 });
