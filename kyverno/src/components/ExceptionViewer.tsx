@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 
-import { NameValueTable, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  AuthVisible,
+  DeleteButton,
+  EditButton,
+  NameValueTable,
+  SectionBox,
+  Table,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, CircularProgress, Typography } from '@mui/material';
 import { PolicyException, PolicyExceptionEntry } from '../resources/policyException';
 
@@ -83,6 +90,14 @@ function MatchSection({ match }: { match: PolicyException['spec']['match'] }) {
 function ExceptionContent({ exception }: { exception: PolicyException }) {
   return (
     <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, justifyContent: 'flex-end' }}>
+        <AuthVisible item={exception} authVerb="update">
+          <EditButton item={exception} />
+        </AuthVisible>
+        <AuthVisible item={exception} authVerb="delete">
+          <DeleteButton item={exception} />
+        </AuthVisible>
+      </Box>
       <SectionBox title="Details">
         <NameValueTable
           rows={[

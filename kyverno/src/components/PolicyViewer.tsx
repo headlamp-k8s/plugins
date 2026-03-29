@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 
-import { NameValueTable, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  AuthVisible,
+  DeleteButton,
+  EditButton,
+  NameValueTable,
+  SectionBox,
+  Table,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
   Box,
   Chip,
@@ -227,7 +234,7 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
 function PolicyContent({
   policy,
 }: {
-  policy: {
+  policy: (KyvernoPolicy | KyvernoClusterPolicy) & {
     jsonData: KyvernoPolicyInterface;
     ready: boolean;
     rules: PolicyRule[];
@@ -241,6 +248,14 @@ function PolicyContent({
 
   return (
     <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, justifyContent: 'flex-end' }}>
+        <AuthVisible item={policy} authVerb="update">
+          <EditButton item={policy} />
+        </AuthVisible>
+        <AuthVisible item={policy} authVerb="delete">
+          <DeleteButton item={policy} />
+        </AuthVisible>
+      </Box>
       <SectionBox title="Details">
         <NameValueTable
           rows={[
