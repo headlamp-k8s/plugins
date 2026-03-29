@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { Chip, Tooltip } from '@mui/material';
+import { Box, Chip, CircularProgress, Link, Tooltip, Typography } from '@mui/material';
 import { PolicyReportSummary, PolicyResultStatus } from '../resources/policyReport';
 
 const statusColors: Record<PolicyResultStatus, 'success' | 'error' | 'warning' | 'default'> = {
@@ -66,5 +66,31 @@ export function SummaryChips({ summary }: { summary: PolicyReportSummary }) {
           </Tooltip>
         ))}
     </span>
+  );
+}
+
+export function NotInstalledBanner({ loading, message }: { loading?: boolean; message: string }) {
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
+      <Box textAlign="center">
+        <Typography variant="h5" gutterBottom>
+          {message}
+        </Typography>
+        <Typography>
+          Learn more about{' '}
+          <Link href="https://kyverno.io/docs/installation/" target="_blank" rel="noopener noreferrer">
+            installing Kyverno
+          </Link>
+        </Typography>
+      </Box>
+    </Box>
   );
 }
