@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-import { Chip, Tooltip } from '@mui/material';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { Box, Chip, CircularProgress, Link, Tooltip, Typography } from '@mui/material';
+import { Trans } from 'react-i18next';
 import { PolicyReportSummary, PolicyResultStatus } from '../resources/policyReport';
 
 const statusColors: Record<PolicyResultStatus, 'success' | 'error' | 'warning' | 'default'> = {
@@ -50,12 +52,13 @@ export function SeverityChip({ severity }: { severity?: string }) {
 }
 
 export function SummaryChips({ summary }: { summary: PolicyReportSummary }) {
+  const { t } = useTranslation();
   const items: { label: string; count: number; status: PolicyResultStatus }[] = [
-    { label: 'Pass', count: summary.pass || 0, status: 'pass' },
-    { label: 'Fail', count: summary.fail || 0, status: 'fail' },
-    { label: 'Warn', count: summary.warn || 0, status: 'warn' },
-    { label: 'Error', count: summary.error || 0, status: 'error' },
-    { label: 'Skip', count: summary.skip || 0, status: 'skip' },
+    { label: t('Pass'), count: summary.pass || 0, status: 'pass' },
+    { label: t('Fail'), count: summary.fail || 0, status: 'fail' },
+    { label: t('Warn'), count: summary.warn || 0, status: 'warn' },
+    { label: t('Error'), count: summary.error || 0, status: 'error' },
+    { label: t('Skip'), count: summary.skip || 0, status: 'skip' },
   ];
 
   return (
@@ -73,5 +76,39 @@ export function SummaryChips({ summary }: { summary: PolicyReportSummary }) {
           </Tooltip>
         ))}
     </span>
+  );
+}
+
+export function NotInstalledBanner({ loading, message }: { loading?: boolean; message?: string }) {
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
+      <Box textAlign="center">
+        <Typography variant="h5" gutterBottom>
+          {message}
+        </Typography>
+        <Typography>
+          {/* Keep the sentence in one i18n unit so translators can place the link
+              anywhere in the translated string. <1> matches the Link child. */}
+          <Trans i18nKey="kyverno.learnAboutInstalling">
+            Learn more about{' '}
+            <Link
+              href="https://kyverno.io/docs/installation/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              installing Kyverno
+            </Link>
+          </Trans>
+        </Typography>
+      </Box>
+    </Box>
   );
 }
