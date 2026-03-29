@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
   Box,
   Chip,
@@ -22,14 +22,7 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -103,49 +96,42 @@ function groupViolations(violations: ViolationEntry[], groupBy: GroupBy): Map<st
   return groups;
 }
 
-function ViolationsTable({ violations }: { violations: ViolationEntry[] }) {
-  return (
-    <TableContainer component={Paper} variant="outlined">
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Resource</TableCell>
-            <TableCell>Kind</TableCell>
-            <TableCell>Namespace</TableCell>
-            <TableCell>Policy</TableCell>
-            <TableCell>Rule</TableCell>
-            <TableCell>Severity</TableCell>
-            <TableCell>Result</TableCell>
-            <TableCell>Message</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {violations.map((v, i) => {
-            const resource = v.resources?.[0];
-            return (
-              <TableRow key={`${v.policy}-${v.rule}-${i}`}>
-                <TableCell>{resource?.name || '-'}</TableCell>
-                <TableCell>{resource?.kind || '-'}</TableCell>
-                <TableCell>{resource?.namespace || v.reportNamespace || '-'}</TableCell>
-                <TableCell>{v.policy}</TableCell>
-                <TableCell>{v.rule || '-'}</TableCell>
-                <TableCell>
-                  <SeverityChip severity={v.severity} />
-                </TableCell>
-                <TableCell>
-                  <ResultStatusChip status={v.result} />
-                </TableCell>
-                <TableCell style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {v.message || '-'}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-}
+const violationColumns = [
+  {
+    header: 'Resource',
+    accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || '-',
+  },
+  {
+    header: 'Kind',
+    accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || '-',
+  },
+  {
+    header: 'Namespace',
+    accessorFn: (v: ViolationEntry) => v.resources?.[0]?.namespace || v.reportNamespace || '-',
+  },
+  {
+    header: 'Policy',
+    accessorFn: (v: ViolationEntry) => v.policy,
+  },
+  {
+    header: 'Rule',
+    accessorFn: (v: ViolationEntry) => v.rule || '-',
+  },
+  {
+    header: 'Severity',
+    accessorFn: (v: ViolationEntry) => v.severity || '',
+    Cell: ({ row }: { row: { original: ViolationEntry } }) => <SeverityChip severity={row.original.severity} />,
+  },
+  {
+    header: 'Result',
+    accessorFn: (v: ViolationEntry) => v.result,
+    Cell: ({ row }: { row: { original: ViolationEntry } }) => <ResultStatusChip status={row.original.result} />,
+  },
+  {
+    header: 'Message',
+    accessorFn: (v: ViolationEntry) => v.message || '-',
+  },
+];
 
 function StatusFilterChips({
   selected,
@@ -279,11 +265,11 @@ export function ViolationsView() {
                 <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                   {group} ({entries.length})
                 </Typography>
-                <ViolationsTable violations={entries} />
+                <Table columns={violationColumns} data={entries} rowsPerPage={[25, 50, 100]} />
               </Box>
             ))
         ) : (
-          <ViolationsTable violations={filteredViolations} />
+          <Table columns={violationColumns} data={filteredViolations} rowsPerPage={[25, 50, 100]} />
         )}
       </SectionBox>
     </Box>

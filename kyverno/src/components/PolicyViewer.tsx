@@ -14,18 +14,11 @@
  * limitations under the License.
  */
 
-import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { NameValueTable, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
   Box,
   Chip,
   CircularProgress,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
 } from '@mui/material';
 import {
@@ -114,74 +107,48 @@ function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
 
   return (
     <SectionBox title="Conditions">
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Type</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Reason</TableCell>
-              <TableCell>Message</TableCell>
-              <TableCell>Last Transition</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {conditions.map(condition => (
-              <TableRow key={condition.type}>
-                <TableCell>{condition.type}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={condition.status}
-                    color={condition.status === 'True' ? 'success' : condition.status === 'False' ? 'error' : 'default'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{condition.reason || '-'}</TableCell>
-                <TableCell style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {condition.message || '-'}
-                </TableCell>
-                <TableCell>{condition.lastTransitionTime || '-'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <Table
+        columns={[
+          { header: 'Type', accessorFn: (c: PolicyCondition) => c.type },
+          {
+            header: 'Status',
+            accessorFn: (c: PolicyCondition) => c.status,
+            Cell: ({ row }: { row: { original: PolicyCondition } }) => (
+              <Chip
+                label={row.original.status}
+                color={row.original.status === 'True' ? 'success' : row.original.status === 'False' ? 'error' : 'default'}
+                size="small"
+              />
+            ),
+          },
+          { header: 'Reason', accessorFn: (c: PolicyCondition) => c.reason || '-' },
+          { header: 'Message', accessorFn: (c: PolicyCondition) => c.message || '-' },
+          { header: 'Last Transition', accessorFn: (c: PolicyCondition) => c.lastTransitionTime || '-' },
+        ]}
+        data={conditions}
+      />
     </SectionBox>
   );
 }
 
 function RulesTable({ rules }: { rules: PolicyRule[] }) {
-  if (rules.length === 0) {
-    return <Typography variant="body2">No rules defined.</Typography>;
-  }
-
   return (
-    <TableContainer component={Paper} variant="outlined">
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>Type</TableCell>
-            <TableCell>Match Kinds</TableCell>
-            <TableCell>Message</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rules.map(rule => (
-            <TableRow key={rule.name}>
-              <TableCell>{rule.name}</TableCell>
-              <TableCell>
-                <Chip label={ruleType(rule)} size="small" variant="outlined" />
-              </TableCell>
-              <TableCell>{matchKinds(rule)}</TableCell>
-              <TableCell style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {rule.validate?.message || '-'}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <Table
+      columns={[
+        { header: 'Name', accessorFn: (r: PolicyRule) => r.name },
+        {
+          header: 'Type',
+          accessorFn: (r: PolicyRule) => ruleType(r),
+          Cell: ({ row }: { row: { original: PolicyRule } }) => (
+            <Chip label={ruleType(row.original)} size="small" variant="outlined" />
+          ),
+        },
+        { header: 'Match Kinds', accessorFn: (r: PolicyRule) => matchKinds(r) },
+        { header: 'Message', accessorFn: (r: PolicyRule) => r.validate?.message || '-' },
+      ]}
+      data={rules}
+      emptyMessage="No rules defined."
+    />
   );
 }
 
@@ -226,47 +193,33 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
 
   return (
     <SectionBox title={`Associated Report Results (${matchingResults.length})`}>
-      {matchingResults.length === 0 ? (
-        <Typography variant="body2">No report results found for this policy.</Typography>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Rule</TableCell>
-                <TableCell>Result</TableCell>
-                <TableCell>Severity</TableCell>
-                <TableCell>Resource</TableCell>
-                <TableCell>Message</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {matchingResults.map((result, index) => (
-                <TableRow key={`${result.rule}-${index}`}>
-                  <TableCell>{result.rule || '-'}</TableCell>
-                  <TableCell>
-                    <ResultStatusChip status={result.result} />
-                  </TableCell>
-                  <TableCell>
-                    <SeverityChip severity={result.severity} />
-                  </TableCell>
-                  <TableCell>
-                    {result.resources?.map((r, i) => (
-                      <span key={i}>
-                        {r.namespace ? `${r.namespace}/` : ''}{r.kind}/{r.name}
-                        {i < (result.resources?.length || 0) - 1 ? ', ' : ''}
-                      </span>
-                    )) || '-'}
-                  </TableCell>
-                  <TableCell style={{ maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {result.message || '-'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+      <Table
+        columns={[
+          { header: 'Rule', accessorFn: (r: PolicyReportResult) => r.rule || '-' },
+          {
+            header: 'Result',
+            accessorFn: (r: PolicyReportResult) => r.result,
+            Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
+              <ResultStatusChip status={row.original.result} />
+            ),
+          },
+          {
+            header: 'Severity',
+            accessorFn: (r: PolicyReportResult) => r.severity || '',
+            Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
+              <SeverityChip severity={row.original.severity} />
+            ),
+          },
+          {
+            header: 'Resource',
+            accessorFn: (r: PolicyReportResult) =>
+              r.resources?.map(res => `${res.namespace ? res.namespace + '/' : ''}${res.kind}/${res.name}`).join(', ') || '-',
+          },
+          { header: 'Message', accessorFn: (r: PolicyReportResult) => r.message || '-' },
+        ]}
+        data={matchingResults}
+        emptyMessage="No report results found for this policy."
+      />
     </SectionBox>
   );
 }

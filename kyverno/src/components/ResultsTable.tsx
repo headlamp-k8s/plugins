@@ -14,64 +14,40 @@
  * limitations under the License.
  */
 
-import {
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-} from '@mui/material';
+import { Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { PolicyReportResult } from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip } from './common';
 
 export function ResultsTable({ results }: { results: PolicyReportResult[] }) {
-  if (results.length === 0) {
-    return <p>No results found.</p>;
-  }
-
   return (
-    <TableContainer component={Paper} variant="outlined">
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Policy</TableCell>
-            <TableCell>Rule</TableCell>
-            <TableCell>Result</TableCell>
-            <TableCell>Severity</TableCell>
-            <TableCell>Category</TableCell>
-            <TableCell>Message</TableCell>
-            <TableCell>Resource</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {results.map((result, index) => (
-            <TableRow key={`${result.policy}-${result.rule}-${index}`}>
-              <TableCell>{result.policy}</TableCell>
-              <TableCell>{result.rule || '-'}</TableCell>
-              <TableCell>
-                <ResultStatusChip status={result.result} />
-              </TableCell>
-              <TableCell>
-                <SeverityChip severity={result.severity} />
-              </TableCell>
-              <TableCell>{result.category || '-'}</TableCell>
-              <TableCell style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {result.message || '-'}
-              </TableCell>
-              <TableCell>
-                {result.resources?.map((r, i) => (
-                  <span key={i}>
-                    {r.kind}/{r.name}
-                    {i < (result.resources?.length || 0) - 1 ? ', ' : ''}
-                  </span>
-                )) || '-'}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <Table
+      columns={[
+        { header: 'Policy', accessorFn: (r: PolicyReportResult) => r.policy },
+        { header: 'Rule', accessorFn: (r: PolicyReportResult) => r.rule || '-' },
+        {
+          header: 'Result',
+          accessorFn: (r: PolicyReportResult) => r.result,
+          Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
+            <ResultStatusChip status={row.original.result} />
+          ),
+        },
+        {
+          header: 'Severity',
+          accessorFn: (r: PolicyReportResult) => r.severity || '',
+          Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
+            <SeverityChip severity={row.original.severity} />
+          ),
+        },
+        { header: 'Category', accessorFn: (r: PolicyReportResult) => r.category || '-' },
+        { header: 'Message', accessorFn: (r: PolicyReportResult) => r.message || '-' },
+        {
+          header: 'Resource',
+          accessorFn: (r: PolicyReportResult) =>
+            r.resources?.map(res => `${res.kind}/${res.name}`).join(', ') || '-',
+        },
+      ]}
+      data={results}
+      emptyMessage="No results found."
+    />
   );
 }
