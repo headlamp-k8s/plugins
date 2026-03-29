@@ -80,7 +80,7 @@ export function ComplianceBadge() {
           sx={{ color: 'inherit' }}
         >
           <Badge badgeContent={violationCount || undefined} color={badgeColor} max={999}>
-            <Icon icon="mdi:shield-check" width="24" />
+            <Icon icon="kyverno:logo" width="24" />
           </Badge>
         </IconButton>
       </Tooltip>
