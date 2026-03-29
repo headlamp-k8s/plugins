@@ -259,10 +259,22 @@ export interface Attestor {
   notary?: Record<string, unknown>;
 }
 
+export interface ImageMatchReference {
+  glob?: string;
+  expression?: string;
+}
+
+export interface ImageAttestation {
+  name: string;
+  intoto?: { type: string };
+  referrer?: { type: string };
+}
+
 export interface ImageValidatingPolicySpec {
-  matchImageReferences?: string[];
+  matchImageReferences?: ImageMatchReference[];
   attestors?: Attestor[];
-  attestations?: { name: string; predicateType: string; conditions?: unknown[] }[];
+  attestations?: ImageAttestation[];
+  validations?: CELValidation[];
   evaluation?: CELPolicyEvaluation;
   matchConstraints?: MatchConstraints;
   variables?: CELVariable[];
@@ -288,7 +300,7 @@ export class ImageValidatingPolicy extends KubeObject<ImageValidatingPolicyInter
   }
 
   get imagePatterns(): string[] {
-    return this.spec.matchImageReferences || [];
+    return (this.spec.matchImageReferences || []).map(r => r.glob || r.expression || '');
   }
 
   get attestorCount(): number {
