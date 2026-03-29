@@ -36,11 +36,7 @@ import {
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
-import {
-  ClusterPolicyReport,
-  PolicyReport,
-  PolicyReportResult,
-} from '../resources/policyReport';
+import { ClusterPolicyReport, PolicyReport, PolicyReportResult } from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip } from './common';
 
 interface PolicyViewerProps {
@@ -98,9 +94,10 @@ function KyvernoMetadataSection({ annotations }: { annotations?: Record<string, 
   const { t } = useTranslation();
   if (!annotations) return null;
 
-  const rows = KYVERNO_ANNOTATIONS
-    .filter(({ key }) => annotations[key])
-    .map(({ key, label }) => ({ name: t(label), value: annotations[key] }));
+  const rows = KYVERNO_ANNOTATIONS.filter(({ key }) => annotations[key]).map(({ key, label }) => ({
+    name: t(label),
+    value: annotations[key],
+  }));
 
   if (rows.length === 0) return null;
 
@@ -135,7 +132,13 @@ function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
                 <TableCell>
                   <Chip
                     label={condition.status}
-                    color={condition.status === 'True' ? 'success' : condition.status === 'False' ? 'error' : 'default'}
+                    color={
+                      condition.status === 'True'
+                        ? 'success'
+                        : condition.status === 'False'
+                        ? 'error'
+                        : 'default'
+                    }
                     size="small"
                   />
                 </TableCell>
@@ -206,7 +209,8 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
     );
   }
 
-  const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] = [];
+  const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] =
+    [];
 
   for (const report of policyReports) {
     for (const result of report.results) {
@@ -232,7 +236,9 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
   }
 
   return (
-    <SectionBox title={t('Associated Report Results ({{count}})', { count: matchingResults.length })}>
+    <SectionBox
+      title={t('Associated Report Results ({{count}})', { count: matchingResults.length })}
+    >
       {matchingResults.length === 0 ? (
         <Typography variant="body2">{t('No report results found for this policy.')}</Typography>
       ) : (
@@ -260,12 +266,15 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
                   <TableCell>
                     {result.resources?.map((r, i) => (
                       <span key={i}>
-                        {r.namespace ? `${r.namespace}/` : ''}{r.kind}/{r.name}
+                        {r.namespace ? `${r.namespace}/` : ''}
+                        {r.kind}/{r.name}
                         {i < (result.resources?.length || 0) - 1 ? ', ' : ''}
                       </span>
                     )) || '-'}
                   </TableCell>
-                  <TableCell style={{ maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <TableCell
+                    style={{ maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
                     {result.message || '-'}
                   </TableCell>
                 </TableRow>
@@ -351,7 +360,9 @@ export function PolicyViewer({ name, namespace, isClusterScoped }: PolicyViewerP
   if (error) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography color="error">{t('Failed to load policy: {{error}}', { error: String(error) })}</Typography>
+        <Typography color="error">
+          {t('Failed to load policy: {{error}}', { error: String(error) })}
+        </Typography>
       </Box>
     );
   }
