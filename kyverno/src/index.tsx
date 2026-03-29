@@ -29,11 +29,18 @@ registerSidebarEntry({
   label: 'Kyverno',
 });
 
-// Cluster Policies (cluster-scoped)
+// Policies group
+registerSidebarEntry({
+  name: 'KyvernoPolicies',
+  url: '/kyverno/clusterpolicies',
+  parent: 'Kyverno',
+  label: 'Policies',
+});
+
 registerSidebarEntry({
   name: 'ClusterPolicies',
   url: '/kyverno/clusterpolicies',
-  parent: 'Kyverno',
+  parent: 'KyvernoPolicies',
   label: 'Cluster Policies',
 });
 
@@ -44,11 +51,10 @@ registerRoute({
   component: () => <ClusterPolicyList />,
 });
 
-// Policies (namespaced)
 registerSidebarEntry({
   name: 'Policies',
   url: '/kyverno/policies',
-  parent: 'Kyverno',
+  parent: 'KyvernoPolicies',
   label: 'Policies',
 });
 
