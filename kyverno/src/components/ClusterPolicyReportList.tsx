@@ -14,10 +14,25 @@
  * limitations under the License.
  */
 
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { Icon } from '@iconify/react';
+import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link as MuiLink } from '@mui/material';
 import { ClusterPolicyReport } from '../resources/policyReport';
 import { SummaryChips } from './common';
+import { ReportViewer } from './ReportViewer';
+
+function openClusterReportActivity(item: ClusterPolicyReport) {
+  Activity.launch({
+    id: `kyverno-cpolr-${item.jsonData.metadata.name}`,
+    location: 'split-right',
+    icon: <Icon icon="mdi:shield-check" />,
+    title: item.jsonData.metadata.name,
+    content: (
+      <ReportViewer name={item.jsonData.metadata.name} isClusterScoped />
+    ),
+  });
+}
 
 export function ClusterPolicyReportList() {
   const { t } = useTranslation();
@@ -26,7 +41,20 @@ export function ClusterPolicyReportList() {
       title={t('Cluster Policy Reports')}
       resourceClass={ClusterPolicyReport}
       columns={[
-        'name',
+        {
+          id: 'name',
+          label: 'Name',
+          getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openClusterReportActivity(item)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
+        },
         {
           id: 'scope',
           label: t('Scope'),
