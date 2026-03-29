@@ -14,9 +14,22 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Chip } from '@mui/material';
+import { Chip, Link as MuiLink } from '@mui/material';
 import { ImageValidatingPolicy } from '../resources/celPolicies';
+import { ImageValidatingPolicyViewer } from './ImageValidatingPolicyViewer';
+
+function openActivity(item: ImageValidatingPolicy) {
+  Activity.launch({
+    id: `kyverno-ivpol-${item.jsonData.metadata.name}`,
+    location: 'split-right',
+    icon: <Icon icon="mdi:shield-lock" />,
+    title: item.jsonData.metadata.name,
+    content: <ImageValidatingPolicyViewer name={item.jsonData.metadata.name} />,
+  });
+}
 
 export function ImageValidatingPolicyList() {
   return (
@@ -28,6 +41,15 @@ export function ImageValidatingPolicyList() {
           id: 'name',
           label: 'Name',
           getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openActivity(item as unknown as ImageValidatingPolicy)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
         },
         {
           id: 'ready',
