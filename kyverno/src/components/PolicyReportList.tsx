@@ -14,9 +14,25 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link as MuiLink } from '@mui/material';
 import { PolicyReport } from '../resources/policyReport';
 import { SummaryChips } from './common';
+import { ReportViewer } from './ReportViewer';
+
+function openReportActivity(item: PolicyReport) {
+  Activity.launch({
+    id: `kyverno-polr-${item.jsonData.metadata.namespace}-${item.jsonData.metadata.name}`,
+    location: 'split-right',
+    icon: <Icon icon="mdi:shield-check" />,
+    title: `${item.jsonData.metadata.namespace}/${item.jsonData.metadata.name}`,
+    content: (
+      <ReportViewer name={item.jsonData.metadata.name} namespace={item.jsonData.metadata.namespace} />
+    ),
+  });
+}
 
 export function PolicyReportList() {
   return (
@@ -24,7 +40,20 @@ export function PolicyReportList() {
       title="Policy Reports"
       resourceClass={PolicyReport}
       columns={[
-        'name',
+        {
+          id: 'name',
+          label: 'Name',
+          getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openReportActivity(item)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
+        },
         'namespace',
         {
           id: 'scope',
