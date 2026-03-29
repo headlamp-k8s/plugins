@@ -30,6 +30,7 @@ import { ClusterPolicyList } from './components/ClusterPolicyList';
 import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
 import { ComplianceBadge } from './components/ComplianceBadge';
 import { CRDGroup, CRDGuard } from './components/CRDGuard';
+import { Dashboard } from './components/Dashboard';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
@@ -83,10 +84,21 @@ export function registerKyvernoPage({
 
 registerSidebarEntry({
   name: 'Kyverno',
-  url: '/kyverno/clusterpolicies',
+  url: '/kyverno',
   icon: 'kyverno:logo',
   parent: '',
   label: 'Kyverno',
+});
+
+// --- Dashboard ---
+registerKyvernoPage({
+  name: 'KyvernoOverview',
+  parent: 'Kyverno',
+  label: 'Overview',
+  path: '/kyverno',
+  exact: true,
+  requires: 'legacy',
+  component: () => <Dashboard />,
 });
 
 // --- Policies group ---
