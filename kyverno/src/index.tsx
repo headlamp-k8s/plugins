@@ -27,6 +27,7 @@ import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
+import { ViolationsView } from './components/ViolationsView';
 
 interface KyvernoPageOptions {
   /** Sidebar entry id; also reused as the route name. */
@@ -174,4 +175,13 @@ registerKyvernoPage({
   label: 'Cluster Policy Reports',
   path: '/kyverno/clusterpolicyreports',
   component: () => <ClusterPolicyReportList />,
+});
+
+// --- Violations ---
+registerKyvernoPage({
+  name: 'KyvernoViolations',
+  parent: 'Kyverno',
+  label: 'Violations',
+  path: '/kyverno/violations',
+  component: () => <ViolationsView />,
 });
