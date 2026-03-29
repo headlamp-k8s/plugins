@@ -29,7 +29,10 @@ function openReportActivity(item: PolicyReport) {
     icon: <Icon icon="mdi:shield-check" />,
     title: `${item.jsonData.metadata.namespace}/${item.jsonData.metadata.name}`,
     content: (
-      <ReportViewer name={item.jsonData.metadata.name} namespace={item.jsonData.metadata.namespace} />
+      <ReportViewer
+        name={item.jsonData.metadata.name}
+        namespace={item.jsonData.metadata.namespace}
+      />
     ),
   });
 }

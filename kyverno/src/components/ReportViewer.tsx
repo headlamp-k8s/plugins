@@ -65,7 +65,12 @@ function ReportResultsSection({ results }: { results: PolicyReportResult[] }) {
 function ReportContent({
   report,
 }: {
-  report: { jsonData: PolicyReportInterface; summary: PolicyReportSummary; results: PolicyReportResult[]; scope?: PolicyReportInterface['scope'] };
+  report: {
+    jsonData: PolicyReportInterface;
+    summary: PolicyReportSummary;
+    results: PolicyReportResult[];
+    scope?: PolicyReportInterface['scope'];
+  };
 }) {
   const { t } = useTranslation();
   return (
@@ -101,7 +106,9 @@ export function ReportViewer({ name, namespace, isClusterScoped }: ReportViewerP
   if (error) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography color="error">{t('Failed to load report: {{error}}', { error: String(error) })}</Typography>
+        <Typography color="error">
+          {t('Failed to load report: {{error}}', { error: String(error) })}
+        </Typography>
       </Box>
     );
   }

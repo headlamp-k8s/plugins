@@ -28,9 +28,7 @@ function openClusterReportActivity(item: ClusterPolicyReport) {
     location: 'split-right',
     icon: <Icon icon="mdi:shield-check" />,
     title: item.jsonData.metadata.name,
-    content: (
-      <ReportViewer name={item.jsonData.metadata.name} isClusterScoped />
-    ),
+    content: <ReportViewer name={item.jsonData.metadata.name} isClusterScoped />,
   });
 }
 

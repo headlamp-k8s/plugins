@@ -15,8 +15,16 @@
  */
 
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  DeletingPolicyList,
+  GeneratingPolicyList,
+  MutatingPolicyList,
+  ValidatingPolicyList,
+} from './components/CELPolicyList';
+import { CleanupPolicyList, ClusterCleanupPolicyList } from './components/CleanupPolicyList';
 import { ClusterPolicyList } from './components/ClusterPolicyList';
 import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
+import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
 
@@ -56,8 +64,6 @@ export function registerKyvernoPage({
   registerRoute({ path, sidebar: name, name, exact, component });
 }
 
-// Top-level entry: the URL points at the first child page so a click on the
-// parent still resolves to a real route.
 registerSidebarEntry({
   name: 'Kyverno',
   url: '/kyverno/clusterpolicies',
@@ -90,10 +96,73 @@ registerKyvernoPage({
   component: () => <PolicyList />,
 });
 
+registerKyvernoPage({
+  name: 'ValidatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Validating Policies',
+  path: '/kyverno/validatingpolicies',
+  component: () => <ValidatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'MutatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Mutating Policies',
+  path: '/kyverno/mutatingpolicies',
+  component: () => <MutatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'GeneratingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Generating Policies',
+  path: '/kyverno/generatingpolicies',
+  component: () => <GeneratingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'DeletingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Deleting Policies',
+  path: '/kyverno/deletingpolicies',
+  component: () => <DeletingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'ImageValidatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Image Validating Policies',
+  path: '/kyverno/imagevalidatingpolicies',
+  component: () => <ImageValidatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'ClusterCleanupPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Cluster Cleanup Policies',
+  path: '/kyverno/clustercleanuppolicies',
+  component: () => <ClusterCleanupPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'CleanupPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Cleanup Policies',
+  path: '/kyverno/cleanuppolicies',
+  component: () => <CleanupPolicyList />,
+});
+
 // --- Reports group ---
+registerSidebarEntry({
+  name: 'KyvernoReports',
+  url: '/kyverno/policyreports',
+  parent: 'Kyverno',
+  label: 'Reports',
+});
+
 registerKyvernoPage({
   name: 'PolicyReports',
-  parent: 'Kyverno',
+  parent: 'KyvernoReports',
   label: 'Policy Reports',
   path: '/kyverno/policyreports',
   component: () => <PolicyReportList />,
@@ -101,7 +170,7 @@ registerKyvernoPage({
 
 registerKyvernoPage({
   name: 'ClusterPolicyReports',
-  parent: 'Kyverno',
+  parent: 'KyvernoReports',
   label: 'Cluster Policy Reports',
   path: '/kyverno/clusterpolicyreports',
   component: () => <ClusterPolicyReportList />,
