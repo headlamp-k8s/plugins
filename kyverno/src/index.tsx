@@ -15,18 +15,54 @@
  */
 
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
-import { ClusterPolicyReportDetail } from './components/ClusterPolicyReportDetail';
+import { ClusterPolicyList } from './components/ClusterPolicyList';
 import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
-import { PolicyReportDetail } from './components/PolicyReportDetail';
+import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
 
 // Top-level sidebar entry
 registerSidebarEntry({
   name: 'Kyverno',
-  url: '/kyverno/policyreports',
+  url: '/kyverno/clusterpolicies',
   icon: 'mdi:shield-check',
   parent: '',
   label: 'Kyverno',
+});
+
+// Policies group
+registerSidebarEntry({
+  name: 'KyvernoPolicies',
+  url: '/kyverno/clusterpolicies',
+  parent: 'Kyverno',
+  label: 'Policies',
+});
+
+registerSidebarEntry({
+  name: 'ClusterPolicies',
+  url: '/kyverno/clusterpolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Cluster Policies',
+});
+
+registerRoute({
+  path: '/kyverno/clusterpolicies',
+  sidebar: 'ClusterPolicies',
+  name: 'ClusterPolicies',
+  component: () => <ClusterPolicyList />,
+});
+
+registerSidebarEntry({
+  name: 'Policies',
+  url: '/kyverno/policies',
+  parent: 'KyvernoPolicies',
+  label: 'Policies',
+});
+
+registerRoute({
+  path: '/kyverno/policies',
+  sidebar: 'Policies',
+  name: 'Policies',
+  component: () => <PolicyList />,
 });
 
 // Policy Reports (namespaced)
@@ -44,13 +80,6 @@ registerRoute({
   component: () => <PolicyReportList />,
 });
 
-registerRoute({
-  path: '/kyverno/policyreports/:namespace/:name',
-  sidebar: 'PolicyReports',
-  name: 'PolicyReport',
-  component: () => <PolicyReportDetail />,
-});
-
 // Cluster Policy Reports (cluster-scoped)
 registerSidebarEntry({
   name: 'ClusterPolicyReports',
@@ -64,11 +93,4 @@ registerRoute({
   sidebar: 'ClusterPolicyReports',
   name: 'ClusterPolicyReports',
   component: () => <ClusterPolicyReportList />,
-});
-
-registerRoute({
-  path: '/kyverno/clusterpolicyreports/:name',
-  sidebar: 'ClusterPolicyReports',
-  name: 'ClusterPolicyReport',
-  component: () => <ClusterPolicyReportDetail />,
 });
