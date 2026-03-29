@@ -27,6 +27,7 @@ import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
+import { ViolationsView } from './components/ViolationsView';
 
 // Top-level sidebar entry
 registerSidebarEntry({
@@ -205,4 +206,19 @@ registerRoute({
   sidebar: 'ClusterPolicyReports',
   name: 'ClusterPolicyReports',
   component: () => <ClusterPolicyReportList />,
+});
+
+// --- Violations ---
+registerSidebarEntry({
+  name: 'KyvernoViolations',
+  url: '/kyverno/violations',
+  parent: 'Kyverno',
+  label: 'Violations',
+});
+
+registerRoute({
+  path: '/kyverno/violations',
+  sidebar: 'KyvernoViolations',
+  name: 'KyvernoViolations',
+  component: () => <ViolationsView />,
 });
