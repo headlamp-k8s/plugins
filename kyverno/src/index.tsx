@@ -25,6 +25,7 @@ import { CleanupPolicyList, ClusterCleanupPolicyList } from './components/Cleanu
 import { ClusterPolicyList } from './components/ClusterPolicyList';
 import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
+import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
 import { ViolationsView } from './components/ViolationsView';
@@ -221,4 +222,19 @@ registerRoute({
   sidebar: 'KyvernoViolations',
   name: 'KyvernoViolations',
   component: () => <ViolationsView />,
+});
+
+// --- Exceptions ---
+registerSidebarEntry({
+  name: 'KyvernoExceptions',
+  url: '/kyverno/exceptions',
+  parent: 'Kyverno',
+  label: 'Exceptions',
+});
+
+registerRoute({
+  path: '/kyverno/exceptions',
+  sidebar: 'KyvernoExceptions',
+  name: 'KyvernoExceptions',
+  component: () => <PolicyExceptionList />,
 });
