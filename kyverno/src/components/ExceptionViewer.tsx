@@ -15,7 +15,14 @@
  */
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { NameValueTable, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  AuthVisible,
+  DeleteButton,
+  EditButton,
+  NameValueTable,
+  SectionBox,
+  Table,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, CircularProgress, Typography } from '@mui/material';
 import { PolicyException, PolicyExceptionEntry } from '../resources/policyException';
 
@@ -90,6 +97,14 @@ function ExceptionContent({ exception }: { exception: PolicyException }) {
   const { t } = useTranslation();
   return (
     <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, justifyContent: 'flex-end' }}>
+        <AuthVisible item={exception} authVerb="update">
+          <EditButton item={exception} />
+        </AuthVisible>
+        <AuthVisible item={exception} authVerb="delete">
+          <DeleteButton item={exception} />
+        </AuthVisible>
+      </Box>
       <SectionBox title={t('Details')}>
         <NameValueTable
           rows={[
