@@ -35,6 +35,9 @@ import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
 import { ViolationsView } from './components/ViolationsView';
+import { registerKyvernoIcon } from './kyvernoIcon';
+
+registerKyvernoIcon();
 
 interface KyvernoPageOptions {
   /** Sidebar entry id; also reused as the route name. */
@@ -81,7 +84,7 @@ export function registerKyvernoPage({
 registerSidebarEntry({
   name: 'Kyverno',
   url: '/kyverno/clusterpolicies',
-  icon: 'mdi:shield-check',
+  icon: 'kyverno:logo',
   parent: '',
   label: 'Kyverno',
 });

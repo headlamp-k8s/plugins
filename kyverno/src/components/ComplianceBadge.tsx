@@ -107,7 +107,7 @@ function ComplianceBadgeContent() {
       <Tooltip title={t('Kyverno Compliance')}>
         <IconButton onClick={handleOpen} size="small" sx={{ color: 'inherit' }}>
           <Badge badgeContent={violationCount || undefined} color={badgeColor} max={999}>
-            <Icon icon="mdi:shield-check" width="24" />
+            <Icon icon="kyverno:logo" width="24" />
           </Badge>
         </IconButton>
       </Tooltip>
