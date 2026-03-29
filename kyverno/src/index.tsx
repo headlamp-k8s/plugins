@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerAppBarAction,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
 import {
   DeletingPolicyList,
   GeneratingPolicyList,
@@ -24,6 +28,7 @@ import {
 import { CleanupPolicyList, ClusterCleanupPolicyList } from './components/CleanupPolicyList';
 import { ClusterPolicyList } from './components/ClusterPolicyList';
 import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
+import { ComplianceBadge } from './components/ComplianceBadge';
 import { CRDGroup, CRDGuard } from './components/CRDGuard';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
@@ -215,3 +220,6 @@ registerKyvernoPage({
   requires: 'exceptions',
   component: () => <PolicyExceptionList />,
 });
+
+// --- App Bar ---
+registerAppBarAction(ComplianceBadge);
