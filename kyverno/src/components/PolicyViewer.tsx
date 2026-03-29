@@ -15,12 +15,18 @@
  */
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { NameValueTable, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  AuthVisible,
+  DeleteButton,
+  EditButton,
+  NameValueTable,
+  SectionBox,
+  Table,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, CircularProgress, Typography } from '@mui/material';
 import {
   KyvernoClusterPolicy,
   KyvernoPolicy,
-  KyvernoPolicyInterface,
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
@@ -237,24 +243,21 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
   );
 }
 
-function PolicyContent({
-  policy,
-}: {
-  policy: {
-    jsonData: KyvernoPolicyInterface;
-    ready: boolean;
-    rules: PolicyRule[];
-    ruleTypes: string[];
-    validationFailureAction: string;
-    background: boolean;
-  };
-}) {
+function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolicy }) {
   const { t } = useTranslation();
   const annotations = policy.jsonData.metadata.annotations;
   const labels = policy.jsonData.metadata.labels;
 
   return (
     <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, justifyContent: 'flex-end' }}>
+        <AuthVisible item={policy} authVerb="update">
+          <EditButton item={policy} />
+        </AuthVisible>
+        <AuthVisible item={policy} authVerb="delete">
+          <DeleteButton item={policy} />
+        </AuthVisible>
+      </Box>
       <SectionBox title={t('Details')}>
         <NameValueTable
           rows={[
