@@ -15,7 +15,7 @@
  */
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
   Box,
   Chip,
@@ -23,14 +23,7 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -107,51 +100,6 @@ function groupViolations(
   return groups;
 }
 
-function ViolationsTable({ violations }: { violations: ViolationEntry[] }) {
-  const { t } = useTranslation();
-  return (
-    <TableContainer component={Paper} variant="outlined">
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>{t('Resource')}</TableCell>
-            <TableCell>{t('Kind')}</TableCell>
-            <TableCell>{t('Namespace')}</TableCell>
-            <TableCell>{t('Policy')}</TableCell>
-            <TableCell>{t('Rule')}</TableCell>
-            <TableCell>{t('Severity')}</TableCell>
-            <TableCell>{t('Result')}</TableCell>
-            <TableCell>{t('Message')}</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {violations.map((v, i) => {
-            const resource = v.resources?.[0];
-            return (
-              <TableRow key={`${v.policy}-${v.rule}-${i}`}>
-                <TableCell>{resource?.name || '-'}</TableCell>
-                <TableCell>{resource?.kind || '-'}</TableCell>
-                <TableCell>{resource?.namespace || v.reportNamespace || '-'}</TableCell>
-                <TableCell>{v.policy}</TableCell>
-                <TableCell>{v.rule || '-'}</TableCell>
-                <TableCell>
-                  <SeverityChip severity={v.severity} />
-                </TableCell>
-                <TableCell>
-                  <ResultStatusChip status={v.result} />
-                </TableCell>
-                <TableCell style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {v.message || '-'}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-}
-
 function StatusFilterChips({
   selected,
   onChange,
@@ -200,6 +148,51 @@ export function ViolationsView() {
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
+
+  // Column definitions depend on t() so they're built inside the component.
+  const violationColumns = useMemo(
+    () => [
+      {
+        header: t('Resource'),
+        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || '-',
+      },
+      {
+        header: t('Kind'),
+        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || '-',
+      },
+      {
+        header: t('Namespace'),
+        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.namespace || v.reportNamespace || '-',
+      },
+      {
+        header: t('Policy'),
+        accessorFn: (v: ViolationEntry) => v.policy,
+      },
+      {
+        header: t('Rule'),
+        accessorFn: (v: ViolationEntry) => v.rule || '-',
+      },
+      {
+        header: t('Severity'),
+        accessorFn: (v: ViolationEntry) => v.severity || '',
+        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+          <SeverityChip severity={row.original.severity} />
+        ),
+      },
+      {
+        header: t('Result'),
+        accessorFn: (v: ViolationEntry) => v.result,
+        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+          <ResultStatusChip status={row.original.result} />
+        ),
+      },
+      {
+        header: t('Message'),
+        accessorFn: (v: ViolationEntry) => v.message || '-',
+      },
+    ],
+    [t]
+  );
 
   const allViolations = useMemo(
     () => collectViolations(policyReports, clusterPolicyReports),
@@ -304,11 +297,11 @@ export function ViolationsView() {
                 <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                   {group} ({entries.length})
                 </Typography>
-                <ViolationsTable violations={entries} />
+                <Table columns={violationColumns} data={entries} rowsPerPage={[25, 50, 100]} />
               </Box>
             ))
         ) : (
-          <ViolationsTable violations={filteredViolations} />
+          <Table columns={violationColumns} data={filteredViolations} rowsPerPage={[25, 50, 100]} />
         )}
       </SectionBox>
     </Box>
