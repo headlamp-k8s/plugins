@@ -25,6 +25,7 @@ import { CleanupPolicyList, ClusterCleanupPolicyList } from './components/Cleanu
 import { ClusterPolicyList } from './components/ClusterPolicyList';
 import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
+import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
 import { ViolationsView } from './components/ViolationsView';
@@ -184,4 +185,13 @@ registerKyvernoPage({
   label: 'Violations',
   path: '/kyverno/violations',
   component: () => <ViolationsView />,
+});
+
+// --- Exceptions ---
+registerKyvernoPage({
+  name: 'KyvernoExceptions',
+  parent: 'Kyverno',
+  label: 'Exceptions',
+  path: '/kyverno/exceptions',
+  component: () => <PolicyExceptionList />,
 });
