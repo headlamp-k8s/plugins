@@ -101,8 +101,3 @@ export function renderConditionStatus(
 
   return <StatusLabel status={status}>{label}</StatusLabel>;
 }
-
-export function renderSimpleRef(ref?: KubeReference): string {
-  if (!ref) return '-';
-  return `${ref.kind} / ${ref.name}`;
-}
