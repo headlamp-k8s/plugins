@@ -92,7 +92,7 @@ function registerClusterApiResource(config: ResourceRegistrationConfig) {
 registerSidebarEntry({
   name: 'Cluster-api',
   url: '/cluster-api/capiclusters',
-  icon: 'mdi:turtle',
+  icon: 'mdi:kubernetes',
   parent: null,
   label: 'Cluster API',
 });
@@ -221,7 +221,7 @@ Object.assign(ResourceClasses, resourceClassMap);
 registerMapSource({
   id: 'cluster-api',
   label: 'Cluster API',
-  icon: <Icon icon="mdi:turtle" width="100%" height="100%" color="rgb(50, 108, 229)" />,
+  icon: <Icon icon="mdi:kubernetes" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
     // Build a map of resources and their details components
     const resourceLists = clusterApiResources.map(r => {
