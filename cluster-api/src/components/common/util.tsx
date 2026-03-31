@@ -72,21 +72,33 @@ export function renderConditionStatus(
     falseLabel?: string;
     trueStatus?: 'success' | 'warning' | 'error';
     falseStatus?: 'success' | 'warning' | 'error';
+    unknownLabel?: string;
+    unknownStatus?: 'success' | 'warning' | 'error';
   }
 ): ReactNode {
   let isTrue: boolean | undefined;
   if (condition) {
     if (condition.status === 'Unknown') {
-      return <StatusLabel status="warning">Unknown</StatusLabel>;
+      return (
+        <StatusLabel status={options?.unknownStatus ?? 'warning'}>
+          {options?.unknownLabel ?? 'Unknown'}
+        </StatusLabel>
+      );
     }
     isTrue = condition.status === 'True';
   } else if (value !== undefined) {
     isTrue = value === 'true';
   } else {
-    return <StatusLabel status="warning">Unknown</StatusLabel>;
+    return (
+      <StatusLabel status={options?.unknownStatus ?? 'warning'}>
+        {options?.unknownLabel ?? 'Unknown'}
+      </StatusLabel>
+    );
   }
   const label = isTrue ? options?.trueLabel ?? 'True' : options?.falseLabel ?? 'False';
+
   const status = isTrue ? options?.trueStatus ?? 'success' : options?.falseStatus ?? 'error';
+
   return <StatusLabel status={status}>{label}</StatusLabel>;
 }
 

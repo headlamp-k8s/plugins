@@ -7,8 +7,11 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ApiError } from '@kinvolk/headlamp-plugin/lib/k8s/api/v2/ApiError';
 import { useMemo } from 'react';
+import { getCondition } from '../../resources/common';
 import { Machine } from '../../resources/machine';
 import { useCapiApiVersion } from '../../utils/capiVersion';
+import { getPhaseStatus } from '../common/util';
+import { renderConditionStatus } from '../common/util';
 
 const OWNER_ROUTE: Record<string, string> = {
   KubeadmControlPlane: 'kubeadmcontrolplane',
@@ -35,30 +38,6 @@ function getOwnerLink(machine: {
       {owner.name}
     </Link>
   );
-}
-
-function getPhaseStatus(phase: string): 'success' | 'warning' | 'error' | '' {
-  const normalized = phase.toLowerCase();
-  if (['running', 'provisioned', 'provisionedready', 'succeeded', 'ready'].includes(normalized)) {
-    return 'success';
-  }
-  if (
-    [
-      'pending',
-      'provisioning',
-      'deleting',
-      'deletingnode',
-      'scaling',
-      'updating',
-      'draining',
-    ].includes(normalized)
-  ) {
-    return 'warning';
-  }
-  if (['failed', 'error', 'unknown', 'degraded'].includes(normalized)) {
-    return 'error';
-  }
-  return '';
 }
 
 export interface MachineListRendererProps {
@@ -125,37 +104,39 @@ export function MachineListRenderer(props: MachineListRendererProps) {
           label: 'Phase',
           getValue: machine => machine.status?.phase ?? '-',
           render: machine => {
-            const phase = machine.status?.phase as string | undefined;
+            const phase = machine.status?.phase;
             if (!phase) return '-';
-            const status = getPhaseStatus(phase);
-            return <StatusLabel status={status}>{phase}</StatusLabel>;
+            return <StatusLabel status={getPhaseStatus(phase)}>{phase}</StatusLabel>;
           },
         },
         {
           id: 'ready',
           label: 'Ready',
-          getValue: machine => {
-            const ready = machine.status?.conditions?.find(
-              (c: { type?: string; status?: string }) => c.type === 'Ready'
-            );
-            const isReady = ready?.status === 'True';
-            return ready ? `${isReady ? 1 : 0}/1` : '-';
+          getValue: (m: Machine) => {
+            const cond = getCondition(m.conditions, 'Ready');
+            if (!cond) return '0/1';
+            return cond?.status;
           },
-          render: machine => {
-            const ready = machine.status?.conditions?.find(
-              (c: { type?: string; status?: string }) => c.type === 'Ready'
-            );
-            if (!ready) return '-';
-            const isReady = ready.status === 'True';
-            const text = `${isReady ? 1 : 0}/1`;
-            return <StatusLabel status={isReady ? 'success' : 'error'}>{text}</StatusLabel>;
-          },
+          render: (m: Machine) =>
+            renderConditionStatus(undefined, getCondition(m.conditions, 'Ready'), {
+              trueLabel: '1/1',
+              falseLabel: '0/1',
+              trueStatus: 'success',
+              falseStatus: 'error',
+              unknownLabel: '0/1',
+              unknownStatus: 'error',
+            }),
         },
         {
           id: 'owner',
           label: 'Owner',
           getValue: machine => machine.metadata?.ownerReferences?.[0]?.name ?? '-',
           render: machine => getOwnerLink(machine) ?? '-',
+        },
+        {
+          id: 'version',
+          label: 'Version',
+          getValue: machine => machine.spec?.version ?? '-',
         },
         'age',
       ]}
@@ -182,8 +163,11 @@ function MachinesListWithData({ MachineClass }: MachinesListWithDataProps) {
 
 export function MachinesList() {
   const version = useCapiApiVersion(Machine.crdName, 'v1beta1');
+  const VersionedMachine = useMemo(
+    () => (version ? Machine.withApiVersion(version) : Machine),
+    [version]
+  );
   if (!version) return <Loader title="Detecting Cluster API version" />;
 
-  const VersionedMachine = useMemo(() => Machine.withApiVersion(version), [version]);
   return <MachinesListWithData MachineClass={VersionedMachine} />;
 }
