@@ -30,7 +30,9 @@ import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeDomainMapping, KService } from '../../resources/knative';
+import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
+import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
 import { useKServiceActions } from './detail/hooks/useKServiceActions';
 
 type IngressClassWithCluster = {
@@ -57,12 +59,26 @@ function getVisibilityLabel(svc: KService): 'Internal' | 'External' {
     : 'External';
 }
 
-function getTags(svc: KService): string[] {
-  const tags = Array.from(
-    new Set((svc.spec?.traffic ?? []).map(t => t.tag).filter((v): v is string => Boolean(v)))
-  );
+function getTags(svc: KService): {
+  tags: string[];
+  tagMap: Map<string, string | undefined>;
+} {
+  const statusTraffic = svc.status?.traffic || [];
+  const specTraffic = svc.spec?.traffic || [];
+  const tagMap = new Map<string, string | undefined>();
+  statusTraffic.forEach(t => {
+    if (t.tag) {
+      tagMap.set(t.tag, t.url);
+    }
+  });
+  specTraffic.forEach(t => {
+    if (t.tag && !tagMap.has(t.tag)) {
+      tagMap.set(t.tag, undefined);
+    }
+  });
+  const tags = Array.from(tagMap.keys());
   tags.sort();
-  return tags;
+  return { tags, tagMap };
 }
 
 function getRevisionShort(svc: KService, revisionName: string | undefined): string {
@@ -78,7 +94,9 @@ function getRevisionShort(svc: KService, revisionName: string | undefined): stri
   return revisionName;
 }
 
-function getReadyCondition(svc: KService): { status: string; reason?: string } | null {
+function getReadyCondition(
+  svc: KService
+): { status: string; reason?: string; message?: string } | null {
   const conditions = svc.status?.conditions;
   if (!conditions) {
     return null;
@@ -92,6 +110,7 @@ function getReadyCondition(svc: KService): { status: string; reason?: string } |
   return {
     status: readyCondition.status || 'Unknown',
     reason: readyCondition.reason,
+    message: readyCondition.message,
   };
 }
 
@@ -422,16 +441,17 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
         },
         render: svc => {
           const readyCondition = getReadyCondition(svc);
-          const status = readyCondition?.status || 'Unknown';
+          let status: 'True' | 'False' | 'Unknown' = 'Unknown';
+          if (readyCondition?.status === 'True') status = 'True';
+          else if (readyCondition?.status === 'False') status = 'False';
 
-          let color: 'success' | 'warning' | 'error' | 'default' = 'default';
-          if (status === 'True') {
-            color = 'success';
-          } else if (status === 'False') {
-            color = 'error';
-          }
-
-          return <Chip label={status} color={color} size="small" variant="outlined" />;
+          return (
+            <ReadyStatusLabel
+              status={status}
+              reason={readyCondition?.reason}
+              message={readyCondition?.message}
+            />
+          );
         },
       },
       {
@@ -473,9 +493,9 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
         label: 'Tags',
         gridTemplate: 'min-content',
         filterVariant: 'multi-select',
-        getValue: svc => getTags(svc).join(',').toLowerCase(),
+        getValue: svc => getTags(svc).tags.join(',').toLowerCase(),
         render: svc => {
-          const tags = getTags(svc);
+          const { tags, tagMap } = getTags(svc);
 
           if (!tags.length) {
             return (
@@ -486,10 +506,25 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
           }
 
           return (
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-              {tags.map(tag => (
-                <Chip key={tag} label={tag} size="small" />
-              ))}
+            <Stack direction="column" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+              {tags.map(tag => {
+                const url = getSafeUrl(tagMap.get(tag));
+                return url ? (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    size="small"
+                    component="a"
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    clickable
+                    color="primary"
+                  />
+                ) : (
+                  <Chip key={tag} label={tag} size="small" />
+                );
+              })}
             </Stack>
           );
         },

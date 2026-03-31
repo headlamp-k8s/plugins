@@ -37,6 +37,52 @@ type AutoscalingDefaults = {
   activationScaleDefault: number;
 };
 
+/**
+ * Represents the fallback scale bound constraints utilized when explicit values are left blank by the user.
+ *
+ * @property {number} [minScale] - The default minimum replica count threshold.
+ * @property {number} [maxScale] - The default maximum replica count threshold.
+ * @property {number} [maxScaleLimit] - The absolute cluster-enforced ceiling for the maximum replica count.
+ * @property {number} [initialScale] - The default initial replica count provisioned upon creation.
+ * @property {boolean} [allowZeroInitialScale] - Indicates whether an initial scale of zero is permitted by the cluster.
+ * @property {string} [stableWindow] - The default duration over which metrics are averaged to make scaling decisions.
+ * @property {string} [scaleDownDelay] - The default duration a revision must wait at zero concurrency before scaling down.
+ * @property {number} [activationScaleDefault] - The default minimum replica count to scale up to from zero when a request arrives.
+ */
+export interface ScaleBoundsDefaultsData {
+  minScale?: number;
+  maxScale?: number;
+  maxScaleLimit?: number;
+  initialScale?: number;
+  allowZeroInitialScale?: boolean;
+  stableWindow?: string;
+  scaleDownDelay?: string;
+  activationScaleDefault?: number;
+}
+
+/**
+ * Defines the properties injected into the stateless presentation layer of the scaling boundaries interface.
+ *
+ * @property {string} minScale - The explicitly configured minimum replica count threshold.
+ * @property {string} maxScale - The explicitly configured maximum replica count threshold.
+ * @property {string} initialScale - The explicitly configured initial replica count provisioned upon creation.
+ * @property {string} activationScale - The explicitly configured minimum replica count to scale up to from zero.
+ * @property {string} stableWindow - The explicitly configured duration over which metrics are averaged.
+ * @property {string} scaleDownDelay - The explicitly configured duration a revision must wait at zero concurrency before scaling down.
+ * @property {boolean} isReadOnly - Disables interactive fields within the section when the environment forbids modifications.
+ * @property {ScaleBoundsDefaultsData | undefined} defaults - A collection of fallback constraints utilized when explicit values are left blank by the user.
+ */
+export interface PureScaleBoundsSectionProps {
+  minScale: string;
+  maxScale: string;
+  initialScale: string;
+  activationScale: string;
+  stableWindow: string;
+  scaleDownDelay: string;
+  isReadOnly: boolean;
+  defaults?: ScaleBoundsDefaultsData;
+}
+
 export default function ScaleBoundsSection({
   kservice,
   defaults,
