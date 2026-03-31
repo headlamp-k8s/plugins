@@ -22,7 +22,6 @@ function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWi
       columns={[
         'name',
         'namespace',
-
         {
           id: 'cluster',
           label: 'Cluster',
@@ -39,7 +38,6 @@ function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWi
             );
           },
         },
-
         {
           id: 'ready',
           label: 'Ready',
@@ -56,46 +54,32 @@ function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWi
               falseStatus: 'error',
             }),
         },
-
         {
           id: 'dataSecret',
           label: 'Data Secret',
           getValue: (kc: KubeadmConfig) => kc.status?.dataSecretName ?? '-',
+          render: (kc: KubeadmConfig) => {
+            const secretName = kc.status?.dataSecretName;
+            if (!secretName) return '-';
+            return (
+              <Link
+                routeName="secret"
+                params={{ name: secretName, namespace: kc.metadata?.namespace }}
+              >
+                {secretName}
+              </Link>
+            );
+          },
         },
-
         {
           id: 'format',
           label: 'Format',
           getValue: (kc: KubeadmConfig) => kc.spec?.format ?? '-',
-        },
-
-        {
-          id: 'ntp',
-          label: 'NTP',
-          getValue: (kc: KubeadmConfig) => (kc.spec?.ntp?.enabled ? 1 : 0),
           render: (kc: KubeadmConfig) => {
-            if (kc.spec?.ntp === undefined) return <>-</>;
-
-            const enabled = kc.spec.ntp.enabled;
-
-            return (
-              <StatusLabel status={enabled ? 'success' : 'warning'}>
-                {enabled ? 'Enabled' : 'Disabled'}
-              </StatusLabel>
-            );
+            const format = kc.spec?.format;
+            if (!format) return '-';
+            return <StatusLabel status="info">{format}</StatusLabel>;
           },
-        },
-
-        {
-          id: 'users',
-          label: 'Users',
-          getValue: (kc: KubeadmConfig) => kc.spec?.users?.length ?? 0,
-        },
-
-        {
-          id: 'files',
-          label: 'Files',
-          getValue: (kc: KubeadmConfig) => kc.spec?.files?.length ?? 0,
         },
         'age',
       ]}
