@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   Badge,
   Box,
@@ -25,12 +26,15 @@ import {
   Typography,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
 
 export function ComplianceBadge() {
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const history = useHistory();
+  const cluster = K8s.useCluster();
 
   const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -130,7 +134,16 @@ export function ComplianceBadge() {
           <Typography variant="body2">Skip: {counts.skip}</Typography>
         </Box>
         <Box sx={{ mt: 1.5 }}>
-          <Link href="#/kyverno/violations" underline="hover" variant="body2">
+          <Link
+            component="button"
+            onClick={() => {
+              handleClose();
+              const violationsPath = cluster ? `/c/${cluster}/kyverno/violations` : '/kyverno/violations';
+              history.push(violationsPath);
+            }}
+            underline="hover"
+            variant="body2"
+          >
             View all violations
           </Link>
         </Box>
