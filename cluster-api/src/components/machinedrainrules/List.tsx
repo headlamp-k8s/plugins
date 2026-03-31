@@ -7,7 +7,9 @@ interface MachineDrainRulesListWithDataProps {
   MachineDrainRuleClass: typeof MachineDrainRule;
 }
 
-function MachineDrainRulesListWithData({ MachineDrainRuleClass }: MachineDrainRulesListWithDataProps) {
+function MachineDrainRulesListWithData({
+  MachineDrainRuleClass,
+}: MachineDrainRulesListWithDataProps) {
   return (
     <ResourceListView
       title="Machine Drain Rules"
