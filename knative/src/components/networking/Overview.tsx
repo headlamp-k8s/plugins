@@ -21,7 +21,20 @@ import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 
-type GatewayConfig = {
+/**
+ * Comprehensive configuration details corresponding to a single ingress gateway component.
+ *
+ * @property {string} class - The exact controller-defined string associating this entity with an ingress controller instance.
+ * @property {Object} gateway - Identifies the specific cluster resource representing the runtime gateway mapping.
+ * @property {string} gateway.namespace - The namespace identifying the gateway mapping location.
+ * @property {string} gateway.name - The explicit resource name identifying the gateway mapping.
+ * @property {Object} [service] - The optional backing service representing the gateway data plane component resolving traffic flow.
+ * @property {string} service.namespace - The namespace identifying the backing data plane service.
+ * @property {string} service.name - The explicit resource name identifying the backing data plane service.
+ * @property {string[]} [supportedFeatures] - Assorted annotations detailing advanced routing mechanisms supported by this gateway configuration.
+ * @property {string} [controllerName] - Distinct controller deployment string detailing the specific software managing the gateway class implementation.
+ */
+export interface GatewayConfig {
   class: string;
   gateway: {
     namespace: string;
@@ -33,12 +46,40 @@ type GatewayConfig = {
   };
   supportedFeatures?: string[];
   controllerName?: string;
-};
+}
 
-type GatewayConfigResult = {
+/**
+ * Result bundle packaging both possible visibility domains for cluster-resolved gateways configurations.
+ *
+ * @property {GatewayConfig | null} external - The evaluated configuration routing edge-to-cluster or wide-area traffic.
+ * @property {GatewayConfig | null} local - The evaluated configuration mapping internal cluster-mesh service-to-service flows.
+ */
+export interface GatewayConfigResult {
   external: GatewayConfig | null;
   local: GatewayConfig | null;
-};
+}
+
+/**
+ * Defines the contract for providing cluster ingress presentation details.
+ *
+ * @property {string} cluster - The identifier of the compute environment where these network rules are applying.
+ * @property {string | null} ingressClass - The evaluated routing controller domain responsible for traffic ingress.
+ * @property {string | null} ingressClassRaw - The raw, unresolved annotation value representing the configured routing controller domain.
+ * @property {GatewayConfigResult | null} gatewayConfig - Discovered topologies for both local and edge gateway APIs found within the cluster configmaps.
+ * @example
+ * const props: PureClusterNetworkingCardProps = {
+ *   cluster: 'my-cluster',
+ *   ingressClass: 'istio.ingress.networking.knative.dev',
+ *   ingressClassRaw: 'istio.ingress.networking.knative.dev',
+ *   gatewayConfig: null
+ * };
+ */
+export interface PureClusterNetworkingCardProps {
+  cluster: string;
+  ingressClass: string | null;
+  ingressClassRaw: string | null;
+  gatewayConfig: GatewayConfigResult | null;
+}
 
 type IngressClassHookResult = {
   ingressClass: string | null;
