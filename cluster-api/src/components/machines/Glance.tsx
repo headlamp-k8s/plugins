@@ -11,8 +11,6 @@ export function MachineGlance({ node }: { node: { kubeObject?: Machine } }) {
 
   const status = getMachineStatus(kubeObject.jsonData);
   const conditions = getMachineConditions(kubeObject.jsonData);
-  console.log('status', status);
-  console.log('conditions', conditions);
   if (!status) {
     return null;
   }
