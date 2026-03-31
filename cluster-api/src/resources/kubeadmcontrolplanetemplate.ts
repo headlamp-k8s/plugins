@@ -2,14 +2,25 @@ import { KubeObject, KubeObjectInterface, Time } from '@kinvolk/headlamp-plugin/
 import { ObjectMeta } from './common';
 import { KubeadmConfigSpec } from './kubeadmconfig';
 
+const KCPT_API_GROUP = 'controlplane.cluster.x-k8s.io';
+const KCPT_CRD_NAME = 'kubeadmcontrolplanetemplates.controlplane.cluster.x-k8s.io';
+
 export class KubeadmControlPlaneTemplate extends KubeObject<ClusterApiKubeadmControlPlaneTemplate> {
   static readonly apiName = 'kubeadmcontrolplanetemplates';
-  static readonly apiVersion = 'controlplane.cluster.x-k8s.io/v1beta1';
+  static apiVersion = `${KCPT_API_GROUP}/v1beta1`;
+  static readonly crdName = KCPT_CRD_NAME;
   static readonly isNamespaced = true;
   static readonly kind = 'KubeadmControlPlaneTemplate';
 
   static get detailsRoute() {
     return '/cluster-api/kubeadmcontrolplanetemplates/:namespace/:name';
+  }
+
+  static withApiVersion(version: string): typeof KubeadmControlPlaneTemplate {
+    const versionedClass =
+      class extends KubeadmControlPlaneTemplate {} as typeof KubeadmControlPlaneTemplate;
+    versionedClass.apiVersion = `${KCPT_API_GROUP}/${version}`;
+    return versionedClass;
   }
 
   get spec() {
