@@ -20,19 +20,27 @@ import {
   Box,
   IconButton,
   Link,
-  Paper,
-  Popper,
+  Menu,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
 
 export function ComplianceBadge() {
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLButtonElement>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
 
   const counts = useMemo(() => {
     const result: Record<PolicyResultStatus, number> = {
@@ -74,8 +82,7 @@ export function ComplianceBadge() {
     <>
       <Tooltip title="Kyverno Compliance">
         <IconButton
-          ref={anchorRef}
-          onClick={() => setOpen(prev => !prev)}
+          onClick={handleOpen}
           size="small"
           sx={{ color: 'inherit' }}
         >
@@ -84,34 +91,50 @@ export function ComplianceBadge() {
           </Badge>
         </IconButton>
       </Tooltip>
-      <Popper open={open} anchorEl={anchorRef.current} placement="bottom-end" sx={{ zIndex: 1300 }}>
-        <Paper elevation={8} sx={{ p: 2, minWidth: 220 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Kyverno Compliance
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        PaperProps={{
+          sx: { p: 2, minWidth: 220, mt: 1 },
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
+          Kyverno Compliance
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography
+            variant="body2"
+            color={
+              compliancePct >= 90
+                ? 'success.main'
+                : compliancePct >= 70
+                ? 'warning.main'
+                : 'error.main'
+            }
+          >
+            {compliancePct}% compliant
           </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Typography variant="body2" color={compliancePct >= 90 ? 'success.main' : compliancePct >= 70 ? 'warning.main' : 'error.main'}>
-              {compliancePct}% compliant
-            </Typography>
-            <Typography variant="body2">Pass: {counts.pass}</Typography>
-            <Typography variant="body2" color={counts.fail > 0 ? 'error.main' : 'text.secondary'}>
-              Fail: {counts.fail}
-            </Typography>
-            <Typography variant="body2" color={counts.warn > 0 ? 'warning.main' : 'text.secondary'}>
-              Warn: {counts.warn}
-            </Typography>
-            <Typography variant="body2" color={counts.error > 0 ? 'error.main' : 'text.secondary'}>
-              Error: {counts.error}
-            </Typography>
-            <Typography variant="body2">Skip: {counts.skip}</Typography>
-          </Box>
-          <Box sx={{ mt: 1.5 }}>
-            <Link href="#/kyverno/violations" underline="hover" variant="body2">
-              View all violations
-            </Link>
-          </Box>
-        </Paper>
-      </Popper>
+          <Typography variant="body2">Pass: {counts.pass}</Typography>
+          <Typography variant="body2" color={counts.fail > 0 ? 'error.main' : 'text.secondary'}>
+            Fail: {counts.fail}
+          </Typography>
+          <Typography variant="body2" color={counts.warn > 0 ? 'warning.main' : 'text.secondary'}>
+            Warn: {counts.warn}
+          </Typography>
+          <Typography variant="body2" color={counts.error > 0 ? 'error.main' : 'text.secondary'}>
+            Error: {counts.error}
+          </Typography>
+          <Typography variant="body2">Skip: {counts.skip}</Typography>
+        </Box>
+        <Box sx={{ mt: 1.5 }}>
+          <Link href="#/kyverno/violations" underline="hover" variant="body2">
+            View all violations
+          </Link>
+        </Box>
+      </Menu>
     </>
   );
 }
