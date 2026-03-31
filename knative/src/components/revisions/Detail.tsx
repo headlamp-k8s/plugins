@@ -20,6 +20,7 @@ import { useParams } from 'react-router-dom';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KRevision, KService } from '../../resources/knative';
+import { getSafeUrl } from '../../utils/url';
 import {
   ActivitiesProvider,
   ActivitiesRenderer,
@@ -69,12 +70,27 @@ function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
       {traffic.map(t => {
         const isTagOnly = t.percent === 0 && t.tag;
         const latestSuffix = t.latestRevision ? ' (Latest)' : '';
-        let label: string;
         if (isTagOnly) {
-          label = `Tag: ${t.tag}`;
-        } else {
-          label = `${t.percent || 0}%${t.tag ? ` (Tag: ${t.tag})` : ''}${latestSuffix}`;
+          const url = getSafeUrl(t.url);
+          return url ? (
+            <Chip
+              key={t.tag}
+              label={t.tag}
+              size="small"
+              component="a"
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              clickable
+              color="primary"
+            />
+          ) : (
+            <Chip key={t.tag} label={`Tag: ${t.tag}`} size="small" variant="outlined" />
+          );
         }
+
+        const label = `${t.percent || 0}%${t.tag ? ` (Tag: ${t.tag})` : ''}${latestSuffix}`;
+
         const key = `${t.revisionName || revision.metadata.name}-${t.tag || 'untagged'}-${
           t.url || 'no-url'
         }-${t.percent ?? '0'}`;
