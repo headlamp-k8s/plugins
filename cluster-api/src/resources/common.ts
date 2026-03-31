@@ -2,10 +2,28 @@ import { Time } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 
 export type ConditionStatus = 'True' | 'False' | 'Unknown';
 
+export interface MetaV1Condition {
+  type: string;
+  status: ConditionStatus;
+  observedGeneration?: number;
+  lastTransitionTime: Time;
+  reason: string;
+  message: string;
+}
+
+export interface ClusterV1Condition {
+  type: string;
+  status: ConditionStatus;
+  severity?: string;
+  lastTransitionTime: Time;
+  reason?: string;
+  message?: string;
+}
+
 export interface Condition {
   type: string;
   status: ConditionStatus;
-  severity?: 'Error' | 'Warning' | 'Info' | ''; // only in clusterv1.Condition
+  severity?: string; // only in clusterv1.Condition
   observedGeneration?: number; // only in metav1.Condition
   lastTransitionTime?: Time;
   reason?: string;
@@ -58,4 +76,18 @@ export interface Taint {
   value?: string;
   effect: 'NoSchedule' | 'PreferNoSchedule' | 'NoExecute';
   timeAdded?: Time;
+}
+export interface KubeReference {
+  apiGroup?: string;
+  apiVersion?: string;
+  kind?: string;
+  name?: string;
+  namespace?: string;
+}
+
+export function getCondition(
+  conditions: Condition[] | undefined,
+  type: string
+): Condition | undefined {
+  return conditions?.find(c => c.type === type);
 }
