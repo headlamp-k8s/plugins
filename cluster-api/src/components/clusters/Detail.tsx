@@ -128,7 +128,7 @@ function ClusterDetailWithData({
 
         return [
           {
-            name: 'Defination',
+            name: 'Definition',
             value: (
               <Link routeName="crd" params={{ name: crdName }}>
                 {crdName}
