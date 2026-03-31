@@ -20,6 +20,7 @@ import {
   OwnedMachinesSection,
   renderReplicas,
   renderUpdateStrategy,
+  ScaleButton,
   showReplicas,
   showUpdateStrategy,
   TemplateSection,
@@ -191,6 +192,7 @@ function KubeadmControlPlaneDetailWithData({
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
+      actions={item => (item ? [<ScaleButton item={item} />] : [])}
       extraInfo={() => extraInfo}
       extraSections={kcp => [
         {

@@ -12,6 +12,7 @@ import {
   KubeadmControlPlane,
 } from '../../resources/kubeadmcontrolplane';
 import { useCapiApiVersion } from '../../utils/capiVersion';
+import { ScaleButton } from '../common/index';
 
 interface KubeadmControlPlanesListWithDataProps {
   KubeadmControlPlaneClass: typeof KubeadmControlPlane;
@@ -24,6 +25,7 @@ function KubeadmControlPlanesListWithData({
     <ResourceListView
       title="Kubeadm Control Planes"
       resourceClass={KubeadmControlPlaneClass}
+      actions={[{ id: 'scale', action: (item: any) => <ScaleButton item={item} /> }]}
       columns={[
         'name',
         'namespace',

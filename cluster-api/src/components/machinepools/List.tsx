@@ -1,11 +1,19 @@
-import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Loader, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useMemo } from 'react';
 import { MachinePool } from '../../resources/machinepool';
+import { useCapiApiVersion } from '../../utils/capiVersion';
+import { ScaleButton } from '../common/index';
 
-export function MachinePoolsList() {
+interface MachinePoolsListWithDataProps {
+  MachinePoolClass: typeof MachinePool;
+}
+
+function MachinePoolsListWithData({ MachinePoolClass }: MachinePoolsListWithDataProps) {
   return (
     <ResourceListView
       title="Machine Pools"
-      resourceClass={MachinePool}
+      resourceClass={MachinePoolClass}
+      actions={[{ id: 'scale', action: (item: any) => <ScaleButton item={item} /> }]}
       columns={[
         'name',
         'namespace',
@@ -30,12 +38,17 @@ export function MachinePoolsList() {
           getValue: mp => mp.status?.phase || 'Unknown',
         },
         'age',
-        // {
-        //   id: 'version',
-        //   label: 'Version',
-        //   getValue: mp => mp.spec?.template?.spec?.version || 'N/A',
-        // },
       ]}
     />
   );
+}
+
+export function MachinePoolsList() {
+  const version = useCapiApiVersion(MachinePool.crdName, 'v1beta1');
+  const VersionedMachinePool = useMemo(
+    () => (version ? MachinePool.withApiVersion(version) : MachinePool),
+    [version]
+  );
+  if (!version) return <Loader title="Detecting MachinePool version" />;
+  return <MachinePoolsListWithData MachinePoolClass={VersionedMachinePool} />;
 }

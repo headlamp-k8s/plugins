@@ -292,4 +292,8 @@ export class KubeadmControlPlane extends KubeObject<ClusterApiKubeadmControlPlan
   get deletionTimeouts() {
     return getKCPDeletionTimeouts(this.jsonData);
   }
+
+  static get isScalable() {
+    return true;
+  }
 }

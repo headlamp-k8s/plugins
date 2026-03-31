@@ -206,4 +206,8 @@ export class MachineDeployment extends KubeObject<ClusterApiMachineDeployment> {
   get upToDateReplicas(): number | undefined {
     return getMachineDeploymentUpToDateReplicas(this.jsonData);
   }
+
+  static get isScalable() {
+    return true;
+  }
 }

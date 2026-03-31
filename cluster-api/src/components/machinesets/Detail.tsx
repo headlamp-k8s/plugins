@@ -17,6 +17,7 @@ import { useCapiApiVersion } from '../../utils/capiVersion';
 import {
   OwnedMachinesSection,
   renderReplicas,
+  ScaleButton,
   showReplicas,
   TemplateSection,
 } from '../common/index';
@@ -146,6 +147,7 @@ function MachineSetDetailContentWithData({
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
+      actions={item => (item ? [<ScaleButton item={item} />] : [])}
       extraInfo={() => extraInfo}
       extraSections={() => [
         {

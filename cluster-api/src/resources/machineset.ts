@@ -31,6 +31,8 @@ export interface MachineSetSpec {
 
 export interface MachineSetStatusV1Beta2Nested {
   conditions?: MetaV1Condition[];
+  readyReplicas?: number;
+  upToDateReplicas?: number;
 }
 
 export interface MachineSetStatusDeprecatedV1Beta1 {
@@ -180,5 +182,9 @@ export class MachineSet extends KubeObject<ClusterApiMachineSet> {
   }
   get upToDateReplicas(): number | undefined {
     return getMachineSetUpToDateReplicas(this.jsonData);
+  }
+
+  static get isScalable() {
+    return true;
   }
 }
