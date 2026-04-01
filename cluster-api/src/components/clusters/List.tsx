@@ -45,6 +45,43 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
             );
           },
         },
+
+        {
+          id: 'cpreplicas',
+          label: 'CP Replicas',
+          getValue: cluster =>
+            `${cluster.controlPlaneStatus?.readyReplicas ?? 0}/${
+              cluster.controlPlaneStatus?.desiredReplicas ?? 0
+            }`,
+          render: cluster => {
+            const ready = cluster.controlPlaneStatus?.readyReplicas ?? 0;
+            const desired = cluster.controlPlaneStatus?.desiredReplicas ?? 0;
+            const isReady = ready === desired && desired > 0;
+            return (
+              <StatusLabel status={isReady ? 'success' : 'warning'}>
+                {ready}/{desired}
+              </StatusLabel>
+            );
+          },
+        },
+        {
+          id: 'wreplicas',
+          label: 'Workers Replicas',
+          getValue: cluster =>
+            `${cluster.workerStatus?.readyReplicas ?? 0}/${
+              cluster.workerStatus?.desiredReplicas ?? 0
+            }`,
+          render: cluster => {
+            const ready = cluster.workerStatus?.readyReplicas ?? 0;
+            const desired = cluster.workerStatus?.desiredReplicas ?? 0;
+            const isReady = ready === desired && desired > 0;
+            return (
+              <StatusLabel status={isReady ? 'success' : 'warning'}>
+                {ready}/{desired}
+              </StatusLabel>
+            );
+          },
+        },
         {
           id: 'phase',
           label: 'Phase',
