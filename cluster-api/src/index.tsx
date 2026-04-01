@@ -6,12 +6,15 @@ import {
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
+import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
+import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { useMemo } from 'react';
 import { ClusterClassDetail } from './components/clusterclasses/Detail';
 import { ClusterClassesList } from './components/clusterclasses/List';
 import { ClusterDetail } from './components/clusters/Detail';
 import { ClustersList } from './components/clusters/List';
+import Dashboard from './components/Dashboard';
 import { KubeadmConfigDetail } from './components/kubeadmconfigs/Detail';
 import { KubeadmConfigsList } from './components/kubeadmconfigs/List';
 import { KubeadmConfigTemplateDetail } from './components/kubeadmconfigtemplates/Detail';
@@ -54,6 +57,16 @@ interface ResourceRegistrationConfig {
   icon: string;
   hasNamespace?: boolean;
 }
+function CapiRouteWrapper({ children }: { children: React.ReactNode }) {
+  const [crd, error] = CustomResourceDefinition.useGet(Cluster.crdName);
+  if (error) {
+    return <Dashboard />;
+  }
+  if (!crd) {
+    return <Loader title="Detecting Cluster API status..." />;
+  }
+  return <>{children}</>;
+}
 
 function registerClusterApiResource(config: ResourceRegistrationConfig) {
   const { name, kind, path, DetailComponent, ListComponent, icon, hasNamespace = true } = config;
@@ -71,7 +84,11 @@ function registerClusterApiResource(config: ResourceRegistrationConfig) {
     path: `/cluster-api/${path}/${hasNamespace ? ':namespace/:name' : ':name'}`,
     sidebar: name,
     name: path === 'clusterclasses' ? 'clusterclass' : path.slice(0, -1), // Remove 's' from plural form
-    component: () => <DetailComponent />,
+    component: () => (
+      <CapiRouteWrapper>
+        <DetailComponent />
+      </CapiRouteWrapper>
+    ),
   });
 
   // Register list route
@@ -79,7 +96,11 @@ function registerClusterApiResource(config: ResourceRegistrationConfig) {
     path: `/cluster-api/${path}`,
     sidebar: name,
     name: path,
-    component: () => <ListComponent />,
+    component: () => (
+      <CapiRouteWrapper>
+        <ListComponent />
+      </CapiRouteWrapper>
+    ),
   });
 
   // Register icon for the resource kind
