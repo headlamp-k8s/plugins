@@ -17,6 +17,7 @@ import {
   getExtraColumnsFromCrd,
   getExtraInfoFromPrinterColumns,
 } from '../../utils/crdPrinterColumns';
+import { TemplateSection } from '../common';
 
 type MachineNode = {
   kubeObject: Machine;
@@ -113,6 +114,28 @@ function MachineDetailContentWithData({
       extraSections={machine => {
         const machineStatus = machine?.status;
         return [
+          {
+            id: 'cluster-api.machine-template',
+            section: (
+              <SectionBox title="Machine Template">
+                <TemplateSection item={machine} />
+              </SectionBox>
+            ),
+          },
+          {
+            id: 'cluster-api.machine-conditions',
+            section: (
+              <ConditionsSection
+                resource={{
+                  ...machine.jsonData,
+                  status: {
+                    ...machine.jsonData.status,
+                    conditions: machine.conditions,
+                  },
+                }}
+              />
+            ),
+          },
           ...(machineStatus?.addresses?.length
             ? [
                 {
@@ -193,21 +216,6 @@ function MachineDetailContentWithData({
                 },
               ]
             : []),
-
-          {
-            id: 'cluster-api.machine-conditions',
-            section: (
-              <ConditionsSection
-                resource={{
-                  ...machine.jsonData,
-                  status: {
-                    ...machine.jsonData.status,
-                    conditions: machine.conditions,
-                  },
-                }}
-              />
-            ),
-          },
         ];
       }}
     />
@@ -225,7 +233,6 @@ function MachineDetailContent(props: MachineDetailContentProps) {
   if (!apiVersion) {
     return <Loader title="Detecting Cluster API version" />;
   }
-
   return (
     <MachineDetailContentWithData
       {...props}
