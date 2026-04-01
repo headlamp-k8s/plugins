@@ -1,5 +1,5 @@
 import { KubeObject, KubeObjectInterface, Time } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
-import { ClusterV1Condition, MetaV1Condition } from './common';
+import { ClusterV1Condition, KubeReference, MetaV1Condition, ObjectMeta } from './common';
 import { KubeadmConfigSpec } from './kubeadmconfig';
 import { MachineTemplateSpec } from './machineset';
 
@@ -13,22 +13,27 @@ interface Strategy {
   };
 }
 
+export interface KCPMachineTemplateV1Beta1 {
+  metadata?: ObjectMeta;
+  infrastructureRef?: KubeReference;
+  nodeDrainTimeout?: string;
+  nodeVolumeDetachTimeout?: string;
+  nodeDeletionTimeout?: string;
+}
+export type KCPMachineTemplateV1Beta2 = MachineTemplateSpec;
 export interface KCPSpec {
   replicas?: number;
   version: string;
-
-  template: MachineTemplateSpec;
-
-  kubeadmConfigSpec?: KubeadmConfigSpec;
-
+  machineTemplate?: KCPMachineTemplateV1Beta1 | KCPMachineTemplateV1Beta2;
+  rolloutStrategy?: Strategy;
   rollout?: {
     before?: { certificateExpiryDays?: number };
     after?: Time;
     strategy?: Strategy;
   };
 
-  strategy?: Strategy;
-
+  strategy?: Strategy; // v1beta1 only
+  kubeadmConfigSpec?: KubeadmConfigSpec;
   remediationStrategy?: {
     maxRetry?: number;
     retryPeriod?: string | number;
@@ -214,13 +219,12 @@ export function getKCPLastRemediation(item: ClusterApiKubeadmControlPlane | null
 }
 
 export function getKCPDeletionTimeouts(item: ClusterApiKubeadmControlPlane | null | undefined) {
-  const mt =
-    item?.spec?.template ??
-    (item?.spec as { machineTemplate?: KCPSpec['template'] })?.machineTemplate;
+  const mt = item?.spec?.machineTemplate;
   if (!mt) return undefined;
 
-  if (mt.spec?.deletion) {
-    const d = mt.spec.deletion;
+  const mtV2 = mt as KCPMachineTemplateV1Beta2;
+  if (mtV2.spec?.deletion) {
+    const d = mtV2.spec.deletion;
     return {
       nodeDrain:
         d.nodeDrainTimeoutSeconds !== undefined ? `${d.nodeDrainTimeoutSeconds}s` : undefined,
@@ -232,12 +236,26 @@ export function getKCPDeletionTimeouts(item: ClusterApiKubeadmControlPlane | nul
         d.nodeDeletionTimeoutSeconds !== undefined ? `${d.nodeDeletionTimeoutSeconds}s` : undefined,
     };
   }
+  if (
+    mtV2.spec?.nodeDrainTimeout !== undefined ||
+    mtV2.spec?.nodeVolumeDetachTimeout !== undefined
+  ) {
+    return {
+      nodeDrain: mtV2.spec?.nodeDrainTimeout?.toString(),
+      nodeVolumeDetach: mtV2.spec?.nodeVolumeDetachTimeout?.toString(),
+      nodeDeletion: mtV2.spec?.nodeDeletionTimeout?.toString(),
+    };
+  }
 
-  return {
-    nodeDrain: mt.spec?.nodeDrainTimeout?.toString(),
-    nodeVolumeDetach: mt.spec?.nodeVolumeDetachTimeout?.toString(),
-    nodeDeletion: mt.spec?.nodeDeletionTimeout?.toString(),
-  };
+  const mtV1 = mt as KCPMachineTemplateV1Beta1;
+  if (mtV1.nodeDrainTimeout || mtV1.nodeVolumeDetachTimeout || mtV1.nodeDeletionTimeout) {
+    return {
+      nodeDrain: mtV1.nodeDrainTimeout,
+      nodeVolumeDetach: mtV1.nodeVolumeDetachTimeout,
+      nodeDeletion: mtV1.nodeDeletionTimeout,
+    };
+  }
+  return undefined;
 }
 
 export class KubeadmControlPlane extends KubeObject<ClusterApiKubeadmControlPlane> {

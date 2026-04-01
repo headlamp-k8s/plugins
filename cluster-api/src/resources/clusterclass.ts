@@ -1,6 +1,8 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import {
   ClusterV1Condition,
+  DeletionTimeoutsV1Beta1,
+  DeletionTimeoutsV1Beta2,
   KubeReference,
   MetaV1Condition,
   ObjectMeta,
@@ -61,11 +63,11 @@ export interface MachineHealthCheckClassV1Beta1 {
 }
 
 export interface HealthCheckClassV1Beta2 {
-  // v1beta2 only — replaces MachineHealthCheckClassV1Beta1 entirely
+  // v1beta2 only
   checks?: {
-    nodeStartupTimeoutSeconds?: number; // v1beta2 only — replaces nodeStartupTimeout (string)
+    nodeStartupTimeoutSeconds?: number; // v1beta2 only
     unhealthyNodeConditions?: UnhealthyConditionV1Beta2[];
-    unhealthyMachineConditions?: UnhealthyConditionV1Beta2[]; // v1beta2 only — new field
+    unhealthyMachineConditions?: UnhealthyConditionV1Beta2[]; // v1beta2 only
   };
   remediation?: {
     triggerIf?: {
@@ -75,46 +77,34 @@ export interface HealthCheckClassV1Beta2 {
   };
 }
 
-export interface DeletionTimeoutsV1Beta1 {
-  nodeDrainTimeout?: string; // v1beta1 only — duration string; renamed to nodeDrainTimeoutSeconds in v1beta2
-  nodeVolumeDetachTimeout?: string; // v1beta1 only — duration string; renamed in v1beta2
-  nodeDeletionTimeout?: string; // v1beta1 only — duration string; renamed in v1beta2
-}
-
-export interface DeletionTimeoutsV1Beta2 {
-  nodeDrainTimeoutSeconds?: number; // v1beta2 only — replaces nodeDrainTimeout (string)
-  nodeVolumeDetachTimeoutSeconds?: number; // v1beta2 only — replaces nodeVolumeDetachTimeout (string)
-  nodeDeletionTimeoutSeconds?: number; // v1beta2 only — replaces nodeDeletionTimeout (string)
-}
-
 // ─── Control plane class types ────────────────────────────────────────────────
 
 export interface ControlPlaneClassV1Beta1 extends DeletionTimeoutsV1Beta1 {
-  ref?: LocalObjectTemplate; // v1beta1 only — deprecated in favour of templateRef
-  templateRef?: LocalObjectTemplate; // v1beta1 only — inline ref (not wrapped)
+  ref?: LocalObjectTemplate; // v1beta1 only
+  templateRef?: LocalObjectTemplate; // v1beta1 only
   metadata?: ObjectMeta;
-  machineInfrastructure?: LocalObjectTemplate; // v1beta1 only — inline; wrapped in v1beta2
-  machineHealthCheck?: MachineHealthCheckClassV1Beta1; // v1beta1 only — replaced by healthCheck in v1beta2
+  machineInfrastructure?: LocalObjectTemplate; // v1beta1 only
+  machineHealthCheck?: MachineHealthCheckClassV1Beta1; // v1beta1 only
   namingStrategy?: { template?: string };
   readinessGates?: ReadinessGate[];
 }
 
 export interface ControlPlaneClassV1Beta2 extends DeletionTimeoutsV1Beta2 {
-  templateRef: LocalObjectTemplate; // v1beta2 only — required, replaces ref/templateRef
+  templateRef: LocalObjectTemplate; // v1beta2 only
   metadata?: ObjectMeta;
-  machineInfrastructure?: TemplateRefWrapper; // v1beta2 only — now wrapped in templateRef
-  healthCheck?: HealthCheckClassV1Beta2; // v1beta2 only — replaces machineHealthCheck
+  machineInfrastructure?: TemplateRefWrapper; // v1beta2 only
+  healthCheck?: HealthCheckClassV1Beta2; // v1beta2 only
   namingStrategy?: { template?: string };
   readinessGates?: ReadinessGate[];
 }
 
 export interface InfrastructureClassV1Beta1 {
-  ref?: LocalObjectTemplate; // v1beta1 only — deprecated; use templateRef
-  templateRef?: LocalObjectTemplate; // v1beta1 only — inline ref
+  ref?: LocalObjectTemplate; // v1beta1 only
+  templateRef?: LocalObjectTemplate; // v1beta1 only
 }
 
 export interface InfrastructureClassV1Beta2 {
-  templateRef: LocalObjectTemplate; // v1beta2 only — required, replaces ref
+  templateRef: LocalObjectTemplate; // v1beta2 only
 }
 
 export type InfrastructureClass = InfrastructureClassV1Beta1 | InfrastructureClassV1Beta2;
@@ -123,12 +113,12 @@ export type ControlPlaneClass = ControlPlaneClassV1Beta1 | ControlPlaneClassV1Be
 export interface MachineDeploymentClassV1Beta1 extends DeletionTimeoutsV1Beta1 {
   class: string;
   template: {
-    // v1beta1 only — bootstrap/infrastructure nested under template
+    // v1beta1 only
     metadata?: ObjectMeta;
     bootstrap?: TemplateOrReference;
     infrastructure?: TemplateOrReference;
   };
-  machineHealthCheck?: MachineHealthCheckClassV1Beta1; // v1beta1 — replaced by healthCheck in v1beta2
+  machineHealthCheck?: MachineHealthCheckClassV1Beta1; // v1beta1
   failureDomain?: string;
   namingStrategy?: { template?: string };
   minReadySeconds?: number;
@@ -137,10 +127,10 @@ export interface MachineDeploymentClassV1Beta1 extends DeletionTimeoutsV1Beta1 {
 
 export interface MachineDeploymentClassV1Beta2 extends DeletionTimeoutsV1Beta2 {
   class: string;
-  template?: { metadata?: ObjectMeta }; // v1beta2 only — metadata-only; bootstrap/infrastructure moved out
-  bootstrap?: TemplateRefWrapper; // v1beta2 only — lifted out of template, wrapped in templateRef
-  infrastructure?: TemplateRefWrapper; // v1beta2 only — lifted out of template, wrapped in templateRef
-  healthCheck?: HealthCheckClassV1Beta2; // v1beta2 only — replaces machineHealthCheck
+  template?: { metadata?: ObjectMeta }; // v1beta2 only
+  bootstrap?: TemplateRefWrapper; // v1beta2 only
+  infrastructure?: TemplateRefWrapper; // v1beta2 only
+  healthCheck?: HealthCheckClassV1Beta2; // v1beta2 only
   failureDomain?: string;
   namingStrategy?: { template?: string };
   minReadySeconds?: number;
@@ -155,7 +145,7 @@ export interface MachinePoolClassV1Beta1 extends DeletionTimeoutsV1Beta1 {
     bootstrap?: TemplateOrReference;
     infrastructure?: TemplateOrReference;
   };
-  machineHealthCheck?: MachineHealthCheckClassV1Beta1; // v1beta1 — same pattern as MachineDeployment
+  machineHealthCheck?: MachineHealthCheckClassV1Beta1; // v1beta1
   failureDomains?: string[];
   namingStrategy?: { template?: string };
   minReadySeconds?: number;

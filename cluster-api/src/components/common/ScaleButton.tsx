@@ -38,10 +38,6 @@ interface ScaleButtonProps {
 }
 
 export default function ScaleButton(props: ScaleButtonProps) {
-  console.log('[CAPI-PLUGIN] ScaleButton render -', {
-    item: props.item?.metadata?.name,
-    isScalable: props.item?.isScalable,
-  });
   const dispatch = useDispatch();
   const { item, buttonStyle } = props;
   const [openDialog, setOpenDialog] = React.useState(false);

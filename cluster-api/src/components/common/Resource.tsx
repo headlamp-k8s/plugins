@@ -11,11 +11,16 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { useMemo } from 'react';
-import { KubeReference } from '../../resources/common';
+import { formatDeletionTimeout, KubeReference, ObjectMeta } from '../../resources/common';
 import { KubeadmConfigSpec } from '../../resources/kubeadmconfig';
-import { KubeadmControlPlane } from '../../resources/kubeadmcontrolplane';
-import { Machine } from '../../resources/machine';
+import {
+  KCPMachineTemplateV1Beta1,
+  KCPMachineTemplateV1Beta2,
+  KubeadmControlPlane,
+} from '../../resources/kubeadmcontrolplane';
+import { Machine, MachineSpec } from '../../resources/machine';
 import { MachineDeployment } from '../../resources/machinedeployment';
+import { MachinePool } from '../../resources/machinepool';
 import { MachineSet } from '../../resources/machineset';
 import { useCapiApiVersion } from '../../utils/capiVersion';
 import { MachineListRenderer, MachineListRendererProps } from '../machines/List';
@@ -129,57 +134,108 @@ export function OwnedMachinesSection({
   );
 }
 
-type TemplateResource = MachineDeployment | MachineSet | KubeadmControlPlane;
+type TemplateSectionResource =
+  | MachineDeployment
+  | MachineSet
+  | KubeadmControlPlane
+  | MachinePool
+  | Machine;
 
-export function TemplateSection({ item }: { item: TemplateResource }) {
-  const spec = item.spec as Record<string, any> | undefined;
-  const template = spec?.template ?? spec?.machineTemplate;
-  const templateSpec = template?.spec ?? template;
-  const metadata = template?.metadata;
+interface ResolvedTemplate {
+  templateMetadata: ObjectMeta | undefined;
+  machineSpec: MachineSpec | undefined;
+  directInfraRef: KubeReference | undefined; // v1beta1 only
+}
 
-  const labels = metadata?.labels ?? {};
-  const annotations = metadata?.annotations ?? {};
+function resolveTemplateSpec(item: TemplateSectionResource): ResolvedTemplate {
+  if (item instanceof Machine) {
+    return { templateMetadata: undefined, machineSpec: item.spec, directInfraRef: undefined };
+  }
 
-  const bootstrap = templateSpec?.bootstrap?.configRef;
-  const infrastructure = templateSpec?.infrastructureRef;
+  if (item instanceof KubeadmControlPlane) {
+    const mt = item.spec?.machineTemplate;
+    if (!mt)
+      return { templateMetadata: undefined, machineSpec: undefined, directInfraRef: undefined };
 
-  const templateDeletion = templateSpec?.deletion;
-  const nodeDrainTimeout =
-    templateDeletion?.nodeDrainTimeoutSeconds !== undefined
-      ? `${templateDeletion.nodeDrainTimeoutSeconds}s`
-      : templateSpec?.nodeDrainTimeout !== undefined
-      ? String(templateSpec.nodeDrainTimeout)
-      : undefined;
-  const nodeVolumeDetachTimeout =
-    templateDeletion?.nodeVolumeDetachTimeoutSeconds !== undefined
-      ? `${templateDeletion.nodeVolumeDetachTimeoutSeconds}s`
-      : templateSpec?.nodeVolumeDetachTimeout !== undefined
-      ? String(templateSpec.nodeVolumeDetachTimeout)
-      : undefined;
-  const nodeDeletionTimeout =
-    templateDeletion?.nodeDeletionTimeoutSeconds !== undefined
-      ? `${templateDeletion.nodeDeletionTimeoutSeconds}s`
-      : templateSpec?.nodeDeletionTimeout !== undefined
-      ? String(templateSpec.nodeDeletionTimeout)
-      : undefined;
+    const mtV2 = mt as KCPMachineTemplateV1Beta2; // v1beta2 only
+    if (mtV2.spec) {
+      return { templateMetadata: mtV2.metadata, machineSpec: mtV2.spec, directInfraRef: undefined };
+    }
+
+    const mtV1 = mt as KCPMachineTemplateV1Beta1; // v1beta1 only
+    return {
+      templateMetadata: mtV1.metadata,
+      machineSpec: undefined,
+      directInfraRef: mtV1.infrastructureRef,
+    };
+  }
+
+  // MachineSet, MachineDeployment, MachinePool — spec.template: MachineTemplateSpec
+  const t = (item as MachineSet | MachineDeployment | MachinePool).spec?.template;
+  return { templateMetadata: t?.metadata, machineSpec: t?.spec, directInfraRef: undefined };
+}
+
+export function TemplateSection({ item }: { item: TemplateSectionResource }) {
+  const { templateMetadata, machineSpec, directInfraRef } = resolveTemplateSpec(item);
+
+  const labels = templateMetadata?.labels ?? {};
+  const annotations = templateMetadata?.annotations ?? {};
+
+  // KCP: version/rollout are at spec root, not inside machineTemplate
+  const kcpSpec = item instanceof KubeadmControlPlane ? item.spec : undefined;
+  const version = kcpSpec?.version ?? machineSpec?.version;
+
+  // v1beta1 uses rolloutStrategy, v1beta2 uses rollout.strategy, older v1beta1 uses strategy
+  const strategyObj = kcpSpec?.rolloutStrategy ?? kcpSpec?.rollout?.strategy ?? kcpSpec?.strategy;
+  const rolloutStrategy = strategyObj?.type;
+  const maxSurge = strategyObj?.rollingUpdate?.maxSurge;
+
+  const nodeDrainTimeout = formatDeletionTimeout(
+    machineSpec?.deletion?.nodeDrainTimeoutSeconds,
+    machineSpec?.nodeDrainTimeout
+  );
+  const nodeVolumeDetachTimeout = formatDeletionTimeout(
+    machineSpec?.deletion?.nodeVolumeDetachTimeoutSeconds,
+    machineSpec?.nodeVolumeDetachTimeout
+  );
+  const nodeDeletionTimeout = formatDeletionTimeout(
+    machineSpec?.deletion?.nodeDeletionTimeoutSeconds,
+    machineSpec?.nodeDeletionTimeout
+  );
+
+  const infraRef = directInfraRef ?? (machineSpec?.infrastructureRef as KubeReference | undefined);
+  const bootstrapRef = machineSpec?.bootstrap?.configRef as KubeReference | undefined;
 
   const rows: NameValueTableRow[] = [
     {
+      name: 'Cluster',
+      value: machineSpec?.clusterName ?? '-',
+      hide: !machineSpec?.clusterName,
+    },
+    {
       name: 'Version',
-      value: templateSpec?.version ?? '-',
-      hide: !templateSpec?.version,
+      value: version ?? '-',
+      hide: !version,
+    },
+    {
+      name: 'Rollout Strategy',
+      value: rolloutStrategy
+        ? maxSurge !== undefined
+          ? `${rolloutStrategy} (maxSurge: ${maxSurge})`
+          : rolloutStrategy
+        : '-',
+      hide: !rolloutStrategy,
     },
     {
       name: 'Provider ID',
-      value: templateSpec?.providerID ?? '-',
-      hide: !templateSpec?.providerID,
+      value: machineSpec?.providerID ?? '-',
+      hide: !machineSpec?.providerID,
     },
     {
       name: 'Failure Domain',
-      value: templateSpec?.failureDomain ?? '-',
-      hide: !templateSpec?.failureDomain,
+      value: machineSpec?.failureDomain ?? '-',
+      hide: !machineSpec?.failureDomain,
     },
-
     {
       name: 'Labels',
       value:
@@ -189,7 +245,6 @@ export function TemplateSection({ item }: { item: TemplateResource }) {
           '-'
         ),
     },
-
     {
       name: 'Annotations',
       value:
@@ -200,7 +255,6 @@ export function TemplateSection({ item }: { item: TemplateResource }) {
         ),
       hide: Object.keys(annotations).length === 0,
     },
-
     {
       name: 'Node Drain Timeout',
       value: nodeDrainTimeout ?? '-',
@@ -216,17 +270,15 @@ export function TemplateSection({ item }: { item: TemplateResource }) {
       value: nodeDeletionTimeout ?? '-',
       hide: !nodeDeletionTimeout,
     },
-
     {
       name: 'Bootstrap Ref',
-      value: renderReference(bootstrap as KubeReference),
-      hide: !bootstrap,
+      value: renderReference(bootstrapRef),
+      hide: !bootstrapRef,
     },
-
     {
       name: 'Infrastructure Ref',
-      value: renderReference(infrastructure as KubeReference),
-      hide: !infrastructure,
+      value: renderReference(infraRef),
+      hide: !infraRef,
     },
   ];
 

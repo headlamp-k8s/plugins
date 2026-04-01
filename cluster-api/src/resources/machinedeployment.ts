@@ -1,21 +1,9 @@
 import { KubeObject, KubeObjectInterface, Time } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
-import { ClusterV1Condition, LabelSelector, MetaV1Condition } from './common';
+import { ClusterV1Condition, LabelSelector, MachineDeploymentStrategy, MetaV1Condition } from './common';
 import { MachineTemplateSpec } from './machineset';
 
 const MACHINEDEPLOYMENT_API_GROUP = 'cluster.x-k8s.io';
 const MACHINEDEPLOYMENT_CRD_NAME = 'machinedeployments.cluster.x-k8s.io';
-
-export interface MachineDeploymentStrategy {
-  type: 'RollingUpdate' | 'OnDelete';
-  rollingUpdate?: {
-    maxUnavailable?: number | string;
-    maxSurge?: number | string;
-    deletePolicy?: 'Random' | 'Newest' | 'Oldest';
-  };
-  remediationStrategy?: {
-    maxInFlight?: number | string;
-  };
-}
 
 export interface MachineDeploymentRollout {
   strategy?: MachineDeploymentStrategy;
