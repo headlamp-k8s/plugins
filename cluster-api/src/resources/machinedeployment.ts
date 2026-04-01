@@ -1,5 +1,10 @@
 import { KubeObject, KubeObjectInterface, Time } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
-import { ClusterV1Condition, LabelSelector, MachineDeploymentStrategy, MetaV1Condition } from './common';
+import {
+  ClusterV1Condition,
+  LabelSelector,
+  MachineDeploymentStrategy,
+  MetaV1Condition,
+} from './common';
 import { MachineTemplateSpec } from './machineset';
 
 const MACHINEDEPLOYMENT_API_GROUP = 'cluster.x-k8s.io';

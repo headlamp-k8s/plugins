@@ -31,6 +31,28 @@ export interface OwnedMachinesSectionProps {
   hideColumns?: MachineListRendererProps['hideColumns'];
   showCreateButton?: boolean;
 }
+function getOwnedMachines(machines: InstanceType<typeof Machine>[], resource: KubeObject) {
+  const name = resource.metadata?.name;
+  if (!name) return [];
+  const labelKeys = {
+    Cluster: 'cluster.x-k8s.io/cluster-name',
+    MachineDeployment: 'cluster.x-k8s.io/deployment-name',
+    MachineSet: 'cluster.x-k8s.io/set-name',
+    MachinePool: 'cluster.x-k8s.io/pool-name',
+  };
+  const labelKey = labelKeys[resource.kind as keyof typeof labelKeys];
+  if (labelKey) {
+    return machines.filter(m => m.metadata?.labels?.[labelKey] === name);
+  }
+  if (resource.kind === 'Namespace') {
+    return machines;
+  }
+  return machines.filter(m =>
+    m.jsonData?.metadata?.ownerReferences?.some(
+      (ref: { kind: string; name: string }) => ref.kind === resource.kind && ref.name === name
+    )
+  );
+}
 
 function OwnedMachinesSectionWithData({
   resource,
@@ -38,64 +60,22 @@ function OwnedMachinesSectionWithData({
   showCreateButton,
   namespace,
   MachineClass,
-  MachineSetClass,
 }: OwnedMachinesSectionProps & {
   namespace: string | undefined;
   MachineClass: typeof Machine;
-  MachineSetClass: typeof MachineSet;
 }) {
-  const ownerKind = resource.kind;
-  const ownerName = resource.metadata?.name;
   const [machines, error] = MachineClass.useList(namespace ? { namespace } : undefined);
-  const [machineSets, setsError] = MachineSetClass.useList(namespace ? { namespace } : undefined);
 
   const ownedMachines = useMemo(() => {
     if (!machines) return null;
-
-    if (resource.kind === 'Cluster') {
-      const clusterName = resource.metadata?.name;
-      if (!clusterName) return [];
-      return machines.filter(
-        m => m.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] === clusterName
-      );
-    }
-
-    // Direct ownership: machines directly owned by this resource
-    const directlyOwned = machines.filter(m =>
-      m.jsonData?.metadata?.ownerReferences?.some(
-        (ref: { kind: string; name: string }) => ref.kind === ownerKind && ref.name === ownerName
-      )
-    );
-
-    // Indirect ownership through MachineSet (for MachineDeployment)
-    if (ownerKind === 'MachineDeployment' && machineSets) {
-      const ownedMachineSets = machineSets.filter(ms =>
-        ms.jsonData?.metadata?.ownerReferences?.some(
-          (ref: { kind: string; name: string }) => ref.kind === ownerKind && ref.name === ownerName
-        )
-      );
-
-      // Find machines owned by those MachineSets
-      const indirectlyOwned = machines.filter(m =>
-        ownedMachineSets.some(ms =>
-          m.jsonData?.metadata?.ownerReferences?.some(
-            (ref: { kind: string; name: string }) =>
-              ref.kind === 'MachineSet' && ref.name === ms.metadata?.name
-          )
-        )
-      );
-
-      return [...directlyOwned, ...indirectlyOwned];
-    }
-
-    return directlyOwned;
-  }, [machines, machineSets, ownerKind, ownerName]);
+    return getOwnedMachines(machines, resource);
+  }, [machines, resource]);
 
   return (
     <MachineListRenderer
       MachineClass={MachineClass}
       machines={ownedMachines}
-      errors={error || setsError ? [error, setsError].filter(Boolean) : null}
+      errors={error ? [error] : null}
       hideColumns={hideColumns}
       showCreateButton={showCreateButton}
     />
@@ -108,24 +88,22 @@ export function OwnedMachinesSection({
   showCreateButton = false,
 }: OwnedMachinesSectionProps) {
   const machineVersion = useCapiApiVersion(Machine.crdName, 'v1beta1');
-  const machineSetVersion = useCapiApiVersion(MachineSet.crdName, 'v1beta1');
+
   const namespace =
     resource.kind === 'Namespace' ? resource.metadata?.name : resource.metadata?.namespace;
+
   const VersionedMachine = useMemo(
     () => (machineVersion ? Machine.withApiVersion(machineVersion) : Machine),
     [machineVersion]
   );
-  const VersionedMachineSet = useMemo(
-    () => (machineSetVersion ? MachineSet.withApiVersion(machineSetVersion) : MachineSet),
-    [machineSetVersion]
-  );
-  if (!machineVersion || !machineSetVersion) {
+
+  if (!machineVersion) {
     return <Loader title="Detecting Cluster API version" />;
   }
+
   return (
     <OwnedMachinesSectionWithData
       MachineClass={VersionedMachine}
-      MachineSetClass={VersionedMachineSet}
       resource={resource}
       hideColumns={hideColumns}
       showCreateButton={showCreateButton}
