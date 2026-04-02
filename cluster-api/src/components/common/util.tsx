@@ -18,7 +18,7 @@ export function getPhaseStatus(phase: string | undefined): 'success' | 'warning'
   if (['failed', 'error', 'unknown', 'degraded'].includes(normalized)) {
     return 'error';
   }
-  return '';
+  return 'warning';
 }
 
 export type NameValueInput =
