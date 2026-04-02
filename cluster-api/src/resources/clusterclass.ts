@@ -211,16 +211,25 @@ export function getWorkerInfrastructure(row: WorkerClass): LocalObjectTemplate |
 
 export function getWorkerHealthChecks(row: WorkerClass) {
   return {
-    healthCheck: (row as MachineDeploymentClassV1Beta2).healthCheck,
-    machineHealthCheck: (row as MachineDeploymentClassV1Beta1).machineHealthCheck,
+    // v1beta2
+    healthCheck:
+      'healthCheck' in row ? (row as MachineDeploymentClassV1Beta2).healthCheck : undefined,
+    // v1beta1
+    machineHealthCheck:
+      'machineHealthCheck' in row
+        ? (row as MachineDeploymentClassV1Beta1).machineHealthCheck
+        : undefined,
   };
 }
 
 export function getControlPlaneHealthChecks(cp: ControlPlaneClass | null | undefined) {
   if (!cp) return { healthCheck: undefined, machineHealthCheck: undefined };
   return {
-    healthCheck: (cp as ControlPlaneClassV1Beta2).healthCheck,
-    machineHealthCheck: (cp as ControlPlaneClassV1Beta1).machineHealthCheck,
+    // v1beta2
+    healthCheck: 'healthCheck' in cp ? (cp as ControlPlaneClassV1Beta2).healthCheck : undefined,
+    // v1beta1
+    machineHealthCheck:
+      'machineHealthCheck' in cp ? (cp as ControlPlaneClassV1Beta1).machineHealthCheck : undefined,
   };
 }
 

@@ -8,8 +8,7 @@ import { useMemo } from 'react';
 import { MachineDeployment } from '../../resources/machinedeployment';
 import { useCapiApiVersion } from '../../utils/capiVersion';
 import { ScaleButton } from '../common/index';
-import { getPhaseStatus } from '../common/util';
-import { renderConditionStatus } from '../common/util';
+import { getPhaseStatus, renderConditionStatus } from '../common/util';
 
 interface MachineDeploymentsListWithDataProps {
   MachineDeploymentClass: typeof MachineDeployment;

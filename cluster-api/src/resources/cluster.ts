@@ -29,24 +29,28 @@ export class Cluster extends KubeObject<ClusterApiCluster> {
     return getClusterStatus(this.jsonData);
   }
 
+  private get _normalized() {
+    return normalizeClusterStatus(this.jsonData);
+  }
+
   get conditions() {
-    return getClusterConditions(this.jsonData);
+    return this._normalized.conditions;
   }
 
   get failure() {
-    return getClusterFailure(this.jsonData);
+    return this._normalized.failure;
   }
 
   get controlPlaneStatus() {
-    return getClusterControlPlaneStatus(this.jsonData);
+    return this._normalized.controlPlane;
   }
 
   get workerStatus() {
-    return getClusterWorkerStatus(this.jsonData);
+    return this._normalized.workers;
   }
 
   get initialization() {
-    return getClusterInitialization(this.jsonData);
+    return this._normalized.initialization;
   }
 }
 
@@ -149,7 +153,9 @@ interface NormalizedClusterStatus {
   initialization?: ClusterInitialization;
 }
 
-function isV1Beta2Status(status: any): status is ClusterStatusV1Beta2 {
+function isV1Beta2Status(
+  status: ClusterStatusV1Beta1 | ClusterStatusV1Beta2
+): status is ClusterStatusV1Beta2 {
   return !!status && ('controlPlane' in status || 'workers' in status || 'deprecated' in status);
 }
 

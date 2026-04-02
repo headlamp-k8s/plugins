@@ -124,8 +124,8 @@ interface NormalizedKCPStatus {
   lastRemediation?: { machine: string; time: Time; retryCount: number };
 }
 
-function isV1Beta2(status: any): status is KCPStatusV1Beta2 {
-  return status && ('deprecated' in status || 'initialization' in status);
+function isV1Beta2(status: KCPStatusV1Beta1 | KCPStatusV1Beta2): status is KCPStatusV1Beta2 {
+  return !!status && ('deprecated' in status || 'initialization' in status);
 }
 
 function normalizeKCPStatus(
@@ -283,28 +283,32 @@ export class KubeadmControlPlane extends KubeObject<ClusterApiKubeadmControlPlan
     return getKCPStatus(this.jsonData);
   }
 
+  private get _normalized() {
+    return normalizeKCPStatus(this.jsonData);
+  }
+
   get conditions() {
-    return getKCPConditions(this.jsonData);
+    return this._normalized.conditions;
   }
 
   get failure() {
-    return getKCPFailure(this.jsonData);
+    return this._normalized.failure;
   }
 
   get initialized() {
-    return getKCPInitialized(this.jsonData);
+    return this._normalized.initialized;
   }
 
   get upToDateReplicas() {
-    return getKCPUpToDateReplicas(this.jsonData);
+    return this._normalized.upToDateReplicas;
   }
 
   get availableReplicas() {
-    return getKCPAvailableReplicas(this.jsonData);
+    return this._normalized.availableReplicas;
   }
 
   get lastRemediation() {
-    return getKCPLastRemediation(this.jsonData);
+    return this._normalized.lastRemediation;
   }
 
   get deletionTimeouts() {

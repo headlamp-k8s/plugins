@@ -78,16 +78,16 @@ export interface ClusterApiMachineSetV1Beta2 extends KubeObjectInterface {
 
 export type ClusterApiMachineSet = ClusterApiMachineSetV1Beta1 | ClusterApiMachineSetV1Beta2;
 
-function isV1Beta1Status(
-  status: MachineSetStatusV1Beta1 | MachineSetStatusV1Beta2
-): status is MachineSetStatusV1Beta1 {
-  return !('deprecated' in status);
-}
-
 function isV1Beta2Status(
   status: MachineSetStatusV1Beta1 | MachineSetStatusV1Beta2
 ): status is MachineSetStatusV1Beta2 {
   return 'upToDateReplicas' in status || 'deprecated' in status;
+}
+
+function isV1Beta1Status(
+  status: MachineSetStatusV1Beta1 | MachineSetStatusV1Beta2
+): status is MachineSetStatusV1Beta1 {
+  return !isV1Beta2Status(status);
 }
 
 export function getMachineSetStatus(
