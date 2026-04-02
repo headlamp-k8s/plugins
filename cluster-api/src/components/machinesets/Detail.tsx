@@ -10,6 +10,7 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
+import { Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { MachineSet } from '../../resources/machineset';
@@ -135,7 +136,11 @@ function MachineSetDetailContentWithData({
       ? [
           {
             name: 'Failure Message',
-            value: <span style={{ color: 'var(--error-color)' }}>{failure.failureMessage}</span>,
+            value: (
+              <Typography component="span" sx={{ color: 'error.main' }}>
+                {failure.failureMessage}
+              </Typography>
+            ),
           },
         ]
       : []),

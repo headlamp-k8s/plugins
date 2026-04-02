@@ -10,6 +10,7 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
+import { Box, Typography } from '@mui/material';
 import React, { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { getCondition } from '../../resources/common';
@@ -172,7 +173,11 @@ function KubeadmConfigDetailContentWithData({
         ? [
             {
               name: 'Failure Message',
-              value: <span style={{ color: 'var(--error-color)' }}>{failure.failureMessage}</span>,
+              value: (
+                <Typography component="span" sx={{ color: 'error.main' }}>
+                  {failure.failureMessage}
+                </Typography>
+              ),
             },
           ]
         : []),
@@ -284,24 +289,41 @@ function KubeadmConfigDetailContentWithData({
                   id: 'cluster-api.kubeadm-config-commands',
                   section: (
                     <SectionBox title="Commands">
+                    <Box>
                       {spec?.bootCommands?.length ? (
-                        <>
-                          <strong>Boot Commands</strong>
-                          <pre style={codeStyle}>{spec.bootCommands.join('\n')}</pre>
-                        </>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>Boot Commands</Typography>
+                          <Typography
+                            component="pre"
+                            sx={{ ...codeStyle, m: 0 }}
+                          >
+                            {spec.bootCommands.join('\n')}
+                          </Typography>
+                        </Box>
                       ) : null}
                       {spec?.preKubeadmCommands?.length ? (
-                        <>
-                          <strong>Pre-Kubeadm Commands</strong>
-                          <pre style={codeStyle}>{spec.preKubeadmCommands.join('\n')}</pre>
-                        </>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>Pre-Kubeadm Commands</Typography>
+                          <Typography
+                            component="pre"
+                            sx={{ ...codeStyle, m: 0 }}
+                          >
+                            {spec.preKubeadmCommands.join('\n')}
+                          </Typography>
+                        </Box>
                       ) : null}
                       {spec?.postKubeadmCommands?.length ? (
-                        <>
-                          <strong>Post-Kubeadm Commands</strong>
-                          <pre style={codeStyle}>{spec.postKubeadmCommands.join('\n')}</pre>
-                        </>
+                        <Box>
+                          <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>Post-Kubeadm Commands</Typography>
+                          <Typography
+                            component="pre"
+                            sx={{ ...codeStyle, m: 0 }}
+                          >
+                            {spec.postKubeadmCommands.join('\n')}
+                          </Typography>
+                        </Box>
                       ) : null}
+                    </Box>
                     </SectionBox>
                   ),
                 },

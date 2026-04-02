@@ -7,6 +7,7 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
+import { Typography } from '@mui/material';
 import React, { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { getKCTFailure, KubeadmConfigTemplate } from '../../resources/kubeadmconfigtemplate';
@@ -114,11 +115,11 @@ function KubeadmConfigTemplateDetailWithData({
           {
             name: 'Template Labels',
             value: (
-              <span>
+              <Typography component="span">
                 {Object.entries(templateMeta.labels)
                   .map(([k, v]) => `${k}=${v}`)
                   .join(', ')}
-              </span>
+              </Typography>
             ),
           },
         ]
@@ -128,11 +129,11 @@ function KubeadmConfigTemplateDetailWithData({
           {
             name: 'Template Annotations',
             value: (
-              <span>
+              <Typography component="span">
                 {Object.entries(templateMeta.annotations)
                   .map(([k, v]) => `${k}=${v}`)
                   .join(', ')}
-              </span>
+              </Typography>
             ),
           },
         ]
@@ -169,7 +170,11 @@ function KubeadmConfigTemplateDetailWithData({
       ? [
           {
             name: 'Failure Message',
-            value: <span style={{ color: 'var(--error-color)' }}>{failure.failureMessage}</span>,
+            value: (
+              <Typography component="span" sx={{ color: 'error.main' }}>
+                {failure.failureMessage}
+              </Typography>
+            ),
           },
         ]
       : []),

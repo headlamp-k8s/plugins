@@ -10,6 +10,7 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
+import { Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { Cluster, type ReplicasStatus } from '../../resources/cluster';
@@ -336,7 +337,17 @@ function ClusterDetailWithData({
                         label: 'Value',
                         getter: (row: { value: unknown }) =>
                           typeof row.value === 'object' ? (
-                            <pre style={{ margin: 0 }}>{JSON.stringify(row.value, null, 2)}</pre>
+                            <Typography
+                              component="pre"
+                              sx={{
+                                margin: 0,
+                                fontFamily: 'monospace',
+                                fontSize: '0.85rem',
+                                whiteSpace: 'pre-wrap',
+                              }}
+                            >
+                              {JSON.stringify(row.value, null, 2)}
+                            </Typography>
                           ) : (
                             String(row.value ?? '')
                           ),

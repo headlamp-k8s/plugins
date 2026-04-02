@@ -11,6 +11,7 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
+import { Box, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { Cluster } from '../../resources/cluster';
@@ -35,8 +36,6 @@ import {
 } from '../../utils/crdPrinterColumns';
 import { getPhaseStatus, renderReference } from '../common/util';
 
-// ─── Styling ─────────────────────────────────────────────────────────────────
-
 const workerTypeBadgeStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -50,7 +49,8 @@ const workerTypeBadgeStyle: React.CSSProperties = {
 };
 
 const deploymentBadge = (
-  <span
+  <Typography
+    component="span"
     style={{
       ...workerTypeBadgeStyle,
       background: 'rgba(59,130,246,0.12)',
@@ -59,11 +59,12 @@ const deploymentBadge = (
     }}
   >
     MachineDeployment
-  </span>
+  </Typography>
 );
 
 const poolBadge = (
-  <span
+  <Typography
+    component="span"
     style={{
       ...workerTypeBadgeStyle,
       background: 'rgba(168,85,247,0.12)',
@@ -72,18 +73,14 @@ const poolBadge = (
     }}
   >
     MachinePool
-  </span>
+  </Typography>
 );
-
-// ─── Helper Functions ────────────────────────────────────────────────────────
 
 const templateRow = (name: string, ref?: LocalObjectTemplate): NameValueTableRow => ({
   name,
   value: renderReference(ref),
   hide: !ref,
 });
-
-// ─── Health Check Components ─────────────────────────────────────────────────
 
 interface HealthCheckDisplayProps {
   healthCheck?: HealthCheckClassV1Beta2;
@@ -130,7 +127,7 @@ function HealthCheckDisplay({ healthCheck, machineHealthCheck, compact }: Health
     }
 
     return (
-      <div style={containerStyle}>
+      <Box style={containerStyle}>
         {summaryRows.length > 0 && <NameValueTable rows={summaryRows} />}
         {[
           { label: 'Node Conditions', data: nodeConditions },
@@ -159,7 +156,7 @@ function HealthCheckDisplay({ healthCheck, machineHealthCheck, compact }: Health
               />
             )
         )}
-      </div>
+      </Box>
     );
   }
 
@@ -171,7 +168,7 @@ function HealthCheckDisplay({ healthCheck, machineHealthCheck, compact }: Health
   if (mhc.unhealthyRange) mhcRows.push({ name: 'Unhealthy Range', value: mhc.unhealthyRange });
 
   return (
-    <div style={containerStyle}>
+    <Box style={containerStyle}>
       {mhcRows.length > 0 && <NameValueTable rows={mhcRows} />}
       {(mhc.unhealthyConditions?.length ?? 0) > 0 && (
         <SimpleTable
@@ -183,14 +180,20 @@ function HealthCheckDisplay({ healthCheck, machineHealthCheck, compact }: Health
           data={mhc.unhealthyConditions!}
         />
       )}
-    </div>
+    </Box>
   );
 }
 
 function HealthCheckBadge({ present }: { present: boolean }) {
-  if (!present) return <span style={{ color: 'var(--text-secondary, #888)' }}>Not Configured</span>;
+  if (!present)
+    return (
+      <Typography component="span" sx={{ color: 'text.secondary' }}>
+        Not Configured
+      </Typography>
+    );
   return (
-    <span
+    <Typography
+      component="span"
       style={{
         ...workerTypeBadgeStyle,
         background: 'rgba(16,185,129,0.12)',
@@ -199,11 +202,9 @@ function HealthCheckBadge({ present }: { present: boolean }) {
       }}
     >
       Enabled
-    </span>
+    </Typography>
   );
 }
-
-// ─── Section Components ──────────────────────────────────────────────────────
 
 interface UsedClustersSectionProps {
   clusterClassName: string;
@@ -289,12 +290,17 @@ function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSecti
     ];
 
     return (
-      <div key={`${row.class}-${index}`}>
-        {index > 0 && <div style={dividerStyle} />}
-        <div style={classHeaderStyle}>
+      <Box key={`${row.class}-${index}`}>
+        {index > 0 && <Box style={dividerStyle} />}
+        <Box style={classHeaderStyle}>
           {badge}
-          <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>{row.class}</span>
-        </div>
+          <Typography
+            component="span"
+            style={{ fontFamily: 'monospace', fontSize: '13px' }}
+          >
+            {row.class}
+          </Typography>
+        </Box>
         <NameValueTable rows={infoRows} />
         {hasHealthCheck && (
           <HealthCheckDisplay
@@ -303,7 +309,7 @@ function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSecti
             compact
           />
         )}
-      </div>
+      </Box>
     );
   }
 
@@ -314,8 +320,6 @@ function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSecti
     </SectionBox>
   );
 }
-
-// ─── Main Component ──────────────────────────────────────────────────────────
 
 export function ClusterClassDetail({ node }: { node?: { kubeObject: ClusterClass } }) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{

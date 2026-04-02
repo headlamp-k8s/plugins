@@ -10,6 +10,7 @@ import {
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { formatDeletionTimeout, KubeReference, ObjectMeta } from '../../resources/common';
 import { KubeadmConfigSpec } from '../../resources/kubeadmconfig';
@@ -316,18 +317,20 @@ export function KubeadmConfigSection({
             label: 'Content',
             getter: (row: { path: string; content?: string }) =>
               row.content ? (
-                <pre
-                  style={{
+                <Typography
+                  component="pre"
+                  sx={{
                     margin: 0,
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
                     fontSize: '0.75rem',
                     maxHeight: '200px',
                     overflowY: 'auto',
+                    fontFamily: 'monospace',
                   }}
                 >
                   {row.content}
-                </pre>
+                </Typography>
               ) : (
                 '-'
               ),

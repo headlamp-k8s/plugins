@@ -11,6 +11,7 @@ import {
 import { SimpleTable } from '@kinvolk/headlamp-plugin/lib/components/common';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { localeDate } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { getKCPInitialized, KubeadmControlPlane } from '../../resources/kubeadmcontrolplane';
@@ -162,7 +163,11 @@ function KubeadmControlPlaneDetailWithData({
       ? [
           {
             name: 'Failure Message',
-            value: <span style={{ color: 'var(--error-color)' }}>{failure.failureMessage}</span>,
+            value: (
+              <Typography component="span" sx={{ color: 'error.main' }}>
+                {failure.failureMessage}
+              </Typography>
+            ),
           },
         ]
       : []),

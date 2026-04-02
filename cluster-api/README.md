@@ -13,7 +13,7 @@
 
 ## <!-- markdownlint-enable MD033 -->
 
-## 📖 Overview
+## Overview
 
 The **Cluster API Plugin** enriches Headlamp with a powerful, intuitive graphical interface for declarative cluster lifecycle management using Kubernetes Cluster API (CAPI).
 
@@ -21,7 +21,7 @@ By introducing a fully-featured **"Cluster API"** section into the Headlamp side
 
 ---
 
-## 🎯 Why this Plugin?
+##  Why this Plugin?
 
 Managing Cluster API resources via CLI can be complex and error-prone. This plugin provides:
 
@@ -32,21 +32,21 @@ Managing Cluster API resources via CLI can be complex and error-prone. This plug
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
-### 🖥️ Dashboard View
+### Dashboard View
 
 ![Main Plugin Dashboard](https://github.com/user-attachments/assets/3ab4b887-67de-4a9b-a29a-99e5446487e0)
 
-### 🗺️ Map View Visualization
+### Map View Visualization
 
 ![Map View](https://github.com/user-attachments/assets/f659e62e-c89c-4c6e-a1da-17bf352f437c)
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 🌟 Interactive Operations & Visualization
+### Interactive Operations & Visualization
 
 - **Map View Integration**: Visualize CAPI resources with clear ownership relationships
 - **Direct Resource Scaling**: Scale nodes via custom UI controls
@@ -55,7 +55,7 @@ Managing Cluster API resources via CLI can be complex and error-prone. This plug
 
 ---
 
-### 🔍 Comprehensive Resource Insights
+### Comprehensive Resource Insights
 
 - **Rich Status Monitoring**: Human-readable conditions (Ready, Paused, Error)
 - **Unified Template Rendering**: Clear visualization of ClusterClass configs
@@ -63,14 +63,14 @@ Managing Cluster API resources via CLI can be complex and error-prone. This plug
 
 ---
 
-### 🛡️ First-Class Compatibility
+### First-Class Compatibility
 
 - **API Agnostic**: Supports `v1beta1` and `v1beta2`
 - **Provider Agnostic**: Works with Docker, AWS, Azure, GCP, vSphere, etc.
 
 ---
 
-## 💡 Use Cases
+## Use Cases
 
 - Platform engineers managing multi-cluster environments
 - Developers testing Cluster API locally (CAPD, etc.)
@@ -79,31 +79,11 @@ Managing Cluster API resources via CLI can be complex and error-prone. This plug
 
 ---
 
-## 🏗️ Supported Resources
-
-| Resource                         | Description                           | v1beta1 | v1beta2 | Scalable |
-| -------------------------------- | ------------------------------------- | :-----: | :-----: | :------: |
-| **Clusters**                     | Core cluster lifecycle                |   ✅    |   ✅    |    ❌    |
-| **ClusterClasses**               | Reusable templates                    |   ✅    |   ✅    |    ❌    |
-| **KubeadmControlPlanes**         | Control plane lifecycle               |   ✅    |   ✅    |    ✅    |
-| **KubeadmControlPlaneTemplates** | Control plane templates               |   ✅    |   ✅    |    ❌    |
-| **MachineDeployments**           | Rolling updates and declarative nodes |   ✅    |   ✅    |    ✅    |
-| **MachinePools**                 | Dynamic machine pools                 |   ✅    |   ✅    |    ✅    |
-| **MachineSets**                  | Replica management                    |   ✅    |   ✅    |    ✅    |
-| **Machines**                     | Individual instances                  |   ✅    |   ✅    |    ❌    |
-| **KubeadmConfigs**               | Bootstrap configs                     |   ✅    |   ✅    |    ❌    |
-| **KubeadmConfigTemplates**       | Bootstrap templates                   |   ✅    |   ✅    |    ❌    |
-| **MachineHealthChecks**          | Auto remediation                      |   ✅    |   ✅    |    ❌    |
-| **MachineDrainRules**            | Drain & termination control           |   ✅    |   ✅    |    ❌    |
-
----
-
-## ⚡ Quick Start
+## Quick Start
 
 ### 1. Set Up Cluster API
 
-Follow the official guide:  
-👉 https://cluster-api.sigs.k8s.io/user/quick-start.html
+Follow the official guide:  [Cluster Api Quick Setup Guide ](https://cluster-api.sigs.k8s.io/user/quick-start.html)
 
 ---
 
@@ -127,7 +107,7 @@ npm install
 npm run start
 ```
 
-## 🛠️ Project Architecture
+## Project Architecture
 
 ```text
 cluster-api/
@@ -144,7 +124,7 @@ cluster-api/
 
 The project is built using React and TypeScript, ensuring a scalable, maintainable, and type-safe architecture aligned with the Headlamp plugin ecosystem.
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 | Issue                 | Solution                                                     |
 | --------------------- | ------------------------------------------------------------ |
@@ -155,7 +135,7 @@ The project is built using React and TypeScript, ensuring a scalable, maintainab
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions from the community!
 
@@ -169,7 +149,7 @@ Please ensure your code follows project standards and includes tests where appli
 
 ---
 
-## 📚 Resources
+## Resources
 
 - Headlamp Plugin Docs: https://headlamp.dev/docs/latest/tutorials/plugin-development/
 - Cluster API Docs: https://cluster-api.sigs.k8s.io/
