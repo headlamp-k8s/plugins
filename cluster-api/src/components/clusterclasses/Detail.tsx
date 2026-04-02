@@ -22,10 +22,8 @@ import {
   getWorkerBootstrap,
   getWorkerHealthChecks,
   getWorkerInfrastructure,
-  type HealthCheckClassV1Beta2,
   type LocalObjectTemplate,
   type MachineDeploymentClass,
-  type MachineHealthCheckClassV1Beta1,
   type MachinePoolClass,
   type WorkerClass,
 } from '../../resources/clusterclass';
@@ -34,6 +32,7 @@ import {
   getExtraColumnsFromCrd,
   getExtraInfoFromPrinterColumns,
 } from '../../utils/crdPrinterColumns';
+import { HealthCheckBadge,HealthCheckDisplay } from '../common';
 import { getPhaseStatus, renderReference } from '../common/util';
 
 const workerTypeBadgeStyle: React.CSSProperties = {
@@ -76,141 +75,44 @@ const poolBadge = (
   </Typography>
 );
 
+/**
+ * Helper to generate a row for a template reference in a NameValueTable.
+ *
+ * @param name - The label for the row.
+ * @param ref - The template reference object.
+ * @returns A NameValueTableRow object.
+ */
 const templateRow = (name: string, ref?: LocalObjectTemplate): NameValueTableRow => ({
   name,
   value: renderReference(ref),
   hide: !ref,
 });
 
-interface HealthCheckDisplayProps {
-  healthCheck?: HealthCheckClassV1Beta2;
-  machineHealthCheck?: MachineHealthCheckClassV1Beta1;
-  compact?: boolean;
-}
-
-function HealthCheckDisplay({ healthCheck, machineHealthCheck, compact }: HealthCheckDisplayProps) {
-  if (!healthCheck && !machineHealthCheck) return null;
-
-  const containerStyle: React.CSSProperties = compact
-    ? {
-        marginTop: '8px',
-        padding: '10px 12px',
-        background: 'rgba(16,185,129,0.06)',
-        border: '1px solid rgba(16,185,129,0.18)',
-        borderRadius: '6px',
-      }
-    : {};
-
-  if (healthCheck) {
-    const checks = healthCheck.checks;
-    const trigger = healthCheck.remediation?.triggerIf;
-    const nodeConditions = checks?.unhealthyNodeConditions ?? [];
-    const machineConditions = checks?.unhealthyMachineConditions ?? [];
-
-    const summaryRows: NameValueTableRow[] = [];
-    if (checks?.nodeStartupTimeoutSeconds !== undefined) {
-      summaryRows.push({
-        name: 'Node Startup Timeout',
-        value: `${checks.nodeStartupTimeoutSeconds}s`,
-      });
-    }
-    if (trigger?.unhealthyLessThanOrEqualTo) {
-      summaryRows.push({
-        name: 'Remediation Trigger',
-        value: `≤ ${trigger.unhealthyLessThanOrEqualTo} unhealthy`,
-      });
-    } else if (trigger?.unhealthyInRange) {
-      summaryRows.push({
-        name: 'Remediation Trigger',
-        value: `range ${trigger.unhealthyInRange}`,
-      });
-    }
-
-    return (
-      <Box style={containerStyle}>
-        {summaryRows.length > 0 && <NameValueTable rows={summaryRows} />}
-        {[
-          { label: 'Node Conditions', data: nodeConditions },
-          { label: 'Machine Conditions', data: machineConditions },
-        ].map(
-          section =>
-            section.data.length > 0 && (
-              <SimpleTable
-                key={section.label}
-                columns={[
-                  {
-                    label: section.label,
-                    getter: (row: { type: string }) => row.type,
-                  },
-                  {
-                    label: 'Status',
-                    getter: (row: { status: string }) => row.status,
-                  },
-                  {
-                    label: 'Timeout',
-                    getter: (row: { timeoutSeconds?: number }) =>
-                      row.timeoutSeconds !== undefined ? `${row.timeoutSeconds}s` : '—',
-                  },
-                ]}
-                data={section.data}
-              />
-            )
-        )}
-      </Box>
-    );
-  }
-
-  const mhc = machineHealthCheck!;
-  const mhcRows: NameValueTableRow[] = [];
-  if (mhc.nodeStartupTimeout)
-    mhcRows.push({ name: 'Node Startup Timeout', value: mhc.nodeStartupTimeout });
-  if (mhc.maxUnhealthy) mhcRows.push({ name: 'Max Unhealthy', value: mhc.maxUnhealthy });
-  if (mhc.unhealthyRange) mhcRows.push({ name: 'Unhealthy Range', value: mhc.unhealthyRange });
-
-  return (
-    <Box style={containerStyle}>
-      {mhcRows.length > 0 && <NameValueTable rows={mhcRows} />}
-      {(mhc.unhealthyConditions?.length ?? 0) > 0 && (
-        <SimpleTable
-          columns={[
-            { label: 'Condition', getter: (row: { type: string }) => row.type },
-            { label: 'Status', getter: (row: { status: string }) => row.status },
-            { label: 'Timeout', getter: (row: { timeout?: string }) => row.timeout ?? '—' },
-          ]}
-          data={mhc.unhealthyConditions!}
-        />
-      )}
-    </Box>
-  );
-}
-
-function HealthCheckBadge({ present }: { present: boolean }) {
-  if (!present)
-    return (
-      <Typography component="span" sx={{ color: 'text.secondary' }}>
-        Not Configured
-      </Typography>
-    );
-  return (
-    <Typography
-      component="span"
-      style={{
-        ...workerTypeBadgeStyle,
-        background: 'rgba(16,185,129,0.12)',
-        color: '#10b981',
-        border: '1px solid rgba(16,185,129,0.25)',
-      }}
-    >
-      Enabled
-    </Typography>
-  );
-}
-
+/**
+ * Props for the UsedClustersSection component.
+ */
+/**
+ * Props for the UsedClustersSection component.
+ * @property clusterClassName The name of the ClusterClass being used
+ * @property namespace The namespace where the ClusterClass is defined
+ */
 interface UsedClustersSectionProps {
   clusterClassName: string;
   namespace?: string;
 }
 
+/**
+ * Renders a section listing clusters that use this ClusterClass.
+ *
+ * @param props - Component properties.
+ * @param props.clusterClassName - The name of the ClusterClass.
+ * @param props.namespace - The namespace.
+ */
+/**
+ * Renders a section listing clusters that use this ClusterClass.
+ * @param props UsedClustersSectionProps
+ * @returns SectionBox with clusters using the ClusterClass
+ */
 function UsedClustersSection({ clusterClassName, namespace }: UsedClustersSectionProps) {
   const [clusters, error] = Cluster.useList({ namespace });
 
@@ -254,11 +156,31 @@ function UsedClustersSection({ clusterClassName, namespace }: UsedClustersSectio
   );
 }
 
+/**
+ * Props for the WorkerTopologySection component.
+ */
+/**
+ * Props for the WorkerTopologySection component.
+ * @property machineDeployments List of MachineDeployment classes defined in the ClusterClass
+ * @property machinePools List of MachinePool classes defined in the ClusterClass
+ */
 interface WorkerSectionProps {
   machineDeployments: MachineDeploymentClass[];
   machinePools: MachinePoolClass[];
 }
 
+/**
+ * Renders the worker topology section, including MachineDeployments and MachinePools.
+ *
+ * @param props - Component properties.
+ * @param props.machineDeployments - List of machine deployment classes.
+ * @param props.machinePools - List of machine pool classes.
+ */
+/**
+ * Renders the worker topology section, including MachineDeployments and MachinePools.
+ * @param props WorkerSectionProps
+ * @returns SectionBox with worker topology
+ */
 function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSectionProps) {
   if (machineDeployments.length === 0 && machinePools.length === 0) return null;
 
@@ -276,6 +198,13 @@ function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSecti
     fontSize: '13px',
   };
 
+  /**
+   * Renders a single worker class entry.
+   *
+   * @param row - The worker class definition.
+   * @param badge - The decorative badge for the worker type.
+   * @param index - The index for React key stability.
+   */
   function renderWorker(row: WorkerClass, badge: React.ReactNode, index: number) {
     const bootstrap = getWorkerBootstrap(row);
     const infrastructure = getWorkerInfrastructure(row);
@@ -294,10 +223,7 @@ function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSecti
         {index > 0 && <Box style={dividerStyle} />}
         <Box style={classHeaderStyle}>
           {badge}
-          <Typography
-            component="span"
-            style={{ fontFamily: 'monospace', fontSize: '13px' }}
-          >
+          <Typography component="span" style={{ fontFamily: 'monospace', fontSize: '13px' }}>
             {row.class}
           </Typography>
         </Box>
@@ -321,7 +247,24 @@ function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSecti
   );
 }
 
-export function ClusterClassDetail({ node }: { node?: { kubeObject: ClusterClass } }) {
+/**
+ * Node type for ClusterClass detail view.
+ * @property kubeObject The ClusterClass resource object
+ */
+type ClusterClassNode = {
+  kubeObject: ClusterClass;
+};
+/**
+ * Main detail view component for the ClusterClass resource.
+ * Handles API version detection and data fetching wrappers.
+ */
+/**
+ * Main detail view component for the ClusterClass resource.
+ * Handles API version detection and data fetching wrappers.
+ * @param node ClusterClassNode (optional)
+ * @returns ClusterClassDetailContent or error/empty state
+ */
+export function ClusterClassDetail({ node }: { node?: ClusterClassNode }) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -341,18 +284,46 @@ export function ClusterClassDetail({ node }: { node?: { kubeObject: ClusterClass
   );
 }
 
+/**
+ * Props for the ClusterClassDetailContent wrapper.
+ */
+/**
+ * Props for the ClusterClassDetailContent wrapper.
+ * @property crName The resource name from the URL params
+ * @property namespace The namespace from the URL params
+ * @property crdName The fully qualified CRD name
+ */
 interface ClusterClassDetailContentProps {
   crName: string;
   namespace?: string;
   crdName: string;
 }
 
+/**
+ * Props for the versioned ClusterClass detail view.
+ */
+/**
+ * Props for the versioned ClusterClass detail view.
+ * @property VersionedClusterClass The resource class bound to the detected API version
+ * @property apiVersion The detected CAPI API version (e.g., v1beta1, v1beta2)
+ */
 interface ClusterClassDetailContentWithVersionProps extends ClusterClassDetailContentProps {
   VersionedClusterClass: typeof ClusterClass;
   apiVersion: string;
 }
 
-function ClusterClassDetailContent({ crName, namespace, crdName }: ClusterClassDetailContentProps) {
+/**
+ * Data-fetching wrapper that detects the correct CAPI API version.
+ *
+ * @param props - Component properties (resource identification).
+ */
+/**
+ * Data-fetching wrapper that detects the correct CAPI API version.
+ * @param props ClusterClassDetailContentProps
+ * @returns ClusterClassDetailWithData or Loader
+ */
+function ClusterClassDetailContent(props: ClusterClassDetailContentProps) {
+  const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedClusterClass = useMemo(
     () => (apiVersion ? ClusterClass.withApiVersion(apiVersion) : ClusterClass),
@@ -363,15 +334,23 @@ function ClusterClassDetailContent({ crName, namespace, crdName }: ClusterClassD
 
   return (
     <ClusterClassDetailWithData
-      crName={crName}
-      namespace={namespace}
+      {...props}
       VersionedClusterClass={VersionedClusterClass}
       apiVersion={apiVersion}
-      crdName={crdName}
     />
   );
 }
 
+/**
+ * Renders the final detail view with all fetched data.
+ *
+ * @param props - Component properties including the versioned class and detected version.
+ */
+/**
+ * Renders the final detail view with all fetched data.
+ * @param props ClusterClassDetailContentWithVersionProps
+ * @returns DetailsGrid with all ClusterClass details
+ */
 function ClusterClassDetailWithData({
   crName,
   namespace,
@@ -408,6 +387,11 @@ function ClusterClassDetailWithData({
     getControlPlaneHealthChecks(controlPlane);
   const hasControlPlaneHealthCheck = !!(cpHealthCheck || cpMachineHealthCheck);
 
+  /**
+   * Generates additional resource information for the DetailsGrid header.
+   *
+   * @returns List of name-value rows.
+   */
   const extraInfo = () => {
     const info: NameValueTableRow[] = [
       {
