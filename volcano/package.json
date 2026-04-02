@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/volcano",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha",
   "description": "A Headlamp plugin for viewing and managing Volcano batch scheduling resources",
   "scripts": {
     "start": "headlamp-plugin start",
