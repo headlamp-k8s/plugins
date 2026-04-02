@@ -1,11 +1,14 @@
 version: 0.1.1
 name: headlamp_radius
 displayName: "@headlamp-k8s/radius"
-createdAt: "2026-03-17T14:51:45.289Z"
+createdAt: "2026-03-17T14:51:13Z"
 description: >-
   Provides a way to visualize and manage Radius applications. It builds upon the
   work of [Radius](https://radapp.io/).
 logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/refs/heads/main/radius/logo.svg"
+changes:
+  - kind: changed
+    description: "The Radius plugin provides a way to visualize and manage Radius applications. It builds upon the work of [Radius](https://radapp.io/) ."
 annotations:
   headlamp/plugin/archive-url: >-
     https://github.com/headlamp-k8s/plugins/releases/download/radius-0.1.1/headlamp-k8s-radius-0.1.1.tar.gz

@@ -1,0 +1,40 @@
+version: 0.1.1-beta
+name: headlamp_kompose
+displayName: Kompose
+createdAt: "2025-06-25T19:28:29Z"
+logoURL: "https://github.com/kubernetes/kompose/raw/main/docs/assets/images/logo.png"
+description: Allows to convert docker-compose to Kubernetes using a dedicated UI in Headlamp.
+changes:
+  - kind: added
+    description: "Add missing package-lock.json"
+  - kind: changed
+    description: "Bump version to 0.1.1-beta"
+  - kind: added
+    description: "Add package script"
+  - kind: changed
+    description: "Replace regex with simple parsing"
+  - kind: changed
+    description: "Bump pbkdf2 to 3.1.3"
+  - kind: changed
+    description: "Update headlamp-plugin to 0.12.0"
+  - kind: changed
+    description: "Bump vite to 6.3.5"
+  - kind: changed
+    description: "Upgrade to headlamp-plugin 0.11.0-alpha.3"
+  - kind: fixed
+    description: "Fix type error in Job constructor"
+  - kind: fixed
+    description: "Fix and update imports"
+  - kind: changed
+    description: "Update headlamp-plugin version"
+  - kind: changed
+    description: "d9fd26a opencost,kompose: Bump ArtifactHub build version"
+  - kind: changed
+    description: "Update display name and description"
+  - kind: added
+    description: "Add ArtifactHub package file"
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/kompose-0.1.1-beta/headlamp-k8s-kompose-0.1.1-beta.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:7dc4b24f94a787ecb044dcb95a07af69facc1d4b6ddd90c534fedfe5939b5920"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"

@@ -1,9 +1,24 @@
 version: 0.5.0
 name: headlamp_flux
 displayName: Flux
-createdAt: "2024-11-07T15:34:00Z"
+createdAt: "2025-10-27T12:28:30Z"
 logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/flux/logo.png"
 description: A UI for viewing and managing Flux for Git Ops.
+changes:
+  - kind: fixed
+    description: "This release brings some updates for Flux 2.7 where some CRDs became stable and out of beta. There were also a number of small code quality and modernisation fixes including dependency updates."
+  - kind: changed
+    description: "The [Flux Headlamp plugin](https://github.com/headlamp-k8s/plugins/tree/main/flux) works again on recent Headlamp and Flux releases."
+  - kind: changed
+    description: "Image automation controller crd updates.  https://github.com/headlamp-k8s/plugins/pull/407 thanks @viceice"
+  - kind: added
+    description: "Flux v2.7 added new ArtifactGenerator which is now supported.  https://github.com/headlamp-k8s/plugins/pull/406 thanks @viceice"
+  - kind: fixed
+    description: "Modernise use of Headlamp APIs and fix some hangs in development https://github.com/headlamp-k8s/plugins/pull/400"
+  - kind: fixed
+    description: "Navigation to Flux alert fix https://github.com/headlamp-k8s/plugins/pull/344 thanks @sdib"
+  - kind: fixed
+    description: "Update dependencies and fix a number of small issues found by new type checker config https://github.com/headlamp-k8s/plugins/pull/428"
 annotations:
   headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/flux-0.5.0/headlamp-k8s-flux-0.5.0.tar.gz"
   headlamp/plugin/archive-checksum: "SHA256:54b7589deb3ab4ad57ddbe0b3af3fb22f42ae9f811ab0a13efd458043d440dbd"

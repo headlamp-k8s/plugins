@@ -1,0 +1,24 @@
+version: 0.3.0
+name: headlamp_flux
+displayName: Flux
+createdAt: "2025-06-27T14:42:33Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/flux/logo.png"
+description: A UI for viewing and managing Flux.
+changes:
+  - kind: changed
+    description: "Sanitize domain URL for validation"
+  - kind: changed
+    description: "Show resources deployed by Helm chart"
+  - kind: fixed
+    description: "Fix OCI repo status in overview page"
+  - kind: changed
+    description: "Show objects without status as ready"
+  - kind: fixed
+    description: "Fix overview page fetching resource classes"
+  - kind: changed
+    description: "Update dependencies"
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/flux-0.3.0/headlamp-k8s-flux-0.3.0.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:b9e6227411361a7a02b0aab408791ea1668a5fcdc5f773b3f5a9ca6bd28695bd"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

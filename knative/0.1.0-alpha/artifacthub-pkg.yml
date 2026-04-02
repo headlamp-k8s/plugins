@@ -1,7 +1,7 @@
 version: 0.1.0-alpha
 name: "headlamp_knative"
 displayName: Knative
-createdAt: "2025-11-22T04:25:45Z"
+createdAt: "2026-01-16T18:38:03Z"
 logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/knative/logo.png"
 description: A UI for viewing and managing Knative.
 annotations:
