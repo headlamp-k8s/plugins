@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { ActionButton, AuthVisible } from '@kinvolk/headlamp-plugin/lib/components/common';
+import type { ButtonStyle } from '@kinvolk/headlamp-plugin/lib/components/common/ActionButton/ActionButton';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { clusterAction } from '@kinvolk/headlamp-plugin/lib/redux/clusterActionSlice';
 import {
@@ -21,20 +22,15 @@ import React from 'react';
 import { useDispatch } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 
-// Note: LightTooltip might not be directly exported under that name in all versions,
-// let's check common/Tooltip index.
-// Actually, I'll just use Tooltip if LightTooltip is missing.
-
 interface ScaleResource extends KubeObject {
   spec?: {
     replicas?: number;
-    [key: string]: any;
   };
 }
 
 interface ScaleButtonProps {
   item: ScaleResource;
-  buttonStyle?: any;
+  buttonStyle?: ButtonStyle;
 }
 
 export default function ScaleButton(props: ScaleButtonProps) {
@@ -43,11 +39,7 @@ export default function ScaleButton(props: ScaleButtonProps) {
   const [openDialog, setOpenDialog] = React.useState(false);
   const location = useLocation();
 
-  async function updateFunc(numReplicas: number) {
-    await item.scale(numReplicas);
-  }
-
-  const applyFunc = React.useCallback(updateFunc, [item]);
+  const applyFunc = React.useCallback((numReplicas: number) => item.scale(numReplicas), [item]);
 
   function handleSave(numReplicas: number) {
     const cancelUrl = location.pathname;
@@ -120,19 +112,8 @@ function ScaleDialog(props: ScaleDialogProps) {
 
   const currentNumReplicas = initialReplicas;
 
-  console.log('[CAPI-PLUGIN] ScaleDialog render - details:', {
-    'resource.spec': resource.spec,
-    initialReplicas,
-    numReplicas,
-    typeof_initial: typeof initialReplicas,
-    typeof_num: typeof numReplicas,
-    isEqual: numReplicas === initialReplicas,
-  });
-
   React.useEffect(() => {
-    console.log('[CAPI-PLUGIN] ScaleDialog effect - open:', open);
     if (open) {
-      console.log('[CAPI-PLUGIN] ScaleDialog resetting to:', initialReplicas);
       setNumReplicas(initialReplicas);
     }
   }, [open, initialReplicas]);

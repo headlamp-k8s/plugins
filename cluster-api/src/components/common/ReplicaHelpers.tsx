@@ -59,7 +59,7 @@ export function renderReplicas(item: ReplicaOwner | ReplicaLike) {
   if (!showReplicas(item)) return null;
 
   const status = item.status;
-  const desired = item.spec?.replicas ?? 0;
+  const desired = item.spec?.replicas !== undefined ? String(item.spec.replicas) : '—';
   const total = status?.replicas ?? 0;
   const ready = status?.readyReplicas ?? 0;
   const available =
@@ -75,7 +75,7 @@ export function renderReplicas(item: ReplicaOwner | ReplicaLike) {
   }
 
   const values: Record<string, string> = {
-    Desired: String(desired),
+    Desired: desired,
     Ready: String(ready),
   };
 
@@ -87,8 +87,6 @@ export function renderReplicas(item: ReplicaOwner | ReplicaLike) {
   }
 
   values['Total'] = String(total);
-
-  if (Object.keys(values).length === 0) return null;
 
   return (
     <MetadataDictGrid

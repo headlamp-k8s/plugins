@@ -49,7 +49,8 @@ function getOwnedMachines(machines: InstanceType<typeof Machine>[], resource: Ku
   }
   return machines.filter(m =>
     m.jsonData?.metadata?.ownerReferences?.some(
-      (ref: { kind: string; name: string }) => ref.kind === resource.kind && ref.name === name
+      (ref: NonNullable<ObjectMeta['ownerReferences']>[number]) =>
+        ref.kind === resource.kind && ref.name === name
     )
   );
 }

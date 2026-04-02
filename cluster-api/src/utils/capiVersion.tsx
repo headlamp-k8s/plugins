@@ -1,4 +1,3 @@
-import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 
 type CapiCrdVersion = {
@@ -43,5 +42,3 @@ export function useCapiApiVersion(crdName: string, defaultVersion: string): stri
   if (error) return defaultVersion;
   return undefined;
 }
-
-export { Loader as CapiVersionLoader };
