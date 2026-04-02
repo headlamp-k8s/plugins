@@ -78,7 +78,7 @@ export function ComplianceBadge() {
 
   const violationCount = counts.fail + counts.error + counts.warn;
   const total = counts.pass + counts.fail + counts.warn + counts.error + counts.skip;
-  const compliancePct = total > 0 ? Math.round((counts.pass / total) * 100) : 0;
+  const compliancePct = total > 0 ? Math.round((counts.pass / total) * 100) : 100;
 
   const badgeColor = violationCount > 0 ? 'error' : 'success';
 
