@@ -18,6 +18,12 @@ interface KubeadmControlPlanesListWithDataProps {
   KubeadmControlPlaneClass: typeof KubeadmControlPlane;
 }
 
+/**
+ * Data-fetching wrapper for the KubeadmControlPlane list.
+ *
+ * @param props - Component properties.
+ * @param props.KubeadmControlPlaneClass - The KCP resource class bound to a specific API version.
+ */
 function KubeadmControlPlanesListWithData({
   KubeadmControlPlaneClass,
 }: KubeadmControlPlanesListWithDataProps) {
@@ -25,7 +31,9 @@ function KubeadmControlPlanesListWithData({
     <ResourceListView
       title="Kubeadm Control Planes"
       resourceClass={KubeadmControlPlaneClass}
-      actions={[{ id: 'scale', action: (item: any) => <ScaleButton item={item} /> }]}
+      actions={[
+        { id: 'scale', action: (item: KubeadmControlPlane) => <ScaleButton item={item} /> },
+      ]}
       columns={[
         'name',
         'namespace',
@@ -119,6 +127,10 @@ function KubeadmControlPlanesListWithData({
   );
 }
 
+/**
+ * Main entry point for the KubeadmControlPlanes list view.
+ * Detects the CAPI version and renders the list with the correct resource class.
+ */
 export function KubeadmControlPlanesList() {
   const version = useCapiApiVersion(KubeadmControlPlane.crdName, 'v1beta1');
   const VersionedKubeadmControlPlane = useMemo(

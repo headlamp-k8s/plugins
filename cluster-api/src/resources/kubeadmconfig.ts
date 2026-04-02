@@ -4,25 +4,45 @@ import { ClusterV1Condition, MetaV1Condition, Taint } from './common';
 const KC_API_GROUP = 'bootstrap.cluster.x-k8s.io';
 const KC_CRD_NAME = 'kubeadmconfigs.bootstrap.cluster.x-k8s.io';
 
+/**
+ * KubeadmConfig resource specification.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#kubeadmconfig
+ */
 export interface KubeadmConfigSpec {
+  /** ClusterConfiguration contains the configuration for the cluster. */
   clusterConfiguration?: ClusterConfiguration;
+  /** InitConfiguration contains the configuration for the node initialization. */
   initConfiguration?: InitConfiguration;
+  /** JoinConfiguration contains the configuration for the node join. */
   joinConfiguration?: JoinConfiguration;
+  /** Files specifies extra files to be created on the node. */
   files?: KubeadmFile[];
+  /** DiskSetup specifies how to setup disks on the node. */
   diskSetup?: {
+    /** Partitions specifies the partitions to create. */
     partitions?: Partition[];
+    /** Filesystems specifies the filesystems to create. */
     filesystems?: Filesystem[];
   };
+  /** Mounts specifies extra mount points. */
   mounts?: string[][];
+  /** BootCommands specifies commands to run during boot. */
   bootCommands?: string[];
+  /** PreKubeadmCommands specifies commands to run before kubeadm. */
   preKubeadmCommands?: string[];
+  /** PostKubeadmCommands specifies commands to run after kubeadm. */
   postKubeadmCommands?: string[];
+  /** Users specifies extra users to create on the node. */
   users?: User[];
+  /** NTP specifies the NTP configuration. */
   ntp?: NTP;
+  /** Format specifies the output format of the configuration (e.g. cloud-config). */
   format?: string;
+  /** Verbosity specifies the verbosity level of kubeadm. */
   verbosity?: number;
   /** @deprecated */
   useExperimentalRetryJoin?: boolean;
+  /** IgnitionSpec specifies the ignition configuration. */
   ignition?: IgnitionSpec;
 }
 export interface KubeadmConfigV1Beta2InlineStatus {
@@ -61,8 +81,10 @@ export type ClusterApiKubeadmConfig =
   | (KubeObjectInterface & { spec?: KubeadmConfigSpec; status?: KubeadmConfigStatusV1Beta1 })
   | (KubeObjectInterface & { spec?: KubeadmConfigSpec; status?: KubeadmConfigStatusV1Beta2 });
 
-function isKCV1Beta2(status: any): status is KubeadmConfigStatusV1Beta2 {
-  return status && 'deprecated' in status;
+function isKCV1Beta2(
+  status: KubeadmConfigStatus | undefined | null
+): status is KubeadmConfigStatusV1Beta2 {
+  return !!status && 'deprecated' in status;
 }
 
 interface NormalizedKCStatus {
@@ -70,6 +92,9 @@ interface NormalizedKCStatus {
   failure?: { failureReason?: string; failureMessage?: string };
 }
 
+/**
+ * Internal helper to normalize KubeadmConfig status across v1beta1/v1beta2.
+ */
 function normalizeKCStatus(item: ClusterApiKubeadmConfig | null | undefined): NormalizedKCStatus {
   const status = item?.status;
   if (!status) return {};
@@ -103,6 +128,10 @@ export function getKCFailure(item: ClusterApiKubeadmConfig | null | undefined) {
   return normalizeKCStatus(item).failure;
 }
 
+/**
+ * KubeadmConfig is the KubeObject implementation for the Cluster API KubeadmConfig resource.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#kubeadmconfig
+ */
 export class KubeadmConfig extends KubeObject<ClusterApiKubeadmConfig> {
   static readonly apiName = 'kubeadmconfigs';
   static apiVersion = `${KC_API_GROUP}/v1beta1`;
@@ -110,28 +139,46 @@ export class KubeadmConfig extends KubeObject<ClusterApiKubeadmConfig> {
   static readonly isNamespaced = true;
   static readonly kind = 'KubeadmConfig';
 
+  /**
+   * Returns the route for the kubeadm config details page.
+   */
   static get detailsRoute() {
     return '/cluster-api/kubeadmconfigs/:namespace/:name';
   }
 
+  /**
+   * Returns a version of the KubeadmConfig class with a specific API version.
+   */
   static withApiVersion(version: string): typeof KubeadmConfig {
     const versionedClass = class extends KubeadmConfig {} as typeof KubeadmConfig;
     versionedClass.apiVersion = `${KC_API_GROUP}/${version}`;
     return versionedClass;
   }
 
+  /**
+   * Returns the kubeadm config specification.
+   */
   get spec(): KubeadmConfigSpec | undefined {
     return this.jsonData.spec;
   }
 
+  /**
+   * Returns the raw status object.
+   */
   get status(): KubeadmConfigStatus | undefined {
     return this.jsonData.status;
   }
 
+  /**
+   * Returns normalized conditions for the kubeadm config.
+   */
   get conditions() {
     return getKCConditions(this.jsonData);
   }
 
+  /**
+   * Returns failure information if present.
+   */
   get failure() {
     return getKCFailure(this.jsonData);
   }

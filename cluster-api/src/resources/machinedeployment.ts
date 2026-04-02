@@ -14,35 +14,68 @@ export interface MachineDeploymentRollout {
   strategy?: MachineDeploymentStrategy;
 }
 
+/**
+ * MachineDeployment resource specification.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#machinedeployment
+ */
 export interface MachineDeploymentSpec {
+  /** ClusterName is the name of the Cluster this object belongs to. */
   clusterName: string;
+  /** Number of desired machines. Defaults to 1. */
   replicas?: number;
+  /** RolloutAfter is a field to indicate an rollout should be performed after the specified time even if no changes have been made to the MachineDeployment. */
   rolloutAfter?: Time;
+  /** Label selector for machines. Existing MachineSets whose machines are selected by this will be the ones affected by this deployment. */
   selector: LabelSelector;
+  /** Template describes the machines that will be created. */
   template: MachineTemplateSpec;
-  strategy?: MachineDeploymentStrategy; // v1beta1
-  rollout?: MachineDeploymentRollout; // v1beta2
+  /** @deprecated use rollout.strategy instead. */
+  strategy?: MachineDeploymentStrategy;
+  /** Rollout is the rollout strategy to use for this deployment (v1beta2). */
+  rollout?: MachineDeploymentRollout;
+  /** Minimum number of seconds for which a newly created machine should be ready. Defaults to 0. */
   minReadySeconds?: number;
+  /** The number of old MachineSets to retain to allow rollback. Defaults to 10. */
   revisionHistoryLimit?: number;
+  /** Indicates that the deployment is paused and will not be processed by the deployment controller. */
   paused?: boolean;
+  /** The maximum time in seconds for a deployment to make progress before it is considered to be failed. */
   progressDeadlineSeconds?: number;
-  deletePolicy?: 'Random' | 'Newest' | 'Oldest'; // v1beta1
+  /** @deprecated use deletion.order instead. */
+  deletePolicy?: 'Random' | 'Newest' | 'Oldest';
+  /** Deletion contains configuration for the deletion of machines (v1beta2). */
   deletion?: {
-    order?: 'Random' | 'Newest' | 'Oldest'; // v1beta2
+    /** Order defines the order in which machines should be deleted. */
+    order?: 'Random' | 'Newest' | 'Oldest';
+    /** NodeDrainTimeoutSeconds is the timeout for draining the node. */
     nodeDrainTimeoutSeconds?: number;
+    /** NodeVolumeDetachTimeoutSeconds is the timeout for detaching volumes from the node. */
     nodeVolumeDetachTimeoutSeconds?: number;
+    /** NodeDeletionTimeoutSeconds is the timeout for deleting the node. */
     nodeDeletionTimeoutSeconds?: number;
   };
 }
 
+/**
+ * Common status fields across MachineDeployment versions.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#machinedeployment
+ */
 export interface MachineDeploymentStatusCommon {
+  /** Phase represents the current phase of machine deployment actuation. */
   phase?: string;
+  /** The generation observed by the deployment controller. */
   observedGeneration?: number;
+  /** Selector is the same as the match labels of the selector in the spec. */
   selector?: string;
+  /** Total number of non-terminated machines targeted by this deployment. */
   replicas?: number;
+  /** Total number of non-terminated machines targeted by this deployment that have the desired template spec. */
   updatedReplicas?: number;
+  /** Total number of ready machines targeted by this deployment. */
   readyReplicas?: number;
+  /** Total number of available machines targeted by this deployment. */
   availableReplicas?: number;
+  /** Total number of unavailable machines targeted by this deployment. */
   unavailableReplicas?: number;
 }
 
@@ -163,6 +196,10 @@ export function getMachineDeploymentUpToDateReplicas(
   return status.v1beta2?.upToDateReplicas;
 }
 
+/**
+ * MachineDeployment is the KubeObject implementation for the Cluster API MachineDeployment resource.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#machinedeployment
+ */
 export class MachineDeployment extends KubeObject<ClusterApiMachineDeployment> {
   static readonly apiName = 'machinedeployments';
   static apiVersion = `${MACHINEDEPLOYMENT_API_GROUP}/v1beta1`;
@@ -170,36 +207,60 @@ export class MachineDeployment extends KubeObject<ClusterApiMachineDeployment> {
   static readonly isNamespaced = true;
   static readonly kind = 'MachineDeployment';
 
+  /**
+   * Returns the route for the machine deployment details page.
+   */
   static get detailsRoute() {
     return '/cluster-api/machinedeployments/:namespace/:name';
   }
 
+  /**
+   * Returns a version of the MachineDeployment class with a specific API version.
+   */
   static withApiVersion(version: string): typeof MachineDeployment {
     const versionedClass = class extends MachineDeployment {} as typeof MachineDeployment;
     versionedClass.apiVersion = `${MACHINEDEPLOYMENT_API_GROUP}/${version}`;
     return versionedClass;
   }
 
+  /**
+   * Returns the machine deployment specification.
+   */
   get spec(): MachineDeploymentSpec | undefined {
     return this.jsonData.spec;
   }
 
+  /**
+   * Returns the raw status object.
+   */
   get status(): MachineDeploymentStatusCommon | undefined {
     return getMachineDeploymentStatus(this.jsonData);
   }
 
+  /**
+   * Returns normalized conditions for the machine deployment.
+   */
   get conditions(): MetaV1Condition[] | ClusterV1Condition[] | undefined {
     return getMachineDeploymentConditions(this.jsonData);
   }
 
+  /**
+   * Returns failure information if present.
+   */
   get failure(): { failureReason?: string; failureMessage?: string } | undefined {
     return getMachineDeploymentFailure(this.jsonData);
   }
 
+  /**
+   * Returns the number of updated replicas.
+   */
   get upToDateReplicas(): number | undefined {
     return getMachineDeploymentUpToDateReplicas(this.jsonData);
   }
 
+  /**
+   * Indicates if the resource is scalable.
+   */
   static get isScalable() {
     return true;
   }

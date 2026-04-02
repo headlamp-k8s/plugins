@@ -15,12 +15,18 @@ interface MachineSetsListWithDataProps {
   MachineSetClass: typeof MachineSet;
 }
 
+/**
+ * Data-fetching wrapper for the machine set list.
+ *
+ * @param props - Component properties.
+ * @param props.MachineSetClass - The MachineSet resource class bound to a specific API version.
+ */
 function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataProps) {
   return (
     <ResourceListView
       title="Machine Sets"
       resourceClass={MachineSetClass}
-      actions={[{ id: 'scale', action: (item: any) => <ScaleButton item={item} /> }]}
+      actions={[{ id: 'scale', action: (item: MachineSet) => <ScaleButton item={item} /> }]}
       columns={[
         'name',
         'namespace',
@@ -40,11 +46,6 @@ function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataPro
               </Link>
             );
           },
-        },
-        {
-          id: 'desired',
-          label: 'Desired',
-          getValue: ms => ms.spec?.replicas ?? 0,
         },
         {
           id: 'ready',
@@ -98,6 +99,10 @@ function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataPro
   );
 }
 
+/**
+ * Main entry point for the MachineSets list view.
+ * Detects the CAPI version and renders the list with the correct resource class.
+ */
 export function MachineSetsList() {
   const version = useCapiApiVersion(MachineSet.crdName, 'v1beta1');
   const VersionedMachineSet = useMemo(

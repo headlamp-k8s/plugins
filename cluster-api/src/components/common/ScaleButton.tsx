@@ -22,17 +22,33 @@ import React from 'react';
 import { useDispatch } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 
+/**
+ * Interface for resources that support scaling (replicas).
+ */
 interface ScaleResource extends KubeObject {
   spec?: {
     replicas?: number;
   };
 }
 
+/**
+ * Props for the ScaleButton component.
+ */
 interface ScaleButtonProps {
+  /** The resource to be scaled. */
   item: ScaleResource;
+  /** Optional style for the action button. */
   buttonStyle?: ButtonStyle;
 }
 
+/**
+ * A button that opens a dialog to scale a resource (e.g., Change replicas).
+ *
+ * @param props - Component properties.
+ * @param props.item - The resource to scale. Must implement isScalable and scale().
+ * @param props.buttonStyle - The visual style of the button.
+ * @returns The ScaleButton component or null if the item is not scalable.
+ */
 export default function ScaleButton(props: ScaleButtonProps) {
   const dispatch = useDispatch();
   const { item, buttonStyle } = props;
@@ -82,10 +98,17 @@ export default function ScaleButton(props: ScaleButtonProps) {
   );
 }
 
+/**
+ * Props for the ScaleDialog component.
+ */
 interface ScaleDialogProps extends Omit<DialogProps, 'resource'> {
+  /** The resource being scaled. */
   resource: ScaleResource;
+  /** Callback fired when the 'Apply' button is clicked. */
   onSave: (numReplicas: number) => void;
+  /** Callback fired when the dialog is closed. */
   onClose: () => void;
+  /** Optional error message to display. */
   errorMessage?: string;
 }
 
@@ -100,6 +123,15 @@ const Input = styled(OutlinedInput)({
   width: '80px',
 });
 
+/**
+ * A dialog window for selecting the new number of replicas.
+ *
+ * @param props - Component properties.
+ * @param props.open - Whether the dialog is visible.
+ * @param props.resource - The resource being scaled.
+ * @param props.onClose - Callback to close the dialog.
+ * @param props.onSave - Callback to apply the new replica count.
+ */
 function ScaleDialog(props: ScaleDialogProps) {
   const { open, resource, onClose, onSave } = props;
   const initialReplicasValue = Number(resource.spec?.replicas ?? 0);

@@ -14,6 +14,18 @@ interface MachineDeploymentsListWithDataProps {
   MachineDeploymentClass: typeof MachineDeployment;
 }
 
+/**
+ * Renders the machine deployment list view using the provided class (versioned).
+ *
+ * @param props - Component properties.
+ * @param props.MachineDeploymentClass - The MachineDeployment resource class to use.
+ */
+/**
+ * Data-fetching wrapper for the machine deployment list.
+ *
+ * @param props - Component properties.
+ * @param props.MachineDeploymentClass - The MachineDeployment resource class bound to a specific API version.
+ */
 function MachineDeploymentsListWithData({
   MachineDeploymentClass,
 }: MachineDeploymentsListWithDataProps) {
@@ -21,7 +33,7 @@ function MachineDeploymentsListWithData({
     <ResourceListView
       title="Machine Deployments"
       resourceClass={MachineDeploymentClass}
-      actions={[{ id: 'scale', action: (item: any) => <ScaleButton item={item} /> }]}
+      actions={[{ id: 'scale', action: (item: MachineDeployment) => <ScaleButton item={item} /> }]}
       columns={[
         'name',
         'namespace',
@@ -105,6 +117,10 @@ function MachineDeploymentsListWithData({
   );
 }
 
+/**
+ * Main entry point for the MachineDeployment list view.
+ * Handles API version detection and passes the versioned class to the renderer.
+ */
 export function MachineDeploymentsList() {
   const version = useCapiApiVersion(MachineDeployment.crdName, 'v1beta1');
   const VersionedMachineDeployment = useMemo(

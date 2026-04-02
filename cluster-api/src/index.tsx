@@ -57,6 +57,12 @@ interface ResourceRegistrationConfig {
   icon: string;
   hasNamespace?: boolean;
 }
+/**
+ * Wrapper component for CAPI routes that checks if the management cluster is initialized.
+ * Displays the Dashboard (Empty State) if Cluster API CRDs are missing.
+ *
+ * @param props.children - The component to render if CAPI is active.
+ */
 function CapiRouteWrapper({ children }: { children: React.ReactNode }) {
   const [crd, error] = CustomResourceDefinition.useGet(Cluster.crdName);
   if (error) {
@@ -68,6 +74,11 @@ function CapiRouteWrapper({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Helper to register a Cluster API resource with Headlamp's sidebar, routes, and iconography.
+ *
+ * @param config - The registration configuration for the resource.
+ */
 function registerClusterApiResource(config: ResourceRegistrationConfig) {
   const { name, kind, path, DetailComponent, ListComponent, icon, hasNamespace = true } = config;
 

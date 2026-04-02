@@ -2,6 +2,10 @@ import { Icon } from '@iconify/react';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Button, Paper, Typography } from '@mui/material';
 
+/**
+ * Fallback dashboard component rendered when Cluster API is not detected.
+ * Provides clear messaging and a link to the official quick-start guide.
+ */
 export default function Dashboard() {
   return (
     <SectionBox title="Cluster API">

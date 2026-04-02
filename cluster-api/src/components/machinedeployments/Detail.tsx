@@ -25,9 +25,22 @@ import {
   TemplateSection,
 } from '../common/index';
 import { renderConditionStatus } from '../common/util';
-type MachineDeploymentNode = { kubeObject: MachineDeployment };
+/**
+ * Props for the MachineDeploymentDetail component.
+ * @see https://cluster-api.sigs.k8s.io/concepts/machinedeployment/
+ */
+interface MachineDeploymentDetailProps {
+  /** The Headlamp node object containing the MachineDeployment resource */
+  node?: {
+    /** The actual MachineDeployment resource object */
+    kubeObject: MachineDeployment;
+  };
+}
 
-export function MachineDeploymentDetail({ node }: { node?: MachineDeploymentNode }) {
+/**
+ * Main detail view component for the MachineDeployment resource.
+ */
+export function MachineDeploymentDetail({ node }: MachineDeploymentDetailProps) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -46,24 +59,38 @@ export function MachineDeploymentDetail({ node }: { node?: MachineDeploymentNode
   );
 }
 
+/**
+ * Props for the MachineDeploymentDetailContent wrapper.
+ */
 interface MachineDeploymentDetailContentProps {
+  /** The resource name from the URL params */
   crName: string;
+  /** The namespace from the URL params */
   namespace?: string;
+  /** The fully qualified CRD name */
   crdName: string;
 }
 
+/**
+ * Props for the versioned MachineDeployment detail view.
+ */
 interface MachineDeploymentDetailContentPropsWithVersion
   extends MachineDeploymentDetailContentProps {
+  /** The resource class bound to the detected API version */
   VersionedMachineDeployment: typeof MachineDeployment;
+  /** The detected CAPI API version (e.g., v1beta1, v1beta2) */
   apiVersion: string;
 }
 
-function MachineDeploymentDetailContentWithData({
-  crName,
-  namespace,
-  crdName,
-  VersionedMachineDeployment,
-}: MachineDeploymentDetailContentPropsWithVersion) {
+/**
+ * Renders the final MachineDeployment detail view with all fetched data.
+ *
+ * @param props - Component properties including the versioned class and version.
+ */
+function MachineDeploymentDetailContentWithData(
+  props: MachineDeploymentDetailContentPropsWithVersion
+) {
+  const { crName, namespace, crdName, VersionedMachineDeployment } = props;
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
 
   const [item, itemError] = VersionedMachineDeployment.useGet(crName, namespace ?? undefined);
@@ -179,7 +206,7 @@ function MachineDeploymentDetailContentWithData({
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
-      actions={item => (item ? [<ScaleButton item={item} />] : [])}
+      actions={(item: MachineDeployment) => (item ? [<ScaleButton item={item} />] : [])}
       extraInfo={() => extraInfo}
       extraSections={() => [
         {
@@ -215,6 +242,11 @@ function MachineDeploymentDetailContentWithData({
   );
 }
 
+/**
+ * Wrapper component to detect CAPI API version for a MachineDeployment.
+ *
+ * @param props - Component properties.
+ */
 function MachineDeploymentDetailContent(props: MachineDeploymentDetailContentProps) {
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');

@@ -14,6 +14,12 @@ interface KubeadmConfigsListWithDataProps {
   KubeadmConfigClass: typeof KubeadmConfig;
 }
 
+/**
+ * Data-fetching wrapper for the KubeadmConfig list.
+ *
+ * @param props - Component properties.
+ * @param props.KubeadmConfigClass - The KubeadmConfig resource class bound to a specific API version.
+ */
 function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWithDataProps) {
   return (
     <ResourceListView
@@ -87,6 +93,10 @@ function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWi
   );
 }
 
+/**
+ * Main entry point for the KubeadmConfigs list view.
+ * Detects the CAPI version and renders the list with the correct resource class.
+ */
 export function KubeadmConfigsList() {
   const version = useCapiApiVersion(KubeadmConfig.crdName, 'v1beta1');
   const VersionedKubeadmConfig = useMemo(

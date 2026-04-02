@@ -27,9 +27,22 @@ import {
   TemplateSection,
 } from '../common/index';
 
-type KubeadmControlPlaneNode = { kubeObject: KubeadmControlPlane };
+/**
+ * Props for the KubeadmControlPlaneDetail component.
+ * @see https://cluster-api.sigs.k8s.io/tasks/kubeadm-control-plane/
+ */
+interface KubeadmControlPlaneDetailProps {
+  /** The Headlamp node object containing the KubeadmControlPlane resource */
+  node?: {
+    /** The actual KubeadmControlPlane resource object */
+    kubeObject: KubeadmControlPlane;
+  };
+}
 
-export function KubeadmControlPlaneDetail({ node }: { node?: KubeadmControlPlaneNode }) {
+/**
+ * Main detail view component for the KubeadmControlPlane resource.
+ */
+export function KubeadmControlPlaneDetail({ node }: KubeadmControlPlaneDetailProps) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -48,17 +61,25 @@ export function KubeadmControlPlaneDetail({ node }: { node?: KubeadmControlPlane
   );
 }
 
+/**
+ * Props for the KubeadmControlPlaneDetailContent wrapper.
+ */
 interface KubeadmControlPlaneDetailContentProps {
+  /** The resource name from the URL params */
   crName: string;
+  /** The namespace from the URL params */
   namespace?: string;
+  /** The fully qualified CRD name */
   crdName: string;
 }
 
-function KubeadmControlPlaneDetailContent({
-  crName,
-  namespace,
-  crdName,
-}: KubeadmControlPlaneDetailContentProps) {
+/**
+ * Wrapper component to detect CAPI API version for a KubeadmControlPlane.
+ *
+ * @param props - Component properties.
+ */
+function KubeadmControlPlaneDetailContent(props: KubeadmControlPlaneDetailContentProps) {
+  const { crName, namespace, crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedKubeadmControlPlane = useMemo(
     () => (apiVersion ? KubeadmControlPlane.withApiVersion(apiVersion) : KubeadmControlPlane),
@@ -77,11 +98,21 @@ function KubeadmControlPlaneDetailContent({
   );
 }
 
+/**
+ * Props for the versioned KubeadmControlPlane detail view.
+ */
 interface KubeadmControlPlaneDetailWithDataProps extends KubeadmControlPlaneDetailContentProps {
+  /** The resource class bound to the detected API version */
   VersionedKCP: typeof KubeadmControlPlane;
+  /** The detected CAPI API version (e.g., v1beta1, v1beta2) */
   apiVersion: string;
 }
 
+/**
+ * Renders the final KubeadmControlPlane detail view with all fetched data.
+ *
+ * @param props - Component properties including the versioned class and version.
+ */
 function KubeadmControlPlaneDetailWithData({
   crName,
   namespace,
@@ -197,7 +228,7 @@ function KubeadmControlPlaneDetailWithData({
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
-      actions={item => (item ? [<ScaleButton item={item} />] : [])}
+      actions={(item: KubeadmControlPlane) => (item ? [<ScaleButton item={item} />] : [])}
       extraInfo={() => extraInfo}
       extraSections={kcp => [
         {

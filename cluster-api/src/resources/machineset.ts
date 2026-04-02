@@ -10,21 +10,36 @@ export interface MachineTemplateSpec {
   spec: MachineSpec;
 }
 
+/**
+ * MachineSet resource specification.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#machineset
+ */
 export interface MachineSetSpec {
+  /** ClusterName is the name of the Cluster this object belongs to. */
   clusterName: string;
+  /** Replicas is the number of desired replicas. Defaults to 1. */
   replicas?: number;
+  /** MinReadySeconds is the minimum number of seconds for which a newly created machine should be ready. Defaults to 0. */
   minReadySeconds?: number;
+  /** Selector is a label query over machines that should match the replica count. */
   selector: LabelSelector;
+  /** Template is the object that describes the machine that will be created. */
   template: MachineTemplateSpec;
+  /** MachineNamingStrategy allows to configure how machines are named. */
   machineNamingStrategy?: {
     template?: string;
   };
-  deletePolicy?: 'Random' | 'Newest' | 'Oldest'; // v1beta1 only — delete policy for scaling down
+  /** @deprecated use deletion.order instead. */
+  deletePolicy?: 'Random' | 'Newest' | 'Oldest';
+  /** Deletion configuration (v1beta2). */
   deletion?: {
-    // v1beta2 only — replaces deletePolicy with richer deletion config
+    /** Order defines the order in which machines should be deleted. */
     order?: 'Random' | 'Newest' | 'Oldest';
+    /** NodeDrainTimeoutSeconds is the timeout for draining the node. */
     nodeDrainTimeoutSeconds?: number;
+    /** NodeVolumeDetachTimeoutSeconds is the timeout for detaching volumes from the node. */
     nodeVolumeDetachTimeoutSeconds?: number;
+    /** NodeDeletionTimeoutSeconds is the timeout for deleting the node. */
     nodeDeletionTimeoutSeconds?: number;
   };
 }
@@ -41,11 +56,20 @@ export interface MachineSetStatusDeprecatedV1Beta1 {
   failureMessage?: string;
 }
 
+/**
+ * Common status fields across MachineSet versions.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#machineset
+ */
 export interface MachineSetStatusCommon {
+  /** Selector is the same as the match labels of the selector in the spec. */
   selector?: string;
+  /** Total number of non-terminated machines targeted by this MachineSet. */
   replicas?: number;
+  /** Total number of ready machines targeted by this MachineSet. */
   readyReplicas?: number;
+  /** Total number of available machines targeted by this MachineSet. */
   availableReplicas?: number;
+  /** The generation observed by the MachineSet controller. */
   observedGeneration?: number;
 }
 
@@ -149,6 +173,10 @@ export function getMachineSetUpToDateReplicas(
   return status.v1beta2?.upToDateReplicas;
 }
 
+/**
+ * MachineSet is the KubeObject implementation for the Cluster API MachineSet resource.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#machineset
+ */
 export class MachineSet extends KubeObject<ClusterApiMachineSet> {
   static readonly apiName = 'machinesets';
   static apiVersion = `${MACHINESET_API_GROUP}/v1beta1`;
@@ -156,34 +184,60 @@ export class MachineSet extends KubeObject<ClusterApiMachineSet> {
   static readonly isNamespaced = true;
   static readonly kind = 'MachineSet';
 
+  /**
+   * Returns the route for the machine set details page.
+   */
   static get detailsRoute() {
     return '/cluster-api/machinesets/:namespace/:name';
   }
 
+  /**
+   * Returns a version of the MachineSet class with a specific API version.
+   */
   static withApiVersion(version: string): typeof MachineSet {
     const versionedClass = class extends MachineSet {} as typeof MachineSet;
     versionedClass.apiVersion = `${MACHINESET_API_GROUP}/${version}`;
     return versionedClass;
   }
 
+  /**
+   * Returns the machine set specification.
+   */
   get spec(): MachineSetSpec {
     return this.jsonData.spec;
   }
 
+  /**
+   * Returns the raw status object.
+   */
   get status(): MachineSetStatusCommon | undefined {
     return getMachineSetStatus(this.jsonData);
   }
 
+  /**
+   * Returns normalized conditions for the machine set.
+   */
   get conditions(): MetaV1Condition[] | ClusterV1Condition[] | undefined {
     return getMachineSetConditions(this.jsonData);
   }
+
+  /**
+   * Returns failure information if present.
+   */
   get failure(): { failureReason?: string; failureMessage?: string } | undefined {
     return getMachineSetFailure(this.jsonData);
   }
+
+  /**
+   * Returns the number of updated replicas.
+   */
   get upToDateReplicas(): number | undefined {
     return getMachineSetUpToDateReplicas(this.jsonData);
   }
 
+  /**
+   * Indicates if the resource is scalable.
+   */
   static get isScalable() {
     return true;
   }

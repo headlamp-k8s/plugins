@@ -15,6 +15,12 @@ import { useCapiApiVersion } from '../../utils/capiVersion';
 
 type KubeadmConfigTemplateNode = { kubeObject: KubeadmConfigTemplate };
 
+/**
+ * Main detail view for a KubeadmConfigTemplate resource.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#bootstrap-template
+ *
+ * @param props - Component properties including optional node from a list.
+ */
 export function KubeadmConfigTemplateDetail({ node }: { node?: KubeadmConfigTemplateNode }) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
@@ -35,13 +41,27 @@ export function KubeadmConfigTemplateDetail({ node }: { node?: KubeadmConfigTemp
   );
 }
 
-interface Props {
+interface KCTProps {
+  /** The resource name from the URL params */
   crName: string;
+  /** The namespace from the URL params */
   namespace?: string;
+  /** The fully qualified CRD name */
   crdName: string;
 }
 
-function KubeadmConfigTemplateDetailContent({ crName, namespace, crdName }: Props) {
+/**
+ * Props for the versioned KCT detail view.
+ */
+interface KCTDetailWithVersionProps extends KCTProps {
+  /** The resource class bound to the detected API version */
+  VersionedKCT: typeof KubeadmConfigTemplate;
+  /** The detected CAPI API version (e.g., v1beta1, v1beta2) */
+  apiVersion: string;
+}
+
+function KubeadmConfigTemplateDetailContent(props: KCTProps) {
+  const { crName, namespace, crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedKCT = useMemo(
     () => (apiVersion ? KubeadmConfigTemplate.withApiVersion(apiVersion) : KubeadmConfigTemplate),
@@ -61,17 +81,8 @@ function KubeadmConfigTemplateDetailContent({ crName, namespace, crdName }: Prop
   );
 }
 
-interface WithDataProps extends Props {
-  VersionedKCT: typeof KubeadmConfigTemplate;
-  apiVersion: string;
-}
-
-function KubeadmConfigTemplateDetailWithData({
-  crName,
-  namespace,
-  crdName,
-  VersionedKCT,
-}: WithDataProps) {
+function KubeadmConfigTemplateDetailWithData(props: KCTDetailWithVersionProps) {
+  const { crName, namespace, crdName, VersionedKCT } = props;
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedKCT.useGet(crName, namespace ?? undefined);
 

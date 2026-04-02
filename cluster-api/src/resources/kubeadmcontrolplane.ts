@@ -21,6 +21,10 @@ export interface KCPMachineTemplateV1Beta1 {
   nodeDeletionTimeout?: string;
 }
 export type KCPMachineTemplateV1Beta2 = MachineTemplateSpec;
+/**
+ * KubeadmControlPlane resource specification.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#kcp
+ */
 export interface KCPSpec {
   replicas?: number;
   version: string;
@@ -51,6 +55,14 @@ export interface KCPSpec {
   };
 }
 
+/**
+ * Common status fields across KCP versions.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#kcp
+ */
+/**
+ * Common status fields for KubeadmControlPlane resources.
+ * Used by both v1beta1 and v1beta2 API versions.
+ */
 export interface KCPStatusCommon {
   selector?: string;
   replicas?: number;
@@ -63,6 +75,9 @@ export interface KCPStatusCommon {
   };
 }
 
+/**
+ * Status fields for KubeadmControlPlane v1beta1 API version.
+ */
 export interface KCPStatusV1Beta1 extends KCPStatusCommon {
   conditions?: ClusterV1Condition[];
   updatedReplicas?: number;
@@ -86,6 +101,9 @@ export interface KCPStatusV1Beta1 extends KCPStatusCommon {
   };
 }
 
+/**
+ * Status fields for KubeadmControlPlane v1beta2 API version.
+ */
 export interface KCPStatusV1Beta2 extends KCPStatusCommon {
   conditions?: MetaV1Condition[];
   upToDateReplicas?: number;
@@ -111,10 +129,16 @@ export interface KCPStatusV1Beta2 extends KCPStatusCommon {
   };
 }
 
+/**
+ * Union type for KubeadmControlPlane resources supporting both v1beta1 and v1beta2 status.
+ */
 export type ClusterApiKubeadmControlPlane =
   | (KubeObjectInterface & { spec?: KCPSpec; status?: KCPStatusV1Beta1 })
   | (KubeObjectInterface & { spec?: KCPSpec; status?: KCPStatusV1Beta2 });
 
+/**
+ * Normalized status fields for KubeadmControlPlane, abstracting API version differences.
+ */
 interface NormalizedKCPStatus {
   conditions?: ClusterV1Condition[] | MetaV1Condition[];
   failure?: { failureReason?: string; failureMessage?: string };
@@ -124,10 +148,26 @@ interface NormalizedKCPStatus {
   lastRemediation?: { machine: string; time: Time; retryCount: number };
 }
 
+/**
+ * Type guard to check if status is v1beta2.
+ * @param status KCPStatusV1Beta1 or KCPStatusV1Beta2
+ * @returns True if status is v1beta2
+ */
 function isV1Beta2(status: KCPStatusV1Beta1 | KCPStatusV1Beta2): status is KCPStatusV1Beta2 {
   return !!status && ('deprecated' in status || 'initialization' in status);
 }
 
+/**
+ * Normalizes KCP status fields across v1beta1 and v1beta2 API versions.
+ *
+ * @param item - The raw KCP resource interface.
+ * @returns A normalized status object.
+ */
+/**
+ * Normalizes KCP status fields across v1beta1 and v1beta2 API versions.
+ * @param item The raw KCP resource interface.
+ * @returns A normalized status object.
+ */
 function normalizeKCPStatus(
   item: ClusterApiKubeadmControlPlane | null | undefined
 ): NormalizedKCPStatus {
@@ -184,40 +224,87 @@ function normalizeKCPStatus(
   return normalized;
 }
 
+/**
+ * Returns the raw status object from a KCP resource.
+ *
+ * @param item - The KCP resource.
+ */
 export function getKCPStatus(item: ClusterApiKubeadmControlPlane | null | undefined) {
   return item?.status;
 }
 
+/**
+ * Returns normalized conditions for a KCP resource.
+ *
+ * @param item - The KCP resource.
+ */
 export function getKCPConditions(item: ClusterApiKubeadmControlPlane | null | undefined) {
   const normalized = normalizeKCPStatus(item);
   return normalized.conditions;
 }
 
+/**
+ * Returns failure information for a KCP resource.
+ *
+ * @param item - The KCP resource.
+ */
 export function getKCPFailure(item: ClusterApiKubeadmControlPlane | null | undefined) {
   const normalized = normalizeKCPStatus(item);
   return normalized.failure;
 }
 
+/**
+ * Returns initialization status for a KCP resource.
+ *
+ * @param item - The KCP resource.
+ */
 export function getKCPInitialized(item: ClusterApiKubeadmControlPlane | null | undefined) {
   const normalized = normalizeKCPStatus(item);
   return normalized.initialized;
 }
 
+/**
+ * Returns up-to-date replicas for a KCP resource.
+ * @param item The KCP resource.
+ * @returns Number of up-to-date replicas or undefined.
+ */
 export function getKCPUpToDateReplicas(item: ClusterApiKubeadmControlPlane | null | undefined) {
   const normalized = normalizeKCPStatus(item);
   return normalized.upToDateReplicas;
 }
 
+/**
+ * Returns available replicas for a KCP resource.
+ * @param item The KCP resource.
+ * @returns Number of available replicas or undefined.
+ */
 export function getKCPAvailableReplicas(item: ClusterApiKubeadmControlPlane | null | undefined) {
   const normalized = normalizeKCPStatus(item);
   return normalized.availableReplicas;
 }
 
+/**
+ * Returns last remediation info for a KCP resource.
+ * @param item The KCP resource.
+ * @returns Last remediation object or undefined.
+ */
 export function getKCPLastRemediation(item: ClusterApiKubeadmControlPlane | null | undefined) {
   const normalized = normalizeKCPStatus(item);
   return normalized.lastRemediation;
 }
 
+/**
+ * Returns formatted deletion timeouts for a KCP resource.
+ * Handles differences between v1beta1 (string) and v1beta2 (integer seconds).
+ *
+ * @param item - The KCP resource.
+ */
+/**
+ * Returns formatted deletion timeouts for a KCP resource.
+ * Handles differences between v1beta1 (string) and v1beta2 (integer seconds).
+ * @param item The KCP resource.
+ * @returns Object with nodeDrain, nodeVolumeDetach, and nodeDeletion timeouts, or undefined.
+ */
 export function getKCPDeletionTimeouts(item: ClusterApiKubeadmControlPlane | null | undefined) {
   const mt = item?.spec?.machineTemplate;
   if (!mt) return undefined;
@@ -258,6 +345,10 @@ export function getKCPDeletionTimeouts(item: ClusterApiKubeadmControlPlane | nul
   return undefined;
 }
 
+/**
+ * KubeObject wrapper for KubeadmControlPlane resources.
+ * Provides typed accessors and static helpers.
+ */
 export class KubeadmControlPlane extends KubeObject<ClusterApiKubeadmControlPlane> {
   static readonly apiName = 'kubeadmcontrolplanes';
   static apiVersion = `${KCP_API_GROUP}/v1beta1`;

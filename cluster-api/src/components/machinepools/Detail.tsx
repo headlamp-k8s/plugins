@@ -35,6 +35,12 @@ interface MachinePoolDetailContentPropsWithVersion extends MachinePoolDetailCont
   apiVersion: string;
 }
 
+/**
+ * Main detail view for a MachinePool resource.
+ * @see https://cluster-api.sigs.k8s.io/tasks/experimental-features/machine-pools
+ *
+ * @param props - Component properties including optional node from a list.
+ */
 export function MachinePoolDetail({ node }: { node?: MachinePoolNode }) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
@@ -49,6 +55,11 @@ export function MachinePoolDetail({ node }: { node?: MachinePoolNode }) {
     <MachinePoolDetailContent crName={crName} namespace={namespace} crdName={MachinePool.crdName} />
   );
 }
+/**
+ * Renders the final MachinePool detail view with all fetched data.
+ *
+ * @param props - Component properties including the versioned class and version.
+ */
 function MachinePoolDetailContentWithData({
   crName,
   namespace,
@@ -127,7 +138,7 @@ function MachinePoolDetailContentWithData({
         withEvents
         name={crName}
         namespace={namespace}
-        actions={item => (item ? [<ScaleButton item={item} />] : [])}
+        actions={(item: MachinePool) => (item ? [<ScaleButton item={item} />] : [])}
         extraInfo={() => extraInfo}
         extraSections={(mp: MachinePool) => [
           {
@@ -163,6 +174,11 @@ function MachinePoolDetailContentWithData({
     </>
   );
 }
+/**
+ * Data-fetching wrapper that detects the correct CAPI API version for a MachinePool.
+ *
+ * @param props - Component properties.
+ */
 function MachinePoolDetailContent(props: MachinePoolDetailContentProps) {
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');

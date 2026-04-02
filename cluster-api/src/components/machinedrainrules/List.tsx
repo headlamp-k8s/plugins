@@ -7,6 +7,12 @@ interface MachineDrainRulesListWithDataProps {
   MachineDrainRuleClass: typeof MachineDrainRule;
 }
 
+/**
+ * Data-fetching wrapper for the machine drain rule list.
+ *
+ * @param props - Component properties.
+ * @param props.MachineDrainRuleClass - The MachineDrainRule resource class bound to a specific API version.
+ */
 function MachineDrainRulesListWithData({
   MachineDrainRuleClass,
 }: MachineDrainRulesListWithDataProps) {
@@ -33,6 +39,10 @@ function MachineDrainRulesListWithData({
   );
 }
 
+/**
+ * Main entry point for the MachineDrainRules list view.
+ * Detects the CAPI version and renders the list with the correct resource class.
+ */
 export function MachineDrainRulesList() {
   const version = useCapiApiVersion(MachineDrainRule.crdName, 'v1beta1');
   const VersionedMachineDrainRule = useMemo(

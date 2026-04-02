@@ -15,6 +15,12 @@ interface ClustersListWithDataProps {
   ClusterClass: typeof Cluster;
 }
 
+/**
+ * Renders the cluster list view using the provided Cluster class (versioned).
+ *
+ * @param props - Component properties.
+ * @param props.ClusterClass - The Cluster resource class to use for fetching.
+ */
 function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
   return (
     <ResourceListView
@@ -123,6 +129,10 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
   );
 }
 
+/**
+ * Main entry point for the Cluster list view.
+ * Handles API version detection and passes the versioned class to the renderer.
+ */
 export function ClustersList() {
   const version = useCapiApiVersion(Cluster.crdName, 'v1beta1');
   const VersionedCluster = useMemo(

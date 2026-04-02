@@ -32,7 +32,7 @@ import {
   getExtraColumnsFromCrd,
   getExtraInfoFromPrinterColumns,
 } from '../../utils/crdPrinterColumns';
-import { HealthCheckBadge,HealthCheckDisplay } from '../common';
+import { HealthCheckBadge, HealthCheckDisplay } from '../common';
 import { getPhaseStatus, renderReference } from '../common/util';
 
 const workerTypeBadgeStyle: React.CSSProperties = {

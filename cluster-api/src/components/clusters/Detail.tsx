@@ -20,9 +20,20 @@ import { OwnedMachinesSection, renderReplicas } from '../common';
 import { getPhaseStatus, renderReference } from '../common/util';
 import { renderConditionStatus } from '../common/util';
 
-type ClusterNode = { kubeObject: Cluster };
+/**
+ * Props for the ClusterDetail component.
+ * @see https://cluster-api.sigs.k8s.io/concepts/cluster/
+ */
+interface ClusterNode {
+  /** The actual Cluster resource object */
+  kubeObject: Cluster;
+}
 
-export function ClusterDetail({ node }: { node?: ClusterNode }) {
+/**
+ * Main detail view component for the Cluster resource.
+ * Handles API version detection and data fetching wrappers.
+ */
+export function ClusterDetail({ node }: { node: ClusterNode }) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -34,18 +45,35 @@ export function ClusterDetail({ node }: { node?: ClusterNode }) {
   return <ClusterDetailContent crName={crName} namespace={namespace} crdName={Cluster.crdName} />;
 }
 
+/**
+ * Props for the ClusterDetailContent wrapper.
+ */
 interface ClusterDetailContentProps {
+  /** The resource name from the URL params */
   crName: string;
+  /** The namespace from the URL params */
   namespace?: string;
+  /** The fully qualified CRD name */
   crdName: string;
 }
 
+/**
+ * Props for the versioned Cluster detail view.
+ */
 interface ClusterDetailWithVersionProps extends ClusterDetailContentProps {
+  /** The resource class bound to the detected API version */
   VersionedCluster: typeof Cluster;
+  /** The detected CAPI API version (e.g., v1beta1, v1beta2) */
   apiVersion: string;
 }
 
-function ClusterDetailContent({ crName, namespace, crdName }: ClusterDetailContentProps) {
+/**
+ * Wrapper component to detect CAPI API version for a Cluster.
+ *
+ * @param props - Component properties.
+ */
+function ClusterDetailContent(props: ClusterDetailContentProps) {
+  const { crName, namespace, crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedCluster = useMemo(
     () => (apiVersion ? Cluster.withApiVersion(apiVersion) : Cluster),
@@ -63,12 +91,13 @@ function ClusterDetailContent({ crName, namespace, crdName }: ClusterDetailConte
   );
 }
 
-function ClusterDetailWithData({
-  crName,
-  namespace,
-  VersionedCluster,
-  crdName,
-}: ClusterDetailWithVersionProps) {
+/**
+ * Renders the final Cluster detail view with all fetched data.
+ *
+ * @param props - Component properties including the versioned class and version.
+ */
+function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
+  const { crName, namespace, VersionedCluster, crdName } = props;
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedCluster.useGet(crName, namespace ?? undefined);
 
@@ -93,6 +122,12 @@ function ClusterDetailWithData({
   const initialization = item.initialization;
   const observedGeneration = item.status?.observedGeneration;
 
+  /**
+   * Helper to render replica status for control plane or worker nodes.
+   *
+   * @param status - The replica status from the Cluster status.
+   * @returns A rendered replica status or dash.
+   */
   const renderReplicaValue = (status?: ReplicasStatus) => {
     if (!status) return '-';
     const replicaLike = {
@@ -114,16 +149,9 @@ function ClusterDetailWithData({
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
-      actions={resource => [
-        resource && {
-          id: 'cluster-api.get-kubeconfig',
-          action: GetKubeconfigAction({ resource }),
-          label: 'Download Kubeconfig',
-          description: 'Download Kubeconfig',
-          longDescription: 'Download the Kubeconfig file for this cluster',
-          icon: 'mdi:cloud-download',
-        },
-      ]}
+      actions={(resource: Cluster) =>
+        resource ? [<GetKubeconfigAction resource={resource} />] : []
+      }
       extraInfo={() => {
         const clusterClassName = spec?.topology?.class ?? spec?.topology?.classRef?.name;
 

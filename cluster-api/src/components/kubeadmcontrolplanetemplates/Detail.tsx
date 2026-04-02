@@ -6,7 +6,6 @@ import {
   Loader,
   type NameValueTableRow,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
@@ -14,7 +13,27 @@ import { KubeadmControlPlaneTemplate } from '../../resources/kubeadmcontrolplane
 import { useCapiApiVersion } from '../../utils/capiVersion';
 import { KubeadmConfigSection } from '../common/index';
 
-export function KubeadmControlPlaneTemplateDetail({ node }: { node?: GraphNode }) {
+/**
+ * Main detail view for a KubeadmControlPlaneTemplate resource.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#control-plane-template
+ *
+ * @param props - Component properties including optional node from a list.
+ */
+/**
+ * Props for KubeadmControlPlaneTemplateDetail.
+ * Use a generic node prop interface for consistency with other detail pages.
+ */
+interface KCPTemplateNode {
+  kubeObject: KubeadmControlPlaneTemplate;
+}
+
+/**
+ * Main detail view for a KubeadmControlPlaneTemplate resource.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#control-plane-template
+ *
+ * @param props - Component properties including optional node from a list.
+ */
+export function KubeadmControlPlaneTemplateDetail({ node }: { node?: KCPTemplateNode }) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -33,28 +52,32 @@ export function KubeadmControlPlaneTemplateDetail({ node }: { node?: GraphNode }
   );
 }
 
-function KubeadmControlPlaneTemplateDetailContent({
-  crName,
-  namespace,
-  crdName,
-}: {
+/**
+ * Props for the KubeadmControlPlaneTemplateDetailContent wrapper.
+ */
+interface KCPTemplateDetailContentProps {
+  /** The resource name from the URL params */
   crName: string;
+  /** The namespace from the URL params */
   namespace?: string;
+  /** The fully qualified CRD name */
   crdName: string;
-}) {
-  const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
-  const VersionedKCPT = useMemo(
-    () =>
-      apiVersion
-        ? KubeadmControlPlaneTemplate.withApiVersion(apiVersion)
-        : KubeadmControlPlaneTemplate,
-    [apiVersion]
-  );
+}
+
+/**
+ * Props for the versioned KubeadmControlPlaneTemplate detail view.
+ */
+interface KCPTemplateDetailWithVersionProps extends KCPTemplateDetailContentProps {
+  /** The resource class bound to the detected API version */
+  VersionedKCPT: typeof KubeadmControlPlaneTemplate;
+  /** The detected CAPI API version (e.g., v1beta1, v1beta2) */
+  apiVersion: string;
+}
+
+function KCPTemplateDetailWithData(props: KCPTemplateDetailWithVersionProps) {
+  const { crName, namespace, VersionedKCPT, crdName } = props;
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedKCPT.useGet(crName, namespace ?? undefined);
-
-  if (!apiVersion) return <Loader title="Detecting KCP Template version" />;
-
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
@@ -127,5 +150,21 @@ function KubeadmControlPlaneTemplateDetailContent({
         },
       ]}
     />
+  );
+}
+
+function KubeadmControlPlaneTemplateDetailContent(props: KCPTemplateDetailContentProps) {
+  const { crdName } = props;
+  const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
+  const VersionedKCPT = useMemo(
+    () =>
+      apiVersion
+        ? KubeadmControlPlaneTemplate.withApiVersion(apiVersion)
+        : KubeadmControlPlaneTemplate,
+    [apiVersion]
+  );
+  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  return (
+    <KCPTemplateDetailWithData {...props} VersionedKCPT={VersionedKCPT} apiVersion={apiVersion} />
   );
 }

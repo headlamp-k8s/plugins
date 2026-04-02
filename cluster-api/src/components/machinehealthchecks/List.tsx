@@ -7,6 +7,12 @@ interface MachineHealthChecksListWithDataProps {
   MachineHealthCheckClass: typeof MachineHealthCheck;
 }
 
+/**
+ * Data-fetching wrapper for the machine health check list.
+ *
+ * @param props - Component properties.
+ * @param props.MachineHealthCheckClass - The MachineHealthCheck resource class bound to a specific API version.
+ */
 function MachineHealthChecksListWithData({
   MachineHealthCheckClass,
 }: MachineHealthChecksListWithDataProps) {
@@ -54,6 +60,10 @@ function MachineHealthChecksListWithData({
   );
 }
 
+/**
+ * Main entry point for the MachineHealthChecks list view.
+ * Detects the CAPI version and renders the list with the correct resource class.
+ */
 export function MachineHealthChecksList() {
   const version = useCapiApiVersion(MachineHealthCheck.crdName, 'v1beta1');
   const VersionedMachineHealthCheck = useMemo(

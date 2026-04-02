@@ -25,6 +25,12 @@ import { renderConditionStatus } from '../common/util';
 
 type KubeadmConfigNode = { kubeObject: KubeadmConfig };
 
+/**
+ * Main detail view for a KubeadmConfig resource.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#kubeadmconfig
+ *
+ * @param props - Component properties including optional node from a list.
+ */
 export function KubeadmConfigDetail({ node }: { node?: KubeadmConfigNode }) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
@@ -56,8 +62,13 @@ interface KubeadmConfigDetailContentPropsWithVersion extends KubeadmConfigDetail
   apiVersion: string;
 }
 
+/**
+ * Wrapper component to detect CAPI API version for a KubeadmConfig.
+ *
+ * @param props - Component properties.
+ */
 function KubeadmConfigDetailContent(props: KubeadmConfigDetailContentProps) {
-  const { crdName } = props;
+  const { crName, namespace, crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedKubeadmConfig = useMemo(
     () => (apiVersion ? KubeadmConfig.withApiVersion(apiVersion) : KubeadmConfig),
@@ -68,20 +79,22 @@ function KubeadmConfigDetailContent(props: KubeadmConfigDetailContentProps) {
 
   return (
     <KubeadmConfigDetailContentWithData
-      {...props}
+      crName={crName}
+      namespace={namespace}
+      crdName={crdName}
       VersionedKubeadmConfig={VersionedKubeadmConfig}
       apiVersion={apiVersion}
     />
   );
 }
 
-function KubeadmConfigDetailContentWithData({
-  crName,
-  namespace,
-  crdName,
-  VersionedKubeadmConfig,
-  apiVersion,
-}: KubeadmConfigDetailContentPropsWithVersion) {
+/**
+ * Renders the final KubeadmConfig detail view with all fetched data.
+ *
+ * @param props - Component properties including the versioned class and version.
+ */
+function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPropsWithVersion) {
+  const { crName, namespace, crdName, VersionedKubeadmConfig, apiVersion } = props;
   const [crd, crdError] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedKubeadmConfig.useGet(crName, namespace ?? undefined);
 
@@ -231,14 +244,26 @@ function KubeadmConfigDetailContentWithData({
                     <SectionBox title="Files">
                       <SimpleTable
                         columns={[
-                          { label: 'Path', getter: (r: any) => r.path },
-                          { label: 'Owner', getter: (r: any) => r.owner ?? '-' },
-                          { label: 'Permissions', getter: (r: any) => r.permissions ?? '-' },
-                          { label: 'Encoding', getter: (r: any) => r.encoding ?? 'plain' },
-                          { label: 'Append', getter: (r: any) => String(r.append ?? false) },
+                          { label: 'Path', getter: (r: { path: string }) => r.path },
+                          { label: 'Owner', getter: (r: { owner?: string }) => r.owner ?? '-' },
+                          {
+                            label: 'Permissions',
+                            getter: (r: { permissions?: string }) => r.permissions ?? '-',
+                          },
+                          {
+                            label: 'Encoding',
+                            getter: (r: { encoding?: string }) => r.encoding ?? 'plain',
+                          },
+                          {
+                            label: 'Append',
+                            getter: (r: { append?: boolean }) => String(r.append ?? false),
+                          },
                           {
                             label: 'Source',
-                            getter: (r: any) =>
+                            getter: (r: {
+                              contentFrom?: { secret?: { name: string; key: string } };
+                              content?: string;
+                            }) =>
                               r.contentFrom?.secret
                                 ? `secret:${r.contentFrom.secret.name}/${r.contentFrom.secret.key}`
                                 : r.content
@@ -261,14 +286,22 @@ function KubeadmConfigDetailContentWithData({
                     <SectionBox title="Users">
                       <SimpleTable
                         columns={[
-                          { label: 'Name', getter: (r: any) => r.name },
-                          { label: 'Shell', getter: (r: any) => r.shell ?? '-' },
-                          { label: 'Groups', getter: (r: any) => r.groups ?? '-' },
-                          { label: 'Home Dir', getter: (r: any) => r.homeDir ?? '-' },
-                          { label: 'Inactive', getter: (r: any) => String(r.inactive ?? false) },
+                          { label: 'Name', getter: (r: { name: string }) => r.name },
+                          { label: 'Shell', getter: (r: { shell?: string }) => r.shell ?? '-' },
+                          { label: 'Groups', getter: (r: { groups?: string }) => r.groups ?? '-' },
+                          {
+                            label: 'Home Dir',
+                            getter: (r: { homeDir?: string }) => r.homeDir ?? '-',
+                          },
+                          {
+                            label: 'Inactive',
+                            getter: (r: { inactive?: boolean }) => String(r.inactive ?? false),
+                          },
                           {
                             label: 'Passwd From',
-                            getter: (r: any) =>
+                            getter: (r: {
+                              passwdFrom?: { secret?: { name: string; key: string } };
+                            }) =>
                               r.passwdFrom?.secret
                                 ? `${r.passwdFrom.secret.name}/${r.passwdFrom.secret.key}`
                                 : '-',
@@ -289,41 +322,38 @@ function KubeadmConfigDetailContentWithData({
                   id: 'cluster-api.kubeadm-config-commands',
                   section: (
                     <SectionBox title="Commands">
-                    <Box>
-                      {spec?.bootCommands?.length ? (
-                        <Box sx={{ mb: 2 }}>
-                          <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>Boot Commands</Typography>
-                          <Typography
-                            component="pre"
-                            sx={{ ...codeStyle, m: 0 }}
-                          >
-                            {spec.bootCommands.join('\n')}
-                          </Typography>
-                        </Box>
-                      ) : null}
-                      {spec?.preKubeadmCommands?.length ? (
-                        <Box sx={{ mb: 2 }}>
-                          <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>Pre-Kubeadm Commands</Typography>
-                          <Typography
-                            component="pre"
-                            sx={{ ...codeStyle, m: 0 }}
-                          >
-                            {spec.preKubeadmCommands.join('\n')}
-                          </Typography>
-                        </Box>
-                      ) : null}
-                      {spec?.postKubeadmCommands?.length ? (
-                        <Box>
-                          <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>Post-Kubeadm Commands</Typography>
-                          <Typography
-                            component="pre"
-                            sx={{ ...codeStyle, m: 0 }}
-                          >
-                            {spec.postKubeadmCommands.join('\n')}
-                          </Typography>
-                        </Box>
-                      ) : null}
-                    </Box>
+                      <Box>
+                        {spec?.bootCommands?.length ? (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                              Boot Commands
+                            </Typography>
+                            <Typography component="pre" sx={{ ...codeStyle, m: 0 }}>
+                              {spec.bootCommands.join('\n')}
+                            </Typography>
+                          </Box>
+                        ) : null}
+                        {spec?.preKubeadmCommands?.length ? (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                              Pre-Kubeadm Commands
+                            </Typography>
+                            <Typography component="pre" sx={{ ...codeStyle, m: 0 }}>
+                              {spec.preKubeadmCommands.join('\n')}
+                            </Typography>
+                          </Box>
+                        ) : null}
+                        {spec?.postKubeadmCommands?.length ? (
+                          <Box>
+                            <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                              Post-Kubeadm Commands
+                            </Typography>
+                            <Typography component="pre" sx={{ ...codeStyle, m: 0 }}>
+                              {spec.postKubeadmCommands.join('\n')}
+                            </Typography>
+                          </Box>
+                        ) : null}
+                      </Box>
                     </SectionBox>
                   ),
                 },
@@ -340,13 +370,20 @@ function KubeadmConfigDetailContentWithData({
                           <strong>Partitions</strong>
                           <SimpleTable
                             columns={[
-                              { label: 'Device', getter: (r: any) => r.device },
-                              { label: 'Layout', getter: (r: any) => String(r.layout) },
+                              { label: 'Device', getter: (r: { device: string }) => r.device },
+                              {
+                                label: 'Layout',
+                                getter: (r: { layout: boolean }) => String(r.layout),
+                              },
                               {
                                 label: 'Overwrite',
-                                getter: (r: any) => String(r.overwrite ?? false),
+                                getter: (r: { overwrite?: boolean }) =>
+                                  String(r.overwrite ?? false),
                               },
-                              { label: 'Table Type', getter: (r: any) => r.tableType ?? '-' },
+                              {
+                                label: 'Table Type',
+                                getter: (r: { tableType?: string }) => r.tableType ?? '-',
+                              },
                             ]}
                             data={spec.diskSetup.partitions}
                           />
@@ -357,12 +394,16 @@ function KubeadmConfigDetailContentWithData({
                           <strong>Filesystems</strong>
                           <SimpleTable
                             columns={[
-                              { label: 'Device', getter: (r: any) => r.device },
-                              { label: 'Filesystem', getter: (r: any) => r.filesystem },
-                              { label: 'Label', getter: (r: any) => r.label ?? '-' },
+                              { label: 'Device', getter: (r: { device: string }) => r.device },
+                              {
+                                label: 'Filesystem',
+                                getter: (r: { filesystem: string }) => r.filesystem,
+                              },
+                              { label: 'Label', getter: (r: { label?: string }) => r.label ?? '-' },
                               {
                                 label: 'Overwrite',
-                                getter: (r: any) => String(r.overwrite ?? false),
+                                getter: (r: { overwrite?: boolean }) =>
+                                  String(r.overwrite ?? false),
                               },
                             ]}
                             data={spec.diskSetup.filesystems}

@@ -23,12 +23,26 @@ type MachineNode = {
   kubeObject: Machine;
 };
 
+/**
+ * Helper to determine the role of a machine (Control Plane vs Worker) based on its owners.
+ *
+ * @param machine - The machine object to evaluate.
+ * @returns The role string ('Control Plane' or 'Worker').
+ */
 function getMachineRole(machine: Machine): string {
   const owners = machine.metadata?.ownerReferences ?? [];
   return owners.some((ref: { kind?: string }) => ref.kind === 'KubeadmControlPlane')
     ? 'Control Plane'
     : 'Worker';
 }
+
+/**
+ * Main detail view component for the Machine resource.
+ * Handles both URL-params and direct node passing (Internal Headlamp navigation).
+ *
+ * @param props - Component properties.
+ * @param props.node - Optional node object containing already fetched machine data.
+ */
 export function MachineDetail({ node }: { node?: MachineNode }) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
@@ -55,13 +69,13 @@ interface MachineDetailContentPropsWithVersion extends MachineDetailContentProps
   apiVersion: string;
 }
 
-function MachineDetailContentWithData({
-  crName,
-  namespace,
-  crdName,
-  VersionedMachine,
-  apiVersion,
-}: MachineDetailContentPropsWithVersion) {
+/**
+ * Renders the final Machine detail view with all fetched data.
+ *
+ * @param props - Component properties including the versioned class and detected version.
+ */
+function MachineDetailContentWithData(props: MachineDetailContentPropsWithVersion) {
+  const { crName, namespace, crdName, VersionedMachine, apiVersion } = props;
   const [crd, crdError] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedMachine.useGet(crName, namespace ?? undefined);
 
@@ -222,6 +236,11 @@ function MachineDetailContentWithData({
   );
 }
 
+/**
+ * Data-fetching wrapper that detects the correct CAPI version for the resource.
+ *
+ * @param props - Component identification props.
+ */
 function MachineDetailContent(props: MachineDetailContentProps) {
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');

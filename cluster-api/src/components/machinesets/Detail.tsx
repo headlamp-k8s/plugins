@@ -23,9 +23,22 @@ import {
   TemplateSection,
 } from '../common/index';
 
-type MachineSetNode = { kubeObject: MachineSet };
+/**
+ * Props for the MachineSetDetail component.
+ * @see https://cluster-api.sigs.k8s.io/concepts/machineset/
+ */
+interface MachineSetDetailProps {
+  /** The Headlamp node object containing the MachineSet resource */
+  node?: {
+    /** The actual MachineSet resource object */
+    kubeObject: MachineSet;
+  };
+}
 
-export function MachineSetDetail({ node }: { node?: MachineSetNode }) {
+/**
+ * Main detail view component for the MachineSet resource.
+ */
+export function MachineSetDetail({ node }: MachineSetDetailProps) {
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -40,17 +53,33 @@ export function MachineSetDetail({ node }: { node?: MachineSetNode }) {
   );
 }
 
+/**
+ * Props for the MachineSetDetailContent wrapper.
+ */
 interface MachineSetDetailContentProps {
+  /** The resource name from the URL params */
   crName: string;
+  /** The namespace from the URL params */
   namespace?: string;
+  /** The fully qualified CRD name */
   crdName: string;
 }
 
+/**
+ * Props for the versioned MachineSet detail view.
+ */
 interface MachineSetDetailContentPropsWithVersion extends MachineSetDetailContentProps {
+  /** The resource class bound to the detected API version */
   VersionedMachineSet: typeof MachineSet;
+  /** The detected CAPI API version (e.g., v1beta1, v1beta2) */
   apiVersion: string;
 }
 
+/**
+ * Renders the final MachineSet detail view with all fetched data.
+ *
+ * @param props - Component properties including the versioned class and version.
+ */
 function MachineSetDetailContentWithData({
   crName,
   namespace,
@@ -152,7 +181,7 @@ function MachineSetDetailContentWithData({
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
-      actions={item => (item ? [<ScaleButton item={item} />] : [])}
+      actions={(item: MachineSet) => (item ? [<ScaleButton item={item} />] : [])}
       extraInfo={() => extraInfo}
       extraSections={() => [
         {
@@ -188,6 +217,11 @@ function MachineSetDetailContentWithData({
   );
 }
 
+/**
+ * Wrapper component to detect CAPI API version for a MachineSet.
+ *
+ * @param props - Component properties.
+ */
 function MachineSetDetailContent(props: MachineSetDetailContentProps) {
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');

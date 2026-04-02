@@ -13,12 +13,18 @@ interface MachinePoolsListWithDataProps {
   MachinePoolClass: typeof MachinePool;
 }
 
+/**
+ * Data-fetching wrapper for the machine pool list.
+ *
+ * @param props - Component properties.
+ * @param props.MachinePoolClass - The machine pool resource class bound to a specific API version.
+ */
 function MachinePoolsListWithData({ MachinePoolClass }: MachinePoolsListWithDataProps) {
   return (
     <ResourceListView
       title="Machine Pools"
       resourceClass={MachinePoolClass}
-      actions={[{ id: 'scale', action: (item: any) => <ScaleButton item={item} /> }]}
+      actions={[{ id: 'scale', action: (item: MachinePool) => <ScaleButton item={item} /> }]}
       columns={[
         'name',
         'namespace',
@@ -68,6 +74,10 @@ function MachinePoolsListWithData({ MachinePoolClass }: MachinePoolsListWithData
   );
 }
 
+/**
+ * Main entry point for the MachinePools list view.
+ * Detects the CAPI version and renders the list with the correct resource class.
+ */
 export function MachinePoolsList() {
   const version = useCapiApiVersion(MachinePool.crdName, 'v1beta1');
   const VersionedMachinePool = useMemo(

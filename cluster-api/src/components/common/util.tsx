@@ -6,6 +6,12 @@ import {
 import type { ReactNode } from 'react';
 import { Condition, KubeReference } from '../../resources/common';
 
+/**
+ * Maps a resource phase string to a Headlamp StatusLabel style.
+ *
+ * @param phase - The resource phase (e.g., 'Running', 'Failed').
+ * @returns A status string: 'success', 'warning', or 'error'.
+ */
 export function getPhaseStatus(phase: string | undefined): 'success' | 'warning' | 'error' | '' {
   if (!phase) return '';
   const normalized = phase.toLowerCase();
@@ -21,12 +27,22 @@ export function getPhaseStatus(phase: string | undefined): 'success' | 'warning'
   return 'warning';
 }
 
+/**
+ * Generic input type for name-value rows.
+ * Can be a simple Record (dictionary) or an array of { name, value } objects.
+ */
 export type NameValueInput =
   | Record<string, string | number | boolean | null | undefined>
   | Array<{ name: string; value: string | number | boolean | null | undefined }>
   | undefined
   | null;
 
+/**
+ * Normalizes mixed name-value input formats into a consistent row array.
+ *
+ * @param data - Record, array of objects, or undefined/null.
+ * @returns Array of name-value pairs as strings.
+ */
 export function toNameValueRows(data: NameValueInput): { name: string; value: string }[] {
   if (!data) return [];
   if (Array.isArray(data)) {
@@ -41,6 +57,12 @@ export function toNameValueRows(data: NameValueInput): { name: string; value: st
   }));
 }
 
+/**
+ * Converts an array of name-value rows back into a object dictionary.
+ *
+ * @param rows - Array of name-value pairs.
+ * @returns A Record object.
+ */
 export function rowsToDict(rows: Array<{ name: string; value: string }>) {
   return rows.reduce<Record<string, string>>((acc, { name, value }) => {
     acc[name] = value ?? '';
@@ -48,6 +70,12 @@ export function rowsToDict(rows: Array<{ name: string; value: string }>) {
   }, {});
 }
 
+/**
+ * Renders a Kubernetes reference object as a small information table.
+ *
+ * @param ref - The KubeReference object.
+ * @returns A React component showing the ref details.
+ */
 export function renderReference(ref?: KubeReference): ReactNode {
   if (!ref) return '-';
   const rows: NameValueTableRow[] = [];
@@ -64,6 +92,15 @@ export function renderReference(ref?: KubeReference): ReactNode {
   return <NameValueTable rows={rows} />;
 }
 
+/**
+ * Renders a condition status as a styled StatusLabel.
+ * Supports custom labels and status mappings for different condition states.
+ *
+ * @param value - Optional string value ('true'/'false').
+ * @param condition - Optional Condition object from resource status.
+ * @param options - Configuration for labels and color statuses for True, False, and Unknown states.
+ * @returns A styled status badge.
+ */
 export function renderConditionStatus(
   value?: string,
   condition?: Condition,

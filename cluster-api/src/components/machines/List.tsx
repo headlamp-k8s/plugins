@@ -20,6 +20,13 @@ const OWNER_ROUTE: Record<string, string> = {
   MachinePool: 'machinepool',
 };
 
+/**
+ * Helper to generate a link to the owner of a machine.
+ * Supports KCP, MachineSet, MachineDeployment, and MachinePool.
+ *
+ * @param machine - The machine object or a partial object with metadata.
+ * @returns A Link component, the owner name as text, or null if no owner exists.
+ */
 function getOwnerLink(machine: {
   metadata?: { ownerReferences?: Array<{ kind?: string; name?: string }>; namespace?: string };
 }) {
@@ -48,6 +55,17 @@ export interface MachineListRendererProps {
   showCreateButton?: boolean;
 }
 
+/**
+ * Renders the machine list using Headlamp's ResourceListView.
+ * Supports versioned machine classes and optional column hiding.
+ *
+ * @param props - Component properties.
+ * @param props.MachineClass - The machine resource class.
+ * @param props.machines - The list of machine objects to display.
+ * @param props.errors - Any API errors encountered during fetch.
+ * @param props.hideColumns - Optional list of columns to hide.
+ * @param props.showCreateButton - Whether to show the resource creation button.
+ */
 export function MachineListRenderer(props: MachineListRendererProps) {
   const { MachineClass, machines, errors, hideColumns = [], showCreateButton = false } = props;
   return (
@@ -149,6 +167,12 @@ interface MachinesListWithDataProps {
   MachineClass: typeof Machine;
 }
 
+/**
+ * Data-fetching wrapper for the machine list.
+ *
+ * @param props - Component properties.
+ * @param props.MachineClass - The machine resource class bound to a specific API version.
+ */
 function MachinesListWithData({ MachineClass }: MachinesListWithDataProps) {
   const [machines, error] = MachineClass.useList();
   return (
@@ -161,6 +185,10 @@ function MachinesListWithData({ MachineClass }: MachinesListWithDataProps) {
   );
 }
 
+/**
+ * Main entry point for the Machines list view.
+ * Detects the CAPI version and renders the list with the correct resource class.
+ */
 export function MachinesList() {
   const version = useCapiApiVersion(Machine.crdName, 'v1beta1');
   const VersionedMachine = useMemo(

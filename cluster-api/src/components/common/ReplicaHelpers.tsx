@@ -15,20 +15,46 @@ type ReplicaLike = {
   };
   upToDateReplicas?: number;
 };
-export type RenderUpdateStrategy = MachineDeployment | KubeadmControlPlane;
+export interface RollingUpdateStrategy {
+  maxUnavailable?: number | string;
+  maxSurge?: number | string;
+}
 
+export interface UpdateStrategy {
+  type?: string;
+  rollingUpdate?: RollingUpdateStrategy;
+}
+
+export type RenderUpdateStrategy = (MachineDeployment | KubeadmControlPlane) & {
+  spec?: {
+    strategy?: UpdateStrategy;
+    rollout?: { strategy?: UpdateStrategy };
+    rolloutStrategy?: UpdateStrategy;
+  };
+};
+
+/**
+ * Determines whether to show the update strategy for a resource.
+ *
+ * @param item - The MachineDeployment or KubeadmControlPlane resource.
+ * @returns True if a rollout or update strategy is defined.
+ * @see https://cluster-api.sigs.k8s.io/developer/architecture/controllers/machine-deployment.html#update-strategy
+ */
 export function showUpdateStrategy(item: RenderUpdateStrategy): boolean {
   const v1beta1Strategy = item.spec?.strategy;
-  const v1beta2Strategy =
-    (item.spec as any)?.rollout?.strategy ?? (item.spec as any)?.rolloutStrategy;
+  const v1beta2Strategy = item.spec?.rollout?.strategy ?? item.spec?.rolloutStrategy;
   return !!(v1beta1Strategy || v1beta2Strategy);
 }
 
+/**
+ * Renders the update strategy details (e.g., RollingUpdate with maxSurge/maxUnavailable).
+ *
+ * @param item - The MachineDeployment or KubeadmControlPlane resource.
+ * @returns A formatted string describing the update strategy.
+ */
 export function renderUpdateStrategy(item: RenderUpdateStrategy) {
   const strategy =
-    item.spec?.strategy ??
-    (item.spec as any)?.rollout?.strategy ??
-    (item.spec as any)?.rolloutStrategy;
+    item.spec?.strategy ?? item.spec?.rollout?.strategy ?? item.spec?.rolloutStrategy;
 
   if (!strategy?.type) return '-';
 
@@ -51,10 +77,23 @@ export function renderUpdateStrategy(item: RenderUpdateStrategy) {
   return strategy.type;
 }
 
+/**
+ * Determines whether to show replica counts for a resource.
+ *
+ * @param item - The resource (MachineSet, MachinePool, etc.) or a replica-like object.
+ * @returns True if replicas are defined in spec or status.
+ */
 export function showReplicas(item: ReplicaOwner | ReplicaLike): boolean {
   return item.spec?.replicas !== undefined || item.status?.replicas !== undefined;
 }
 
+/**
+ * Renders a grid of replica counts (Desired, Ready, Up-to-date, Available, Total).
+ *
+ * @param item - The resource or a replica-like object.
+ * @returns A MetadataDictGrid component showing the replica counts.
+ * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#replicaset
+ */
 export function renderReplicas(item: ReplicaOwner | ReplicaLike) {
   if (!showReplicas(item)) return null;
 
