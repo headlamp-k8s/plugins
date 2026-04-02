@@ -1,8 +1,13 @@
-import { Loader, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  Loader,
+  ResourceListView,
+  StatusLabel,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
 import { MachinePool } from '../../resources/machinepool';
 import { useCapiApiVersion } from '../../utils/capiVersion';
 import { ScaleButton } from '../common/index';
+import { getPhaseStatus } from '../common/util';
 
 interface MachinePoolsListWithDataProps {
   MachinePoolClass: typeof MachinePool;
@@ -23,19 +28,39 @@ function MachinePoolsListWithData({ MachinePoolClass }: MachinePoolsListWithData
           getValue: mp => mp.spec?.clusterName,
         },
         {
-          id: 'desired',
-          label: 'Desired',
-          getValue: mp => mp.spec?.replicas ?? 0,
+          id: 'ready',
+          label: 'Ready',
+          getValue: mp => `${mp.status?.readyReplicas ?? 0}/${mp.spec?.replicas ?? 0}`,
+          render: mp => {
+            const ready = mp.status?.readyReplicas ?? 0;
+            const desired = mp.spec?.replicas ?? 0;
+            const isReady = ready === desired && desired > 0;
+            return (
+              <StatusLabel status={isReady ? 'success' : 'warning'}>
+                {ready}/{desired}
+              </StatusLabel>
+            );
+          },
         },
         {
-          id: 'replicas',
-          label: 'Replicas',
-          getValue: mp => mp.status?.replicas ?? 0,
+          id: 'uptodate',
+          label: 'Up-to-date',
+          getValue: mp => mp.upToDateReplicas ?? '-',
         },
         {
           id: 'phase',
           label: 'Phase',
-          getValue: mp => mp.status?.phase || 'Unknown',
+          getValue: mp => mp.status?.phase,
+          render: mp => {
+            const phase = mp.status?.phase;
+            if (!phase) return '-';
+            return <StatusLabel status={getPhaseStatus(phase)}>{phase}</StatusLabel>;
+          },
+        },
+        {
+          id: 'available',
+          label: 'Available',
+          getValue: mp => mp.status?.availableReplicas ?? 0,
         },
         'age',
       ]}
