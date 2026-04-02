@@ -1,0 +1,11 @@
+version: 0.1.0-alpha
+name: "headlamp_volcano"
+displayName: Volcano
+createdAt: "2026-04-02T08:54:00Z"
+logoURL: "https://raw.githubusercontent.com/volcano-sh/volcano/refs/heads/master/docs/images/volcano-logo.png"
+description: A UI for viewing and managing Volcano batch scheduling resources in Headlamp.
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/volcano-0.1.0-alpha/headlamp-k8s-volcano-0.1.0-alpha.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:7ab293f59a498b8b8b0df7fa042b56037981749c61e3ea65eae4f7325395431e"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
