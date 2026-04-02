@@ -19,17 +19,148 @@ import {
   ResourceListView,
   ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Chip, Typography } from '@mui/material';
+import { Chip, Stack, Typography } from '@mui/material';
 import React from 'react';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
-import { KRevision } from '../../resources/knative';
+import { KRevision, KService } from '../../resources/knative';
+import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
+import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
+
+function RevisionNameDisplay({
+  revision,
+  kservice,
+}: {
+  revision: KRevision;
+  kservice: KService | null;
+}) {
+  const {
+    metadata: { namespace, name },
+    cluster,
+  } = revision;
+
+  const isLatestReady = kservice?.status?.latestReadyRevisionName === name;
+
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <Link
+        routeName="revisionDetails"
+        params={{ namespace: namespace!, name: name! }}
+        activeCluster={cluster}
+      >
+        {name}
+      </Link>
+      {isLatestReady && <Chip label="Latest Ready" color="info" size="small" variant="outlined" />}
+    </Stack>
+  );
+}
+
+function RevisionTrafficDisplay({
+  revision,
+  kservice,
+}: {
+  revision: KRevision;
+  kservice: KService | null;
+}) {
+  const myTraffic = kservice ? revision.getTrafficInService(kservice) : [];
+
+  if (!kservice)
+    return (
+      <Typography variant="body2" color="text.secondary">
+        -
+      </Typography>
+    );
+
+  const trafficWithPercent = myTraffic.filter(t => t.percent !== undefined && t.percent > 0);
+
+  if (trafficWithPercent.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        0%
+      </Typography>
+    );
+  }
+
+  return (
+    <Stack direction="column" spacing={1} sx={{ flexWrap: 'wrap' }}>
+      {trafficWithPercent.map((t, idx) => (
+        <Chip
+          key={idx}
+          label={`${t.percent}%${t.latestRevision ? ' (Latest)' : ''}`}
+          size="small"
+          color="success"
+          variant="filled"
+        />
+      ))}
+    </Stack>
+  );
+}
+
+function RevisionTagDisplay({
+  revision,
+  kservice,
+}: {
+  revision: KRevision;
+  kservice: KService | null;
+}) {
+  const myTraffic = kservice ? revision.getTrafficInService(kservice) : [];
+
+  if (!kservice)
+    return (
+      <Typography variant="body2" color="text.secondary">
+        -
+      </Typography>
+    );
+
+  const tags = myTraffic.filter(t => !!t.tag);
+
+  if (tags.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        -
+      </Typography>
+    );
+  }
+
+  return (
+    <Stack direction="column" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+      {tags.map(tag => {
+        const url = getSafeUrl(tag.url);
+        return url ? (
+          <Chip
+            key={tag.tag}
+            label={tag.tag}
+            size="small"
+            component="a"
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            clickable
+            color="primary"
+          />
+        ) : (
+          <Chip key={tag.tag} label={tag.tag} size="small" />
+        );
+      })}
+    </Stack>
+  );
+}
 
 export function RevisionsList() {
   const clusters = useClusters();
   const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
   const showClusterColumn = clusters.length > 1;
+
+  const kserviceResult = KService.useList({ clusters });
+  const kserviceMap = React.useMemo(() => {
+    const map = new Map<string, KService>();
+    for (const svc of kserviceResult.items || []) {
+      const key = `${svc.cluster}/${svc.metadata.namespace}/${svc.metadata.name}`;
+      map.set(key, svc);
+    }
+    return map;
+  }, [kserviceResult.items]);
 
   const columns = React.useMemo<
     (ResourceTableColumn<KRevision> | 'namespace' | 'cluster' | 'age')[]
@@ -40,15 +171,14 @@ export function RevisionsList() {
         label: 'Name',
         gridTemplate: 'auto',
         getValue: rev => rev.metadata.name ?? '',
-        render: rev => (
-          <Link
-            routeName="revisionDetails"
-            params={{ namespace: rev.metadata.namespace, name: rev.metadata.name }}
-            activeCluster={rev.cluster}
-          >
-            {rev.metadata.name}
-          </Link>
-        ),
+        render: rev => {
+          let kservice: KService | null = null;
+          if (rev.parentService) {
+            const key = `${rev.cluster}/${rev.metadata.namespace}/${rev.parentService}`;
+            kservice = kserviceMap.get(key) ?? null;
+          }
+          return <RevisionNameDisplay revision={rev} kservice={kservice} />;
+        },
       },
       'namespace',
     ];
@@ -81,14 +211,13 @@ export function RevisionsList() {
         label: 'Ready',
         gridTemplate: 'auto',
         getValue: rev => rev.readyCondition?.status || 'Unknown',
-        render: rev => {
-          const status = rev.readyCondition?.status || 'Unknown';
-          let color: 'success' | 'warning' | 'error' | 'default' = 'default';
-          if (status === 'True') color = 'success';
-          else if (status === 'False') color = 'error';
-
-          return <Chip label={status} color={color} size="small" variant="outlined" />;
-        },
+        render: rev => (
+          <ReadyStatusLabel
+            status={rev.readyCondition?.status ?? 'Unknown'}
+            reason={rev.readyCondition?.reason}
+            message={rev.readyCondition?.message}
+          />
+        ),
       },
       {
         id: 'image',
@@ -101,10 +230,42 @@ export function RevisionsList() {
           </Typography>
         ),
       },
+      {
+        id: 'traffic',
+        label: 'Traffic',
+        gridTemplate: 'auto',
+        getValue: rev => {
+          let kservice: KService | null = null;
+          if (rev.parentService) {
+            const key = `${rev.cluster}/${rev.metadata.namespace}/${rev.parentService}`;
+            kservice = kserviceMap.get(key) ?? null;
+          }
+          const traffic = kservice ? rev.getTrafficInService(kservice) : [];
+          return traffic.reduce((acc, t) => acc + (t.percent || 0), 0);
+        },
+        render: rev => {
+          if (!rev.parentService) return <Typography variant="body2">-</Typography>;
+          const key = `${rev.cluster}/${rev.metadata.namespace}/${rev.parentService}`;
+          const kservice = kserviceMap.get(key) ?? null;
+          return <RevisionTrafficDisplay revision={rev} kservice={kservice} />;
+        },
+      },
+      {
+        id: 'tags',
+        label: 'Tags',
+        gridTemplate: 'auto',
+        getValue: () => '',
+        render: rev => {
+          if (!rev.parentService) return <Typography variant="body2">-</Typography>;
+          const key = `${rev.cluster}/${rev.metadata.namespace}/${rev.parentService}`;
+          const kservice = kserviceMap.get(key) ?? null;
+          return <RevisionTagDisplay revision={rev} kservice={kservice} />;
+        },
+      },
       'age'
     );
     return cols;
-  }, [showClusterColumn]);
+  }, [showClusterColumn, kserviceMap]);
 
   if (!isKnativeInstalled) {
     return <NotInstalledBanner isLoading={isKnativeCheckLoading} />;

@@ -1,62 +1,30 @@
-/*
- * Copyright 2025 The Kubernetes Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { Icon } from '@iconify/react';
 import {
-  Link,
   NameValueTable,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Typography } from '@mui/material';
-import { Container, KRevision } from '../../../../../resources/knative';
-
-/**
- * Represents a discrete specification of compute allocation constraints within the data grid.
- *
- * @property {string} type - Classifies the constraint category, typically distinguishing between 'Requests' and 'Limits'.
- * @property {string} cpu - The raw millicore or absolute allocation threshold specified for processing capacity.
- * @property {string} memory - The explicitly declared byte-formatted RAM allocation ceiling or baseline.
- */
-export interface ResourceRow {
-  type: string;
-  cpu: string;
-  memory: string;
-}
-
-/**
- * Defines the parameters supplied to the isolated container specification renderer.
- *
- * @property {Container[]} containers - The array of fundamental execution environments configured inside the deployment pod.
- * @property {string} namespace - The cluster isolation boundary in which these compute units are instantiated.
- */
-export interface PureContainerSectionProps {
-  containers: Container[];
-  namespace: string;
-}
+import { Meta, StoryFn } from '@storybook/react';
+import { BrowserRouter } from 'react-router-dom';
+import { ReduxDecorator } from '../../../../../helpers/storybook';
+import { Container } from '../../../../../resources/knative';
+import { PureContainerSectionProps, ResourceRow } from './ContainerSection';
 
 type EnvVar = NonNullable<Container['env']>[number];
 
-export function ContainerSection({ revision }: { revision: KRevision }) {
-  const containers = revision.containers;
-  if (!containers || containers.length === 0) return null;
+function PureContainerSection({ containers }: PureContainerSectionProps) {
+  if (!containers || containers.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        No containers defined.
+      </Typography>
+    );
+  }
 
   return (
     <>
-      {containers.map((container: Container, idx: number) => {
+      {containers.map((container, idx) => {
         const resourceData: ResourceRow[] = [];
         if (container.resources?.requests) {
           resourceData.push({
@@ -77,7 +45,6 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
 
         return (
           <SectionBox title={`Container: ${container.name || 'user-container'}`} key={idx}>
-            {/* Image and Ports */}
             <NameValueTable
               rows={[
                 {
@@ -98,7 +65,6 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
               ]}
             />
 
-            {/* Compute Resources */}
             {resourceData.length > 0 && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem' }}>
@@ -106,26 +72,15 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
                 </Typography>
                 <SimpleTable
                   columns={[
-                    {
-                      label: 'Type',
-                      getter: (row: ResourceRow) => row.type,
-                      sort: (a: ResourceRow, b: ResourceRow) => a.type.localeCompare(b.type),
-                    },
-                    {
-                      label: 'CPU',
-                      getter: (row: ResourceRow) => row.cpu,
-                    },
-                    {
-                      label: 'Memory',
-                      getter: (row: ResourceRow) => row.memory,
-                    },
+                    { label: 'Type', getter: (row: ResourceRow) => row.type },
+                    { label: 'CPU', getter: (row: ResourceRow) => row.cpu },
+                    { label: 'Memory', getter: (row: ResourceRow) => row.memory },
                   ]}
                   data={resourceData}
                 />
               </Box>
             )}
 
-            {/* Environment Variables */}
             {envData.length > 0 && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem' }}>
@@ -155,15 +110,9 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
                           return (
                             <Box display="flex" alignItems="center" gap={1}>
                               <Icon icon="mdi:lock-outline" />
-                              <Link
-                                routeName="secret"
-                                params={{
-                                  name: env.valueFrom.secretKeyRef.name,
-                                  namespace: revision.metadata.namespace,
-                                }}
-                              >
+                              <Typography variant="body2">
                                 {env.valueFrom.secretKeyRef.name}
-                              </Link>
+                              </Typography>
                               <Typography variant="caption" color="text.secondary">
                                 (key: {env.valueFrom.secretKeyRef.key})
                               </Typography>
@@ -173,15 +122,9 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
                         if (env.valueFrom?.configMapKeyRef) {
                           return (
                             <Box display="flex" alignItems="center" gap={1}>
-                              <Link
-                                routeName="configmap"
-                                params={{
-                                  name: env.valueFrom.configMapKeyRef.name,
-                                  namespace: revision.metadata.namespace,
-                                }}
-                              >
+                              <Typography variant="body2">
                                 {env.valueFrom.configMapKeyRef.name}
-                              </Link>
+                              </Typography>
                               <Typography variant="caption" color="text.secondary">
                                 (key: {env.valueFrom.configMapKeyRef.key})
                               </Typography>
@@ -202,3 +145,101 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
     </>
   );
 }
+
+export default {
+  title: 'knative/Revisions/Detail/ContainerSection',
+  component: PureContainerSection,
+  decorators: [
+    ReduxDecorator,
+    (Story: StoryFn) => (
+      <BrowserRouter>
+        <Story />
+      </BrowserRouter>
+    ),
+  ],
+} as Meta;
+
+const Template: StoryFn<PureContainerSectionProps> = args => <PureContainerSection {...args} />;
+
+const singleContainer: Container[] = [
+  {
+    name: 'user-container',
+    image: 'gcr.io/knative-samples/helloworld-go:latest',
+    ports: [{ containerPort: 8080, name: 'http1' }],
+    resources: {
+      requests: { cpu: '100m', memory: '128Mi' },
+      limits: { cpu: '1', memory: '512Mi' },
+    },
+    env: [
+      { name: 'TARGET', value: 'Go Sample v1' },
+      { name: 'PORT', value: '8080' },
+    ],
+  },
+];
+
+export const SingleContainer = Template.bind({});
+SingleContainer.args = {
+  containers: singleContainer,
+  namespace: 'default',
+};
+
+export const MultipleContainers = Template.bind({});
+MultipleContainers.args = {
+  containers: [
+    ...singleContainer,
+    {
+      name: 'sidecar',
+      image: 'envoyproxy/envoy:v1.28-latest',
+      ports: [{ containerPort: 15001, name: 'envoy' }],
+      resources: {
+        requests: { cpu: '50m', memory: '64Mi' },
+        limits: { cpu: '500m', memory: '256Mi' },
+      },
+      env: [{ name: 'LOG_LEVEL', value: 'info' }],
+    },
+  ],
+  namespace: 'default',
+};
+
+export const WithSecretRefs = Template.bind({});
+WithSecretRefs.args = {
+  containers: [
+    {
+      name: 'app',
+      image: 'myapp:v2',
+      ports: [{ containerPort: 3000 }],
+      env: [
+        { name: 'APP_ENV', value: 'production' },
+        {
+          name: 'DB_PASSWORD',
+          valueFrom: { secretKeyRef: { name: 'db-credentials', key: 'password' } },
+        },
+        {
+          name: 'API_KEY',
+          valueFrom: { secretKeyRef: { name: 'api-secrets', key: 'key' } },
+        },
+        {
+          name: 'CONFIG_VALUE',
+          valueFrom: { configMapKeyRef: { name: 'app-config', key: 'config.json' } },
+        },
+      ],
+    },
+  ],
+  namespace: 'production',
+};
+
+export const Minimal = Template.bind({});
+Minimal.args = {
+  containers: [
+    {
+      image: 'nginx:latest',
+    },
+  ],
+  namespace: 'default',
+};
+
+export const NoContainers = Template.bind({});
+NoContainers.args = {
+  containers: [],
+  namespace: 'default',
+};

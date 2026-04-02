@@ -26,6 +26,38 @@ import { Chip, Stack, Typography } from '@mui/material';
 const { HTTPRoute } = ResourceClasses;
 type HttpRoute = InstanceType<typeof HTTPRoute>;
 
+/**
+ * Represents the data mapping for an individual gateway API routing entry within the UI table.
+ *
+ * @property {string} name - The resource name identifying the specific HTTPRoute instance.
+ * @property {boolean} isMain - Indicates if this specific route is designated as the primary domain entry.
+ * @property {string[]} tags - Assorted routing label identifiers applied for traffic shaping and versioning.
+ * @property {string[]} origins - Identifies the originating source controllers resolving this configuration.
+ * @property {string[]} hostnames - The collection of public URLs or FQDNs targeted by this specific routing configuration.
+ * @property {boolean} [rolloutInvalidJson] - Flags the presence of unparseable or corrupted JSON configuration within the rollout annotations.
+ * @property {string} age - The elapsed time since this routing configuration was instantiated in the cluster.
+ */
+export interface HttpRouteRow {
+  name: string;
+  isMain: boolean;
+  tags: string[];
+  origins: string[];
+  hostnames: string[];
+  rolloutInvalidJson?: boolean;
+  age: string;
+}
+
+/**
+ * Defines the presentation properties for the HTTP routes listing section.
+ *
+ * @property {string} title - The display header text rendered above the routing configuration data grid.
+ * @property {HttpRouteRow[]} routes - The collection of formulated routing entries resolving traffic for the component.
+ */
+export interface PureHttpRoutesSectionProps {
+  title: string;
+  routes: HttpRouteRow[];
+}
+
 type HttpRoutesSectionProps = {
   title: string;
   namespace: string;

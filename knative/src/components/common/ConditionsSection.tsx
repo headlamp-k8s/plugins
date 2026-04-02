@@ -15,9 +15,10 @@
  */
 
 import { SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Chip, Tooltip, Typography } from '@mui/material';
+import { Tooltip, Typography } from '@mui/material';
 import type { Condition } from '../../resources/knative/common';
 import { getAge } from '../../utils/time';
+import { ReadyStatusLabel } from './ReadyStatusLabel';
 
 type ConditionsSectionProps = {
   conditions: Condition[];
@@ -28,21 +29,24 @@ export default function ConditionsSection({ conditions }: ConditionsSectionProps
     {
       label: 'Type',
       getter: (c: Condition) => c.type,
+      sort: (a: Condition, b: Condition) => a.type.localeCompare(b.type),
     },
     {
       label: 'Status',
-      getter: (c: Condition) =>
-        c.status === 'True' ? (
-          <Chip label="True" color="success" size="small" />
-        ) : c.status === 'False' ? (
-          <Chip label="False" color="error" size="small" />
-        ) : (
-          <Chip label={c.status || 'Unknown'} color="warning" size="small" />
-        ),
+      getter: (c: Condition) => (
+        <ReadyStatusLabel
+          status={c.status}
+          reason={c.reason}
+          message={c.message}
+          isReadyType={c.type === 'Ready'}
+        />
+      ),
+      sort: (a: Condition, b: Condition) => a.status.localeCompare(b.status),
     },
     {
       label: 'Reason',
       getter: (c: Condition) => c.reason || '-',
+      sort: (a: Condition, b: Condition) => (a.reason || '').localeCompare(b.reason || ''),
     },
     {
       label: 'Message',
@@ -62,6 +66,11 @@ export default function ConditionsSection({ conditions }: ConditionsSectionProps
     {
       label: 'Last Transition',
       getter: (c: Condition) => (c.lastTransitionTime ? getAge(c.lastTransitionTime) : '-'),
+      sort: (a: Condition, b: Condition) => {
+        const timeA = a.lastTransitionTime ? new Date(a.lastTransitionTime).getTime() : 0;
+        const timeB = b.lastTransitionTime ? new Date(b.lastTransitionTime).getTime() : 0;
+        return timeA - timeB;
+      },
     },
   ];
 

@@ -14,8 +14,26 @@
  * limitations under the License.
  */
 
-// @ts-nocheck
-import { initTests } from '@kinvolk/headlamp-plugin/config/storyshots/storyshots-test';
+/**
+ * Validates a URL string.
+ * Only allows http and https schemes to prevent unsafe URI execution (e.g. javascript:).
+ *
+ * @param url The URL string to validate
+ * @returns The original URL if it's safe and valid, otherwise undefined
+ */
 
-// Run the *.stories.tsx files in here as storyshot tests.
-initTests();
+export function getSafeUrl(url?: string): string | undefined {
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return url;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}

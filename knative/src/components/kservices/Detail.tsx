@@ -15,7 +15,7 @@
  */
 
 import { DetailsGrid, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Chip, Divider, Stack, Typography } from '@mui/material';
+import { Box, Chip, Divider, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
@@ -26,6 +26,7 @@ import {
   KNATIVE_ACTIVITY_CONTAINER_ID,
 } from '../common/activity/Activity';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
+import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
 import { KServiceEditToggleHeaderAction } from './detail/header/KServiceEditToggleHeaderAction';
 import { KServiceHeaderActions } from './detail/header/KServiceHeaderActions';
 import { KServiceLogsHeaderButton } from './detail/header/KServiceLogsHeaderButton';
@@ -138,20 +139,11 @@ export function KServiceDetail() {
                     {
                       name: 'Ready',
                       value: (
-                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                          <Chip
-                            label={readyStatus}
-                            color={
-                              readyStatus === 'True'
-                                ? 'success'
-                                : readyStatus === 'False'
-                                ? 'error'
-                                : 'default'
-                            }
-                            size="small"
-                            variant="outlined"
-                          />
-                        </Stack>
+                        <ReadyStatusLabel
+                          status={readyStatus}
+                          reason={readyCond?.reason}
+                          message={readyCond?.message}
+                        />
                       ),
                     },
                     {

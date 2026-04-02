@@ -19,7 +19,9 @@ import { Autocomplete, Box, Button, Chip, Stack, TextField, Typography } from '@
 import React from 'react';
 import type { KRevisionResource, KService, Traffic } from '../../../../../resources/knative';
 import { getAge } from '../../../../../utils/time';
+import { getSafeUrl } from '../../../../../utils/url';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { ReadyStatusLabel } from '../../../../common/ReadyStatusLabel';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
@@ -29,7 +31,20 @@ type Props = {
   revisions: KRevisionResource[];
 };
 
-interface TrafficTableRow {
+/**
+ * Represents the base data model for a row within the traffic splitting configuration table.
+ *
+ * @property {string} id - The unique identifier corresponding to the Knative revision name.
+ * @property {boolean} isLatestRow - Flags whether this row represents the singular cluster-wide "latest ready" revision.
+ * @property {string} nameLabel - The display-friendly name shown to the user in the data grid.
+ * @property {boolean} showLatestBadge - Determines whether a specialized 'Latest' informational chip should render next to the name.
+ * @property {string} [badgeLabel] - The textual content rendered inside the 'Latest' chip, typically matching the latest revision name.
+ * @property {boolean} showUnavailableBadge - Determines whether a specialized 'Unavailable' warning chip should render when the revision lacks readiness.
+ * @property {boolean} hasStatus - Indicates if the underlying revision object possesses valid condition array data.
+ * @property {Object} [readyCond] - A subset of the status object extracting critical fields related to immediate component readiness.
+ * @property {string} [creationTimestamp] - The ISO string corresponding to when the cluster initially recorded the generation of this revision.
+ */
+export interface TrafficTableRow {
   id: string;
   isLatestRow: boolean;
   nameLabel: string;
@@ -37,8 +52,35 @@ interface TrafficTableRow {
   badgeLabel?: string;
   showUnavailableBadge: boolean;
   hasStatus: boolean;
-  readyCond?: { status?: string; reason?: string };
+  readyCond?: { status?: string; reason?: string; message?: string };
   creationTimestamp?: string;
+}
+
+/**
+ * Extends the base traffic entry with specific UI data points needed during read/edit operations
+ * for distributing requests among Revisions.
+ *
+ * @property {number} percent - The integer value representing the portion of overall routing this entry is assigned.
+ * @property {string[]} tags - Identifiers applied to this route for discrete URL resolution and reference targeting.
+ * @example
+ * const row: TrafficTableRowData = { ...baseData, percent: 80, tags: ['canary'] };
+ */
+export interface TrafficTableRowData extends TrafficTableRow {
+  percent: number;
+  tags: string[];
+}
+
+/**
+ * Governs the properties for the uncoupled presentation component that renders the traffic grid.
+ *
+ * @property {TrafficTableRowData[]} tableData - Array detailing the configuration and distribution states across all targetable revisions.
+ * @property {number} totalTraffic - Aggregate calculation of all row portions. Utilized to ensure mathematical validation (summing to 100).
+ * @property {boolean} isReadOnly - Determines if the interface restricts input elements, enforcing a view-only mode based on permissions or state.
+ */
+export interface PureTrafficSplittingSectionProps {
+  tableData: TrafficTableRowData[];
+  totalTraffic: number;
+  isReadOnly: boolean;
 }
 
 export default function TrafficSplittingSection({ cluster, kservice, revisions }: Props) {
@@ -370,18 +412,28 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
           </Stack>
         );
       },
+      sort: (a: TrafficTableRow, b: TrafficTableRow) => {
+        return a.nameLabel.localeCompare(b.nameLabel);
+      },
     },
     {
       label: 'Ready',
       getter: (original: TrafficTableRow) => {
-        if (!original.hasStatus) {
-          return <Chip label="Unknown" color="warning" size="small" />;
+        let status: 'True' | 'False' | 'Unknown' = 'Unknown';
+        if (original.hasStatus && original.readyCond?.status) {
+          const condStatus = original.readyCond.status;
+          if (condStatus === 'True' || condStatus === 'False' || condStatus === 'Unknown') {
+            status = condStatus;
+          } else {
+            status = 'Unknown';
+          }
         }
-        const ready = original.readyCond?.status === 'True';
-        return ready ? (
-          <Chip label="Ready" color="success" size="small" />
-        ) : (
-          <Chip label={original.readyCond?.status || 'Unknown'} color="warning" size="small" />
+        return (
+          <ReadyStatusLabel
+            status={status}
+            reason={original.readyCond?.reason}
+            message={original.readyCond?.message}
+          />
         );
       },
     },
@@ -427,6 +479,11 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
           />
         );
       },
+      sort: (a: TrafficTableRow, b: TrafficTableRow) => {
+        const valA = a.isLatestRow ? latestPercent : revPercents[a.id] ?? 0;
+        const valB = b.isLatestRow ? latestPercent : revPercents[b.id] ?? 0;
+        return valA - valB;
+      },
     },
     {
       label: 'Tags',
@@ -444,7 +501,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
           return (
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
               {tags.map((tag, i) => {
-                const url = getTagUrl(tag);
+                const url = getSafeUrl(getTagUrl(tag));
                 return url ? (
                   <Chip
                     key={i}
@@ -523,6 +580,11 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
             sx={{ minWidth: 220 }}
           />
         );
+      },
+      sort: (a: TrafficTableRow, b: TrafficTableRow) => {
+        const tagsA = a.isLatestRow ? latestTags : revTags[a.id] || [];
+        const tagsB = b.isLatestRow ? latestTags : revTags[b.id] || [];
+        return tagsA.join(',').localeCompare(tagsB.join(','));
       },
     },
   ];

@@ -33,9 +33,9 @@ import { useNotify } from '../../../../common/notifications/useNotify';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
-type MetricType = '' | 'concurrency' | 'rps';
+export type MetricType = '' | 'concurrency' | 'rps';
 
-type AutoscalingDefaults = {
+export type AutoscalingDefaults = {
   concurrencyTarget: number;
   targetUtilizationPercentage: number;
   rpsTarget: number;
@@ -49,6 +49,49 @@ type AutoscalingDefaults = {
   stableWindow: string;
   activationScaleDefault: number;
 };
+
+/**
+ * Represents a subset of cluster autoscaling baseline values that act as UI fallbacks.
+ *
+ * @property {number} [concurrencyTarget] - The default per-revision soft limit target constraint.
+ * @property {number} [rpsTarget] - The default per-revision requests per second strategy constraint.
+ * @property {number} [targetUtilizationPercentage] - The default proportion of available capacity expected to be active.
+ * @property {number} [containerConcurrency] - The default absolute simultaneous processing cap per container.
+ */
+export interface AutoscalingDefaultsData {
+  concurrencyTarget?: number;
+  rpsTarget?: number;
+  targetUtilizationPercentage?: number;
+  containerConcurrency?: number;
+}
+
+/**
+ * Defines the properties injected into the stateless visualization aspect of the algorithm configuration.
+ *
+ * @property {MetricType} metric - The underlying strategy constraint governing when new instances are provisioned (e.g., concurrency vs requests per second).
+ * @property {string} target - The explicit threshold ceiling for the chosen strategy that triggers scaling events.
+ * @property {string} util - The proportion of available capacity expected to be active before provisioning additional replicas.
+ * @property {string} hard - The absolute simultaneous processing cap per container, beyond which traffic is queued or rejected.
+ * @property {boolean} isReadOnly - Disables interactive fields within the section when the environment forbids modifications.
+ * @property {AutoscalingDefaultsData | undefined} defaults - A collection of fallback constraints utilized when explicit values are left blank by the user.
+ * @example
+ * const props: PureAutoscalingSettingsProps = {
+ *   metric: 'concurrency',
+ *   target: '100',
+ *   util: '70',
+ *   hard: '0',
+ *   isReadOnly: false,
+ *   defaults: { concurrencyTarget: 100 }
+ * };
+ */
+export interface PureAutoscalingSettingsProps {
+  metric: MetricType;
+  target: string;
+  util: string;
+  hard: string;
+  isReadOnly: boolean;
+  defaults?: AutoscalingDefaultsData;
+}
 
 type AutoscalingSettingsProps = {
   cluster: string;
