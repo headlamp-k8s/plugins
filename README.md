@@ -18,13 +18,14 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [flux](./flux) | Visualize Flux in Headlamp. | |[@ashu8912](https://github.com/ashu8912) |
 | [karpenter](./karpenter) | Adds Karpenter-specific custom resources to the Headlamp UI. | | [@SinghaAnirban005](https://github.com/SinghaAnirban005) |
 | [keda](./keda) | A UI for viewing and managing KEDA resources. | | [@adwait-godbole](https://github.com/adwait-godbole), [@yolossn](https://github.com/yolossn) |
-| [knative](./knative) | A UI for viewing and managing Knative. | | [@kahirokunn](https://github.com/kahirokunn) |
+| [knative](./knative) | A UI for viewing and managing Knative. | | [@kahirokunn](https://github.com/kahirokunn), [mudit06mah](https://github.com/mudit06mah) |
 | [kompose](./kompose) | Translates docker-compose manifests to Kubernetes's. | Runs kompose in a job in the cluster for now. | [@joaquimrocha](https://github.com/joaquimrocha) |
 | [minikube](./minikube) | A UI for minikube, for running Kubernetes locally. | | [@illume](https://github.com/illume) |
 | [opencost](./opencost) | See the costs of your workloads in Headlamp. | | [@yolossn](https://github.com/yolossn) |
 | [plugin-catalog](./plugin-catalog) | Install Headlamp plugins with one click. | Shipped with Headlamp desktop builds by default. |[@yolossn](https://github.com/yolossn) |
 | [prometheus](./prometheus) | Provides a Prometheus-powered chart in the details views of workloads. | Needs Prometheus installed in the cluster for the chart to be shown. Shipped with Headlamp desktop and CI builds by default. | [@yolossn](https://github.com/yolossn) |
 | [radius](./radius) | Visualize and manage Radius applications. |  | [@filipevrevez](https://github.com/filipevrevez) |
+| [volcano](./volcano) | Visualize and manage Volcano jobs. |  | [@mahmoudmagdy1-1](https://github.com/mahmoudmagdy1-1) |
 
 ## External plugins
 
