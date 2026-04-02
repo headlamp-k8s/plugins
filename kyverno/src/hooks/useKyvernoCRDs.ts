@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { ApiProxy, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { useEffect, useState } from 'react';
 
 export interface KyvernoCRDStatus {
@@ -36,6 +36,7 @@ async function checkAPIGroup(path: string): Promise<boolean> {
 }
 
 export function useKyvernoCRDs(): KyvernoCRDStatus {
+  const cluster = K8s.useCluster();
   const [status, setStatus] = useState<KyvernoCRDStatus>({
     legacy: false,
     cel: false,
@@ -46,6 +47,9 @@ export function useKyvernoCRDs(): KyvernoCRDStatus {
   });
 
   useEffect(() => {
+    let isCancelled = false;
+    setStatus(prev => ({ ...prev, loading: true }));
+
     async function detect() {
       const [legacy, cel, reports] = await Promise.all([
         checkAPIGroup('/apis/kyverno.io/v1'),
@@ -64,11 +68,17 @@ export function useKyvernoCRDs(): KyvernoCRDStatus {
         }
       }
 
-      setStatus({ legacy, cel, cleanup, reports, exceptions, loading: false });
+      if (!isCancelled) {
+        setStatus({ legacy, cel, cleanup, reports, exceptions, loading: false });
+      }
     }
 
     detect();
-  }, []);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [cluster]);
 
   return status;
 }
