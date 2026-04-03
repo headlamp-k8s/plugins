@@ -6,6 +6,7 @@ import {
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
+import { registerDetailsViewHeaderAction } from '@kinvolk/headlamp-plugin/lib';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
@@ -298,6 +299,7 @@ registerMapSource({
 });
 
 // Register on-hover "glance" tooltips
+import { TopologyHeaderAction } from './components/common/util';
 import { KubeadmControlPlaneGlance } from './components/kubeadmcontrolplanes/Glance';
 import { MachineDeploymentGlance } from './components/machinedeployments/Glance';
 import { MachinePoolGlance } from './components/machinepools/Glance';
@@ -306,3 +308,6 @@ registerKubeObjectGlance({ id: 'kcp-glance', component: KubeadmControlPlaneGlanc
 registerKubeObjectGlance({ id: 'machineset-glance', component: MachineSetGlance });
 registerKubeObjectGlance({ id: 'machinedeployment-glance', component: MachineDeploymentGlance });
 registerKubeObjectGlance({ id: 'machinepool-glance', component: MachinePoolGlance });
+
+// Register the header action for use in resource details views.
+registerDetailsViewHeaderAction(TopologyHeaderAction);

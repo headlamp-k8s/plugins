@@ -55,9 +55,9 @@ export function getStoredVersionFromCrd(crd: CustomResourceDefinition | null): s
  * @returns The version string or undefined while loading.
  */
 export function useCapiApiVersion(crdName: string, defaultVersion: string): string | undefined {
-  const [crd, error] = CustomResourceDefinition.useGet(crdName, undefined);
+  const [crd, error] = CustomResourceDefinition.useGet(crdName);
   const version = getStoredVersionFromCrd(crd);
   if (version) return version;
   if (error) return defaultVersion;
-  return undefined;
+  return defaultVersion;
 }

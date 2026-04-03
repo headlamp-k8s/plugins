@@ -7,7 +7,6 @@ import {
 import { useMemo } from 'react';
 import { MachineDeployment } from '../../resources/machinedeployment';
 import { useCapiApiVersion } from '../../utils/capiVersion';
-import { ScaleButton } from '../common/index';
 import { getPhaseStatus, renderConditionStatus } from '../common/util';
 
 interface MachineDeploymentsListWithDataProps {
@@ -33,7 +32,6 @@ function MachineDeploymentsListWithData({
     <ResourceListView
       title="Machine Deployments"
       resourceClass={MachineDeploymentClass}
-      actions={[{ id: 'scale', action: (item: MachineDeployment) => <ScaleButton item={item} /> }]}
       columns={[
         'name',
         'namespace',

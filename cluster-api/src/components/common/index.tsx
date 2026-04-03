@@ -12,7 +12,6 @@ export {
   HealthCheckBadge,
   HealthCheckSection,
 } from './Resource';
-export { default as ScaleButton } from './ScaleButton';
 export type {
   OwnedMachinesSectionProps,
   HealthCheckDisplayProps,

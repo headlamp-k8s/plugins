@@ -6,7 +6,6 @@ import {
 import { useMemo } from 'react';
 import { MachinePool } from '../../resources/machinepool';
 import { useCapiApiVersion } from '../../utils/capiVersion';
-import { ScaleButton } from '../common/index';
 import { getPhaseStatus } from '../common/util';
 
 interface MachinePoolsListWithDataProps {
@@ -24,7 +23,6 @@ function MachinePoolsListWithData({ MachinePoolClass }: MachinePoolsListWithData
     <ResourceListView
       title="Machine Pools"
       resourceClass={MachinePoolClass}
-      actions={[{ id: 'scale', action: (item: MachinePool) => <ScaleButton item={item} /> }]}
       columns={[
         'name',
         'namespace',

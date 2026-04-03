@@ -8,7 +8,6 @@ import { useMemo } from 'react';
 import { getCondition } from '../../resources/common';
 import { MachineSet } from '../../resources/machineset';
 import { useCapiApiVersion } from '../../utils/capiVersion';
-import { ScaleButton } from '../common/index';
 import { renderConditionStatus } from '../common/util';
 
 interface MachineSetsListWithDataProps {
@@ -26,7 +25,6 @@ function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataPro
     <ResourceListView
       title="Machine Sets"
       resourceClass={MachineSetClass}
-      actions={[{ id: 'scale', action: (item: MachineSet) => <ScaleButton item={item} /> }]}
       columns={[
         'name',
         'namespace',
