@@ -18,12 +18,16 @@ import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Card, CardContent, Grid, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import {
+  Bar,
+  BarChart,
   Cell,
   Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
   Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
 import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
@@ -132,6 +136,14 @@ export function Dashboard() {
         color: SEVERITY_COLORS[severity],
       }));
   }, [stats.bySeverity]);
+
+  const namespaceData = useMemo(() => {
+    return Array.from(stats.byNamespace.entries())
+      .filter(([ns]) => ns !== 'cluster')
+      .sort(([, a], [, b]) => b.fail - a.fail)
+      .slice(0, 10)
+      .map(([ns, { pass, fail }]) => ({ name: ns, pass, failAndError: fail }));
+  }, [stats.byNamespace]);
 
   const isLoading = clusterPolicies === null || policyReports === null;
 
@@ -250,6 +262,23 @@ export function Dashboard() {
                   );
                 })}
               </Box>
+            </SectionBox>
+          </Grid>
+        )}
+
+        {namespaceData.length > 0 && (
+          <Grid item xs={12}>
+            <SectionBox title="Compliance by Namespace (Top 10)">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={namespaceData} margin={{ top: 8, right: 16, left: 16, bottom: 8 }}>
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="pass" fill={STATUS_COLORS.pass} name="Pass" stackId="a" />
+                  <Bar dataKey="failAndError" fill={STATUS_COLORS.fail} name="Fail" stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
             </SectionBox>
           </Grid>
         )}
