@@ -12,7 +12,11 @@ export type AdditionalPrinterColumns = Array<{
 }>;
 
 /**
- * Returns additionalPrinterColumns for the given apiVersion from the CRD.
+ * Returns the additionalPrinterColumns for a specific API version from a CRD.
+ *
+ * @param crd - The CustomResourceDefinition object.
+ * @param apiVersion - The API version to search for (e.g., v1beta1).
+ * @returns An array of printer column definitions.
  */
 export function getExtraColumnsFromCrd(
   crd: {
@@ -31,8 +35,12 @@ export function getExtraColumnsFromCrd(
 }
 
 /**
- * Builds NameValueTableRow[] from CRD additionalPrinterColumns by evaluating jsonPath on the item.
- * Skips .metadata.creationTimestamp; formats dates and handles descriptions.
+ * Evaluates CRD printer columns against a resource instance to produce table rows.
+ * Handles JSONPath evaluation, date formatting, and hover descriptions.
+ *
+ * @param extraInfoSpec - The printer column specifications from the CRD.
+ * @param item - The actual JSON data of the resource instance.
+ * @returns An array of NameValueTableRow objects for display in a DetailsGrid.
  */
 export function getExtraInfoFromPrinterColumns(
   extraInfoSpec: AdditionalPrinterColumns,

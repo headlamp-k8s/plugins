@@ -1,11 +1,25 @@
-import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Link, Loader, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useMemo } from 'react';
 import { MachineHealthCheck } from '../../resources/machinehealthcheck';
+import { useCapiApiVersion } from '../../utils/capiVersion';
 
-export function MachineHealthChecksList() {
+interface MachineHealthChecksListWithDataProps {
+  MachineHealthCheckClass: typeof MachineHealthCheck;
+}
+
+/**
+ * Data-fetching wrapper for the machine health check list.
+ *
+ * @param props - Component properties.
+ * @param props.MachineHealthCheckClass - The MachineHealthCheck resource class bound to a specific API version.
+ */
+function MachineHealthChecksListWithData({
+  MachineHealthCheckClass,
+}: MachineHealthChecksListWithDataProps) {
   return (
     <ResourceListView
       title="Machine Health Checks"
-      resourceClass={MachineHealthCheck}
+      resourceClass={MachineHealthCheckClass}
       columns={[
         'name',
         'namespace',
@@ -44,4 +58,18 @@ export function MachineHealthChecksList() {
       ]}
     />
   );
+}
+
+/**
+ * Main entry point for the MachineHealthChecks list view.
+ * Detects the CAPI version and renders the list with the correct resource class.
+ */
+export function MachineHealthChecksList() {
+  const version = useCapiApiVersion(MachineHealthCheck.crdName, 'v1beta1');
+  const VersionedMachineHealthCheck = useMemo(
+    () => (version ? MachineHealthCheck.withApiVersion(version) : MachineHealthCheck),
+    [version]
+  );
+  if (!version) return <Loader title="Detecting MachineHealthCheck version" />;
+  return <MachineHealthChecksListWithData MachineHealthCheckClass={VersionedMachineHealthCheck} />;
 }

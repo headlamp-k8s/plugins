@@ -6,12 +6,16 @@ import {
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
+import { registerDetailsViewHeaderAction } from '@kinvolk/headlamp-plugin/lib';
+import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
+import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { useMemo } from 'react';
 import { ClusterClassDetail } from './components/clusterclasses/Detail';
 import { ClusterClassesList } from './components/clusterclasses/List';
 import { ClusterDetail } from './components/clusters/Detail';
 import { ClustersList } from './components/clusters/List';
+import Dashboard from './components/Dashboard';
 import { KubeadmConfigDetail } from './components/kubeadmconfigs/Detail';
 import { KubeadmConfigsList } from './components/kubeadmconfigs/List';
 import { KubeadmConfigTemplateDetail } from './components/kubeadmconfigtemplates/Detail';
@@ -54,7 +58,28 @@ interface ResourceRegistrationConfig {
   icon: string;
   hasNamespace?: boolean;
 }
+/**
+ * Wrapper component for CAPI routes that checks if the management cluster is initialized.
+ * Displays the Dashboard (Empty State) if Cluster API CRDs are missing.
+ *
+ * @param props.children - The component to render if CAPI is active.
+ */
+function CapiRouteWrapper({ children }: { children: React.ReactNode }) {
+  const [crd, error] = CustomResourceDefinition.useGet(Cluster.crdName);
+  if (error) {
+    return <Dashboard />;
+  }
+  if (!crd) {
+    return <Loader title="Detecting Cluster API status..." />;
+  }
+  return <>{children}</>;
+}
 
+/**
+ * Helper to register a Cluster API resource with Headlamp's sidebar, routes, and iconography.
+ *
+ * @param config - The registration configuration for the resource.
+ */
 function registerClusterApiResource(config: ResourceRegistrationConfig) {
   const { name, kind, path, DetailComponent, ListComponent, icon, hasNamespace = true } = config;
 
@@ -71,7 +96,11 @@ function registerClusterApiResource(config: ResourceRegistrationConfig) {
     path: `/cluster-api/${path}/${hasNamespace ? ':namespace/:name' : ':name'}`,
     sidebar: name,
     name: path === 'clusterclasses' ? 'clusterclass' : path.slice(0, -1), // Remove 's' from plural form
-    component: () => <DetailComponent />,
+    component: () => (
+      <CapiRouteWrapper>
+        <DetailComponent />
+      </CapiRouteWrapper>
+    ),
   });
 
   // Register list route
@@ -79,7 +108,11 @@ function registerClusterApiResource(config: ResourceRegistrationConfig) {
     path: `/cluster-api/${path}`,
     sidebar: name,
     name: path,
-    component: () => <ListComponent />,
+    component: () => (
+      <CapiRouteWrapper>
+        <ListComponent />
+      </CapiRouteWrapper>
+    ),
   });
 
   // Register icon for the resource kind
@@ -266,6 +299,7 @@ registerMapSource({
 });
 
 // Register on-hover "glance" tooltips
+import { TopologyHeaderAction } from './components/common/util';
 import { KubeadmControlPlaneGlance } from './components/kubeadmcontrolplanes/Glance';
 import { MachineDeploymentGlance } from './components/machinedeployments/Glance';
 import { MachinePoolGlance } from './components/machinepools/Glance';
@@ -274,3 +308,6 @@ registerKubeObjectGlance({ id: 'kcp-glance', component: KubeadmControlPlaneGlanc
 registerKubeObjectGlance({ id: 'machineset-glance', component: MachineSetGlance });
 registerKubeObjectGlance({ id: 'machinedeployment-glance', component: MachineDeploymentGlance });
 registerKubeObjectGlance({ id: 'machinepool-glance', component: MachinePoolGlance });
+
+// Register the header action for use in resource details views.
+registerDetailsViewHeaderAction(TopologyHeaderAction);

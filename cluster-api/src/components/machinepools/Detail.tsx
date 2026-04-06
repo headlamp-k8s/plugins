@@ -1,36 +1,195 @@
-import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  ConditionsSection,
+  DetailsGrid,
+  EmptyContent,
+  Link,
+  Loader,
+  NameValueTableRow,
+  SectionBox,
+  StatusLabel,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
+import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { MachinePool } from '../../resources/machinepool';
-import { renderReplicas, showReplicas } from '../common/index';
+import { useCapiApiVersion } from '../../utils/capiVersion';
+import {
+  OwnedMachinesSection,
+  renderReplicas,
+  showReplicas,
+  TemplateSection,
+} from '../common/index';
+import { getPhaseStatus } from '../common/util';
 
-export function MachinePoolDetail({ node }: { node: any }) {
-  const { name, namespace } = useParams<{ name: string; namespace: string }>();
+type MachinePoolNode = { kubeObject: MachinePool };
 
+interface MachinePoolDetailContentProps {
+  crName: string;
+  namespace?: string;
+  crdName: string;
+}
+
+interface MachinePoolDetailContentPropsWithVersion extends MachinePoolDetailContentProps {
+  VersionedMachinePool: typeof MachinePool;
+  apiVersion: string;
+}
+
+/**
+ * Main detail view for a MachinePool resource.
+ * @see https://cluster-api.sigs.k8s.io/tasks/experimental-features/machine-pools
+ *
+ * @param props - Component properties including optional node from a list.
+ */
+export function MachinePoolDetail({ node }: { node?: MachinePoolNode }) {
+  const { name: nameParam, namespace: namespaceParam } = useParams<{
+    name: string;
+    namespace: string;
+  }>();
+  const crName = nameParam || node?.kubeObject?.metadata?.name;
+  const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
+
+  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+
+  return (
+    <MachinePoolDetailContent crName={crName} namespace={namespace} crdName={MachinePool.crdName} />
+  );
+}
+/**
+ * Renders the final MachinePool detail view with all fetched data.
+ *
+ * @param props - Component properties including the versioned class and version.
+ */
+function MachinePoolDetailContentWithData({
+  crName,
+  namespace,
+  crdName,
+  VersionedMachinePool,
+}: MachinePoolDetailContentPropsWithVersion) {
+  const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
+
+  const [item, itemError] = VersionedMachinePool.useGet(crName, namespace ?? undefined);
+
+  if (itemError && !item) {
+    return (
+      <EmptyContent color="error">
+        Error loading MachinePool {crName}: {itemError?.message}
+      </EmptyContent>
+    );
+  }
+  if (!item) return <Loader title="Loading MachinePool details" />;
+  const spec = item.spec;
+  const status = item.status;
+  const initialization = item.initialization;
+
+  const extraInfo: NameValueTableRow[] = [
+    {
+      name: 'Definition',
+      value: (
+        <Link routeName="crd" params={{ name: crdName }}>
+          {crdName}
+        </Link>
+      ),
+      hide: !crd,
+    },
+    {
+      name: 'Cluster',
+      value: spec?.clusterName ?? '-',
+    },
+    {
+      name: 'Replicas',
+      value: renderReplicas(item),
+      hide: !showReplicas(item),
+    },
+    {
+      name: 'Phase',
+      value: (
+        <StatusLabel status={getPhaseStatus(item.status?.phase)}>{item.status?.phase}</StatusLabel>
+      ),
+      hide: !item.status?.phase,
+    },
+    {
+      name: 'Bootstrap Initialized',
+      value: initialization?.bootstrapDataSecretCreated ? 'True' : 'False',
+      hide: initialization?.bootstrapDataSecretCreated === undefined,
+    },
+    {
+      name: 'Infrastructure Ready',
+      value: initialization?.infrastructureProvisioned ? 'True' : 'False',
+      hide: initialization?.infrastructureProvisioned === undefined,
+    },
+    {
+      name: 'Min Ready Seconds',
+      value: spec?.minReadySeconds ?? 0,
+    },
+    {
+      name: 'Observed Generation',
+      value:
+        status?.observedGeneration !== undefined
+          ? `${status.observedGeneration} / ${item.metadata?.generation ?? '-'}`
+          : '-',
+      hide: status?.observedGeneration === undefined,
+    },
+  ];
   return (
     <>
       <DetailsGrid
-        resourceType={MachinePool}
+        resourceType={VersionedMachinePool}
         withEvents
-        name={name || node.kubeObject.metadata.name}
-        namespace={namespace || node.kubeObject.metadata.namespace}
-        extraInfo={item =>
-          item && [
-            {
-              name: 'Replicas',
-              value: renderReplicas(item),
-              hide: !showReplicas(item),
-            },
-          ]
-        }
-        extraSections={item =>
-          item && [
-            {
-              id: 'cluster-api.machine-pool-conditions',
-              section: <ConditionsSection resource={item?.jsonData} />,
-            },
-          ]
-        }
+        name={crName}
+        namespace={namespace}
+        extraInfo={() => extraInfo}
+        extraSections={(mp: MachinePool) => [
+          {
+            id: 'cluster-api.machine-pool-machines',
+            section: (
+              <OwnedMachinesSection resource={mp} hideColumns={['owner']} showCreateButton />
+            ),
+          },
+          {
+            id: 'cluster-api.machine-pool-template',
+            section: (
+              <SectionBox title="Machine Template">
+                <TemplateSection item={mp} />
+              </SectionBox>
+            ),
+          },
+          {
+            id: 'cluster-api.machine-pool-conditions',
+            section: (
+              <ConditionsSection
+                resource={{
+                  ...mp.jsonData,
+                  status: {
+                    ...mp.jsonData.status,
+                    conditions: mp.conditions,
+                  },
+                }}
+              />
+            ),
+          },
+        ]}
       />
     </>
+  );
+}
+/**
+ * Data-fetching wrapper that detects the correct CAPI API version for a MachinePool.
+ *
+ * @param props - Component properties.
+ */
+function MachinePoolDetailContent(props: MachinePoolDetailContentProps) {
+  const { crdName } = props;
+  const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
+  const VersionedMachinePool = useMemo(
+    () => (apiVersion ? MachinePool.withApiVersion(apiVersion) : MachinePool),
+    [apiVersion]
+  );
+  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  return (
+    <MachinePoolDetailContentWithData
+      {...props}
+      VersionedMachinePool={VersionedMachinePool}
+      apiVersion={apiVersion}
+    />
   );
 }
