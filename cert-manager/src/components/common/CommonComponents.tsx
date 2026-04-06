@@ -3,7 +3,8 @@ import {
   DateLabel,
   LabelListItem,
   Link,
-  NameValueTable, NameValueTableRow,
+  NameValueTable,
+  NameValueTableRow,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
@@ -164,7 +165,12 @@ interface ACMEChallengeSolverProps {
 }
 
 const cloudflareGetter = (item: any) => {
-  const thisItem = item['cloudflare'];
+  const thisItem = item?.cloudflare;
+
+  if (!thisItem) {
+    return '-';
+  }
+
   const rows: NameValueTableRow[] = [];
 
   if (thisItem.email) {
@@ -176,39 +182,37 @@ const cloudflareGetter = (item: any) => {
 
   if (thisItem.apiKeySecretRef) {
     rows.push({
-      name: "API Key Secret",
+      name: 'API Key Secret',
       value: <SecretKeySelectorComponent selector={thisItem.apiKeySecretRef} />,
-    })
+    });
   }
 
   if (thisItem.apiTokenSecretRef) {
     rows.push({
       name: 'API Token Secret',
       value: <SecretKeySelectorComponent selector={thisItem.apiTokenSecretRef} />,
-    })
+    });
   }
 
   return <NameValueTable rows={rows} />;
 };
 
 export function ACMEChallengeSolverComponent({ solver }: ACMEChallengeSolverProps) {
-  console.log('ACMEChallengeSolver:', solver);
-
   const getItemGetter = (key: string) => {
     if (key === 'cloudflare') {
-      return cloudflareGetter
+      return cloudflareGetter;
     }
 
     return (item: any) => {
       const thisItem = item[key];
 
-      if (!thisItem) {
+      if (thisItem === null || thisItem === undefined) {
         return '';
       }
 
-      return thisItem?.toString()
+      return thisItem.toString();
     };
-  }
+  };
 
   if (solver.http01) {
     const { podTemplate, ...otherIngressFields } = solver.http01.ingress || {};
