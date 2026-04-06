@@ -5,8 +5,12 @@ import { KubeObject } from '@kinvolk/headlamp-plugin/lib/K8s/cluster';
 import { Tooltip } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
 import React, { useEffect, useState } from 'react';
-import { ChartEnabledKinds } from '../../util';
-import { disableMetrics, enableMetrics, getConfigStore } from '../../util';
+import {
+  disableMetrics,
+  enableMetrics,
+  getConfigStore,
+  supportsPrometheusMetrics,
+} from '../../util';
 
 export interface VisibilityButtonProps {
   resource?: KubeObject;
@@ -34,7 +38,7 @@ export function VisibilityButton(props: VisibilityButtonProps) {
     return [t('Show Prometheus metrics'), 'mdi:chart-box'];
   }, [isEnabled, t]);
 
-  if (!ChartEnabledKinds.includes(resource?.jsonData?.kind)) {
+  if (!supportsPrometheusMetrics(resource)) {
     return null;
   }
 
