@@ -194,6 +194,9 @@ const cloudflareGetter = (item: any) => {
     });
   }
 
+  if (rows.length === 0) {
+    return '-';
+  }
   return <NameValueTable rows={rows} />;
 };
 
