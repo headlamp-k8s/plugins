@@ -19,7 +19,6 @@ export function KCTListWithData({ KCTClass }: KCTListWithDataProps) {
       columns={[
         'name',
         'namespace',
-
         {
           id: 'cluster',
           label: 'Cluster',
@@ -32,6 +31,28 @@ export function KCTListWithData({ KCTClass }: KCTListWithDataProps) {
             return (
               <Link routeName="capicluster" params={{ name, namespace: item.metadata?.namespace }}>
                 {name}
+              </Link>
+            );
+          },
+        },
+        {
+          id: 'clusterclass',
+          label: 'ClusterClass',
+          getValue: (item: KubeadmConfigTemplate) => {
+            const cc = item.metadata?.ownerReferences?.find(ref => ref.kind === 'ClusterClass');
+            return cc?.name ?? '—';
+          },
+          render: (item: KubeadmConfigTemplate) => {
+            const cc = item.metadata?.ownerReferences?.find(ref => ref.kind === 'ClusterClass');
+
+            if (!cc?.name) return <>—</>;
+
+            return (
+              <Link
+                routeName="clusterclass"
+                params={{ name: cc.name, namespace: item.metadata?.namespace }}
+              >
+                {cc.name}
               </Link>
             );
           },
