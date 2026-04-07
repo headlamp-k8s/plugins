@@ -1,7 +1,7 @@
 // ToolConfigManager.ts
 // Simple utility for managing AI tool enable/disable state in plugin settings
 
-export type ToolInfo = {
+type ToolInfo = {
   id: string;
   name: string;
   description: string;

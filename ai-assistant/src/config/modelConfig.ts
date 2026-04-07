@@ -1,6 +1,6 @@
 import '../utils/icons';
 
-export interface ModelField {
+interface ModelField {
   name: string;
   label: string;
   type: 'text' | 'select' | 'number';
@@ -11,7 +11,7 @@ export interface ModelField {
   description?: string;
 }
 
-export interface ModelProvider {
+interface ModelProvider {
   id: string;
   name: string;
   icon: string;

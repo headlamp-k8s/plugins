@@ -8,7 +8,7 @@
 
 import { clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 
-export interface RawK8sEvent {
+interface RawK8sEvent {
   metadata: { uid: string; name: string; namespace: string; creationTimestamp: string };
   type: string; // "Normal" | "Warning" | "Error"
   reason: string;

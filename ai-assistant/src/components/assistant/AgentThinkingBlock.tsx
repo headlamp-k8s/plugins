@@ -3,7 +3,7 @@ import { Box, CircularProgress, Collapse, LinearProgress, Typography } from '@mu
 import { alpha, useTheme } from '@mui/material/styles';
 import React, { useState } from 'react';
 
-export interface ThinkingStep {
+interface ThinkingStep {
   id: string;
   content: string;
   /** 'tool-start' | 'tool-result' | 'intermediate-text' | 'todo-update' */

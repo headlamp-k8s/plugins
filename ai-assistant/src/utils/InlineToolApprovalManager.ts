@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { ToolCall } from '../ai/manager';
 import { UserContext } from '../components/mcpOutput/MCPArgumentProcessor';
 
-export interface InlineToolApprovalRequest {
+interface InlineToolApprovalRequest {
   requestId: string;
   toolCalls: ToolCall[];
   resolve: (approvedToolIds: string[]) => void;

@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 
-export interface MCPServer {
+interface MCPServer {
   name: string;
   command: string;
   args: string[];
