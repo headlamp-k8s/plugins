@@ -3,14 +3,14 @@ import { ActionButton } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Secret from '@kinvolk/headlamp-plugin/lib/k8s/secret';
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
-import { ClusterApiCluster } from '../../resources/cluster';
+import { Cluster } from '../../resources/cluster';
 
 /**
  * Props for the GetKubeconfigAction component.
  */
 export interface GetKubeconfigActionProps {
   /** The Cluster resource to get the kubeconfig for. */
-  resource: ClusterApiCluster;
+  resource: Cluster;
 }
 
 /**
@@ -22,44 +22,50 @@ export interface GetKubeconfigActionProps {
 export function GetKubeconfigAction(props: GetKubeconfigActionProps) {
   const { resource } = props;
   const [shouldFetch, setShouldFetch] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   const secretName = `${resource.metadata.name}-kubeconfig`;
   const namespace = resource.metadata.namespace || 'default';
   const secretData = Secret.useGet(secretName, namespace);
+  const isKubeconfigAvailable = !!secretData.data;
 
   useEffect(() => {
-    if (shouldFetch && secretData.data) {
+    if (!shouldFetch) return;
+
+    if (secretData.data) {
       if (resource.spec.infrastructureRef.kind === 'DockerCluster') {
         enqueueSnackbar(
-          `This Cluster uses the Docker provider, so its kubeconfig is not usable directly in Headlamp.
-          Please run "kind get kubeconfig --name ${resource.metadata.name} > ${resource.metadata.name}.kubeconfig" to get a working kubeconfig.`,
-          {
-            variant: 'warning',
-            autoHideDuration: 5000,
-          }
+          `Docker provider detected. Run:
+  kind get kubeconfig --name ${resource.metadata.name} > ${resource.metadata.name}.kubeconfig`,
+          { variant: 'warning' }
         );
-      } else {
-        Headlamp.setCluster({
-          kubeconfig: secretData.data?.jsonData?.data?.value,
-        })
-          .then(() => {
-            enqueueSnackbar(`Kubeconfig for ${resource.metadata.name} set successfully`, {
-              variant: 'success',
-            });
-          })
-          .catch(err => {
-            enqueueSnackbar(`Failed to set kubeconfig: ${err.message}`, { variant: 'error' });
-          });
+        setShouldFetch(false);
+        return;
       }
-      setShouldFetch(false); // Reset after processing
-    } else if (shouldFetch && secretData.error) {
-      enqueueSnackbar(`Kubeconfig Secret ${secretName} not found in namespace ${namespace}`, {
-        variant: 'error',
+      setLoading(true);
+      enqueueSnackbar('Downloading kubeconfig...', { variant: 'info' });
+
+      Headlamp.setCluster({
+        kubeconfig: secretData.data?.jsonData?.data?.value,
+      })
+        .then(() => {
+          enqueueSnackbar('Kubeconfig set successfully', { variant: 'success' });
+        })
+        .catch(err => {
+          enqueueSnackbar(`Failed: ${err.message}`, { variant: 'error' });
+        })
+        .finally(() => {
+          setLoading(false);
+          setShouldFetch(false);
+        });
+    } else {
+      enqueueSnackbar('Kubeconfig not available yet. Cluster may still be provisioning.', {
+        variant: 'warning',
       });
-      setShouldFetch(false); // Reset after error
+      setShouldFetch(false);
     }
-  }, [shouldFetch, secretData, secretName, namespace]);
+  }, [shouldFetch, secretData]);
 
   return (
     <ActionButton
@@ -67,7 +73,15 @@ export function GetKubeconfigAction(props: GetKubeconfigActionProps) {
       longDescription="Download the Kubeconfig file for this cluster"
       icon={'mdi:cloud-download'}
       onClick={() => {
-        setShouldFetch(true); // Trigger the fetch
+        if (!isKubeconfigAvailable) {
+          enqueueSnackbar('Kubeconfig not available yet. Cluster is still provisioning.', {
+            variant: 'warning',
+          });
+          return;
+        }
+        if (loading) return;
+
+        setShouldFetch(true);
       }}
     />
   );
