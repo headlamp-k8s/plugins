@@ -6,6 +6,9 @@ import PodGroupDetail from './components/podgroups/Detail';
 import PodGroupList from './components/podgroups/List';
 import QueueDetail from './components/queues/Detail';
 import QueueList from './components/queues/List';
+import { registerVolcanoIcon } from './volcanoIcon';
+
+registerVolcanoIcon();
 
 /**
  * Route and sidebar registration settings for a Volcano resource section.
@@ -74,7 +77,7 @@ registerSidebarEntry({
   parent: null,
   name: 'volcano',
   label: 'Volcano',
-  icon: 'mdi:fire',
+  icon: 'custom:volcano',
   url: '/volcano/jobs',
 });
 
