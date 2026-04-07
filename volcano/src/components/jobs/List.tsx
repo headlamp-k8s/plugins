@@ -38,7 +38,47 @@ export default function JobList() {
           {
             id: 'running',
             label: 'Running',
-            getValue: (job: VolcanoJob) => `${job.runningCount}/${job.minAvailable}`,
+            getValue: (job: VolcanoJob) => job.runningCount,
+          },
+          {
+            id: 'min-available',
+            label: 'Min Available',
+            getValue: (job: VolcanoJob) => job.minAvailable,
+          },
+          {
+            id: 'pending',
+            label: 'Pending',
+            getValue: (job: VolcanoJob) => job.pendingCount,
+          },
+          {
+            id: 'succeeded',
+            label: 'Succeeded',
+            getValue: (job: VolcanoJob) => job.succeededCount,
+          },
+          {
+            id: 'failed',
+            label: 'Failed',
+            getValue: (job: VolcanoJob) => job.failedCount,
+          },
+          {
+            id: 'unknown',
+            label: 'Unknown',
+            getValue: (job: VolcanoJob) => job.unknownCount,
+          },
+          {
+            id: 'retries',
+            label: 'Retries',
+            getValue: (job: VolcanoJob) => job.retryCount,
+          },
+          {
+            id: 'replicas',
+            label: 'Replicas',
+            getValue: (job: VolcanoJob) => job.replicaCount,
+          },
+          {
+            id: 'job-type',
+            label: 'Job Type',
+            getValue: (job: VolcanoJob) => job.jobType,
           },
           {
             id: 'tasks',

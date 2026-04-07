@@ -1,7 +1,56 @@
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { useMemo } from 'react';
+import { VolcanoPodGroup } from '../../resources/podgroup';
 import { VolcanoQueue } from '../../resources/queue';
 import { getQueueStatusColor } from '../../utils/status';
 import { VolcanoInstallCheck } from '../common/CommonComponents';
+
+interface QueuePodGroupStats {
+  inqueue: number;
+  pending: number;
+  running: number;
+  unknown: number;
+  completed: number;
+}
+
+function getQueuePodGroupStats(
+  podGroups: VolcanoPodGroup[] | null | undefined
+): Record<string, QueuePodGroupStats> {
+  const stats: Record<string, QueuePodGroupStats> = {};
+
+  for (const podGroup of podGroups ?? []) {
+    const queueName = podGroup.queue;
+    if (!stats[queueName]) {
+      stats[queueName] = {
+        inqueue: 0,
+        pending: 0,
+        running: 0,
+        unknown: 0,
+        completed: 0,
+      };
+    }
+
+    switch (podGroup.phase) {
+      case 'Inqueue':
+        stats[queueName].inqueue += 1;
+        break;
+      case 'Pending':
+        stats[queueName].pending += 1;
+        break;
+      case 'Running':
+        stats[queueName].running += 1;
+        break;
+      case 'Unknown':
+        stats[queueName].unknown += 1;
+        break;
+      case 'Completed':
+        stats[queueName].completed += 1;
+        break;
+    }
+  }
+
+  return stats;
+}
 
 /**
  * Renders the Volcano Queues list page.
@@ -9,6 +58,9 @@ import { VolcanoInstallCheck } from '../common/CommonComponents';
  * @returns Queues resource list view.
  */
 export default function QueueList() {
+  const [podGroups] = VolcanoPodGroup.useList();
+  const queuePodGroupStats = useMemo(() => getQueuePodGroupStats(podGroups), [podGroups]);
+
   return (
     <VolcanoInstallCheck>
       <ResourceListView
@@ -41,6 +93,36 @@ export default function QueueList() {
               ) : (
                 '-'
               ),
+          },
+          {
+            id: 'inqueue',
+            label: 'Inqueue',
+            getValue: (queue: VolcanoQueue) =>
+              queuePodGroupStats[queue.metadata.name]?.inqueue ?? 0,
+          },
+          {
+            id: 'pending',
+            label: 'Pending',
+            getValue: (queue: VolcanoQueue) =>
+              queuePodGroupStats[queue.metadata.name]?.pending ?? 0,
+          },
+          {
+            id: 'running',
+            label: 'Running',
+            getValue: (queue: VolcanoQueue) =>
+              queuePodGroupStats[queue.metadata.name]?.running ?? 0,
+          },
+          {
+            id: 'unknown',
+            label: 'Unknown',
+            getValue: (queue: VolcanoQueue) =>
+              queuePodGroupStats[queue.metadata.name]?.unknown ?? 0,
+          },
+          {
+            id: 'completed',
+            label: 'Completed',
+            getValue: (queue: VolcanoQueue) =>
+              queuePodGroupStats[queue.metadata.name]?.completed ?? 0,
           },
           'age',
         ]}
