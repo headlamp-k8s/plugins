@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
 import React from 'react';
 import { useApiGroupInstalled } from '../../hooks/useKubeflowCheck';
 
@@ -26,9 +30,27 @@ interface Props {
 export function SectionPage({ title, apiPath, children }: Props) {
   const { isInstalled, isCheckLoading } = useApiGroupInstalled(apiPath);
 
-  if (isCheckLoading) return <p>Checking cluster capabilities for {title}...</p>;
-  if (!isInstalled)
-    return <p>Required API group not detected for {title}. Are the CRDs installed?</p>;
+  if (isCheckLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Checking cluster capabilities for {title}...</Typography>
+      </Box>
+    );
+  }
+
+  if (!isInstalled) {
+    return (
+      <Box sx={{ padding: '24px 16px', pt: '32px' }}>
+        <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
+          {title}
+        </Typography>
+        <Alert severity="warning" sx={{ mt: 2, borderRadius: '4px' }}>
+          Required Kubeflow API {apiPath} is not detected on this cluster.
+        </Alert>
+      </Box>
+    );
+  }
 
   return <>{children}</>;
 }
