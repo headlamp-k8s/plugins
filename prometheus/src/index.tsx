@@ -11,8 +11,12 @@ import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/Gene
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
-import { ChartEnabledKinds, PLUGIN_NAME } from './util';
-import { getNodeClaimChartConfigs, getNodePoolChartConfigs } from './util';
+import {
+  getNodeClaimChartConfigs,
+  getNodePoolChartConfigs,
+  PLUGIN_NAME,
+  supportsPrometheusMetrics,
+} from './util';
 
 type SectionWithId = { id: string };
 
@@ -23,7 +27,13 @@ const hasSectionId = (section: unknown): section is SectionWithId =>
   typeof (section as SectionWithId).id === 'string';
 
 function PrometheusMetrics(resource: KubeObject) {
-  if (resource.kind === 'Pod' || resource.kind === 'Job' || resource.kind === 'CronJob') {
+  const resourceKind = resource.jsonData?.kind ?? resource.kind;
+
+  if (!supportsPrometheusMetrics(resource)) {
+    return null;
+  }
+
+  if (resourceKind === 'Pod' || resourceKind === 'Job' || resourceKind === 'CronJob') {
     return (
       <GenericMetricsChart
         cpuQuery={`sum(rate(container_cpu_usage_seconds_total{container!='',namespace='${resource.jsonData.metadata.namespace}',pod='${resource.jsonData.metadata.name}'}[1m])) by (pod,namespace)`}
@@ -138,10 +148,15 @@ registerDetailsViewSectionsProcessor(function addSubheaderSection(resource, sect
     return sections;
   }
 
+  const prometheusMetricsSection = PrometheusMetrics(resource);
+  if (!prometheusMetricsSection) {
+    return sections;
+  }
+
   // We place our custom section after the header.
   sections.splice(detailsHeaderIdx + 1, 0, {
     id: prometheusSection,
-    section: PrometheusMetrics(resource),
+    section: prometheusMetricsSection,
   });
 
   return sections;
@@ -160,7 +175,7 @@ registerDetailsViewHeaderActionsProcessor(function addPrometheusMetricsButton(re
   }
 
   // If the action is not supposed to be added, we do nothing.
-  if (!ChartEnabledKinds.includes(resource?.jsonData?.kind)) {
+  if (!supportsPrometheusMetrics(resource)) {
     return actions;
   }
 

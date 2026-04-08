@@ -154,7 +154,43 @@ export function getPrometheusResolution(cluster: string): string {
   return clusterData?.defaultResolution ?? 'medium';
 }
 
-export const ChartEnabledKinds = [
+type ResourceIdentity = {
+  kind?: string;
+  apiVersion?: string;
+  jsonData?: {
+    kind?: string;
+    apiVersion?: string;
+  };
+};
+
+function getResourceKind(resource?: ResourceIdentity): string | undefined {
+  return resource?.jsonData?.kind ?? resource?.kind;
+}
+
+function getResourceApiVersion(resource?: ResourceIdentity): string | undefined {
+  return resource?.jsonData?.apiVersion ?? resource?.apiVersion;
+}
+
+const resourceApiVersionRules: Record<string, string> = {
+  Job: 'batch/v1',
+};
+
+export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean {
+  const kind = getResourceKind(resource);
+
+  if (!kind || !ChartEnabledKinds.includes(kind)) {
+    return false;
+  }
+
+  const requiredApiVersion = resourceApiVersionRules[kind];
+  if (requiredApiVersion) {
+    return getResourceApiVersion(resource) === requiredApiVersion;
+  }
+
+  return true;
+}
+
+const ChartEnabledKinds = [
   'Pod',
   'Deployment',
   'StatefulSet',
