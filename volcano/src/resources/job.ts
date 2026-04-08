@@ -116,6 +116,8 @@ export type JobPhase =
   | 'Terminated'
   | 'Failed';
 
+const volcanoJobTypeLabel = 'volcano.sh/job-type';
+
 /**
  * Current state details for a Volcano Job.
  * @see https://github.com/volcano-sh/apis/blob/ae35b8b12bc5ccb6ff5a62fcd9dca06234197e63/pkg/apis/batch/v1alpha1/job.go#L333
@@ -254,11 +256,39 @@ export class VolcanoJob extends KubeObject<KubeVolcanoJob> {
   }
 
   get minAvailable(): number {
-    return this.spec.minAvailable || 0;
+    return this.status?.minAvailable ?? this.spec.minAvailable ?? 0;
   }
 
   get runningCount(): number {
     return this.status?.running || 0;
+  }
+
+  get pendingCount(): number {
+    return this.status?.pending || 0;
+  }
+
+  get succeededCount(): number {
+    return this.status?.succeeded || 0;
+  }
+
+  get failedCount(): number {
+    return this.status?.failed || 0;
+  }
+
+  get unknownCount(): number {
+    return this.status?.unknown || 0;
+  }
+
+  get retryCount(): number {
+    return this.status?.retryCount || 0;
+  }
+
+  get replicaCount(): number {
+    return this.spec.tasks?.reduce((total, task) => total + task.replicas, 0) ?? 0;
+  }
+
+  get jobType(): string {
+    return this.metadata.labels?.[volcanoJobTypeLabel] || 'Batch';
   }
 
   get taskCount(): number {
