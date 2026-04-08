@@ -4,6 +4,7 @@ import {
   LabelListItem,
   Link,
   NameValueTable,
+  NameValueTableRow,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
@@ -163,7 +164,59 @@ interface ACMEChallengeSolverProps {
   solver: ACMEChallengeSolver;
 }
 
+const cloudflareGetter = (item: any) => {
+  const thisItem = item?.cloudflare;
+
+  if (!thisItem) {
+    return '-';
+  }
+
+  const rows: NameValueTableRow[] = [];
+
+  if (thisItem.email) {
+    rows.push({
+      name: 'Email',
+      value: thisItem.email,
+    });
+  }
+
+  if (thisItem.apiKeySecretRef) {
+    rows.push({
+      name: 'API Key Secret',
+      value: <SecretKeySelectorComponent selector={thisItem.apiKeySecretRef} />,
+    });
+  }
+
+  if (thisItem.apiTokenSecretRef) {
+    rows.push({
+      name: 'API Token Secret',
+      value: <SecretKeySelectorComponent selector={thisItem.apiTokenSecretRef} />,
+    });
+  }
+
+  if (rows.length === 0) {
+    return '-';
+  }
+  return <NameValueTable rows={rows} />;
+};
+
 export function ACMEChallengeSolverComponent({ solver }: ACMEChallengeSolverProps) {
+  const getItemGetter = (key: string) => {
+    if (key === 'cloudflare') {
+      return cloudflareGetter;
+    }
+
+    return (item: any) => {
+      const thisItem = item[key];
+
+      if (thisItem === null || thisItem === undefined) {
+        return '';
+      }
+
+      return thisItem.toString();
+    };
+  };
+
   if (solver.http01) {
     const { podTemplate, ...otherIngressFields } = solver.http01.ingress || {};
     const data = {
@@ -178,7 +231,7 @@ export function ACMEChallengeSolverComponent({ solver }: ACMEChallengeSolverProp
       <SimpleTable
         columns={Object.keys(data).map(key => ({
           label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), // Add spaces before capitals
-          getter: (item: any) => item[key]?.toString(),
+          getter: getItemGetter(key),
         }))}
         data={[data]}
       />
@@ -190,7 +243,7 @@ export function ACMEChallengeSolverComponent({ solver }: ACMEChallengeSolverProp
       <SimpleTable
         columns={Object.keys(solver.dns01).map(key => ({
           label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), // Add spaces before capitals
-          getter: (item: any) => item[key]?.toString(),
+          getter: getItemGetter(key),
         }))}
         data={[solver.dns01]}
       />
