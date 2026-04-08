@@ -1,10 +1,8 @@
-import {
-  ActionButton,
-  LightTooltip,
-  ResourceListView,
-} from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Chip } from '@mui/material';
+import { Icon } from '@iconify/react';
+import { LightTooltip, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Chip, ListItemIcon, ListItemText, MenuItem } from '@mui/material';
 import { NotebookClass } from '../../resources/notebook';
+import { launchNotebookLogs } from '../common/NotebookLogsViewer';
 import { NotebookStatusBadge } from '../common/NotebookStatusBadge';
 import { NotebookTypeBadge } from '../common/NotebookTypeBadge';
 import { getNotebookStatus, getNotebookType } from '../common/notebookUtils';
@@ -16,6 +14,29 @@ export function NotebooksList() {
       <ResourceListView
         title="Notebook Servers"
         resourceClass={NotebookClass}
+        enableRowActions
+        actions={[
+          {
+            id: 'kubeflow.notebook-logs',
+            action: ({ item, closeMenu }: { item: NotebookClass; closeMenu: () => void }) => (
+              <MenuItem
+                onClick={() => {
+                  closeMenu();
+                  launchNotebookLogs({
+                    notebookName: item.metadata.name,
+                    namespace: item.metadata.namespace,
+                    cluster: item.cluster,
+                  });
+                }}
+              >
+                <ListItemIcon>
+                  <Icon icon="mdi:text-box-outline" width={20} />
+                </ListItemIcon>
+                <ListItemText>View Logs</ListItemText>
+              </MenuItem>
+            ),
+          },
+        ]}
         columns={[
           'name',
           'namespace',
@@ -126,25 +147,6 @@ export function NotebooksList() {
             label: 'Status',
             getValue: (item: NotebookClass) => getNotebookStatus(item.jsonData).label,
             render: (item: NotebookClass) => <NotebookStatusBadge jsonData={item.jsonData} />,
-          },
-          {
-            id: 'action',
-            label: 'Action',
-            getValue: () => '',
-            render: (item: NotebookClass) => {
-              const logsUrl = `/c/${item.cluster}/pods/${item.metadata.namespace}/${item.metadata.name}-0?view=logs`;
-              return (
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                  <ActionButton
-                    description="View Notebook Logs"
-                    icon="mdi:text-box-outline"
-                    onClick={() => {
-                      window.location.href = logsUrl;
-                    }}
-                  />
-                </Box>
-              );
-            },
           },
           'age',
         ]}

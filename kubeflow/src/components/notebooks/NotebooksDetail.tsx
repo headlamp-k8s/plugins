@@ -10,6 +10,7 @@ import {
 import { Box, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { NotebookClass } from '../../resources/notebook';
+import { launchNotebookLogs } from '../common/NotebookLogsViewer';
 import { NotebookStatusBadge } from '../common/NotebookStatusBadge';
 import { NotebookTypeBadge } from '../common/NotebookTypeBadge';
 import { SectionPage } from '../common/SectionPage';
@@ -25,26 +26,28 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
         name={name as string}
         namespace={namespace}
         withEvents
-        extraInfo={item =>
+        actions={item =>
           item && [
             {
-              name: 'Action',
-              value: (() => {
-                const logsUrl = `/c/${item.cluster}/pods/${item.metadata.namespace}/${item.metadata.name}-0?view=logs`;
-
-                return (
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <ActionButton
-                      description="View Notebook Logs (Pods)"
-                      icon="mdi:text-box-outline"
-                      onClick={() => {
-                        window.location.href = logsUrl;
-                      }}
-                    />
-                  </Box>
-                );
-              })(),
+              id: 'kubeflow.notebook-logs',
+              action: (
+                <ActionButton
+                  description="View Notebook Logs"
+                  icon="mdi:text-box-outline"
+                  onClick={() =>
+                    launchNotebookLogs({
+                      notebookName: item.metadata.name,
+                      namespace: item.metadata.namespace,
+                      cluster: item.cluster,
+                    })
+                  }
+                />
+              ),
             },
+          ]
+        }
+        extraInfo={item =>
+          item && [
             {
               name: 'Status',
               value: <NotebookStatusBadge jsonData={item.jsonData} />,
