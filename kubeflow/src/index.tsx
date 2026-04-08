@@ -18,6 +18,13 @@ import { addIcon } from '@iconify/react';
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
 import { PlaceholderPage } from './components/common/Placeholder';
+import { NotebooksDetail } from './components/notebooks/NotebooksDetail';
+import { NotebooksList } from './components/notebooks/NotebooksList';
+import { NotebooksOverview } from './components/notebooks/NotebooksOverview';
+import { PodDefaultsDetail } from './components/notebooks/PodDefaultsDetail';
+import { PodDefaultsList } from './components/notebooks/PodDefaultsList';
+import { ProfilesDetail } from './components/notebooks/ProfilesDetail';
+import { ProfilesList } from './components/notebooks/ProfilesList';
 import { Overview } from './components/overview/Overview';
 
 addIcon('custom:kubeflow', {
@@ -121,35 +128,84 @@ function registerSubChild(
   });
 }
 
-registerSubMenu(
-  'kubeflow-notebooks',
-  '/kubeflow/notebooks',
-  'kubeflow',
-  'Notebooks',
-  'mdi:notebook',
-  '/apis/kubeflow.org/v1/notebooks'
-);
-registerSubChild(
-  'kubeflow-notebooks-servers',
-  '/kubeflow/notebooks/servers',
-  'kubeflow-notebooks',
-  'Notebook Servers',
-  '/apis/kubeflow.org/v1/notebooks'
-);
-registerSubChild(
-  'kubeflow-notebooks-profiles',
-  '/kubeflow/notebooks/profiles',
-  'kubeflow-notebooks',
-  'Profiles',
-  '/apis/kubeflow.org/v1/profiles'
-);
-registerSubChild(
-  'kubeflow-notebooks-poddefaults',
-  '/kubeflow/notebooks/poddefaults',
-  'kubeflow-notebooks',
-  'PodDefaults',
-  '/apis/kubeflow.org/v1alpha1/poddefaults'
-);
+registerSidebarEntry({
+  parent: 'kubeflow',
+  name: 'kubeflow-notebooks',
+  label: 'Notebooks',
+  url: '/kubeflow/notebooks',
+  icon: 'mdi:notebook',
+});
+
+registerRoute({
+  path: '/kubeflow/notebooks',
+  sidebar: 'kubeflow-notebooks',
+  name: 'kubeflow-notebooks-overview',
+  exact: true,
+  component: () => <NotebooksOverview />,
+});
+
+registerSidebarEntry({
+  parent: 'kubeflow-notebooks',
+  name: 'kubeflow-notebooks-servers',
+  label: 'Notebook Servers',
+  url: '/kubeflow/notebooks/servers',
+});
+registerRoute({
+  path: '/kubeflow/notebooks/servers',
+  sidebar: 'kubeflow-notebooks-servers',
+  name: 'kubeflow-notebooks-servers-list',
+  exact: true,
+  component: () => <NotebooksList />,
+});
+registerRoute({
+  path: '/kubeflow/notebooks/servers/:namespace/:name',
+  sidebar: 'kubeflow-notebooks-servers',
+  name: 'kubeflow-notebooks-servers-detail',
+  exact: true,
+  component: () => <NotebooksDetail />,
+});
+
+registerSidebarEntry({
+  parent: 'kubeflow-notebooks',
+  name: 'kubeflow-notebooks-profiles',
+  label: 'Profiles',
+  url: '/kubeflow/notebooks/profiles',
+});
+registerRoute({
+  path: '/kubeflow/notebooks/profiles',
+  sidebar: 'kubeflow-notebooks-profiles',
+  name: 'kubeflow-notebooks-profiles-list',
+  exact: true,
+  component: () => <ProfilesList />,
+});
+registerRoute({
+  path: '/kubeflow/notebooks/profiles/:name',
+  sidebar: 'kubeflow-notebooks-profiles',
+  name: 'kubeflow-notebooks-profiles-detail',
+  exact: true,
+  component: () => <ProfilesDetail />,
+});
+
+registerSidebarEntry({
+  parent: 'kubeflow-notebooks',
+  name: 'kubeflow-notebooks-poddefaults',
+  label: 'PodDefaults',
+  url: '/kubeflow/notebooks/poddefaults',
+});
+registerRoute({
+  path: '/kubeflow/notebooks/poddefaults',
+  sidebar: 'kubeflow-notebooks-poddefaults',
+  name: 'kubeflow-notebooks-poddefaults-list',
+  exact: true,
+  component: () => <PodDefaultsList />,
+});
+registerRoute({
+  path: '/kubeflow/notebooks/poddefaults/:namespace/:name',
+  sidebar: 'kubeflow-notebooks-poddefaults',
+  name: 'kubeflow-notebooks-poddefaults-detail',
+  exact: true,
+  component: () => <PodDefaultsDetail />,
+});
 
 registerSubMenu(
   'kubeflow-pipelines',
