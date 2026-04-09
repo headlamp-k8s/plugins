@@ -41,7 +41,7 @@ interface PureIssuerDetailProps {
 }
 
 // Helper function to render issuer type specific info
-function renderIssuerTypeInfo(spec: IssuerSpec) {
+function renderIssuerTypeInfo(spec: IssuerSpec, namespace?: string) {
   if (spec.acme) {
     return (
       <SectionBox title="ACME Configuration">
@@ -54,7 +54,10 @@ function renderIssuerTypeInfo(spec: IssuerSpec) {
             {
               name: 'Private Key Secret Ref',
               value: spec.acme.privateKeySecretRef ? (
-                <SecretKeySelectorComponent selector={spec.acme.privateKeySecretRef} />
+                <SecretKeySelectorComponent
+                  selector={spec.acme.privateKeySecretRef}
+                  namespace={namespace}
+                />
               ) : (
                 '-'
               ),
@@ -64,7 +67,7 @@ function renderIssuerTypeInfo(spec: IssuerSpec) {
               value:
                 spec.acme.solvers?.map((solver, index) => (
                   <Box key={index} mb={2}>
-                    <ACMEChallengeSolverComponent solver={solver} />
+                    <ACMEChallengeSolverComponent solver={solver} namespace={namespace} />
                   </Box>
                 )) || '-',
             },
@@ -201,7 +204,7 @@ export function PureIssuerDetail({
       </SectionBox>
 
       {/* Issuer Type Configuration */}
-      {renderIssuerTypeInfo(issuer.spec)}
+      {renderIssuerTypeInfo(issuer.spec, issuer.metadata.namespace)}
 
       {/* ACME Status (if applicable) */}
       {issuer.status?.acme && (

@@ -96,7 +96,12 @@ export function PureChallengeDetail({
             },
             {
               name: 'Solver',
-              value: <ACMEChallengeSolverComponent solver={challenge.spec.solver} />,
+              value: (
+                <ACMEChallengeSolverComponent
+                  solver={challenge.spec.solver}
+                  namespace={challenge.metadata.namespace}
+                />
+              ),
             },
             { name: 'Token', value: challenge.spec.token },
             { name: 'URL', value: challenge.spec.url },

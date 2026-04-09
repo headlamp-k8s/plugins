@@ -187,9 +187,10 @@ EmptyConditions.args = {
 // SecretKeySelectorComponent Stories
 // =============================================================================
 
-const SecretKeySelectorTemplate: StoryFn<{ selector: SecretKeySelector }> = args => (
-  <SecretKeySelectorComponent {...args} />
-);
+const SecretKeySelectorTemplate: StoryFn<{
+  selector: SecretKeySelector;
+  namespace: string;
+}> = args => <SecretKeySelectorComponent {...args} />;
 
 export const SecretKeySelectorDefault = SecretKeySelectorTemplate.bind({});
 SecretKeySelectorDefault.args = {
@@ -210,9 +211,10 @@ SecretKeySelectorWithoutKey.args = {
 // ACMEChallengeSolverComponent Stories
 // =============================================================================
 
-const ACMEChallengeSolverTemplate: StoryFn<{ solver: ACMEChallengeSolver }> = args => (
-  <ACMEChallengeSolverComponent {...args} />
-);
+const ACMEChallengeSolverTemplate: StoryFn<{
+  solver: ACMEChallengeSolver;
+  namespace?: string;
+}> = args => <ACMEChallengeSolverComponent {...args} />;
 
 export const HTTP01Solver = ACMEChallengeSolverTemplate.bind({});
 HTTP01Solver.args = {
