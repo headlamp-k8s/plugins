@@ -11,6 +11,7 @@ import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { useMemo } from 'react';
+import { registerCapiIcon } from './clusterapiIcon';
 import { ClusterClassDetail } from './components/clusterclasses/Detail';
 import { ClusterClassesList } from './components/clusterclasses/List';
 import { ClusterDetail } from './components/clusters/Detail';
@@ -48,6 +49,8 @@ import { MachineDrainRule } from './resources/machinedrainrule';
 import { MachineHealthCheck } from './resources/machinehealthcheck';
 import { MachinePool } from './resources/machinepool';
 import { MachineSet } from './resources/machineset';
+
+registerCapiIcon();
 
 interface ResourceRegistrationConfig {
   name: string;
@@ -125,7 +128,7 @@ function registerClusterApiResource(config: ResourceRegistrationConfig) {
 registerSidebarEntry({
   name: 'Cluster-api',
   url: '/cluster-api/capiclusters',
-  icon: 'mdi:kubernetes',
+  icon: 'capi:logo',
   parent: null,
   label: 'Cluster API',
 });
@@ -254,7 +257,7 @@ Object.assign(ResourceClasses, resourceClassMap);
 registerMapSource({
   id: 'cluster-api',
   label: 'Cluster API',
-  icon: <Icon icon="mdi:kubernetes" width="100%" height="100%" color="rgb(50, 108, 229)" />,
+  icon: <Icon icon="capi:logo" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
     // Build a map of resources and their details components
     const resourceLists = clusterApiResources.map(r => {
