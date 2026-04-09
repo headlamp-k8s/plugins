@@ -1,4 +1,5 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { VolcanoJob } from './job';
 import { VolcanoQueue } from './queue';
 
 /**
@@ -9,18 +10,26 @@ import { VolcanoQueue } from './queue';
 export type VolcanoQueueCommandAction = 'OpenQueue' | 'CloseQueue';
 
 /**
+ * Volcano bus actions supported by the Job lifecycle commands used in the UI.
+ * @see https://github.com/volcano-sh/volcano/blob/master/staging/src/volcano.sh/apis/pkg/apis/bus/v1alpha1/actions.go
+ * @see https://github.com/volcano-sh/volcano/blob/master/pkg/cli/vsuspend/suspend.go
+ * @see https://github.com/volcano-sh/volcano/blob/master/pkg/cli/vresume/resume.go
+ */
+export type VolcanoJobCommandAction = 'AbortJob' | 'ResumeJob';
+
+/**
  * Namespace used by `vcctl queue operate` when creating queue Command objects.
  * @see https://github.com/volcano-sh/volcano/blob/master/pkg/cli/queue/util.go
  */
 export const QUEUE_COMMAND_NAMESPACE = 'default';
 
 /**
- * Volcano bus Command resource payload used to target a queue action.
+ * Volcano bus Command resource payload used to target a queue or job action.
  * @see https://github.com/volcano-sh/volcano/blob/master/staging/src/volcano.sh/apis/pkg/apis/bus/v1alpha1/commands.go
  */
 export interface KubeVolcanoCommand extends KubeObjectInterface {
   /** Action to execute for the target object. */
-  action?: string;
+  action?: VolcanoJobCommandAction;
   /** Target object reference for this command. */
   target?: {
     apiVersion?: string;
@@ -85,5 +94,67 @@ export async function createQueueCommand(queue: VolcanoQueue, action: VolcanoQue
     },
     {},
     queue.cluster
+  );
+}
+
+const maxGenerateNameLength = 63;
+
+function buildCommandGenerateName(name: string, action: VolcanoJobCommandAction) {
+  const suffix = `-${action.toLowerCase()}-`;
+  const maxPrefixLength = maxGenerateNameLength - suffix.length;
+  const prefix = name.slice(0, Math.max(maxPrefixLength, 1));
+
+  return `${prefix}${suffix}`;
+}
+
+/**
+ * Creates a Volcano bus command for an existing Job lifecycle action.
+ * Mirrors the upstream CLI helper used by `vcctl` suspend/resume flows.
+ * @see https://github.com/volcano-sh/volcano/blob/master/pkg/cli/util/util.go
+ * @see https://github.com/volcano-sh/volcano/blob/master/staging/src/volcano.sh/apis/pkg/apis/bus/v1alpha1/commands.go
+ * @see https://github.com/volcano-sh/volcano/blob/master/staging/src/volcano.sh/apis/pkg/apis/bus/v1alpha1/actions.go
+ */
+export async function createJobCommand(job: VolcanoJob, action: VolcanoJobCommandAction) {
+  const namespace = job.metadata.namespace;
+  const name = job.metadata.name;
+  const uid = job.metadata.uid;
+
+  if (!namespace || !name || !uid) {
+    const missingFields = [
+      !namespace ? 'namespace' : null,
+      !name ? 'name' : null,
+      !uid ? 'uid' : null,
+    ].filter((field): field is string => field !== null);
+
+    throw new Error(
+      `Job metadata is incomplete for issuing this command. Missing required field(s): ${missingFields.join(
+        ', '
+      )}`
+    );
+  }
+
+  const targetReference = {
+    apiVersion: job.jsonData.apiVersion || VolcanoJob.apiVersion,
+    kind: job.jsonData.kind || 'Job',
+    name,
+    uid,
+    controller: true,
+    blockOwnerDeletion: true,
+  };
+
+  await VolcanoCommand.apiEndpoint.post(
+    {
+      apiVersion: VolcanoCommand.apiVersion,
+      kind: VolcanoCommand.kind,
+      metadata: {
+        generateName: buildCommandGenerateName(name, action),
+        namespace,
+        ownerReferences: [targetReference],
+      },
+      action,
+      target: targetReference,
+    },
+    {},
+    job.cluster
   );
 }

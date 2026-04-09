@@ -1,14 +1,20 @@
 import {
+  AuthVisible,
+  DateLabel,
   DetailsGrid,
   Link,
   NameValueTable,
   SectionBox,
+  SimpleTable,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useParams } from 'react-router-dom';
+import { VolcanoCommand } from '../../resources/command';
 import { VolcanoJob } from '../../resources/job';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { getJobStatusColor } from '../../utils/status';
+import { formatStringList, getPolicyRows, getTaskContainerRows, getTaskRows } from './detailRows';
+import JobCommandActionButton from './JobCommandActionButton';
 
 /**
  * Resolves the PodGroup related to a Volcano Job.
@@ -124,19 +130,175 @@ function getTasksSection(job: VolcanoJob) {
     section: (
       <SectionBox title="Tasks">
         {job.spec.tasks.map((task, index) => (
-          <NameValueTable
-            key={task.name || index}
-            rows={[
-              { name: 'Name', value: task.name || `Task ${index + 1}` },
-              { name: 'Replicas', value: task.replicas },
-              { name: 'Min Available', value: task.minAvailable ?? task.replicas },
-              { name: 'Image', value: task.template?.spec?.containers?.[0]?.image || '-' },
-            ]}
-          />
+          <SectionBox title={task.name || `Task ${index + 1}`} key={task.name || index}>
+            <NameValueTable rows={getTaskRows(task, index)} />
+            {(task.template?.spec?.containers || []).length > 0 ? (
+              task.template?.spec?.containers?.map((container, containerIndex) => (
+                <NameValueTable
+                  key={`${task.name || index}-${container.name || containerIndex}`}
+                  rows={getTaskContainerRows(container)}
+                />
+              ))
+            ) : (
+              <NameValueTable rows={[{ name: 'Containers', value: 'No containers defined' }]} />
+            )}
+          </SectionBox>
         ))}
       </SectionBox>
     ),
   };
+}
+
+/**
+ * Builds the Plugins section for the Job details page.
+ *
+ * @param job Volcano Job shown in the details page.
+ * @returns Section descriptor for configured plugins or `null` if none exist.
+ */
+function getPluginsSection(job: VolcanoJob) {
+  const plugins = job.spec.plugins || {};
+  const pluginNames = Object.keys(plugins);
+
+  if (pluginNames.length === 0) {
+    return null;
+  }
+
+  return {
+    id: 'plugins',
+    section: (
+      <SectionBox title="Plugins">
+        <NameValueTable
+          rows={pluginNames.map(pluginName => ({
+            name:
+              pluginName.toLowerCase() === 'ssh'
+                ? 'SSH'
+                : pluginName[0].toUpperCase() + pluginName.slice(1),
+            value: formatStringList(plugins[pluginName]),
+          }))}
+        />
+      </SectionBox>
+    ),
+  };
+}
+
+/**
+ * Builds the Policies section for the Job details page.
+ *
+ * @param job Volcano Job shown in the details page.
+ * @returns Section descriptor for lifecycle policies or `null` if none exist.
+ */
+function getPoliciesSection(job: VolcanoJob) {
+  if (!job.spec.policies?.length) {
+    return null;
+  }
+
+  return {
+    id: 'policies',
+    section: (
+      <SectionBox title="Policies">
+        {job.spec.policies.map((policy, index) => (
+          <NameValueTable key={`policy-${index}`} rows={getPolicyRows(policy)} />
+        ))}
+      </SectionBox>
+    ),
+  };
+}
+
+/**
+ * Builds the Conditions section for the Job details page.
+ *
+ * @param job Volcano Job shown in the details page.
+ * @returns Section descriptor for job conditions or `null` if none exist.
+ */
+function getConditionsSection(job: VolcanoJob) {
+  if (!job.status?.conditions?.length) {
+    return null;
+  }
+
+  return {
+    id: 'conditions',
+    section: (
+      <SectionBox title="Conditions">
+        <SimpleTable
+          data={job.status.conditions}
+          columns={[
+            {
+              label: 'Status',
+              getter: condition => condition.status || '-',
+            },
+            {
+              label: 'Last Transition',
+              getter: condition =>
+                condition.lastTransitionTime ? (
+                  <DateLabel date={condition.lastTransitionTime} />
+                ) : (
+                  '-'
+                ),
+            },
+          ]}
+        />
+      </SectionBox>
+    ),
+  };
+}
+
+/**
+ * Returns only the Job lifecycle actions that map to valid existing-job CLI operations.
+ * @see https://github.com/volcano-sh/volcano/blob/master/pkg/cli/vsuspend/suspend.go
+ * @see https://github.com/volcano-sh/volcano/blob/master/pkg/cli/vresume/resume.go
+ */
+function getJobActionButtons(job: VolcanoJob) {
+  const canSuspend = ![
+    'Aborting',
+    'Aborted',
+    'Terminating',
+    'Terminated',
+    'Completing',
+    'Completed',
+    'Failed',
+  ].includes(job.phase);
+  const canResume = job.phase === 'Aborted';
+
+  return [
+    ...(canSuspend
+      ? [
+          {
+            id: 'volcano-job-suspend',
+            action: (
+              <AuthVisible item={VolcanoCommand} authVerb="create" namespace={job.getNamespace()}>
+                <JobCommandActionButton
+                  job={job}
+                  label="Suspend"
+                  longDescription="Suspend this job (vcctl job suspend)."
+                  icon="mdi:pause"
+                  action="AbortJob"
+                  successMessage={`Suspend command created for ${job.metadata.name}`}
+                />
+              </AuthVisible>
+            ),
+          },
+        ]
+      : []),
+    ...(canResume
+      ? [
+          {
+            id: 'volcano-job-resume',
+            action: (
+              <AuthVisible item={VolcanoCommand} authVerb="create" namespace={job.getNamespace()}>
+                <JobCommandActionButton
+                  job={job}
+                  label="Resume"
+                  longDescription="Resume this job (vcctl job resume)."
+                  icon="mdi:play-circle"
+                  action="ResumeJob"
+                  successMessage={`Resume command created for ${job.metadata.name}`}
+                />
+              </AuthVisible>
+            ),
+          },
+        ]
+      : []),
+  ];
 }
 
 /**
@@ -166,6 +328,14 @@ export default function JobDetail() {
           {
             name: 'Status',
             value: <StatusLabel status={getJobStatusColor(job.phase)}>{job.phase}</StatusLabel>,
+          },
+          {
+            name: 'API Version',
+            value: job.jsonData.apiVersion || VolcanoJob.apiVersion,
+          },
+          {
+            name: 'Kind',
+            value: job.jsonData.kind || 'Job',
           },
           {
             name: 'Queue',
@@ -201,10 +371,50 @@ export default function JobDetail() {
             name: 'Max Retry',
             value: job.spec.maxRetry ?? 3,
           },
+          {
+            name: 'Generate Name',
+            value: job.metadata.generateName || '-',
+          },
+          {
+            name: 'Generation',
+            value: job.metadata.generation ?? '-',
+          },
+          {
+            name: 'Resource Version',
+            value: job.metadata.resourceVersion || '-',
+          },
+          {
+            name: 'UID',
+            value: job.metadata.uid || '-',
+          },
+          {
+            name: 'Retry Count',
+            value: job.status?.retryCount ?? 0,
+          },
+          {
+            name: 'Running Duration',
+            value: job.status?.runningDuration || '-',
+          },
+          {
+            name: 'State Last Transition Time',
+            value: job.status?.state?.lastTransitionTime || '-',
+          },
+          {
+            name: 'Version',
+            value: job.status?.version ?? '-',
+          },
         ];
       }}
+      actions={(job: VolcanoJob) => (job ? getJobActionButtons(job) : [])}
       extraSections={(job: VolcanoJob) =>
-        job && [getPodStatusSection(job), getTasksSection(job)].filter(Boolean)
+        job &&
+        [
+          getPodStatusSection(job),
+          getPluginsSection(job),
+          getPoliciesSection(job),
+          getTasksSection(job),
+          getConditionsSection(job),
+        ].filter(Boolean)
       }
     />
   );
