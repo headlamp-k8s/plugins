@@ -2,7 +2,7 @@ import { Headlamp } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Secret from '@kinvolk/headlamp-plugin/lib/k8s/secret';
 import { useSnackbar } from 'notistack';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Cluster } from '../../resources/cluster';
 
 /**
@@ -21,68 +21,64 @@ export interface GetKubeconfigActionProps {
  */
 export function GetKubeconfigAction(props: GetKubeconfigActionProps) {
   const { resource } = props;
-  const [shouldFetch, setShouldFetch] = useState(false);
   const [loading, setLoading] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   const secretName = `${resource.metadata.name}-kubeconfig`;
   const namespace = resource.metadata.namespace || 'default';
   const secretData = Secret.useGet(secretName, namespace);
-  const isKubeconfigAvailable = !!secretData.data;
+  const kubeconfigValue = secretData.data?.jsonData?.data?.value;
 
-  useEffect(() => {
-    if (!shouldFetch) return;
+  // Hide button if not available
+  if (!kubeconfigValue) {
+    return null;
+  }
 
-    if (secretData.data) {
-      if (resource.spec.infrastructureRef.kind === 'DockerCluster') {
-        enqueueSnackbar(
-          `Docker provider detected. Run:
-  kind get kubeconfig --name ${resource.metadata.name} > ${resource.metadata.name}.kubeconfig`,
-          { variant: 'warning' }
-        );
-        setShouldFetch(false);
-        return;
-      }
-      setLoading(true);
-      enqueueSnackbar('Downloading kubeconfig...', { variant: 'info' });
+  const handleClick = async () => {
+    if (loading) return;
 
-      Headlamp.setCluster({
-        kubeconfig: secretData.data?.jsonData?.data?.value,
-      })
-        .then(() => {
-          enqueueSnackbar('Kubeconfig set successfully', { variant: 'success' });
-        })
-        .catch(err => {
-          enqueueSnackbar(`Failed: ${err.message}`, { variant: 'error' });
-        })
-        .finally(() => {
-          setLoading(false);
-          setShouldFetch(false);
-        });
-    } else {
-      enqueueSnackbar('Kubeconfig not available yet. Cluster may still be provisioning.', {
-        variant: 'warning',
-      });
-      setShouldFetch(false);
+    if (secretData.error) {
+      enqueueSnackbar(
+        `Failed to get Secret "${secretName}" in namespace "${namespace}": ${secretData.error}`,
+        { variant: 'error' }
+      );
+      return;
     }
-  }, [shouldFetch, secretData]);
+    if (resource.spec.infrastructureRef.kind === 'DockerCluster') {
+      enqueueSnackbar(
+        `Docker provider detected. Run:
+kind get kubeconfig --name ${resource.metadata.name} > ${resource.metadata.name}.kubeconfig`,
+        { variant: 'warning' }
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+      enqueueSnackbar('Connecting to cluster...', { variant: 'info' });
+
+      await Headlamp.setCluster({
+        kubeconfig: kubeconfigValue,
+      });
+
+      enqueueSnackbar('Cluster connected successfully', {
+        variant: 'success',
+      });
+    } catch (err: any) {
+      enqueueSnackbar(`Failed to connect: ${err.message}`, {
+        variant: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ActionButton
       description="Download Kubeconfig"
       longDescription="Download the Kubeconfig file for this cluster"
       icon={'mdi:cloud-download'}
-      onClick={() => {
-        if (!isKubeconfigAvailable) {
-          enqueueSnackbar('Kubeconfig not available yet. Cluster is still provisioning.', {
-            variant: 'warning',
-          });
-          return;
-        }
-        if (loading) return;
-
-        setShouldFetch(true);
-      }}
+      onClick={handleClick}
     />
   );
 }
