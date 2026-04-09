@@ -151,32 +151,21 @@ registerSidebarEntry({
 });
 
 // Register sections for a logical sidebar structure
-// ── Sections (parents carry the icon) ────────────────────────────────────────
-registerSection('capi-fleet', 'Cluster Fleet', 'mdi:cloud', '/cluster-api/capiclusters');
+registerSection('capi-fleet', 'Cluster Management', 'mdi:cloud', '/cluster-api/capiclusters');
 registerSection(
   'capi-cp',
   'Control Planes',
   'mdi:shield-crown-outline',
   '/cluster-api/kubeadmcontrolplanes'
 );
-registerSection(
-  'capi-compute',
-  'Compute & Workers',
-  'mdi:server',
-  '/cluster-api/machinedeployments'
-);
+registerSection('capi-compute', 'Workers', 'mdi:server', '/cluster-api/machinedeployments');
 registerSection(
   'capi-config',
-  'Bootstrap & Config',
+  'Bootstrap',
   'mdi:file-document-outline',
   '/cluster-api/kubeadmconfigs'
 );
-registerSection(
-  'capi-ops',
-  'Operations & Health',
-  'mdi:heart-pulse',
-  '/cluster-api/machinehealthchecks'
-);
+registerSection('capi-ops', 'Operations', 'mdi:heart-pulse', '/cluster-api/machinehealthchecks');
 
 const clusterApiResources: ResourceRegistrationConfig[] = [
   {
