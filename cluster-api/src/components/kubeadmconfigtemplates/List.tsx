@@ -37,7 +37,7 @@ export function KCTListWithData({ KCTClass }: KCTListWithDataProps) {
         },
         {
           id: 'clusterclass',
-          label: 'ClusterClass',
+          label: 'Cluster Class',
           getValue: (item: KubeadmConfigTemplate) => {
             const cc = item.metadata?.ownerReferences?.find(ref => ref.kind === 'ClusterClass');
             return cc?.name ?? '—';

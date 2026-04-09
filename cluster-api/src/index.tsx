@@ -59,7 +59,25 @@ interface ResourceRegistrationConfig {
   hasNamespace?: boolean;
   section?: string;
 }
-
+/**
+ * Registers a sidebar section under the Cluster API group in Headlamp.
+ *
+ * This helper simplifies adding new sidebar entries by encapsulating
+ * the common configuration (parent, label, icon, and URL).
+ *
+ * @param name - Unique identifier for the sidebar entry (used internally).
+ * @param label - Display name shown in the sidebar UI.
+ * @param icon - Icon name (e.g., Material Design Icons string like 'mdi:cloud').
+ * @param url - Route path that the sidebar entry should navigate to.
+ *
+ * @example
+ * registerSection(
+ *   'clusters',
+ *   'Clusters',
+ *   'mdi:kubernetes',
+ *   '/cluster-api/clusters'
+ * );
+ */
 function registerSection(name: string, label: string, icon: string, url: string) {
   registerSidebarEntry({
     parent: 'Cluster-api',
