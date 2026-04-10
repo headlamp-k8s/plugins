@@ -33,12 +33,17 @@ export const queryClient = new QueryClient({
 });
 
 const withThemeProvider = (Story: any, context: any) => {
-  const theme = context.globals.backgrounds?.value === '#1f1f1f' ? darkTheme : lightTheme;
+  const isDark = context.globals.headlampTheme === 'dark';
+  const headlampTheme = isDark ? darkTheme : lightTheme;
+  const bg = isDark ? '#1f1f1f' : '#fff';
+
   return (
     <ReduxProvider store={storybookStore}>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider theme={createMuiTheme(theme)}>
-          <Story {...context} />
+        <ThemeProvider theme={createMuiTheme(headlampTheme)}>
+          <div style={{ backgroundColor: bg, minHeight: '100vh', padding: 16 }}>
+            <Story {...context} />
+          </div>
         </ThemeProvider>
       </QueryClientProvider>
     </ReduxProvider>
@@ -47,13 +52,27 @@ const withThemeProvider = (Story: any, context: any) => {
 
 export const decorators = [withThemeProvider];
 
-export const parameters = {
-  backgrounds: {
-    values: [
-      { name: 'light', value: '#FFF' },
-      { name: 'dark', value: '#1f1f1f' },
-    ],
+export const globalTypes = {
+  headlampTheme: {
+    name: 'Headlamp Theme',
+    description: 'Switch between Headlamp light and dark themes',
+    toolbar: {
+      icon: 'paintbrush',
+      items: [
+        { value: 'light', title: 'Light' },
+        { value: 'dark', title: 'Dark' },
+      ],
+      dynamicTitle: true,
+    },
   },
+};
+
+export const initialGlobals = {
+  headlampTheme: 'dark',
+};
+
+export const parameters = {
+  backgrounds: { disable: true },
   docs: {
     toc: { disable: true },
     page: () => (
