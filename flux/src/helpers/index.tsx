@@ -23,7 +23,7 @@ export function getSourceNameAndPluralKind(item: KubeObject): {
   let name = '';
   let namespace: string | undefined;
 
-  if (itemKind === 'Kustomization') {
+  if (itemKind === 'Kustomization' || itemKind === 'Terraform') {
     pluralKind = PluralName(item.jsonData.spec.sourceRef.kind);
     name = item.jsonData.spec?.sourceRef?.name;
     namespace = item.jsonData.spec.sourceRef.namespace;
