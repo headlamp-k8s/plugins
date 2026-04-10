@@ -11,7 +11,7 @@ import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import React from 'react';
 import { getSourceNameAndPluralKind } from '../helpers';
 import { PluralName } from '../helpers/pluralName';
-import StatusLabel from './StatusLabel';
+import StatusLabel, { getStatusText } from './StatusLabel';
 
 type CommonColumnType =
   | 'namespace'
@@ -141,9 +141,8 @@ export function Table(props: TableProps) {
           case 'status':
             return {
               header: 'Status',
-              accessorFn: item => {
-                return <StatusLabel item={item} />;
-              },
+              accessorFn: item => getStatusText(item),
+              Cell: ({ row: { original: item } }: any) => <StatusLabel item={item} />,
             };
           case 'revision':
             return {
