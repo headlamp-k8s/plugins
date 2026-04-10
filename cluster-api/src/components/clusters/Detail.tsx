@@ -313,6 +313,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
         if (spec && cluster) {
           const topologyClass = spec.topology?.class ?? spec.topology?.classRef?.name;
           const machineDeployments = spec.topology?.workers?.machineDeployments ?? [];
+          const machinePools = spec.topology?.workers?.machinePools ?? [];
           const topologyVariables = spec.topology?.variables ?? [];
 
           const clusterSpecRows = [
@@ -349,6 +350,25 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
                       },
                     ]}
                     data={machineDeployments}
+                  />
+                ) : (
+                  '-'
+                ),
+            },
+            {
+              name: 'Topology Machine Pools',
+              value:
+                machinePools.length > 0 ? (
+                  <SimpleTable
+                    columns={[
+                      { label: 'Name', getter: (row: { name: string }) => row.name },
+                      { label: 'Class', getter: (row: { class: string }) => row.class },
+                      {
+                        label: 'Replicas',
+                        getter: (row: { replicas?: number }) => row.replicas ?? '-',
+                      },
+                    ]}
+                    data={machinePools}
                   />
                 ) : (
                   '-'

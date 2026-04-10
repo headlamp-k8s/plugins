@@ -60,6 +60,35 @@ interface ResourceRegistrationConfig {
   ListComponent: React.ComponentType<any>;
   icon: string;
   hasNamespace?: boolean;
+  section?: string;
+}
+/**
+ * Registers a sidebar section under the Cluster API group in Headlamp.
+ *
+ * This helper simplifies adding new sidebar entries by encapsulating
+ * the common configuration (parent, label, icon, and URL).
+ *
+ * @param name - Unique identifier for the sidebar entry (used internally).
+ * @param label - Display name shown in the sidebar UI.
+ * @param icon - Icon name (e.g., Material Design Icons string like 'mdi:cloud').
+ * @param url - Route path that the sidebar entry should navigate to.
+ *
+ * @example
+ * registerSection(
+ *   'clusters',
+ *   'Clusters',
+ *   'mdi:kubernetes',
+ *   '/cluster-api/clusters'
+ * );
+ */
+function registerSection(name: string, label: string, icon: string, url: string) {
+  registerSidebarEntry({
+    parent: 'Cluster-api',
+    name,
+    label,
+    url,
+    icon,
+  });
 }
 /**
  * Wrapper component for CAPI routes that checks if the management cluster is initialized.
@@ -84,13 +113,22 @@ function CapiRouteWrapper({ children }: { children: React.ReactNode }) {
  * @param config - The registration configuration for the resource.
  */
 function registerClusterApiResource(config: ResourceRegistrationConfig) {
-  const { name, kind, path, DetailComponent, ListComponent, icon, hasNamespace = true } = config;
+  const {
+    name,
+    kind,
+    path,
+    DetailComponent,
+    ListComponent,
+    icon,
+    hasNamespace = true,
+    section = 'Cluster-api',
+  } = config;
 
   // Register sidebar entry
   registerSidebarEntry({
     name,
     url: `/cluster-api/${path}`,
-    parent: 'Cluster-api',
+    parent: section,
     label: name,
   });
 
@@ -133,6 +171,23 @@ registerSidebarEntry({
   label: 'Cluster API',
 });
 
+// Register sections for a logical sidebar structure
+registerSection('capi-fleet', 'Cluster Management', 'mdi:cloud', '/cluster-api/capiclusters');
+registerSection(
+  'capi-cp',
+  'Control Planes',
+  'mdi:shield-crown-outline',
+  '/cluster-api/kubeadmcontrolplanes'
+);
+registerSection('capi-compute', 'Workers', 'mdi:server', '/cluster-api/machinedeployments');
+registerSection(
+  'capi-config',
+  'Bootstrap',
+  'mdi:file-document-outline',
+  '/cluster-api/kubeadmconfigs'
+);
+registerSection('capi-ops', 'Operations', 'mdi:heart-pulse', '/cluster-api/machinehealthchecks');
+
 const clusterApiResources: ResourceRegistrationConfig[] = [
   {
     name: 'Clusters ', // Trailing space: "Clusters" is reserved in Headlamp
@@ -141,6 +196,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: ClusterDetail,
     ListComponent: ClustersList,
     icon: 'mdi:cloud',
+    section: 'capi-fleet',
   },
   {
     name: 'Cluster Classes',
@@ -149,6 +205,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: ClusterClassDetail,
     ListComponent: ClusterClassesList,
     icon: 'mdi:cloud-print-outline',
+    section: 'capi-fleet',
   },
   {
     name: 'Kubeadm Control Planes',
@@ -157,6 +214,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: KubeadmControlPlaneDetail,
     ListComponent: KubeadmControlPlanesList,
     icon: 'mdi:controller-classic',
+    section: 'capi-cp',
   },
   {
     name: 'Kubeadm Control Plane Templates',
@@ -165,6 +223,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: KubeadmControlPlaneTemplateDetail,
     ListComponent: KubeadmControlPlaneTemplatesList,
     icon: 'mdi:controller-classic-outline',
+    section: 'capi-cp',
   },
   {
     name: 'Machine Deployments',
@@ -173,6 +232,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: MachineDeploymentDetail,
     ListComponent: MachineDeploymentsList,
     icon: 'mdi:knob',
+    section: 'capi-compute',
   },
   {
     name: 'Machine Pools',
@@ -181,6 +241,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: MachinePoolDetail,
     ListComponent: MachinePoolsList,
     icon: 'mdi:pool',
+    section: 'capi-compute',
   },
   {
     name: 'Machine Sets',
@@ -189,6 +250,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: MachineSetDetail,
     ListComponent: MachineSetsList,
     icon: 'mdi:set-split',
+    section: 'capi-compute',
   },
   {
     name: 'Machines',
@@ -197,6 +259,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: MachineDetail,
     ListComponent: MachinesList,
     icon: 'mdi:desktop-classic',
+    section: 'capi-compute',
   },
   {
     name: 'Kubeadm Config Templates',
@@ -205,6 +268,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: KubeadmConfigTemplateDetail,
     ListComponent: KubeadmConfigTemplatesList,
     icon: 'mdi:list-box-outline',
+    section: 'capi-config',
   },
   {
     name: 'Kubeadm Configs',
@@ -213,6 +277,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: KubeadmConfigDetail,
     ListComponent: KubeadmConfigsList,
     icon: 'mdi:list-box',
+    section: 'capi-config',
   },
   {
     name: 'Machine Health Checks',
@@ -221,6 +286,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: MachineHealthCheckDetail,
     ListComponent: MachineHealthChecksList,
     icon: 'mdi:bottle-tonic-plus',
+    section: 'capi-ops',
   },
   {
     name: 'Machine Drain Rules',
@@ -229,6 +295,7 @@ const clusterApiResources: ResourceRegistrationConfig[] = [
     DetailComponent: MachineDrainRuleDetail,
     ListComponent: MachineDrainRulesList,
     icon: 'mdi:vacuum-outline',
+    section: 'capi-ops',
   },
 ];
 
