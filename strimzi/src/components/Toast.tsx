@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '@mui/material/styles';
 import { useThemeColors } from '../utils/theme';
 
 export type ToastType = 'success' | 'error' | 'info';
@@ -21,6 +22,8 @@ interface ToastProps {
  */
 export function Toast({ toast, onClose }: ToastProps) {
   const colors = useThemeColors();
+  const muiTheme = useTheme();
+  const isDark = muiTheme.palette.mode === 'dark';
   const [isVisible, setIsVisible] = React.useState(false);
   const [isExiting, setIsExiting] = React.useState(false);
 
@@ -59,11 +62,11 @@ export function Toast({ toast, onClose }: ToastProps) {
   const getBackgroundColor = () => {
     switch (toast.type) {
       case 'success':
-        return colors.text === '#e0e0e0' ? '#2e7d32' : '#4caf50'; // Dark/Light mode
+        return isDark ? '#2e7d32' : '#4caf50';
       case 'error':
-        return colors.text === '#e0e0e0' ? '#c62828' : '#f44336';
+        return isDark ? '#c62828' : '#f44336';
       case 'info':
-        return colors.text === '#e0e0e0' ? '#1565c0' : '#2196f3';
+        return isDark ? '#1565c0' : '#2196f3';
       default:
         return colors.background;
     }
