@@ -15,7 +15,7 @@ import type { KafkaInterface } from '../resources';
 import { KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
-import { getSemanticColors, hexToRgba } from '../utils/topologyColors';
+import { hexToRgba } from '../utils/topologyColors';
 
 interface TopologyProps {
   kafka: KafkaInterface;
@@ -581,9 +581,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
   const [loading, setLoading] = React.useState(true);
   const [nodes, setNodes] = React.useState<Node[]>([]);
 
-  // Get theme and semantic colors
   const theme = useTopologyTheme();
-  const colors = React.useMemo(() => getSemanticColors(theme), [theme]);
 
   const isKRaft = React.useMemo(() => isKRaftMode(kafka), [kafka]);
   const clusterReady = React.useMemo(
@@ -1385,7 +1383,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
     }
 
     setNodes(generatedNodes);
-  }, [kafka, isKRaft, nodePools, podSets, pods, loading, clusterReady, colors, theme, onEditResource]);
+  }, [kafka, isKRaft, nodePools, podSets, pods, loading, clusterReady, theme, onEditResource]);
 
   if (loading) {
     return (

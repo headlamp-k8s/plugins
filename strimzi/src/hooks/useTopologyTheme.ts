@@ -217,11 +217,11 @@ export function useTopologyTheme(): TopologyTheme {
     };
 
     const spacing: TopologySpacing = {
-      xs: Number(muiTheme.spacing(0.5)),
-      sm: Number(muiTheme.spacing(1)),
-      md: Number(muiTheme.spacing(2)),
-      lg: Number(muiTheme.spacing(3)),
-      xl: Number(muiTheme.spacing(4)),
+      xs: parseFloat(muiTheme.spacing(0.5)),
+      sm: parseFloat(muiTheme.spacing(1)),
+      md: parseFloat(muiTheme.spacing(2)),
+      lg: parseFloat(muiTheme.spacing(3)),
+      xl: parseFloat(muiTheme.spacing(4)),
     };
 
     return {
