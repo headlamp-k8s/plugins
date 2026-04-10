@@ -1,0 +1,54 @@
+version: 0.1.0
+name: headlamp_cluster-api
+displayName: Cluster API plugin for Headlamp
+createdAt: "2026-04-10T06:39:13Z"
+logoURL: "https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/main/logos/kubernetes-cluster-logos_final-02.svg"
+description: A comprehensive Headlamp plugin for managing Kubernetes Cluster API (CAPI) resources with a powerful, intuitive graphical interface for declarative cluster lifecycle management.
+changes:
+  - kind: added
+    description: "Initial release of the Cluster API (CAPI) plugin for Headlamp, providing a visual interface for managing Cluster API resources."
+  - kind: added
+    description: "Cluster list and detail views with CP and Worker Replicas columns for enhanced status display."
+  - kind: added
+    description: "Machine list and detail views with support for v1beta1 and v1beta2 API versions, additional printer columns from CRDs, and condition status rendering."
+  - kind: added
+    description: "MachineSet list and detail views with interfaces and enhanced status management."
+  - kind: added
+    description: "MachineDeployment list and detail views with dynamic API versioning and improved data handling."
+  - kind: added
+    description: "MachinePool list and detail views with dynamic API versioning and machine pools display on cluster detail."
+  - kind: added
+    description: "MachineHealthCheck components with dynamic API versioning and improved loading states."
+  - kind: added
+    description: "MachineDrainRule components with API versioning and loading states."
+  - kind: added
+    description: "KubeadmControlPlane and KubeadmControlPlaneTemplate detail and list components with dynamic API versioning."
+  - kind: added
+    description: "KubeadmConfig and KubeadmConfigTemplate detail and list views with enhanced functionality and ClusterClass column."
+  - kind: added
+    description: "ClusterClass components with detailed health checks, improved list rendering, and API versioning."
+  - kind: added
+    description: "GetKubeconfigAction for downloading cluster kubeconfigs with error handling and user feedback."
+  - kind: added
+    description: "TopologyHeaderAction registered for resource details, replacing standalone ScaleButton component."
+  - kind: added
+    description: "Custom CAPI icon and updated resource registrations."
+  - kind: added
+    description: "CapiRouteWrapper and Dashboard component for improved error handling."
+  - kind: added
+    description: "Sidebar with section registration and organized resource ordering."
+  - kind: changed
+    description: "Refactored ReplicaHelpers, Resource, and ScaleButton components for improved type handling and code clarity."
+  - kind: changed
+    description: "Refactored detail components to enhance UI consistency and improve type safety across modules."
+  - kind: changed
+    description: "Refactored health check components for improved clarity and functionality."
+  - kind: changed
+    description: "Updated getPhaseStatus function to return 'warning' for unrecognized phases."
+  - kind: changed
+    description: "Bumped @kinvolk/headlamp-plugin dependency from ^0.12.0 to ^0.13.1."
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/cluster-api-0.1.0/headlamp-k8s-cluster-api-0.1.0.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:840727d74c10c05f4c9287ad924b292e27c0556f96be2fd193206c212b2050da"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
