@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '@mui/material';
 import { useThemeColors } from '../utils/theme';
 
 interface SecureSecretDisplayProps {
@@ -41,10 +42,19 @@ export function SecureSecretDisplay({
   if (!isOpen) return null;
 
   const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(secretValue).then(() => {
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    });
+    if (!navigator?.clipboard?.writeText) {
+      console.warn('Clipboard API not available');
+      return;
+    }
+    navigator.clipboard
+      .writeText(secretValue)
+      .then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      })
+      .catch((error) => {
+        console.error('Failed to copy secret to clipboard:', error);
+      });
   };
 
   const handleClose = () => {
@@ -299,21 +309,9 @@ export function SecureSecretDisplay({
 
         {/* Close Button */}
         <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            onClick={handleClose}
-            style={{
-              padding: '10px 24px',
-              backgroundColor: '#2196f3',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-            }}
-          >
+          <Button variant="contained" color="primary" onClick={handleClose} sx={{ fontWeight: 600 }}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>
