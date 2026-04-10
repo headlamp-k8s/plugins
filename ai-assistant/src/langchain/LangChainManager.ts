@@ -176,13 +176,13 @@ export default class LangChainManager extends AIManager {
         toolCalls:
           toolCalls.length > 0
             ? toolCalls.map(tc => ({
-                type: 'function',
-                id: tc.id,
-                function: {
-                  name: tc.name,
-                  arguments: JSON.stringify(tc.args || {}),
-                },
-              }))
+              type: 'function',
+              id: tc.id,
+              function: {
+                name: tc.name,
+                arguments: JSON.stringify(tc.args || {}),
+              },
+            }))
             : undefined,
       };
 
@@ -278,6 +278,11 @@ export default class LangChainManager extends AIManager {
             apiKey: sanitizedConfig.apiKey,
             model: sanitizedConfig.model,
             verbose: true,
+            ...(sanitizedConfig.baseUrl && {
+              configuration: {
+                baseURL: sanitizedConfig.baseUrl,
+              },
+            }),
           });
         case 'azure':
           if (
@@ -1233,9 +1238,8 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
       // Fall back to regular LLM response
       const errorPrompt: Prompt = {
         role: 'assistant',
-        content: `I encountered an error coordinating multiple tools: ${
-          error?.message || 'Unknown error'
-        }.
+        content: `I encountered an error coordinating multiple tools: ${error?.message || 'Unknown error'
+          }.
 
 Please try your request again or ask a simpler question.`,
         error: true,
@@ -1399,8 +1403,8 @@ Please analyze this data and provide a specific, detailed response that directly
         content: `I executed the requested tools and gathered information. There was an error generating a comprehensive summary, but here are the raw results:
 
 ${Object.entries(toolResults)
-  .map(([name, result]) => `**${name}**: ${JSON.stringify(result, null, 2)}`)
-  .join('\n\n')}`,
+            .map(([name, result]) => `**${name}**: ${JSON.stringify(result, null, 2)}`)
+            .join('\n\n')}`,
       };
 
       this.history.push(fallbackPrompt);
@@ -1601,9 +1605,8 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
           content: JSON.stringify({
             error: true,
             message: error.message || 'Tool execution denied',
-            userFriendlyMessage: `Tool execution was denied: ${
-              error.message || 'User chose not to proceed'
-            }`,
+            userFriendlyMessage: `Tool execution was denied: ${error.message || 'User chose not to proceed'
+              }`,
           }),
           toolCallId: toolCall.id,
           name: toolCall.function.name,
@@ -1768,9 +1771,8 @@ Without access to the Kubernetes API, I cannot fetch current pod, deployment, se
           content: JSON.stringify({
             error: true,
             message: error.message || 'Tool execution denied',
-            userFriendlyMessage: `Tool execution was denied: ${
-              error.message || 'User chose not to proceed'
-            }`,
+            userFriendlyMessage: `Tool execution was denied: ${error.message || 'User chose not to proceed'
+              }`,
           }),
           toolCallId: toolCall.id,
           name: toolCall.function.name,
@@ -2412,9 +2414,8 @@ Format your response to make the errors prominent and actionable.`,
           fallbackContent = content;
         } else {
           // For multiple tools, use the tool name format
-          fallbackContent += `${toolName}: ${content}${
-            index < recentToolResponses.length - 1 ? '\n\n' : ''
-          }`;
+          fallbackContent += `${toolName}: ${content}${index < recentToolResponses.length - 1 ? '\n\n' : ''
+            }`;
         }
       });
 
@@ -2726,8 +2727,7 @@ Format your response to make the errors prominent and actionable.`,
             Object.entries(fieldSchema.properties)
               .map(
                 ([nestedName, nestedSchema]: [string, any]) =>
-                  `    - ${nestedName} (${nestedSchema.type || 'any'}): ${
-                    nestedSchema.description || 'No description'
+                  `    - ${nestedName} (${nestedSchema.type || 'any'}): ${nestedSchema.description || 'No description'
                   }`
               )
               .join('\n');

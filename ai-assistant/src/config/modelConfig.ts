@@ -36,6 +36,15 @@ export const modelProviders: ModelProvider[] = [
         placeholder: 'sk-...',
       },
       {
+        name: 'baseUrl',
+        label: 'Base URL',
+        type: 'text',
+        required: false,
+        placeholder: 'https://api.openai.com/v1',
+        description:
+          'Custom API base URL. Leave empty to use the default OpenAI endpoint. Useful for OpenAI-compatible APIs (e.g. LiteLLM, vLLM).',
+      },
+      {
         name: 'model',
         label: 'Model',
         type: 'select',

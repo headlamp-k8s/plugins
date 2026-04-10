@@ -228,7 +228,7 @@ function ConfigurationDialog({
                               ...params.InputProps,
                               startAdornment:
                                 config[field.name] &&
-                                !field.options?.includes(config[field.name]) ? (
+                                  !field.options?.includes(config[field.name]) ? (
                                   <Box sx={{ mr: 1 }}>
                                     <Chip
                                       label="Custom"
@@ -460,6 +460,10 @@ export default function ModelSelector({
     // Compare API key if both have it
     if (config1.apiKey && config2.apiKey) {
       if (config1.apiKey !== config2.apiKey) {
+        return false;
+      }
+
+      if (config1.baseUrl !== config2.baseUrl) {
         return false;
       }
 
