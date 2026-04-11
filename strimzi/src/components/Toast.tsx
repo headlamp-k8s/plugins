@@ -62,11 +62,11 @@ export function Toast({ toast, onClose }: ToastProps) {
   const getBackgroundColor = () => {
     switch (toast.type) {
       case 'success':
-        return isDark ? '#2e7d32' : '#4caf50';
+        return isDark ? muiTheme.palette.success.dark : muiTheme.palette.success.main;
       case 'error':
-        return isDark ? '#c62828' : '#f44336';
+        return isDark ? muiTheme.palette.error.dark : muiTheme.palette.error.main;
       case 'info':
-        return isDark ? '#1565c0' : '#2196f3';
+        return isDark ? muiTheme.palette.info.dark : muiTheme.palette.info.main;
       default:
         return colors.background;
     }

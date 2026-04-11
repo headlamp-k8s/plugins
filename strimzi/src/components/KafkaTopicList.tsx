@@ -60,9 +60,9 @@ export function KafkaTopicList() {
           partitions: formData.partitions,
           replicas: formData.replicas,
           config: {
-            ...(formData.retentionMs && { 'retention.ms': formData.retentionMs.toString() }),
-            ...(formData.compressionType && { 'compression.type': formData.compressionType }),
-            ...(formData.minInSyncReplicas && { 'min.insync.replicas': formData.minInSyncReplicas.toString() }),
+            ...(formData.retentionMs != null ? { 'retention.ms': formData.retentionMs.toString() } : {}),
+            ...(formData.compressionType ? { 'compression.type': formData.compressionType } : {}),
+            ...(formData.minInSyncReplicas != null ? { 'min.insync.replicas': formData.minInSyncReplicas.toString() } : {}),
           },
         },
       };
@@ -104,9 +104,9 @@ export function KafkaTopicList() {
           replicas: formData.replicas,
           config: {
             ...editingTopic.spec.config,
-            ...(formData.retentionMs && { 'retention.ms': formData.retentionMs.toString() }),
-            ...(formData.compressionType && { 'compression.type': formData.compressionType }),
-            ...(formData.minInSyncReplicas && { 'min.insync.replicas': formData.minInSyncReplicas.toString() }),
+            ...(formData.retentionMs != null ? { 'retention.ms': formData.retentionMs.toString() } : {}),
+            ...(formData.compressionType ? { 'compression.type': formData.compressionType } : {}),
+            ...(formData.minInSyncReplicas != null ? { 'min.insync.replicas': formData.minInSyncReplicas.toString() } : {}),
           },
         },
       };
@@ -210,28 +210,16 @@ export function KafkaTopicList() {
       label: 'Status',
       getValue: (item: KafkaTopic) => String(item.readyStatus ?? 'Unknown'),
       render: (item: KafkaTopic) => {
-        const ready = item.readyStatus === 'True';
+        const status = item.readyStatus;
+        const label = status === 'True' ? 'Ready' : status == null ? 'Unknown' : 'Not Ready';
+        const chipColor = status === 'True' ? 'success' : status == null ? 'default' : 'warning';
         return (
           <Chip
-            label={ready ? 'Ready' : 'Not Ready'}
+            label={label}
             variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
             size="medium"
-            color={ready ? 'success' : 'warning'}
-            sx={{
-              borderRadius: '4px',
-              ...(theme.palette.mode === 'dark' &&
-                ready && {
-                  borderColor: '#34d399',
-                  color: '#34d399',
-                  backgroundColor: 'rgba(52, 211, 153, 0.15)',
-                }),
-              ...(theme.palette.mode === 'dark' &&
-                !ready && {
-                  borderColor: '#f87171',
-                  color: '#f87171',
-                  backgroundColor: 'rgba(248, 113, 113, 0.15)',
-                }),
-            }}
+            color={chipColor}
+            sx={{ borderRadius: '4px' }}
           />
         );
       },

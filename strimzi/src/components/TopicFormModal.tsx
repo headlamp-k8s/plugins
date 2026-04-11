@@ -1,15 +1,26 @@
 import React from 'react';
 import { Button } from '@mui/material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import { useThemeColors } from '../utils/theme';
 
+/** Form state for creating or editing a KafkaTopic resource. */
 export interface TopicFormData {
+  /** Topic name (immutable after creation). */
   name: string;
+  /** Kubernetes namespace where the topic is created. */
   namespace: string;
+  /** Name of the Kafka cluster (strimzi.io/cluster label). */
   cluster: string;
+  /** Number of partitions for the topic. */
   partitions: number;
+  /** Replication factor for the topic. */
   replicas: number;
+  /** Optional retention time in milliseconds (retention.ms). */
   retentionMs?: number;
+  /** Optional compression codec (e.g. gzip, snappy, lz4, zstd). */
   compressionType?: string;
+  /** Optional minimum number of in-sync replicas (min.insync.replicas). */
   minInSyncReplicas?: number;
 }
 
@@ -44,9 +55,18 @@ export function TopicFormModal({
 
   if (!open) return null;
 
+  const inputSx = {
+    width: '100%',
+    padding: '8px',
+    border: `1px solid ${colors.inputBorder}`,
+    borderRadius: '4px',
+    backgroundColor: colors.inputBg,
+    color: colors.text,
+  };
+
   return (
-    <div
-      style={{
+    <Box
+      sx={{
         position: 'fixed',
         top: 0,
         left: 0,
@@ -59,52 +79,40 @@ export function TopicFormModal({
         zIndex: 1000,
       }}
     >
-      <div
-        style={{
+      <Box
+        sx={{
           backgroundColor: colors.background,
           color: colors.text,
-          padding: '24px',
+          p: 3,
           borderRadius: '8px',
           minWidth: '500px',
           maxHeight: '80vh',
           overflow: 'auto',
         }}
       >
-        <h2 style={{ color: colors.text }}>{isEdit ? 'Edit Topic' : 'Create New Topic'}</h2>
+        <Typography variant="h6" sx={{ color: colors.text, mb: 2 }}>
+          {isEdit ? 'Edit Topic' : 'Create New Topic'}
+        </Typography>
 
-        <div style={{ marginBottom: '16px' }}>
+        <Box sx={{ mb: 2 }}>
           <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Name</label>
           <input
             type="text"
             value={formData.name}
             disabled={!!isEdit}
             onChange={e => setFormData({ ...formData, name: e.target.value })}
-            style={{
-              width: '100%',
-              padding: '8px',
-              border: `1px solid ${colors.inputBorder}`,
-              borderRadius: '4px',
-              backgroundColor: colors.inputBg,
-              color: colors.text,
-            }}
+            style={inputSx}
           />
-        </div>
+        </Box>
 
-        <div style={{ marginBottom: '16px' }}>
+        <Box sx={{ mb: 2 }}>
           <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Namespace</label>
           {isEdit ? (
             <input
               type="text"
               value={formData.namespace}
               disabled
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: `1px solid ${colors.inputBorder}`,
-                borderRadius: '4px',
-                backgroundColor: colors.inputBg,
-                color: colors.text,
-              }}
+              style={inputSx}
             />
           ) : (
             <select
@@ -121,15 +129,7 @@ export function TopicFormModal({
                   cluster: clustersInNamespace.length > 0 ? clustersInNamespace[0] : '',
                 });
               }}
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: `1px solid ${colors.inputBorder}`,
-                borderRadius: '4px',
-                backgroundColor: colors.inputBg,
-                color: colors.text,
-                cursor: 'pointer',
-              }}
+              style={{ ...inputSx, cursor: 'pointer' }}
             >
               {availableNamespacesForCreate.length === 0 ? (
                 <option value="">No namespaces available</option>
@@ -142,37 +142,22 @@ export function TopicFormModal({
               )}
             </select>
           )}
-        </div>
+        </Box>
 
-        <div style={{ marginBottom: '16px' }}>
+        <Box sx={{ mb: 2 }}>
           <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Cluster</label>
           {isEdit ? (
             <input
               type="text"
               value={formData.cluster}
               disabled
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: `1px solid ${colors.inputBorder}`,
-                borderRadius: '4px',
-                backgroundColor: colors.inputBg,
-                color: colors.text,
-              }}
+              style={inputSx}
             />
           ) : (
             <select
               value={formData.cluster}
               onChange={e => setFormData({ ...formData, cluster: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: `1px solid ${colors.inputBorder}`,
-                borderRadius: '4px',
-                backgroundColor: colors.inputBg,
-                color: colors.text,
-                cursor: 'pointer',
-              }}
+              style={{ ...inputSx, cursor: 'pointer' }}
             >
               {filteredClusterNames.length === 0 ? (
                 <option value="">No clusters available in this namespace</option>
@@ -185,73 +170,53 @@ export function TopicFormModal({
               )}
             </select>
           )}
-        </div>
+        </Box>
 
-        <div style={{ marginBottom: '16px' }}>
+        <Box sx={{ mb: 2 }}>
           <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Partitions</label>
           <input
             type="number"
             value={formData.partitions}
-            onChange={e => setFormData({ ...formData, partitions: parseInt(e.target.value, 10) })}
-            style={{
-              width: '100%',
-              padding: '8px',
-              border: `1px solid ${colors.inputBorder}`,
-              borderRadius: '4px',
-              backgroundColor: colors.inputBg,
-              color: colors.text,
+            min={1}
+            onChange={e => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val)) setFormData({ ...formData, partitions: val });
             }}
+            style={inputSx}
           />
-        </div>
+        </Box>
 
-        <div style={{ marginBottom: '16px' }}>
+        <Box sx={{ mb: 2 }}>
           <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Replicas</label>
           <input
             type="number"
             value={formData.replicas}
-            onChange={e => setFormData({ ...formData, replicas: parseInt(e.target.value, 10) })}
-            style={{
-              width: '100%',
-              padding: '8px',
-              border: `1px solid ${colors.inputBorder}`,
-              borderRadius: '4px',
-              backgroundColor: colors.inputBg,
-              color: colors.text,
+            min={1}
+            onChange={e => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val)) setFormData({ ...formData, replicas: val });
             }}
+            style={inputSx}
           />
-        </div>
+        </Box>
 
-        <div style={{ marginBottom: '16px' }}>
+        <Box sx={{ mb: 2 }}>
           <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Retention (ms)</label>
           <input
             type="number"
             value={formData.retentionMs ?? ''}
             placeholder="Optional, e.g., 604800000 (7 days)"
             onChange={e => setFormData({ ...formData, retentionMs: e.target.value ? parseInt(e.target.value, 10) : undefined })}
-            style={{
-              width: '100%',
-              padding: '8px',
-              border: `1px solid ${colors.inputBorder}`,
-              borderRadius: '4px',
-              backgroundColor: colors.inputBg,
-              color: colors.text,
-            }}
+            style={inputSx}
           />
-        </div>
+        </Box>
 
-        <div style={{ marginBottom: '16px' }}>
+        <Box sx={{ mb: 2 }}>
           <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Compression Type</label>
           <select
             value={formData.compressionType ?? ''}
             onChange={e => setFormData({ ...formData, compressionType: e.target.value || undefined })}
-            style={{
-              width: '100%',
-              padding: '8px',
-              border: `1px solid ${colors.inputBorder}`,
-              borderRadius: '4px',
-              backgroundColor: colors.inputBg,
-              color: colors.text,
-            }}
+            style={inputSx}
           >
             <option value="">None</option>
             <option value="gzip">gzip</option>
@@ -260,9 +225,9 @@ export function TopicFormModal({
             <option value="zstd">zstd</option>
             <option value="producer">producer</option>
           </select>
-        </div>
+        </Box>
 
-        <div style={{ marginBottom: '24px' }}>
+        <Box sx={{ mb: 3 }}>
           <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Min In-Sync Replicas</label>
           <input
             type="number"
@@ -271,26 +236,19 @@ export function TopicFormModal({
             onChange={e =>
               setFormData({ ...formData, minInSyncReplicas: e.target.value ? parseInt(e.target.value, 10) : undefined })
             }
-            style={{
-              width: '100%',
-              padding: '8px',
-              border: `1px solid ${colors.inputBorder}`,
-              borderRadius: '4px',
-              backgroundColor: colors.inputBg,
-              color: colors.text,
-            }}
+            style={inputSx}
           />
-        </div>
+        </Box>
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>
           <Button variant="outlined" onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
           <Button variant="contained" color="primary" onClick={onSubmit} disabled={loading || !formData.name}>
             {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
           </Button>
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 }

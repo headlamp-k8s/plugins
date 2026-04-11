@@ -5,6 +5,7 @@
 import React from 'react';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider } from '@mui/material/styles';
+import Box from '@mui/material/Box';
 import { Title, Subtitle, Description, Primary, Controls } from '@storybook/addon-docs/blocks';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider as ReduxProvider } from 'react-redux';
@@ -41,9 +42,9 @@ const withThemeProvider = (Story: any, context: any) => {
     <ReduxProvider store={storybookStore}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider theme={createMuiTheme(headlampTheme)}>
-          <div style={{ backgroundColor: bg, minHeight: '100vh', padding: 16 }}>
+          <Box sx={{ backgroundColor: bg, minHeight: '100vh', p: 2 }}>
             <Story {...context} />
-          </div>
+          </Box>
         </ThemeProvider>
       </QueryClientProvider>
     </ReduxProvider>

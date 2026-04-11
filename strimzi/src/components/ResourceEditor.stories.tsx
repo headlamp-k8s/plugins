@@ -1,5 +1,5 @@
 /**
- * ResourceEditor loads/saves YAML via ApiProxy and Monaco — not suitable for Storybook without heavy MSW.
+ * ResourceEditor loads/saves JSON via ApiProxy and Monaco — not suitable for Storybook without heavy MSW.
  * This story documents the component; use Headlamp + cluster to exercise it.
  */
 import React from 'react';
