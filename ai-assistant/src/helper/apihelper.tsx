@@ -4,34 +4,6 @@ import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
 import { isLogRequest, isSpecificResourceRequestHelper } from './index';
 
-// Deep merge function to merge patch with current resource
-function deepMerge(target: any, source: any): any {
-  const result = { ...target };
-
-  for (const key in source) {
-    if (source[key] === null) {
-      // If source value is null, remove the property
-      delete result[key];
-    } else if (source[key] !== undefined) {
-      if (Array.isArray(source[key])) {
-        // For arrays, replace entirely
-        result[key] = [...source[key]];
-      } else if (typeof source[key] === 'object' && source[key] !== null) {
-        // For objects, recursively merge
-        // Initialize target[key] as empty object if it doesn't exist or isn't an object
-        if (!result[key] || typeof result[key] !== 'object' || Array.isArray(result[key])) {
-          result[key] = {};
-        }
-        result[key] = deepMerge(result[key], source[key]);
-      } else {
-        // For primitive values, replace
-        result[key] = source[key];
-      }
-    }
-  }
-
-  return result;
-}
 
 const cleanUrl = (url: string) => {
   const urlObj = new URL(url, 'http://dummy.com'); // Use dummy base for relative URLs
@@ -265,30 +237,18 @@ export const handleActualApiRequest = async (
       clusterAction(
         async () => {
           try {
-            // First, get the current resource
-            const currentResource = await clusterRequest(url, {
-              method: 'GET',
+            // Use strategic-merge-patch so the API server merges arrays by key
+            // (e.g. containers by name, volumes by name) instead of replacing them.
+            // This prevents silently dropping sibling containers, env vars,
+            // volumeMounts, and other array-valued fields.
+            const response = await clusterRequest(url, {
+              method: 'PATCH',
               cluster,
+              body: JSON.stringify(patch),
               headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/strategic-merge-patch+json',
                 Accept: 'application/json',
               },
-            });
-
-            // Deep merge the patch with the current resource
-            const mergedResource = deepMerge(currentResource, patch);
-
-            // Now make the PUT request with the merged resource
-            const headers = {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            };
-
-            const response = await clusterRequest(url, {
-              method: 'PUT',
-              cluster,
-              body: JSON.stringify(mergedResource),
-              headers,
             });
 
             aiManager.history.push({
@@ -302,7 +262,7 @@ export const handleActualApiRequest = async (
               onSuccess(response, 'PUT', parsedResourceInfo);
             }
           } catch (apiError) {
-            // Handle API-specific errors (GET or PUT failures)
+            // Handle API-specific errors (PATCH failures)
             if (onFailure) {
               onFailure(apiError, 'PUT', parsedResourceInfo);
             }
