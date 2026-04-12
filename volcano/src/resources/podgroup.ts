@@ -111,6 +111,10 @@ export class VolcanoPodGroup extends KubeObject<KubeVolcanoPodGroup> {
     return this.spec.minMember || 0;
   }
 
+  get minTaskMember(): PodGroupSpec['minTaskMember'] {
+    return this.spec.minTaskMember;
+  }
+
   get runningCount(): number {
     return this.status?.running || 0;
   }
