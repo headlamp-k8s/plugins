@@ -18,69 +18,74 @@ import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8
 import { KubeflowResourceCondition } from './common';
 
 /**
- * Pipeline spec fields rendered by the Headlamp UI.
+ * Runtime configuration exposed by KFP Run resources.
  */
-export interface KubeflowPipelineSpec {
-  displayName?: string;
-  description?: string;
-  packageUrl?: string;
-  pipelineSpec?: {
-    pipelineInfo?: {
-      name?: string;
-      description?: string;
-    };
-    sdkVersion?: string;
-    root?: {
-      dag?: { tasks?: Record<string, unknown> };
-      tasks?: Record<string, unknown>;
-    };
-    deploymentSpec?: {
-      executors?: Record<string, unknown>;
-    };
-  };
+export interface PipelineRuntimeConfig {
+  pipelineRoot?: string;
   [key: string]: unknown;
 }
 
 /**
- * Pipeline status fields rendered by the Headlamp UI.
+ * Run spec fields rendered by the Headlamp UI.
  */
-export interface KubeflowPipelineStatus {
+export interface KubeflowPipelineRunSpec {
+  displayName?: string;
+  description?: string;
+  pipelineName?: string;
+  pipelineVersionName?: string;
+  pipelineVersionReference?: { name?: string };
+  experimentName?: string;
+  serviceAccountName?: string;
+  runtimeConfig?: PipelineRuntimeConfig;
+  pipelineSpec?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/**
+ * Run status fields rendered by the Headlamp UI.
+ */
+export interface KubeflowPipelineRunStatus {
   phase?: string;
+  state?: string;
+  message?: string;
+  startTime?: string;
+  completionTime?: string;
+  lastTransitionTime?: string;
   conditions?: KubeflowResourceCondition[];
   [key: string]: unknown;
 }
 
 /**
- * Typed Pipeline custom resource shape.
+ * Typed Run custom resource shape.
  */
-export interface KubeflowPipeline extends KubeObjectInterface {
-  spec: KubeflowPipelineSpec;
-  status?: KubeflowPipelineStatus;
+export interface KubeflowPipelineRun extends KubeObjectInterface {
+  spec: KubeflowPipelineRunSpec;
+  status?: KubeflowPipelineRunStatus;
 }
 
 /**
- * Headlamp resource class for the Kubeflow Pipeline CRD (pipelines.kubeflow.org/v2beta1).
+ * Headlamp resource class for the Kubeflow Run CRD.
  *
  * @see {@link https://www.kubeflow.org/docs/components/pipelines/ | Kubeflow Pipelines docs}
  */
-export class PipelineClass extends KubeObject<KubeflowPipeline> {
+export class PipelineRunClass extends KubeObject<KubeflowPipelineRun> {
   static apiVersion = ['pipelines.kubeflow.org/v2beta1', 'pipelines.kubeflow.org/v1beta1'];
-  static kind = 'Pipeline';
-  static apiName = 'pipelines';
+  static kind = 'Run';
+  static apiName = 'runs';
   static isNamespaced = true;
 
   /**
    * Workaround for older Headlamp versions that need explicit detail routes.
    */
   static get detailsRoute() {
-    return '/kubeflow/pipelines/list/:namespace/:name';
+    return '/kubeflow/pipelines/runs/:namespace/:name';
   }
 
-  get spec(): KubeflowPipelineSpec {
+  get spec(): KubeflowPipelineRunSpec {
     return this.jsonData.spec;
   }
 
-  get status(): KubeflowPipelineStatus {
+  get status(): KubeflowPipelineRunStatus {
     return this.jsonData.status ?? {};
   }
 
@@ -92,34 +97,24 @@ export class PipelineClass extends KubeObject<KubeflowPipeline> {
     return this.spec.description ?? '';
   }
 
-  get packageUrl(): string {
-    return this.spec.packageUrl ?? '';
+  get pipelineName(): string {
+    return this.spec.pipelineName ?? '';
   }
 
-  get pipelineSpec() {
-    return this.spec.pipelineSpec;
+  get pipelineVersionName(): string {
+    return this.spec.pipelineVersionName ?? this.spec.pipelineVersionReference?.name ?? '';
   }
 
-  get pipelineSpecName(): string {
-    return this.pipelineSpec?.pipelineInfo?.name ?? '';
+  get experimentName(): string {
+    return this.spec.experimentName ?? '';
   }
 
-  get pipelineSpecDescription(): string {
-    return this.pipelineSpec?.pipelineInfo?.description ?? '';
+  get pipelineRoot(): string {
+    return this.spec.runtimeConfig?.pipelineRoot ?? '';
   }
 
-  get pipelineSdkVersion(): string {
-    return this.pipelineSpec?.sdkVersion ?? '';
-  }
-
-  get taskNames(): string[] {
-    const tasks = this.pipelineSpec?.root?.dag?.tasks ?? this.pipelineSpec?.root?.tasks ?? {};
-    return Object.keys(tasks ?? {});
-  }
-
-  get executorNames(): string[] {
-    const executors = this.pipelineSpec?.deploymentSpec?.executors ?? {};
-    return Object.keys(executors ?? {});
+  get serviceAccountName(): string {
+    return this.spec.serviceAccountName ?? '';
   }
 
   get conditions(): KubeflowResourceCondition[] {
@@ -131,6 +126,10 @@ export class PipelineClass extends KubeObject<KubeflowPipeline> {
   }
 
   get phase(): string {
-    return this.status.phase ?? '';
+    return this.status.phase ?? this.status.state ?? '';
+  }
+
+  get state(): string {
+    return this.status.state ?? this.status.phase ?? '';
   }
 }

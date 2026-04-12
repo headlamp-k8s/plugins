@@ -21,6 +21,12 @@ export function useApiGroupInstalled(apiPath: string) {
   const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Check for Storybook global mock
+    if ((window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK) {
+      setIsInstalled(true);
+      return;
+    }
+
     let mounted = true;
     async function checkInstalled() {
       const installed = await isApiGroupInstalled(apiPath);
@@ -42,6 +48,12 @@ export function useAnyKubeflowFamilyInstalled() {
   const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Check for Storybook global mock
+    if ((window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK) {
+      setIsInstalled(true);
+      return;
+    }
+
     let mounted = true;
     async function checkInstalled() {
       const installed = await isAnyKubeflowFamilyInstalled();

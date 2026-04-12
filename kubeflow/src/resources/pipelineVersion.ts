@@ -18,69 +18,82 @@ import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8
 import { KubeflowResourceCondition } from './common';
 
 /**
- * Pipeline spec fields rendered by the Headlamp UI.
+ * Inline pipeline metadata embedded inside a PipelineVersion spec.
  */
-export interface KubeflowPipelineSpec {
-  displayName?: string;
+export interface PipelineInfo {
+  name?: string;
   description?: string;
-  packageUrl?: string;
-  pipelineSpec?: {
-    pipelineInfo?: {
-      name?: string;
-      description?: string;
-    };
-    sdkVersion?: string;
-    root?: {
-      dag?: { tasks?: Record<string, unknown> };
-      tasks?: Record<string, unknown>;
-    };
-    deploymentSpec?: {
-      executors?: Record<string, unknown>;
-    };
+}
+
+/**
+ * Minimal inline pipeline spec shape surfaced by the PipelineVersion CRD.
+ */
+export interface PipelineSpec {
+  pipelineInfo?: PipelineInfo;
+  sdkVersion?: string;
+  root?: {
+    dag?: { tasks?: Record<string, unknown> };
+    tasks?: Record<string, unknown>;
+  };
+  deploymentSpec?: {
+    executors?: Record<string, unknown>;
   };
   [key: string]: unknown;
 }
 
 /**
- * Pipeline status fields rendered by the Headlamp UI.
+ * PipelineVersion spec fields rendered by the Headlamp UI.
  */
-export interface KubeflowPipelineStatus {
+export interface KubeflowPipelineVersionSpec {
+  displayName?: string;
+  description?: string;
+  pipelineName?: string;
+  pipelineSpecURI?: string;
+  codeSourceURL?: string;
+  pipelineSpec?: PipelineSpec;
+  [key: string]: unknown;
+}
+
+/**
+ * PipelineVersion status fields rendered by the Headlamp UI.
+ */
+export interface KubeflowPipelineVersionStatus {
   phase?: string;
   conditions?: KubeflowResourceCondition[];
   [key: string]: unknown;
 }
 
 /**
- * Typed Pipeline custom resource shape.
+ * Typed PipelineVersion custom resource shape.
  */
-export interface KubeflowPipeline extends KubeObjectInterface {
-  spec: KubeflowPipelineSpec;
-  status?: KubeflowPipelineStatus;
+export interface KubeflowPipelineVersion extends KubeObjectInterface {
+  spec: KubeflowPipelineVersionSpec;
+  status?: KubeflowPipelineVersionStatus;
 }
 
 /**
- * Headlamp resource class for the Kubeflow Pipeline CRD (pipelines.kubeflow.org/v2beta1).
+ * Headlamp resource class for the Kubeflow PipelineVersion CRD.
  *
  * @see {@link https://www.kubeflow.org/docs/components/pipelines/ | Kubeflow Pipelines docs}
  */
-export class PipelineClass extends KubeObject<KubeflowPipeline> {
+export class PipelineVersionClass extends KubeObject<KubeflowPipelineVersion> {
   static apiVersion = ['pipelines.kubeflow.org/v2beta1', 'pipelines.kubeflow.org/v1beta1'];
-  static kind = 'Pipeline';
-  static apiName = 'pipelines';
+  static kind = 'PipelineVersion';
+  static apiName = 'pipelineversions';
   static isNamespaced = true;
 
   /**
    * Workaround for older Headlamp versions that need explicit detail routes.
    */
   static get detailsRoute() {
-    return '/kubeflow/pipelines/list/:namespace/:name';
+    return '/kubeflow/pipelines/versions/:namespace/:name';
   }
 
-  get spec(): KubeflowPipelineSpec {
+  get spec(): KubeflowPipelineVersionSpec {
     return this.jsonData.spec;
   }
 
-  get status(): KubeflowPipelineStatus {
+  get status(): KubeflowPipelineVersionStatus {
     return this.jsonData.status ?? {};
   }
 
@@ -92,11 +105,11 @@ export class PipelineClass extends KubeObject<KubeflowPipeline> {
     return this.spec.description ?? '';
   }
 
-  get packageUrl(): string {
-    return this.spec.packageUrl ?? '';
+  get pipelineName(): string {
+    return this.spec.pipelineName ?? '';
   }
 
-  get pipelineSpec() {
+  get pipelineSpec(): PipelineSpec | undefined {
     return this.spec.pipelineSpec;
   }
 
@@ -132,5 +145,31 @@ export class PipelineClass extends KubeObject<KubeflowPipeline> {
 
   get phase(): string {
     return this.status.phase ?? '';
+  }
+
+  get sourceLabel(): string {
+    if (this.spec.pipelineSpecURI) {
+      return 'Pipeline Spec URI';
+    }
+    if (this.spec.codeSourceURL) {
+      return 'Code Source URL';
+    }
+    if (this.pipelineSpec) {
+      return 'Inline Spec';
+    }
+    return 'Unknown';
+  }
+
+  get sourceValue(): string {
+    if (this.spec.pipelineSpecURI) {
+      return this.spec.pipelineSpecURI;
+    }
+    if (this.spec.codeSourceURL) {
+      return this.spec.codeSourceURL;
+    }
+    if (this.pipelineSpec) {
+      return this.pipelineSpecName || 'Embedded pipeline spec';
+    }
+    return '';
   }
 }

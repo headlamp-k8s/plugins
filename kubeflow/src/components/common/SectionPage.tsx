@@ -28,7 +28,24 @@ interface Props {
 }
 
 export function SectionPage({ title, apiPath, children }: Props) {
-  const { isInstalled, isCheckLoading } = useApiGroupInstalled(apiPath);
+  const normalizedPath = React.useMemo(() => {
+    try {
+      if (!apiPath.startsWith('/')) return apiPath;
+      const segments = apiPath.split('/').filter(Boolean);
+      if (segments.length === 0) return apiPath;
+      if (segments[0] === 'apis' && segments.length >= 3) {
+        return `/apis/${segments[1]}/${segments[2]}`;
+      }
+      if (segments[0] === 'api' && segments.length >= 2) {
+        return `/api/${segments[1]}`;
+      }
+      return apiPath;
+    } catch {
+      return apiPath;
+    }
+  }, [apiPath]);
+
+  const { isInstalled, isCheckLoading } = useApiGroupInstalled(normalizedPath);
 
   if (isCheckLoading) {
     return (

@@ -1,6 +1,7 @@
 import type { Decorator, Preview } from '@storybook/react';
 import React from 'react';
 import { TestProvider } from '../src/components/common/TestProvider';
+import '../src/components/common/StorybookMocks';
 
 export const decorators: Decorator[] = [
   Story => (
