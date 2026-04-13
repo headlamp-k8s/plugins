@@ -8,6 +8,7 @@ import Typography from '@mui/material/Typography';
 import type { Meta, StoryObj } from '@storybook/react';
 import { NotebookStatusBadge } from '../common/NotebookStatusBadge';
 import { NotebookTypeBadge } from '../common/NotebookTypeBadge';
+import { TestProvider } from '../common/TestProvider';
 import {
   allNotebooks,
   notebookFailed,
@@ -139,6 +140,13 @@ function NotebookDetailContent({ notebook }: { notebook: any }) {
 const meta: Meta<typeof NotebookDetailContent> = {
   title: 'Kubeflow/Notebooks/NotebookDetail',
   component: NotebookDetailContent,
+  decorators: [
+    Story => (
+      <TestProvider>
+        <Story />
+      </TestProvider>
+    ),
+  ],
   parameters: {
     docs: {
       description: {
