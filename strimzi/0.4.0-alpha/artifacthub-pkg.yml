@@ -1,0 +1,130 @@
+version: 0.4.0-alpha
+name: headlamp_strimzi
+displayName: Strimzi
+createdAt: 2026-03-07T00:25:11Z
+description: A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources
+logoURL: https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/main/documentation/logo/strimzi_logo.png
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/strimzi
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - strimzi
+  - kafka
+screenshots:
+  - title: Plugin Demo
+    url: https://img.youtube.com/vi/MNt28s6b5d8/sddefault.jpg
+readme: |
+  # Strimzi Headlamp Plugin
+
+  A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources directly from the Headlamp UI.
+
+  ## Demo
+
+  [![Plugin Demo](https://img.youtube.com/vi/MNt28s6b5d8/sddefault.jpg)](https://www.youtube.com/watch?v=MNt28s6b5d8)
+
+  ## Features
+
+  - **Kafka Clusters**: View Kafka cluster resources with KRaft/ZooKeeper mode detection
+  - **Kafka Topics**: Full CRUD operations (Create, Read, Update, Delete)
+    - Create topics with custom partitions, replicas, retention, and compression
+    - Edit topic configurations (partitions, replicas, retention, min ISR)
+    - Delete topics with confirmation
+  - **Kafka Users**: Complete user management with security
+    - Create users with SCRAM-SHA-512 or TLS authentication
+    - Configure ACLs for fine-grained authorization
+    - View passwords and certificates (secrets)
+    - Delete users with confirmation
+  - **Search & Filter**: Real-time search and advanced filtering on all lists
+    - Filter by status, mode, authentication type, partitions, replicas, and more
+  - Real-time status monitoring for all Strimzi resources
+  - Multi-namespace support - view resources across all namespaces
+
+  ## Prerequisites
+
+  - [Headlamp](https://headlamp.dev/) installed
+  - A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) deployed
+maintainers:
+  - name: Angelo Cesaro
+    email: cesaro.angelo@gmail.com
+  - name: Krrish Sehgal
+    email: krrishsehgal03@gmail.com
+changes:
+  - kind: changed
+    description: "Remove dead workflows, fix SECURITY.md and tsconfig"
+  - kind: changed
+    description: "Address PR review feedback from illume and Copilot"
+  - kind: added
+    description: "docs: Add Storybook testing guide and demo script"
+  - kind: added
+    description: "storybook: Add theme toggle and modal component stories"
+  - kind: changed
+    description: "modals: Extract reusable form modals and fix cluster reset"
+  - kind: fixed
+    description: "Toast: Use theme.palette.mode for reliable dark-mode detection"
+  - kind: fixed
+    description: "topology: Fix unused import and spacing NaN calculation"
+  - kind: added
+    description: "SecureSecretDisplay: Add clipboard API check and error handling"
+  - kind: changed
+    description: "package.json: Remove main field for default plugin loading"
+  - kind: changed
+    description: "deploy: Remove unnecessary deployment manifests"
+  - kind: fixed
+    description: "resources: Fix KubeObject import path for correct UMD mapping"
+  - kind: changed
+    description: "readme: Link test-files for cluster verification"
+  - kind: added
+    description: "test-files: Add sample manifests for cluster testing"
+  - kind: added
+    description: "storybook: Add MSW mockServiceWorker asset"
+  - kind: added
+    description: "storybook: Add doc stubs for topology and ResourceEditor"
+  - kind: added
+    description: "storybook: Add detail preview and shared component stories"
+  - kind: added
+    description: "storybook: Add pure list stories for clusters, topics, users"
+  - kind: added
+    description: "storybook: Add mock Strimzi CR fixtures for stories"
+  - kind: changed
+    description: "storybook: Wrap preview with Redux for SimpleTable"
+  - kind: added
+    description: "storybook: Add Kafka topology modal shell story"
+  - kind: added
+    description: "storybook: Add Strimzi intro story"
+  - kind: added
+    description: "storybook: Add local .storybook config and tty fallback"
+  - kind: changed
+    description: "docs: add TSDoc @see links and align interfaces with Strimzi CRD reference"
+  - kind: fixed
+    description: "CI format fix, @types/jest, and headlamp-k8s package/Artifact Hub metadata"
+  - kind: changed
+    description: "Topology: Use KafkaInterface from resources"
+  - kind: added
+    description: "Register detail routes for kafkas, topics, users"
+  - kind: added
+    description: "Add Detail views for Kafka, KafkaTopic, KafkaUser"
+  - kind: changed
+    description: "KafkaUserList: Use ResourceListView and CreateKafkaUserPayload"
+  - kind: changed
+    description: "KafkaTopicList: Use ResourceListView and KafkaTopic"
+  - kind: changed
+    description: "KafkaList: Use ResourceListView and Kafka resource class"
+  - kind: changed
+    description: "crds: Update tests to import from crds-helpers"
+  - kind: added
+    description: "crds: Add crds-helpers and re-export from resources"
+  - kind: added
+    description: "resources: Add KubeObject classes for Kafka, KafkaTopic, KafkaUser"
+  - kind: added
+    description: "add @types/jest so test files are type-checked"
+  - kind: fixed
+    description: "useTopologyTheme: Fix typescript issue with styles"
+  - kind: changed
+    description: "Update artifacthub repository ID"
+annotations:
+  headlamp/plugin/archive-url: https://github.com/headlamp-k8s/plugins/releases/download/strimzi-0.4.0-alpha/headlamp-k8s-strimzi-0.4.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: "sha256:fd778323ab2ef74fc47658a01d353110e20b1621b5ab3b1f91b1a307e3fcd3e3"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
