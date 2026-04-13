@@ -1,0 +1,31 @@
+# Intentionally invalid Kafka version — expect cluster to stay Not Ready (operator cannot roll out).
+# Do not use for topics/users testing.
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: strimzi-demo-broken
+  namespace: strimzi-headlamp-test
+spec:
+  kafka:
+    version: 1.0.0
+    replicas: 1
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+    storage:
+      type: ephemeral
+  zookeeper:
+    replicas: 1
+    storage:
+      type: ephemeral
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
