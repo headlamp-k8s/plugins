@@ -22,7 +22,7 @@ import { NotebookClass } from '../../resources/notebook';
 import { PipelineClass } from '../../resources/pipeline';
 import { SparkApplicationClass } from '../../resources/sparkApplication';
 import { TrainJobClass } from '../../resources/trainJob';
-import { describeResourceError } from '../common/notebookUtils';
+import { aggregateNotebookResources, describeResourceError } from '../common/notebookUtils';
 import { OverviewContent, type OverviewModule } from './OverviewContent';
 
 export function Overview() {
@@ -48,6 +48,8 @@ export function Overview() {
       </Box>
     );
   }
+
+  const notebookResources = aggregateNotebookResources(notebooks || []);
 
   const modules: OverviewModule[] = [
     {
@@ -92,5 +94,23 @@ export function Overview() {
     },
   ];
 
-  return <OverviewContent modules={modules} />;
+  return (
+    <OverviewContent
+      modules={modules}
+      extraCards={[
+        {
+          title: 'Notebook CPU Requested',
+          value: notebooksError
+            ? describeResourceError(notebooksError) ?? 'Unavailable'
+            : `${notebookResources.cpu.toFixed(1)}`,
+          icon: 'mdi:cpu-64-bit',
+          subtitle: notebooksError
+            ? 'Notebook resource totals unavailable'
+            : `${notebookResources.memory.toFixed(1)} Gi memory, ${
+                notebookResources.gpu
+              } GPUs requested`,
+        },
+      ]}
+    />
+  );
 }
