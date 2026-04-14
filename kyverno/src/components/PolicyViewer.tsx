@@ -159,15 +159,18 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
   );
 }
 
-function AssociatedReportsSection({ policyName }: { policyName: string }) {
+function AssociatedReportsSection({ policyName, namespace }: { policyName: string; namespace?: string }) {
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
 
   const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] = [];
 
+  const qualifiedName = namespace ? `${namespace}/${policyName}` : policyName;
+  const matchesPolicy = (resultPolicy: string) => resultPolicy === policyName || resultPolicy === qualifiedName;
+
   for (const report of policyReports || []) {
     for (const result of report.results) {
-      if (result.policy === policyName) {
+      if (matchesPolicy(result.policy || '')) {
         matchingResults.push({
           ...result,
           reportName: report.jsonData.metadata.name,
@@ -179,7 +182,7 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
 
   for (const report of clusterPolicyReports || []) {
     for (const result of report.results) {
-      if (result.policy === policyName) {
+      if (matchesPolicy(result.policy || '')) {
         matchingResults.push({
           ...result,
           reportName: report.jsonData.metadata.name,
@@ -298,7 +301,7 @@ function PolicyContent({
       <SectionBox title={`Rules (${policy.rules.length})`}>
         <RulesTable rules={policy.rules} />
       </SectionBox>
-      <AssociatedReportsSection policyName={policy.jsonData.metadata.name} />
+      <AssociatedReportsSection policyName={policy.jsonData.metadata.name} namespace={policy.jsonData.metadata.namespace} />
     </Box>
   );
 }
