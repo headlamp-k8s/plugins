@@ -4,53 +4,7 @@ import { VolcanoPodGroup } from '../../resources/podgroup';
 import { VolcanoQueue } from '../../resources/queue';
 import { getQueueStatusColor } from '../../utils/status';
 import { VolcanoInstallCheck } from '../common/CommonComponents';
-
-interface QueuePodGroupStats {
-  inqueue: number;
-  pending: number;
-  running: number;
-  unknown: number;
-  completed: number;
-}
-
-function getQueuePodGroupStats(
-  podGroups: VolcanoPodGroup[] | null | undefined
-): Record<string, QueuePodGroupStats> {
-  const stats: Record<string, QueuePodGroupStats> = {};
-
-  for (const podGroup of podGroups ?? []) {
-    const queueName = podGroup.queue;
-    if (!stats[queueName]) {
-      stats[queueName] = {
-        inqueue: 0,
-        pending: 0,
-        running: 0,
-        unknown: 0,
-        completed: 0,
-      };
-    }
-
-    switch (podGroup.phase) {
-      case 'Inqueue':
-        stats[queueName].inqueue += 1;
-        break;
-      case 'Pending':
-        stats[queueName].pending += 1;
-        break;
-      case 'Running':
-        stats[queueName].running += 1;
-        break;
-      case 'Unknown':
-        stats[queueName].unknown += 1;
-        break;
-      case 'Completed':
-        stats[queueName].completed += 1;
-        break;
-    }
-  }
-
-  return stats;
-}
+import { getQueuePodGroupStats } from './stats';
 
 /**
  * Renders the Volcano Queues list page.

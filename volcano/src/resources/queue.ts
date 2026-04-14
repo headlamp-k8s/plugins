@@ -146,4 +146,48 @@ export class VolcanoQueue extends KubeObject<KubeVolcanoQueue> {
   get weight(): number {
     return this.spec.weight ?? 1;
   }
+
+  get priority(): number {
+    return this.spec.priority ?? 0;
+  }
+
+  get dequeueStrategy(): NonNullable<QueueSpec['dequeueStrategy']> {
+    return this.spec.dequeueStrategy ?? 'traverse';
+  }
+
+  get inqueue(): number {
+    return this.status?.inqueue ?? 0;
+  }
+
+  get pending(): number {
+    return this.status?.pending ?? 0;
+  }
+
+  get running(): number {
+    return this.status?.running ?? 0;
+  }
+
+  get unknown(): number {
+    return this.status?.unknown ?? 0;
+  }
+
+  get completed(): number {
+    return this.status?.completed ?? 0;
+  }
+
+  get guaranteedResources() {
+    return this.spec.guarantee?.resource;
+  }
+
+  get deservedResources() {
+    return this.spec.deserved;
+  }
+
+  get reservedResources() {
+    return this.status?.reservation?.resource;
+  }
+
+  get reservedNodes() {
+    return this.status?.reservation?.nodes ?? [];
+  }
 }
