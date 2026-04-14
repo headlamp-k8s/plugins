@@ -103,6 +103,32 @@ function getMinResourcesSection(podGroup: VolcanoPodGroup) {
 }
 
 /**
+ * Builds the Min Task Member section for a PodGroup when available.
+ *
+ * @param podGroup PodGroup shown in the details page.
+ * @returns Section descriptor or `null` when no min task members are defined.
+ */
+function getMinTaskMemberSection(podGroup: VolcanoPodGroup) {
+  if (!podGroup.minTaskMember || !Object.keys(podGroup.minTaskMember).length) {
+    return null;
+  }
+
+  return {
+    id: 'min-task-member',
+    section: (
+      <SectionBox title="Min Task Member">
+        <NameValueTable
+          rows={Object.entries(podGroup.minTaskMember).map(([key, value]) => ({
+            name: key,
+            value,
+          }))}
+        />
+      </SectionBox>
+    ),
+  };
+}
+
+/**
  * Renders the Volcano PodGroup details page.
  *
  * @returns PodGroup details view with extra sections and events.
@@ -149,6 +175,7 @@ export default function PodGroupDetail() {
         [
           getProgressSection(podGroup),
           getConditionsSection(podGroup),
+          getMinTaskMemberSection(podGroup),
           getMinResourcesSection(podGroup),
         ].filter(Boolean)
       }
