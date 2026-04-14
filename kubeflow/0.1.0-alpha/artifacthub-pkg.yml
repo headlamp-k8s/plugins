@@ -1,0 +1,34 @@
+version: 0.1.0-alpha
+name: "headlamp_kubeflow"
+displayName: Kubeflow
+createdAt: "2026-04-14T10:19:00Z"
+logoURL: "https://raw.githubusercontent.com/kubeflow/manifests/refs/heads/master/common/oauth2-proxy/base/kubeflow-logo.svg"
+description: A UI for viewing and managing Kubeflow resources in Headlamp.
+changes:
+  - kind: added
+    description: "Initial release of the Headlamp plugin for Kubeflow."
+  - kind: added
+    description: "Auto-detect installed Kubeflow components by probing cluster CRDs."
+  - kind: added
+    description: "Notebooks: add NotebooksOverview with notebook health/status summaries."
+  - kind: added
+    description: "Notebooks: add NotebooksList and NotebooksDetail views for notebook lifecycle and status inspection."
+  - kind: added
+    description: "Notebooks: add Profiles and PodDefaults components and related resource wiring (kubeflow.org/v1)."
+  - kind: added
+    description: "Notebooks: implement notebook log viewer in the detail side-pane with shared notebook parsing utilities."
+  - kind: added
+    description: "Notebooks: document the notebooks module and add reusable badges plus standard Storybook stories with mock fixtures."
+  - kind: added
+    description: "Routes: register Kubeflow navigation and resource interfaces for plugin sections."
+  - kind: changed
+    description: "Overview: refactor dashboard to pure presentational components and add generic status evaluation utilities."
+  - kind: added
+    description: "Common UI: add shared badge components and a generic SectionPage fallback layout."
+  - kind: changed
+    description: "Architecture: refactor custom resource classes into isolated resource class files."
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/kubeflow-0.1.0-alpha/headlamp-k8s-kubeflow-0.1.0-alpha.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:79969acf6f4697442cc6dbc57929511dfd5c40305c956f59d25dc6a2e59f7f04"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
