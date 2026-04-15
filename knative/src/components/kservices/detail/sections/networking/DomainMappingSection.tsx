@@ -23,11 +23,17 @@ import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { ReadyStatusLabel } from '../../../../../components/common/ReadyStatusLabel';
 import { KnativeDomainMapping, KService } from '../../../../../resources/knative';
 import { ClusterDomainClaim } from '../../../../../resources/knative/clusterDomainClaim';
+import {
+  createClusterDomainClaim,
+  createDomainMapping,
+  getClusterDomainClaim,
+} from '../../../../../utils/domain';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { DomainMappingRowAction } from '../../../../domainmappings/list/header/DomainMappingRowAction';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
-import { DomainMappingRowAction } from './DomainMappingRowAction';
 
 type Props = {
   namespace: string;
@@ -36,8 +42,20 @@ type Props = {
   kservice: KService;
 };
 
-function isReady(dm: KnativeDomainMapping): boolean {
-  return dm.status?.conditions?.find(c => c.type === 'Ready')?.status === 'True';
+function getReadyCondition(dm: KnativeDomainMapping): {
+  status: 'True' | 'False' | 'Unknown';
+  reason?: string;
+  message?: string;
+} {
+  const readyCondition = dm.status?.conditions?.find(c => c.type === 'Ready');
+  let status: 'True' | 'False' | 'Unknown' = 'Unknown';
+  if (readyCondition?.status === 'True') status = 'True';
+  else if (readyCondition?.status === 'False') status = 'False';
+  return {
+    status,
+    reason: readyCondition?.reason,
+    message: readyCondition?.message,
+  };
 }
 
 export default function DomainMappingSection({ namespace, serviceName, cluster }: Props) {
@@ -62,116 +80,16 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
       })
     : null;
 
-  function getClusterDomainClaim(dm: KnativeDomainMapping): {
-    state: 'unknown' | 'missing' | 'present';
-    claim: ClusterDomainClaim | null;
-  } {
-    if (!clusterDomainClaims) {
-      return { state: 'unknown', claim: null };
-    }
-    const host = dm.host?.trim();
-    if (!host) {
-      return { state: 'unknown', claim: null };
-    }
-
-    // DomainMappingSection is single-cluster today, but keep this safe if it ever becomes multi-cluster.
-    const effectiveCluster = dm.cluster || cluster;
-    const requireClusterMatch = clusters.length > 1;
-
-    const claim =
-      clusterDomainClaims.find(
-        cdc =>
-          (!requireClusterMatch || cdc.cluster === effectiveCluster) &&
-          cdc.metadata?.name === host &&
-          cdc.targetNamespace === namespace
-      ) ?? null;
-
-    if (claim && !claim.cluster && effectiveCluster) {
-      claim.cluster = effectiveCluster;
-    }
-
-    return claim ? { state: 'present', claim } : { state: 'missing', claim: null };
-  }
-
-  function isValidDomain(host: string): boolean {
-    // very permissive host validation; rely on API for authoritative validation
-    const h = host.trim();
-    if (h.length < 1 || h.length > 253) return false;
-    // simple label check (letters, digits, hyphen; labels do not start/end with hyphen)
-    return h.split('.').every(label => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label));
-  }
-
-  async function ensureClusterDomainClaim(opts: {
-    host: string;
-    cluster: string;
-    namespace: string;
-  }) {
-    try {
-      await ClusterDomainClaim.apiEndpoint.post(
-        {
-          apiVersion: ClusterDomainClaim.apiVersion,
-          kind: ClusterDomainClaim.kind,
-          metadata: { name: opts.host },
-          spec: { namespace: opts.namespace },
-        },
-        {},
-        opts.cluster
-      );
-    } catch (e: unknown) {
-      const error = e as { message?: string } | undefined;
-      const msg = String(error?.message || '');
-      // Ignore if already exists or conflicts (loosely check for 409/AlreadyExists messages)
-      if (!/AlreadyExists|409|exists/i.test(msg)) {
-        throw e;
-      }
-    }
-  }
-
   async function handleCreate() {
-    const host = domainInput.trim();
-    if (!host) {
-      notifyError('Please enter a domain name');
-      return;
-    }
-    if (!isValidDomain(host)) {
-      notifyError('Invalid domain name format');
-      return;
-    }
-    if (!cluster) {
-      notifyError('No cluster available');
-      return;
-    }
     setCreating(true);
     try {
-      // 1) Create ClusterDomainClaim first (ignore if already exists)
-      await ensureClusterDomainClaim({ host, cluster, namespace });
-      // 2) Create DomainMapping
-      await KnativeDomainMapping.apiEndpoint.post(
-        {
-          apiVersion: KnativeDomainMapping.apiVersion,
-          kind: KnativeDomainMapping.kind,
-          metadata: {
-            name: host,
-            namespace,
-          },
-          spec: {
-            ref: {
-              apiVersion: 'serving.knative.dev/v1',
-              kind: 'Service',
-              name: serviceName,
-              namespace,
-            },
-          },
-        },
-        {},
-        cluster
-      );
-      notifyInfo('DomainMapping created');
+      await createDomainMapping(domainInput, cluster, namespace, serviceName);
+      notifyInfo('DomainMapping Created');
       setDomainInput('');
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
       const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to create: ${detail}` : 'Failed to create DomainMapping');
+      notifyError(detail ? `Failed to create: ${detail}` : 'Failed to create Domain Mapping');
     } finally {
       setCreating(false);
     }
@@ -181,42 +99,12 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
   // - ResourceTable always includes its default DeleteButton, which dispatches a clusterAction and
   //   navigates to item.getListLink(). We override getListLink per item to keep users on this page.
   async function handleCreateClusterDomainClaim(dm: KnativeDomainMapping) {
-    const host = dm.host?.trim();
-    if (!host) {
-      notifyError('Domain name is missing');
-      return;
-    }
-
     try {
-      await ensureClusterDomainClaim({ host, cluster: dm.cluster, namespace });
+      await createClusterDomainClaim(dm, namespace);
       notifyInfo('ClusterDomainClaim created');
-
-      // Add dummy annotation to trigger DomainMapping reconciliation
-      try {
-        await dm.patch({
-          metadata: {
-            annotations: {
-              'knative.headlamp.dev/reconciledAt': new Date().toISOString(),
-            },
-          },
-        });
-      } catch (e2: unknown) {
-        const error2 = e2 as { message?: string } | undefined;
-        const detail2 = error2?.message?.trim();
-        notifyError(
-          detail2
-            ? `Failed to annotate DomainMapping: ${detail2}`
-            : 'Failed to annotate DomainMapping'
-        );
-      }
-    } catch (e: unknown) {
-      const error = e as { message?: string } | undefined;
-      const detail = error?.message?.trim();
-      notifyError(
-        detail
-          ? `Failed to create ClusterDomainClaim: ${detail}`
-          : 'Failed to create ClusterDomainClaim'
-      );
+    } catch (err: unknown) {
+      const error = err as { message?: string } | undefined;
+      notifyError(error?.message || 'Failed to create ClusterDomainClaim');
     }
   }
 
@@ -228,30 +116,37 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
     {
       id: 'ready',
       label: 'Ready',
-      gridTemplate: 'min-content',
+      gridTemplate: 'auto',
       disableFiltering: true,
-      getValue: item => (isReady(item as KnativeDomainMapping) ? 1 : 0),
-      render: item =>
-        isReady(item as KnativeDomainMapping) ? (
-          <Chip label="Ready" color="success" size="small" />
-        ) : (
-          <Chip label="Not Ready" color="warning" size="small" />
-        ),
-      sort: (a, b) =>
-        Number(isReady(a as KnativeDomainMapping)) - Number(isReady(b as KnativeDomainMapping)),
+      getValue: item => {
+        const dm = item as KnativeDomainMapping;
+        return getReadyCondition(dm).status === 'True' ? 1 : 0;
+      },
+      render: item => {
+        const dm = item as KnativeDomainMapping;
+        const ready = getReadyCondition(dm);
+        return (
+          <ReadyStatusLabel status={ready.status} reason={ready.reason} message={ready.message} />
+        );
+      },
+      sort: (a, b) => {
+        const statusA = getReadyCondition(a as KnativeDomainMapping).status === 'True' ? 1 : 0;
+        const statusB = getReadyCondition(b as KnativeDomainMapping).status === 'True' ? 1 : 0;
+        return statusA - statusB;
+      },
     },
     {
       id: 'clusterdomainclaim',
       label: 'ClusterDomainClaim',
-      gridTemplate: 'min-content',
+      gridTemplate: 'auto',
       disableFiltering: true,
       getValue: item => {
         const dm = item as KnativeDomainMapping;
-        return getClusterDomainClaim(dm).state;
+        return getClusterDomainClaim(dm, clusterDomainClaims, cluster, namespace).state;
       },
       render: item => {
         const dm = item as KnativeDomainMapping;
-        const { state } = getClusterDomainClaim(dm);
+        const { state } = getClusterDomainClaim(dm, clusterDomainClaims, cluster, namespace);
         if (state === 'unknown') {
           return (
             <Typography variant="body2" color="text.secondary">
@@ -271,6 +166,7 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
       id: 'url',
       label: 'URL',
       getValue: item => (item as KnativeDomainMapping).readyUrl ?? '',
+      gridTemplate: 'auto',
       render: item => {
         const dm = item as KnativeDomainMapping;
         return dm.readyUrl ? (
@@ -337,7 +233,12 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
                 id: 'knative.domainmapping-actions',
                 action: context => {
                   const dm: KnativeDomainMapping = context.item;
-                  const { state } = getClusterDomainClaim(dm);
+                  const { state } = getClusterDomainClaim(
+                    dm,
+                    clusterDomainClaims,
+                    cluster,
+                    namespace
+                  );
                   if (state === 'missing') {
                     return (
                       <DomainMappingRowAction
