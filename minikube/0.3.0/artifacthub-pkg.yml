@@ -1,9 +1,9 @@
-version: 0.3.0-alpha-1
+version: 0.3.0
 name: headlamp_minikube
 displayName: minikube
 createdAt: "2026-04-15T07:44:46Z"
 logoURL: "https://raw.githubusercontent.com/kubernetes/minikube/42aa2eab55893d852bf9bb17744c79e7b20f8f71/images/logo/logo.svg"
-description: A UI for managing local minikube clusters. This is an early release (alpha 0.3.0). Feedback welcome.
+description: A UI for managing local minikube clusters. Feedback welcome.
 changes:
   - kind: added
     description: "HyperV driver support for Windows including elevated privileges, auto-enable, and stop/delete wrappers"
@@ -44,7 +44,7 @@ changes:
   - kind: fixed
     description: "Fix minikube profile list detection"
 annotations:
-  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/minikube-0.3.0-alpha-1/headlamp-k8s-minikube-0.3.0-alpha-1.tar.gz"
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/minikube-0.3.0/headlamp-k8s-minikube-0.3.0.tar.gz"
   headlamp/plugin/archive-checksum: "SHA256:TBD"
   headlamp/plugin/version-compat: ">=0.30"
   headlamp/plugin/distro-compat: "desktop"
