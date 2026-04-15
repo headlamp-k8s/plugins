@@ -137,3 +137,23 @@ GridCommandCompleted.args = {
   commandDone: true,
   useGrid: true,
 };
+
+export const CommandFailed = Template.bind({});
+CommandFailed.args = {
+  open: true,
+  initialClusterName: 'test-cluster',
+  command: 'start',
+  title: 'Start Cluster',
+  acting: true,
+  running: true,
+  actingLines: ['Starting cluster...', 'Error: unable to start host: provider not found'],
+  commandDone: true,
+  commandError: true,
+  useGrid: false,
+};
+
+export const GridCommandFailed = Template.bind({});
+GridCommandFailed.args = {
+  ...CommandFailed.args,
+  useGrid: true,
+};

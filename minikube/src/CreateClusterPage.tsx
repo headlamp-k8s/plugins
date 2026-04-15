@@ -10,9 +10,8 @@ export default function CreateClusterPage() {
           useGrid
           open
           handleClose={() => {}}
-          onConfirm={() => {}}
+          onCommandDispatched={() => {}}
           command={'start'}
-          finishedText={'Done! kubectl is now configured'}
         />
       </SectionBox>
     </PageGrid>
