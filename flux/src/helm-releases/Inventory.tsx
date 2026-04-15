@@ -227,15 +227,13 @@ async function fetchResources(
   chartName: string,
   namespace: string
 ): Promise<Array<HelmResourceKind>> {
-  const resources = [];
-
   const queryParams = new URLSearchParams();
   queryParams.append(
     'labelSelector',
     `helm.toolkit.fluxcd.io/name=${chartName},helm.toolkit.fluxcd.io/namespace=${namespace}`
   );
 
-  for (const resourceKind of resourceKinds) {
+  const resourcePromises = resourceKinds.map(async resourceKind => {
     const { kind, apiVersion, hasNamespace } = resourceKind;
 
     const groupName = apiVersion.includes('/') ? apiVersion.split('/')[0] : '';
@@ -245,22 +243,28 @@ async function fetchResources(
     const api = groupName ? `/apis/${groupName}` : '/api';
     const namespaceFilter = hasNamespace ? `namespaces/${namespace}/` : '';
 
-    request(`${api}/${version}/${namespaceFilter}${pluralName}?${queryParams.toString()}`)
-      .then(response => {
-        response.items.forEach(item => {
-          resources.push({ ...item, kind, apiVersion, groupName }); // add kind, apiVersion, groupName for link
-        });
-      })
-      .catch(error => {
-        if (error.status === 404) {
-          console.log(`No ${pluralName} found for chart ${chartName}`);
-        } else {
-          console.error(error);
-        }
-      });
-  }
+    try {
+      const response = await request(
+        `${api}/${version}/${namespaceFilter}${pluralName}?${queryParams.toString()}`
+      );
+      return response.items.map(item => ({
+        ...item,
+        kind,
+        apiVersion,
+        groupName,
+      }));
+    } catch (error) {
+      if (error.status === 404) {
+        console.log(`No ${pluralName} found for chart ${chartName}`);
+      } else {
+        console.error(error);
+      }
+      return [];
+    }
+  });
 
-  return resources;
+  const results = await Promise.all(resourcePromises);
+  return results.flat();
 }
 
 /**
