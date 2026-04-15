@@ -5,14 +5,44 @@ createdAt: "2026-04-15T07:44:46Z"
 logoURL: "https://raw.githubusercontent.com/kubernetes/minikube/42aa2eab55893d852bf9bb17744c79e7b20f8f71/images/logo/logo.svg"
 description: A UI for managing local minikube clusters. This is an early release (alpha 0.3.0). Feedback welcome.
 changes:
+  - kind: added
+    description: "HyperV driver support for Windows including elevated privileges, auto-enable, and stop/delete wrappers"
+  - kind: added
+    description: "vfkit driver support for macOS"
+  - kind: added
+    description: "ClusterStatus component on the home page to start and stop clusters"
+  - kind: added
+    description: "Loading indicator while detecting available drivers"
+  - kind: added
+    description: "Free disk and free memory warnings when creating a cluster"
+  - kind: added
+    description: "Container runtime and CNI flags for cluster creation"
+  - kind: added
+    description: "Detection of existing minikube profiles"
   - kind: changed
-    description: "Improved error handling, process cleanup, and output cap for command execution"
+    description: "Renamed cluster creation page title to 'Create Local Cluster'"
   - kind: changed
-    description: "Add cluster name validation and memoize clusterNames"
+    description: "Lowered default RAM for new clusters to 3072 MB to support lower-memory machines"
   - kind: changed
-    description: "Add cancel handling for CommandCluster and ClusterStatus"
+    description: "Error banner shown when a command fails; output capped at 200 lines to prevent slowdowns"
   - kind: changed
-    description: "Add fallbacks on Windows for wmic"
+    description: "Cancelling a running command now terminates the background process and no longer reloads the page"
+  - kind: changed
+    description: "Cluster name is now validated before being passed to the minikube CLI"
+  - kind: changed
+    description: "Fallback system info detection on Windows when wmic is unavailable"
+  - kind: fixed
+    description: "Fix driver select not rendering and value prop deprecation"
+  - kind: fixed
+    description: "Fix cluster name input so the initial value can be edited"
+  - kind: fixed
+    description: "Fix form label overlapping the cluster name input field"
+  - kind: fixed
+    description: "Fix Windows path detection for the plugin binary"
+  - kind: fixed
+    description: "Fix HyperV stop and delete commands"
+  - kind: fixed
+    description: "Fix minikube profile list detection"
 annotations:
   headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/minikube-0.3.0-alpha-1/headlamp-k8s-minikube-0.3.0-alpha-1.tar.gz"
   headlamp/plugin/archive-checksum: "SHA256:TBD"
