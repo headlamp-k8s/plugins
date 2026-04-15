@@ -18,6 +18,8 @@ import { addIcon } from '@iconify/react';
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import { ClusterDomainClaimsList } from './components/clusterdomainclaims/List';
+import { DomainMappingsList } from './components/domainmappings/List';
 import { KServiceDetail } from './components/kservices/Detail';
 import { KServicesList } from './components/kservices/List';
 import { NetworkingOverview } from './components/networking/Overview';
@@ -81,6 +83,20 @@ registerSidebarEntry({
 
 registerSidebarEntry({
   parent: 'knative',
+  name: 'domain-mappings',
+  label: 'Domain Mapping',
+  url: '/knative/domain-mappings',
+});
+
+registerSidebarEntry({
+  parent: 'knative',
+  name: 'cluster-domain-claims',
+  label: 'Cluster Domain Claims',
+  url: '/knative/cluster-domain-claims',
+});
+
+registerSidebarEntry({
+  parent: 'knative',
   name: 'knetworking',
   label: 'Networking',
   url: '/knative/networking',
@@ -112,6 +128,20 @@ registerRoute({
   sidebar: 'revisions',
   name: 'revisions',
   component: withQueryClient(RevisionsList),
+});
+
+registerRoute({
+  path: '/knative/domain-mappings',
+  sidebar: 'domain-mappings',
+  name: 'domainMappingList',
+  component: withQueryClient(DomainMappingsList),
+});
+
+registerRoute({
+  path: '/knative/cluster-domain-claims',
+  sidebar: 'cluster-domain-claims',
+  name: 'clusterDomainClaimsList',
+  component: withQueryClient(ClusterDomainClaimsList),
 });
 
 registerRoute({
