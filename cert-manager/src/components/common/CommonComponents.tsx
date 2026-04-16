@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   LabelListItem,
@@ -141,15 +142,25 @@ export function ConditionsTable({ conditions }: ConditionsTableProps) {
 
 interface SecretKeySelectorProps {
   selector: SecretKeySelector;
+  namespace?: string;
 }
 
-export function SecretKeySelectorComponent({ selector }: SecretKeySelectorProps) {
+export function SecretKeySelectorComponent({ selector, namespace }: SecretKeySelectorProps) {
   return (
     <NameValueTable
       rows={[
         {
           name: 'Name',
-          value: selector.name,
+          value: namespace ? (
+            <Link
+              routeName={K8s.ResourceClasses.Secret.kind}
+              params={{ name: selector.name, namespace }}
+            >
+              {selector.name}
+            </Link>
+          ) : (
+            selector.name
+          ),
         },
         {
           name: 'Key',
@@ -162,45 +173,50 @@ export function SecretKeySelectorComponent({ selector }: SecretKeySelectorProps)
 
 interface ACMEChallengeSolverProps {
   solver: ACMEChallengeSolver;
+  namespace?: string;
 }
 
-const cloudflareGetter = (item: any) => {
-  const thisItem = item?.cloudflare;
+export function ACMEChallengeSolverComponent({ solver, namespace }: ACMEChallengeSolverProps) {
+  const cloudflareGetter = (item: any) => {
+    const thisItem = item?.cloudflare;
 
-  if (!thisItem) {
-    return '-';
-  }
+    if (!thisItem) {
+      return '-';
+    }
 
-  const rows: NameValueTableRow[] = [];
+    const rows: NameValueTableRow[] = [];
 
-  if (thisItem.email) {
-    rows.push({
-      name: 'Email',
-      value: thisItem.email,
-    });
-  }
+    if (thisItem.email) {
+      rows.push({
+        name: 'Email',
+        value: thisItem.email,
+      });
+    }
 
-  if (thisItem.apiKeySecretRef) {
-    rows.push({
-      name: 'API Key Secret',
-      value: <SecretKeySelectorComponent selector={thisItem.apiKeySecretRef} />,
-    });
-  }
+    if (thisItem.apiKeySecretRef) {
+      rows.push({
+        name: 'API Key Secret',
+        value: (
+          <SecretKeySelectorComponent selector={thisItem.apiKeySecretRef} namespace={namespace} />
+        ),
+      });
+    }
 
-  if (thisItem.apiTokenSecretRef) {
-    rows.push({
-      name: 'API Token Secret',
-      value: <SecretKeySelectorComponent selector={thisItem.apiTokenSecretRef} />,
-    });
-  }
+    if (thisItem.apiTokenSecretRef) {
+      rows.push({
+        name: 'API Token Secret',
+        value: (
+          <SecretKeySelectorComponent selector={thisItem.apiTokenSecretRef} namespace={namespace} />
+        ),
+      });
+    }
 
-  if (rows.length === 0) {
-    return '-';
-  }
-  return <NameValueTable rows={rows} />;
-};
+    if (rows.length === 0) {
+      return '-';
+    }
+    return <NameValueTable rows={rows} />;
+  };
 
-export function ACMEChallengeSolverComponent({ solver }: ACMEChallengeSolverProps) {
   const getItemGetter = (key: string) => {
     if (key === 'cloudflare') {
       return cloudflareGetter;

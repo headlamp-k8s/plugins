@@ -19,7 +19,7 @@ export function ClusterIssuerDetail() {
       resourceType={ClusterIssuer}
       name={name}
       withEvents
-      extraInfo={item => item?.spec && processIssuerExtraInfo(item.spec)}
+      extraInfo={item => item?.spec && processIssuerExtraInfo(item.spec)} // TODO: Discover namespace for cluster issuer secrets and pass
       extraSections={item =>
         item && [
           {
