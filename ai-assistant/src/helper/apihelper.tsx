@@ -4,35 +4,6 @@ import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import YAML from 'yaml';
 import { isLogRequest, isSpecificResourceRequestHelper } from './index';
 
-// Deep merge function to merge patch with current resource
-function deepMerge(target: any, source: any): any {
-  const result = { ...target };
-
-  for (const key in source) {
-    if (source[key] === null) {
-      // If source value is null, remove the property
-      delete result[key];
-    } else if (source[key] !== undefined) {
-      if (Array.isArray(source[key])) {
-        // For arrays, replace entirely
-        result[key] = [...source[key]];
-      } else if (typeof source[key] === 'object' && source[key] !== null) {
-        // For objects, recursively merge
-        // Initialize target[key] as empty object if it doesn't exist or isn't an object
-        if (!result[key] || typeof result[key] !== 'object' || Array.isArray(result[key])) {
-          result[key] = {};
-        }
-        result[key] = deepMerge(result[key], source[key]);
-      } else {
-        // For primitive values, replace
-        result[key] = source[key];
-      }
-    }
-  }
-
-  return result;
-}
-
 const cleanUrl = (url: string) => {
   const urlObj = new URL(url, 'http://dummy.com'); // Use dummy base for relative URLs
   urlObj.searchParams.delete('allNamespaces');
@@ -215,7 +186,7 @@ export const handleActualApiRequest = async (
     }
   }
 
-  // For PUT operations only - no PATCH support
+  // For PUT operations - uses PATCH internally for safe array merging
   if (method.toUpperCase() === 'PUT' && body) {
     // Parse patch first, fail fast
     let patch;
@@ -229,7 +200,7 @@ export const handleActualApiRequest = async (
         const parsingError = `Failed to parse patch body. YAML error: ${yamlError.message}. JSON error: ${jsonError.message}`;
         if (onFailure) {
           const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
-          onFailure(new Error(parsingError), 'PUT', parsedResourceInfo);
+          onFailure(new Error(parsingError), 'PATCH', parsedResourceInfo);
         }
         aiManager.history.push({
           error: true,
@@ -247,7 +218,7 @@ export const handleActualApiRequest = async (
     } catch (parseError) {
       const resourceParsingError = `Failed to parse resource info: ${parseError.message}`;
       if (onFailure) {
-        onFailure(new Error(resourceParsingError), 'PUT', {});
+        onFailure(new Error(resourceParsingError), 'PATCH', {});
       }
       aiManager.history.push({
         error: true,
@@ -265,31 +236,39 @@ export const handleActualApiRequest = async (
       clusterAction(
         async () => {
           try {
-            // First, get the current resource
-            const currentResource = await clusterRequest(url, {
-              method: 'GET',
-              cluster,
-              headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-              },
-            });
-
-            // Deep merge the patch with the current resource
-            const mergedResource = deepMerge(currentResource, patch);
-
-            // Now make the PUT request with the merged resource
-            const headers = {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            };
-
-            const response = await clusterRequest(url, {
-              method: 'PUT',
-              cluster,
-              body: JSON.stringify(mergedResource),
-              headers,
-            });
+            // Use strategic-merge-patch so the API server merges arrays by key
+            // (e.g. containers by name, volumes by name) instead of replacing them.
+            // This prevents silently dropping sibling containers, env vars,
+            // volumeMounts, and other array-valued fields.
+            // Note: strategic-merge-patch is not supported for CRDs; fall back to
+            // merge-patch+json (RFC 7386) on HTTP 415 Unsupported Media Type.
+            let response;
+            try {
+              response = await clusterRequest(url, {
+                method: 'PATCH',
+                cluster,
+                body: JSON.stringify(patch),
+                headers: {
+                  'Content-Type': 'application/strategic-merge-patch+json',
+                  Accept: 'application/json',
+                },
+              });
+            } catch (patchError) {
+              const is415 =
+                patchError.status === 415 ||
+                (patchError.message && patchError.message.includes('415'));
+              if (!is415) throw patchError;
+              // CRD: strategic-merge-patch unsupported, retry with merge-patch
+              response = await clusterRequest(url, {
+                method: 'PATCH',
+                cluster,
+                body: JSON.stringify(patch),
+                headers: {
+                  'Content-Type': 'application/merge-patch+json',
+                  Accept: 'application/json',
+                },
+              });
+            }
 
             aiManager.history.push({
               success: true,
@@ -299,15 +278,15 @@ export const handleActualApiRequest = async (
 
             // Call the success callback if provided
             if (onSuccess) {
-              onSuccess(response, 'PUT', parsedResourceInfo);
+              onSuccess(response, 'PATCH', parsedResourceInfo);
             }
           } catch (apiError) {
-            // Handle API-specific errors (GET or PUT failures)
+            // Handle API-specific errors (PATCH failures)
             if (onFailure) {
-              onFailure(apiError, 'PUT', parsedResourceInfo);
+              onFailure(apiError, 'PATCH', parsedResourceInfo);
             }
 
-            console.error('Error in PUT API operations:', apiError);
+            console.error('Error in PATCH API operations:', apiError);
             const errorMessage = `Error updating resource: ${apiError.message}`;
             aiManager.history.push({
               error: true,
@@ -326,7 +305,7 @@ export const handleActualApiRequest = async (
     } catch (clusterActionError) {
       // Handle cluster action setup errors
       if (onFailure) {
-        onFailure(clusterActionError, 'PUT', parsedResourceInfo);
+        onFailure(clusterActionError, 'PATCH', parsedResourceInfo);
       }
 
       console.error('Error setting up cluster action:', clusterActionError);
