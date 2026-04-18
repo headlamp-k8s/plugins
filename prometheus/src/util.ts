@@ -46,7 +46,7 @@ export function getConfigStore(): ConfigStore<Conf> {
  * @param {string} cluster - The name of the cluster.
  * @returns {ClusterData | null} The configuration for the cluster, or null if not found.
  */
-export function getClusterConfig(cluster: string): ClusterData | null {
+function getClusterConfig(cluster: string): ClusterData | null {
   const configStore = getConfigStore();
   const conf = configStore.get();
   if (!cluster || !conf) {
@@ -94,7 +94,7 @@ export function disableMetrics(cluster: string) {
  * @param {string} cluster - The name of the cluster.
  * @returns {boolean} True if metrics are enabled, false otherwise.
  */
-export function isMetricsEnabled(cluster: string): boolean {
+function isMetricsEnabled(cluster: string): boolean {
   const clusterData = getClusterConfig(cluster);
   return clusterData?.isMetricsEnabled ?? false;
 }

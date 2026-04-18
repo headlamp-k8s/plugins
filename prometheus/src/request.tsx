@@ -8,7 +8,7 @@ const COMMON_PROMETHEUS_SERVICE_LABEL =
   'app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server';
 const DEFAULT_PROMETHEUS_PORT = '9090';
 
-export type KubernetesPodListResponseItem = {
+type KubernetesPodListResponseItem = {
   metadata: {
     name: string;
     namespace: string;
@@ -30,12 +30,12 @@ export type KubernetesPodListResponseItem = {
   };
 };
 
-export type KubernetesPodListResponse = {
+type KubernetesPodListResponse = {
   kind: 'PodList';
   items: KubernetesPodListResponseItem[];
 };
 
-export type KubernetesServiceListResponseItem = {
+type KubernetesServiceListResponseItem = {
   metadata: {
     name: string;
     namespace: string;
@@ -51,12 +51,12 @@ export type KubernetesServiceListResponseItem = {
   };
 };
 
-export type KubernetesServiceListResponse = {
+type KubernetesServiceListResponse = {
   kind: 'ServiceList';
   items: KubernetesServiceListResponseItem[];
 };
 
-export type KubernetesSearchResponse = KubernetesPodListResponse | KubernetesServiceListResponse;
+type KubernetesSearchResponse = KubernetesPodListResponse | KubernetesServiceListResponse;
 
 export enum KubernetesType {
   none = 'none',
@@ -64,7 +64,7 @@ export enum KubernetesType {
   services = 'services',
 }
 
-export type PrometheusEndpoint = {
+type PrometheusEndpoint = {
   type: KubernetesType;
   name: string | undefined;
   namespace: string | undefined;
@@ -79,7 +79,7 @@ export type PrometheusEndpoint = {
  * @param {string} port - The port of the Kubernetes resource.
  * @returns {PrometheusEndpoint} - A new instance of PrometheusEndpoint.
  */
-export function createPrometheusEndpoint(
+function createPrometheusEndpoint(
   type: KubernetesType = KubernetesType.none,
   name: string | undefined = undefined,
   namespace: string | undefined = undefined,
