@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
+  ActionButton,
   DetailsGrid,
   Link as HeadlampLink,
   SectionBox,
@@ -24,6 +26,7 @@ import Box from '@mui/material/Box';
 import { useParams } from 'react-router-dom';
 import { PipelineRunClass } from '../../resources/pipelineRun';
 import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
+import { launchPodLogs } from '../common/KubeflowLogsViewer';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   getPipelineDetailsPath,
@@ -58,6 +61,24 @@ export function PipelineRunsDetail(props: { namespace?: string; name?: string })
         name={name as string}
         namespace={namespace}
         withEvents
+        actions={item => {
+          if (!item) return [];
+
+          // Note: In a real cluster we would use a hook, but actions prop doesn't allow it.
+          // However, we can use the Activity system to launch a generic viewer that handles its own state.
+          return [
+            {
+              id: 'kubeflow.run-logs',
+              action: (
+                <RunLogsButton
+                  runName={item.metadata.name}
+                  namespace={item.metadata.namespace}
+                  cluster={item.cluster}
+                />
+              ),
+            },
+          ];
+        }}
         extraInfo={item =>
           item && [
             {
@@ -198,5 +219,43 @@ export function PipelineRunsDetail(props: { namespace?: string; name?: string })
         }
       />
     </SectionPage>
+  );
+}
+
+/**
+ * Helper component to find pods and launch logs for a Pipeline Run.
+ */
+function RunLogsButton({
+  runName,
+  namespace,
+  cluster,
+}: {
+  runName: string;
+  namespace: string;
+  cluster?: string;
+}) {
+  const [pods] = K8s.ResourceClasses.Pod.useList({
+    namespace,
+    labelSelector: `pipelines.kubeflow.org/run-id=${runName}`,
+  });
+
+  const pod = pods?.[0];
+
+  if (!pod) return null;
+
+  return (
+    <ActionButton
+      description="View Latest Pod Logs"
+      icon="mdi:text-box-outline"
+      onClick={() =>
+        pod &&
+        launchPodLogs({
+          podName: pod.metadata.name,
+          namespace: pod.metadata.namespace,
+          cluster,
+          title: `Logs: Run — ${runName}`,
+        })
+      }
+    />
   );
 }

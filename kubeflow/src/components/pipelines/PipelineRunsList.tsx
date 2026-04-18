@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
 import {
   Link as HeadlampLink,
   ResourceListView,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { ListItemIcon, ListItemText, MenuItem } from '@mui/material';
 import { PipelineRunClass } from '../../resources/pipelineRun';
+import { launchPipelineRunLogs } from '../common/KubeflowLogsViewer';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   getPipelineDetailsPath,
@@ -40,6 +43,31 @@ export function PipelineRunsList() {
       <ResourceListView
         title="Pipeline Runs"
         resourceClass={PipelineRunClass}
+        enableRowActions
+        actions={[
+          {
+            id: 'kubeflow.run-logs',
+            action: ({ item, closeMenu }: { item: PipelineRunClass; closeMenu: () => void }) => {
+              return (
+                <MenuItem
+                  onClick={() => {
+                    closeMenu();
+                    launchPipelineRunLogs({
+                      runName: item.metadata.name,
+                      namespace: item.metadata.namespace,
+                      cluster: item.cluster,
+                    });
+                  }}
+                >
+                  <ListItemIcon>
+                    <Icon icon="mdi:text-box-outline" width={20} />
+                  </ListItemIcon>
+                  <ListItemText>View Latest Pod Logs</ListItemText>
+                </MenuItem>
+              );
+            },
+          },
+        ]}
         columns={[
           {
             id: 'name',

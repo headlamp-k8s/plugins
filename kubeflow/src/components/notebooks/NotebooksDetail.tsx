@@ -10,7 +10,7 @@ import {
 import { Box, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { NotebookClass } from '../../resources/notebook';
-import { launchNotebookLogs } from '../common/NotebookLogsViewer';
+import { launchNotebookLogs } from '../common/KubeflowLogsViewer';
 import { NotebookStatusBadge } from '../common/NotebookStatusBadge';
 import { NotebookTypeBadge } from '../common/NotebookTypeBadge';
 import { SectionPage } from '../common/SectionPage';

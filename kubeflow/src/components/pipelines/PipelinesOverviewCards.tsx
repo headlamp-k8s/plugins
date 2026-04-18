@@ -16,6 +16,7 @@
 
 import { Icon } from '@iconify/react';
 import {
+  ActionButton,
   Link as HeadlampLink,
   SectionBox,
   SimpleTable,
@@ -30,6 +31,7 @@ import React from 'react';
 import { PipelineClass } from '../../resources/pipeline';
 import { PipelineRunClass } from '../../resources/pipelineRun';
 import { PipelineVersionClass } from '../../resources/pipelineVersion';
+import { launchDeploymentLogs } from '../common/KubeflowLogsViewer';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   countPipelineVersionsForPipeline,
@@ -179,6 +181,10 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
                 {
                   label: 'Age',
                   getter: (item: any) => (typeof item.getAge === 'function' ? item.getAge() : '-'),
+                },
+                {
+                  label: 'Actions',
+                  getter: (item: any) => <DeploymentLogsButton deployment={item} />,
                 },
               ]}
               data={kfpDeployments}
@@ -395,5 +401,25 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
         </Box>
       ) : null}
     </Box>
+  );
+}
+
+/**
+ * Helper component to find pods and launch logs for a KFP Deployment.
+ */
+function DeploymentLogsButton({ deployment }: { deployment: any }) {
+  return (
+    <ActionButton
+      description="View Latest Pod Logs"
+      icon="mdi:text-box-outline"
+      onClick={() =>
+        launchDeploymentLogs({
+          deploymentName: deployment.metadata.name,
+          namespace: deployment.metadata.namespace,
+          matchLabels: deployment.spec?.selector?.matchLabels || {},
+          cluster: deployment.cluster,
+        })
+      }
+    />
   );
 }
