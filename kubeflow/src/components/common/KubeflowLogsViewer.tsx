@@ -154,11 +154,13 @@ export function PipelineRunLogsViewer({
 }) {
   const [kfpPods] = K8s.ResourceClasses.Pod.useList({
     namespace,
+    cluster,
     labelSelector: `pipeline/runid=${runName}`,
   });
 
   const [argoPods] = K8s.ResourceClasses.Pod.useList({
     namespace,
+    cluster,
     labelSelector: `workflows.argoproj.io/workflow=${runName}`,
   });
 
@@ -175,7 +177,16 @@ export function PipelineRunLogsViewer({
   }
 
   const allPods = [...(kfpPods || []), ...(argoPods || [])];
-  const pod = allPods[0];
+  const pod = allPods.sort((a, b) => {
+    const aRunning = a.status?.phase === 'Running' ? 1 : 0;
+    const bRunning = b.status?.phase === 'Running' ? 1 : 0;
+    if (aRunning !== bRunning) {
+      return bRunning - aRunning;
+    }
+    const aTime = Date.parse(a.metadata.creationTimestamp || '0');
+    const bTime = Date.parse(b.metadata.creationTimestamp || '0');
+    return bTime - aTime;
+  })[0];
 
   if (!pod) {
     return (
@@ -230,12 +241,30 @@ export function DeploymentLogsViewer({
   matchLabels: Record<string, string>;
   cluster?: string;
 }) {
+  const labelSelector = Object.entries(matchLabels || {})
+    .map(([k, v]) => `${k}=${v}`)
+    .join(',');
+  const hasMatchLabels = labelSelector.length > 0;
+
   const [pods] = K8s.ResourceClasses.Pod.useList({
     namespace,
-    labelSelector: Object.entries(matchLabels || {})
-      .map(([k, v]) => `${k}=${v}`)
-      .join(','),
+    cluster,
+    labelSelector: hasMatchLabels ? labelSelector : '__headlamp_no_match_labels__=__never__',
   });
+
+  if (!hasMatchLabels) {
+    return (
+      <CommonComponents.LogViewer
+        noDialog
+        open
+        title={`Logs: ${deploymentName}`}
+        logs={[
+          `Cannot discover pods for deployment ${deploymentName}: deployment selector labels are empty.`,
+        ]}
+        onClose={() => {}}
+      />
+    );
+  }
 
   if (!pods) {
     return (
@@ -249,7 +278,16 @@ export function DeploymentLogsViewer({
     );
   }
 
-  const pod = pods[0];
+  const pod = pods.sort((a, b) => {
+    const aRunning = a.status?.phase === 'Running' ? 1 : 0;
+    const bRunning = b.status?.phase === 'Running' ? 1 : 0;
+    if (aRunning !== bRunning) {
+      return bRunning - aRunning;
+    }
+    const aTime = Date.parse(a.metadata.creationTimestamp || '0');
+    const bTime = Date.parse(b.metadata.creationTimestamp || '0');
+    return bTime - aTime;
+  })[0];
 
   if (!pod) {
     return (

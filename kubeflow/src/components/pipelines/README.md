@@ -2,6 +2,13 @@
 
 A Headlamp plugin that gives **platform operators and SREs** deep Kubernetes-native visibility into the Kubeflow Pipelines (KFP) control plane without relying on the KFP UI or external databases. The focus is on **operational health, auditability, and fast root-cause discovery** for pipeline orchestrations.
 
+> **New to Kubeflow Pipelines?** Here are the key resources to get started:
+>
+> - [Kubeflow Pipelines Overview](https://www.kubeflow.org/docs/components/pipelines/overview/) — Architecture and concepts
+> - [KFP SDK v2 User Guide](https://www.kubeflow.org/docs/components/pipelines/v2/build-a-pipeline/) — Building and running pipelines
+> - [KFP v2 API Reference](https://www.kubeflow.org/docs/components/pipelines/v2/reference/api/kubeflow-pipeline-api-spec/) — REST and CRD specs
+> - [Installing KFP on Kubernetes](https://www.kubeflow.org/docs/components/pipelines/operator-guides/installation/) — Operator installation guide
+
 ---
 
 ## What It Gives You

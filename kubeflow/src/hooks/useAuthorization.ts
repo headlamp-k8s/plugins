@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
+import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
 import { useEffect, useState } from 'react';
 
 interface UseAuthorizationOptions {
   /** The resource class for which auth will be checked (e.g. Pod). */
   item: KubeObjectClass | null;
-  /** The verb associated with the permissions being verifying. */
+  /** The verb associated with the permissions being verified. */
   authVerb: string;
   /** The subresource for which the permissions are being verified (e.g. "log" when checking for a pod's log). */
   subresource?: string;
@@ -68,6 +68,8 @@ export function useAuthorization({
 
     let mounted = true;
     setIsLoading(true);
+    setData(null);
+    setError(null);
 
     item
       .getAuthorization(authVerb, { subresource, namespace }, cluster)

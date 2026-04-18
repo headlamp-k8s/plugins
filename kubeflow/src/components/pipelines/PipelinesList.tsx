@@ -18,12 +18,12 @@ import {
   Link as HeadlampLink,
   ResourceListView,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import React from 'react';
 import { PipelineClass } from '../../resources/pipeline';
 import { PipelineVersionClass } from '../../resources/pipelineVersion';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   countPipelineVersionsForPipeline,
-  getLatestPipelineVersionForPipeline,
   getPipelineDetailsPath,
   getPipelineResourceStatus,
   getPipelineVersionDetailsPath,
@@ -36,6 +36,20 @@ import { SectionPage } from '../common/SectionPage';
 export function PipelinesList() {
   const [pipelineVersions] = PipelineVersionClass.useList();
   const versions = pipelineVersions ?? [];
+
+  const latestVersionsMap = React.useMemo(() => {
+    const map = new Map<string, PipelineVersionClass>();
+    versions.forEach(v => {
+      const key = `${v.metadata.namespace}/${v.pipelineName}`;
+      const existing = map.get(key);
+      const vTime = Date.parse(v.metadata.creationTimestamp || '0');
+      const existingTime = existing ? Date.parse(existing.metadata.creationTimestamp || '0') : 0;
+      if (!existing || vTime > existingTime) {
+        map.set(key, v);
+      }
+    });
+    return map;
+  }, [versions]);
 
   return (
     <SectionPage title="Pipelines" apiPath="/apis/pipelines.kubeflow.org/v2beta1/pipelines">
@@ -71,20 +85,12 @@ export function PipelinesList() {
             id: 'latest-version',
             label: 'Latest Version',
             getValue: (item: PipelineClass) => {
-              const latestVersion = getLatestPipelineVersionForPipeline(
-                versions,
-                item.metadata.name,
-                item.metadata.namespace
-              );
-
-              return latestVersion?.metadata?.name ?? '-';
+              const key = `${item.metadata.namespace}/${item.metadata.name}`;
+              return latestVersionsMap.get(key)?.metadata?.name ?? '-';
             },
             render: (item: PipelineClass) => {
-              const latestVersion = getLatestPipelineVersionForPipeline(
-                versions,
-                item.metadata.name,
-                item.metadata.namespace
-              );
+              const key = `${item.metadata.namespace}/${item.metadata.name}`;
+              const latestVersion = latestVersionsMap.get(key);
 
               if (!latestVersion?.metadata?.name || !latestVersion.metadata.namespace) {
                 return <>-</>;

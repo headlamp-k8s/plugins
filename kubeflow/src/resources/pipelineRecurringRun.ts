@@ -22,7 +22,7 @@ import { PipelineRuntimeConfig } from './pipelineRun';
  * Recurring run trigger configuration.
  */
 export interface PipelineRunTrigger {
-  cronSchedule?: string;
+  cronSchedule?: string | { cron?: string };
   intervalSecond?: number;
   [key: string]: unknown;
 }
@@ -38,9 +38,10 @@ export interface KubeflowPipelineRecurringRunSpec {
   pipelineVersionReference?: { name?: string };
   experimentName?: string;
   enabled?: boolean;
+  mode?: string;
   maxConcurrency?: number;
   trigger?: PipelineRunTrigger;
-  cronSchedule?: string;
+  cronSchedule?: string | { cron?: string };
   intervalSecond?: number;
   serviceAccountName?: string;
   runtimeConfig?: PipelineRuntimeConfig;
@@ -115,7 +116,13 @@ export class PipelineRecurringRunClass extends KubeObject<KubeflowPipelineRecurr
   }
 
   get isEnabled(): boolean | undefined {
-    return this.spec.enabled;
+    if (this.spec.enabled !== undefined) {
+      return this.spec.enabled;
+    }
+    if (this.spec.mode !== undefined) {
+      return this.spec.mode === 'ENABLE';
+    }
+    return undefined;
   }
 
   get maxConcurrency(): number | undefined {
@@ -143,6 +150,6 @@ export class PipelineRecurringRunClass extends KubeObject<KubeflowPipelineRecurr
   }
 
   get mode(): string {
-    return (this.jsonData.spec as any).mode || '';
+    return this.spec.mode ?? '';
   }
 }

@@ -24,6 +24,7 @@ import { KubeflowResourceCondition } from '../../resources/common';
 export interface PipelineStatusResource {
   status?: {
     phase?: string;
+    state?: string;
     conditions?: KubeflowResourceCondition[];
   };
 }
@@ -46,10 +47,12 @@ export interface PipelineRunResource {
 /**
  * Minimal RecurringRun resource shape used for schedule helpers.
  */
+export type PipelineCronSchedule = string | { cron?: string };
+
 export interface PipelineRecurringRunResource {
   spec?: {
-    trigger?: { cronSchedule?: string; intervalSecond?: number };
-    cronSchedule?: string;
+    trigger?: { cronSchedule?: PipelineCronSchedule; intervalSecond?: number };
+    cronSchedule?: PipelineCronSchedule;
     intervalSecond?: number;
   };
 }
@@ -92,7 +95,7 @@ function getStatusVariant(value: string): StatusLabelProps['status'] {
     normalizedValue.includes('running') ||
     normalizedValue.includes('succeeded') ||
     normalizedValue.includes('available') ||
-    normalizedValue.includes('complete')
+    /\bcomplete(?:d)?\b/.test(normalizedValue)
   ) {
     return 'success';
   }
@@ -117,7 +120,7 @@ export function getPipelineResourceStatus(
   resource: PipelineStatusResource | null | undefined
 ): PipelineResourceStatus {
   const conditions = resource?.status?.conditions ?? [];
-  const phase = resource?.status?.phase ?? '';
+  const phase = resource?.status?.phase ?? resource?.status?.state ?? '';
 
   const failedCondition = conditions.find(condition => {
     return condition.type === 'Failed' && condition.status === 'True';
@@ -232,12 +235,12 @@ export function getPipelineRunDurationMs(resource: PipelineRunResource | null | 
   const startTime = resource?.status?.startTime;
   const completionTime = resource?.status?.completionTime ?? resource?.status?.lastTransitionTime;
 
-  if (!startTime || !completionTime) {
+  if (!startTime) {
     return 0;
   }
 
   const start = Date.parse(startTime);
-  const end = Date.parse(completionTime);
+  const end = completionTime ? Date.parse(completionTime) : Date.now();
 
   if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
     return 0;

@@ -69,5 +69,3 @@ function createUseGetMock(cls: any, items: any[]) {
   (cls as any).useList = createUseListMock(cls, mockData);
   (cls as any).useGet = createUseGetMock(cls, mockData);
 });
-
-console.log('Storybook resource mocks initialized.');

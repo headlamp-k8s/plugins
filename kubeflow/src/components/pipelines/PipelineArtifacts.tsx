@@ -21,23 +21,40 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import React from 'react';
 import { PipelineRunClass } from '../../resources/pipelineRun';
 import { getPipelineRunDetailsPath, getPipelineRunRoot } from '../common/pipelineUtils';
 import { SectionPage } from '../common/SectionPage';
 
+/**
+ * Aggregated metrics for a distinct pipeline root URI.
+ */
 interface PipelineRootSummary {
+  /** The fully qualified pipeline root (e.g. s3://bucket/path, minio://...) */
   root: string;
+  /** Total number of pipeline runs discovered using this exact root */
   runs: number;
+  /** The set of namespaces containing runs utilizing this root */
   namespaces: Set<string>;
+  /** The single most recent pipeline run associated with this root */
   latestRun?: PipelineRunClass;
 }
 
+function parseCreationTimestamp(timestamp?: string): number {
+  const parsed = Date.parse(timestamp ?? '');
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+/**
+ * Helper to sort resources descending by their creation timestamp.
+ * Objects missing a timestamp will fall back to the epoch (parse as NaN/0 respectively).
+ */
 function sortByCreationTimestampDesc<T extends { metadata: { creationTimestamp?: string } }>(
   items: T[]
 ): T[] {
   return [...items].sort((left, right) => {
-    const leftTimestamp = Date.parse(left.metadata.creationTimestamp ?? '');
-    const rightTimestamp = Date.parse(right.metadata.creationTimestamp ?? '');
+    const leftTimestamp = parseCreationTimestamp(left.metadata.creationTimestamp);
+    const rightTimestamp = parseCreationTimestamp(right.metadata.creationTimestamp);
     return rightTimestamp - leftTimestamp;
   });
 }
@@ -49,32 +66,34 @@ export function PipelineArtifacts() {
   const [runs, runsError] = PipelineRunClass.useList();
   const runList = runs ?? [];
 
-  const rootMap = new Map<string, PipelineRootSummary>();
-  sortByCreationTimestampDesc(runList).forEach(run => {
-    const root = getPipelineRunRoot(run);
-    if (!root) {
-      return;
-    }
+  const rootSummaries = React.useMemo(() => {
+    const rootMap = new Map<string, PipelineRootSummary>();
+    sortByCreationTimestampDesc(runList).forEach(run => {
+      const root = getPipelineRunRoot(run);
+      if (!root) {
+        return;
+      }
 
-    const existing = rootMap.get(root) ?? {
-      root,
-      runs: 0,
-      namespaces: new Set<string>(),
-      latestRun: undefined,
-    };
+      const existing = rootMap.get(root) ?? {
+        root,
+        runs: 0,
+        namespaces: new Set<string>(),
+        latestRun: undefined,
+      };
 
-    existing.runs += 1;
-    if (run.metadata.namespace) {
-      existing.namespaces.add(run.metadata.namespace);
-    }
-    if (!existing.latestRun) {
-      existing.latestRun = run;
-    }
+      existing.runs += 1;
+      if (run.metadata.namespace) {
+        existing.namespaces.add(run.metadata.namespace);
+      }
+      if (!existing.latestRun) {
+        existing.latestRun = run;
+      }
 
-    rootMap.set(root, existing);
-  });
+      rootMap.set(root, existing);
+    });
 
-  const rootSummaries = Array.from(rootMap.values()).sort((left, right) => right.runs - left.runs);
+    return Array.from(rootMap.values()).sort((left, right) => right.runs - left.runs);
+  }, [runList]);
 
   return (
     <SectionPage

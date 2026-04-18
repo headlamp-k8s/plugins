@@ -38,6 +38,7 @@ import { PipelinesList } from './components/pipelines/PipelinesList';
 import { PipelinesOverview } from './components/pipelines/PipelinesOverview';
 import { PipelineVersionsDetail } from './components/pipelines/PipelineVersionsDetail';
 import { PipelineVersionsList } from './components/pipelines/PipelineVersionsList';
+import { normalizeApiPathForDiscovery } from './hooks/useKubeflowCheck';
 
 addIcon('custom:kubeflow', {
   body: `<path fill="#4279f4" d="m35.59 43.66 2.836 70.645 51.027-65.121a4.716 4.716 0 0 1 3.164-1.774 4.705 4.705 0 0 1 3.48 1.004l31.829 25.547-10.38-45.395Zm0 0"/><path fill="#0028aa" d="M40.191 127.262h45.266l-27.793-22.297Zm0 0"/><path fill="#014bd1" d="M93.902 58.723 63.461 97.566l32.434 26.024 30.77-38.582Zm0 0"/><path fill="#bedcff" d="m27.055 36.848.004-.008 26.77-33.57L10.66 24.059 0 70.769Zm0 0"/><path fill="#6ca1ff" d="m.594 85.105 28.672 35.954-2.73-68.485Zm0 0"/><path fill="#a1c3ff" d="M109.215 20.54 67.937.66l-25.69 32.215Zm0 0"/>`,
@@ -60,33 +61,6 @@ registerRoute({
   exact: true,
   component: () => <Overview />,
 });
-
-function normalizeApiPathForDiscovery(apiPath: string): string {
-  try {
-    if (!apiPath.startsWith('/')) {
-      return apiPath;
-    }
-    const segments = apiPath.split('/').filter(Boolean);
-    if (segments.length === 0) {
-      return apiPath;
-    }
-    if (segments[0] === 'apis') {
-      if (segments.length >= 3) {
-        return `/${['apis', segments[1], segments[2]].join('/')}`;
-      }
-      return apiPath;
-    }
-    if (segments[0] === 'api') {
-      if (segments.length >= 2) {
-        return `/${['api', segments[1]].join('/')}`;
-      }
-      return apiPath;
-    }
-    return apiPath;
-  } catch {
-    return apiPath;
-  }
-}
 
 function registerSubMenu(
   name: string,

@@ -59,7 +59,7 @@ export interface KubeflowPipeline extends KubeObjectInterface {
 }
 
 /**
- * Headlamp resource class for the Kubeflow Pipeline CRD (pipelines.kubeflow.org/v2beta1).
+ * Headlamp resource class for the Kubeflow Pipeline CRD (pipelines.kubeflow.org/v2beta1 and pipelines.kubeflow.org/v1beta1).
  *
  * @see {@link https://www.kubeflow.org/docs/components/pipelines/ | Kubeflow Pipelines docs}
  */

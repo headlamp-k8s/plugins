@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   DetailsGrid,
@@ -26,7 +25,7 @@ import Box from '@mui/material/Box';
 import { useParams } from 'react-router-dom';
 import { PipelineRunClass } from '../../resources/pipelineRun';
 import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
-import { launchPodLogs } from '../common/KubeflowLogsViewer';
+import { launchPipelineRunLogs } from '../common/KubeflowLogsViewer';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   getPipelineDetailsPath,
@@ -223,7 +222,8 @@ export function PipelineRunsDetail(props: { namespace?: string; name?: string })
 }
 
 /**
- * Helper component to find pods and launch logs for a Pipeline Run.
+ * Inline ActionButton used in the Run detail header to launch log viewer for this run.
+ * Delegates to launchPipelineRunLogs to ensure consistent pod-discovery logic with the list view.
  */
 function RunLogsButton({
   runName,
@@ -234,26 +234,15 @@ function RunLogsButton({
   namespace: string;
   cluster?: string;
 }) {
-  const [pods] = K8s.ResourceClasses.Pod.useList({
-    namespace,
-    labelSelector: `pipelines.kubeflow.org/run-id=${runName}`,
-  });
-
-  const pod = pods?.[0];
-
-  if (!pod) return null;
-
   return (
     <ActionButton
       description="View Latest Pod Logs"
       icon="mdi:text-box-outline"
       onClick={() =>
-        pod &&
-        launchPodLogs({
-          podName: pod.metadata.name,
-          namespace: pod.metadata.namespace,
+        launchPipelineRunLogs({
+          runName,
+          namespace,
           cluster,
-          title: `Logs: Run — ${runName}`,
         })
       }
     />

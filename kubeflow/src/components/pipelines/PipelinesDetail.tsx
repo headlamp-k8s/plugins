@@ -20,9 +20,12 @@ import {
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { DiffEditor } from '@monaco-editor/react';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
+import yaml from 'js-yaml';
 import { useParams } from 'react-router-dom';
 import { PipelineClass } from '../../resources/pipeline';
 import { PipelineVersionClass } from '../../resources/pipelineVersion';
@@ -213,31 +216,40 @@ export function PipelinesDetail(props: { namespace?: string; name?: string }) {
                   {
                     id: 'version-comparison',
                     section: (
-                      <SectionBox title="Latest vs Previous Version">
-                        <Grid container spacing={2}>
-                          {[latestVersion, previousVersion].map(version => (
-                            <Grid item xs={12} md={6} key={version.metadata.name}>
-                              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                                {version.metadata.name}
-                              </Typography>
-                              <Box
-                                component="pre"
-                                sx={{
-                                  margin: 0,
-                                  overflowX: 'auto',
-                                  whiteSpace: 'pre-wrap',
-                                  fontFamily: 'monospace',
-                                  fontSize: '0.8rem',
-                                  backgroundColor: 'action.hover',
-                                  padding: 1.5,
-                                  borderRadius: '4px',
-                                }}
-                              >
-                                {JSON.stringify(version.spec, null, 2)}
-                              </Box>
-                            </Grid>
-                          ))}
+                      <SectionBox title="Latest vs Previous Version (YAML Diff)">
+                        <Grid container spacing={2} sx={{ mb: 1 }}>
+                          <Grid item xs={6}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{ color: 'error.main', fontWeight: 'bold' }}
+                            >
+                              Previous: {previousVersion.metadata.name}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{ color: 'success.main', fontWeight: 'bold' }}
+                            >
+                              Latest: {latestVersion.metadata.name}
+                            </Typography>
+                          </Grid>
                         </Grid>
+                        <Box sx={{ height: '500px', width: '100%', mt: 1 }}>
+                          <DiffEditor
+                            original={yaml.dump(previousVersion.spec)}
+                            modified={yaml.dump(latestVersion.spec)}
+                            language="yaml"
+                            theme={useTheme().palette.mode === 'dark' ? 'vs-dark' : 'light'}
+                            options={{
+                              readOnly: true,
+                              renderSideBySide: true,
+                              minimap: { enabled: false },
+                              scrollBeyondLastLine: false,
+                              automaticLayout: true,
+                            }}
+                          />
+                        </Box>
                       </SectionBox>
                     ),
                   },

@@ -1,4 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { PipelineClass } from '../../resources/pipeline';
+import { PipelineRunClass } from '../../resources/pipelineRun';
+import { PipelineVersionClass } from '../../resources/pipelineVersion';
 import { TestProvider } from '../common/TestProvider';
 import { allPipelines, allRuns, allVersions } from './__fixtures__/mockData';
 import { PipelinesOverviewContent } from './PipelinesOverviewCards';
@@ -76,10 +79,10 @@ export const Default: Story = {
       },
     ],
     failureRows: [],
-    recentPipelines: allPipelines,
-    recentVersions: allVersions,
-    recentRuns: allRuns,
-    versionList: allVersions,
+    recentPipelines: allPipelines.map(p => new PipelineClass(p as any)),
+    recentVersions: allVersions.map(v => new PipelineVersionClass(v as any)),
+    recentRuns: allRuns.map(r => new PipelineRunClass(r as any)),
+    versionList: allVersions.map(v => new PipelineVersionClass(v as any)),
     hasListErrors: false,
   },
 };
