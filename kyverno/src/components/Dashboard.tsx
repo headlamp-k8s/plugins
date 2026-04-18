@@ -145,7 +145,7 @@ export function Dashboard() {
       .map(([ns, { pass, fail }]) => ({ name: ns, pass, failAndError: fail }));
   }, [stats.byNamespace]);
 
-  const isLoading = clusterPolicies === null || policyReports === null;
+  const isLoading = clusterPolicies === null || policies === null || policyReports === null || clusterPolicyReports === null;
 
   return (
     <Box sx={{ p: 2 }}>
