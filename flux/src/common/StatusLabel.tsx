@@ -6,26 +6,37 @@ interface StatusLabelProps {
   item: KubeObject;
 }
 
+export function getStatusText(item: KubeCRD): string {
+  const ready = item?.jsonData?.status?.conditions?.find((c: any) => c.type === 'Ready');
+  if (!ready) return '-';
+  if (item?.jsonData?.spec?.suspend) return 'Suspended';
+  if (ready.status === 'Unknown') return 'Reconciling…';
+  if (ready.reason === 'DependencyNotReady') return 'Waiting';
+  return ready.status === 'True' ? 'Ready' : 'Failed';
+}
+
 export default function StatusLabel(props: StatusLabelProps) {
   const { item } = props;
-  const ready = item?.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
+  const ready = item?.jsonData?.status?.conditions?.find((c: any) => c.type === 'Ready');
 
   if (!ready) {
     return <span>-</span>;
   }
 
+  const text = getStatusText(item);
+
   if (item?.jsonData?.spec?.suspend) {
-    return <HLStatusLabel status="warning">Suspended</HLStatusLabel>;
+    return <HLStatusLabel status="warning">{text}</HLStatusLabel>;
   }
   if (ready.status === 'Unknown') {
-    return <HLStatusLabel status="warning">Reconciling…</HLStatusLabel>;
+    return <HLStatusLabel status="warning">{text}</HLStatusLabel>;
   }
 
   if (ready.reason === 'DependencyNotReady') {
     return (
       <HLStatusLabel status={'warning'}>
         <Tooltip title={ready.message}>
-          <Typography component="span">Waiting</Typography>
+          <Typography component="span">{text}</Typography>
         </Tooltip>
       </HLStatusLabel>
     );
@@ -35,7 +46,7 @@ export default function StatusLabel(props: StatusLabelProps) {
   return (
     <HLStatusLabel status={isReady ? 'success' : 'error'}>
       <Tooltip title={ready.message}>
-        <Typography component="span">{isReady ? 'Ready' : 'Failed'}</Typography>
+        <Typography component="span">{text}</Typography>
       </Tooltip>
     </HLStatusLabel>
   );
