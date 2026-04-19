@@ -21,26 +21,112 @@ export interface TaskSpec {
     iteration?: 'any' | 'all';
   };
   /** Pod template used to create task replicas. */
-  template: {
-    /** Pod spec for the task template. */
-    spec: {
-      /** Container templates for task pods. */
-      containers: {
-        /** Container name. */
-        name: string;
-        /** Container image reference. */
-        image: string;
-        /** Optional command override. */
-        command?: string[];
-        /** Optional resource requests and limits. */
-        resources?: Record<string, unknown>;
-      }[];
-      /** Pod restart policy for this task template. */
-      restartPolicy?: string;
-    };
-  };
+  template: PodTemplateSpec;
   /** Lifecycle policies scoped to this task. */
   policies?: LifecyclePolicy[];
+  /** Topology policy for NUMA-aware scheduling. */
+  topologyPolicy?: string;
+}
+
+/**
+ * Pod template metadata used by a Volcano task.
+ * @see https://github.com/volcano-sh/apis/blob/ae35b8b12bc5ccb6ff5a62fcd9dca06234197e63/pkg/apis/batch/v1alpha1/job.go#L239
+ * @see https://github.com/kubernetes/api/blob/2b6c3c950fc28eddbbb7b9f98633b3be3dba97b0/core/v1/types.go#L5548
+ */
+export interface PodTemplateMetadata {
+  /** Labels applied to task pods. */
+  labels?: Record<string, string>;
+  /** Annotations applied to task pods. */
+  annotations?: Record<string, string>;
+  /** Template creation timestamp when present in the resource payload. */
+  creationTimestamp?: string;
+}
+
+/**
+ * Environment variable specification for a container.
+ * @see https://github.com/volcano-sh/apis/blob/ae35b8b12bc5ccb6ff5a62fcd9dca06234197e63/pkg/apis/batch/v1alpha1/job.go#L239
+ * @see https://github.com/kubernetes/api/blob/2b6c3c950fc28eddbbb7b9f98633b3be3dba97b0/core/v1/types.go#L2473
+ */
+export interface EnvVarSpec {
+  /** Environment variable name. */
+  name: string;
+  /** Literal value for the variable. */
+  value?: string;
+  /** Value source reference when value is not literal. */
+  valueFrom?: Record<string, unknown>;
+}
+
+/**
+ * Exposed container port definition.
+ * @see https://github.com/volcano-sh/apis/blob/ae35b8b12bc5ccb6ff5a62fcd9dca06234197e63/pkg/apis/batch/v1alpha1/job.go#L239
+ * @see https://github.com/kubernetes/api/blob/2b6c3c950fc28eddbbb7b9f98633b3be3dba97b0/core/v1/types.go#L2352
+ */
+export interface ContainerPortSpec {
+  /** Container port number. */
+  containerPort?: number;
+  /** Optional port name. */
+  name?: string;
+  /** Port protocol (TCP/UDP/SCTP). */
+  protocol?: string;
+}
+
+/**
+ * Kubernetes resource requirements for a container.
+ * @see https://github.com/volcano-sh/apis/blob/ae35b8b12bc5ccb6ff5a62fcd9dca06234197e63/pkg/apis/batch/v1alpha1/job.go#L239
+ * @see https://github.com/kubernetes/api/blob/2b6c3c950fc28eddbbb7b9f98633b3be3dba97b0/core/v1/types.go#L2841
+ */
+export interface ContainerResourceRequirements {
+  /** Resource limits map. */
+  limits?: Record<string, string>;
+  /** Resource requests map. */
+  requests?: Record<string, string>;
+}
+
+/**
+ * Container specification used in a task pod template.
+ * @see https://github.com/volcano-sh/apis/blob/ae35b8b12bc5ccb6ff5a62fcd9dca06234197e63/pkg/apis/batch/v1alpha1/job.go#L239
+ * @see https://github.com/kubernetes/api/blob/2b6c3c950fc28eddbbb7b9f98633b3be3dba97b0/core/v1/types.go#L2909
+ */
+export interface ContainerSpec {
+  /** Container name. */
+  name: string;
+  /** Container image reference. */
+  image: string;
+  /** Optional image pull policy. */
+  imagePullPolicy?: string;
+  /** Optional command override. */
+  command?: string[];
+  /** Optional arguments passed to the container entrypoint. */
+  args?: string[];
+  /** Optional working directory in the container. */
+  workingDir?: string;
+  /** Optional container environment variables. */
+  env?: EnvVarSpec[];
+  /** Optional declared container ports. */
+  ports?: ContainerPortSpec[];
+  /** Optional resource requests and limits. */
+  resources?: ContainerResourceRequirements;
+}
+
+/**
+ * Pod template spec used by a Volcano task.
+ * @see https://github.com/volcano-sh/apis/blob/ae35b8b12bc5ccb6ff5a62fcd9dca06234197e63/pkg/apis/batch/v1alpha1/job.go#L239
+ * @see https://github.com/kubernetes/api/blob/2b6c3c950fc28eddbbb7b9f98633b3be3dba97b0/core/v1/types.go#L5548
+ */
+export interface PodTemplateSpec {
+  /** Optional pod template metadata. */
+  metadata?: PodTemplateMetadata;
+  /** Pod spec for the task template. */
+  spec?: {
+    /** Container templates for task pods. */
+    containers?: ContainerSpec[];
+    /** Secrets used for pulling images. */
+    imagePullSecrets?: Array<{ name?: string }>;
+    /** Pod restart policy for this task template. */
+    restartPolicy?: string;
+    /** Scheduler name for task pods. */
+    schedulerName?: string;
+  };
 }
 
 /**
@@ -138,16 +224,10 @@ export interface JobState {
  * @see https://github.com/volcano-sh/apis/blob/ae35b8b12bc5ccb6ff5a62fcd9dca06234197e63/pkg/apis/batch/v1alpha1/job.go#L442-L447
  */
 export interface JobCondition {
-  /** Condition type, when present. */
-  type?: string;
   /** Volcano job phase. */
   status: JobPhase;
   /** Timestamp for the last condition transition. */
   lastTransitionTime?: string;
-  /** Short machine-friendly reason for this condition. */
-  reason?: string;
-  /** Human-readable condition message. */
-  message?: string;
 }
 
 /**
@@ -180,7 +260,7 @@ export interface VolcanoJobStatus {
   /** Resources created and controlled by this job. */
   controlledResources?: Record<string, string>;
   /** Per-task pod phase counters. */
-  taskStatusCount?: Record<string, Record<string, number>>;
+  taskStatusCount?: Record<string, { phase?: Record<string, number> }>;
   /** Condition history for job transitions. */
   conditions?: JobCondition[];
 }
