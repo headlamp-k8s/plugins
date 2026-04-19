@@ -1,9 +1,9 @@
 import { StatusLabel as HLStatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { Tooltip, Typography } from '@mui/material';
 
 interface StatusLabelProps {
-  item: KubeCRD;
+  item: KubeObject;
 }
 
 export default function StatusLabel(props: StatusLabelProps) {

@@ -22,6 +22,8 @@ import { FluxRunTime } from './runtime/RuntimeList';
 import { FluxSettings } from './settings';
 import { FluxSources } from './sources/SourceList';
 import { FluxSourceDetailView } from './sources/SourceSingle';
+import { TerraformList } from './terraforms/TerraformList';
+import { TerraformDetailView } from './terraforms/TerraformSingle';
 
 registerHelmRelease();
 
@@ -79,11 +81,34 @@ registerRoute({
   name: 'helmreleases',
 });
 
+registerRoute({
+  path: '/flux/terraforms',
+  sidebar: 'terraforms',
+  component: () => <TerraformList />,
+  exact: true,
+  name: 'terraforms',
+});
+
+registerRoute({
+  path: '/flux/infra/terraforms/:namespace/:name',
+  sidebar: 'terraforms',
+  component: () => <TerraformDetailView />,
+  exact: true,
+  name: 'infra',
+});
+
 registerSidebarEntry({
   parent: 'flux',
   name: 'helmreleases',
   label: 'HelmReleases',
   url: '/flux/helmreleases',
+});
+
+registerSidebarEntry({
+  parent: 'flux',
+  name: 'terraforms',
+  label: 'Terraforms',
+  url: '/flux/terraforms',
 });
 
 registerSidebarEntry({
@@ -227,6 +252,11 @@ registerKindIcon('Kustomization', {
 });
 
 registerKindIcon('OCIRepository', {
+  icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
+  color: 'rgb(50, 108, 229)',
+});
+
+registerKindIcon('Terraform', {
   icon: <Icon icon="simple-icons:flux" width="70%" height="70%" />,
   color: 'rgb(50, 108, 229)',
 });

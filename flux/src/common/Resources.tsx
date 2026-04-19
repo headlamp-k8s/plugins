@@ -105,6 +105,13 @@ export class ImagePolicy extends KubeObject {
   static isNamespaced = true;
 }
 
+export class Terraform extends KubeObject {
+  static kind = 'Terraform';
+  static apiName = 'terraforms';
+  static apiVersion = 'infra.contrib.fluxcd.io/v1alpha1';
+  static isNamespaced = true;
+}
+
 export class ImageRepository extends KubeObject {
   static kind = 'ImageRepository';
   static apiName = 'imagerepositories';

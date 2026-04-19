@@ -37,6 +37,7 @@ import {
   OCIRepository,
   ProviderNotification,
   ReceiverNotification,
+  Terraform,
 } from '../common/Resources';
 import Table from '../common/Table';
 import { useFluxCheck } from '../helpers';
@@ -105,6 +106,7 @@ function getDisplayName(resourceClass: KubeObjectClass) {
     imageupdateautomations: 'Image Update Automations',
     imagepolicies: 'Image Policies',
     externalartifacts: 'External Artifacts',
+    terraforms: 'Terraforms',
   };
   return nameMap[resourceClass.apiName] || resourceClass.apiName;
 }
@@ -131,6 +133,7 @@ export function FluxOverview() {
   const [imageUpdateAutomations] = ImageUpdateAutomation.useList({ namespace });
   const [imagePolicies] = ImagePolicy.useList({ namespace });
   const [imageRepositories] = ImageRepository.useList({ namespace });
+  const [terraforms] = Terraform.useList({ namespace });
 
   const [pods] = K8s.ResourceClasses.Pod.useList({
     namespace: fluxCheck.namespace,
@@ -182,15 +185,21 @@ export function FluxOverview() {
       { rc: ImageRepository, items: imageRepositories },
       { rc: ImagePolicy, items: imagePolicies },
       { rc: ImageUpdateAutomation, items: imageUpdateAutomations },
+      { rc: Terraform, items: terraforms },
     ];
 
-    let resourceData = itemsWithClass.map(({ rc, items }) => ({
-      rc,
-      failed: getFailedCount(items),
-      total: items?.length ?? 0,
-      success: getSuccessCount(items),
-      name: getDisplayName(rc),
-    }));
+    let resourceData = itemsWithClass.map(({ rc, items }) => {
+      if (!Array.isArray(items)) {
+        return { rc, failed: 0, total: 0, success: 0, name: getDisplayName(rc) };
+      }
+      return {
+        rc,
+        failed: getFailedCount(items),
+        total: items.length,
+        success: getSuccessCount(items),
+        name: getDisplayName(rc),
+      };
+    });
 
     if (showFilter === 'configured') {
       resourceData = resourceData.filter(({ total }) => total > 0);
@@ -223,6 +232,7 @@ export function FluxOverview() {
     ociRepos,
     buckets,
     helmRepos,
+    externalArtifacts,
     helmCharts,
     alerts,
     providerNotifications,
@@ -230,6 +240,7 @@ export function FluxOverview() {
     imageRepositories,
     imagePolicies,
     imageUpdateAutomations,
+    terraforms,
     sortFilter,
     showFilter,
   ]);
@@ -457,6 +468,8 @@ function FluxOverviewChart({ resourceClass }) {
         return '/flux/image-automations';
       case 'imagepolicies':
         return '/flux/image-automations';
+      case 'terraforms':
+        return '/flux/terraforms';
     }
 
     return '';
@@ -492,6 +505,8 @@ function FluxOverviewChart({ resourceClass }) {
         return 'Image Update Automations';
       case 'imagepolicies':
         return 'Image Policies';
+      case 'terraforms':
+        return 'Terraforms';
     }
 
     return '';
