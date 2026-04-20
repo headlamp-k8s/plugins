@@ -15,8 +15,8 @@
  */
 
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useAuthorization } from '../../../../../hooks/useAuthorization';
-import { ClusterDomainClaim, KnativeDomainMapping } from '../../../../../resources/knative';
+import { useAuthorization } from '../../../../hooks/useAuthorization';
+import { ClusterDomainClaim, KnativeDomainMapping } from '../../../../resources/knative';
 
 interface DomainMappingRowActionProps {
   dm: KnativeDomainMapping;
