@@ -70,7 +70,6 @@ export interface KyvernoPolicySpec {
 }
 
 export interface KyvernoPolicyStatus {
-  ready?: boolean;
   conditions?: PolicyCondition[];
   autogen?: {
     rules?: PolicyRule[];
@@ -114,7 +113,7 @@ export class KyvernoPolicy extends KubeObject<KyvernoPolicyInterface> {
   }
 
   get ready(): boolean {
-    return this.status?.ready ?? false;
+    return this.status?.conditions?.some(c => c.type === 'Ready' && c.status === 'True') ?? false;
   }
 
   get rules(): PolicyRule[] {
@@ -149,7 +148,7 @@ export class KyvernoClusterPolicy extends KubeObject<KyvernoPolicyInterface> {
   }
 
   get ready(): boolean {
-    return this.status?.ready ?? false;
+    return this.status?.conditions?.some(c => c.type === 'Ready' && c.status === 'True') ?? false;
   }
 
   get rules(): PolicyRule[] {
