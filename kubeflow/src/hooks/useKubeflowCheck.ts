@@ -21,6 +21,12 @@ export function useApiGroupInstalled(apiPath: string) {
   const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Check for Storybook global mock
+    if (typeof window !== 'undefined' && (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK) {
+      setIsInstalled(true);
+      return;
+    }
+
     let mounted = true;
     async function checkInstalled() {
       const installed = await isApiGroupInstalled(apiPath);
@@ -42,6 +48,12 @@ export function useAnyKubeflowFamilyInstalled() {
   const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Check for Storybook global mock
+    if (typeof window !== 'undefined' && (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK) {
+      setIsInstalled(true);
+      return;
+    }
+
     let mounted = true;
     async function checkInstalled() {
       const installed = await isAnyKubeflowFamilyInstalled();
@@ -57,4 +69,26 @@ export function useAnyKubeflowFamilyInstalled() {
     isInstalled,
     isCheckLoading: isInstalled === null,
   };
+}
+
+/**
+ * Normalizes an API path into the format required for Kubernetes API discovery checking.
+ */
+export function normalizeApiPathForDiscovery(apiPath: string): string {
+  try {
+    if (!apiPath.startsWith('/')) return apiPath;
+    const segments = apiPath.split('/').filter(Boolean);
+    if (segments.length === 0) return apiPath;
+    // Normalize to group-level (not version-level) so the check succeeds whether
+    // the cluster exposes v1beta1, v2beta1, or any other version of the same group.
+    if (segments[0] === 'apis' && segments.length >= 2) {
+      return `/apis/${segments[1]}`;
+    }
+    if (segments[0] === 'api' && segments.length >= 2) {
+      return `/api/${segments[1]}`;
+    }
+    return apiPath;
+  } catch {
+    return apiPath;
+  }
 }

@@ -2,7 +2,7 @@ import { Icon } from '@iconify/react';
 import { LightTooltip, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, ListItemIcon, ListItemText, MenuItem } from '@mui/material';
 import { NotebookClass } from '../../resources/notebook';
-import { launchNotebookLogs } from '../common/NotebookLogsViewer';
+import { launchNotebookLogs } from '../common/KubeflowLogsViewer';
 import { NotebookStatusBadge } from '../common/NotebookStatusBadge';
 import { NotebookTypeBadge } from '../common/NotebookTypeBadge';
 import { getNotebookStatus, getNotebookType } from '../common/notebookUtils';

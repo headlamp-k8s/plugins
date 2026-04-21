@@ -32,9 +32,16 @@ export type OverviewModule = {
 export interface OverviewContentProps {
   /** Per-module snapshots used to render the cards and workload tables. */
   modules: OverviewModule[];
+  /** Optional extra cards for cross-module metrics such as notebook CPU requests. */
+  extraCards?: Array<{
+    title: string;
+    value: string | number;
+    icon: string;
+    subtitle: string;
+  }>;
 }
 
-export function OverviewContent({ modules }: OverviewContentProps) {
+export function OverviewContent({ modules, extraCards = [] }: OverviewContentProps) {
   const anyInstalled = modules.some(m => m.isInstalled);
 
   const allWorkloads = modules.flatMap(m =>
@@ -43,7 +50,14 @@ export function OverviewContent({ modules }: OverviewContentProps) {
 
   const activeWorkloads = allWorkloads.filter(w => {
     const s = getStatus(w.resource);
-    return s === 'Running' || s === 'Created';
+    return (
+      s === 'Running' ||
+      s === 'Created' ||
+      s === 'Succeeded' ||
+      s === 'Ready' ||
+      s === 'Available' ||
+      s === 'Completed'
+    );
   });
 
   const failedWorkloads = allWorkloads.filter(w => {
@@ -116,6 +130,45 @@ export function OverviewContent({ modules }: OverviewContentProps) {
             </Grid>
           );
         })}
+        {extraCards.map(card => (
+          <Grid item xs={12} sm={6} md={3} key={card.title}>
+            <Card variant="outlined" sx={{ borderRadius: '4px' }}>
+              <CardContent
+                sx={{ py: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, color: 'primary.main' }}>
+                  <Icon
+                    icon={card.icon}
+                    width="28"
+                    height="28"
+                    style={{ marginRight: '8px' }}
+                    aria-hidden
+                  />
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}
+                  >
+                    {card.title}
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="h3"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '2rem',
+                    textAlign: 'center',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {card.value}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {card.subtitle}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
       </Grid>
 
       {/* Unified Table for Workloads */}
@@ -131,7 +184,7 @@ export function OverviewContent({ modules }: OverviewContentProps) {
           <Grid container spacing={3}>
             {/* Active Instances Box */}
             <Grid item xs={12} lg={failedWorkloads.length > 0 ? 6 : 12}>
-              <SectionBox title="Actively Running Workloads">
+              <SectionBox title="Healthy / Active Workloads">
                 <SimpleTable
                   columns={[
                     { label: 'Type', getter: (item: any) => item.moduleKey },
@@ -140,9 +193,13 @@ export function OverviewContent({ modules }: OverviewContentProps) {
                       label: 'Namespace',
                       getter: (item: any) => item.resource.metadata?.namespace || '-',
                     },
+                    {
+                      label: 'Status',
+                      getter: (item: any) => getStatus(item.resource),
+                    },
                   ]}
                   data={activeWorkloads}
-                  emptyMessage="No active workloads running right now."
+                  emptyMessage="No healthy or active workloads running right now."
                 />
               </SectionBox>
             </Grid>
@@ -168,6 +225,10 @@ export function OverviewContent({ modules }: OverviewContentProps) {
                       {
                         label: 'Namespace',
                         getter: (item: any) => item.resource.metadata?.namespace || '-',
+                      },
+                      {
+                        label: 'Status',
+                        getter: (item: any) => getStatus(item.resource),
                       },
                     ]}
                     data={failedWorkloads}

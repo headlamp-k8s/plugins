@@ -40,5 +40,9 @@
     "i18n": [
       "en"
     ]
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "js-yaml": "^4.1.1"
   }
 }

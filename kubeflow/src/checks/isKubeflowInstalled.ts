@@ -29,8 +29,7 @@ export async function isApiGroupInstalled(apiPath: string): Promise<boolean> {
 
 export const checkNotebooksInstalled = () => isApiGroupInstalled('/apis/kubeflow.org/v1');
 export const checkKatibInstalled = () => isApiGroupInstalled('/apis/kubeflow.org/v1beta1');
-export const checkPipelinesInstalled = () =>
-  isApiGroupInstalled('/apis/pipelines.kubeflow.org/v2beta1');
+export const checkPipelinesInstalled = () => isApiGroupInstalled('/apis/pipelines.kubeflow.org');
 export const checkTrainingInstalled = () =>
   isApiGroupInstalled('/apis/trainer.kubeflow.org/v1alpha1');
 export const checkSparkInstalled = () => isApiGroupInstalled('/apis/sparkoperator.k8s.io/v1beta2');

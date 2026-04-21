@@ -19,7 +19,7 @@ import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import React from 'react';
-import { useApiGroupInstalled } from '../../hooks/useKubeflowCheck';
+import { normalizeApiPathForDiscovery, useApiGroupInstalled } from '../../hooks/useKubeflowCheck';
 
 interface Props {
   title: string;
@@ -28,7 +28,9 @@ interface Props {
 }
 
 export function SectionPage({ title, apiPath, children }: Props) {
-  const { isInstalled, isCheckLoading } = useApiGroupInstalled(apiPath);
+  const normalizedPath = React.useMemo(() => normalizeApiPathForDiscovery(apiPath), [apiPath]);
+
+  const { isInstalled, isCheckLoading } = useApiGroupInstalled(normalizedPath);
 
   if (isCheckLoading) {
     return (
