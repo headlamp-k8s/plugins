@@ -15,6 +15,7 @@ import { VolcanoPodGroup } from '../../resources/podgroup';
 import { getJobStatusColor } from '../../utils/status';
 import { formatStringList, getPolicyRows, getTaskContainerRows, getTaskRows } from './detailRows';
 import JobCommandActionButton from './JobCommandActionButton';
+import { getJobPodIssues, groupJobPodIssues, PodResource } from './pods';
 
 /**
  * Resolves the PodGroup related to a Volcano Job.
@@ -143,6 +144,87 @@ function getTasksSection(job: VolcanoJob) {
               <NameValueTable rows={[{ name: 'Containers', value: 'No containers defined' }]} />
             )}
           </SectionBox>
+        ))}
+      </SectionBox>
+    ),
+  };
+}
+
+/**
+ * Builds a section describing actionable pod runtime issues for the Job.
+ *
+ * When the Job is pending and no Pods have been created yet, this may also return
+ * an informational section suggesting PodGroup conditions and Events as likely
+ * places to investigate scheduling blockers.
+ *
+ * @param job Volcano Job shown in the details page.
+ * @param pods Pods created for the Job.
+ * @returns Section descriptor or `null` when there are no pod issues to show.
+ */
+function getPodIssuesSection(job: VolcanoJob, pods: InstanceType<typeof PodResource>[] | null) {
+  if (!pods) {
+    return null;
+  }
+
+  const podIssues = getJobPodIssues(pods);
+  const groupedPodIssues = groupJobPodIssues(podIssues);
+
+  if (groupedPodIssues.length === 0) {
+    if (job.phase === 'Pending' && pods.length === 0) {
+      return {
+        id: 'pod-issues',
+        section: (
+          <SectionBox title="Pod Issues">
+            <NameValueTable
+              rows={[
+                {
+                  name: 'Info',
+                  value:
+                    'No pods have been created for this job yet. Check PodGroup conditions and Events for scheduling blockers.',
+                },
+              ]}
+            />
+          </SectionBox>
+        ),
+      };
+    }
+
+    return null;
+  }
+
+  return {
+    id: 'pod-issues',
+    section: (
+      <SectionBox title="Pod Issues">
+        {groupedPodIssues.map((issue, index) => (
+          <NameValueTable
+            key={`${issue.reason}-${issue.message || 'no-message'}-${index}`}
+            rows={[
+              ...(issue.pods.length > 1 ? [{ name: 'Count', value: issue.pods.length }] : []),
+              {
+                name: issue.pods.length === 1 ? 'Pod' : 'Pods',
+                value: (
+                  <>
+                    {issue.pods.map((pod, podIndex) => (
+                      <span key={pod.podName}>
+                        {podIndex > 0 ? ', ' : ''}
+                        <Link kubeObject={pod.pod}>{pod.podName}</Link>
+                      </span>
+                    ))}
+                  </>
+                ),
+              },
+              {
+                name: issue.pods.length === 1 ? 'Container' : 'Containers',
+                value: issue.containerNames.length > 0 ? issue.containerNames.join(', ') : '-',
+              },
+              {
+                name: 'Reason',
+                value: `${issue.reason} (For more details, click the Pod link above)`,
+              },
+              { name: 'Message', value: issue.message || '-' },
+            ]}
+          />
         ))}
       </SectionBox>
     ),
@@ -300,7 +382,6 @@ function getJobActionButtons(job: VolcanoJob) {
       : []),
   ];
 }
-
 /**
  * Renders the Volcano Job details page.
  *
@@ -309,6 +390,13 @@ function getJobActionButtons(job: VolcanoJob) {
 export default function JobDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
   const [podGroups] = VolcanoPodGroup.useList({ namespace });
+  const [pods] = PodResource.useList({
+    namespace,
+    labelSelector:
+      name && namespace
+        ? `volcano.sh/job-name=${name},volcano.sh/job-namespace=${namespace}`
+        : undefined,
+  });
 
   return (
     <DetailsGrid
@@ -409,6 +497,7 @@ export default function JobDetail() {
       extraSections={(job: VolcanoJob) =>
         job &&
         [
+          getPodIssuesSection(job, pods),
           getPodStatusSection(job),
           getPluginsSection(job),
           getPoliciesSection(job),
