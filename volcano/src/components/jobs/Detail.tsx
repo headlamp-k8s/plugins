@@ -15,6 +15,7 @@ import { VolcanoPodGroup } from '../../resources/podgroup';
 import { getJobStatusColor } from '../../utils/status';
 import { formatStringList, getPolicyRows, getTaskContainerRows, getTaskRows } from './detailRows';
 import JobCommandActionButton from './JobCommandActionButton';
+import { JobLogsHeaderButton } from './JobLogsViewer';
 import { getJobPodIssues, groupJobPodIssues, PodResource } from './pods';
 
 /**
@@ -493,7 +494,17 @@ export default function JobDetail() {
           },
         ];
       }}
-      actions={(job: VolcanoJob) => (job ? getJobActionButtons(job) : [])}
+      actions={(job: VolcanoJob) =>
+        job
+          ? [
+              {
+                id: 'volcano-job-logs',
+                action: <JobLogsHeaderButton job={job} />,
+              },
+              ...getJobActionButtons(job),
+            ]
+          : []
+      }
       extraSections={(job: VolcanoJob) =>
         job &&
         [
