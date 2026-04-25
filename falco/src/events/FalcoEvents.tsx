@@ -24,7 +24,12 @@ import {
 } from '../utils/falcoEventUtils';
 import { detectFalcoFileOutputPath } from '../utils/falcoPodUtils';
 import { cancelPodExec, PodExecResult } from '../utils/podExecUtils';
-import { FALCO_SETTINGS_KEY, FalcoSettings, loadSettings } from '../utils/storageUtils';
+import {
+  FALCO_SETTINGS_KEY,
+  FalcoSettings,
+  loadSettings,
+  normalizeRedisUrl,
+} from '../utils/storageUtils';
 
 /** Maximum number of events to keep in memory for the file-stream backend. */
 const MAX_FILE_EVENTS = 300;
@@ -88,18 +93,24 @@ export default function FalcoEvents() {
 
     setEvents([]);
     const pod = falcoPods[0];
-    const handleData = (output: string | ArrayBuffer | { data?: string | ArrayBuffer }) => {
+    const handleData = (
+      output:
+        | string
+        | ArrayBuffer
+        | ArrayBufferView
+        | { data?: string | ArrayBuffer | ArrayBufferView }
+    ) => {
       if (stopped) return;
       let chunk = '';
       if (typeof output === 'string') chunk = output;
       else if (output instanceof ArrayBuffer) chunk = new TextDecoder().decode(output);
       else if (ArrayBuffer.isView(output))
-        chunk = new TextDecoder().decode((output as ArrayBufferView).buffer);
+        chunk = new TextDecoder().decode(output as ArrayBufferView);
       else if (output?.data) {
         if (typeof output.data === 'string') chunk = output.data;
         else if (output.data instanceof ArrayBuffer) chunk = new TextDecoder().decode(output.data);
         else if (ArrayBuffer.isView(output.data))
-          chunk = new TextDecoder().decode((output.data as ArrayBufferView).buffer);
+          chunk = new TextDecoder().decode(output.data as ArrayBufferView);
       }
       buffer += chunk;
       const lines = buffer.split('\n');
@@ -136,7 +147,8 @@ export default function FalcoEvents() {
       console.error('Falco exec error:', msg);
     };
     try {
-      execResult = pod.exec('falco', handleData, {
+      const containerName = pod.spec?.containers?.[0]?.name || 'falco';
+      execResult = pod.exec(containerName, handleData, {
         command: ['tail', '-n', '+1', '-F', detectFalcoFileOutputPath(pod.jsonData)],
       });
     } catch (err: any) {
@@ -160,8 +172,17 @@ export default function FalcoEvents() {
         let data;
 
         if (settings.redisUrl) {
-          // For external URLs, use fetch
-          const resp = await fetch(`${settings.redisUrl.replace(/\/+$/, '')}/events?limit=300`);
+          // For external URLs, normalize and validate before issuing fetch.
+          let normalized: string;
+          try {
+            normalized = normalizeRedisUrl(settings.redisUrl);
+          } catch (err) {
+            if (!stopped) {
+              console.error('Invalid Redis URL in settings:', err);
+            }
+            return;
+          }
+          const resp = await fetch(`${normalized}/events?limit=300`);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           data = await resp.json();
         } else {
