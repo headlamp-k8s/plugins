@@ -85,7 +85,7 @@ export function normalizeRedisUrl(url: string): string {
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error(`Redis URL must use http or https scheme (got "${parsed.protocol}").`);
   }
-  // Reconstruct without trailing slash on the path.
+  // Reconstruct without trailing slash on the path, preserving any query/hash.
   const base = `${parsed.protocol}//${parsed.host}${parsed.pathname.replace(/\/+$/, '')}`;
-  return base + (parsed.search || '');
+  return base + (parsed.search || '') + (parsed.hash || '');
 }
