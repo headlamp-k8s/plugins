@@ -1,4 +1,3 @@
-import { vi } from 'vitest';
 import { FalcoEvent } from '../types/FalcoEvent';
 import {
   formatFalcoTime,

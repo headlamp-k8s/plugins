@@ -1,7 +1,7 @@
 import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
-import EventDetailDialog from './EventDetailDialog';
 import { FalcoEvent } from '../types/FalcoEvent';
+import EventDetailDialog from './EventDetailDialog';
 
 export default {
   title: 'falco/EventDetailDialog',

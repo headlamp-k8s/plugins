@@ -1,7 +1,7 @@
 import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
-import SeverityColumn from './SeverityColumn';
 import { FalcoEvent } from '../types/FalcoEvent';
+import SeverityColumn from './SeverityColumn';
 
 export default {
   title: 'falco/SeverityColumn',
