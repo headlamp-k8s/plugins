@@ -17,7 +17,7 @@ export interface FormattedMCPOutput {
   };
 }
 
-export interface MCPFormatterOptions {
+interface MCPFormatterOptions {
   maxTokens?: number;
   includeInsights?: boolean;
   includeActionableItems?: boolean;

@@ -1,12 +1,5 @@
 import YAML from 'yaml';
 
-export interface YamlExample {
-  title: string;
-  filename: string;
-  yaml: string;
-  resourceType: string;
-}
-
 // Function to validate and parse YAML to extract resource type and metadata
 export function parseKubernetesYAML(yamlStr: string): {
   isValid: boolean;

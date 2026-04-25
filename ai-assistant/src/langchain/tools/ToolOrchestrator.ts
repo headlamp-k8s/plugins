@@ -26,7 +26,7 @@ export interface RecommendedTool {
   reason: string;
 }
 
-export interface ToolRecommendation {
+interface ToolRecommendation {
   tools: RecommendedTool[];
   analysis: string;
   shouldExecuteAll: boolean;
