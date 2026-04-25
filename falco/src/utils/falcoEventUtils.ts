@@ -173,13 +173,101 @@ export function truncate(str: string, max = 60): string {
 }
 
 /**
- * Convert a plural kind to singular, lowercase form
+ * Convert a plural kind to singular, lowercase form (best-effort, for display only).
+ *
+ * Note: This naive function is unsafe for use as a routeName because many
+ * Kubernetes plurals don't follow the simple "drop trailing s" rule
+ * (e.g. `ingresses` → `ingresse`). Use {@link getRouteNameForKind} when you
+ * need a Headlamp routeName.
+ *
  * @param kind - The kind to convert
  * @returns Singular, lowercase kind name
  */
 export function singularizeKind(kind: string): string {
   if (kind.endsWith('s')) return kind.slice(0, -1).toLowerCase();
   return kind.toLowerCase();
+}
+
+/**
+ * Map of known Kubernetes resource kinds (singular or plural, case-insensitive)
+ * to the Headlamp routeName used by `Link`. Only entries listed here are
+ * considered safe to link to; unknown kinds should be rendered as plain text.
+ */
+const KIND_TO_ROUTE_NAME: Record<string, string> = {
+  pod: 'pod',
+  pods: 'pod',
+  node: 'node',
+  nodes: 'node',
+  namespace: 'namespace',
+  namespaces: 'namespace',
+  service: 'service',
+  services: 'service',
+  deployment: 'deployment',
+  deployments: 'deployment',
+  statefulset: 'statefulSet',
+  statefulsets: 'statefulSet',
+  daemonset: 'daemonSet',
+  daemonsets: 'daemonSet',
+  replicaset: 'replicaSet',
+  replicasets: 'replicaSet',
+  job: 'job',
+  jobs: 'job',
+  cronjob: 'cronJob',
+  cronjobs: 'cronJob',
+  configmap: 'configMap',
+  configmaps: 'configMap',
+  secret: 'secret',
+  secrets: 'secret',
+  ingress: 'ingress',
+  ingresses: 'ingress',
+  persistentvolume: 'persistentVolume',
+  persistentvolumes: 'persistentVolume',
+  persistentvolumeclaim: 'persistentVolumeClaim',
+  persistentvolumeclaims: 'persistentVolumeClaim',
+  serviceaccount: 'serviceAccount',
+  serviceaccounts: 'serviceAccount',
+  role: 'role',
+  roles: 'role',
+  rolebinding: 'roleBinding',
+  rolebindings: 'roleBinding',
+  clusterrole: 'clusterRole',
+  clusterroles: 'clusterRole',
+  clusterrolebinding: 'clusterRoleBinding',
+  clusterrolebindings: 'clusterRoleBinding',
+  networkpolicy: 'networkPolicy',
+  networkpolicies: 'networkPolicy',
+};
+
+/**
+ * Cluster-scoped resources (lowercase routeName) where Link should NOT be
+ * called with a `namespace` param.
+ */
+const CLUSTER_SCOPED_ROUTE_NAMES = new Set([
+  'namespace',
+  'node',
+  'persistentVolume',
+  'clusterRole',
+  'clusterRoleBinding',
+]);
+
+/**
+ * Returns the Headlamp routeName for a given Kubernetes kind, or `null` if
+ * the kind is unknown / unsafe to link to.
+ *
+ * @param kind - The kind from a Falco event (e.g. `Pod`, `pods`, `ingresses`).
+ * @returns The Headlamp routeName, or `null` when no safe mapping exists.
+ */
+export function getRouteNameForKind(kind: string): string | null {
+  if (!kind) return null;
+  return KIND_TO_ROUTE_NAME[kind.toLowerCase()] ?? null;
+}
+
+/**
+ * Returns true if the given Headlamp routeName refers to a cluster-scoped
+ * resource (and therefore should not receive a `namespace` param).
+ */
+export function isClusterScopedRoute(routeName: string): boolean {
+  return CLUSTER_SCOPED_ROUTE_NAMES.has(routeName);
 }
 
 /**

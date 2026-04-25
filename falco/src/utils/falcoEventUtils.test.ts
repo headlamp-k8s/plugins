@@ -4,8 +4,10 @@ import {
   getEventUser,
   getK8sSource,
   getNamespace,
+  getRouteNameForKind,
   getSeverityColor,
   getTagColor,
+  isClusterScopedRoute,
   isValidK8sName,
   singularizeKind,
   truncate,
@@ -275,5 +277,38 @@ describe('getTagColor', () => {
     const color1 = getTagColor('tag-alpha');
     const color2 = getTagColor('tag-beta');
     expect(color1).not.toBe(color2);
+  });
+});
+
+describe('getRouteNameForKind', () => {
+  it('should map common plural and singular forms to the correct route', () => {
+    expect(getRouteNameForKind('Pod')).toBe('pod');
+    expect(getRouteNameForKind('pods')).toBe('pod');
+    expect(getRouteNameForKind('namespaces')).toBe('namespace');
+    expect(getRouteNameForKind('namespace')).toBe('namespace');
+    expect(getRouteNameForKind('ingresses')).toBe('ingress');
+    expect(getRouteNameForKind('configmaps')).toBe('configMap');
+    expect(getRouteNameForKind('persistentvolumeclaims')).toBe('persistentVolumeClaim');
+    expect(getRouteNameForKind('CronJob')).toBe('cronJob');
+  });
+
+  it('should return null for unknown kinds', () => {
+    expect(getRouteNameForKind('foobar')).toBeNull();
+    expect(getRouteNameForKind('')).toBeNull();
+  });
+});
+
+describe('isClusterScopedRoute', () => {
+  it('should mark cluster-scoped routes as cluster-scoped', () => {
+    expect(isClusterScopedRoute('namespace')).toBe(true);
+    expect(isClusterScopedRoute('node')).toBe(true);
+    expect(isClusterScopedRoute('persistentVolume')).toBe(true);
+    expect(isClusterScopedRoute('clusterRole')).toBe(true);
+  });
+
+  it('should not mark namespaced routes as cluster-scoped', () => {
+    expect(isClusterScopedRoute('pod')).toBe(false);
+    expect(isClusterScopedRoute('configMap')).toBe(false);
+    expect(isClusterScopedRoute('ingress')).toBe(false);
   });
 });

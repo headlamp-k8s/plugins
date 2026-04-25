@@ -1,7 +1,12 @@
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import React from 'react';
 import { FalcoEvent } from '../types/FalcoEvent';
-import { getK8sSource, isValidK8sName, singularizeKind } from '../utils/falcoEventUtils';
+import {
+  getK8sSource,
+  getRouteNameForKind,
+  isClusterScopedRoute,
+  isValidK8sName,
+} from '../utils/falcoEventUtils';
 
 interface K8sSourceCellProps {
   event: FalcoEvent;
@@ -15,34 +20,14 @@ const K8sSourceCell: React.FC<K8sSourceCellProps> = ({ event }) => {
   const validKind = typeof kind === 'string' && !!kind && kind !== 'N/A';
   const validName = isValidK8sName(name);
   const validNs = isValidK8sName(namespace) || !namespace;
+  const routeName = validKind ? getRouteNameForKind(kind) : null;
 
-  if (validKind && validName && validNs) {
-    const singularKind = singularizeKind(kind);
-
-    if (kind.toLowerCase() === 'pod') {
-      return (
-        <Link
-          routeName="pod"
-          params={{ namespace, name }}
-          style={{ textDecoration: 'underline', color: '#1976d2', cursor: 'pointer' }}
-        >{`${kind}/${name}`}</Link>
-      );
-    }
-
-    if (kind.toLowerCase() === 'namespace' || kind.toLowerCase() === 'namespaces') {
-      return (
-        <Link
-          routeName="namespace"
-          params={{ name }}
-          style={{ textDecoration: 'underline', color: '#1976d2', cursor: 'pointer' }}
-        >{`${kind}/${name}`}</Link>
-      );
-    }
-
+  if (validKind && validName && validNs && routeName) {
+    const params = isClusterScopedRoute(routeName) ? { name } : { namespace, name };
     return (
       <Link
-        routeName={singularKind}
-        params={{ namespace, name }}
+        routeName={routeName}
+        params={params}
         style={{ textDecoration: 'underline', color: '#1976d2', cursor: 'pointer' }}
       >{`${kind}/${name}`}</Link>
     );
