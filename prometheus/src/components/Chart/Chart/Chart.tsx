@@ -149,7 +149,7 @@ export default function Chart(props: ChartProps) {
         (element, index) => {
           const mergedElement = { timestamp: element.timestamp };
           for (const plotName of Object.keys(fetchedMetrics)) {
-            mergedElement[plotName] = fetchedMetrics[plotName].data[index].y;
+            mergedElement[plotName] = fetchedMetrics[plotName].data[index]?.y ?? null;
           }
           return mergedElement;
         }
