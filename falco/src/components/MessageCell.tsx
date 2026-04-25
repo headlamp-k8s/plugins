@@ -46,8 +46,11 @@ const MessageCell: React.FC<MessageCellProps> = ({ message, fullText, onClick })
         component="div"
         role="button"
         tabIndex={0}
-        onKeyPress={e => {
+        onKeyDown={e => {
           if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === ' ') {
+              e.preventDefault();
+            }
             onClick();
           }
         }}
