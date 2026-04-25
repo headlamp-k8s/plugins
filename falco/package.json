@@ -13,6 +13,7 @@
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
+    "i18n": "headlamp-plugin i18n",
     "test": "headlamp-plugin test"
   },
   "keywords": [
@@ -35,7 +36,7 @@
     "typescript": "5.6.2"
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.11.4"
+    "@kinvolk/headlamp-plugin": "^0.13.1"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
