@@ -2,23 +2,27 @@
 
 import { PluginManager } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Link as MuiLink, Typography } from '@mui/material';
+import { Chip, Link as MuiLink, Typography } from '@mui/material';
 import { Box } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
+import semver from 'semver';
+import { fetchOrgPlugins, PluginPackage } from './List';
 
 interface Plugin {
   pluginName: string;
   pluginTitle: string;
   pluginVersion: string;
-  folderName: boolean;
+  folderName: string;
   repoName: string;
   author: string;
+  artifacthubVersion: string;
 }
 
 export interface PurePluginInstalledListProps {
   catalogPlugins: Plugin[] | null;
   nonCatalogPlugins: PluginInfo[] | null;
+  availableVersions: Record<string, string>;
   error: string | null;
 }
 
@@ -31,9 +35,19 @@ export type PluginInfo = {
   artifacthub?: boolean;
 };
 
+function hasUpdate(plugin: Plugin, availableVersions: Record<string, string>): string | null {
+  const availableVersion = availableVersions[plugin.folderName];
+  if (!availableVersion || !plugin.artifacthubVersion) return null;
+  if (semver.valid(availableVersion) && semver.valid(plugin.artifacthubVersion)) {
+    return semver.gt(availableVersion, plugin.artifacthubVersion) ? availableVersion : null;
+  }
+  return null;
+}
+
 export function PurePluginInstalledList({
   catalogPlugins,
   nonCatalogPlugins,
+  availableVersions,
   error,
 }: PurePluginInstalledListProps) {
   return (
@@ -78,7 +92,22 @@ export function PurePluginInstalledList({
                   },
                   {
                     label: 'Version',
-                    getter: plugin => plugin.pluginVersion,
+                    getter: plugin => {
+                      const newVersion = hasUpdate(plugin, availableVersions);
+                      return (
+                        <Box display="flex" alignItems="center" gap={1}>
+                          {plugin.pluginVersion}
+                          {newVersion && (
+                            <Chip
+                              label={`v${newVersion} available`}
+                              color="primary"
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                        </Box>
+                      );
+                    },
                   },
                   {
                     label: 'Repository',
@@ -141,8 +170,22 @@ export function PurePluginInstalledList({
   );
 }
 
+async function fetchAvailableVersions(): Promise<Record<string, string>> {
+  try {
+    const packages: PluginPackage[] = await fetchOrgPlugins('headlamp');
+    const versions: Record<string, string> = {};
+    for (const pkg of packages) {
+      versions[pkg.name] = pkg.version;
+    }
+    return versions;
+  } catch {
+    return {};
+  }
+}
+
 export function PluginInstalledList() {
   const [catalogPlugins, setCatalogPlugins] = useState<Plugin[] | null>(null);
+  const [availableVersions, setAvailableVersions] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const allInstalledPlugins = useSelector((state: any) => state.plugins.pluginSettings);
   const nonCatalogPlugins = useMemo(() => {
@@ -179,12 +222,14 @@ export function PluginInstalledList() {
     }
 
     fetchInstalledPlugins();
+    fetchAvailableVersions().then(setAvailableVersions);
   }, []);
 
   return (
     <PurePluginInstalledList
       catalogPlugins={catalogPlugins}
       nonCatalogPlugins={nonCatalogPlugins}
+      availableVersions={availableVersions}
       error={error}
     />
   );
