@@ -1,7 +1,7 @@
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import Pod from '@kinvolk/headlamp-plugin/lib/lib/k8s/pod';
 import { FalcoRule } from '../types/FalcoRule';
-import { FALCO_LABEL_SELECTOR } from '../utils/constants';
+import { FALCO_LABEL_SELECTOR, FALCO_NAMESPACE } from '../utils/constants';
 import {
   cleanYamlText,
   extractRulesFromYaml,
@@ -24,7 +24,7 @@ export class FalcoRulesService {
       ResourceClasses.Pod.apiList(
         (pods: Pod[]) => resolve(pods),
         (err: unknown) => reject(err),
-        { queryParams: { labelSelector: FALCO_LABEL_SELECTOR } }
+        { namespace: FALCO_NAMESPACE, queryParams: { labelSelector: FALCO_LABEL_SELECTOR } }
       )();
     });
   }
