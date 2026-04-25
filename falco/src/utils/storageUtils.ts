@@ -33,7 +33,7 @@ function isValidBackend(value: unknown): value is 'file' | 'redis' {
 export function loadSettings(): FalcoSettings {
   try {
     const rawData = localStorage.getItem(FALCO_SETTINGS_KEY);
-    if (!rawData) return defaultSettings;
+    if (!rawData) return { ...defaultSettings };
 
     const parsed = JSON.parse(rawData);
 
@@ -46,10 +46,10 @@ export function loadSettings(): FalcoSettings {
         redisUrl: typeof parsed.redisUrl === 'string' ? parsed.redisUrl : '',
       };
     }
-    return defaultSettings;
+    return { ...defaultSettings };
   } catch (error) {
     console.error('Error loading settings:', error);
-    return defaultSettings;
+    return { ...defaultSettings };
   }
 }
 
