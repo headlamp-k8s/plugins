@@ -60,3 +60,32 @@ export function loadSettings(): FalcoSettings {
 export function saveSettings(settings: FalcoSettings): void {
   localStorage.setItem(FALCO_SETTINGS_KEY, JSON.stringify(settings));
 }
+
+/**
+ * Normalizes a user-provided Redis REST proxy URL.
+ *
+ * Validates that the URL is parseable and uses an http(s) scheme, and strips
+ * any trailing slashes from the path. Throws an Error with a clear message if
+ * the URL is invalid so callers can display it to the user.
+ *
+ * @param url The raw URL string from user input.
+ * @returns The normalized URL (no trailing slash).
+ */
+export function normalizeRedisUrl(url: string): string {
+  const trimmed = (url || '').trim();
+  if (!trimmed) {
+    throw new Error('Redis URL is empty.');
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error(`Invalid Redis URL: ${trimmed}`);
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`Redis URL must use http or https scheme (got "${parsed.protocol}").`);
+  }
+  // Reconstruct without trailing slash on the path.
+  const base = `${parsed.protocol}//${parsed.host}${parsed.pathname.replace(/\/+$/, '')}`;
+  return base + (parsed.search || '');
+}

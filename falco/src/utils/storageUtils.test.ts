@@ -1,4 +1,10 @@
-import { defaultSettings, FalcoSettings, loadSettings, saveSettings } from './storageUtils';
+import {
+  defaultSettings,
+  FalcoSettings,
+  loadSettings,
+  normalizeRedisUrl,
+  saveSettings,
+} from './storageUtils';
 
 describe('loadSettings', () => {
   beforeEach(() => {
@@ -67,5 +73,41 @@ describe('saveSettings', () => {
     const stored = JSON.parse(localStorage.getItem('falco_event_storage_settings') || '');
     expect(stored.backend).toBe('redis');
     expect(stored.redisUrl).toBe('http://new-url.com');
+  });
+});
+
+describe('normalizeRedisUrl', () => {
+  it('should accept http URLs', () => {
+    expect(normalizeRedisUrl('http://example.com:8080')).toBe('http://example.com:8080');
+  });
+
+  it('should accept https URLs', () => {
+    expect(normalizeRedisUrl('https://example.com')).toBe('https://example.com');
+  });
+
+  it('should strip trailing slashes from the path', () => {
+    expect(normalizeRedisUrl('http://example.com/')).toBe('http://example.com');
+    expect(normalizeRedisUrl('http://example.com:8080/api///')).toBe(
+      'http://example.com:8080/api'
+    );
+  });
+
+  it('should trim surrounding whitespace', () => {
+    expect(normalizeRedisUrl('  http://example.com  ')).toBe('http://example.com');
+  });
+
+  it('should throw on empty input', () => {
+    expect(() => normalizeRedisUrl('')).toThrow();
+    expect(() => normalizeRedisUrl('   ')).toThrow();
+  });
+
+  it('should throw on malformed URL', () => {
+    expect(() => normalizeRedisUrl('not a url')).toThrow();
+  });
+
+  it('should reject non-http(s) schemes', () => {
+    expect(() => normalizeRedisUrl('ftp://example.com')).toThrow();
+    expect(() => normalizeRedisUrl('javascript:alert(1)')).toThrow();
+    expect(() => normalizeRedisUrl('file:///etc/passwd')).toThrow();
   });
 });

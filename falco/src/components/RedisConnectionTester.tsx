@@ -3,9 +3,8 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import React, { useState } from 'react';
-
-// Constants
-const FALCO_NAMESPACE = 'falco';
+import { FALCO_NAMESPACE } from '../utils/constants';
+import { normalizeRedisUrl } from '../utils/storageUtils';
 
 /**
  * Props for the RedisConnectionTester component.
@@ -28,8 +27,16 @@ const RedisConnectionTester: React.FC<RedisConnectionTesterProps> = ({ redisUrl 
     try {
       let text: string;
       if (redisUrl) {
-        // For custom URLs, use fetch
-        const resp = await window.fetch(redisUrl.replace(/\/+$/, '') + '/ping');
+        // For custom URLs, normalize and validate before issuing fetch.
+        let normalized: string;
+        try {
+          normalized = normalizeRedisUrl(redisUrl);
+        } catch (err: any) {
+          setTestStatus('error');
+          setTestMessage(err?.message || String(err));
+          return;
+        }
+        const resp = await window.fetch(normalized + '/ping');
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         text = await resp.text();
       } else {
