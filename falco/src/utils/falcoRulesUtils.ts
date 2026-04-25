@@ -18,23 +18,11 @@ export function getRulesFilesFromConfig(configYaml: string): string[] {
     const files =
       config?.rules_file || config?.rules_files || config?.rulesfile || config?.rulesfiles;
     if (files) {
-      console.log(
-        '[FalcoRules Debug] rules file key found:',
-        config.rules_file
-          ? 'rules_file'
-          : config.rules_files
-          ? 'rules_files'
-          : config.rulesfile
-          ? 'rulesfile'
-          : config.rulesfiles
-          ? 'rulesfiles'
-          : 'unknown'
-      );
       if (Array.isArray(files)) return files;
       if (typeof files === 'string') return [files];
     }
   } catch (err) {
-    console.error('[FalcoRules Debug] YAML parse error in getRulesFilesFromConfig:', err);
+    console.debug('[FalcoRules] YAML parse error in getRulesFilesFromConfig:', err);
   }
   return [];
 }

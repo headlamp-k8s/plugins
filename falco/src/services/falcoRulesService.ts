@@ -61,10 +61,6 @@ export class FalcoRulesService {
 
       const parsedRules = extractRulesFromYaml(cleanRulesYaml, `${pod.metadata?.name}:${ruleFile}`);
 
-      console.log(
-        `[FalcoRules Debug] Loaded ${parsedRules.length} rules from ${ruleFile} in pod ${pod.metadata?.name}`
-      );
-
       return parsedRules;
     } catch (err) {
       console.warn(`Failed to read rules from file ${ruleFile} in pod ${pod.metadata?.name}:`, err);
@@ -93,7 +89,6 @@ export class FalcoRulesService {
       }
     }
 
-    console.log(`[FalcoRules Debug] Total rules loaded: ${allRules.length}`);
     return allRules;
   }
 }
