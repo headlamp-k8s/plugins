@@ -29,7 +29,7 @@ const K8sSourceCell: React.FC<K8sSourceCellProps> = ({ event }) => {
       );
     }
 
-    if (kind.toLowerCase() === 'namespace') {
+    if (kind.toLowerCase() === 'namespace' || kind.toLowerCase() === 'namespaces') {
       return (
         <Link
           routeName="namespace"
