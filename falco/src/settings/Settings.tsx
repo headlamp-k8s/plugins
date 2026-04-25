@@ -87,7 +87,7 @@ export default function Settings() {
               margin="normal"
               helperText="Leave blank to use in-cluster proxy /api/v1/namespaces/falco/services/redis-rest-proxy:8080/proxy"
             />
-            <RedisConnectionTester redisUrl={settings.redisUrl} />
+            <RedisConnectionTester redisUrl={pendingSettings.redisUrl} />
           </Box>
         )}
       </Paper>
