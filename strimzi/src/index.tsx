@@ -8,6 +8,8 @@ import { KafkaUserDetail } from './components/users/Detail';
 import { KafkaUserList } from './components/KafkaUserList';
 import { KafkaConnectDetail } from './components/connects/Detail';
 import { KafkaConnectList } from './components/KafkaConnectList';
+import { KafkaConnectorDetail } from './components/connectors/Detail';
+import { KafkaConnectorList } from './components/KafkaConnectorList';
 
 // List routes
 registerRoute({
@@ -42,6 +44,14 @@ registerRoute({
   component: () => React.createElement(KafkaConnectList),
 });
 
+registerRoute({
+  path: '/strimzi/connectors',
+  sidebar: 'connectors',
+  name: 'Kafka Connectors',
+  exact: true,
+  component: () => React.createElement(KafkaConnectorList),
+});
+
 // Detail routes (used by ResourceListView name link and direct navigation)
 registerRoute({
   path: '/strimzi/kafkas/:namespace/:name',
@@ -73,6 +83,14 @@ registerRoute({
   name: 'Kafka Connect Cluster',
   exact: true,
   component: () => React.createElement(KafkaConnectDetail),
+});
+
+registerRoute({
+  path: '/strimzi/connectors/:namespace/:name',
+  sidebar: 'connectors',
+  name: 'Kafka Connector',
+  exact: true,
+  component: () => React.createElement(KafkaConnectorDetail),
 });
 
 // Register sidebar entries
@@ -110,4 +128,11 @@ registerSidebarEntry({
   name: 'connects',
   label: 'Kafka Connect',
   url: '/strimzi/connects',
+});
+
+registerSidebarEntry({
+  parent: 'strimzi',
+  name: 'connectors',
+  label: 'Kafka Connectors',
+  url: '/strimzi/connectors',
 });

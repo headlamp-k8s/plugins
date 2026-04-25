@@ -14,3 +14,10 @@ export {
   type KafkaConnectSpec,
   type KafkaConnectStatus,
 } from './kafkaConnect';
+export {
+  KafkaConnector,
+  type KafkaConnectorInterface,
+  type KafkaConnectorSpec,
+  type KafkaConnectorState,
+  type KafkaConnectorStatus,
+} from './kafkaConnector';
