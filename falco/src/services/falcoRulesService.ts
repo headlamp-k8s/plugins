@@ -78,17 +78,16 @@ export class FalcoRulesService {
       throw new Error('No Falco pods found in the cluster.');
     }
 
-    const allRules: FalcoRule[] = [];
+    const rulesByPod = await Promise.all(
+      pods.map(async pod => {
+        const rulesFiles = await this.getFalcoConfig(pod);
+        const rulesByFile = await Promise.all(
+          rulesFiles.map(ruleFile => this.getRulesFromFile(pod, ruleFile))
+        );
+        return rulesByFile.flat();
+      })
+    );
 
-    for (const pod of pods) {
-      const rulesFiles = await this.getFalcoConfig(pod);
-
-      for (const ruleFile of rulesFiles) {
-        const rules = await this.getRulesFromFile(pod, ruleFile);
-        allRules.push(...rules);
-      }
-    }
-
-    return allRules;
+    return rulesByPod.flat();
   }
 }
