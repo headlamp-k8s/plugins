@@ -5,7 +5,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import RedisConnectionTester from '../components/RedisConnectionTester';
 import { FalcoSettings, loadSettings, saveSettings } from '../utils/storageUtils';
 
@@ -17,6 +17,18 @@ export default function Settings() {
   const [settings, setSettings] = useState<FalcoSettings>(loadSettings());
   const [pendingSettings, setPendingSettings] = useState<FalcoSettings>(loadSettings());
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success'>('idle');
+  const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Make sure we don't leave a pending setTimeout running when the component
+  // unmounts (which would otherwise call setSaveStatus on an unmounted tree).
+  useEffect(() => {
+    return () => {
+      if (saveStatusTimerRef.current !== null) {
+        clearTimeout(saveStatusTimerRef.current);
+        saveStatusTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleBackendChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const backend = e.target.value as 'file' | 'redis';
@@ -33,8 +45,14 @@ export default function Settings() {
     saveSettings(pendingSettings);
     // Show success feedback
     setSaveStatus('success');
-    // Reset status after 3 seconds
-    setTimeout(() => setSaveStatus('idle'), 3000);
+    // Clear any previously scheduled reset before scheduling a new one.
+    if (saveStatusTimerRef.current !== null) {
+      clearTimeout(saveStatusTimerRef.current);
+    }
+    saveStatusTimerRef.current = setTimeout(() => {
+      setSaveStatus('idle');
+      saveStatusTimerRef.current = null;
+    }, 3000);
   };
 
   const isSettingsChanged = JSON.stringify(settings) !== JSON.stringify(pendingSettings);
