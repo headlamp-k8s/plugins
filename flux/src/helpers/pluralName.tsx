@@ -10,9 +10,9 @@ const consonants = 'bcdfghjklmnpqrstvwxyz';
 
 // Name returns the plural form of the type's name.
 export function PluralName(kind: string): string {
-  const singular = kind.toLowerCase();
-  const lastChar = singular.substring(singular.length - 1, singular.length);
-  const beforeLastChar = singular.substring(singular.length - 2, singular.length - 1);
+  const singular = kind?.toLowerCase();
+  const lastChar = singular?.substring(singular.length - 1, singular.length);
+  const beforeLastChar = singular?.substring(singular.length - 2, singular.length - 1);
 
   switch (lastChar) {
     case 's':

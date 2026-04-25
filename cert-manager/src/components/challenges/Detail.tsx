@@ -51,7 +51,12 @@ export function ChallengeDetail() {
               },
               {
                 name: 'Solver',
-                value: <ACMEChallengeSolverComponent solver={item.spec.solver} />,
+                value: (
+                  <ACMEChallengeSolverComponent
+                    solver={item.spec.solver}
+                    namespace={item.metadata.namespace}
+                  />
+                ),
               },
               {
                 name: 'Token',

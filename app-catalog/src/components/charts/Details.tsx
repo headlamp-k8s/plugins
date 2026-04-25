@@ -1,4 +1,4 @@
-import { Router } from '@kinvolk/headlamp-plugin/lib';
+import { Router, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Loader,
   NameValueTable,
@@ -11,26 +11,48 @@ import ReactMarkdown from 'react-markdown';
 import { useParams } from 'react-router';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import remarkGfm from 'remark-gfm';
+import { getCatalogConfig } from '../../api/catalogConfig';
 import { fetchChartDetailFromArtifact } from '../../api/charts';
 import { EditorDialog } from './EditorDialog';
 
 const { createRouteURL } = Router;
-export default function ChartDetails() {
+type ChartDetailsProps = {
+  vanillaHelmRepo: string;
+};
+
+/**
+ * Displays the details of a chart, including its name, description, maintainers, and readme.
+ * The component fetches the chart details from the Artifact repository based on the provided chart name and repository name.
+ * It also provides an option to install the chart.
+ *
+ * @param  props.vanillaHelmRepo - The vanilla Helm repository.
+ * @returns The chart details component.
+ */
+export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
+  const { t } = useTranslation();
   const { chartName, repoName } = useParams<{ chartName: string; repoName: string }>();
   const [chart, setChart] = useState<{
     name: string;
     description: string;
-    logo_image_id: string;
+    logo_image_id?: string; // optional just in case
     readme: string;
     app_version: string;
     maintainers: Array<{ name: string; email: string }>;
     home_url: string;
     package_id: string;
     version: string;
+    icon?: string; // used when VANILLA_HELM_REPO
   } | null>(null);
   const [openEditor, setOpenEditor] = useState(false);
+  const chartCfg = getCatalogConfig();
 
   useEffect(() => {
+    // Note: This path is not enabled for vanilla helm repo. Please check the following comment in charts/List.tsx
+    // TODO: The app-catalog using artifacthub.io loads the details about the chart with an option to install the chart
+    //
+    // An API to get details about a particular chart is required to achieve this. For example, take a look at the response
+    // from https://artifacthub.io/api/v1/packages/helm/grafana/grafana
+    // Easiest thing is to fetch index.yaml, get the details for chartName and fill the details
     fetchChartDetailFromArtifact(chartName, repoName).then(response => {
       setChart(response);
     });
@@ -44,6 +66,7 @@ export default function ChartDetails() {
         handleEditor={open => {
           setOpenEditor(open);
         }}
+        chartProfile={vanillaHelmRepo}
       />
       <SectionBox
         title={
@@ -63,7 +86,7 @@ export default function ChartDetails() {
                   setOpenEditor(true);
                 }}
               >
-                Install
+                {t('Install')}
               </Button>,
             ]}
           />
@@ -76,17 +99,26 @@ export default function ChartDetails() {
           <NameValueTable
             rows={[
               {
-                name: 'Name',
+                name: t('Name'),
                 value: (
                   <Box display="flex" alignItems="center">
                     {chart.logo_image_id && (
                       <Box mr={1}>
-                        <img
-                          src={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                          width="25"
-                          height="25"
-                          alt={chart.name}
-                        />
+                        {chartCfg.chartProfile === vanillaHelmRepo ? (
+                          <img
+                            src={`${chart?.icon || ''}`}
+                            width="25"
+                            height="25"
+                            alt={chart.name}
+                          />
+                        ) : (
+                          <img
+                            src={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                            width="25"
+                            height="25"
+                            alt={chart.name}
+                          />
+                        )}
                       </Box>
                     )}
                     <Box>{chart.name}</Box>
@@ -94,7 +126,7 @@ export default function ChartDetails() {
                 ),
               },
               {
-                name: 'Description',
+                name: t('Description'),
                 value: (
                   <Box overflow="auto" width="80%">
                     {chart.description}
@@ -102,15 +134,15 @@ export default function ChartDetails() {
                 ),
               },
               {
-                name: 'App Version',
+                name: t('App Version'),
                 value: chart.app_version,
               },
               {
-                name: 'Repository',
+                name: t('Repository'),
                 value: repoName,
               },
               {
-                name: 'Maintainers',
+                name: t('Maintainers'),
                 value: chart?.maintainers?.map(maintainer => (
                   <Box display="flex" alignItems="center" mt={1}>
                     <Box mr={1}>{maintainer.name}</Box>
@@ -119,7 +151,7 @@ export default function ChartDetails() {
                 )),
               },
               {
-                name: 'URL',
+                name: t('URL'),
                 value: (
                   <Link href={chart.home_url} target="_blank">
                     {chart.home_url}
@@ -130,21 +162,18 @@ export default function ChartDetails() {
           />
         )}
       </SectionBox>
-      <SectionBox title="Readme">
+      <SectionBox title={t('Readme')}>
         {!chart ? (
           <Loader title="" />
         ) : (
           <ReactMarkdown
-            style={{
-              padding: '1rem',
-            }}
             remarkPlugins={[remarkGfm]}
             children={chart.readme}
             components={{
-              a: props => {
-                return <Link {...props} target="_blank" />;
-              },
-              table: props => {
+              // eslint-disable-next-line no-unused-vars
+              a: ({ node, ref, ...props }) => <Link {...props} target="_blank" />,
+              // eslint-disable-next-line no-unused-vars
+              table: ({ node, ref, ...props }: any) => {
                 return (
                   <Table
                     {...props}
@@ -155,31 +184,27 @@ export default function ChartDetails() {
                   />
                 );
               },
-              thead: props => {
-                return <TableHead {...props} />;
-              },
-              tr: props => {
-                return <TableRow {...props} />;
-              },
-              td: props => {
+              // eslint-disable-next-line no-unused-vars
+              thead: ({ node, ref, ...props }: any) => <TableHead {...props} />,
+              // eslint-disable-next-line no-unused-vars
+              tr: ({ node, ref, ...props }: any) => <TableRow {...props} />,
+              // eslint-disable-next-line no-unused-vars
+              td: ({ node, ref, ...props }: any) => {
                 return <TableCell {...props} style={{ textAlign: 'center', overflow: 'hidden' }} />;
               },
-              // eslint-disable-next-line
-              pre: ({ inline, className, children, ...props }) => {
+              pre: ({ className, children, ...props }) => {
                 return (
-                  !inline && (
-                    <pre {...props} className={className}>
-                      <Box display="block" width="64vw" my={0.5}>
-                        {children}
-                      </Box>
-                    </pre>
-                  )
+                  <pre {...props} className={className}>
+                    <Box display="block" width="64vw" my={0.5}>
+                      {children}
+                    </Box>
+                  </pre>
                 );
               },
               // eslint-disable-next-line
-              code({ node, inline, className, children, ...props }) {
+              code({ node, className, children, ...props }) {
                 const match = /language-(\w+)/.exec(className || '');
-                return !inline && match ? (
+                return match ? (
                   <SyntaxHighlighter
                     children={String(children).replace(/\n$/, '')}
                     language={match[1]}

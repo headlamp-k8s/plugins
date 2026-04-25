@@ -123,7 +123,9 @@ export class Certificate extends KubeObject<CertManagerCertificate> {
   static isNamespaced = true;
 
   get ready() {
-    return this.status.conditions.find(condition => condition.type === 'Ready')?.status === 'True';
+    return (
+      this.status?.conditions?.find(condition => condition.type === 'Ready')?.status === 'True'
+    );
   }
 
   // Note: This workaround is needed to make the plugin compatible with older versions of Headlamp

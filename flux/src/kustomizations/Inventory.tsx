@@ -1,22 +1,28 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import type { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import React from 'react';
 import Table from '../common/Table';
 import { PluralName } from '../helpers/pluralName';
 
 function parseID(id: string) {
-  /* ID is the string representation of the Kubernetes resource object's
-    metadata,
-    in the format '<namespace>_<name>_<group>_<kind>'.
-    */
-  const parsedID = id.split('_');
-  const namespace = parsedID[0] === '' ? undefined : parsedID[0];
-  const name = parsedID[1];
-  const group = parsedID[2];
-  const kind = parsedID[3];
-  return { name, namespace, group, kind };
+  const parts = id.split('_');
+  const isClusterScoped = id.startsWith('_');
+  if (isClusterScoped) {
+    return {
+      namespace: undefined,
+      group: parts[1],
+      kind: parts[2],
+      name: parts[3],
+    };
+  }
+  return {
+    namespace: parts[0],
+    name: parts[1],
+    group: parts[2],
+    kind: parts[3],
+  };
 }
 
 export function GetResourcesFromInventory(
@@ -34,11 +40,15 @@ export function GetResourcesFromInventory(
       const parsedID = parseID(item.id);
       const { name, namespace, group, kind } = parsedID;
 
+      // @todo: this use of makeCustomResourceClass is deprecated
+      // "Use the version of the function that receives an object as its argument."
       const resourceClass = makeCustomResourceClass({
         apiInfo: [{ group: group, version: item.v }],
         isNamespaced: !!namespace,
         singularName: kind,
         pluralName: PluralName(kind),
+        kind: kind,
+        customResourceDefinition: undefined as any,
       });
 
       resourceClass.apiGet(
@@ -74,7 +84,8 @@ export function GetResourcesFromInventory(
         },
         {
           header: 'Namespace',
-          accessorKey: 'metadata.namespace',
+          accessorFn: item => item.metadata?.namespace ?? '',
+          id: 'namespace',
           Cell: ({ row: { original: item } }) =>
             item.metadata.namespace ? (
               <Link
@@ -124,17 +135,22 @@ function inventoryNameLink(item: KubeObject) {
   }
 
   const kind = item.kind;
+  const itemJsonData: KubeObjectInterface = item.jsonData;
   // remove version from apiVersion to get the groupName
-  const apiVersion = item.jsonData.apiVersion;
+  const apiVersion = itemJsonData.apiVersion;
   const slashIndex = apiVersion.lastIndexOf('/');
   const groupName = slashIndex > 0 ? apiVersion.substring(0, slashIndex) : apiVersion;
   const pluralName = PluralName(kind);
 
   // Flux types
-  if (groupName.endsWith('toolkit.fluxcd.io')) {
+  const allowedDomain = 'toolkit.fluxcd.io';
+  if (groupName === allowedDomain || groupName.endsWith(`.${allowedDomain}`)) {
+    const routeName =
+      groupName === allowedDomain ? 'toolkit' : groupName.substring(0, groupName.indexOf('.'));
+
     return (
       <Link
-        routeName={groupName.substr(0, groupName.indexOf('.'))}
+        routeName={routeName}
         params={{
           pluralName: pluralName,
           name: item.metadata.name,
@@ -146,7 +162,21 @@ function inventoryNameLink(item: KubeObject) {
     );
   }
 
-  // standard k8s types
+  // CRD
+  if (kind === 'CustomResourceDefinition') {
+    return (
+      <Link
+        routeName="crd"
+        params={{
+          name: item.metadata.name,
+        }}
+      >
+        {item.metadata.name}
+      </Link>
+    );
+  }
+
+  // Standard k8s types
   const resourceKind = K8s.ResourceClasses[kind];
   if (resourceKind) {
     const resource = new resourceKind(item);

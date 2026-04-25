@@ -1,9 +1,11 @@
 import { Icon } from '@iconify/react';
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   LabelListItem,
   Link,
   NameValueTable,
+  NameValueTableRow,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
@@ -25,11 +27,15 @@ interface CopyToClipboardProps {
 
 export function CopyToClipboard({ text, maxDisplayLength = 30 }: CopyToClipboardProps) {
   const [showError, setShowError] = useState(false);
+  const displayText =
+    text.length > maxDisplayLength ? `${text.substring(0, maxDisplayLength)}...` : text;
 
   return (
     <>
       <div>
-        <Tooltip title={text}>{text.substring(0, maxDisplayLength)}...</Tooltip>
+        <Tooltip title={text}>
+          <span>{displayText}</span>
+        </Tooltip>
         <IconButton
           onClick={async () => {
             try {
@@ -136,15 +142,25 @@ export function ConditionsTable({ conditions }: ConditionsTableProps) {
 
 interface SecretKeySelectorProps {
   selector: SecretKeySelector;
+  namespace?: string;
 }
 
-export function SecretKeySelectorComponent({ selector }: SecretKeySelectorProps) {
+export function SecretKeySelectorComponent({ selector, namespace }: SecretKeySelectorProps) {
   return (
     <NameValueTable
       rows={[
         {
           name: 'Name',
-          value: selector.name,
+          value: namespace ? (
+            <Link
+              routeName={K8s.ResourceClasses.Secret.kind}
+              params={{ name: selector.name, namespace }}
+            >
+              {selector.name}
+            </Link>
+          ) : (
+            selector.name
+          ),
         },
         {
           name: 'Key',
@@ -157,9 +173,66 @@ export function SecretKeySelectorComponent({ selector }: SecretKeySelectorProps)
 
 interface ACMEChallengeSolverProps {
   solver: ACMEChallengeSolver;
+  namespace?: string;
 }
 
-export function ACMEChallengeSolverComponent({ solver }: ACMEChallengeSolverProps) {
+export function ACMEChallengeSolverComponent({ solver, namespace }: ACMEChallengeSolverProps) {
+  const cloudflareGetter = (item: any) => {
+    const thisItem = item?.cloudflare;
+
+    if (!thisItem) {
+      return '-';
+    }
+
+    const rows: NameValueTableRow[] = [];
+
+    if (thisItem.email) {
+      rows.push({
+        name: 'Email',
+        value: thisItem.email,
+      });
+    }
+
+    if (thisItem.apiKeySecretRef) {
+      rows.push({
+        name: 'API Key Secret',
+        value: (
+          <SecretKeySelectorComponent selector={thisItem.apiKeySecretRef} namespace={namespace} />
+        ),
+      });
+    }
+
+    if (thisItem.apiTokenSecretRef) {
+      rows.push({
+        name: 'API Token Secret',
+        value: (
+          <SecretKeySelectorComponent selector={thisItem.apiTokenSecretRef} namespace={namespace} />
+        ),
+      });
+    }
+
+    if (rows.length === 0) {
+      return '-';
+    }
+    return <NameValueTable rows={rows} />;
+  };
+
+  const getItemGetter = (key: string) => {
+    if (key === 'cloudflare') {
+      return cloudflareGetter;
+    }
+
+    return (item: any) => {
+      const thisItem = item[key];
+
+      if (thisItem === null || thisItem === undefined) {
+        return '';
+      }
+
+      return thisItem.toString();
+    };
+  };
+
   if (solver.http01) {
     const { podTemplate, ...otherIngressFields } = solver.http01.ingress || {};
     const data = {
@@ -174,7 +247,7 @@ export function ACMEChallengeSolverComponent({ solver }: ACMEChallengeSolverProp
       <SimpleTable
         columns={Object.keys(data).map(key => ({
           label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), // Add spaces before capitals
-          getter: (item: any) => item[key]?.toString(),
+          getter: getItemGetter(key),
         }))}
         data={[data]}
       />
@@ -186,7 +259,7 @@ export function ACMEChallengeSolverComponent({ solver }: ACMEChallengeSolverProp
       <SimpleTable
         columns={Object.keys(solver.dns01).map(key => ({
           label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), // Add spaces before capitals
-          getter: (item: any) => item[key]?.toString(),
+          getter: getItemGetter(key),
         }))}
         data={[solver.dns01]}
       />

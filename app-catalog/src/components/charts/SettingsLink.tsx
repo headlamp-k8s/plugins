@@ -1,11 +1,13 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link as RouterLink } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Typography, useTheme } from '@mui/material';
 
 export function SettingsLink() {
+  const { t } = useTranslation();
   const theme = useTheme();
 
   return (
-    <RouterLink routeName="/settings/plugins/app-catalog" tooltip="App-Catalog Settings">
+    <RouterLink routeName="/settings/plugins/app-catalog" tooltip={t('App-Catalog Settings')}>
       <Typography
         sx={{
           size: '1rem',
@@ -13,7 +15,7 @@ export function SettingsLink() {
           color: theme.palette.text.primary,
         }}
       >
-        Settings
+        {t('Settings')}
       </Typography>
     </RouterLink>
   );

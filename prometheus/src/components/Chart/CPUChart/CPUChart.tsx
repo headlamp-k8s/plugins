@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { alpha, useTheme } from '@mui/material';
 import { blue } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
@@ -23,6 +24,7 @@ interface CPUChartProps {
 }
 
 export function CPUChart(props: CPUChartProps) {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
@@ -56,7 +58,7 @@ export function CPUChart(props: CPUChartProps) {
       plots={[
         {
           query: props.query,
-          name: 'cpu (cores)',
+          name: t('cpu (cores)'),
           strokeColor: alpha(blue[400], 0.8),
           fillColor: alpha(blue[400], 0.1),
           dataProcessor: dataProcessor,

@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/plugin-catalog",
-  "version": "0.3.1",
+  "version": "0.4.3",
   "description": "A catalog for Headlamp plugins",
   "scripts": {
     "start": "headlamp-plugin start",
@@ -12,7 +12,8 @@
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
     "test": "headlamp-plugin test",
-    "package": "headlamp-plugin package"
+    "package": "headlamp-plugin package",
+    "i18n": "headlamp-plugin i18n"
   },
   "keywords": [
     "headlamp",
@@ -31,8 +32,7 @@
     ]
   },
   "devDependencies": {
-    "@headlamp-k8s/eslint-config": "^0.7.0",
-    "@kinvolk/headlamp-plugin": "^0.11.0"
+    "@kinvolk/headlamp-plugin": "^0.13.0"
   },
   "dependencies": {
     "markdown-to-jsx": "^7.4.7"

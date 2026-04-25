@@ -1,5 +1,9 @@
+import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { Button } from '@mui/material';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import ListSubheader from '@mui/material/ListSubheader';
 import MenuItem from '@mui/material/MenuItem';
@@ -46,9 +50,13 @@ interface SettingsProps {
  * Settings component for configuring Prometheus metrics.
  */
 export function Settings(props: SettingsProps) {
+  const { t } = useTranslation();
   const { data, onDataChange } = props;
   const [selectedCluster, setSelectedCluster] = useState('');
   const [addressError, setAddressError] = useState(false);
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
+  const request = ApiProxy.request;
 
   const clusters = useClustersConf() || {};
 
@@ -80,14 +88,52 @@ export function Settings(props: SettingsProps) {
   useEffect(() => {
     if (selectedClusterData.address) {
       setAddressError(!isValidAddress(selectedClusterData.address));
+      setTestStatus('idle');
+      setTestMessage('');
     } else {
       setAddressError(false);
     }
   }, [selectedClusterData.address]);
 
+  const handleTestConnection = async () => {
+    if (!selectedClusterData.address || !isValidAddress(selectedClusterData.address)) {
+      setAddressError(true);
+      setTestMessage(t('Invalid Address Format'));
+      setTestStatus('error');
+      return;
+    }
+
+    setTestStatus('testing');
+    setTestMessage(t('Testing Connection'));
+
+    try {
+      const [namespace, serviceAndPort] = selectedClusterData.address.split('/');
+      const [service, port] = serviceAndPort.split(':');
+
+      let subPath = selectedClusterData.subPath || '';
+      if (subPath && !subPath.startsWith('/')) {
+        subPath = '/' + subPath;
+      }
+
+      const proxyUrl = `/clusters/${selectedCluster}/api/v1/namespaces/${namespace}/services/${service}:${port}/proxy${subPath}/-/healthy`;
+      await request(proxyUrl, {
+        method: 'GET',
+        isJSON: false,
+      });
+
+      setTestStatus('success');
+      setTestMessage(t('Connection successful!'));
+    } catch (err) {
+      setTestStatus('error');
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setTestMessage(t('Connection failed: {{ errorMessage }}', { errorMessage }));
+      console.error(err);
+    }
+  };
+
   const settingsRows = [
     {
-      name: 'Enable Metrics',
+      name: t('Enable Metrics'),
       value: (
         <Switch
           checked={isMetricsEnabled}
@@ -106,7 +152,7 @@ export function Settings(props: SettingsProps) {
       ),
     },
     {
-      name: 'Auto detect',
+      name: t('Auto detect'),
       value: (
         <Switch
           disabled={!isMetricsEnabled}
@@ -124,38 +170,67 @@ export function Settings(props: SettingsProps) {
       ),
     },
     {
-      name: 'Prometheus Service Address',
+      name: t('Prometheus Service Address'),
       value: (
-        <TextField
-          disabled={!isAddressFieldEnabled}
-          helperText={
-            addressError
-              ? 'Invalid format. Use: namespace/service-name:port'
-              : 'Address of the Prometheus Service, only used when auto-detection is disabled. Format: namespace/service-name:port'
-          }
-          error={addressError}
-          value={selectedClusterData.address || ''}
-          onChange={e => {
-            const newAddress = e.target.value;
-            onDataChange({
-              ...(data || {}),
-              [selectedCluster]: {
-                ...((data || {})[selectedCluster] || {}),
-                address: newAddress,
-              },
-            });
-            setAddressError(!isValidAddress(newAddress));
-          }}
-        />
+        <Box display="flex" flexDirection="column" width="100%">
+          <Box display="flex" gap={2} alignItems="flex-start">
+            <TextField
+              disabled={!isAddressFieldEnabled}
+              helperText={
+                addressError
+                  ? t('Invalid format. Use: namespace/service-name:port')
+                  : t(
+                      'Address of the Prometheus Service, only used when auto-detection is disabled. Format: namespace/service-name:port'
+                    )
+              }
+              error={addressError}
+              value={selectedClusterData.address || ''}
+              onChange={e => {
+                const newAddress = e.target.value;
+                onDataChange({
+                  ...(data || {}),
+                  [selectedCluster]: {
+                    ...((data || {})[selectedCluster] || {}),
+                    address: newAddress,
+                  },
+                });
+                setAddressError(!isValidAddress(newAddress));
+              }}
+            />
+            <Button
+              variant="contained"
+              disabled={
+                !isAddressFieldEnabled ||
+                addressError ||
+                !selectedClusterData.address ||
+                testStatus === 'testing'
+              }
+              onClick={handleTestConnection}
+              sx={{ mt: 1, minWidth: '100px' }}
+            >
+              {t('Test Connection')}
+            </Button>
+          </Box>
+          {testStatus !== 'idle' && testMessage && (
+            <Alert
+              severity={testStatus === 'success' ? 'success' : 'error'}
+              sx={{ mt: 2, width: 'fit-content' }}
+            >
+              {testMessage}
+            </Alert>
+          )}
+        </Box>
       ),
     },
     {
-      name: 'Prometheus Service Subpath',
+      name: t('Prometheus Service Subpath'),
       value: (
         <TextField
           value={selectedClusterData.subPath || ''}
           disabled={!isAddressFieldEnabled}
-          helperText="Optional subpath to the Prometheus Service endpoint. Only used when auto-detection is disabled. Examples: 'prometheus'."
+          helperText={t(
+            "Optional subpath to the Prometheus Service endpoint. Only used when auto-detection is disabled. Examples: 'prometheus'."
+          )}
           onChange={e => {
             const newSubPath = e.target.value;
             onDataChange({
@@ -167,7 +242,7 @@ export function Settings(props: SettingsProps) {
       ),
     },
     {
-      name: 'Default Timespan',
+      name: t('Default Timespan'),
       value: (
         <Select
           disabled={!isMetricsEnabled}
@@ -182,25 +257,25 @@ export function Settings(props: SettingsProps) {
             })
           }
         >
-          <MenuItem value={'10m'}>10 minutes</MenuItem>
-          <MenuItem value={'30m'}>30 minutes</MenuItem>
-          <MenuItem value={'1h'}>1 hour</MenuItem>
-          <MenuItem value={'3h'}>3 hours</MenuItem>
-          <MenuItem value={'6h'}>6 hours</MenuItem>
-          <MenuItem value={'12h'}>12 hours</MenuItem>
-          <MenuItem value={'24h'}>24 hours</MenuItem>
-          <MenuItem value={'48h'}>48 hours</MenuItem>
-          <MenuItem value={'today'}>Today</MenuItem>
-          <MenuItem value={'yesterday'}>Yesterday</MenuItem>
-          <MenuItem value={'week'}>Week</MenuItem>
-          <MenuItem value={'lastweek'}>Last week</MenuItem>
-          <MenuItem value={'7d'}>7 days</MenuItem>
-          <MenuItem value={'14d'}>14 days</MenuItem>
+          <MenuItem value={'10m'}>{t('10 minutes')}</MenuItem>
+          <MenuItem value={'30m'}>{t('30 minutes')}</MenuItem>
+          <MenuItem value={'1h'}>{t('1 hour')}</MenuItem>
+          <MenuItem value={'3h'}>{t('3 hours')}</MenuItem>
+          <MenuItem value={'6h'}>{t('6 hours')}</MenuItem>
+          <MenuItem value={'12h'}>{t('12 hours')}</MenuItem>
+          <MenuItem value={'24h'}>{t('24 hours')}</MenuItem>
+          <MenuItem value={'48h'}>{t('48 hours')}</MenuItem>
+          <MenuItem value={'today'}>{t('Today')}</MenuItem>
+          <MenuItem value={'yesterday'}>{t('Yesterday')}</MenuItem>
+          <MenuItem value={'week'}>{t('Week')}</MenuItem>
+          <MenuItem value={'lastweek'}>{t('Last week')}</MenuItem>
+          <MenuItem value={'7d'}>{t('7 days')}</MenuItem>
+          <MenuItem value={'14d'}>{t('14 days')}</MenuItem>
         </Select>
       ),
     },
     {
-      name: 'Default Resolution',
+      name: t('Default Resolution'),
       value: (
         <Select
           disabled={!isMetricsEnabled}
@@ -215,12 +290,12 @@ export function Settings(props: SettingsProps) {
             })
           }
         >
-          <ListSubheader>Automatic resolution</ListSubheader>
-          <MenuItem value="low">Low res.</MenuItem>
-          <MenuItem value="medium">Medium res.</MenuItem>
-          <MenuItem value="high">High res.</MenuItem>
+          <ListSubheader>{t('Automatic resolution')}</ListSubheader>
+          <MenuItem value="low">{t('Low res.')}</MenuItem>
+          <MenuItem value="medium">{t('Medium res.')}</MenuItem>
+          <MenuItem value="high">{t('High res.')}</MenuItem>
 
-          <ListSubheader>Fixed resolution</ListSubheader>
+          <ListSubheader>{t('Fixed resolution')}</ListSubheader>
           <MenuItem value="10s">10s</MenuItem>
           <MenuItem value="30s">30s</MenuItem>
           <MenuItem value="1m">1m</MenuItem>
@@ -235,7 +310,7 @@ export function Settings(props: SettingsProps) {
   return (
     <Box width={'80%'}>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-        <Typography variant="h6">Select Cluster</Typography>
+        <Typography variant="h6">{t('Select Cluster')}</Typography>
         <Select value={selectedCluster} onChange={e => setSelectedCluster(e.target.value)}>
           {Object.keys(clusters).map(clusterName => (
             <MenuItem key={clusterName} value={clusterName}>

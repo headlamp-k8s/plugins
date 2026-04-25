@@ -3,43 +3,13 @@ import {
   SectionBox,
   SectionFilterHeader,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box } from '@mui/material';
 import React from 'react';
 import { NotSupported } from '../checkflux';
+import { AlertNotification, ProviderNotification, ReceiverNotification } from '../common/Resources';
 import Table from '../common/Table';
-import { NameLink } from '../helpers';
-
-const notificationGroup = 'notification.toolkit.fluxcd.io';
-const notificationVersion = 'v1beta3';
-
-export function alertNotificationClass() {
-  return makeCustomResourceClass({
-    apiInfo: [{ group: notificationGroup, version: notificationVersion }],
-    isNamespaced: true,
-    singularName: 'Alert',
-    pluralName: 'alerts',
-  });
-}
-
-export function providerNotificationClass() {
-  return makeCustomResourceClass({
-    apiInfo: [{ group: notificationGroup, version: notificationVersion }],
-    isNamespaced: true,
-    singularName: 'Provider',
-    pluralName: 'providers',
-  });
-}
-
-export function receiverNotificationClass() {
-  return makeCustomResourceClass({
-    apiInfo: [{ group: notificationGroup, version: notificationVersion }],
-    isNamespaced: true,
-    singularName: 'Receiver',
-    pluralName: 'receivers',
-  });
-}
+import { useNamespaces } from '../helpers';
 
 export function Notifications() {
   return (
@@ -53,10 +23,7 @@ export function Notifications() {
 
 function Alerts() {
   const filterFunction = useFilterFunc();
-  const [resources, setResources] = React.useState(null);
-  const [error, setError] = React.useState(null);
-
-  alertNotificationClass().useApiList(setResources, setError);
+  const [resources, error] = AlertNotification.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Alerts" />;
@@ -67,7 +34,22 @@ function Alerts() {
       <Table
         data={resources}
         columns={[
-          NameLink(alertNotificationClass()),
+          {
+            header: 'Name',
+            accessorKey: 'metadata.name',
+            Cell: ({ row: { original: item } }) => (
+              <Link
+                routeName="notification"
+                params={{
+                  name: item.metadata.name,
+                  namespace: item.metadata.namespace,
+                  pluralName: 'alerts',
+                }}
+              >
+                {item?.jsonData?.metadata.name}
+              </Link>
+            ),
+          },
           'namespace',
           {
             header: 'Severity',
@@ -109,10 +91,7 @@ function Alerts() {
 
 function Providers() {
   const filterFunction = useFilterFunc();
-  const [resources, setResources] = React.useState(null);
-  const [error, setError] = React.useState(null);
-
-  providerNotificationClass().useApiList(setResources, setError);
+  const [resources, error] = ProviderNotification.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Providers" />;
@@ -196,10 +175,7 @@ function Providers() {
 
 function Receivers() {
   const filterFunction = useFilterFunc();
-  const [resources, setResources] = React.useState(null);
-  const [error, setError] = React.useState(null);
-
-  receiverNotificationClass().useApiList(setResources, setError);
+  const [resources, error] = ReceiverNotification.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
     return <NotSupported typeName="Receivers" />;

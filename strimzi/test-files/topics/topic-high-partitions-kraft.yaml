@@ -1,0 +1,12 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: headlamp-demo-many-partitions
+  namespace: strimzi-headlamp-test
+  labels:
+    strimzi.io/cluster: strimzi-demo-kraft
+spec:
+  partitions: 12
+  replicas: 1
+  config:
+    min.insync.replicas: 1

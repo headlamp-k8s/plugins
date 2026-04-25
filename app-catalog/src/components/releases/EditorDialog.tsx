@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Dialog, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Editor from '@monaco-editor/react';
 import {
@@ -15,8 +16,21 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useRef, useState } from 'react';
 import semver from 'semver';
 import { fetchChart, getActionStatus, upgradeRelease } from '../../api/releases';
+import { APP_CATALOG_HELM_REPOSITORY } from '../../constants/catalog';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
 
+/**
+ * EditorDialog component for displaying and editing Helm release configurations.
+ *
+ * @param props - Component properties.
+ * @param props.openEditor - Whether the editor dialog is open.
+ * @param props.handleEditor - Callback function to handle editor dialog state.
+ * @param props.releaseName - Name of the Helm release.
+ * @param props.releaseNamespace - Namespace of the Helm release.
+ * @param props.release - Helm release object.
+ * @param props.isUpdateRelease - Whether the release is being updated.
+ * @param props.handleUpdate - Callback function to handle release update.
+ */
 export function EditorDialog(props: {
   openEditor: boolean;
   handleEditor: (open: boolean) => void;
@@ -36,6 +50,7 @@ export function EditorDialog(props: {
     handleUpdate,
   } = props;
   if (!release) return null;
+  const { t } = useTranslation();
   const themeName = localStorage.getItem('headlampThemePreference');
   const { enqueueSnackbar } = useSnackbar();
   const [valuesToShow, setValuesToShow] = useState(
@@ -60,11 +75,15 @@ export function EditorDialog(props: {
     let isMounted = true;
 
     if (isUpdateRelease) {
-      async function fetchChartVersions() {
+      const fetchChartVersions = async () => {
         let response;
         let error: Error | null = null;
         try {
-          response = await fetchChart(release.chart.metadata.name);
+          const metadataName =
+            release.chart.metadata.name === APP_CATALOG_HELM_REPOSITORY
+              ? '/' + release.chart.metadata.name
+              : release.chart.metadata.name;
+          response = await fetchChart(metadataName);
         } catch (err) {
           error = err;
         }
@@ -74,10 +93,13 @@ export function EditorDialog(props: {
         }
 
         if (!!error) {
-          enqueueSnackbar(`Error fetching chart versions: ${error}`, {
-            variant: 'error',
-            autoHideDuration: 5000,
-          });
+          enqueueSnackbar(
+            t('Error fetching chart versions: {{ message }}', { message: error.message }),
+            {
+              variant: 'error',
+              autoHideDuration: 5000,
+            }
+          );
           return;
         }
 
@@ -99,7 +121,7 @@ export function EditorDialog(props: {
             version: chart.version,
           }))
         );
-      }
+      };
 
       setIsLoading(true);
       fetchChartVersions();
@@ -126,20 +148,26 @@ export function EditorDialog(props: {
           if (response.status === 'processing') {
             checkUpgradeStatus();
           } else if (response.status && response.status === 'failed') {
-            enqueueSnackbar(`Error upgrading release ${releaseName} ${response.message}`, {
-              variant: 'error',
-              autoHideDuration: 5000,
-            });
+            enqueueSnackbar(
+              t('Error upgrading release {{ releaseName }} {{ message }}', {
+                releaseName,
+                message: response.message,
+              }),
+              {
+                variant: 'error',
+                autoHideDuration: 5000,
+              }
+            );
             handleEditor(false);
             setUpgradeLoading(false);
           } else if (!response.status || response.status !== 'success') {
-            enqueueSnackbar(`Error upgrading release ${releaseName}`, {
+            enqueueSnackbar(t('Error upgrading release {{ releaseName }}', { releaseName }), {
               variant: 'error',
               autoHideDuration: 5000,
             });
             handleEditor(false);
           } else {
-            enqueueSnackbar(`Release ${releaseName} upgraded successfully`, {
+            enqueueSnackbar(t('Release {{ releaseName }} upgraded successfully', { releaseName }), {
               variant: 'success',
               autoHideDuration: 5000,
             });
@@ -158,14 +186,14 @@ export function EditorDialog(props: {
   function upgradeReleaseHandler() {
     setIsFormSubmitting(true);
     if (!releaseUpdateDescription) {
-      enqueueSnackbar('Please add release description', {
+      enqueueSnackbar(t('Please add release description'), {
         variant: 'error',
         autoHideDuration: 5000,
       });
       return;
     }
     if (!selectedVersion) {
-      enqueueSnackbar('Please select a version', {
+      enqueueSnackbar(t('Please select a version'), {
         variant: 'error',
         autoHideDuration: 5000,
       });
@@ -194,16 +222,19 @@ export function EditorDialog(props: {
       selectedVersion.version
     )
       .then(() => {
-        enqueueSnackbar(`Upgrade request for release ${releaseName} sent successfully`, {
-          variant: 'info',
-        });
+        enqueueSnackbar(
+          t('Upgrade request for release {{ releaseName }} sent successfully', { releaseName }),
+          {
+            variant: 'info',
+          }
+        );
         handleEditor(false);
         checkUpgradeStatus();
       })
       .catch(() => {
         setUpgradeLoading(false);
         handleEditor(false);
-        enqueueSnackbar(`Error upgrading release ${releaseName}`, {
+        enqueueSnackbar(t('Error upgrading release {{ releaseName }}', { releaseName }), {
           variant: 'error',
           autoHideDuration: 5000,
         });
@@ -231,7 +262,7 @@ export function EditorDialog(props: {
       title={`Release Name: ${releaseName} / Namespace: ${releaseNamespace}`}
     >
       {isLoading ? (
-        <Loader title="Loading Chart Versions" />
+        <Loader title={t('Loading Chart Versions')} />
       ) : (
         <>
           <Box display="flex" p={2} pt={0}>
@@ -243,7 +274,7 @@ export function EditorDialog(props: {
                     width: '20vw',
                   }}
                   error={isFormSubmitting && !releaseUpdateDescription}
-                  label="Release Description"
+                  label={t('Release Description')}
                   value={releaseUpdateDescription}
                   onChange={event => setReleaseUpdateDescription(event.target.value)}
                 />
@@ -267,8 +298,8 @@ export function EditorDialog(props: {
                   renderInput={params => (
                     <TextField
                       {...params}
-                      label="Versions"
-                      placeholder="Select Version"
+                      label={t('Versions')}
+                      placeholder={t('Select Version')}
                       error={isFormSubmitting && !selectedVersion}
                     />
                   )}
@@ -286,7 +317,7 @@ export function EditorDialog(props: {
                   inputRef={checkBoxRef}
                 />
               }
-              label="user defined values only"
+              label={t('user defined values only')}
             />
           </Box>
           <DialogContent>
@@ -322,13 +353,15 @@ export function EditorDialog(props: {
           margin: '1rem 0.5rem',
         }}
       >
-        <Button onClick={() => handleEditor(false)}>Close</Button>
+        <Button onClick={() => handleEditor(false)}>{t('Close')}</Button>
         {isUpdateRelease &&
           (upgradeLoading ? (
-            <Button disabled={upgradeLoading}>{upgradeLoading ? 'Upgrading' : 'Upgrade'}</Button>
+            <Button disabled={upgradeLoading}>
+              {upgradeLoading ? t('Upgrading') : t('Upgrade')}
+            </Button>
           ) : (
             <Button onClick={() => upgradeReleaseHandler()} disabled={upgradeLoading || isLoading}>
-              Upgrade
+              {t('Upgrade')}
             </Button>
           ))}
       </DialogActions>

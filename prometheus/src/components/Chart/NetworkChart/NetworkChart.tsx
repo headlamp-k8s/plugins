@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { alpha, useTheme } from '@mui/material';
 import { orange, purple } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
@@ -26,6 +27,7 @@ interface NetworkChartProps {
 }
 
 export function NetworkChart(props: NetworkChartProps) {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
@@ -34,14 +36,14 @@ export function NetworkChart(props: NetworkChartProps) {
       plots={[
         {
           query: props.rxQuery,
-          name: 'recieve',
+          name: t('receive'),
           strokeColor: alpha(orange[400], 0.8),
           fillColor: alpha(orange[400], 0.1),
           dataProcessor: dataProcessor,
         },
         {
           query: props.txQuery,
-          name: 'transmit',
+          name: t('transmit'),
           strokeColor: alpha(purple[400], 0.8),
           fillColor: alpha(purple[400], 0.1),
           dataProcessor: dataProcessor,

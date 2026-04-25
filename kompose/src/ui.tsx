@@ -93,7 +93,7 @@ export function KomposeUI() {
           const container = pod.spec.containers[0];
           pod.getLogs(
             container.name,
-            (logs: string[]) => {
+            ({ logs }) => {
               if (cancelled) {
                 return;
               }
@@ -174,7 +174,7 @@ export function KomposeUI() {
         >
           {!error ? (
             <>
-              <Loader />
+              <Loader title="Loading Kompose job" />
               <Button
                 onClick={() => {
                   setComposeYAMLToConvert({ yaml: '' });

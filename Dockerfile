@@ -1,5 +1,8 @@
-# Use the official Node.js 18 image as the base image for building the plugins
-FROM node:18@sha256:d0bbfdbad0bff8253e6159dcbee42141db4fc309365d5b8bcfce46ed71569078 AS builder
+# node v20 bookworm based
+ARG BASE_IMAGE_VERSION=20@sha256:6a4de97365bb291992222c4f27cafc338773989712259e809632a873ff45a6ff
+ARG FINAL_IMAGE_VERSION=3.22.0@sha256:8a1f59ffb675680d47db6337b49d22281a139e9d709335b492be023728e11715
+ARG ENVIRONMENT=production
+FROM node:${BASE_IMAGE_VERSION} AS builder
 
 # Set the working directory inside the container
 WORKDIR /headlamp-plugins
@@ -19,10 +22,20 @@ RUN mkdir -p /headlamp-plugins/build/${PLUGIN}
 # Copy the plugin source code into the container
 COPY ${PLUGIN} /headlamp-plugins/${PLUGIN}
 
+# Remove any existing node_modules and package-lock.json to avoid arch-specific conflicts
+RUN echo "Cleaning arch-dependent files for plugin $PLUGIN..."; \
+    cd /headlamp-plugins/$PLUGIN; \
+    rm -rf node_modules package-lock.json
+
 # Install dependencies for the specified plugin
 RUN echo "Installing deps for plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
-    npm ci
+    echo "Installing $ENVIRONMENT dependencies..."; \
+    if [ "$ENVIRONMENT" = "production" ]; then \
+     npm install --omit=dev; \
+    else \
+      npm install; \
+    fi
 
 # Build the specified plugin
 RUN echo "Building plugin $PLUGIN..."; \
@@ -34,7 +47,7 @@ RUN echo "Extracting plugin $PLUGIN..."; \
     cd /headlamp-plugins/$PLUGIN; \
     npx --no-install headlamp-plugin extract . /headlamp-plugins/build/${PLUGIN}
 
-FROM alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d
+FROM alpine:${FINAL_IMAGE_VERSION} AS final
 
 # Create a non-root user and group
 RUN addgroup -S headlamp && adduser -S headlamp -G headlamp

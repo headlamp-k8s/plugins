@@ -1,6 +1,6 @@
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
-import { Card } from '@mui/material';
+import { Alert, Card } from '@mui/material';
 import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -14,12 +14,36 @@ import TextField from '@mui/material/TextField';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import DriverSelect from './DriverSelect';
+import { DriverInfo } from './useInfo';
+
+export function generateClusterName(existingNames: string[]): string {
+  const baseName = 'minikube';
+  let newName = baseName;
+  let counter = 1;
+
+  while (existingNames.includes(newName)) {
+    newName = `${baseName}-${counter}`;
+    counter++;
+  }
+
+  return newName;
+}
+
+/** Validates that a minikube profile name is well-formed. Returns an error string, or null if valid. */
+export function isValidClusterName(name: string): string | null {
+  if (!name) return 'Cluster name is required';
+  if (name.length > 63) return 'Cluster name must be 63 characters or fewer';
+  if (!/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(name)) {
+    return 'Cluster name must start and end with a letter or number and contain only letters, numbers, and hyphens';
+  }
+  return null;
+}
 
 export interface CommandDialogProps {
   /** Is the dialog open? */
   open: boolean;
   /** Function to call when the dialog is closed */
-  onClose: () => void;
+  onClose: (cancel?: boolean) => void;
   /** Function to call when the user confirms the action */
   onConfirm: (data: { clusterName: string; driver: string }) => void;
   /** Command to run, like stop, start, delete... */
@@ -34,12 +58,15 @@ export interface CommandDialogProps {
   actingLines?: string[];
   /** Is the command done? */
   commandDone: boolean;
+  /** Did the command fail (non-zero exit)? */
+  commandError?: boolean;
   /** should it use a dialog or use a grid? */
   useGrid?: boolean;
   /** The cluster context to act on */
   initialClusterName?: string;
   /** Ask for the cluster name. Otherwise the initialClusterName is used. */
   askClusterName?: boolean;
+  info: DriverInfo | null;
 }
 
 /**
@@ -55,36 +82,27 @@ export default function CommandDialog({
   running,
   actingLines,
   commandDone,
+  commandError,
   useGrid,
   initialClusterName,
   askClusterName,
+  info,
 }: CommandDialogProps) {
   const [clusterName, setClusterName] = React.useState(initialClusterName);
   const [driver, setDriver] = React.useState('');
-  const [nameTaken, setNameTaken] = React.useState(false);
+  const [nameError, setNameError] = React.useState<string | null>(null);
 
   const history = useHistory();
-  const clusters = useClustersConf() || {};
-  const clusterNames = Object.keys(clusters);
+  const clusters = K8s.useClustersConf();
+  const clusterNames = React.useMemo(() => Object.keys(clusters || {}), [clusters]);
 
   React.useEffect(() => {
-    if (!initialClusterName) {
+    if (open && !initialClusterName && askClusterName) {
       setClusterName(generateClusterName(clusterNames));
     }
-  }, [initialClusterName, clusterNames]);
-
-  function generateClusterName(existingNames: string[]): string {
-    const baseName = 'minikube';
-    let newName = baseName;
-    let counter = 1;
-
-    while (existingNames.includes(newName)) {
-      newName = `${baseName}-${counter}`;
-      counter++;
-    }
-
-    return newName;
-  }
+    // Only generate a new name when dialog is opened, not on every clusterNames change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialClusterName, askClusterName]);
 
   if (acting && open && !running) {
     if (askClusterName) {
@@ -113,15 +131,39 @@ export default function CommandDialog({
                 onChange={function handleNameChange(event: React.ChangeEvent<HTMLInputElement>) {
                   const name = event.target.value;
                   setClusterName(name);
-                  setNameTaken(clusterNames.includes(name));
+                  if (clusterNames.includes(name)) {
+                    setNameError('Cluster name is already taken');
+                  } else {
+                    setNameError(isValidClusterName(name));
+                  }
                 }}
                 variant="outlined"
-                error={nameTaken}
-                helperText={nameTaken ? 'Cluster name is already taken' : ''}
+                error={!!nameError}
+                helperText={nameError || ''}
               />
             </Box>
           </FormControl>
-          <DriverSelect driver={driver} setDriver={setDriver} />
+          <DriverSelect driver={driver} setDriver={setDriver} info={info} />
+          {info && info.hyperVEnabled === false && (
+            <Alert severity="warning">
+              {`Warning: HyperV is not enabled. You can either enable it or use another driver.`}
+            </Alert>
+          )}
+          {info && parseFloat(info.freeRam) < 2 && (
+            <Alert severity="warning">
+              {`Warning: You have less than 2GB of free Memory available. This may affect performance.`}
+            </Alert>
+          )}
+          {info && parseFloat(info.ram) <= 8 && (
+            <Alert severity="warning">
+              {`Warning: We recommend more than 8GB of Memory Total. This may affect performance.`}
+            </Alert>
+          )}
+          {info && parseFloat(info.diskFree) < 22 && (
+            <Alert severity="warning">
+              {`Warning: You have less than 22GB of free Disk available. This may affect performance.`}
+            </Alert>
+          )}
         </>
       )}
       {acting && actingLines && Array.isArray(actingLines) && actingLines.length > 0 && (
@@ -133,15 +175,26 @@ export default function CommandDialog({
           ))}
         </Card>
       )}
+      {commandDone && commandError && (
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'error.light', borderRadius: 1 }}>
+          <Typography color="error.contrastText">
+            Command failed. Check the output above for details.
+          </Typography>
+        </Box>
+      )}
       {running && !commandDone && <Loader title={`Loading data for ${title}`} />}
     </>
   );
 
+  const waitForDriver = command === 'start' && askClusterName ? driver === null : false;
+
   const buttons = (
     <>
-      {!acting && (
+      {!acting && waitForDriver && !info && <Loader title={`Detecting drivers...`} />}
+      {!info && !waitForDriver && <Loader title={`Loading cluster info...`} />}
+      {!acting && !waitForDriver && info && (
         <>
-          {!useGrid && <Button onClick={onClose}>Cancel</Button>}
+          {!useGrid && <Button onClick={() => onClose(true)}>Cancel</Button>}
           <Button
             onClick={() => {
               if (clusterName) {
@@ -150,7 +203,7 @@ export default function CommandDialog({
             }}
             variant="contained"
             color="primary"
-            disabled={nameTaken && askClusterName}
+            disabled={!!nameError && askClusterName}
           >
             {`${command}`}
           </Button>
@@ -158,7 +211,7 @@ export default function CommandDialog({
       )}
       {!useGrid && commandDone && (
         <>
-          <Button variant="contained" color="primary" onClick={onClose}>
+          <Button variant="contained" color="primary" onClick={() => onClose(false)}>
             Close
           </Button>
         </>
@@ -181,7 +234,7 @@ export default function CommandDialog({
             variant="contained"
             color="primary"
             onClick={() => {
-              onClose();
+              onClose(false);
               history.push(`/`);
             }}
           >
@@ -205,7 +258,7 @@ export default function CommandDialog({
       </Grid>
     </Grid>
   ) : (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={() => onClose(false)}>
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>{content}</DialogContent>
       <DialogActions>{buttons}</DialogActions>

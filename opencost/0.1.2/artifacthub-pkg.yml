@@ -1,0 +1,14 @@
+version: 0.1.2
+name: headlamp_opencost
+displayName: OpenCost
+createdAt: "2024-08-07T15:05:18Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/opencost/logo.png"
+description: Adds information from OpenCost to resources' lists and details views.
+changes:
+  - kind: fixed
+    description: "Fix issue with broken chart anchor button"
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/opencost-0.1.2/headlamp-k8s-opencost-0.1.2.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:1b9df48eeef2e9592e98f2ca41bad02e9f3eb81f66e898a9f232ec1a4241afc2"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"

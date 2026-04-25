@@ -1,0 +1,68 @@
+{
+  "name": "@headlamp-k8s/strimzi",
+  "version": "0.4.0-alpha",
+  "description": "Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources",
+  "author": "Angelo Cesaro",
+  "license": "Apache-2.0",
+  "private": false,
+  "keywords": [
+    "headlamp",
+    "headlamp-plugin",
+    "kubernetes",
+    "strimzi",
+    "kafka"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/headlamp-k8s/plugins.git"
+  },
+  "homepage": "https://github.com/headlamp-k8s/plugins/tree/main/strimzi#readme",
+  "bugs": {
+    "url": "https://github.com/headlamp-k8s/plugins/issues"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "headlamp-plugin build",
+    "package": "headlamp-plugin package",
+    "start": "headlamp-plugin start",
+    "tsc": "headlamp-plugin tsc",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "lint": "eslint src --ext .ts,.tsx",
+    "storybook": "storybook dev -p 6007 -c .storybook",
+    "test": "headlamp-plugin test",
+    "storybook-build": "headlamp-plugin storybook-build",
+    "i18n": "headlamp-plugin i18n"
+  },
+  "devDependencies": {
+    "@kinvolk/headlamp-plugin": "^0.13.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "prettier": "^3.2.4",
+    "typescript": "^5.6.2",
+    "tty-browserify": "^0.0.1"
+  },
+  "eslintConfig": {
+    "extends": [
+      "@headlamp-k8s",
+      "prettier",
+      "plugin:jsx-a11y/recommended"
+    ]
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.9.3"
+  },
+  "msw": {
+    "workerDirectory": [
+      ".storybook/public"
+    ]
+  }
+}

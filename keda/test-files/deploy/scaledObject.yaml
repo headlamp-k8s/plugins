@@ -1,0 +1,25 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: message-consumer-scaledobject
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: message-consumer
+  pollingInterval: 5 # Optional. Default: 30 seconds
+  cooldownPeriod: 30 # Optional. Default: 300 seconds
+  maxReplicaCount: 30 # Optional. Default: 100
+  triggers:
+    - type: rabbitmq
+      metadata:
+        queueName: hello
+        queueLength: '5'
+      authenticationRef:
+        name: rabbitmq-trigger-auth
+    - type: redis
+      metadata:
+        address: redis-master.default.svc.cluster.local:6379
+        listName: tasks
+        listLength: '5'
+      authenticationRef:
+        name: redis-trigger-auth

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { alpha, useTheme } from '@mui/material';
 import { blue } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
@@ -24,6 +25,7 @@ interface MemoryChartProps {
 }
 
 export function MemoryChart(props: MemoryChartProps) {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
@@ -64,7 +66,7 @@ export function MemoryChart(props: MemoryChartProps) {
       plots={[
         {
           query: props.query,
-          name: 'memory',
+          name: t('memory'),
           strokeColor: alpha(blue[400], 0.8),
           fillColor: alpha(blue[400], 0.1),
           dataProcessor: dataProcessor,

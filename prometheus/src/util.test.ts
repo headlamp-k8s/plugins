@@ -1,4 +1,4 @@
-import { getTimeRangeAndStepSize } from './util';
+import { getTimeRangeAndStepSize, supportsPrometheusMetrics } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -101,5 +101,35 @@ describe('getTimeRangeAndStepSize', () => {
       to: specificTime,
       step: 14,
     });
+  });
+});
+
+describe('supportsPrometheusMetrics', () => {
+  test.each([
+    ['supports Pods', { kind: 'Pod', jsonData: { kind: 'Pod', apiVersion: 'v1' } }, true],
+    [
+      'supports Kubernetes Jobs',
+      { kind: 'Job', jsonData: { kind: 'Job', apiVersion: 'batch/v1' } },
+      true,
+    ],
+    [
+      'rejects non-Kubernetes Jobs with same kind',
+      { kind: 'Job', jsonData: { kind: 'Job', apiVersion: 'batch.volcano.sh/v1alpha1' } },
+      false,
+    ],
+    [
+      'supports CronJobs through the shared allowlist',
+      { kind: 'CronJob', jsonData: { kind: 'CronJob', apiVersion: 'batch/v1' } },
+      true,
+    ],
+    [
+      'supports ScaledObjects from known supported kinds',
+      { kind: 'ScaledObject', jsonData: { kind: 'ScaledObject', apiVersion: 'keda.sh/v1alpha1' } },
+      true,
+    ],
+    ['rejects unknown kinds', { kind: 'VolcanoJob', jsonData: { kind: 'VolcanoJob' } }, false],
+    ['rejects missing resources', undefined, false],
+  ])('%s', (_, resource, expected) => {
+    expect(supportsPrometheusMetrics(resource)).toBe(expected);
   });
 });

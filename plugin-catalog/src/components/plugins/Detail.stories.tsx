@@ -1,15 +1,25 @@
-// src/components/PurePluginDetail.stories.tsx
-
+import { configureStore } from '@reduxjs/toolkit';
 import { Meta, StoryFn } from '@storybook/react';
-import React from 'react';
+import { Provider } from 'react-redux';
+import { MemoryRouter } from 'react-router-dom';
 import { PluginDetailResp, PurePluginDetail, PurePluginDetailProps } from './Detail';
+
+const store = configureStore({
+  reducer: (state = { drawerMode: { isDetailDrawerEnabled: false } }) => state,
+});
 
 export default {
   title: 'Detail',
   component: PurePluginDetail,
 } as Meta;
 
-const Template: StoryFn<PurePluginDetailProps> = args => <PurePluginDetail {...args} />;
+const Template: StoryFn<PurePluginDetailProps> = args => (
+  <MemoryRouter>
+    <Provider store={store}>
+      <PurePluginDetail {...args} />
+    </Provider>
+  </MemoryRouter>
+);
 
 const samplePluginDetail: PluginDetailResp = {
   isInstalled: true,

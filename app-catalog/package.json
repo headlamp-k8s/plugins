@@ -1,6 +1,6 @@
 {
   "name": "app-catalog",
-  "version": "0.6.0",
+  "version": "0.8.0",
   "description": "An app catalog for Headlamp",
   "scripts": {
     "start": "headlamp-plugin start",
@@ -11,7 +11,9 @@
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
     "test": "headlamp-plugin test",
-    "storybook-build": "headlamp-plugin storybook-build"
+    "package": "headlamp-plugin package",
+    "storybook-build": "headlamp-plugin storybook-build",
+    "i18n": "headlamp-plugin i18n"
   },
   "keywords": [
     "headlamp",
@@ -21,6 +23,29 @@
     "kubernetes-debugging",
     "plugins"
   ],
+  "headlamp": {
+    "i18n": [
+      "en",
+      "de",
+      "es",
+      "fr",
+      "it",
+      "ja",
+      "id",
+      "ko",
+      "pt-BR",
+      "ru",
+      "zh-Hans",
+      "zh-Hant",
+      "cs",
+      "nl",
+      "hu",
+      "pt-PT",
+      "pl",
+      "sv",
+      "tr"
+    ]
+  },
   "prettier": "@headlamp-k8s/eslint-config/prettier-config",
   "eslintConfig": {
     "extends": [
@@ -30,15 +55,17 @@
     ]
   },
   "devDependencies": {
-    "@headlamp-k8s/eslint-config": "^0.7.0",
-    "@kinvolk/headlamp-plugin": "^0.11.0-alpha.3"
+    "@kinvolk/headlamp-plugin": "^0.13.0"
   },
   "dependencies": {
-    "react-syntax-highlighter": "^15.5.0",
+    "react-syntax-highlighter": "^15.6.6",
     "remark-gfm": "^4.0.1",
     "semver": "^6.3.1"
   },
   "overrides": {
-    "typescript": "5.6.2"
+    "typescript": "5.6.2",
+    "refractor": {
+      "prismjs": "^1.30.0"
+    }
   }
 }

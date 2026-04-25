@@ -1,94 +1,139 @@
 import { Icon } from '@iconify/react';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { apiFactory } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import {
+  ActionButton,
   Link,
   NameValueTable,
   SectionBox,
   StatusLabel,
   TileChart,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
-import { Accordion, AccordionDetails, AccordionSummary, Box } from '@mui/material';
+import type { KubeObject, KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+} from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import SourceLink from '../common/Link';
+import {
+  AlertNotification,
+  BucketRepository,
+  ExternalArtifact,
+  GitRepository,
+  HelmChart,
+  HelmRelease,
+  HelmRepository,
+  ImagePolicy,
+  ImageRepository,
+  ImageUpdateAutomation,
+  Kustomization,
+  OCIRepository,
+  ProviderNotification,
+  ReceiverNotification,
+  Terraform,
+} from '../common/Resources';
 import Table from '../common/Table';
 import { useFluxCheck } from '../helpers';
-import { IMAGE_AUTOMATION_BETA_VERSION } from '../image-automation/ImageAutomationList';
+import { store } from '../settings';
+
+// Helper to get failed count for a resource class
+function getFailedCount(items: KubeObject[] | null) {
+  if (items === null) return 0;
+  // getStatus is defined inside FluxOverviewChart, so redefine here
+  let failed = 0;
+  for (const resource of items) {
+    if (!resource.jsonData.status) {
+      continue;
+    } else if (resource.jsonData.spec?.suspend) {
+      continue;
+    } else if (Array.isArray(resource.jsonData.status.conditions)) {
+      if (
+        !resource.jsonData.status.conditions.some(
+          condition => condition.type === 'Ready' && condition.status === 'True'
+        )
+      ) {
+        failed++;
+      }
+    }
+  }
+  return failed;
+}
+
+// Helper to get success count for a resource class
+function getSuccessCount(items: KubeObject[] | null) {
+  if (items === null) return 0;
+
+  let success = 0;
+  for (const resource of items) {
+    if (!resource.jsonData.status) {
+      success++;
+    } else if (resource.jsonData.spec?.suspend) {
+      continue;
+    } else if (Array.isArray(resource.jsonData.status.conditions)) {
+      if (
+        resource.jsonData.status.conditions.some(
+          condition => condition.type === 'Ready' && condition.status === 'True'
+        )
+      ) {
+        success++;
+      }
+    }
+  }
+  return success;
+}
+
+// Helper to get display name for a resource class
+function getDisplayName(resourceClass: KubeObjectClass) {
+  const nameMap = {
+    gitrepositories: 'Git Repositories',
+    ocirepositories: 'OCI Repositories',
+    buckets: 'Buckets',
+    helmrepositories: 'Helm Repositories',
+    helmcharts: 'Helm Charts',
+    kustomizations: 'Kustomizations',
+    helmreleases: 'Helm Releases',
+    alerts: 'Alerts',
+    providers: 'Providers',
+    receivers: 'Receivers',
+    imagerepositories: 'Image Repositories',
+    imageupdateautomations: 'Image Update Automations',
+    imagepolicies: 'Image Policies',
+    externalartifacts: 'External Artifacts',
+    terraforms: 'Terraforms',
+  };
+  return nameMap[resourceClass.apiName] || resourceClass.apiName;
+}
 
 export function FluxOverview() {
-  const [kustomizations] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'kustomizations.kustomize.toolkit.fluxcd.io'
+  const [sortFilter, setSortFilter] = useState(() => store.get()?.overviewSortFilter ?? 'failed');
+  const [showFilter, setShowFilter] = useState(
+    () => store.get()?.overviewShowFilter ?? 'configured'
   );
-  const [helmReleases] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'helmreleases.helm.toolkit.fluxcd.io'
-  );
-  const [gitRepoCRD] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'gitrepositories.source.toolkit.fluxcd.io'
-  );
-  const [ociRepos] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'ocirepositories.source.toolkit.fluxcd.io'
-  );
-  const [bucketRepos] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'buckets.source.toolkit.fluxcd.io'
-  );
-  const [helmRepos] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'helmrepositories.source.toolkit.fluxcd.io'
-  );
-  const [helmCharts] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'helmcharts.source.toolkit.fluxcd.io'
-  );
+  const fluxCheck = useFluxCheck();
+  const namespace = fluxCheck.namespace;
 
-  const [alerts] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'alerts.notification.toolkit.fluxcd.io'
-  );
-  const [providers] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'providers.notification.toolkit.fluxcd.io'
-  );
-  const [receivers] = K8s.ResourceClasses.CustomResourceDefinition.useGet(
-    'receivers.notification.toolkit.fluxcd.io'
-  );
-
-  const CRD = React.useMemo(() => {
-    const CRD = K8s.ResourceClasses.CustomResourceDefinition;
-    const isVersionAvailable = CRD.apiEndpoint.apiInfo.find(
-      apiInfo => apiInfo.version === IMAGE_AUTOMATION_BETA_VERSION
-    );
-    if (!isVersionAvailable) {
-      CRD.apiEndpoint = apiFactory(
-        ...CRD.apiEndpoint.apiInfo.map(apiInfo => {
-          const params = [];
-          params.push(apiInfo.group);
-          params.push(apiInfo.version);
-          params.push(apiInfo.resource);
-          return params;
-        }),
-        ['apiextensions.k8s.io', IMAGE_AUTOMATION_BETA_VERSION, 'customresourcedefinitions']
-      );
-    }
-
-    return CRD;
-  }, []);
-
-  const [imageRepository] = CRD.useGet('imagerepositories.image.toolkit.fluxcd.io');
-  const [imageUpdateAutomation] = CRD.useGet('imageupdateautomations.image.toolkit.fluxcd.io');
-  const [imagePolicy] = CRD.useGet('imagepolicies.image.toolkit.fluxcd.io');
-
-  const fluxCheck = useFluxCheck([
-    gitRepoCRD,
-    ociRepos,
-    bucketRepos,
-    helmRepos,
-    helmCharts,
-    kustomizations,
-    alerts,
-    providers,
-    receivers,
-    imageRepository,
-    imageUpdateAutomation,
-    imagePolicy,
-  ]);
+  const [kustomizations] = Kustomization.useList({ namespace });
+  const [helmReleases] = HelmRelease.useList({ namespace });
+  const [gitRepos] = GitRepository.useList({ namespace });
+  const [ociRepos] = OCIRepository.useList({ namespace });
+  const [buckets] = BucketRepository.useList({ namespace });
+  const [helmRepos] = HelmRepository.useList({ namespace });
+  const [externalArtifacts] = ExternalArtifact.useList({ namespace });
+  const [helmCharts] = HelmChart.useList({ namespace });
+  const [alerts] = AlertNotification.useList({ namespace });
+  const [providerNotifications] = ProviderNotification.useList({ namespace });
+  const [receiverNotifications] = ReceiverNotification.useList({ namespace });
+  const [imageUpdateAutomations] = ImageUpdateAutomation.useList({ namespace });
+  const [imagePolicies] = ImagePolicy.useList({ namespace });
+  const [imageRepositories] = ImageRepository.useList({ namespace });
+  const [terraforms] = Terraform.useList({ namespace });
 
   const [pods] = K8s.ResourceClasses.Pod.useList({
     namespace: fluxCheck.namespace,
@@ -111,113 +156,150 @@ export function FluxOverview() {
     const imageAutomationController = pods?.filter(
       pod => pod.metadata.labels?.['app'] === 'image-automation-controller'
     );
+    const sourceWatcher = pods?.filter(pod => pod.metadata.labels?.['app'] === 'source-watcher');
 
     return helmController?.concat(
       kustomizeController,
       notificationController,
       sourceController,
       imageReflectorController,
-      imageAutomationController
+      imageAutomationController,
+      sourceWatcher
     );
   }, [pods]);
 
-  const kustomizationResourceClass = React.useMemo(() => {
-    return kustomizations?.makeCRClass();
-  }, [kustomizations]);
+  // Sort resource classes based on selected filter
+  const sortedResourceClasses = React.useMemo(() => {
+    const itemsWithClass = [
+      { rc: Kustomization, items: kustomizations },
+      { rc: HelmRelease, items: helmReleases },
+      { rc: GitRepository, items: gitRepos },
+      { rc: OCIRepository, items: ociRepos },
+      { rc: BucketRepository, items: buckets },
+      { rc: HelmRepository, items: helmRepos },
+      { rc: ExternalArtifact, items: externalArtifacts },
+      { rc: HelmChart, items: helmCharts },
+      { rc: AlertNotification, items: alerts },
+      { rc: ProviderNotification, items: providerNotifications },
+      { rc: ReceiverNotification, items: receiverNotifications },
+      { rc: ImageRepository, items: imageRepositories },
+      { rc: ImagePolicy, items: imagePolicies },
+      { rc: ImageUpdateAutomation, items: imageUpdateAutomations },
+      { rc: Terraform, items: terraforms },
+    ];
 
-  const helmReleaseResourceClass = React.useMemo(() => {
-    return helmReleases?.makeCRClass();
-  }, [helmReleases]);
+    let resourceData = itemsWithClass.map(({ rc, items }) => {
+      if (!Array.isArray(items)) {
+        return { rc, failed: 0, total: 0, success: 0, name: getDisplayName(rc) };
+      }
+      return {
+        rc,
+        failed: getFailedCount(items),
+        total: items.length,
+        success: getSuccessCount(items),
+        name: getDisplayName(rc),
+      };
+    });
 
-  const gitRepoResourceClass = React.useMemo(() => {
-    return gitRepoCRD?.makeCRClass();
-  }, [gitRepoCRD]);
+    if (showFilter === 'configured') {
+      resourceData = resourceData.filter(({ total }) => total > 0);
+    }
 
-  const ociRepoResourceClass = React.useMemo(() => {
-    return ociRepos?.makeCRClass();
-  }, [ociRepos]);
+    switch (sortFilter) {
+      case 'failed':
+        return resourceData.sort((a, b) => b.failed - a.failed).map(obj => obj.rc);
+      case 'failed-asc':
+        return resourceData.sort((a, b) => a.failed - b.failed).map(obj => obj.rc);
+      case 'total':
+        return resourceData.sort((a, b) => b.total - a.total).map(obj => obj.rc);
+      case 'total-asc':
+        return resourceData.sort((a, b) => a.total - b.total).map(obj => obj.rc);
+      case 'success':
+        return resourceData.sort((a, b) => b.success - a.success).map(obj => obj.rc);
+      case 'success-asc':
+        return resourceData.sort((a, b) => a.success - b.success).map(obj => obj.rc);
+      case 'alphabetical':
+        return resourceData.sort((a, b) => a.name.localeCompare(b.name)).map(obj => obj.rc);
+      case 'alphabetical-desc':
+        return resourceData.sort((a, b) => b.name.localeCompare(a.name)).map(obj => obj.rc);
+      default:
+        return resourceData.sort((a, b) => b.failed - a.failed).map(obj => obj.rc);
+    }
+  }, [
+    kustomizations,
+    helmReleases,
+    gitRepos,
+    ociRepos,
+    buckets,
+    helmRepos,
+    externalArtifacts,
+    helmCharts,
+    alerts,
+    providerNotifications,
+    receiverNotifications,
+    imageRepositories,
+    imagePolicies,
+    imageUpdateAutomations,
+    terraforms,
+    sortFilter,
+    showFilter,
+  ]);
 
-  const bucketRepoResourceClass = React.useMemo(() => {
-    return bucketRepos?.makeCRClass();
-  }, [bucketRepos]);
+  const handleSortFilterChange = event => {
+    const value = event.target.value;
+    setSortFilter(value);
+    store.set({ ...store.get(), overviewSortFilter: value });
+  };
 
-  const helmRepoResourceClass = React.useMemo(() => {
-    return helmRepos?.makeCRClass();
-  }, [helmRepos]);
-
-  const helmChartResourceClass = React.useMemo(() => {
-    return helmCharts?.makeCRClass();
-  }, [helmCharts]);
-
-  const imageRepositoryClass = React.useMemo(() => {
-    return imageRepository?.makeCRClass();
-  }, [imageRepository]);
-
-  const imageUpdateAutomationClass = React.useMemo(() => {
-    return imageUpdateAutomation?.makeCRClass();
-  }, [imageUpdateAutomation]);
-
-  const imagePolicyClass = React.useMemo(() => {
-    return imagePolicy?.makeCRClass();
-  }, [imagePolicy]);
+  const handleShowFilterChange = event => {
+    const value = event.target.value;
+    setShowFilter(value);
+    store.set({ ...store.get(), overviewShowFilter: value });
+  };
 
   return (
     <>
-      <SectionBox title="Flux Overview">
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          sx={{
-            flexWrap: 'wrap',
-          }}
-        >
-          <Box width="300px" m={2}>
-            {kustomizationResourceClass && (
-              <FluxOverviewChart resourceClass={kustomizationResourceClass} />
-            )}
-          </Box>
-          <Box width="300px" m={2}>
-            {helmReleaseResourceClass && (
-              <FluxOverviewChart resourceClass={helmReleaseResourceClass} />
-            )}
-          </Box>
-          <Box width="300px" m={2}>
-            {gitRepoResourceClass && <FluxOverviewChart resourceClass={gitRepoResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {ociRepoResourceClass && <FluxOverviewChart resourceClass={ociRepoResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {bucketRepoResourceClass && (
-              <FluxOverviewChart resourceClass={bucketRepoResourceClass} />
-            )}
-          </Box>
-          <Box width="300px" m={2}>
-            {helmRepoResourceClass && <FluxOverviewChart resourceClass={helmRepoResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {helmChartResourceClass && <FluxOverviewChart resourceClass={helmChartResourceClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {alerts && <FluxOverviewChart resourceClass={alerts.makeCRClass()} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {providers && <FluxOverviewChart resourceClass={providers.makeCRClass()} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {receivers && <FluxOverviewChart resourceClass={receivers.makeCRClass()} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {imageRepositoryClass && <FluxOverviewChart resourceClass={imageRepositoryClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {imagePolicyClass && <FluxOverviewChart resourceClass={imagePolicyClass} />}
-          </Box>
-          <Box width="300px" m={2}>
-            {imageUpdateAutomationClass && (
-              <FluxOverviewChart resourceClass={imageUpdateAutomationClass} />
-            )}
-          </Box>
+      <SectionBox
+        title="Flux Overview"
+        headerProps={{
+          actions: [
+            <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="sort">
+              <InputLabel>Sort By</InputLabel>
+              <Select value={sortFilter} label="Sort By" onChange={handleSortFilterChange}>
+                <MenuItem value="failed">Most Failed First</MenuItem>
+                <MenuItem value="failed-asc">Least Failed First</MenuItem>
+                <MenuItem value="total">Most Total Resources</MenuItem>
+                <MenuItem value="total-asc">Least Total Resources</MenuItem>
+                <MenuItem value="success">Most Successful</MenuItem>
+                <MenuItem value="success-asc">Least Successful</MenuItem>
+                <MenuItem value="alphabetical">Alphabetical A-Z</MenuItem>
+                <MenuItem value="alphabetical-desc">Alphabetical Z-A</MenuItem>
+              </Select>
+            </FormControl>,
+            <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="show">
+              <InputLabel>Show</InputLabel>
+              <Select value={showFilter} label="Show" onChange={handleShowFilterChange}>
+                <MenuItem value="configured">Configured Only</MenuItem>
+                <MenuItem value="all">All Resources</MenuItem>
+              </Select>
+            </FormControl>,
+            <ActionButton
+              key="settings"
+              description="Flux Settings"
+              icon="mdi:cog"
+              onClick={() => {
+                window.location.href = '/settings/plugins/@headlamp-k8s%2Fflux';
+              }}
+            />,
+          ],
+        }}
+      >
+        <Box display="flex" sx={{ flexWrap: 'wrap' }}>
+          {sortedResourceClasses.map((resourceClass, idx) => (
+            <Box width="300px" m={2} key={resourceClass.apiName || idx}>
+              <FluxOverviewChart resourceClass={resourceClass} />
+            </Box>
+          ))}
         </Box>
       </SectionBox>
       <SectionBox title="Flux Checks">
@@ -236,16 +318,16 @@ export function FluxOverview() {
             <Box p={2} display="flex" gap={2}>
               {fluxCheck.isBoostrapped ? (
                 <StatusLabel status="success">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
-                    Boostrapped
+                    Bootstrapped
                   </Box>{' '}
                 </StatusLabel>
               ) : (
                 <StatusLabel status="error">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:close" width={16} height={16} />
                     </Box>{' '}
@@ -255,7 +337,7 @@ export function FluxOverview() {
               )}
               {fluxCheck.distribution && (
                 <StatusLabel status="success">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
@@ -274,7 +356,7 @@ export function FluxOverview() {
               {controllers?.length > 0 &&
                 (controllers?.every(controller => controller.status?.phase === 'Running') ? (
                   <StatusLabel status="success">
-                    <Box display="flex" aligItems="center">
+                    <Box display="flex" alignItems="center">
                       <Box mt={0.2} mr={0.1}>
                         <Icon icon="mdi:check" width={16} height={16} />
                       </Box>
@@ -283,7 +365,7 @@ export function FluxOverview() {
                   </StatusLabel>
                 ) : (
                   <StatusLabel status="warning">
-                    <Box display="flex" aligItems="center">
+                    <Box display="flex" alignItems="center">
                       <Box mt={0.2} mr={0.1}>
                         <Icon icon="mdi:close" width={16} height={16} />
                       </Box>{' '}
@@ -306,7 +388,7 @@ export function FluxOverview() {
               {/* see if all crds check passed */}
               {fluxCheck.allCrdsSuccessful ? (
                 <StatusLabel status="success">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
@@ -315,7 +397,7 @@ export function FluxOverview() {
                 </StatusLabel>
               ) : (
                 <StatusLabel status="warning">
-                  <Box display="flex" aligItems="center">
+                  <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:close" width={16} height={16} />
                     </Box>{' '}
@@ -336,12 +418,30 @@ export function FluxOverview() {
   );
 }
 
+declare module '@mui/material/styles' {
+  interface Palette {
+    chartStyles: {
+      defaultFillColor: string;
+      fillColor: string;
+      labelColor: string;
+    };
+  }
+  interface PaletteOptions {
+    chartStyles?: {
+      defaultFillColor?: string;
+      fillColor?: string;
+      labelColor?: string;
+    };
+  }
+}
+
 function FluxOverviewChart({ resourceClass }) {
   const [crds] = resourceClass.useList();
   const theme = useTheme();
 
   function prepareLink(name) {
     switch (name) {
+      case 'externalartifacts': // fallthrough
       case 'gitrepositories':
         return '/flux/sources';
       case 'ocirepositories':
@@ -368,6 +468,8 @@ function FluxOverviewChart({ resourceClass }) {
         return '/flux/image-automations';
       case 'imagepolicies':
         return '/flux/image-automations';
+      case 'terraforms':
+        return '/flux/terraforms';
     }
 
     return '';
@@ -375,6 +477,8 @@ function FluxOverviewChart({ resourceClass }) {
 
   function prepareName(name) {
     switch (name) {
+      case 'externalartifacts':
+        return 'External Artifacts';
       case 'gitrepositories':
         return 'Git Repositories';
       case 'ocirepositories':
@@ -401,6 +505,8 @@ function FluxOverviewChart({ resourceClass }) {
         return 'Image Update Automations';
       case 'imagepolicies':
         return 'Image Policies';
+      case 'terraforms':
+        return 'Terraforms';
     }
 
     return '';
@@ -410,52 +516,71 @@ function FluxOverviewChart({ resourceClass }) {
     let success: number = 0;
     let failed: number = 0;
     let suspended: number = 0;
+    let processing: number = 0;
 
     for (const resource of customResources) {
-      if (!resource.jsonData.status) {
+      const status = resource.jsonData.status;
+
+      // If no status at all, treat as success (original logic)
+      if (!status) {
         success++;
       } else if (resource.jsonData.spec?.suspend) {
         suspended++;
-      } else if (
-        resource.jsonData.status.conditions?.some(
-          condition => condition.type === 'Ready' && condition.status === 'True'
-        )
-      ) {
-        success++;
+      } else if (Array.isArray(status.conditions)) {
+        const readyCondition = status.conditions.find(condition => condition.type === 'Ready');
+
+        if (readyCondition?.status === 'True') {
+          success++;
+        } else if (
+          !readyCondition ||
+          readyCondition.status === 'Unknown' ||
+          ['DependencyNotReady', 'Progressing', 'ReconciliationInProgress'].includes(
+            readyCondition.reason ?? ''
+          )
+        ) {
+          processing++;
+        } else {
+          failed++;
+        }
       } else {
-        failed++;
+        // status exists but no conditions array: treat as processing
+        processing++;
       }
     }
 
-    return [success, failed, suspended];
+    return [success, failed, suspended, processing];
   }
 
   function makeData() {
     if (crds) {
       const total = crds.length;
-      const [success, failed, suspended] = getStatus(crds);
+      const [success, failed, suspended, processing] = getStatus(crds);
 
       // Calculate actual percentages
-      // Use Math.round to ensure whole numbers
       const successPercent = total > 0 ? Math.round((success / total) * 100) : 0;
       const failedPercent = total > 0 ? Math.round((failed / total) * 100) : 0;
       const suspendedPercent = total > 0 ? Math.round((suspended / total) * 100) : 0;
+      const processingPercent = total > 0 ? Math.round((processing / total) * 100) : 0;
 
       // Ensure percentages add up to 100%
       let adjustedSuccessPercent = successPercent;
       let adjustedFailedPercent = failedPercent;
       let adjustedSuspendedPercent = suspendedPercent;
+      let adjustedProcessingPercent = processingPercent;
 
-      const sum = successPercent + failedPercent + suspendedPercent;
+      const sum = successPercent + failedPercent + suspendedPercent + processingPercent;
       if (sum !== 100 && total > 0) {
         const diff = 100 - sum;
         // Add the difference to the largest segment
-        if (successPercent >= failedPercent && successPercent >= suspendedPercent) {
+        const max = Math.max(successPercent, failedPercent, suspendedPercent, processingPercent);
+        if (max === successPercent) {
           adjustedSuccessPercent += diff;
-        } else if (failedPercent >= successPercent && failedPercent >= suspendedPercent) {
+        } else if (max === failedPercent) {
           adjustedFailedPercent += diff;
-        } else {
+        } else if (max === suspendedPercent) {
           adjustedSuspendedPercent += diff;
+        } else {
+          adjustedProcessingPercent += diff;
         }
       }
 
@@ -468,12 +593,17 @@ function FluxOverviewChart({ resourceClass }) {
         {
           name: 'failed',
           value: adjustedFailedPercent,
-          fill: '#DC7501',
+          fill: theme.palette.error.main,
         },
         {
           name: 'suspended',
           value: adjustedSuspendedPercent,
           fill: '#FDE100',
+        },
+        {
+          name: 'processing',
+          value: adjustedProcessingPercent,
+          fill: '#2196F3',
         },
       ];
     }
@@ -483,7 +613,7 @@ function FluxOverviewChart({ resourceClass }) {
   function makeLegend() {
     if (crds) {
       const total = crds.length;
-      const [success, failed, suspended] = getStatus(crds);
+      const [success, failed, suspended, processing] = getStatus(crds);
 
       return (
         <Box>
@@ -503,9 +633,14 @@ function FluxOverviewChart({ resourceClass }) {
                 {failed}/{total} failed
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
               <Box>
                 {suspended}/{total} suspended
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box>
+                {processing}/{total} processing
               </Box>
             </Box>
           </Box>

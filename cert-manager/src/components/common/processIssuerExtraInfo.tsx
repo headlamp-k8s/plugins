@@ -6,7 +6,7 @@ import {
   StringArray,
 } from './CommonComponents';
 
-export function processIssuerExtraInfo(spec: IssuerSpec): NameValueTableRow[] {
+export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): NameValueTableRow[] {
   const extraInfo: NameValueTableRow[] = [];
 
   if (spec.acme) {
@@ -22,7 +22,12 @@ export function processIssuerExtraInfo(spec: IssuerSpec): NameValueTableRow[] {
             { name: 'Skip TLS Verify', value: spec.acme.skipTLSVerify?.toString() },
             {
               name: 'Private Key Secret Ref',
-              value: <SecretKeySelectorComponent selector={spec.acme.privateKeySecretRef} />,
+              value: (
+                <SecretKeySelectorComponent
+                  selector={spec.acme.privateKeySecretRef}
+                  namespace={namespace}
+                />
+              ),
             },
             {
               name: 'External Account Binding',
@@ -36,6 +41,7 @@ export function processIssuerExtraInfo(spec: IssuerSpec): NameValueTableRow[] {
                       value: (
                         <SecretKeySelectorComponent
                           selector={spec.acme.externalAccountBinding.keySecretRef}
+                          namespace={namespace}
                         />
                       ),
                     },
@@ -55,7 +61,7 @@ export function processIssuerExtraInfo(spec: IssuerSpec): NameValueTableRow[] {
               name: 'Solvers',
               value: spec.acme.solvers?.map((solver, index) => (
                 <div key={index} style={{ marginBottom: '20px' }}>
-                  <ACMEChallengeSolverComponent solver={solver} />
+                  <ACMEChallengeSolverComponent solver={solver} namespace={namespace} />
                 </div>
               )),
             },
@@ -100,7 +106,10 @@ export function processIssuerExtraInfo(spec: IssuerSpec): NameValueTableRow[] {
                     {
                       name: 'Token Secret Ref',
                       value: spec.vault.auth.tokenSecretRef && (
-                        <SecretKeySelectorComponent selector={spec.vault.auth.tokenSecretRef} />
+                        <SecretKeySelectorComponent
+                          selector={spec.vault.auth.tokenSecretRef}
+                          namespace={namespace}
+                        />
                       ),
                     },
                     {
@@ -115,6 +124,7 @@ export function processIssuerExtraInfo(spec: IssuerSpec): NameValueTableRow[] {
                               value: (
                                 <SecretKeySelectorComponent
                                   selector={spec.vault.auth.appRole.secretRef}
+                                  namespace={namespace}
                                 />
                               ),
                             },
@@ -133,6 +143,7 @@ export function processIssuerExtraInfo(spec: IssuerSpec): NameValueTableRow[] {
                               value: (
                                 <SecretKeySelectorComponent
                                   selector={spec.vault.auth.kubernetes.secretRef}
+                                  namespace={namespace}
                                 />
                               ),
                             },
@@ -183,7 +194,10 @@ export function processIssuerExtraInfo(spec: IssuerSpec): NameValueTableRow[] {
                     {
                       name: 'Credentials Ref',
                       value: (
-                        <SecretKeySelectorComponent selector={spec.venafi.tpp.credentialsRef} />
+                        <SecretKeySelectorComponent
+                          selector={spec.venafi.tpp.credentialsRef}
+                          namespace={namespace}
+                        />
                       ),
                     },
                     { name: 'CA Bundle', value: spec.venafi.tpp.caBundle },
@@ -202,6 +216,7 @@ export function processIssuerExtraInfo(spec: IssuerSpec): NameValueTableRow[] {
                       value: (
                         <SecretKeySelectorComponent
                           selector={spec.venafi.cloud.apiTokenSecretRef}
+                          namespace={namespace}
                         />
                       ),
                     },

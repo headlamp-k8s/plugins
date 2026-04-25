@@ -43,14 +43,14 @@ export class CertificateRequest extends KubeObject<CertManagerCertificateRequest
   }
 
   get approved() {
-    return this.status.conditions.find(condition => condition.type === 'Approved')?.status;
+    return this.status?.conditions?.find(condition => condition.type === 'Approved')?.status;
   }
 
   get denied() {
-    return this.status.conditions.find(condition => condition.type === 'Denied')?.status;
+    return this.status?.conditions?.find(condition => condition.type === 'Denied')?.status;
   }
 
   get ready() {
-    return this.status.conditions.find(condition => condition.type === 'Ready')?.status;
+    return this.status?.conditions?.find(condition => condition.type === 'Ready')?.status;
   }
 }

@@ -72,7 +72,7 @@ export function CertificateRequestDetail() {
               },
               {
                 name: 'CA',
-                value: item.status.ca && <CopyToClipboard text={item.status.ca} />,
+                value: item.status?.ca && <CopyToClipboard text={item.status.ca} />,
               },
               {
                 name: 'Failure Time',
@@ -84,7 +84,7 @@ export function CertificateRequestDetail() {
             item && [
               {
                 id: 'Status',
-                section: item.status.conditions && (
+                section: item.status?.conditions && (
                   <ConditionsTable conditions={item.status.conditions} />
                 ),
               },

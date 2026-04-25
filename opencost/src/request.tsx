@@ -29,7 +29,7 @@ export function fetchOpencostData(
   resource: string,
   accumulate: boolean
 ) {
-  const url = `/api/v1/namespaces/${namespace}/services/${serviceName}/proxy/model/allocation/compute?window=${window}&aggregate=${resource}&step=1d&accumulate=${accumulate.toString()}`;
+  const url = `/api/v1/namespaces/${namespace}/services/${serviceName}/proxy/allocation?window=${window}&aggregate=${resource}&step=1d&accumulate=${accumulate.toString()}`;
 
   return request(url).then(data => {
     return data;

@@ -1,10 +1,34 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
+import { Provider } from 'react-redux';
 import CommandDialog from './CommandDialog';
+
+const mockReducer = () => ({
+  config: {
+    clusters: {
+      'test-cluster': {
+        name: 'test-cluster',
+        status: 'running',
+      },
+    },
+  },
+});
+
+const store = configureStore({
+  reducer: mockReducer,
+});
 
 export default {
   title: 'Components/CommandDialog',
   component: CommandDialog,
+  decorators: [
+    Story => (
+      <Provider store={store}>
+        <Story />
+      </Provider>
+    ),
+  ],
   argTypes: {
     onClose: { action: 'onClose' },
     onConfirm: { action: 'onConfirm' },
@@ -111,5 +135,25 @@ GridCommandCompleted.args = {
   acting: true,
   running: true,
   commandDone: true,
+  useGrid: true,
+};
+
+export const CommandFailed = Template.bind({});
+CommandFailed.args = {
+  open: true,
+  initialClusterName: 'test-cluster',
+  command: 'start',
+  title: 'Start Cluster',
+  acting: true,
+  running: true,
+  actingLines: ['Starting cluster...', 'Error: unable to start host: provider not found'],
+  commandDone: true,
+  commandError: true,
+  useGrid: false,
+};
+
+export const GridCommandFailed = Template.bind({});
+GridCommandFailed.args = {
+  ...CommandFailed.args,
   useGrid: true,
 };

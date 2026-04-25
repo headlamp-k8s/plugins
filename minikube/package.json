@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/minikube",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "A UI for managing local minikube clusters. Run Kubernetes locally. Alpha release.",
   "scripts": {
     "start": "headlamp-plugin start",
@@ -12,7 +12,9 @@
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
-    "test": "headlamp-plugin test"
+    "test": "headlamp-plugin test",
+    "testplugins": "rsync -av src/ ../../testplugins/minikube/src && rsync -av manage-minikube.js ../../testplugins/minikube/",
+    "i18n": "headlamp-plugin i18n"
   },
   "keywords": [
     "headlamp",
@@ -22,6 +24,11 @@
     "kubernetes-debugging",
     "plugins"
   ],
+  "headlamp": {
+    "extraDist": {
+      "manage-minikube.js": "manage-minikube.js"
+    }
+  },
   "prettier": "@headlamp-k8s/eslint-config/prettier-config",
   "eslintConfig": {
     "extends": [
@@ -34,6 +41,6 @@
     "typescript": "5.6.2"
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.11.1"
+    "@kinvolk/headlamp-plugin": "^0.13.0"
   }
 }

@@ -1,0 +1,27 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: headlamp-demo-acls
+  namespace: strimzi-headlamp-test
+  labels:
+    strimzi.io/cluster: strimzi-demo-kraft
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: headlamp-demo-basic
+          patternType: literal
+        operations:
+          - Read
+          - Write
+          - Describe
+      - resource:
+          type: group
+          name: headlamp-demo-
+          patternType: prefix
+        operations:
+          - Read

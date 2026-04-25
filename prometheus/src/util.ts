@@ -1,4 +1,9 @@
 import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
+import { KarpenterDisruptionChart } from './components/Chart/KarpenterDisruptionChart/KarpenterDisruptionChart';
+import { NodeClaimCreationChart } from './components/Chart/KarpenterNodeClaimCreationChart/KarpenterNodeClaimCreationChart';
+import { KarpenterNodeClaimsProvisionChart } from './components/Chart/KarpenterNodeClaimProvisionChart/KarpenterNodeClaimProvisionChart';
+import { KarpenterNodePoolResourceChart } from './components/Chart/KarpenterNodePoolResourceChart/KarpenterNodePoolResourceChart';
+import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/KarpenterPendingPods';
 import { isPrometheusInstalled, KubernetesType } from './request';
 
 export const PLUGIN_NAME = 'prometheus';
@@ -149,7 +154,43 @@ export function getPrometheusResolution(cluster: string): string {
   return clusterData?.defaultResolution ?? 'medium';
 }
 
-export const ChartEnabledKinds = [
+type ResourceIdentity = {
+  kind?: string;
+  apiVersion?: string;
+  jsonData?: {
+    kind?: string;
+    apiVersion?: string;
+  };
+};
+
+function getResourceKind(resource?: ResourceIdentity): string | undefined {
+  return resource?.jsonData?.kind ?? resource?.kind;
+}
+
+function getResourceApiVersion(resource?: ResourceIdentity): string | undefined {
+  return resource?.jsonData?.apiVersion ?? resource?.apiVersion;
+}
+
+const resourceApiVersionRules: Record<string, string> = {
+  Job: 'batch/v1',
+};
+
+export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean {
+  const kind = getResourceKind(resource);
+
+  if (!kind || !ChartEnabledKinds.includes(kind)) {
+    return false;
+  }
+
+  const requiredApiVersion = resourceApiVersionRules[kind];
+  if (requiredApiVersion) {
+    return getResourceApiVersion(resource) === requiredApiVersion;
+  }
+
+  return true;
+}
+
+const ChartEnabledKinds = [
   'Pod',
   'Deployment',
   'StatefulSet',
@@ -158,6 +199,10 @@ export const ChartEnabledKinds = [
   'Job',
   'CronJob',
   'PersistentVolumeClaim',
+  'ScaledObject',
+  'ScaledJob',
+  'NodePool',
+  'NodeClaim',
 ];
 
 /**
@@ -220,19 +265,52 @@ export function createTickTimestampFormatter(interval: string) {
   };
 }
 
+export type PrometheusValue = [number, string];
+export type PrometheusResult = {
+  metric?: Record<string, string>;
+  values: PrometheusValue[];
+};
+export type PrometheusResponse = {
+  data?: {
+    result?: PrometheusResult[];
+  };
+};
+export type ChartDataPoint = { timestamp: number; y: number };
+
 /**
- * Processes raw Prometheus response data into a format suitable for charting.
- * @param {any} response - The raw response from Prometheus API containing time series data
- * @returns {Array<{timestamp: number, y: number}>} An array of data points with timestamps and values
+ * Extracts chart data from a Prometheus time series result.
+ * @param {PrometheusValue[]} values - The values array from a Prometheus result item.
+ * @returns {ChartDataPoint[]} - Parsed array of { timestamp, y } objects.
  */
-export function dataProcessor(response: any): { timestamp: number; y: number }[] {
-  const data: { timestamp: number; y: number }[] = [];
-  // convert the response to a JSON object
-  response?.data?.result?.[0]?.values.forEach(element => {
-    // convert value to a number
-    data.push({ timestamp: element[0], y: Number(element[1]) });
-  });
-  return data;
+function extractChartData(values: PrometheusValue[] = []): ChartDataPoint[] {
+  return values.map(([timestamp, value]) => ({
+    timestamp,
+    y: Number(value),
+  }));
+}
+
+/**
+ * Processes the first time series in a Prometheus response into chart data.
+ * @param {PrometheusResponse} response - The raw Prometheus response.
+ * @returns {ChartDataPoint[]} - Parsed chart data for the first series.
+ */
+export function dataProcessor(response: PrometheusResponse): ChartDataPoint[] {
+  const values = response?.data?.result?.[0]?.values;
+  return extractChartData(values);
+}
+
+/**
+ * Creates a data processor for a selected time series index in the Prometheus response.
+ * @param {number} selectedIndex - Index of the desired series to process.
+ * @returns {(response: PrometheusResponse) => ChartDataPoint[]} - Data processor function for that index.
+ */
+export function createDataProcessor(
+  selectedIndex: number
+): (response: PrometheusResponse) => ChartDataPoint[] {
+  return function (response: PrometheusResponse): ChartDataPoint[] {
+    const values = response?.data?.result?.[selectedIndex]?.values;
+    return extractChartData(values);
+  };
 }
 
 /**
@@ -335,3 +413,58 @@ export function getTimeRangeAndStepSize(
 
   return { from, to, step };
 }
+
+export const getNodePoolChartConfigs = (name: string) => [
+  {
+    key: 'usage',
+    label: 'Resource Usage',
+    icon: 'mdi:chart-bar',
+    queries: {
+      usageQuery: `karpenter_nodepools_usage{nodepool='${name}'}`,
+      limitQuery: `karpenter_nodepools_limit{nodepool='${name}'}`,
+    },
+    component: KarpenterNodePoolResourceChart,
+  },
+  {
+    key: 'nodes',
+    label: 'Allowed Disruptions',
+    icon: 'mdi:chip',
+    queries: {
+      activeNodesQuery: `karpenter_nodepools_allowed_disruptions{nodepool='${name}'}`,
+    },
+    component: KarpenterDisruptionChart,
+  },
+  {
+    key: 'pending-pods',
+    label: 'Pending Pods',
+    icon: 'mdi:clock-outline',
+    queries: {
+      pendingPodsQuery: `sum(karpenter_pods_state{phase='Pending'}) by (reason)`,
+    },
+    component: KarpenterPendingPods,
+  },
+];
+
+export const getNodeClaimChartConfigs = (name: string, nodepool?: string) => [
+  {
+    key: 'creation-rate',
+    label: 'Creation Rate',
+    icon: 'mdi:chart-line-variant',
+    queries: {
+      nodeClaimCreationQuery: `sum(rate(karpenter_nodeclaims_created_total{nodepool="${
+        nodepool || 'all'
+      }"}[5m]))`,
+    },
+    component: NodeClaimCreationChart,
+  },
+  {
+    key: 'provisioning-duration',
+    label: 'Provisioning Duration',
+    icon: 'mdi:clock-time-four',
+    queries: {
+      provisioningDurationQuery: `avg(rate(operator_nodeclaim_status_condition_transition_seconds_sum[5m])) / 
+avg(rate(operator_nodeclaim_status_condition_transition_seconds_count[5m]))`,
+    },
+    component: KarpenterNodeClaimsProvisionChart,
+  },
+];

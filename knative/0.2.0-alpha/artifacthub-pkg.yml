@@ -1,0 +1,40 @@
+version: 0.2.0-alpha
+name: "headlamp_knative"
+displayName: Knative
+createdAt: "2026-04-02T08:51:16Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/knative/logo.png"
+description: A UI for viewing and managing Knative.
+changes:
+  - kind: added
+    description: "New release of the [Headlamp](https://headlamp.dev) plugin for [Knative](https://knative.dev). Provides an intuitive visual interface for managing Knative resources like KService, Revisions and Networking."
+  - kind: added
+    description: "KService list and detail views with read/edit toggle mode for frequently changed fields. Thanks to @kahirokunn"
+  - kind: added
+    description: "Traffic splitting view between revisions, with tags linking to their respective URLs. Thanks to @kahirokunn"
+  - kind: added
+    description: "Autoscaling configuration including Target Utilization, Container Concurrency, and Activation Scale. Thanks to @kahirokunn"
+  - kind: added
+    description: "Revisions list and detail views showing traffic, tags, parent service, concurrency, container images, ports, and environment variables. Thanks to @mudit06mah"
+  - kind: added
+    description: "Networking overview with clear ingress settings display. Thanks to @kahirokunn"
+  - kind: added
+    description: "Custom Domains (DomainMapping and ClusterDomainClaim) with ready status and associated URLs."
+  - kind: added
+    description: "Cluster selection and Knative install check. Thanks to @kahirokunn"
+  - kind: added
+    description: "Permission checks for Knative resources. Thanks to @kahirokunn"
+  - kind: changed
+    description: "Refactored condition table and KService sections into common components. Thanks to @mudit06mah"
+  - kind: changed
+    description: "Memoized ResourceListView props and headerProps/actions to reduce renders. Thanks to @intojhanurag and @Sbragul26"
+  - kind: added
+    description: "Unit tests for time utility functions. Thanks to @intojhanurag"
+  - kind: fixed
+    description: "Linting issues and code formatting fixes. Thanks to @kahirokunn"
+  - kind: fixed
+    description: "Bumped tar to 7.5.3 and lodash to 4.17.23. Thanks to @skoeva"
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/knative-0.2.0-alpha/headlamp-k8s-knative-0.2.0-alpha.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:58026afa2c84ab0b43ac709abda11be56673410675386014a4603b3c27f045bb"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

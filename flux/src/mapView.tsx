@@ -1,17 +1,18 @@
 import { Icon } from '@iconify/react';
 import Deployment from '@kinvolk/headlamp-plugin/lib/K8s/deployment';
 import { useMemo } from 'react';
-import { helmReleaseClass } from './helm-releases/HelmReleaseList';
+import {
+  GitRepository,
+  HelmRelease,
+  HelmRepository,
+  Kustomization,
+  OCIRepository,
+} from './common/Resources';
 import { FluxHelmReleaseDetailView } from './helm-releases/HelmReleaseSingle';
-import { kustomizationClass } from './kustomizations/KustomizationList';
+import { useNamespaces } from './helpers';
 import { FluxKustomizationDetailView } from './kustomizations/KustomizationSingle';
-import { helmRepositoryClass, ociRepositoryClass } from './sources/SourceList';
+import { store } from './settings';
 import { FluxSourceDetailView } from './sources/SourceSingle';
-
-const HelmRelease = helmReleaseClass();
-const HelmRepostory = helmRepositoryClass();
-const OciSource = ociRepositoryClass();
-const Kustomization = kustomizationClass();
 
 export const makeKubeToKubeEdge = (from: any, to: any): any => ({
   id: `${from.metadata.uid}-${to.metadata.uid}`,
@@ -19,6 +20,13 @@ export const makeKubeToKubeEdge = (from: any, to: any): any => ({
   target: to.metadata.uid,
 });
 
+const GitRepositoryDetails = ({ node }) => (
+  <FluxSourceDetailView
+    pluralName="gitrepositories"
+    name={node.kubeObject.jsonData.metadata.name}
+    namespace={node.kubeObject.jsonData.metadata.namespace}
+  />
+);
 const HelmReleaseDetails = ({ node }) => (
   <FluxHelmReleaseDetailView
     name={node.kubeObject.jsonData.metadata.name}
@@ -46,13 +54,41 @@ const OCIRepositoryDetails = ({ node }) => (
   />
 );
 
+const gitRepositorySource: any = {
+  id: 'flux-git-repository',
+  label: 'Git Repository',
+  icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
+  useData() {
+    const [repositories] = GitRepository.useList();
+    return useMemo(() => {
+      if (!repositories) return null;
+
+      const nodes = repositories?.map(it => ({
+        id: it.metadata.uid,
+        kubeObject: it,
+        detailsComponent: GitRepositoryDetails,
+        weight: 1100,
+      }));
+      const edges: any[] = [];
+
+      return {
+        nodes,
+        edges,
+      };
+    }, [repositories]);
+  },
+};
+
 const helmRepositorySource: any = {
   id: 'flux-helm-repository',
   label: 'Helm Repository',
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
-    const [repositories] = HelmRepostory.useList();
+    const [repositories] = HelmRepository.useList();
     const [releases] = HelmRelease.useList();
+
+    const useConf = store.useConfig();
+    const config = useConf();
 
     return useMemo(() => {
       if (!repositories || !releases) return null;
@@ -61,28 +97,31 @@ const helmRepositorySource: any = {
         id: it.metadata.uid,
         kubeObject: it,
         detailsComponent: HelmRepositoryDetails,
+        weight: 1100,
       }));
       const edges: any[] = [];
 
-      repositories?.forEach(repo => {
-        const { name } = repo.metadata;
+      if (!config?.linkHRelToKs) {
+        repositories?.forEach(repo => {
+          const { name } = repo.metadata;
 
-        const release = releases?.find(
-          it =>
-            it.jsonData.spec?.chart?.spec?.sourceRef?.kind === 'HelmRepository' &&
-            it.jsonData.spec?.chart?.spec?.sourceRef?.name === name
-        );
+          const release = releases?.find(
+            it =>
+              it.jsonData.spec?.chart?.spec?.sourceRef?.kind === 'HelmRepository' &&
+              it.jsonData.spec?.chart?.spec?.sourceRef?.name === name
+          );
 
-        if (release) {
-          edges.push(makeKubeToKubeEdge(release, repo));
-        }
-      });
+          if (release) {
+            edges.push(makeKubeToKubeEdge(repo, release));
+          }
+        });
+      }
 
       return {
         nodes,
         edges,
       };
-    }, [repositories, releases]);
+    }, [repositories, releases, config]);
   },
 };
 
@@ -100,6 +139,7 @@ const helmReleaseSource = {
         id: it.metadata.uid,
         kubeObject: it,
         detailsComponent: HelmReleaseDetails,
+        weight: 1100,
       }));
       const edges = [];
 
@@ -131,14 +171,30 @@ const kustomizationSource = {
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
     const [deployments] = Deployment.useList();
-    const [kustomizations] = Kustomization.useList();
+    const [gitRepositories] = GitRepository.useList();
+    const [helmReleases] = HelmRelease.useList();
+    const [helmRepositories] = HelmRepository.useList();
+    const [kustomizations] = Kustomization.useList({ namespace: useNamespaces() });
+    const [ociRepositories] = OCIRepository.useList();
+
+    const useConf = store.useConfig();
+    const config = useConf();
 
     return useMemo(() => {
-      if (!deployments || !kustomizations) return null;
+      if (
+        !deployments ||
+        !gitRepositories ||
+        !helmReleases ||
+        !helmRepositories ||
+        !kustomizations ||
+        !ociRepositories
+      )
+        return null;
       const nodes = kustomizations?.map(it => ({
         id: it.metadata.uid,
         kubeObject: it,
         detailsComponent: KustomizationDetails,
+        weight: 1100,
       }));
       const edges = [];
 
@@ -154,13 +210,89 @@ const kustomizationSource = {
           .forEach(deployment => {
             edges.push(makeKubeToKubeEdge(release, deployment));
           });
+
+        gitRepositories
+          ?.filter(
+            it =>
+              (it.metadata.annotations?.['meta.helm.sh/release-name'] === name &&
+                it.metadata.annotations?.['meta.helm.sh/release-namespace'] === namespace) ||
+              (it.metadata.labels?.['kustomize.toolkit.fluxcd.io/name'] === name &&
+                it.metadata.labels?.['kustomize.toolkit.fluxcd.io/namespace'] === namespace)
+          )
+          .forEach(gitRepository => {
+            if (
+              release.jsonData?.spec?.sourceRef?.kind !== 'GitRepository' ||
+              release.jsonData?.spec?.sourceRef?.name !== gitRepository.metadata.name
+            ) {
+              edges.push(makeKubeToKubeEdge(release, gitRepository));
+            } else {
+              const node = nodes.find(n => n.id === release.metadata.uid);
+              if (node) {
+                node.weight = 1200;
+              }
+            }
+          });
+
+        if (config?.linkHRelToKs) {
+          helmReleases
+            ?.filter(
+              it =>
+                it.metadata.labels?.['kustomize.toolkit.fluxcd.io/name'] === name &&
+                it.metadata.labels?.['kustomize.toolkit.fluxcd.io/namespace'] === namespace
+            )
+            .forEach(helmRelease => {
+              edges.push(makeKubeToKubeEdge(release, helmRelease));
+            });
+        }
+
+        helmRepositories
+          ?.filter(
+            it =>
+              (it.metadata.annotations?.['meta.helm.sh/release-name'] === name &&
+                it.metadata.annotations?.['meta.helm.sh/release-namespace'] === namespace) ||
+              (it.metadata.labels?.['kustomize.toolkit.fluxcd.io/name'] === name &&
+                it.metadata.labels?.['kustomize.toolkit.fluxcd.io/namespace'] === namespace)
+          )
+          .forEach(helmRepository => {
+            edges.push(makeKubeToKubeEdge(release, helmRepository));
+          });
+
+        kustomizations
+          ?.filter(
+            it =>
+              it.metadata.labels?.['kustomize.toolkit.fluxcd.io/name'] === name &&
+              it.metadata.labels?.['kustomize.toolkit.fluxcd.io/namespace'] === namespace
+          )
+          .forEach(kustomization => {
+            edges.push(makeKubeToKubeEdge(release, kustomization));
+          });
+
+        ociRepositories
+          ?.filter(
+            it =>
+              (it.metadata.annotations?.['meta.helm.sh/release-name'] === name &&
+                it.metadata.annotations?.['meta.helm.sh/release-namespace'] === namespace) ||
+              (it.metadata.labels?.['kustomize.toolkit.fluxcd.io/name'] === name &&
+                it.metadata.labels?.['kustomize.toolkit.fluxcd.io/namespace'] === namespace)
+          )
+          .forEach(ociRepository => {
+            edges.push(makeKubeToKubeEdge(release, ociRepository));
+          });
       });
 
       return {
         nodes,
         edges,
       };
-    }, [deployments, kustomizations]);
+    }, [
+      deployments,
+      gitRepositories,
+      helmReleases,
+      helmRepositories,
+      kustomizations,
+      ociRepositories,
+      config,
+    ]);
   },
 };
 
@@ -170,7 +302,7 @@ const ociSource = {
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
     const [kustomizations] = Kustomization.useList();
-    const [ocisources] = OciSource.useList();
+    const [ocisources] = OCIRepository.useList();
 
     return useMemo(() => {
       if (!kustomizations || !ocisources) return null;
@@ -178,6 +310,7 @@ const ociSource = {
         id: it.metadata.uid,
         kubeObject: it,
         detailsComponent: OCIRepositoryDetails,
+        weight: 1100,
       }));
       const edges = [];
 
@@ -207,5 +340,11 @@ export const fluxSource = {
   id: 'flux',
   label: 'Flux',
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
-  sources: [helmReleaseSource, helmRepositorySource, kustomizationSource, ociSource],
+  sources: [
+    gitRepositorySource,
+    helmReleaseSource,
+    helmRepositorySource,
+    kustomizationSource,
+    ociSource,
+  ],
 };
