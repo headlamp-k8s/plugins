@@ -1,5 +1,6 @@
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import React from 'react';
@@ -17,6 +18,10 @@ export default function FalcoRules() {
   const [rules, setRules] = React.useState<FalcoRule[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Search across the rule's name/description/pod/file fields so the header
+  // search box wired up by `SectionFilterHeader` actually filters the table.
+  const filterFunction = useFilterFunc<FalcoRuleWithPodFile>(['.name', '.desc', '.pod', '.file']);
 
   // Memoized rules with pod/file split
   const rulesWithPodFile: FalcoRuleWithPodFile[] = React.useMemo(
@@ -78,7 +83,7 @@ export default function FalcoRules() {
       </Box>
 
       <LoadingIndicator loading={loading} error={error} />
-      <RulesTable data={rulesWithPodFile} />
+      <RulesTable data={rulesWithPodFile} filterFunction={filterFunction} />
     </SectionBox>
   );
 }
