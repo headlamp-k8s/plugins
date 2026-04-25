@@ -23,6 +23,7 @@ import {
   getSeverityColor,
 } from '../utils/falcoEventUtils';
 import { detectFalcoFileOutputPath } from '../utils/falcoPodUtils';
+import { cancelPodExec, PodExecResult } from '../utils/podExecUtils';
 import { FALCO_SETTINGS_KEY, FalcoSettings, loadSettings } from '../utils/storageUtils';
 
 /** Maximum number of events to keep in memory for the file-stream backend. */
@@ -83,6 +84,7 @@ export default function FalcoEvents() {
     if (!falcoPods.length) return;
     let stopped = false;
     let buffer = '';
+    let execResult: PodExecResult | null = null;
 
     setEvents([]);
     const pod = falcoPods[0];
@@ -134,7 +136,7 @@ export default function FalcoEvents() {
       console.error('Falco exec error:', msg);
     };
     try {
-      pod.exec('falco', handleData, {
+      execResult = pod.exec('falco', handleData, {
         command: ['tail', '-n', '+1', '-F', detectFalcoFileOutputPath(pod.jsonData)],
       });
     } catch (err: any) {
@@ -142,6 +144,7 @@ export default function FalcoEvents() {
     }
     return () => {
       stopped = true;
+      cancelPodExec(execResult);
     };
   }, [falcoPods, settings]);
 
