@@ -15,6 +15,25 @@ spec:
     app: redis-rest-proxy
 
 ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-rest-proxy
+  namespace: falco
+spec:
+  podSelector:
+    matchLabels:
+      app: redis-rest-proxy
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -30,9 +49,15 @@ spec:
       labels:
         app: redis-rest-proxy
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redis-rest-proxy
-          image: python:3-alpine
+          image: python:3.13.3-alpine3.21
           workingDir: /tmp
           command: ['sh', '-c']
           args:
@@ -51,7 +76,7 @@ spec:
                   try:
                       # Try to parse JSON
                       data = request.get_json(silent=True)
-                      
+
                       # If can't parse as JSON, try getting raw data
                       if data is None:
                           data = request.get_data(as_text=True)
@@ -64,7 +89,7 @@ spec:
                               # If not valid JSON, store as is
                               rclient.lpush('falco:events', json.dumps({"rule":"Raw Event", "output":data}))
                               return jsonify(status='ok'), 201
-                      
+
                       # Store proper JSON data
                       print(f"Storing JSON: {json.dumps(data)}", file=sys.stderr)
                       rclient.lpush('falco:events', json.dumps(data))
@@ -75,7 +100,11 @@ spec:
 
               @app.route('/events', methods=['GET'])
               def get_events():
-                  limit = int(request.args.get('limit', 100))
+                  try:
+                      limit = int(request.args.get('limit', 100))
+                  except ValueError:
+                      limit = 100
+                  limit = max(1, min(limit, 1000))
                   events = [json.loads(e) for e in rclient.lrange('falco:events', 0, limit-1)]
                   return jsonify(events)
 
@@ -88,3 +117,16 @@ spec:
               EOF
           ports:
             - containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
