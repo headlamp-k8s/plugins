@@ -14,6 +14,7 @@ import MessageCell from '../components/MessageCell';
 import SeverityColumn from '../components/SeverityColumn';
 import TagsCell from '../components/TagsCell';
 import { FalcoEvent } from '../types/FalcoEvent';
+import { FALCO_LABEL_SELECTOR, FALCO_NAMESPACE } from '../utils/constants';
 import {
   formatFalcoTime,
   getEventUser,
@@ -22,37 +23,15 @@ import {
   getSeverityColor,
 } from '../utils/falcoEventUtils';
 import { detectFalcoFileOutputPath } from '../utils/falcoPodUtils';
-
-/**
- * Namespace and label selector for Falco pods
- */
-const FALCO_NAMESPACE = 'falco';
-const FALCO_LABEL_SELECTOR = 'app.kubernetes.io/name=falco';
+import { FALCO_SETTINGS_KEY, FalcoSettings, loadSettings } from '../utils/storageUtils';
 
 /**
  * The main FalcoEvents component.
  * @returns The FalcoEvents component.
  */
 export default function FalcoEvents() {
-  // Persisted settings (selected backend & optional Redis URL)
-  const STORAGE_KEY = 'falco_event_storage_settings';
-  const loadSettings = () => {
-    try {
-      return (
-        JSON.parse(localStorage.getItem(STORAGE_KEY) || '') || {
-          backend: 'file',
-          redisUrl: '',
-        }
-      );
-    } catch {
-      return { backend: 'file', redisUrl: '' } as { backend: string; redisUrl?: string };
-    }
-  };
-
   // Settings & component state
-  const [settings, setSettings] = React.useState<{ backend: string; redisUrl?: string }>(
-    loadSettings()
-  );
+  const [settings, setSettings] = React.useState<FalcoSettings>(loadSettings);
   const [events, setEvents] = React.useState<FalcoEvent[]>([]);
   const [falcoPods, setFalcoPods] = React.useState<Pod[]>([]);
   const [selectedEvent, setSelectedEvent] = React.useState<FalcoEvent | null>(null);
@@ -87,7 +66,7 @@ export default function FalcoEvents() {
   // Keep settings in-sync if the user changes them in the Settings page (localStorage "storage" event)
   React.useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) {
+      if (e.key === FALCO_SETTINGS_KEY) {
         setSettings(loadSettings());
       }
     };
