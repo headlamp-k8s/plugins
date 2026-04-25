@@ -76,8 +76,8 @@ export function extractRulesFromYaml(yamlText: string, source: string): FalcoRul
  * @returns Cleaned YAML text
  */
 export function cleanYamlText(yamlText: string): string {
-  // Remove ALL non-printable/control characters (except tab, newline, carriage return)
-  let cleanText = yamlText.replace(/[^\t\n\r\x20-\x7E#]+/g, '');
+  // Remove control characters (except tab, newline, carriage return), preserving Unicode
+  let cleanText = yamlText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/g, '');
   // Remove any trailing JSON object (e.g. {"metadata":{},"status":"Success"}) at the end of the string
   cleanText = cleanText.replace(/(\r?\n)+\{[\s\S]*?\}\s*$/g, '');
   return cleanText;
