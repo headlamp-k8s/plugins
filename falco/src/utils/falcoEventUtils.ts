@@ -88,7 +88,7 @@ export function getNamespace(ev: FalcoEvent): string {
   ];
   for (const pat of patterns) {
     const m = msg.match(pat);
-    if (m && m[1] && m[1] !== 'default') {
+    if (m && m[1]) {
       return m[1];
     }
   }
