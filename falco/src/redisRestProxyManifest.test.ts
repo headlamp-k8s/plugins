@@ -61,13 +61,32 @@ describe('redis-rest-proxy manifest', () => {
     expect(container?.resources?.limits).toEqual({ cpu: '100m', memory: '128Mi' });
   });
 
-  it('should pin Python dependencies and cap the GET events limit', () => {
+  it('should pin Python dependencies, install as user, and cap the GET events limit', () => {
     const script = getProxyScript();
 
     expect(script).toContain('flask==3.1.3');
     expect(script).toContain('redis==7.4.0');
     expect(script).toContain('flask-cors==6.0.2');
+    expect(script).toContain('pip install --user');
     expect(script).toContain('limit = max(1, min(limit, 1000))');
+  });
+
+  it('should set HOME/PYTHONUSERBASE/PATH so non-root pip install works', () => {
+    const deployment = loadDocs().find(doc => doc?.kind === 'Deployment');
+    const env = deployment?.spec?.template?.spec?.containers?.[0]?.env || [];
+    const envByName: Record<string, string> = {};
+    for (const e of env) envByName[e.name] = e.value;
+
+    expect(envByName.HOME).toBe('/tmp');
+    expect(envByName.PYTHONUSERBASE).toBe('/tmp/.local');
+    expect(envByName.PATH).toContain('/tmp/.local/bin');
+  });
+
+  it('should cap the falco:events Redis list with LTRIM', () => {
+    const script = getProxyScript();
+
+    expect(script).toContain("ltrim('falco:events'");
+    expect(script).toContain('FALCO_EVENTS_MAX');
   });
 
   it('should contain valid embedded Python', () => {
