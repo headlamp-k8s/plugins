@@ -1,0 +1,10 @@
+version: 0.8.0
+name: headlamp_app-catalog
+displayName: app-catalog
+createdAt: "2025-12-15T16:23:00Z"
+description: An app catalog for Headlamp.
+annotations:
+  headlamp/plugin/archive-url: https://github.com/headlamp-k8s/plugins/releases/download/app-catalog-0.8.0/headlamp-k8s-app-catalog-0.8.0.tar.gz
+  headlamp/plugin/archive-checksum: "SHA256:2295f944de00dc08e78c45d8989580ae737de3c686597fcd6afa93a4588837b4"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
