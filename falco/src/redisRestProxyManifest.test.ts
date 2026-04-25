@@ -26,13 +26,16 @@ describe('redis-rest-proxy manifest', () => {
     expect(service?.spec?.ports?.[0]?.port).toBe(8080);
   });
 
-  it('should include a NetworkPolicy restricting ingress to namespace pods', () => {
+  it('should include a NetworkPolicy allowing ingress to the proxy port', () => {
     const networkPolicy = loadDocs().find(doc => doc?.kind === 'NetworkPolicy');
 
     expect(networkPolicy?.apiVersion).toBe('networking.k8s.io/v1');
     expect(networkPolicy?.spec?.podSelector?.matchLabels).toEqual({ app: 'redis-rest-proxy' });
     expect(networkPolicy?.spec?.policyTypes).toContain('Ingress');
-    expect(networkPolicy?.spec?.ingress?.[0]?.from?.[0]).toEqual({ podSelector: {} });
+    // The ingress rule must allow connections to port 8080 without restricting
+    // sources by pod selector — the in-cluster Service proxy path originates
+    // from the kube-apiserver, not from a falco-namespace pod.
+    expect(networkPolicy?.spec?.ingress?.[0]?.from).toBeUndefined();
     expect(networkPolicy?.spec?.ingress?.[0]?.ports?.[0]).toMatchObject({
       protocol: 'TCP',
       port: 8080,

@@ -27,9 +27,12 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    - from:
-        - podSelector: {}
-      ports:
+    # Allow ingress on the proxy port from any source. Restricting `from` to
+    # pods in the falco namespace breaks the in-cluster Service proxy path
+    # (`/api/v1/namespaces/.../services/.../proxy`), where the connection
+    # originates from the kube-apiserver / control plane rather than from a
+    # falco-namespace pod.
+    - ports:
         - protocol: TCP
           port: 8080
 
