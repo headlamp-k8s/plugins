@@ -1,4 +1,5 @@
 import {
+  isConnectReady,
   isKafkaReady,
   isTopicReady,
   isUserReady,
@@ -121,6 +122,34 @@ describe('CRD helper functions', () => {
       };
 
       expect(isUserReady(user)).toBe(false);
+    });
+  });
+
+  describe('isConnectReady', () => {
+    it('should return true when Connect cluster is ready', () => {
+      const connect: ReadyConditionResource = {
+        status: {
+          conditions: [{ type: 'Ready', status: 'True' }],
+        },
+      };
+
+      expect(isConnectReady(connect)).toBe(true);
+    });
+
+    it('should return false when Connect cluster is not ready', () => {
+      const connect: ReadyConditionResource = {
+        status: {
+          conditions: [{ type: 'Ready', status: 'False' }],
+        },
+      };
+
+      expect(isConnectReady(connect)).toBe(false);
+    });
+
+    it('should return false when status is missing', () => {
+      const connect: ReadyConditionResource = {};
+
+      expect(isConnectReady(connect)).toBe(false);
     });
   });
 });

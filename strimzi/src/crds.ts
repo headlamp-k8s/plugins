@@ -19,8 +19,13 @@ export interface K8sListResponse<T> {
 // Re-export resource classes and their interfaces
 export {
   Kafka,
+  KafkaConnect,
   KafkaTopic,
   KafkaUser,
+  type ConnectorPlugin,
+  type KafkaConnectInterface,
+  type KafkaConnectSpec,
+  type KafkaConnectStatus,
   type KafkaInterface,
   type KafkaSpec,
   type KafkaTopicInterface,
@@ -97,4 +102,5 @@ export {
   isKafkaReady,
   isTopicReady,
   isUserReady,
+  isConnectReady,
 } from './crds-helpers';

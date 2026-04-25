@@ -40,6 +40,11 @@ export function isUserReady(user: ReadyConditionResource): boolean {
   return condition?.status === 'True';
 }
 
+export function isConnectReady(connect: ReadyConditionResource): boolean {
+  const condition = connect.status?.conditions?.find(c => c.type === 'Ready');
+  return condition?.status === 'True';
+}
+
 export function isKRaftMode(kafka: KafkaLike): boolean {
   return !kafka.spec?.zookeeper;
 }

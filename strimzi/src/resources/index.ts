@@ -7,3 +7,10 @@ export {
   type KafkaUserInterface,
   type KafkaUserSpec,
 } from './kafkaUser';
+export {
+  KafkaConnect,
+  type ConnectorPlugin,
+  type KafkaConnectInterface,
+  type KafkaConnectSpec,
+  type KafkaConnectStatus,
+} from './kafkaConnect';
