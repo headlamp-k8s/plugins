@@ -21,21 +21,36 @@ export function formatFalcoTime(ev: FalcoEvent): string {
       });
     }
   }
-  // Try output_fields["evt.time"] (nanoseconds since epoch)
-  const ns = ev.output_fields?.['evt.time'];
-  if (typeof ns === 'number' || (typeof ns === 'string' && ns.length > 10)) {
-    const ms = Math.floor(Number(ns) / 1e6);
-    const d = new Date(ms);
-    if (!isNaN(d.getTime())) {
-      return d.toLocaleString(undefined, {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      });
+  // Try output_fields["evt.time"] (epoch nanoseconds, milliseconds or seconds)
+  const t = ev.output_fields?.['evt.time'];
+  if (typeof t === 'number' || typeof t === 'string') {
+    const num = Number(t);
+    if (Number.isFinite(num) && num > 0) {
+      // Distinguish nanoseconds vs. milliseconds vs. seconds by magnitude.
+      // Year 2001 = ~1e12 ms = ~1e15 µs = ~1e18 ns. Falco typically emits ns,
+      // but be defensive in case a future config emits ms or s.
+      let ms: number;
+      if (num >= 1e16) {
+        ms = Math.floor(num / 1e6); // nanoseconds
+      } else if (num >= 1e13) {
+        ms = Math.floor(num / 1e3); // microseconds
+      } else if (num >= 1e10) {
+        ms = num; // milliseconds
+      } else {
+        ms = num * 1000; // seconds
+      }
+      const d = new Date(ms);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString(undefined, {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        });
+      }
     }
   }
   return ev.time || ev.output_fields?.['evt.time'] || '';
@@ -79,12 +94,13 @@ export function getNamespace(ev: FalcoEvent): string {
     return cnameMatch[1];
   }
 
-  // 3. Try to extract from output/msg using stricter regex
+  // 3. Try to extract from output/msg using stricter regex.
+  // Kubernetes namespace names are DNS labels (1-63 chars).
   const msg = ev.output || ev.msg || '';
   const patterns = [
-    /namespace[_:=\s]+([a-z0-9-]{3,})\b/i,
-    /ns[_:=\s]+([a-z0-9-]{3,})\b/i,
-    /namespace['"]?:?\s*([a-z0-9-]{3,})\b/i,
+    /namespace[_:=\s]+([a-z0-9-]{1,63})\b/i,
+    /\bns[_:=\s]+([a-z0-9-]{1,63})\b/i,
+    /namespace['"]?:?\s*([a-z0-9-]{1,63})\b/i,
   ];
   for (const pat of patterns) {
     const m = msg.match(pat);

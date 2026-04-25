@@ -28,6 +28,31 @@ describe('formatFalcoTime', () => {
     const result = formatFalcoTime(ev);
     expect(result).toBeTruthy();
     expect(result).not.toBe('');
+    // The rendered year must come from the same epoch as `ms` (i.e. 2023-11),
+    // not 1970 — ensures ns/ms detection is correct and not just `/1e6`.
+    expect(result).toContain(String(new Date(ms).getFullYear()));
+  });
+
+  it('should handle millisecond epoch in output_fields', () => {
+    const ms = 1700000000000; // 13 digits — typical JS millis epoch.
+    const ev: FalcoEvent = { output_fields: { 'evt.time': ms } };
+    const result = formatFalcoTime(ev);
+    expect(result).toBeTruthy();
+    expect(result).toContain(String(new Date(ms).getFullYear()));
+  });
+
+  it('should handle millisecond epoch as a string', () => {
+    const ms = 1700000000000;
+    const ev: FalcoEvent = { output_fields: { 'evt.time': String(ms) } };
+    const result = formatFalcoTime(ev);
+    expect(result).toContain(String(new Date(ms).getFullYear()));
+  });
+
+  it('should handle second epoch in output_fields', () => {
+    const seconds = 1700000000;
+    const ev: FalcoEvent = { output_fields: { 'evt.time': seconds } };
+    const result = formatFalcoTime(ev);
+    expect(result).toContain(String(new Date(seconds * 1000).getFullYear()));
   });
 
   it('should return empty string for missing time', () => {
@@ -98,6 +123,12 @@ describe('getNamespace', () => {
   it('should return default namespace when matched', () => {
     const ev: FalcoEvent = { output: 'some event in namespace: default happened' };
     expect(getNamespace(ev)).toBe('default');
+  });
+
+  it('should match short (single-character) namespace names', () => {
+    // Kubernetes namespaces follow DNS label rules and may be 1-63 chars.
+    const ev: FalcoEvent = { output: 'some event in namespace: a happened' };
+    expect(getNamespace(ev)).toBe('a');
   });
 
   it('should return N/A when no namespace found', () => {
