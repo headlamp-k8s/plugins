@@ -25,6 +25,9 @@ import {
 import { detectFalcoFileOutputPath } from '../utils/falcoPodUtils';
 import { FALCO_SETTINGS_KEY, FalcoSettings, loadSettings } from '../utils/storageUtils';
 
+/** Maximum number of events to keep in memory for the file-stream backend. */
+const MAX_FILE_EVENTS = 300;
+
 /**
  * The main FalcoEvents component.
  * @returns The FalcoEvents component.
@@ -112,7 +115,8 @@ export default function FalcoEvents() {
           }
         })
         .filter(Boolean);
-      if (newEvents.length > 0) setEvents(prev => [...prev, ...newEvents]);
+      if (newEvents.length > 0)
+        setEvents(prev => [...prev, ...newEvents].slice(-MAX_FILE_EVENTS));
     };
     const handleError = (err: unknown) => {
       if (stopped) return;
