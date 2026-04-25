@@ -57,6 +57,23 @@ const mockCharts = [
   },
 ];
 
+type MockChart = (typeof mockCharts)[number];
+
+function createChartsResponse(packages: MockChart[]) {
+  return Promise.resolve({
+    data: { packages },
+    total: String(packages.length),
+  });
+}
+
+function fetchMockCharts(_search: string, verified: boolean) {
+  const packages = verified
+    ? mockCharts.filter(chart => chart.repository.verified_publisher === true)
+    : mockCharts;
+
+  return createChartsResponse(packages);
+}
+
 const initialStateTrue = {
   config: {
     showOnlyVerified: true,
@@ -91,58 +108,22 @@ const Template: StoryFn = ({ initialState, ...args }) => {
 
 export const EmptyCharts = Template.bind({});
 EmptyCharts.args = {
-  fetchCharts: () =>
-    Promise.resolve({
-      packages: [],
-      facets: [
-        {
-          title: 'Category',
-          options: [{ name: 'All', total: 0 }],
-        },
-      ],
-    }),
+  fetchCharts: () => createChartsResponse([]),
 };
 
 export const SomeCharts = Template.bind({});
 SomeCharts.args = {
-  fetchCharts: () =>
-    Promise.resolve({
-      packages: mockCharts,
-      facets: [
-        {
-          title: 'Category',
-          options: [{ name: 'All', total: 0 }],
-        },
-      ],
-    }),
+  fetchCharts: fetchMockCharts,
 };
 
 export const WithShowOnlyVerifiedTrue = Template.bind({});
 WithShowOnlyVerifiedTrue.args = {
   initialState: initialStateTrue,
-  fetchCharts: () =>
-    Promise.resolve({
-      packages: mockCharts,
-      facets: [
-        {
-          title: 'Category',
-          options: [{ name: 'All', total: 0 }],
-        },
-      ],
-    }),
+  fetchCharts: fetchMockCharts,
 };
 
 export const WithShowOnlyVerifiedFalse = Template.bind({});
 WithShowOnlyVerifiedFalse.args = {
   initialState: initialStateFalse,
-  fetchCharts: () =>
-    Promise.resolve({
-      packages: mockCharts,
-      facets: [
-        {
-          title: 'Category',
-          options: [{ name: 'All', total: 0 }],
-        },
-      ],
-    }),
+  fetchCharts: fetchMockCharts,
 };
