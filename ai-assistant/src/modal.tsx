@@ -801,219 +801,220 @@ export default function AIPrompt(props: {
     return false;
   };
 
-  const handleToggleAgentMode = React.useCallback(async (enabled: boolean) => {
-    if (enabled) {
-      setAgentModeStatus('found');
-      setIsAgentMode(true);
+  const handleToggleAgentMode = React.useCallback(
+    async (enabled: boolean) => {
+      if (enabled) {
+        setAgentModeStatus('found');
+        setIsAgentMode(true);
 
-      // Create the HolmesAgent routing through K8s service proxy
-      const cluster = getCluster();
-      if (!cluster) {
-        console.error('[AgentMode] No cluster available');
-        return;
-      }
-      const agent = new HolmesAgent(getHolmesProxyBaseUrl(cluster));
-      agent.subscribe({
-        onEvent: ({ event }) => {
-          console.log('[AgentMode] onEvent:', event.type, event);
-        },
-        onRunInitialized: () => {
-          console.log('[AgentMode] onRunInitialized');
-        },
-        onRunFailed: ({ error }) => {
-          console.error('[AgentMode] onRunFailed:', error);
-        },
-        onRunFinalized: () => {
-          console.log('[AgentMode] onRunFinalized');
-        },
-        onRunStartedEvent: () => {
-          console.log('[AgentMode] onRunStartedEvent');
-          setLoading(true);
-          // Create the placeholder assistant message with thinking steps
-          const placeholderId = `agent-response-${Date.now()}`;
-          agentMessageIdRef.current = placeholderId;
-          setPromptHistory(prev => [
-            ...prev,
-            {
-              role: 'assistant',
-              content: '',
-              agentThinkingSteps: [],
-              agentThinkingDone: false,
-            },
-          ]);
-        },
-        onRunFinishedEvent: () => {
-          console.log('[AgentMode] onRunFinishedEvent');
-          setLoading(false);
-          // Mark thinking as done and sanitize the final displayed content
-          setPromptHistory(prev => {
-            const updated = [...prev];
-            for (let i = updated.length - 1; i >= 0; i--) {
-              if (
-                updated[i].role === 'assistant' &&
-                updated[i].agentThinkingSteps !== undefined &&
-                !updated[i].agentThinkingDone
-              ) {
-                const cleanContent = sanitizeAgentContent(updated[i].content || '');
-                updated[i] = {
-                  ...updated[i],
-                  content: cleanContent,
-                  agentThinkingDone: true,
-                };
-                break;
-              }
-            }
-            return updated;
-          });
-          agentMessageIdRef.current = null;
-          agentTextBufferRef.current = '';
-          agentCurrentMsgIdRef.current = '';
-        },
-        onRunErrorEvent: ({ event }) => {
-          console.error('[AgentMode] onRunErrorEvent:', event);
-          setLoading(false);
-          setPromptHistory(prev => [
-            ...prev,
-            {
-              role: 'assistant',
-              content: `Agent error: ${event.message}`,
-              error: true,
-            },
-          ]);
-          agentMessageIdRef.current = null;
-        },
-        onTextMessageStartEvent: ({ event }) => {
-          console.log('[AgentMode] onTextMessageStartEvent:', event.messageId);
-          agentTextBufferRef.current = '';
-          agentCurrentMsgIdRef.current = event.messageId;
-        },
-        onTextMessageContentEvent: ({ event }) => {
-          console.log('[AgentMode] onTextMessageContentEvent:', { delta: event.delta });
-          agentTextBufferRef.current += event.delta || '';
-        },
-        onTextMessageEndEvent: () => {
-          console.log('[AgentMode] onTextMessageEndEvent');
-          const fullText = agentTextBufferRef.current;
-          const msgId = agentCurrentMsgIdRef.current;
-          const stepType = classifyAgentText(fullText);
-          const isToolMessage = stepType === 'tool-result' || stepType === 'tool-start';
-
-          // Update the placeholder assistant message:
-          // - Tool-result / tool-start messages go ONLY into agentThinkingSteps
-          //   (they must never overwrite the displayed content).
-          // - Other messages replace content (final answer is the last non-tool one).
-          setPromptHistory(prev => {
-            const updated = [...prev];
-            for (let i = updated.length - 1; i >= 0; i--) {
-              if (
-                updated[i].role === 'assistant' &&
-                updated[i].agentThinkingSteps !== undefined &&
-                !updated[i].agentThinkingDone
-              ) {
-                const existingSteps = updated[i].agentThinkingSteps || [];
-                const prevContent = updated[i].content || '';
-                const newSteps = [...existingSteps];
-
-                // For non-tool messages, move previous content into thinking
-                // steps (if it hasn't already been added).
-                if (!isToolMessage && prevContent.trim()) {
-                  const prevType = classifyAgentText(prevContent);
-                  const alreadyInSteps = newSteps.some(step => step.content === prevContent);
-                  if (!alreadyInSteps) {
-                    newSteps.push({
-                      id: `step-prev-${i}-${newSteps.length}`,
-                      content: prevContent,
-                      type: prevType,
-                      timestamp: Date.now(),
-                    });
-                  }
+        // Create the HolmesAgent routing through K8s service proxy
+        const cluster = getCluster();
+        if (!cluster) {
+          console.error('[AgentMode] No cluster available');
+          return;
+        }
+        const agent = new HolmesAgent(getHolmesProxyBaseUrl(cluster, pluginSettings));
+        agent.subscribe({
+          onEvent: ({ event }) => {
+            console.log('[AgentMode] onEvent:', event.type, event);
+          },
+          onRunInitialized: () => {
+            console.log('[AgentMode] onRunInitialized');
+          },
+          onRunFailed: ({ error }) => {
+            console.error('[AgentMode] onRunFailed:', error);
+          },
+          onRunFinalized: () => {
+            console.log('[AgentMode] onRunFinalized');
+          },
+          onRunStartedEvent: () => {
+            console.log('[AgentMode] onRunStartedEvent');
+            setLoading(true);
+            // Create the placeholder assistant message with thinking steps
+            const placeholderId = `agent-response-${Date.now()}`;
+            agentMessageIdRef.current = placeholderId;
+            setPromptHistory(prev => [
+              ...prev,
+              {
+                role: 'assistant',
+                content: '',
+                agentThinkingSteps: [],
+                agentThinkingDone: false,
+              },
+            ]);
+          },
+          onRunFinishedEvent: () => {
+            console.log('[AgentMode] onRunFinishedEvent');
+            setLoading(false);
+            // Mark thinking as done and sanitize the final displayed content
+            setPromptHistory(prev => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (
+                  updated[i].role === 'assistant' &&
+                  updated[i].agentThinkingSteps !== undefined &&
+                  !updated[i].agentThinkingDone
+                ) {
+                  const cleanContent = sanitizeAgentContent(updated[i].content || '');
+                  updated[i] = {
+                    ...updated[i],
+                    content: cleanContent,
+                    agentThinkingDone: true,
+                  };
+                  break;
                 }
-
-                // Always record the message as a thinking step
-                newSteps.push({
-                  id: `step-${msgId}`,
-                  content: fullText,
-                  type: stepType,
-                  timestamp: Date.now(),
-                });
-
-                // Only update displayed content for non-tool messages
-                const newContent = isToolMessage ? updated[i].content : fullText;
-
-                updated[i] = {
-                  ...updated[i],
-                  content: newContent,
-                  agentThinkingSteps: newSteps,
-                };
-                break;
               }
-            }
-            return updated;
-          });
+              return updated;
+            });
+            agentMessageIdRef.current = null;
+            agentTextBufferRef.current = '';
+            agentCurrentMsgIdRef.current = '';
+          },
+          onRunErrorEvent: ({ event }) => {
+            console.error('[AgentMode] onRunErrorEvent:', event);
+            setLoading(false);
+            setPromptHistory(prev => [
+              ...prev,
+              {
+                role: 'assistant',
+                content: `Agent error: ${event.message}`,
+                error: true,
+              },
+            ]);
+            agentMessageIdRef.current = null;
+          },
+          onTextMessageStartEvent: ({ event }) => {
+            console.log('[AgentMode] onTextMessageStartEvent:', event.messageId);
+            agentTextBufferRef.current = '';
+            agentCurrentMsgIdRef.current = event.messageId;
+          },
+          onTextMessageContentEvent: ({ event }) => {
+            console.log('[AgentMode] onTextMessageContentEvent:', { delta: event.delta });
+            agentTextBufferRef.current += event.delta || '';
+          },
+          onTextMessageEndEvent: () => {
+            console.log('[AgentMode] onTextMessageEndEvent');
+            const fullText = agentTextBufferRef.current;
+            const msgId = agentCurrentMsgIdRef.current;
+            const stepType = classifyAgentText(fullText);
+            const isToolMessage = stepType === 'tool-result' || stepType === 'tool-start';
 
-          agentTextBufferRef.current = '';
-          agentCurrentMsgIdRef.current = '';
-        },
-        onToolCallStartEvent: ({ event }) => {
-          console.log('[AgentMode] onToolCallStartEvent:', event.toolCallName);
-          // Add tool call as a thinking step
-          setPromptHistory(prev => {
-            const updated = [...prev];
-            for (let i = updated.length - 1; i >= 0; i--) {
-              if (
-                updated[i].role === 'assistant' &&
-                updated[i].agentThinkingSteps !== undefined &&
-                !updated[i].agentThinkingDone
-              ) {
-                const steps = [...(updated[i].agentThinkingSteps || [])];
-                steps.push({
-                  id: `tool-${event.toolCallId || event.toolCallName}-${Date.now()}`,
-                  content: `Calling tool: ${event.toolCallName}`,
-                  type: 'tool-start',
-                  timestamp: Date.now(),
-                });
-                updated[i] = { ...updated[i], agentThinkingSteps: steps };
-                break;
-              }
-            }
-            return updated;
-          });
-        },
-        onToolCallEndEvent: ({ toolCallName }) => {
-          console.log('[AgentMode] onToolCallEndEvent:', toolCallName);
-          // Add tool result as a thinking step
-          setPromptHistory(prev => {
-            const updated = [...prev];
-            for (let i = updated.length - 1; i >= 0; i--) {
-              if (
-                updated[i].role === 'assistant' &&
-                updated[i].agentThinkingSteps !== undefined &&
-                !updated[i].agentThinkingDone
-              ) {
-                const steps = [...(updated[i].agentThinkingSteps || [])];
-                steps.push({
-                  id: `tool-end-${toolCallName}-${Date.now()}`,
-                  content: `Tool ${toolCallName} completed`,
-                  type: 'tool-result',
-                  timestamp: Date.now(),
-                });
-                updated[i] = { ...updated[i], agentThinkingSteps: steps };
-                break;
-              }
-            }
-            return updated;
-          });
-        },
-      });
-      holmesAgentRef.current = agent;
+            // Update the placeholder assistant message:
+            // - Tool-result / tool-start messages go ONLY into agentThinkingSteps
+            //   (they must never overwrite the displayed content).
+            // - Other messages replace content (final answer is the last non-tool one).
+            setPromptHistory(prev => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (
+                  updated[i].role === 'assistant' &&
+                  updated[i].agentThinkingSteps !== undefined &&
+                  !updated[i].agentThinkingDone
+                ) {
+                  const existingSteps = updated[i].agentThinkingSteps || [];
+                  const prevContent = updated[i].content || '';
+                  const newSteps = [...existingSteps];
 
-      // [PROACTIVE_DIAGNOSIS_DISABLED] — agent diagnosis setup
-      /*
+                  // For non-tool messages, move previous content into thinking
+                  // steps (if it hasn't already been added).
+                  if (!isToolMessage && prevContent.trim()) {
+                    const prevType = classifyAgentText(prevContent);
+                    const alreadyInSteps = newSteps.some(step => step.content === prevContent);
+                    if (!alreadyInSteps) {
+                      newSteps.push({
+                        id: `step-prev-${i}-${newSteps.length}`,
+                        content: prevContent,
+                        type: prevType,
+                        timestamp: Date.now(),
+                      });
+                    }
+                  }
+
+                  // Always record the message as a thinking step
+                  newSteps.push({
+                    id: `step-${msgId}`,
+                    content: fullText,
+                    type: stepType,
+                    timestamp: Date.now(),
+                  });
+
+                  // Only update displayed content for non-tool messages
+                  const newContent = isToolMessage ? updated[i].content : fullText;
+
+                  updated[i] = {
+                    ...updated[i],
+                    content: newContent,
+                    agentThinkingSteps: newSteps,
+                  };
+                  break;
+                }
+              }
+              return updated;
+            });
+
+            agentTextBufferRef.current = '';
+            agentCurrentMsgIdRef.current = '';
+          },
+          onToolCallStartEvent: ({ event }) => {
+            console.log('[AgentMode] onToolCallStartEvent:', event.toolCallName);
+            // Add tool call as a thinking step
+            setPromptHistory(prev => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (
+                  updated[i].role === 'assistant' &&
+                  updated[i].agentThinkingSteps !== undefined &&
+                  !updated[i].agentThinkingDone
+                ) {
+                  const steps = [...(updated[i].agentThinkingSteps || [])];
+                  steps.push({
+                    id: `tool-${event.toolCallId || event.toolCallName}-${Date.now()}`,
+                    content: `Calling tool: ${event.toolCallName}`,
+                    type: 'tool-start',
+                    timestamp: Date.now(),
+                  });
+                  updated[i] = { ...updated[i], agentThinkingSteps: steps };
+                  break;
+                }
+              }
+              return updated;
+            });
+          },
+          onToolCallEndEvent: ({ toolCallName }) => {
+            console.log('[AgentMode] onToolCallEndEvent:', toolCallName);
+            // Add tool result as a thinking step
+            setPromptHistory(prev => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (
+                  updated[i].role === 'assistant' &&
+                  updated[i].agentThinkingSteps !== undefined &&
+                  !updated[i].agentThinkingDone
+                ) {
+                  const steps = [...(updated[i].agentThinkingSteps || [])];
+                  steps.push({
+                    id: `tool-end-${toolCallName}-${Date.now()}`,
+                    content: `Tool ${toolCallName} completed`,
+                    type: 'tool-result',
+                    timestamp: Date.now(),
+                  });
+                  updated[i] = { ...updated[i], agentThinkingSteps: steps };
+                  break;
+                }
+              }
+              return updated;
+            });
+          },
+        });
+        holmesAgentRef.current = agent;
+
+        // [PROACTIVE_DIAGNOSIS_DISABLED] — agent diagnosis setup
+        /*
         // ─── Set up proactive diagnosis via dedicated HolmesAgent ──────
         // One HolmesAgent instance, reused sequentially for all diagnoses.
         // Between each diagnosis we resetThread() to get a fresh conversation.
         // Chat is blocked (loading=true) while diagnosis runs.
-        const diagAgent = new HolmesAgent(getHolmesProxyBaseUrl(cluster));
+        const diagAgent = new HolmesAgent(getHolmesProxyBaseUrl(cluster, pluginSettings));
         diagnosisAgentRef.current = diagAgent;
 
         const agentDiagnoseFn = async (prompt: string, onStep?: DiagnosisStepCallback): Promise<string> => {
@@ -1106,28 +1107,30 @@ export default function AIPrompt(props: {
         // ─── End proactive diagnosis agent setup ────────────────────
         */
 
-      setPromptHistory(prev => [
-        ...prev,
-        {
-          role: 'system',
-          content: `Agent mode active. Connected to Holmes ag-ui server at ${agent.connectionLabel}.`,
-        },
-      ]);
-    } else {
-      setIsAgentMode(false);
-      setAgentModeStatus('idle');
-      holmesAgentRef.current = null;
-      // [PROACTIVE_DIAGNOSIS_DISABLED] — Clean up proactive diagnosis
-      // diagnoseFnRef.current = null;
-      // diagnosisAgentRef.current = null;
-      // proactiveDiagnosisManager.setDiagnoseFn(null);
-      // setDiagnoseFnReady(false);
-      setPromptHistory(prev => [
-        ...prev,
-        { role: 'system', content: 'Switched back to AI Chat mode.' },
-      ]);
-    }
-  }, []);
+        setPromptHistory(prev => [
+          ...prev,
+          {
+            role: 'system',
+            content: `Agent mode active. Connected to Holmes ag-ui server at ${agent.connectionLabel}.`,
+          },
+        ]);
+      } else {
+        setIsAgentMode(false);
+        setAgentModeStatus('idle');
+        holmesAgentRef.current = null;
+        // [PROACTIVE_DIAGNOSIS_DISABLED] — Clean up proactive diagnosis
+        // diagnoseFnRef.current = null;
+        // diagnosisAgentRef.current = null;
+        // proactiveDiagnosisManager.setDiagnoseFn(null);
+        // setDiagnoseFnReady(false);
+        setPromptHistory(prev => [
+          ...prev,
+          { role: 'system', content: 'Switched back to AI Chat mode.' },
+        ]);
+      }
+    },
+    [pluginSettings]
+  );
 
   // Auto-initialize agent mode on first mount (agent is default mode)
   React.useEffect(() => {
