@@ -8,6 +8,7 @@
  * manage-minikube.js ask-restart-libvirt-ubuntu24
  */
 const { exec, execSync, spawn, spawnSync } = require('child_process');
+const { readFileSync } = require('fs');
 const { createServer } = require('net');
 const { platform } = process;
 
@@ -64,7 +65,7 @@ function askRestartLibvirtUbuntu24() {
   }
 
   try {
-    const osRelease = execSync('cat /etc/os-release').toString();
+    const osRelease = readFileSync('/etc/os-release', 'utf8');
     if (!osRelease.includes('Ubuntu') || !osRelease.includes('24.')) {
       console.error('This command is specific to Ubuntu 24.');
       return;
