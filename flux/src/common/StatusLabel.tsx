@@ -1,12 +1,13 @@
 import { StatusLabel as HLStatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
+import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/k8s/crd';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
 import { Tooltip, Typography } from '@mui/material';
 
 interface StatusLabelProps {
   item: KubeObject;
 }
 
-export function getStatusText(item: KubeCRD): string {
+export function getStatusText(item: KubeObject | KubeCRD): string {
   const ready = item?.jsonData?.status?.conditions?.find((c: any) => c.type === 'Ready');
   if (!ready) return '-';
   if (item?.jsonData?.spec?.suspend) return 'Suspended';
