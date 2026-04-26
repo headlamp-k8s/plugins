@@ -126,7 +126,7 @@ export type HeadlampEventPayload =
       objectEvent?: ResourceListViewLoadedEvent['data'];
     };
 
-interface PluginConfig extends SavedConfigurations {
+export interface PluginConfig extends SavedConfigurations {
   /** Is the AI Assistant UI panel open? */
   isUIPanelOpen?: boolean;
   /** Is the config popover shown? */
@@ -143,6 +143,11 @@ interface PluginConfig extends SavedConfigurations {
   enabledTools?: string[] | Record<string, boolean>;
   /** MCP configuration */
   mcpConfig?: MCPConfig;
+
+  /** HolmesGPT Kubernetes Service settings (used by the Holmes agent mode) */
+  holmesNamespace?: string; // default: "default"
+  holmesServiceName?: string; // default: "holmesgpt-holmes"
+  holmesPort?: number; // default: 80
 }
 
 export const pluginStore = new ConfigStore<PluginConfig>(PLUGIN_NAME);

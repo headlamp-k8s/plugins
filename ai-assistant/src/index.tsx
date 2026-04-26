@@ -5,6 +5,7 @@ import {
   registerPluginSettings,
   registerUIPanel,
 } from '@kinvolk/headlamp-plugin/lib';
+import { useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 // @todo: this HeadlampEventType import is weird. Maybe fix in headlamp to be better.
 import { DefaultHeadlampEvents as HeadlampEventType } from '@kinvolk/headlamp-plugin/lib/plugin/registry';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
@@ -26,7 +27,7 @@ import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { checkHolmesAgentHealth } from './agent/holmesClient';
 import { ModelSelector } from './components';
-import { MCPSettings } from './components/settings';
+import { HolmesAgentSettings, MCPSettings } from './components/settings';
 import { getDefaultConfig } from './config/modelConfig';
 import { PromptWidthProvider } from './contexts/PromptWidthContext';
 import { isTestModeCheck } from './helper';
@@ -155,6 +156,7 @@ registerUIPanel({
 function HeadlampAIPrompt() {
   const pluginState = useGlobalState();
   const savedConfigs = usePluginConfig();
+  const selectedClusters = useSelectedClusters();
   const history = useHistory();
   const [popoverAnchor, setPopoverAnchor] = React.useState<HTMLElement | null>(null);
   const [showPopover, setShowPopover] = React.useState(false);
@@ -167,23 +169,34 @@ function HeadlampAIPrompt() {
   }, [savedConfigs]);
 
   const hasAnyValidConfig = savedConfigData.providers && savedConfigData.providers.length > 0;
+  const currentCluster =
+    (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : null) ||
+    getCluster() ||
+    null;
+  const holmesServiceConfig = React.useMemo(
+    () => ({
+      holmesNamespace: savedConfigs?.holmesNamespace,
+      holmesServiceName: savedConfigs?.holmesServiceName,
+      holmesPort: savedConfigs?.holmesPort,
+    }),
+    [savedConfigs?.holmesNamespace, savedConfigs?.holmesServiceName, savedConfigs?.holmesPort]
+  );
 
   // Check if the Holmes agent is available via K8s service proxy
   const [isAgentAvailable, setIsAgentAvailable] = React.useState(false);
   React.useEffect(() => {
     let cancelled = false;
-    const cluster = getCluster();
-    if (!cluster) {
+    if (!currentCluster) {
       setIsAgentAvailable(false);
       return;
     }
-    checkHolmesAgentHealth(cluster).then(available => {
+    checkHolmesAgentHealth(currentCluster, holmesServiceConfig).then(available => {
       if (!cancelled) setIsAgentAvailable(available);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentCluster, holmesServiceConfig]);
 
   // Reset popover shown state when configurations change from none to some
   React.useEffect(() => {
@@ -532,6 +545,10 @@ function Settings() {
       {/* MCP Servers Section */}
       <Divider sx={{ my: 3 }} />
       <MCPSettings />
+
+      {/* Holmes Agent Section */}
+      <Divider sx={{ my: 3 }} />
+      <HolmesAgentSettings config={savedConfigs} />
 
       {/* MCP Tool Configuration Section */}
       <Divider sx={{ my: 3 }} />
