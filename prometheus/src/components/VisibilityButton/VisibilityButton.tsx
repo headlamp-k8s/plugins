@@ -12,7 +12,7 @@ import {
   supportsPrometheusMetrics,
 } from '../../util';
 
-export interface VisibilityButtonProps {
+interface VisibilityButtonProps {
   resource?: KubeObject;
 }
 
