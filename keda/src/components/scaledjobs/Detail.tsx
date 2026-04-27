@@ -13,6 +13,7 @@ import {
   KedaInstallCheck,
   TriggersSection,
 } from '../common/CommonComponents';
+import { isPaused, PauseScalingAction, ResumeScalingAction } from '../common/ScalingActions';
 
 export interface OwnedJobsSectionProps {
   scaledJob?: ScaledJob;
@@ -57,6 +58,23 @@ export function ScaledJobDetail(props: { namespace?: string; name?: string }) {
         name={name}
         namespace={namespace}
         withEvents
+        actions={item =>
+          item
+            ? [
+                ...(!isPaused(item)
+                  ? [{ id: 'keda.pause-scaling', action: <PauseScalingAction resource={item} /> }]
+                  : []),
+                ...(isPaused(item)
+                  ? [
+                      {
+                        id: 'keda.resume-scaling',
+                        action: <ResumeScalingAction resource={item} />,
+                      },
+                    ]
+                  : []),
+              ]
+            : []
+        }
         extraInfo={item =>
           item && [
             {

@@ -12,6 +12,13 @@ import StatefulSet from '@kinvolk/headlamp-plugin/lib/k8s/statefulSet';
 import { useParams } from 'react-router-dom';
 import { ScaledObject, ScalingModifierMetricType } from '../../resources/scaledobject';
 import { KedaInstallCheck, TriggersSection } from '../common/CommonComponents';
+import {
+  hasPausedReplicas,
+  isPaused,
+  PausedReplicasAction,
+  PauseScalingAction,
+  ResumeScalingAction,
+} from '../common/ScalingActions';
 
 export function ScaledObjectDetail(props: { namespace?: string; name?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
@@ -38,6 +45,31 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
         name={name}
         namespace={namespace}
         withEvents
+        actions={item =>
+          item
+            ? [
+                ...(!isPaused(item) && !hasPausedReplicas(item)
+                  ? [{ id: 'keda.pause-scaling', action: <PauseScalingAction resource={item} /> }]
+                  : []),
+                ...(!isPaused(item)
+                  ? [
+                      {
+                        id: 'keda.paused-replicas',
+                        action: <PausedReplicasAction resource={item} />,
+                      },
+                    ]
+                  : []),
+                ...(isPaused(item) || hasPausedReplicas(item)
+                  ? [
+                      {
+                        id: 'keda.resume-scaling',
+                        action: <ResumeScalingAction resource={item} />,
+                      },
+                    ]
+                  : []),
+              ]
+            : []
+        }
         extraInfo={item =>
           item && [
             {

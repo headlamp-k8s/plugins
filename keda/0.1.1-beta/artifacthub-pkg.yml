@@ -2,7 +2,7 @@ version: 0.1.1-beta
 name: headlamp_keda
 displayName: KEDA
 createdAt: "2025-07-22T11:10:22Z"
-logoURL: "https://raw.githubusercontent.com/kedacore/governance/refs/heads/main/logos/icon/color/keda-icon-color.svg"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/keda/logo.svg"
 description: A UI for viewing and managing KEDA resources in Headlamp.
 changes:
   - kind: fixed
