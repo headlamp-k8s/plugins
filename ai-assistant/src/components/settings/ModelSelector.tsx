@@ -228,7 +228,7 @@ function ConfigurationDialog({
                               ...params.InputProps,
                               startAdornment:
                                 config[field.name] &&
-                                  !field.options?.includes(config[field.name]) ? (
+                                !field.options?.includes(config[field.name]) ? (
                                   <Box sx={{ mr: 1 }}>
                                     <Chip
                                       label="Custom"
