@@ -1,7 +1,7 @@
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { getPodGroupStatusColor } from '../../utils/status';
-import { VolcanoInstallCheck } from '../common/CommonComponents';
+import { VolcanoCoreInstallCheck } from '../common/CommonComponents';
 
 /**
  * Renders the Volcano PodGroups list page.
@@ -10,7 +10,7 @@ import { VolcanoInstallCheck } from '../common/CommonComponents';
  */
 export default function PodGroupList() {
   return (
-    <VolcanoInstallCheck>
+    <VolcanoCoreInstallCheck>
       <ResourceListView
         title="Volcano PodGroups"
         resourceClass={VolcanoPodGroup}
@@ -50,6 +50,6 @@ export default function PodGroupList() {
           'age',
         ]}
       />
-    </VolcanoInstallCheck>
+    </VolcanoCoreInstallCheck>
   );
 }

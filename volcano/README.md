@@ -26,6 +26,16 @@ Upstream issue: [kubernetes-sigs/headlamp#4359](https://github.com/kubernetes-si
   - Detail view with progress, conditions, min resources, and events
   - Fallback message when conditions are not reported
 
+- **Volcano JobTemplates** (`flow.volcano.sh/v1alpha1`)
+
+  - List view with queue, scheduler, retry settings, task count, and generated Jobs
+  - Detail view with tasks, policies, plugins, network topology, related JobFlows, and generated Jobs
+
+- **Volcano JobFlows** (`flow.volcano.sh/v1alpha1`)
+
+  - List view with status, retain policy, flow count, generated Jobs, and phase counts
+  - Detail view with flow steps, dependency probes, generated Jobs, conditions, and running histories
+
 - **Plugin Navigation and UX**
   - Dedicated `Volcano` sidebar section in Headlamp
   - Consistent status color rendering across Jobs, Queues, and PodGroups
@@ -38,11 +48,13 @@ Upstream issue: [kubernetes-sigs/headlamp#4359](https://github.com/kubernetes-si
 
 ## Volcano CRDs Supported
 
-| CRD      | API Group                       |
-| -------- | ------------------------------- |
-| Job      | `batch.volcano.sh/v1alpha1`     |
-| Queue    | `scheduling.volcano.sh/v1beta1` |
-| PodGroup | `scheduling.volcano.sh/v1beta1` |
+| CRD         | API Group                       |
+| ----------- | ------------------------------- |
+| Job         | `batch.volcano.sh/v1alpha1`     |
+| Queue       | `scheduling.volcano.sh/v1beta1` |
+| PodGroup    | `scheduling.volcano.sh/v1beta1` |
+| JobTemplate | `flow.volcano.sh/v1alpha1`      |
+| JobFlow     | `flow.volcano.sh/v1alpha1`      |
 
 ## Demo
 
@@ -95,6 +107,9 @@ kubectl apply -f test-files/deploy/job-running.yaml
 kubectl apply -f test-files/deploy/job-completed.yaml
 kubectl apply -f test-files/deploy/job-unschedulable.yaml
 kubectl apply -f test-files/deploy/job-failed.yaml
+kubectl apply -f test-files/deploy/jobtemplate-step-a.yaml
+kubectl apply -f test-files/deploy/jobtemplate-step-b.yaml
+kubectl apply -f test-files/deploy/jobflow.yaml
 ```
 
 These manifests create scenarios for:
@@ -103,6 +118,7 @@ These manifests create scenarios for:
 - completed job
 - unschedulable job (resource pressure)
 - failed job
+- JobTemplates and a dependent JobFlow that generates two Volcano Jobs
 
 ### Verify from CLI
 
@@ -110,21 +126,30 @@ These manifests create scenarios for:
 kubectl get vcjob -n volcano-lab
 kubectl get queue volcano-lab-queue
 kubectl get podgroups.scheduling.volcano.sh -n volcano-lab
+kubectl get jobtemplates.flow.volcano.sh -n volcano-lab
+kubectl get jobflows.flow.volcano.sh -n volcano-lab
 ```
 
 ### Verify in Headlamp
 
-- Open `Volcano > Jobs`, `Volcano > Queues`, and `Volcano > PodGroups`.
+- Open `Volcano > Jobs`, `Volcano > JobTemplates`, `Volcano > JobFlows`, `Volcano > Queues`, and `Volcano > PodGroups`.
 - Confirm list pages render expected status/columns.
 - Open detail pages and verify section content and events rendering.
 - Verify cross-links:
   - Job -> Queue
   - Job -> PodGroup (when available)
+  - JobFlow -> JobTemplate
+  - JobFlow -> generated Job
+  - JobTemplate -> JobFlow
+  - JobTemplate -> generated Job
   - PodGroup -> Queue
 
 ## Clean Up Test Resources
 
 ```bash
+kubectl delete -f test-files/deploy/jobflow.yaml
+kubectl delete -f test-files/deploy/jobtemplate-step-b.yaml
+kubectl delete -f test-files/deploy/jobtemplate-step-a.yaml
 kubectl delete -f test-files/deploy/job-failed.yaml
 kubectl delete -f test-files/deploy/job-unschedulable.yaml
 kubectl delete -f test-files/deploy/job-completed.yaml

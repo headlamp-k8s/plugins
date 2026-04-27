@@ -1,12 +1,21 @@
 import { Box, CircularProgress, Grid, Link as MuiLink, Typography } from '@mui/material';
 import { ReactNode } from 'react';
-import { useVolcanoInstalled } from '../../hooks/useVolcanoInstalled';
+import {
+  useVolcanoCoreInstalled,
+  useVolcanoFlowInstalled,
+} from '../../hooks/useVolcanoInstallChecks';
 
 interface NotInstalledBannerProps {
   isLoading?: boolean;
+  message?: string;
+  linkText?: string;
 }
 
-export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProps) {
+export function NotInstalledBanner({
+  isLoading = false,
+  message = "Volcano was not detected on your cluster. If you haven't already, please install it.",
+  linkText = 'Volcano',
+}: NotInstalledBannerProps) {
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
@@ -19,10 +28,7 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
     <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
       <Grid container spacing={2} direction="column" justifyContent="center" alignItems="center">
         <Grid item>
-          <Typography variant="h5">
-            Volcano was not detected on your cluster. If you haven&apos;t already, please install
-            it.
-          </Typography>
+          <Typography variant="h5">{message}</Typography>
         </Grid>
         <Grid item>
           <Typography>
@@ -34,7 +40,7 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
             >
               install
             </MuiLink>{' '}
-            Volcano
+            {linkText}
           </Typography>
         </Grid>
       </Grid>
@@ -42,16 +48,34 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
   );
 }
 
-interface VolcanoInstallCheckProps {
+interface VolcanoApiInstallCheckProps {
   children: ReactNode;
   fallback?: ReactNode;
 }
 
-export function VolcanoInstallCheck({ children, fallback }: VolcanoInstallCheckProps) {
-  const { isVolcanoInstalled, isVolcanoCheckLoading } = useVolcanoInstalled();
+export function VolcanoCoreInstallCheck({ children, fallback }: VolcanoApiInstallCheckProps) {
+  const { isVolcanoCoreInstalled, isVolcanoCoreCheckLoading } = useVolcanoCoreInstalled();
 
-  if (!isVolcanoInstalled) {
-    return fallback || <NotInstalledBanner isLoading={isVolcanoCheckLoading} />;
+  if (!isVolcanoCoreInstalled) {
+    return fallback || <NotInstalledBanner isLoading={isVolcanoCoreCheckLoading} />;
+  }
+
+  return <>{children}</>;
+}
+
+export function VolcanoFlowInstallCheck({ children, fallback }: VolcanoApiInstallCheckProps) {
+  const { isVolcanoFlowInstalled, isVolcanoFlowCheckLoading } = useVolcanoFlowInstalled();
+
+  if (!isVolcanoFlowInstalled) {
+    return (
+      fallback || (
+        <NotInstalledBanner
+          isLoading={isVolcanoFlowCheckLoading}
+          message="Volcano Flow API was not detected on this cluster. Install or enable the JobFlow and JobTemplate CRDs to view these resources."
+          linkText="Volcano Flow"
+        />
+      )
+    );
   }
 
   return <>{children}</>;

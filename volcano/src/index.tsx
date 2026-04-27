@@ -1,7 +1,11 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import { ComponentType } from 'react';
+import JobFlowDetail from './components/jobflows/Detail';
+import JobFlowList from './components/jobflows/List';
 import JobDetail from './components/jobs/Detail';
 import JobList from './components/jobs/List';
+import JobTemplateDetail from './components/jobtemplates/Detail';
+import JobTemplateList from './components/jobtemplates/List';
 import PodGroupDetail from './components/podgroups/Detail';
 import PodGroupList from './components/podgroups/List';
 import QueueDetail from './components/queues/Detail';
@@ -90,6 +94,26 @@ const volcanoResources: VolcanoResourceRegistration[] = [
     detailRouteName: 'volcano-job-detail',
     ListComponent: JobList,
     DetailComponent: JobDetail,
+    hasNamespace: true,
+  },
+  {
+    sidebarName: 'volcano-jobtemplates',
+    label: 'JobTemplates',
+    path: 'jobtemplates',
+    listRouteName: 'volcano-jobtemplates-list',
+    detailRouteName: 'volcano-jobtemplate-detail',
+    ListComponent: JobTemplateList,
+    DetailComponent: JobTemplateDetail,
+    hasNamespace: true,
+  },
+  {
+    sidebarName: 'volcano-jobflows',
+    label: 'JobFlows',
+    path: 'jobflows',
+    listRouteName: 'volcano-jobflows-list',
+    detailRouteName: 'volcano-jobflow-detail',
+    ListComponent: JobFlowList,
+    DetailComponent: JobFlowDetail,
     hasNamespace: true,
   },
   {

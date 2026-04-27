@@ -1,0 +1,19 @@
+apiVersion: flow.volcano.sh/v1alpha1
+kind: JobTemplate
+metadata:
+  name: volcano-jobtemplate-step-a
+  namespace: volcano-lab
+spec:
+  schedulerName: volcano
+  queue: volcano-lab-queue
+  minAvailable: 1
+  tasks:
+    - name: worker
+      replicas: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: main
+              image: busybox
+              command: ["sh", "-c", "echo step-a started && sleep 10 && echo step-a completed"]

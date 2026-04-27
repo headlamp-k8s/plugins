@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { VolcanoQueue } from '../../resources/queue';
 import { getQueueStatusColor } from '../../utils/status';
-import { VolcanoInstallCheck } from '../common/CommonComponents';
+import { VolcanoCoreInstallCheck } from '../common/CommonComponents';
 import { getQueuePodGroupStats } from './stats';
 
 /**
@@ -16,7 +16,7 @@ export default function QueueList() {
   const queuePodGroupStats = useMemo(() => getQueuePodGroupStats(podGroups), [podGroups]);
 
   return (
-    <VolcanoInstallCheck>
+    <VolcanoCoreInstallCheck>
       <ResourceListView
         title="Volcano Queues"
         resourceClass={VolcanoQueue}
@@ -81,6 +81,6 @@ export default function QueueList() {
           'age',
         ]}
       />
-    </VolcanoInstallCheck>
+    </VolcanoCoreInstallCheck>
   );
 }
