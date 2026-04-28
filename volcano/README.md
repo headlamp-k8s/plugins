@@ -10,20 +10,25 @@ Upstream issue: [kubernetes-sigs/headlamp#4359](https://github.com/kubernetes-si
 
 - **Volcano Jobs** (`batch.volcano.sh/v1alpha1`)
 
-  - List view with status, queue, running/min-available, task count, and age
-  - Detail view with summary info, Pod status section, tasks section, and events
-  - Queue link and related PodGroup link from job detail (when available)
+  - List view with status, queue, scheduling counters, retries, replicas, tasks, and age
+  - Detail view with summary info, Pod status, tasks, policies, plugins, conditions, and events
+  - Logs viewer with pod/container selection and standard log controls
+  - Pod Issues section for actionable runtime blockers
+  - Queue and related PodGroup navigation links
+  - Suspend and resume actions when supported by the current Job state
 
 - **Volcano Queues** (`scheduling.volcano.sh/v1beta1`)
 
-  - List view with state, weight, parent, and age
-  - Detail view with capacity limits, allocated resources, and events
-  - Parent queue navigation links
+  - List view with state, weight, parent queue, and workload counters
+  - Detail view with queue status, resources, guarantees, reservations, child queues, and events
+  - Queue lifecycle actions for opening, closing, and updating weight
+  - Parent and child queue navigation links
 
 - **Volcano PodGroups** (`scheduling.volcano.sh/v1beta1`)
 
   - List view with phase, min member, running count, queue, and age
-  - Detail view with progress, conditions, min resources, and events
+  - Detail view with progress, conditions, min task member, min resources, and events
+  - Queue navigation links
   - Fallback message when conditions are not reported
 
 - **Plugin Navigation and UX**
@@ -32,7 +37,6 @@ Upstream issue: [kubernetes-sigs/headlamp#4359](https://github.com/kubernetes-si
 
 ### Planned Features
 
-- Pending jobs dashboard and richer "why pending" diagnostics
 - Advanced gang-scheduling visualization
 - Metrics-focused views and additional operational dashboards
 
