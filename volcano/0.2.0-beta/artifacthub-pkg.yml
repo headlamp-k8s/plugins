@@ -1,0 +1,32 @@
+version: 0.2.0-beta
+name: "headlamp_volcano"
+displayName: Volcano
+createdAt: "2026-04-28T00:00:00Z"
+logoURL: "https://raw.githubusercontent.com/volcano-sh/volcano/refs/heads/master/docs/images/volcano-logo.png"
+description: A UI for viewing and managing Volcano batch scheduling resources in Headlamp.
+changes:
+  - kind: added
+    description: "Job logs viewer for Volcano job pods"
+  - kind: added
+    description: "Pod issues section in job details view"
+  - kind: added
+    description: "Lifecycle actions (suspend, resume, restart, terminate) for jobs"
+  - kind: added
+    description: "Action buttons in queue details view"
+  - kind: added
+    description: "Min task member display in PodGroup details"
+  - kind: added
+    description: "Install guide shown when Volcano is not detected in the cluster"
+  - kind: changed
+    description: "Improved job details view layout and information"
+  - kind: changed
+    description: "Aligned job and queue list columns with vcctl output"
+  - kind: changed
+    description: "Completed queue details view with full resource information"
+  - kind: changed
+    description: "Use official Volcano logo for the sidebar icon"
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/volcano-0.2.0-beta/headlamp-k8s-volcano-0.2.0-beta.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:a614c66d57d2df0b23d35890a9d49afb5bf20c0a8c2d28c58feabe7c1fa86325"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
