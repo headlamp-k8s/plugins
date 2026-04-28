@@ -49,6 +49,9 @@ function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
     metadata: { namespace },
     cluster,
   } = revision;
+  if (!parentService) {
+    return <Typography variant="body2">-</Typography>;
+  }
   const [kservice, error] = KService.useGet(parentService, namespace || '', { cluster });
 
   if (error) {
