@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
-import { Chip } from '@mui/material';
+import { Chip, Link as MuiLink } from '@mui/material';
+import CELPolicyViewer from './CELPolicyViewer';
 import {
   DeletingPolicy,
   GeneratingPolicy,
@@ -26,7 +29,11 @@ import {
 
 interface CELPolicyListProps {
   title: string;
-  resourceClass: typeof ValidatingPolicy | typeof MutatingPolicy | typeof GeneratingPolicy | typeof DeletingPolicy;
+  resourceClass:
+    | typeof ValidatingPolicy
+    | typeof MutatingPolicy
+    | typeof GeneratingPolicy
+    | typeof DeletingPolicy;
   extraColumns?: {
     id: string;
     label: string;
@@ -55,6 +62,28 @@ function CELPolicyList({ title, resourceClass, extraColumns = [] }: CELPolicyLis
           id: 'name',
           label: 'Name',
           getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              sx={{ textAlign: 'left' }}
+              onClick={() =>
+                Activity.launch({
+                  id: `kyverno-cel-${resourceClass.kind}-${item.jsonData.metadata.name}`,
+                  location: 'split-right',
+                  icon: <Icon icon="mdi:shield-check" />,
+                  title: item.jsonData.metadata.name,
+                  content: (
+                    <CELPolicyViewer
+                      name={item.jsonData.metadata.name}
+                      resourceClass={resourceClass}
+                    />
+                  ),
+                })
+              }
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
         },
         {
           id: 'ready',
