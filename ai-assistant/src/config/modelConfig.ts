@@ -234,6 +234,37 @@ export const modelProviders: ModelProvider[] = [
     ],
   },
   {
+    id: 'vllm',
+    name: 'vLLM (OpenAI-compatible)',
+    icon: 'ai-providers:local',
+    description: 'Integration with vLLM or any OpenAI-compatible endpoint',
+    fields: [
+      {
+        name: 'apiKey',
+        label: 'API Key',
+        type: 'text',
+        required: false,
+        placeholder: 'sk-noop (leave blank if vLLM has no auth)',
+      },
+      {
+        name: 'baseUrl',
+        label: 'Base URL',
+        type: 'text',
+        required: true,
+        placeholder: 'http://vllm-server:8000/v1',
+        description: 'Full URL including /v1 — e.g. http://host:8000/v1',
+      },
+      {
+        name: 'model',
+        label: 'Model',
+        type: 'text',
+        required: true,
+        placeholder: 'meta-llama/Llama-3.1-8B-Instruct',
+        description: 'Must match --served-model-name passed to vLLM',
+      },
+    ],
+  },
+  {
     id: 'local',
     name: 'Local Models',
     icon: 'ai-providers:local',
