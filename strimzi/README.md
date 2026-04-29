@@ -20,6 +20,19 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
   - Configure ACLs for fine-grained authorization
   - View passwords and certificates (secrets)
   - Delete users with confirmation
+- **Kafka Connect**: Read-only view of `KafkaConnect` clusters
+  - Inspect replicas, version, bootstrap servers, and Ready status
+  - Browse the connector plugins discovered by the operator
+  - Detail page surfaces the Connect REST URL for deep-linking
+- **Kafka Connectors**: Manage connectors running inside a Connect cluster
+  - List connectors with desired vs runtime state, max tasks, class, and
+    Ready status (per-connector topic associations live on the detail page)
+  - Pause / Resume / Start a connector with a single confirmation step
+    (uses a JSON merge-patch on `spec.state` so it stays safe with
+    GitOps-managed resources)
+  - Detail page exposes the full connector configuration (with credential-like
+    values masked behind an explicit reveal step), the Connect task list,
+    and topic associations
 - **Search & Filter**: Real-time search and advanced filtering on all lists
   - Filter by status, mode, authentication type, partitions, replicas, and more
 - Real-time status monitoring for all Strimzi resources
@@ -276,6 +289,26 @@ To uninstall: `kubectl delete -f deploy/headlamp.yaml`
 - **Delete** users with confirmation dialog
 - Monitor user status (Ready/Not Ready)
 - View authentication and authorization types
+
+### KafkaConnect (kafka.strimzi.io/v1beta2)
+- View Kafka Connect cluster spec (replicas, version, bootstrap servers,
+  TLS, authentication summary)
+- See connector plugins discovered by the operator (class, type, version)
+- Surfaces the Connect REST endpoint (`status.url`) for deep-linking
+- Monitor cluster status (Ready / Not Ready / Unknown)
+
+> Cluster creation is intentionally left to YAML for now: KafkaConnect
+> spec involves image, version, config, TLS, and authentication blocks
+> that are best authored as files.
+
+### KafkaConnector (kafka.strimzi.io/v1beta2)
+- View desired state from spec vs runtime state from
+  `status.connectorStatus.connector.state`
+- **Pause / Resume / Start** a connector with a single confirmation step
+  (uses a JSON merge-patch on `spec.state`, leaving the rest of the
+  resource untouched — safe for GitOps-managed connectors)
+- See per-task state and worker assignments in the detail view
+- View the full connector configuration as a name/value table
 
 
 ## 📁 Plugin Structure
