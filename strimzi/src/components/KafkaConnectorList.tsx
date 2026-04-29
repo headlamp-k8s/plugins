@@ -18,6 +18,7 @@ import {
 import { KafkaConnector } from '../resources/kafkaConnector';
 import type { KafkaConnectorInterface, KafkaConnectorState } from '../resources/kafkaConnector';
 import { getErrorMessage } from '../utils/errors';
+import { readyChipProps } from '../utils/readyChip';
 import { Toast, ToastMessage } from './Toast';
 
 const STATE_CHIP_COLORS: Record<KafkaConnectorState, 'success' | 'warning' | 'default'> = {
@@ -117,15 +118,13 @@ export function KafkaConnectorList() {
       label: 'Status',
       getValue: (item: KafkaConnector) => String(item.readyStatus ?? 'Unknown'),
       render: (item: KafkaConnector) => {
-        const status = item.readyStatus;
-        const label = status === 'True' ? 'Ready' : status == null ? 'Unknown' : 'Not Ready';
-        const chipColor = status === 'True' ? 'success' : status == null ? 'default' : 'warning';
+        const { label, color } = readyChipProps(item.readyStatus);
         return (
           <Chip
             label={label}
             variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
             size="medium"
-            color={chipColor}
+            color={color}
             sx={{ borderRadius: '4px' }}
           />
         );

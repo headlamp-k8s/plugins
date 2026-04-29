@@ -7,6 +7,7 @@ import {
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KafkaConnect } from '../resources/kafkaConnect';
+import { readyChipProps } from '../utils/readyChip';
 
 /**
  * List view for Strimzi `KafkaConnect` resources (Kafka Connect clusters).
@@ -47,15 +48,13 @@ export function KafkaConnectList() {
       label: 'Status',
       getValue: (item: KafkaConnect) => String(item.readyStatus ?? 'Unknown'),
       render: (item: KafkaConnect) => {
-        const status = item.readyStatus;
-        const label = status === 'True' ? 'Ready' : status == null ? 'Unknown' : 'Not Ready';
-        const chipColor = status === 'True' ? 'success' : status == null ? 'default' : 'warning';
+        const { label, color } = readyChipProps(item.readyStatus);
         return (
           <Chip
             label={label}
             variant={theme.palette.mode === 'dark' ? 'outlined' : 'filled'}
             size="medium"
-            color={chipColor}
+            color={color}
             sx={{ borderRadius: '4px' }}
           />
         );
