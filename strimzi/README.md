@@ -25,12 +25,14 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
   - Browse the connector plugins discovered by the operator
   - Detail page surfaces the Connect REST URL for deep-linking
 - **Kafka Connectors**: Manage connectors running inside a Connect cluster
-  - List connectors with desired vs runtime state, tasks, and topics
+  - List connectors with desired vs runtime state, max tasks, class, and
+    Ready status (per-connector topic associations live on the detail page)
   - Pause / Resume / Start a connector with a single confirmation step
     (uses a JSON merge-patch on `spec.state` so it stays safe with
     GitOps-managed resources)
-  - Detail page exposes the full connector configuration, the Connect
-    task list, and topic associations
+  - Detail page exposes the full connector configuration (with credential-like
+    values masked behind an explicit reveal step), the Connect task list,
+    and topic associations
 - **Search & Filter**: Real-time search and advanced filtering on all lists
   - Filter by status, mode, authentication type, partitions, replicas, and more
 - Real-time status monitoring for all Strimzi resources
