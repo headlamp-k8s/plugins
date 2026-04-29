@@ -1,4 +1,5 @@
 import { JobPhase } from '../resources/job';
+import { JobFlowPhase } from '../resources/jobflow';
 import { PodGroupPhase } from '../resources/podgroup';
 import { QueueState } from '../resources/queue';
 
@@ -32,6 +33,15 @@ const PODGROUP_STATUS_COLORS: Record<PodGroupPhase, StatusColor> = {
   Unknown: 'warning',
 };
 
+const JOBFLOW_STATUS_COLORS: Record<string, StatusColor> = {
+  Running: 'success',
+  Succeed: 'success',
+  Succeeded: 'success',
+  Pending: 'warning',
+  Terminating: 'warning',
+  Failed: 'error',
+};
+
 /**
  * Maps a Volcano Job phase to the UI status color.
  *
@@ -60,4 +70,14 @@ export function getQueueStatusColor(state: QueueState): StatusColor {
  */
 export function getPodGroupStatusColor(phase: PodGroupPhase): StatusColor {
   return PODGROUP_STATUS_COLORS[phase];
+}
+
+/**
+ * Maps a Volcano JobFlow phase to the UI status color.
+ *
+ * @param phase Volcano JobFlow phase.
+ * @returns Status color token used by `StatusLabel`.
+ */
+export function getJobFlowStatusColor(phase: JobFlowPhase): StatusColor {
+  return JOBFLOW_STATUS_COLORS[phase] ?? 'warning';
 }

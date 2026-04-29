@@ -1,7 +1,7 @@
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { VolcanoJob } from '../../resources/job';
 import { getJobStatusColor } from '../../utils/status';
-import { VolcanoInstallCheck } from '../common/CommonComponents';
+import { VolcanoCoreInstallCheck } from '../common/CommonComponents';
 
 /**
  * Renders the Volcano Jobs list page.
@@ -10,7 +10,7 @@ import { VolcanoInstallCheck } from '../common/CommonComponents';
  */
 export default function JobList() {
   return (
-    <VolcanoInstallCheck>
+    <VolcanoCoreInstallCheck>
       <ResourceListView
         title="Volcano Jobs"
         resourceClass={VolcanoJob}
@@ -88,6 +88,6 @@ export default function JobList() {
           'age',
         ]}
       />
-    </VolcanoInstallCheck>
+    </VolcanoCoreInstallCheck>
   );
 }

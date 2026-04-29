@@ -1,0 +1,13 @@
+apiVersion: flow.volcano.sh/v1alpha1
+kind: JobFlow
+metadata:
+  name: volcano-jobflow-demo
+  namespace: volcano-lab
+spec:
+  jobRetainPolicy: retain
+  flows:
+    - name: volcano-jobtemplate-step-a
+    - name: volcano-jobtemplate-step-b
+      dependsOn:
+        targets:
+          - volcano-jobtemplate-step-a
