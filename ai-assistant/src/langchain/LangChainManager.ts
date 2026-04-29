@@ -278,6 +278,11 @@ export default class LangChainManager extends AIManager {
             apiKey: sanitizedConfig.apiKey,
             model: sanitizedConfig.model,
             verbose: true,
+            ...(sanitizedConfig.baseUrl && {
+              configuration: {
+                baseURL: sanitizedConfig.baseUrl,
+              },
+            }),
           });
         case 'azure':
           if (
