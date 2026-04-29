@@ -203,6 +203,9 @@ export function NameLink(resourceClass: KubeObjectClass) {
 }
 export function useFluxCheck() {
   const [crds] = K8s.ResourceClasses.CustomResourceDefinition.useList();
+  // Track loading separately from emptiness so callers can distinguish
+  // "CRDs still loading" from "Flux not installed".
+  const isFluxCheckLoaded = crds !== null && crds !== undefined;
   const [fluxCRDs, setFluxCrds] = React.useState([]);
   useEffect(() => {
     if (!crds) return;
@@ -212,13 +215,15 @@ export function useFluxCheck() {
     const gitRepoCRD = fluxCRDs.find(
       crd => crd?.jsonData?.metadata?.name === 'gitrepositories.source.toolkit.fluxcd.io'
     );
-    const allCrdsSuccessful = fluxCRDs.every(crd => {
-      if (!crd) return true;
-      const conditions = crd?.jsonData.status?.conditions || [];
-      // Check if any condition has  status "True"
-      const isSuccess = conditions.some(cond => cond.status === 'True');
-      return isSuccess;
-    });
+    const allCrdsSuccessful =
+      fluxCRDs.length > 0 &&
+      fluxCRDs.every(crd => {
+        if (!crd) {
+          return true;
+        }
+        const conditions = crd?.jsonData.status?.conditions || [];
+        return conditions.some(cond => cond.status === 'True');
+      });
 
     return [gitRepoCRD, allCrdsSuccessful];
   }, [fluxCRDs]);
@@ -242,6 +247,8 @@ export function useFluxCheck() {
   return {
     ...fluxCheck,
     allCrdsSuccessful,
+    hasFluxCRDs: fluxCRDs.length > 0,
+    isFluxCheckLoaded,
   };
 }
 

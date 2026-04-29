@@ -1,10 +1,13 @@
 import { addIcon, Icon } from '@iconify/react';
 import {
+  K8s,
   registerKindIcon,
   registerMapSource,
   registerPluginSettings,
   registerRoute,
   registerSidebarEntry,
+  registerSidebarEntryFilter,
+  Utils,
 } from '@kinvolk/headlamp-plugin/lib';
 import Canaries from './flagger/canaries';
 import CanaryDetails from './flagger/canarydetails';
@@ -26,6 +29,60 @@ import { TerraformList } from './terraforms/TerraformList';
 import { TerraformDetailView } from './terraforms/TerraformSingle';
 
 registerHelmRelease();
+
+// Track whether Flux CRDs exist per cluster to hide sidebar children.
+// The watch callback keeps `fluxInstalledByCluster` fresh while the page is open;
+// the TTL re-arms the check after `CHECK_TTL_MS` so the sidebar reflects
+// install/uninstall events that happen between sessions or after a watch drops.
+const fluxInstalledByCluster: Record<string, boolean> = {};
+const lastCheckedAt: Record<string, number> = {};
+const inFlight: Record<string, boolean> = {};
+const CHECK_TTL_MS = 30 * 1000;
+
+function checkFluxInstalled(cluster: string) {
+  const now = Date.now();
+  const fresh = now - (lastCheckedAt[cluster] ?? 0) < CHECK_TTL_MS;
+  if (inFlight[cluster] || fresh) {
+    return;
+  }
+  inFlight[cluster] = true;
+
+  const listFn = K8s.ResourceClasses.CustomResourceDefinition.apiList(
+    crds => {
+      fluxInstalledByCluster[cluster] = crds.some(crd =>
+        crd.jsonData?.metadata?.name?.includes('fluxcd.')
+      );
+      lastCheckedAt[cluster] = Date.now();
+      inFlight[cluster] = false;
+    },
+    () => {
+      fluxInstalledByCluster[cluster] = false;
+      lastCheckedAt[cluster] = Date.now();
+      inFlight[cluster] = false;
+    },
+    { cluster }
+  );
+  listFn();
+}
+
+const FLUX_SIDEBAR_ALWAYS_VISIBLE = new Set(['flux', 'overview']);
+
+registerSidebarEntryFilter(entry => {
+  if (!entry.parent || entry.parent !== 'flux') {
+    return entry;
+  }
+  if (FLUX_SIDEBAR_ALWAYS_VISIBLE.has(entry.name)) {
+    return entry;
+  }
+
+  const cluster = Utils.getCluster() ?? '';
+  checkFluxInstalled(cluster);
+
+  if (fluxInstalledByCluster[cluster] === false) {
+    return null;
+  }
+  return entry;
+});
 
 addIcon('simple-icons:flux', {
   body: '<path fill="currentColor" d="M11.402 23.747q.231.112.454.238c.181.038.37.004.525-.097l.386-.251c-1.242-.831-2.622-1.251-3.998-1.602zm-7.495-5.783a8 8 0 0 1-.222-.236a.696.696 0 0 0 .112 1.075l2.304 1.498c1.019.422 2.085.686 3.134.944c1.636.403 3.2.79 4.554 1.728l.697-.453c-1.541-1.158-3.327-1.602-5.065-2.03c-2.039-.503-3.965-.977-5.514-2.526m1.414-1.322l-.665.432q.033.037.068.073c1.702 1.702 3.825 2.225 5.877 2.731c1.778.438 3.469.856 4.9 1.982l.682-.444c-1.612-1.357-3.532-1.834-5.395-2.293c-2.019-.497-3.926-.969-5.467-2.481m7.502 2.084c1.596.412 3.096.904 4.367 2.036l.67-.436c-1.484-1.396-3.266-1.953-5.037-2.403zm.698-2.337l-.698-.174v.802l.512.127c2.039.503 3.965.978 5.514 2.526l.007.009l.663-.431l-.121-.128c-1.702-1.701-3.824-2.225-5.877-2.731m-.698-1.928v.816c.624.19 1.255.347 1.879.501c2.039.502 3.965.977 5.513 2.526q.116.116.226.239a.704.704 0 0 0-.238-.911l-3.064-1.992c-.744-.245-1.502-.433-2.251-.618a31 31 0 0 1-2.065-.561m-1.646 3.049c-1.526-.4-2.96-.888-4.185-1.955l-.674.439c1.439 1.326 3.151 1.88 4.859 2.319zm0-1.772a8.5 8.5 0 0 1-2.492-1.283l-.686.446c.975.804 2.061 1.293 3.178 1.655zm0-1.946a8 8 0 0 1-.776-.453l-.701.456c.462.337.957.627 1.477.865zm3.533.269l-1.887-1.226v.581q.922.386 1.887.645m5.493-8.863L12.381.112a.7.7 0 0 0-.762 0L3.797 5.198a.698.698 0 0 0 0 1.171l7.38 4.797V7.678a.414.414 0 0 0-.412-.412h-.543a.413.413 0 0 1-.356-.617l1.777-3.079a.412.412 0 0 1 .714 0l1.777 3.079a.413.413 0 0 1-.356.617h-.543a.414.414 0 0 0-.412.412v3.488l7.38-4.797a.7.7 0 0 0 0-1.171" />',

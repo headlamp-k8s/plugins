@@ -119,6 +119,13 @@ export class ImageRepository extends KubeObject {
   static isNamespaced = true;
 }
 
+export class FluxReport extends KubeObject {
+  static kind = 'FluxReport';
+  static apiName = 'fluxreports';
+  static apiVersion = 'fluxcd.controlplane.io/v1';
+  static isNamespaced = true;
+}
+
 export const getSourceClassByPluralName = (pluralName: string) =>
   ({
     gitrepositories: GitRepository,
