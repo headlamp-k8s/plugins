@@ -35,7 +35,6 @@ export function useSubjectAccessReview({
   const requestIdRef = React.useRef(0);
 
   React.useEffect(() => {
-    let mounted = true;
     const requestId = ++requestIdRef.current;
 
     setAllowed(null);
@@ -43,6 +42,7 @@ export function useSubjectAccessReview({
     setError('');
 
     if (!user) {
+      setIsLoading(false);
       return;
     }
 
@@ -68,28 +68,24 @@ export function useSubjectAccessReview({
       undefined
     )
       .then(response => {
-        if (!mounted || requestId !== requestIdRef.current) {
+        if (requestId !== requestIdRef.current) {
           return;
         }
         setAllowed(response?.status?.allowed ?? false);
         setReason(response?.status?.reason ?? response?.status?.evaluationError ?? '');
       })
       .catch(err => {
-        if (!mounted || requestId !== requestIdRef.current) {
+        if (requestId !== requestIdRef.current) {
           return;
         }
         setAllowed(null);
         setError(err?.message ?? 'Unable to verify permission.');
       })
       .finally(() => {
-        if (mounted && requestId === requestIdRef.current) {
+        if (requestId === requestIdRef.current) {
           setIsLoading(false);
         }
       });
-
-    return () => {
-      mounted = false;
-    };
   }, [cluster, resourceAttributes, user]);
 
   return { allowed, reason, isLoading, error };

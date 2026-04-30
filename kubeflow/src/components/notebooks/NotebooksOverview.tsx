@@ -329,13 +329,8 @@ function NotebooksOverviewPageContent() {
 }
 
 export function NotebooksOverview() {
-  const { isInstalled: notebooksApiInstalledHook, isCheckLoading: notebooksApiLoadingHook } =
+  const { isInstalled: notebooksApiInstalled, isCheckLoading: notebooksApiLoading } =
     useApiGroupInstalled('/apis/kubeflow.org/v1');
-
-  const isStorybook =
-    typeof window !== 'undefined' && (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK;
-  const notebooksApiInstalled = isStorybook ? true : notebooksApiInstalledHook;
-  const notebooksApiLoading = isStorybook ? false : notebooksApiLoadingHook;
 
   const isLoading = notebooksApiLoading;
 
