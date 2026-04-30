@@ -229,7 +229,7 @@ describe('getNotebookType', () => {
     const result = getNotebookType('kubeflownotebookswg/jupyter-scipy:v1.8.0');
     expect(result.label).toBe('Jupyter');
     expect(result.icon).toBe('mdi:language-python');
-    expect(result.color).toBe('#F37626');
+    expect(result.color).toBe('warning');
   });
 
   it('detects Jupyter from scipy image', () => {
@@ -248,7 +248,7 @@ describe('getNotebookType', () => {
     const result = getNotebookType('kubeflownotebookswg/codeserver-python:v1.8.0');
     expect(result.label).toBe('VS Code');
     expect(result.icon).toBe('mdi:microsoft-visual-studio-code');
-    expect(result.color).toBe('#007ACC');
+    expect(result.color).toBe('info');
   });
 
   it('detects VS Code from vscode image', () => {
@@ -259,7 +259,7 @@ describe('getNotebookType', () => {
     const result = getNotebookType('kubeflownotebookswg/rstudio-tidyverse:v1.8.0');
     expect(result.label).toBe('RStudio');
     expect(result.icon).toBe('mdi:language-r');
-    expect(result.color).toBe('#276DC3');
+    expect(result.color).toBe('secondary');
   });
 
   it('detects RStudio from tidyverse image', () => {
@@ -270,7 +270,7 @@ describe('getNotebookType', () => {
     const result = getNotebookType('my-company/custom-ml-env:v2');
     expect(result.label).toBe('Custom');
     expect(result.icon).toBe('mdi:cube-outline');
-    expect(result.color).toBe('#757575');
+    expect(result.color).toBe('default');
   });
 
   it('is case-insensitive', () => {

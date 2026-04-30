@@ -1,4 +1,5 @@
 import { StatusLabelProps } from '@kinvolk/headlamp-plugin/lib/components/common';
+import type { ChipProps } from '@mui/material/Chip';
 
 /**
  * Normalizes HTTP/API errors encountered during resource fetching into
@@ -39,8 +40,8 @@ export interface NotebookType {
   label: string;
   /** Iconify icon name associated with the notebook flavor. */
   icon: string;
-  /** Accent color used when rendering the notebook flavor badge. */
-  color: string;
+  /** Theme color used when rendering the notebook flavor badge. */
+  color: ChipProps['color'];
 }
 
 /**
@@ -132,15 +133,15 @@ export function getNotebookType(image: string | undefined | null): NotebookType 
     lower.includes('tensorflow') ||
     lower.includes('pytorch')
   ) {
-    return { label: 'Jupyter', icon: 'mdi:language-python', color: '#F37626' };
+    return { label: 'Jupyter', icon: 'mdi:language-python', color: 'warning' };
   }
   if (lower.includes('code') || lower.includes('vscode') || lower.includes('codeserver')) {
-    return { label: 'VS Code', icon: 'mdi:microsoft-visual-studio-code', color: '#007ACC' };
+    return { label: 'VS Code', icon: 'mdi:microsoft-visual-studio-code', color: 'info' };
   }
   if (lower.includes('rstudio') || lower.includes('tidyverse')) {
-    return { label: 'RStudio', icon: 'mdi:language-r', color: '#276DC3' };
+    return { label: 'RStudio', icon: 'mdi:language-r', color: 'secondary' };
   }
-  return { label: 'Custom', icon: 'mdi:cube-outline', color: '#757575' };
+  return { label: 'Custom', icon: 'mdi:cube-outline', color: 'default' };
 }
 
 /**
