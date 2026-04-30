@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-import { Icon } from '@iconify/react';
-import { LightTooltip, StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Box from '@mui/material/Box';
+import { KubeflowStatusBadge } from './KubeflowStatusBadge';
 import { getPipelineResourceStatus, PipelineStatusResource } from './pipelineUtils';
 
 interface PipelineStatusBadgeProps {
@@ -27,21 +25,5 @@ interface PipelineStatusBadgeProps {
  * Renders a status badge for Pipeline and PipelineVersion resources.
  */
 export function PipelineStatusBadge({ resource }: PipelineStatusBadgeProps) {
-  const { label, status, icon, reason } = getPipelineResourceStatus(resource);
-  const statusElement = (
-    <StatusLabel status={status}>
-      {label}
-      <Icon aria-hidden icon={icon} width="1.2rem" height="1.2rem" />
-    </StatusLabel>
-  );
-
-  if (reason) {
-    return (
-      <LightTooltip title={reason} interactive>
-        <Box display="inline">{statusElement}</Box>
-      </LightTooltip>
-    );
-  }
-
-  return statusElement;
+  return <KubeflowStatusBadge statusInfo={getPipelineResourceStatus(resource)} />;
 }
