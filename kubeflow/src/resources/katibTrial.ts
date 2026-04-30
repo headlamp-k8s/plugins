@@ -87,7 +87,7 @@ export class KatibTrialClass extends KubeObject<KatibTrial> {
 
   get failureReason(): string {
     const failed = this.conditions.find(condition => {
-      return condition.type === 'Failed' || condition.status === 'False';
+      return condition.type === 'Failed' && condition.status === 'True';
     });
     return failed?.reason ?? this.latestCondition?.reason ?? '';
   }

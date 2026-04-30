@@ -326,15 +326,33 @@ export function KatibOverview() {
         {experimentList.length > 0 ? (
           <Box sx={{ mt: 4 }}>
             {experimentList.map(experiment => (
-              <Box
+              <Accordion
                 key={`${experiment.metadata.namespace}/${experiment.metadata.name}`}
-                sx={{ mb: 4 }}
+                disableGutters
+                expanded={
+                  expandedRbacKey === `${experiment.metadata.namespace}/${experiment.metadata.name}`
+                }
+                onChange={(_, isExpanded) => {
+                  setExpandedRbacKey(
+                    isExpanded
+                      ? `${experiment.metadata.namespace}/${experiment.metadata.name}`
+                      : false
+                  );
+                }}
+                sx={{ mb: 2 }}
               >
-                <KatibRbacSection
-                  experiment={experiment}
-                  title={`RBAC & Service Accounts: ${experiment.metadata.name}`}
-                />
-              </Box>
+                <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" width="18" />}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    RBAC & Service Accounts: {experiment.metadata.name}
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <KatibRbacSection
+                    experiment={experiment}
+                    title={`RBAC & Service Accounts: ${experiment.metadata.name}`}
+                  />
+                </AccordionDetails>
+              </Accordion>
             ))}
           </Box>
         ) : null}

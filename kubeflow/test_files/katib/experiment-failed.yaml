@@ -1,0 +1,27 @@
+apiVersion: kubeflow.org/v1beta1
+kind: Experiment
+metadata:
+  name: failed-katib-experiment
+  namespace: kubeflow-user
+spec:
+  objective:
+    type: maximize
+    objectiveMetricName: accuracy
+  algorithm:
+    algorithmName: random
+  parallelTrialCount: 2
+  maxTrialCount: 6
+  parameters:
+  - name: lr
+    parameterType: double
+    feasibleSpace:
+      min: "0.001"
+      max: "0.1"
+status:
+  conditions:
+  - lastTransitionTime: "2024-05-01T10:00:00Z"
+    lastUpdateTime: "2024-05-01T10:00:00Z"
+    message: "Experiment has failed due to worker errors"
+    reason: "WorkerFailed"
+    status: "True"
+    type: Failed
