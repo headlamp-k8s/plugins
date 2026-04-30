@@ -17,6 +17,11 @@
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 
 export async function isApiGroupInstalled(apiPath: string): Promise<boolean> {
+  // Check for Storybook global mock
+  if (typeof window !== 'undefined' && (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK) {
+    return true;
+  }
+
   try {
     const response = await ApiProxy.request(apiPath, {
       method: 'GET',
