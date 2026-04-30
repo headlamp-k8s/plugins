@@ -14,18 +14,37 @@
  * limitations under the License.
  */
 
+import { Utils } from '@kinvolk/headlamp-plugin/lib';
 import {
-  NameValueTable,
+  DateLabel,
+  HoverInfoLabel,
   SectionBox,
+  SimpleTable,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import { KubeflowResourceCondition } from '../../resources/common';
 
 interface KubeflowConditionsSectionProps {
   conditions: KubeflowResourceCondition[];
   title?: string;
+}
+
+function ConditionDateLabel({ date }: { date?: string }) {
+  if (!date) {
+    return '-';
+  }
+
+  const parsedDate = Date.parse(date);
+  if (Number.isNaN(parsedDate)) {
+    return '-';
+  }
+
+  if (parsedDate > Date.now() + 1000) {
+    const formattedDate = Utils.localeDate(date);
+    return <HoverInfoLabel label={formattedDate} hoverInfo={formattedDate} icon="mdi:calendar" />;
+  }
+
+  return <DateLabel date={date} />;
 }
 
 /**
@@ -41,31 +60,41 @@ export function KubeflowConditionsSection({
 
   return (
     <SectionBox title={title}>
-      <NameValueTable
-        rows={conditions.map(condition => {
-          return {
-            name: condition.type ?? 'Condition',
-            value: (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <StatusLabel
-                  status={
-                    condition.status === 'True'
-                      ? 'success'
-                      : condition.type === 'Failed' || condition.type?.includes('Error')
-                      ? 'error'
-                      : ''
-                  }
-                >
-                  {condition.status ?? 'Unknown'}
-                </StatusLabel>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {condition.reason ? `${condition.reason} — ` : ''}
-                  {condition.message || ''}
-                </Typography>
-              </Box>
+      <SimpleTable
+        data={conditions}
+        columns={[
+          {
+            label: 'Condition',
+            getter: (condition: KubeflowResourceCondition) => (
+              <StatusLabel>{condition.type ?? 'Condition'}</StatusLabel>
             ),
-          };
-        })}
+          },
+          {
+            label: 'Status',
+            getter: (condition: KubeflowResourceCondition) => condition.status ?? 'Unknown',
+          },
+          {
+            label: 'Last Transition',
+            getter: (condition: KubeflowResourceCondition) => (
+              <ConditionDateLabel date={condition.lastTransitionTime} />
+            ),
+          },
+          {
+            label: 'Last Update',
+            getter: (condition: KubeflowResourceCondition) => (
+              <ConditionDateLabel date={condition.lastUpdateTime} />
+            ),
+          },
+          {
+            label: 'Reason',
+            getter: (condition: KubeflowResourceCondition) =>
+              condition.reason ? (
+                <HoverInfoLabel label={condition.reason} hoverInfo={condition.message} />
+              ) : (
+                '-'
+              ),
+          },
+        ]}
       />
     </SectionBox>
   );
