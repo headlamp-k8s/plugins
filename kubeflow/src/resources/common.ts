@@ -23,4 +23,5 @@ export interface KubeflowResourceCondition {
   reason?: string;
   message?: string;
   lastTransitionTime?: string;
+  lastUpdateTime?: string;
 }
