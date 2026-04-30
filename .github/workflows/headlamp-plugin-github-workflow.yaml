@@ -59,7 +59,7 @@ jobs:
           fi
           echo "Final plugin_dirs JSON: $final_json"
           echo "dirs=$final_json" >> "$GITHUB_OUTPUT"
-          
+
   build:
     needs: find_changed_plugin_dirs
     if: needs.find_changed_plugin_dirs.outputs.dirs != '[]'

@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       plugin:
-        description: 'The plugin name (e.g., flux)'
+        description: "The plugin name (e.g., flux)"
         required: true
         type: string
       version:
-        description: 'The plugin version (without a v prefix e.g., 0.1.0) - if not provided, will use version from package.json'
+        description: "The plugin version (without a v prefix e.g., 0.1.0) - if not provided, will use version from package.json"
         required: false
         type: string
 
@@ -40,7 +40,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Determine version
         id: determine_version

@@ -50,12 +50,12 @@ Below is an example using Azure OpenAI. For other providers (OpenAI, AWS Bedrock
 image: robustadev/holmes:0.19.1
 
 additionalEnvVars:
-- name: AZURE_API_KEY
-  value: ""
-- name: AZURE_API_BASE
-  value: "https://<your-azure-endpoint>.openai.azure.com"
-- name: AZURE_API_VERSION
-  value: "2024-02-15-preview"
+  - name: AZURE_API_KEY
+    value: ''
+  - name: AZURE_API_BASE
+    value: 'https://<your-azure-endpoint>.openai.azure.com'
+  - name: AZURE_API_VERSION
+    value: '2024-02-15-preview'
 # Or load from secret:
 # - name: AZURE_API_KEY
 #   valueFrom:
@@ -70,10 +70,10 @@ additionalEnvVars:
 
 modelList:
   azure-gpt4:
-    api_key: "{{ env.AZURE_API_KEY }}"
+    api_key: '{{ env.AZURE_API_KEY }}'
     model: azure/gpt-5
-    api_base: "{{ env.AZURE_API_BASE }}"
-    api_version: "{{ env.AZURE_API_VERSION }}"
+    api_base: '{{ env.AZURE_API_BASE }}'
+    api_version: '{{ env.AZURE_API_VERSION }}'
 ```
 
 ### 3. Render and Patch the Helm Template
@@ -87,7 +87,7 @@ helm template holmesgpt robusta/holmes -f values.yaml > rendered.yaml
 In `rendered.yaml`, find the container command and change it to:
 
 ```yaml
-command: ["python3", "-u", "/app/experimental/ag-ui/server-agui.py"]
+command: ['python3', '-u', '/app/experimental/ag-ui/server-agui.py']
 ```
 
 ### 4. Deploy to Your Cluster
