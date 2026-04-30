@@ -1,11 +1,11 @@
 import { Icon } from '@iconify/react';
 import {
+  ConditionsTable,
   DetailsGrid,
   NameValueTable,
   SectionBox,
-  StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Typography } from '@mui/material';
+import { Box } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { ProfileClass } from '../../resources/profile';
 import { ProfileStatusBadge } from '../common/ProfileStatusBadge';
@@ -107,30 +107,7 @@ export function ProfilesDetail(props: { name?: string }) {
                 if (conditions.length === 0) return null;
                 return (
                   <SectionBox title="Conditions">
-                    <NameValueTable
-                      rows={conditions.map((cond: any) => ({
-                        name: cond.type,
-                        value: (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <StatusLabel
-                              status={
-                                cond.status === 'True'
-                                  ? 'success'
-                                  : cond.type === 'Failed' || cond.type?.includes('Error')
-                                  ? 'error'
-                                  : ''
-                              }
-                            >
-                              {cond.status}
-                            </StatusLabel>
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                              {cond.reason ? `${cond.reason} — ` : ''}
-                              {cond.message || ''}
-                            </Typography>
-                          </Box>
-                        ),
-                      }))}
-                    />
+                    <ConditionsTable resource={item.jsonData} />
                   </SectionBox>
                 );
               })(),

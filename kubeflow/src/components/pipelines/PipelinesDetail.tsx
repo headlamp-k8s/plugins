@@ -15,21 +15,18 @@
  */
 
 import {
+  ConditionsTable,
   DetailsGrid,
   Link as HeadlampLink,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { DiffEditor } from '@monaco-editor/react';
-import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
-import { useTheme } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
 import yaml from 'js-yaml';
 import { useParams } from 'react-router-dom';
 import { PipelineClass } from '../../resources/pipeline';
 import { PipelineVersionClass } from '../../resources/pipelineVersion';
-import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
+import { KubeflowDiffViewerAction } from '../common/KubeflowDiffViewerAction';
+import { KubeflowJsonViewerAction } from '../common/KubeflowJsonViewerAction';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   countPipelineVersionsForPipeline,
@@ -54,6 +51,54 @@ export function PipelinesDetail(props: { namespace?: string; name?: string }) {
         name={name as string}
         namespace={namespace}
         withEvents
+        actions={item => {
+          if (!item) {
+            return [];
+          }
+
+          const relatedVersions = getPipelineVersionsForPipeline(
+            versions,
+            item.metadata.name,
+            item.metadata.namespace
+          );
+          const sortedVersions = [...relatedVersions].sort((left, right) => {
+            const leftTimestamp = Date.parse(left.metadata.creationTimestamp ?? '');
+            const rightTimestamp = Date.parse(right.metadata.creationTimestamp ?? '');
+            return rightTimestamp - leftTimestamp;
+          });
+          const latestVersion = sortedVersions[0];
+          const previousVersion = sortedVersions[1];
+
+          return [
+            {
+              id: 'kubeflow.pipeline-json',
+              action: (
+                <KubeflowJsonViewerAction
+                  title="View Raw JSON"
+                  value={item.jsonData}
+                  activityId={`json-pipeline-${item.metadata.namespace}-${item.metadata.name}`}
+                />
+              ),
+            },
+            ...(latestVersion && previousVersion
+              ? [
+                  {
+                    id: 'kubeflow.pipeline-version-comparison',
+                    action: (
+                      <KubeflowDiffViewerAction
+                        title="Compare Latest vs Previous Version"
+                        original={yaml.dump(previousVersion.spec)}
+                        modified={yaml.dump(latestVersion.spec)}
+                        originalLabel={`Previous: ${previousVersion.metadata.name}`}
+                        modifiedLabel={`Latest: ${latestVersion.metadata.name}`}
+                        activityId={`diff-pipeline-${item.metadata.namespace}-${item.metadata.name}-${previousVersion.metadata.name}-${latestVersion.metadata.name}`}
+                      />
+                    ),
+                  },
+                ]
+              : []),
+          ];
+        }}
         extraInfo={item =>
           item && [
             {
@@ -112,13 +157,6 @@ export function PipelinesDetail(props: { namespace?: string; name?: string }) {
             item.metadata.name,
             item.metadata.namespace
           );
-          const sortedVersions = [...relatedVersions].sort((left, right) => {
-            const leftTimestamp = Date.parse(left.metadata.creationTimestamp ?? '');
-            const rightTimestamp = Date.parse(right.metadata.creationTimestamp ?? '');
-            return rightTimestamp - leftTimestamp;
-          });
-          const latestVersion = sortedVersions[0];
-          const previousVersion = sortedVersions[1];
 
           return [
             {
@@ -211,77 +249,18 @@ export function PipelinesDetail(props: { namespace?: string; name?: string }) {
                   },
                 ]
               : []),
-            ...(latestVersion && previousVersion
+            ...(item.conditions.length > 0
               ? [
                   {
-                    id: 'version-comparison',
+                    id: 'conditions',
                     section: (
-                      <SectionBox title="Latest vs Previous Version (YAML Diff)">
-                        <Grid container spacing={2} sx={{ mb: 1 }}>
-                          <Grid item xs={6}>
-                            <Typography
-                              variant="subtitle2"
-                              sx={{ color: 'error.main', fontWeight: 'bold' }}
-                            >
-                              Previous: {previousVersion.metadata.name}
-                            </Typography>
-                          </Grid>
-                          <Grid item xs={6}>
-                            <Typography
-                              variant="subtitle2"
-                              sx={{ color: 'success.main', fontWeight: 'bold' }}
-                            >
-                              Latest: {latestVersion.metadata.name}
-                            </Typography>
-                          </Grid>
-                        </Grid>
-                        <Box sx={{ height: '500px', width: '100%', mt: 1 }}>
-                          <DiffEditor
-                            original={yaml.dump(previousVersion.spec)}
-                            modified={yaml.dump(latestVersion.spec)}
-                            language="yaml"
-                            theme={useTheme().palette.mode === 'dark' ? 'vs-dark' : 'light'}
-                            options={{
-                              readOnly: true,
-                              renderSideBySide: true,
-                              minimap: { enabled: false },
-                              scrollBeyondLastLine: false,
-                              automaticLayout: true,
-                            }}
-                          />
-                        </Box>
+                      <SectionBox title="Conditions">
+                        <ConditionsTable resource={item.jsonData} />
                       </SectionBox>
                     ),
                   },
                 ]
               : []),
-            ...(item.conditions.length > 0
-              ? [
-                  {
-                    id: 'conditions',
-                    section: <KubeflowConditionsSection conditions={item.conditions} />,
-                  },
-                ]
-              : []),
-            {
-              id: 'spec-preview',
-              section: (
-                <SectionBox title="Raw Spec Preview">
-                  <Box
-                    component="pre"
-                    sx={{
-                      margin: 0,
-                      overflowX: 'auto',
-                      whiteSpace: 'pre-wrap',
-                      fontFamily: 'monospace',
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    {JSON.stringify(item.spec, null, 2)}
-                  </Box>
-                </SectionBox>
-              ),
-            },
           ];
         }}
       />

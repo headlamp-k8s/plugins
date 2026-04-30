@@ -1,4 +1,5 @@
 import {
+  ConditionsTable,
   Link as HeadlampLink,
   NameValueTable,
   SectionBox,
@@ -11,7 +12,6 @@ import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { PipelineClass } from '../../resources/pipeline';
 import { PipelineVersionClass } from '../../resources/pipelineVersion';
-import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   countPipelineVersionsForPipeline,
@@ -238,7 +238,9 @@ function PipelinesDetailContent(props: { pipeline: any; versions: any[] }) {
       )}
 
       {pipeline.conditions.length > 0 && (
-        <KubeflowConditionsSection conditions={pipeline.conditions} />
+        <SectionBox title="Conditions">
+          <ConditionsTable resource={pipeline.jsonData} />
+        </SectionBox>
       )}
 
       <SectionBox title="Raw Spec Preview">

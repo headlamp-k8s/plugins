@@ -1,11 +1,11 @@
 import { Icon } from '@iconify/react';
 import {
   ActionButton,
+  ConditionsTable,
   DetailsGrid,
   Link as HeadlampLink,
   NameValueTable,
   SectionBox,
-  StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
@@ -212,41 +212,6 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
               })(),
             },
             {
-              id: 'conditions',
-              section: (() => {
-                const conditions = item.status?.conditions || [];
-                if (conditions.length === 0) return null;
-                return (
-                  <SectionBox title="Conditions">
-                    <NameValueTable
-                      rows={conditions.map((cond: any) => ({
-                        name: cond.type,
-                        value: (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <StatusLabel
-                              status={
-                                cond.status === 'True'
-                                  ? 'success'
-                                  : cond.type === 'Failed' || cond.type?.includes('Error')
-                                  ? 'error'
-                                  : ''
-                              }
-                            >
-                              {cond.status}
-                            </StatusLabel>
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                              {cond.reason ? `${cond.reason} — ` : ''}
-                              {cond.message || ''}
-                            </Typography>
-                          </Box>
-                        ),
-                      }))}
-                    />
-                  </SectionBox>
-                );
-              })(),
-            },
-            {
               id: 'container-spec',
               section: (() => {
                 const containers = item.containers;
@@ -278,6 +243,18 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                         } (Effect: ${t.effect || 'Any'})`,
                       }))}
                     />
+                  </SectionBox>
+                );
+              })(),
+            },
+            {
+              id: 'conditions',
+              section: (() => {
+                const conditions = item.status?.conditions || [];
+                if (conditions.length === 0) return null;
+                return (
+                  <SectionBox title="Conditions">
+                    <ConditionsTable resource={item.jsonData} />
                   </SectionBox>
                 );
               })(),

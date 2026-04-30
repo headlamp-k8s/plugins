@@ -1,4 +1,5 @@
 import {
+  ConditionsTable,
   Link as HeadlampLink,
   NameValueTable,
   SectionBox,
@@ -10,7 +11,6 @@ import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { PipelineRecurringRunClass } from '../../resources/pipelineRecurringRun';
 import { PipelineRunClass } from '../../resources/pipelineRun';
-import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   getPipelineDetailsPath,
@@ -109,7 +109,11 @@ function PipelineRecurringRunsDetailContent(props: { recurringRun: any; runs: an
         />
       </SectionBox>
 
-      {item.conditions.length > 0 && <KubeflowConditionsSection conditions={item.conditions} />}
+      {item.conditions.length > 0 && (
+        <SectionBox title="Conditions">
+          <ConditionsTable resource={item.jsonData} />
+        </SectionBox>
+      )}
     </Box>
   );
 }

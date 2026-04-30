@@ -1,12 +1,15 @@
-import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  ConditionsTable,
+  DetailsGrid,
+  SectionBox,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { KatibSuggestionClass } from '../../resources/katibSuggestion';
-import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
-import { KubeflowJsonSection } from '../common/KubeflowJsonSection';
+import { KubeflowJsonViewerAction } from '../common/KubeflowJsonViewerAction';
 import { SectionPage } from '../common/SectionPage';
 
 /**
- * Renders the Katib Suggestion detail view with counts, conditions, and raw spec data.
+ * Renders the Katib Suggestion detail view with counts, conditions, and raw JSON access.
  */
 export function KatibSuggestionsDetail(props: { namespace?: string; name?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
@@ -19,6 +22,20 @@ export function KatibSuggestionsDetail(props: { namespace?: string; name?: strin
         name={name as string}
         namespace={namespace}
         withEvents
+        actions={item =>
+          item && [
+            {
+              id: 'kubeflow.katib-suggestion-json',
+              action: (
+                <KubeflowJsonViewerAction
+                  title="View Raw JSON"
+                  value={item.jsonData}
+                  activityId={`json-katib-suggestion-${item.metadata.namespace}-${item.metadata.name}`}
+                />
+              ),
+            },
+          ]
+        }
         extraInfo={item =>
           item && [
             { name: 'Algorithm', value: item.spec.algorithm?.algorithmName || '-' },
@@ -33,14 +50,14 @@ export function KatibSuggestionsDetail(props: { namespace?: string; name?: strin
                   ? [
                       {
                         id: 'conditions',
-                        section: <KubeflowConditionsSection conditions={item.conditions} />,
+                        section: (
+                          <SectionBox title="Conditions">
+                            <ConditionsTable resource={item.jsonData} />
+                          </SectionBox>
+                        ),
                       },
                     ]
                   : []),
-                {
-                  id: 'spec-preview',
-                  section: <KubeflowJsonSection title="Raw Spec Preview" value={item.spec} />,
-                },
               ]
             : []
         }

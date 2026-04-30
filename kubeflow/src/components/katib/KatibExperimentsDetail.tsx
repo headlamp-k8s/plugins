@@ -1,5 +1,6 @@
 import {
   ActionButton,
+  ConditionsTable,
   DetailsGrid,
   Link as HeadlampLink,
   NameValueTable,
@@ -15,8 +16,7 @@ import {
   getKatibRelatedTrials,
   getKatibTrialMetricValue,
 } from '../common/katibUtils';
-import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
-import { KubeflowJsonSection } from '../common/KubeflowJsonSection';
+import { KubeflowJsonViewerAction } from '../common/KubeflowJsonViewerAction';
 import { launchKatibTrialLogs } from '../common/KubeflowLogsViewer';
 import { KubeflowStatusBadge } from '../common/KubeflowStatusBadge';
 import { SectionPage } from '../common/SectionPage';
@@ -35,6 +35,20 @@ export function KatibExperimentsDetail(props: { namespace?: string; name?: strin
         name={name as string}
         namespace={namespace}
         withEvents
+        actions={item =>
+          item && [
+            {
+              id: 'kubeflow.katib-experiment-json',
+              action: (
+                <KubeflowJsonViewerAction
+                  title="View Raw JSON"
+                  value={item.jsonData}
+                  activityId={`json-katib-experiment-${item.metadata.namespace}-${item.metadata.name}`}
+                />
+              ),
+            },
+          ]
+        }
         extraInfo={item =>
           item && [
             {
@@ -98,14 +112,6 @@ export function KatibExperimentsDetail(props: { namespace?: string; name?: strin
           const optimalMetrics = item.status.currentOptimalTrial?.observation?.metrics ?? [];
           const optimalParams = item.status.currentOptimalTrial?.parameterAssignments ?? [];
           return [
-            ...(item.conditions.length > 0
-              ? [
-                  {
-                    id: 'conditions',
-                    section: <KubeflowConditionsSection conditions={item.conditions} />,
-                  },
-                ]
-              : []),
             ...(relatedTrials.length > 0
               ? [
                   {
@@ -287,10 +293,18 @@ export function KatibExperimentsDetail(props: { namespace?: string; name?: strin
               id: 'rbac',
               section: <KatibRbacSection experiment={item} />,
             },
-            {
-              id: 'spec-preview',
-              section: <KubeflowJsonSection title="Raw Spec Preview" value={item.spec} />,
-            },
+            ...(item.conditions.length > 0
+              ? [
+                  {
+                    id: 'conditions',
+                    section: (
+                      <SectionBox title="Conditions">
+                        <ConditionsTable resource={item.jsonData} />
+                      </SectionBox>
+                    ),
+                  },
+                ]
+              : []),
           ];
         }}
       />
