@@ -227,6 +227,121 @@ export function launchPipelineRunLogs({
   });
 }
 
+export function KatibTrialLogsViewer({
+  trialName,
+  namespace,
+  cluster,
+}: {
+  trialName: string;
+  namespace: string;
+  cluster?: string;
+}) {
+  const [lookupStage, setLookupStage] = React.useState<'trial-name' | 'trial' | 'fallback'>(
+    'trial-name'
+  );
+
+  React.useEffect(() => {
+    setLookupStage('trial-name');
+  }, [trialName, namespace, cluster]);
+
+  const labelSelector =
+    lookupStage === 'trial-name'
+      ? `katib.kubeflow.org/trial-name=${trialName}`
+      : lookupStage === 'trial'
+      ? `katib.kubeflow.org/trial=${trialName}`
+      : undefined;
+
+  const [pods] = K8s.ResourceClasses.Pod.useList({ namespace, cluster, labelSelector });
+
+  React.useEffect(() => {
+    if (!pods) {
+      return;
+    }
+    if (pods.length === 0 && lookupStage === 'trial-name') {
+      setLookupStage('trial');
+    } else if (pods.length === 0 && lookupStage === 'trial') {
+      setLookupStage('fallback');
+    }
+  }, [pods, lookupStage]);
+
+  if (!pods) {
+    return (
+      <CommonComponents.LogViewer
+        noDialog
+        open
+        title={`Logs: Trial - ${trialName}`}
+        logs={['Discovering pod for Katib trial...']}
+        onClose={() => {}}
+      />
+    );
+  }
+
+  const pod = pods
+    .filter(podItem => {
+      const labels = podItem.metadata.labels ?? {};
+      return (
+        labels['katib.kubeflow.org/trial'] === trialName ||
+        labels['katib.kubeflow.org/trial-name'] === trialName ||
+        labels.trial === trialName ||
+        podItem.metadata.name.includes(trialName)
+      );
+    })
+    .sort((a, b) => {
+      const aRunning = a.status?.phase === 'Running' ? 1 : 0;
+      const bRunning = b.status?.phase === 'Running' ? 1 : 0;
+      if (aRunning !== bRunning) {
+        return bRunning - aRunning;
+      }
+      const aTime = Date.parse(a.metadata.creationTimestamp || '0');
+      const bTime = Date.parse(b.metadata.creationTimestamp || '0');
+      return bTime - aTime;
+    })[0];
+
+  if (!pod) {
+    return (
+      <CommonComponents.LogViewer
+        noDialog
+        open
+        title={`Logs: Trial - ${trialName}`}
+        logs={[
+          `No pods found for trial ${trialName}. It may be sample data without worker pods, or the worker pod may have been removed.`,
+        ]}
+        onClose={() => {}}
+      />
+    );
+  }
+
+  return <NotebookLogsViewer podName={pod.metadata.name} namespace={namespace} cluster={cluster} />;
+}
+
+/**
+ * Launches a side-pane log viewer for a Katib Trial worker pod using the Activity system.
+ * Discovers the correct worker pod by iterating through Katib label formats.
+ *
+ * @param props The options for launching the log viewer.
+ * @param props.trialName The name of the Katib trial.
+ * @param props.namespace The namespace containing the trial.
+ * @param props.cluster Optional cluster context if multi-cluster is active.
+ */
+export function launchKatibTrialLogs({
+  trialName,
+  namespace,
+  cluster,
+}: {
+  trialName: string;
+  namespace: string;
+  cluster?: string;
+}) {
+  Activity.launch({
+    id: `katib-trial-logs-${namespace}-${trialName}`,
+    title: `Logs: Trial - ${trialName}`,
+    cluster,
+    icon: <Icon icon="mdi:text-box-outline" width="100%" height="100%" />,
+    location: 'full',
+    content: <KatibTrialLogsViewer trialName={trialName} namespace={namespace} cluster={cluster} />,
+  });
+}
+
 /**
  * React Component that discovers the pod for a Deployment and renders its logs.
  */
