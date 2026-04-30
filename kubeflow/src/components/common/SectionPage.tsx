@@ -30,7 +30,19 @@ interface Props {
 export function SectionPage({ title, apiPath, children }: Props) {
   const normalizedPath = React.useMemo(() => normalizeApiPathForDiscovery(apiPath), [apiPath]);
 
-  const { isInstalled, isCheckLoading } = useApiGroupInstalled(normalizedPath);
+  const { isInstalled: hookIsInstalled, isCheckLoading: hookIsCheckLoading } =
+    useApiGroupInstalled(normalizedPath);
+
+  const isStorybook =
+    typeof window !== 'undefined' && (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK;
+  const isInstalled = isStorybook ? true : hookIsInstalled;
+  const isCheckLoading = isStorybook ? false : hookIsCheckLoading;
+
+  React.useEffect(() => {
+    if (isStorybook) {
+      console.log(`[SectionPage] Storybook mock active for ${title} (${apiPath})`);
+    }
+  }, [title, apiPath, isStorybook]);
 
   if (isCheckLoading) {
     return (

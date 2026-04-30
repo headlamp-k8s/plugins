@@ -4,6 +4,9 @@
  * to provide mock data without cluster access.
  */
 
+import { KatibExperimentClass } from '../../resources/katibExperiment';
+import { KatibSuggestionClass } from '../../resources/katibSuggestion';
+import { KatibTrialClass } from '../../resources/katibTrial';
 import { NotebookClass } from '../../resources/notebook';
 import { PipelineClass } from '../../resources/pipeline';
 import { PipelineExperimentClass } from '../../resources/pipelineExperiment';
@@ -12,6 +15,11 @@ import { PipelineRunClass } from '../../resources/pipelineRun';
 import { PipelineVersionClass } from '../../resources/pipelineVersion';
 import { PodDefaultClass } from '../../resources/podDefault';
 import { ProfileClass } from '../../resources/profile';
+import {
+  allKatibExperiments,
+  allKatibSuggestions,
+  allKatibTrials,
+} from '../katib/__fixtures__/mockData';
 import { allNotebooks, allPodDefaults, allProfiles } from '../notebooks/__fixtures__/mockData';
 import {
   allExperiments,
@@ -34,13 +42,29 @@ const mockMappings: Record<string, any[]> = {
   Notebook: allNotebooks,
   PodDefault: allPodDefaults,
   Profile: allProfiles,
+  KatibExperiment: allKatibExperiments,
+  KatibSuggestion: allKatibSuggestions,
+  KatibTrial: allKatibTrials,
 };
 
 // Reusable mock hook
 function createUseListMock(cls: any, items: any[]) {
   return function () {
     const instances = items.map(item => new cls(item));
-    return [instances, null];
+    return {
+      items: instances,
+      errors: null,
+      error: null,
+      clusterResults: {},
+      isError: false,
+      isLoading: false,
+      isFetching: false,
+      isSuccess: true,
+      *[Symbol.iterator]() {
+        yield instances;
+        yield null;
+      },
+    };
   };
 }
 
@@ -50,7 +74,20 @@ function createUseGetMock(cls: any, items: any[]) {
     const item = items.find(
       i => i.metadata.name === name && (!namespace || i.metadata.namespace === namespace)
     );
-    return [item ? new cls(item) : null, null];
+    const instance = item ? new cls(item) : null;
+    return {
+      data: instance,
+      error: null,
+      isError: false,
+      isLoading: false,
+      isFetching: false,
+      isSuccess: true,
+      status: 'success',
+      *[Symbol.iterator]() {
+        yield instance;
+        yield null;
+      },
+    };
   };
 }
 
@@ -64,6 +101,9 @@ function createUseGetMock(cls: any, items: any[]) {
   { cls: NotebookClass, name: 'Notebook' },
   { cls: PodDefaultClass, name: 'PodDefault' },
   { cls: ProfileClass, name: 'Profile' },
+  { cls: KatibExperimentClass, name: 'KatibExperiment' },
+  { cls: KatibSuggestionClass, name: 'KatibSuggestion' },
+  { cls: KatibTrialClass, name: 'KatibTrial' },
 ].forEach(({ cls, name }) => {
   const mockData = mockMappings[name] || [];
   (cls as any).useList = createUseListMock(cls, mockData);
