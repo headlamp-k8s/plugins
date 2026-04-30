@@ -18,6 +18,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
@@ -26,6 +27,7 @@ import {
   AlertNotification,
   BucketRepository,
   ExternalArtifact,
+  FluxReport,
   GitRepository,
   HelmChart,
   HelmRelease,
@@ -111,6 +113,97 @@ function getDisplayName(resourceClass: KubeObjectClass) {
   return nameMap[resourceClass.apiName] || resourceClass.apiName;
 }
 
+interface FluxHealthStatus {
+  healthy: boolean;
+  details: string[];
+}
+
+function useFluxHealth(
+  controllers: KubeObject[] | null,
+  allResources: { name: string; items: KubeObject[] | null }[],
+  namespace: string | undefined
+): FluxHealthStatus {
+  const [reports] = FluxReport.useList({ namespace });
+
+  return React.useMemo(() => {
+    const details: string[] = [];
+    let healthy = true;
+    const hasReport = reports && reports.length > 0;
+
+    // Compute from whatever resource lists have loaded so far.
+    for (const { name, items } of allResources) {
+      if (!items) {
+        continue;
+      }
+      const failed = getFailedCount(items);
+      if (failed > 0) {
+        healthy = false;
+        details.push(`${name}: ${failed} failing`);
+      }
+    }
+
+    // Enrich with FluxReport signals when available.
+    if (hasReport) {
+      const report = reports[0];
+
+      const syncReady = report.jsonData?.spec?.sync?.ready;
+      if (syncReady === false) {
+        healthy = false;
+        details.push('Cluster sync is not ready');
+      }
+    }
+
+    // Check controller pod status.
+    if (controllers && controllers.length > 0) {
+      const notRunning = controllers.filter(c => c.jsonData?.status?.phase !== 'Running');
+      if (notRunning.length > 0) {
+        healthy = false;
+        details.push(`${notRunning.length} controller(s) not running`);
+      }
+    }
+
+    return { healthy, details };
+  }, [reports, controllers, allResources]);
+}
+
+function FluxHealthBanner({
+  controllers,
+  allResources,
+  namespace,
+}: {
+  controllers: KubeObject[] | null;
+  allResources: { name: string; items: KubeObject[] | null }[];
+  namespace: string | undefined;
+}) {
+  const health = useFluxHealth(controllers, allResources, namespace);
+
+  // Don't show the banner if no Flux resources exist at all.
+  const totalResources = allResources.reduce((sum, r) => sum + (r.items?.length ?? 0), 0);
+  if (totalResources === 0) {
+    return null;
+  }
+
+  return (
+    <Box sx={{ mb: 2 }}>
+      {health.healthy ? (
+        <StatusLabel status="success">
+          <Box display="flex" alignItems="center" gap={0.5}>
+            <Icon icon="mdi:check-circle" width={18} height={18} />
+            All reconcilers healthy
+          </Box>
+        </StatusLabel>
+      ) : (
+        <StatusLabel status="error">
+          <Box display="flex" alignItems="center" gap={0.5}>
+            <Icon icon="mdi:alert-circle" width={18} height={18} />
+            {health.details.join(' | ')}
+          </Box>
+        </StatusLabel>
+      )}
+    </Box>
+  );
+}
+
 export function FluxOverview() {
   const [sortFilter, setSortFilter] = useState(() => store.get()?.overviewSortFilter ?? 'failed');
   const [showFilter, setShowFilter] = useState(
@@ -167,6 +260,41 @@ export function FluxOverview() {
       sourceWatcher
     );
   }, [pods]);
+
+  const allResources = React.useMemo(
+    () => [
+      { name: 'Kustomizations', items: kustomizations },
+      { name: 'Helm Releases', items: helmReleases },
+      { name: 'Git Repositories', items: gitRepos },
+      { name: 'OCI Repositories', items: ociRepos },
+      { name: 'Buckets', items: buckets },
+      { name: 'Helm Repositories', items: helmRepos },
+      { name: 'External Artifacts', items: externalArtifacts },
+      { name: 'Helm Charts', items: helmCharts },
+      { name: 'Alerts', items: alerts },
+      { name: 'Providers', items: providerNotifications },
+      { name: 'Receivers', items: receiverNotifications },
+      { name: 'Image Repositories', items: imageRepositories },
+      { name: 'Image Policies', items: imagePolicies },
+      { name: 'Image Update Automations', items: imageUpdateAutomations },
+    ],
+    [
+      kustomizations,
+      helmReleases,
+      gitRepos,
+      ociRepos,
+      buckets,
+      helmRepos,
+      externalArtifacts,
+      helmCharts,
+      alerts,
+      providerNotifications,
+      receiverNotifications,
+      imageRepositories,
+      imagePolicies,
+      imageUpdateAutomations,
+    ]
+  );
 
   // Sort resource classes based on selected filter
   const sortedResourceClasses = React.useMemo(() => {
@@ -257,6 +385,29 @@ export function FluxOverview() {
     store.set({ ...store.get(), overviewShowFilter: value });
   };
 
+  // Only show the empty state once the CRD check has resolved; otherwise
+  // we'd briefly render "Flux is not installed" on clusters where it is.
+  if (fluxCheck.isFluxCheckLoaded && !fluxCheck.hasFluxCRDs) {
+    return (
+      <SectionBox title="Flux Overview">
+        <Box p={3} display="flex" flexDirection="column" alignItems="center" gap={2}>
+          <Icon icon="simple-icons:flux" width={48} height={48} />
+          <Typography variant="h6">Flux is not installed</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Flux is a set of continuous delivery solutions for Kubernetes.{' '}
+            <a
+              href="https://fluxcd.io/flux/installation/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn how to install Flux
+            </a>
+          </Typography>
+        </Box>
+      </SectionBox>
+    );
+  }
+
   return (
     <>
       <SectionBox
@@ -294,6 +445,11 @@ export function FluxOverview() {
           ],
         }}
       >
+        <FluxHealthBanner
+          controllers={controllers}
+          allResources={allResources}
+          namespace={namespace}
+        />
         <Box display="flex" sx={{ flexWrap: 'wrap' }}>
           {sortedResourceClasses.map((resourceClass, idx) => (
             <Box width="300px" m={2} key={resourceClass.apiName || idx}>
@@ -352,7 +508,6 @@ export function FluxOverview() {
           <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
             <Box p={1}>
               <Box>Controllers</Box>
-              {/* show status whether all controllers are ready or not */}
               {controllers?.length > 0 &&
                 (controllers?.every(controller => controller.status?.phase === 'Running') ? (
                   <StatusLabel status="success">
@@ -385,7 +540,6 @@ export function FluxOverview() {
           <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
             <Box p={1}>
               <Box>CRDs</Box>
-              {/* see if all crds check passed */}
               {fluxCheck.allCrdsSuccessful ? (
                 <StatusLabel status="success">
                   <Box display="flex" alignItems="center">
