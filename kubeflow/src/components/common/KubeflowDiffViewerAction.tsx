@@ -7,13 +7,24 @@ import Grid from '@mui/material/Grid';
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 
+/**
+ * Props for the KubeflowDiffViewer component and its launch actions.
+ * @see {@link https://microsoft.github.io/monaco-editor/ Monaco Editor}
+ */
 interface KubeflowDiffViewerProps {
+  /** The title displayed in the viewer header and tab. */
   title: string;
+  /** The original string content (e.g., previous version). */
   original: string;
+  /** The modified string content (e.g., latest version). */
   modified: string;
+  /** The label displayed above the original content pane. */
   originalLabel: string;
+  /** The label displayed above the modified content pane. */
   modifiedLabel: string;
+  /** The language used for syntax highlighting (default: 'yaml'). */
   language?: string;
+  /** Optional ID for the Headlamp Activity to prevent opening duplicate tabs. */
   activityId?: string;
 }
 

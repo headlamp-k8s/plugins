@@ -11,6 +11,11 @@ export interface KatibBestTrialMatch {
   value: number;
 }
 
+/**
+ * Determines if a Katib condition type represents an error or failure state.
+ * @param type The Katib condition type string.
+ * @see {@link https://www.kubeflow.org/docs/components/katib/experiment/#experiment-status Katib Experiment Status}
+ */
 function isKatibErrorConditionType(type?: string): boolean {
   const normalizedType = type?.toLowerCase() ?? '';
   return (

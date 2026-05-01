@@ -17,10 +17,18 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { KubeflowResourceCondition } from './common';
 
+/**
+ * Katib Experiment Objective configuration.
+ * @see {@link https://www.kubeflow.org/docs/components/katib/experiment/#objective Katib Objective Docs}
+ */
 export interface KatibObjective {
+  /** The type of the objective (e.g., maximize, minimize). */
   type?: string;
+  /** The primary metric name to optimize. */
   objectiveMetricName?: string;
+  /** Additional metric names to collect. */
   additionalMetricNames?: string[];
+  /** The target value for the objective metric. */
   goal?: number;
 }
 
