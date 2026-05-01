@@ -6,9 +6,16 @@ import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 
+/**
+ * Props for the KubeflowJsonViewer component and its launch actions.
+ * @see {@link https://microsoft.github.io/monaco-editor/ Monaco Editor}
+ */
 interface KubeflowJsonViewerProps {
+  /** The title displayed in the viewer header and tab. */
   title: string;
+  /** The JSON object or raw JSON string to be formatted and displayed. */
   value: unknown;
+  /** Optional ID for the Headlamp Activity to prevent opening duplicate tabs. */
   activityId?: string;
 }
 
@@ -25,8 +32,9 @@ export function KubeflowJsonViewer({ title, value }: KubeflowJsonViewerProps) {
       // Attempt to parse and re-stringify to ensure pretty printing
       serializedValue = JSON.stringify(JSON.parse(value), null, 2);
     } catch (e) {
-      // Fallback to the string itself if not valid JSON, but fix literal \n and \\n
-      serializedValue = value.replace(/\\n/g, '\n').replace(/\n/g, '\r\n');
+      // Fallback to the string itself if not valid JSON, converting literal \n
+      // and only normalizing bare LF line endings without corrupting existing CRLF.
+      serializedValue = value.replace(/\\n/g, '\n').replace(/(^|[^\r])\n/g, '$1\r\n');
     }
   } else {
     serializedValue = JSON.stringify(value, null, 2);
