@@ -9,6 +9,7 @@ import {
   registerSidebarEntryFilter,
   Utils,
 } from '@kinvolk/headlamp-plugin/lib';
+import { registerFluxHeaderActionsProcessor } from './actions/headerActionsProcessor';
 import Canaries from './flagger/canaries';
 import CanaryDetails from './flagger/canarydetails';
 import { HelmReleases } from './helm-releases/HelmReleaseList';
@@ -29,6 +30,7 @@ import { TerraformList } from './terraforms/TerraformList';
 import { TerraformDetailView } from './terraforms/TerraformSingle';
 
 registerHelmRelease();
+registerFluxHeaderActionsProcessor();
 
 // Track whether Flux CRDs exist per cluster to hide sidebar children.
 // The watch callback keeps `fluxInstalledByCluster` fresh while the page is open;
