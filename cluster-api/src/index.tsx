@@ -10,33 +10,45 @@ import { registerDetailsViewHeaderAction } from '@kinvolk/headlamp-plugin/lib';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
-import { useMemo } from 'react';
 import { registerCapiIcon } from './clusterapiIcon';
 import { ClusterClassDetail } from './components/clusterclasses/Detail';
+import { ClusterClassGlance } from './components/clusterclasses/Glance';
 import { ClusterClassesList } from './components/clusterclasses/List';
 import { ClusterDetail } from './components/clusters/Detail';
+import { ClusterGlance } from './components/clusters/Glance';
 import { ClustersList } from './components/clusters/List';
+import { TopologyHeaderAction } from './components/common/util';
 import Dashboard from './components/Dashboard';
 import { KubeadmConfigDetail } from './components/kubeadmconfigs/Detail';
+import { KubeadmConfigGlance } from './components/kubeadmconfigs/Glance';
 import { KubeadmConfigsList } from './components/kubeadmconfigs/List';
 import { KubeadmConfigTemplateDetail } from './components/kubeadmconfigtemplates/Detail';
+import { KubeadmConfigTemplateGlance } from './components/kubeadmconfigtemplates/Glance';
 import { KubeadmConfigTemplatesList } from './components/kubeadmconfigtemplates/List';
 import { KubeadmControlPlaneDetail } from './components/kubeadmcontrolplanes/Detail';
+import { KubeadmControlPlaneGlance } from './components/kubeadmcontrolplanes/Glance';
 import { KubeadmControlPlanesList } from './components/kubeadmcontrolplanes/List';
 import { KubeadmControlPlaneTemplateDetail } from './components/kubeadmcontrolplanetemplates/Detail';
 import { KubeadmControlPlaneTemplatesList } from './components/kubeadmcontrolplanetemplates/List';
 import { MachineDeploymentDetail } from './components/machinedeployments/Detail';
+import { MachineDeploymentGlance } from './components/machinedeployments/Glance';
 import { MachineDeploymentsList } from './components/machinedeployments/List';
 import { MachineDrainRuleDetail } from './components/machinedrainrules/Detail';
+import { MachineDrainRuleGlance } from './components/machinedrainrules/Glance';
 import { MachineDrainRulesList } from './components/machinedrainrules/List';
 import { MachineHealthCheckDetail } from './components/machinehealthchecks/Detail';
+import { MachineHealthCheckGlance } from './components/machinehealthchecks/Glance';
 import { MachineHealthChecksList } from './components/machinehealthchecks/List';
 import { MachinePoolDetail } from './components/machinepools/Detail';
+import { MachinePoolGlance } from './components/machinepools/Glance';
 import { MachinePoolsList } from './components/machinepools/List';
 import { MachineDetail } from './components/machines/Detail';
+import { MachineGlance } from './components/machines/Glance';
 import { MachinesList } from './components/machines/List';
 import { MachineSetDetail } from './components/machinesets/Detail';
+import { MachineSetGlance } from './components/machinesets/Glance';
 import { MachineSetsList } from './components/machinesets/List';
+import { clusterApiSource } from './mapView';
 import { Cluster } from './resources/cluster';
 import { ClusterClass } from './resources/clusterclass';
 import { KubeadmConfig } from './resources/kubeadmconfig';
@@ -321,63 +333,25 @@ const resourceClassMap = {
 // so links to the resources work in built-in details views.
 Object.assign(ResourceClasses, resourceClassMap);
 
-registerMapSource({
-  id: 'cluster-api',
-  label: 'Cluster API',
-  icon: <Icon icon="capi:logo" width="100%" height="100%" color="rgb(50, 108, 229)" />,
-  useData() {
-    // Build a map of resources and their details components
-    const resourceLists = clusterApiResources.map(r => {
-      const [items] = resourceClassMap[r.kind].useList();
-      return { items, detailsComponent: r.DetailComponent };
-    });
-
-    // Create map nodes for each resource found
-    return useMemo(() => {
-      const nodes = [];
-      resourceLists.forEach(({ items, detailsComponent }) => {
-        items?.forEach(it => {
-          nodes.push({
-            id: it.metadata.uid,
-            kubeObject: it,
-            detailsComponent,
-          });
-        });
-      });
-
-      // Create map edges based on owner references
-      const edges = [];
-      for (const node of nodes) {
-        if (node.kubeObject.metadata.ownerReferences) {
-          node.kubeObject.metadata.ownerReferences.forEach(ownerRef => {
-            const ownerNode = nodes.find(n => n.kubeObject.metadata.uid === ownerRef.uid);
-            if (ownerNode) {
-              edges.push({
-                id: `${ownerNode.id}-${node.id}`,
-                source: ownerNode.id,
-                target: node.id,
-                label: `owned by ${ownerRef.kind}`,
-              });
-            }
-          });
-        }
-      }
-
-      return { nodes, edges };
-    }, [resourceLists.map(r => r.items)]);
-  },
-});
-
-// Register on-hover "glance" tooltips
-import { TopologyHeaderAction } from './components/common/util';
-import { KubeadmControlPlaneGlance } from './components/kubeadmcontrolplanes/Glance';
-import { MachineDeploymentGlance } from './components/machinedeployments/Glance';
-import { MachinePoolGlance } from './components/machinepools/Glance';
-import { MachineSetGlance } from './components/machinesets/Glance';
+// Register on-hover "glance" tooltips for all resource types
+registerKubeObjectGlance({ id: 'cluster-glance', component: ClusterGlance });
 registerKubeObjectGlance({ id: 'kcp-glance', component: KubeadmControlPlaneGlance });
 registerKubeObjectGlance({ id: 'machineset-glance', component: MachineSetGlance });
 registerKubeObjectGlance({ id: 'machinedeployment-glance', component: MachineDeploymentGlance });
 registerKubeObjectGlance({ id: 'machinepool-glance', component: MachinePoolGlance });
+registerKubeObjectGlance({ id: 'machine-glance', component: MachineGlance });
+registerKubeObjectGlance({ id: 'machinehealthcheck-glance', component: MachineHealthCheckGlance });
+registerKubeObjectGlance({ id: 'machinedrainrule-glance', component: MachineDrainRuleGlance });
+registerKubeObjectGlance({ id: 'clusterclass-glance', component: ClusterClassGlance });
+registerKubeObjectGlance({ id: 'kubeadmconfig-glance', component: KubeadmConfigGlance });
+registerKubeObjectGlance({
+  id: 'kubeadmconfigtemplate-glance',
+  component: KubeadmConfigTemplateGlance,
+});
+
+// Register the combined map source — builds one unified graph with all cross-resource
+// edges and correct weights, so Cluster (weight=7000) anchors at left-center.
+registerMapSource(clusterApiSource);
 
 // Register the header action for use in resource details views.
 registerDetailsViewHeaderAction(TopologyHeaderAction);
