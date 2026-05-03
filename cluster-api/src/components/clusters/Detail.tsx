@@ -195,41 +195,53 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
           {
             name: 'Control Plane Ready',
             value:
-              item.status?.controlPlaneReady === undefined
-                ? '-'
-                : item.status.controlPlaneReady
-                ? 'true'
-                : 'false',
+              item.status?.controlPlaneReady === undefined ? (
+                '-'
+              ) : (
+                <StatusLabel status={item.status.controlPlaneReady ? 'success' : 'error'}>
+                  {item.status.controlPlaneReady ? 'true' : 'false'}
+                </StatusLabel>
+              ),
             hide: item.status?.controlPlaneReady === undefined,
           },
           {
             name: 'Infrastructure Ready',
             value:
-              item.status?.infrastructureReady === undefined
-                ? '-'
-                : item.status.infrastructureReady
-                ? 'true'
-                : 'false',
+              item.status?.infrastructureReady === undefined ? (
+                '-'
+              ) : (
+                <StatusLabel status={item.status.infrastructureReady ? 'success' : 'error'}>
+                  {item.status.infrastructureReady ? 'true' : 'false'}
+                </StatusLabel>
+              ),
             hide: item.status?.infrastructureReady === undefined,
           },
           {
             name: 'Control Plane Initialized',
             value:
-              initialization?.controlPlaneInitialized === undefined
-                ? '-'
-                : initialization.controlPlaneInitialized
-                ? 'true'
-                : 'false',
+              initialization?.controlPlaneInitialized === undefined ? (
+                '-'
+              ) : (
+                <StatusLabel
+                  status={initialization.controlPlaneInitialized ? 'success' : 'warning'}
+                >
+                  {initialization.controlPlaneInitialized ? 'true' : 'false'}
+                </StatusLabel>
+              ),
             hide: initialization?.controlPlaneInitialized === undefined,
           },
           {
             name: 'Infrastructure Provisioned',
             value:
-              initialization?.infrastructureProvisioned === undefined
-                ? '-'
-                : initialization.infrastructureProvisioned
-                ? 'true'
-                : 'false',
+              initialization?.infrastructureProvisioned === undefined ? (
+                '-'
+              ) : (
+                <StatusLabel
+                  status={initialization.infrastructureProvisioned ? 'success' : 'warning'}
+                >
+                  {initialization.infrastructureProvisioned ? 'true' : 'false'}
+                </StatusLabel>
+              ),
             hide: initialization?.infrastructureProvisioned === undefined,
           },
           {
