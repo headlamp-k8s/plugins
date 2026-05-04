@@ -258,5 +258,8 @@ export const useNamespaces = () => {
   }
 
   const namespacesSet = useSelector(({ filter }: { filter: FilterState }) => filter.namespaces);
-  return useMemo(() => [...namespacesSet], [namespacesSet]);
+  return useMemo(
+    () => (namespacesSet.size === 0 ? undefined : [...namespacesSet]),
+    [namespacesSet]
+  );
 };
