@@ -1,9 +1,11 @@
 import { Autocomplete, Box, TextField } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 
+/** Props for the filter bar rendered in the releases list header. */
 interface ReleaseFiltersProps {
   nameFilter: string;
   namespaceFilter: string;
+  /** Namespace strings derived from the currently loaded releases, used to populate the dropdown. */
   availableNamespaces: string[];
   onNameFilterChange: (value: string) => void;
   onNamespaceFilterChange: (value: string) => void;

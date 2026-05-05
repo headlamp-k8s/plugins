@@ -4,12 +4,15 @@ import React, { useCallback, useState } from 'react';
 
 const ICON_SPACING = { marginRight: 8 };
 
+/** Minimal release shape needed by the actions menu. */
 interface Release {
   name: string;
   namespace: string;
+  /** Current revision number; rollback is disabled when version === 1. */
   version: number;
 }
 
+/** Props for the three-dot actions menu attached to each release row. */
 interface ReleaseActionsMenuProps {
   release: Release;
   onUpgrade: (release: Release) => void;

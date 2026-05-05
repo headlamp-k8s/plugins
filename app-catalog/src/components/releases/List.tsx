@@ -27,12 +27,14 @@ import { ReleaseActionsMenu } from './ReleaseActionsMenu';
 import { ReleaseFilters } from './ReleaseFilters';
 import { RollbackDialog } from './RollbackDialog';
 
+/** Helm release runtime info (status, timestamps, description). */
 interface ReleaseInfo {
   status: string;
   last_deployed: string;
   description?: string;
 }
 
+/** Metadata from the Helm chart's Chart.yaml. */
 interface ChartMetadata {
   name: string;
   version: string;
@@ -44,18 +46,22 @@ interface Chart {
   metadata: ChartMetadata;
 }
 
+/** A single installed Helm release as returned by the list API. */
 interface Release {
   name: string;
   namespace: string;
+  /** Current revision number; increments on each upgrade or rollback. */
   version: number;
   chart: Chart;
   info: ReleaseInfo;
 }
 
+/** Helm history response containing all past revisions for a release. */
 interface ReleaseHistory {
   releases: Release[];
 }
 
+/** API response shape for the list releases endpoint. */
 interface ReleasesResponse {
   releases?: Release[];
 }
@@ -64,6 +70,7 @@ const DELETE_STATUS_POLLING_INTERVAL = 1000;
 const DELETE_STATUS_MAX_RETRIES = 60;
 const RELEASE_KEY_DELIMITER = '|:|';
 
+/** Props for the ReleaseList component. fetchReleases can be overridden for testing. */
 interface ReleaseListProps {
   fetchReleases?: () => Promise<ReleasesResponse>;
 }
@@ -234,6 +241,10 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
     setOpenDeleteAlert(true);
   }, []);
 
+  /**
+   * Polls the uninstall action status until the release is confirmed deleted or max retries reached.
+   * Closes the delete dialog and shows a snackbar on success or failure.
+   */
   const checkDeleteReleaseStatus = useCallback(
     (name: string, namespace: string, retryCount = 0) => {
       if (retryCount >= DELETE_STATUS_MAX_RETRIES) {
@@ -290,6 +301,10 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
     [enqueueSnackbar, setRefetchCounter]
   );
 
+  /**
+   * Initiates release deletion and starts polling checkDeleteReleaseStatus.
+   * Keeps the dialog open during polling; closes it on success.
+   */
   const handleConfirmDelete = useCallback(() => {
     if (selectedRelease) {
       // Clear any existing timeout to prevent race conditions
@@ -317,6 +332,10 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
     }
   }, [selectedRelease, enqueueSnackbar, checkDeleteReleaseStatus]);
 
+  /**
+   * Initiates a rollback to the selected revision and polls until the operation completes.
+   * Closes the rollback dialog immediately; reports progress and result via snackbars.
+   */
   const handleConfirmRollback = useCallback(() => {
     if (selectedRelease) {
       const releaseName = selectedRelease.name;
@@ -402,6 +421,10 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
     });
   }, [filteredReleases, selectedReleases]);
 
+  /**
+   * Polls the releases list until all bulk-deleted releases are no longer present.
+   * Retries up to DELETE_STATUS_MAX_RETRIES times with DELETE_STATUS_POLLING_INTERVAL between checks.
+   */
   const checkBulkDeleteComplete = useCallback(
     (deletedKeys: string[], retryCount = 0) => {
       if (retryCount >= DELETE_STATUS_MAX_RETRIES) {
@@ -457,6 +480,10 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
     setOpenBulkDeleteAlert(true);
   }, []);
 
+  /**
+   * Deletes all selected releases in parallel via Promise.allSettled.
+   * Reports per-batch success/failure counts, then polls checkBulkDeleteComplete.
+   */
   const handleConfirmBulkDelete = useCallback(() => {
     if (selectedReleases.size === 0) return;
 
@@ -527,15 +554,17 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
 
   return (
     <>
-      <EditorDialog
-        isUpdateRelease={isUpdateRelease}
-        openEditor={isEditorOpen}
-        handleEditor={open => setIsEditorOpen(open)}
-        release={selectedRelease}
-        releaseName={selectedRelease?.name}
-        releaseNamespace={selectedRelease?.namespace}
-        handleUpdate={() => setRefetchCounter(prev => prev + 1)}
-      />
+      {selectedRelease && (
+        <EditorDialog
+          isUpdateRelease={isUpdateRelease}
+          openEditor={isEditorOpen}
+          handleEditor={open => setIsEditorOpen(open)}
+          release={selectedRelease}
+          releaseName={selectedRelease.name}
+          releaseNamespace={selectedRelease.namespace}
+          handleUpdate={() => setRefetchCounter(prev => prev + 1)}
+        />
+      )}
       <DeleteConfirmDialog
         open={openDeleteAlert}
         isDeleting={isDeleting}

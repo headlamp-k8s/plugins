@@ -1,21 +1,28 @@
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Button, DialogActions, DialogContent, InputLabel, MenuItem, Select } from '@mui/material';
 
+/** A single entry in the release history, representing one deployed revision. */
 interface Release {
+  /** Helm revision number. */
   version: number;
   info: {
+    /** ISO timestamp of when this revision was deployed. */
     last_deployed: string;
     description?: string;
   };
 }
 
+/** Helm history response containing all past revisions for a release. */
 interface ReleaseHistory {
   releases: Release[];
 }
 
+/** Props for the rollback version selection dialog. */
 interface RollbackDialogProps {
   open: boolean;
+  /** Release history fetched from the Helm API; null while loading. */
   releaseHistory: ReleaseHistory | null;
+  /** Currently selected revision to roll back to (as a string for the Select value). */
   revertVersion: string;
   onVersionChange: (version: string) => void;
   onConfirm: () => void;
