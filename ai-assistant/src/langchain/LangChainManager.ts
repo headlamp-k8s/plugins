@@ -799,6 +799,9 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
   }
 
   async userSend(message: string): Promise<Prompt> {
+    // Sync MCP auto-approve settings before processing
+    await inlineToolApprovalManager.loadAndApplyAutoApproveSettings();
+
     // Clear previous progress steps
 
     const userPrompt: Prompt = { role: 'user', content: message };

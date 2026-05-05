@@ -28,6 +28,7 @@ export interface MCPServer {
   args: string[];
   env?: Record<string, string>;
   enabled: boolean;
+  autoApprove?: boolean;
 }
 
 export interface MCPConfig {
@@ -235,6 +236,15 @@ export function MCPSettings({ onConfigChange }: MCPSettingsProps) {
     updatePendingConfig(newConfig);
   };
 
+  const handleToggleServerAutoApprove = (serverName: string) => {
+    if (!pendingConfig) return;
+    const newServers = pendingConfig.servers.map(s =>
+      s.name === serverName ? { ...s, autoApprove: s.autoApprove ? undefined : true } : s
+    );
+    const newConfig = { ...pendingConfig, servers: newServers };
+    updatePendingConfig(newConfig);
+  };
+
   const handleSaveConfig = (newConfig: MCPConfig) => {
     updatePendingConfig(newConfig);
   };
@@ -332,6 +342,7 @@ export function MCPSettings({ onConfigChange }: MCPSettingsProps) {
                   <TableRow>
                     <TableCell>Name</TableCell>
                     <TableCell align="center">Enabled</TableCell>
+                    <TableCell align="center">Auto Approve</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -347,6 +358,13 @@ export function MCPSettings({ onConfigChange }: MCPSettingsProps) {
                         <Switch
                           checked={server.enabled}
                           onChange={() => handleToggleServerEnabled(server.name)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Switch
+                          checked={!!server.autoApprove}
+                          onChange={() => handleToggleServerAutoApprove(server.name)}
                           size="small"
                         />
                       </TableCell>
