@@ -306,31 +306,32 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
    * Keeps the dialog open during polling; closes it on success.
    */
   const handleConfirmDelete = useCallback(() => {
-    if (selectedRelease) {
-      // Clear any existing timeout to prevent race conditions
-      if (deleteStatusTimeoutRef.current) {
-        clearTimeout(deleteStatusTimeoutRef.current);
-        deleteStatusTimeoutRef.current = null;
-      }
+    if (!selectedRelease || isDeleting) return;
 
-      deleteRelease(selectedRelease.namespace, selectedRelease.name)
-        .then(() => {
-          setIsDeleting(true);
-          enqueueSnackbar(`Delete request for release ${selectedRelease.name} accepted`, {
-            variant: 'info',
-          });
-          // Keep dialog open while polling - it will close on success in checkDeleteReleaseStatus
-          checkDeleteReleaseStatus(selectedRelease.name, selectedRelease.namespace);
-        })
-        .catch(error => {
-          console.error('Failed to delete release:', error);
-          enqueueSnackbar(`Failed to delete release ${selectedRelease.name}`, {
-            variant: 'error',
-          });
-          setIsDeleting(false);
-        });
+    // Clear any existing timeout to prevent race conditions
+    if (deleteStatusTimeoutRef.current) {
+      clearTimeout(deleteStatusTimeoutRef.current);
+      deleteStatusTimeoutRef.current = null;
     }
-  }, [selectedRelease, enqueueSnackbar, checkDeleteReleaseStatus]);
+
+    // Set deleting immediately to block re-entry before the API call resolves
+    setIsDeleting(true);
+    deleteRelease(selectedRelease.namespace, selectedRelease.name)
+      .then(() => {
+        enqueueSnackbar(`Delete request for release ${selectedRelease.name} accepted`, {
+          variant: 'info',
+        });
+        // Keep dialog open while polling - it will close on success in checkDeleteReleaseStatus
+        checkDeleteReleaseStatus(selectedRelease.name, selectedRelease.namespace);
+      })
+      .catch(error => {
+        console.error('Failed to delete release:', error);
+        enqueueSnackbar(`Failed to delete release ${selectedRelease.name}`, {
+          variant: 'error',
+        });
+        setIsDeleting(false);
+      });
+  }, [selectedRelease, isDeleting, enqueueSnackbar, checkDeleteReleaseStatus]);
 
   /**
    * Initiates a rollback to the selected revision and polls until the operation completes.
@@ -550,6 +551,8 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
         setIsBulkDeleting(false);
         setOpenBulkDeleteAlert(false);
       });
+    // State setters from useState (setIsBulkDeleting, setOpenBulkDeleteAlert, setSelectedReleases)
+    // are guaranteed stable refs per the React docs and are intentionally omitted from deps.
   }, [selectedReleases, enqueueSnackbar, checkBulkDeleteComplete]);
 
   return (
