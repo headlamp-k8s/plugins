@@ -265,7 +265,7 @@ function HeadlampAIPrompt() {
           size="small"
           value="ai-assistant"
         >
-          <Icon icon="ai-assistant:logo" width="24px" />
+          <Icon icon="ai-assistant:logo" width="24px" color={theme.palette.text.primary} />
         </ToggleButton>
       </Tooltip>
 
