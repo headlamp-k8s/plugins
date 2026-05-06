@@ -146,7 +146,52 @@ export default class LangChainManager extends AIManager {
         new HumanMessage(message),
       ];
 
-      // Stream the response
+      // Ollama (local provider) drops tool_calls chunks in streaming mode.
+      // Use non-streaming invoke() and yield the full response to work around this.
+      if (this.providerId === 'local') {
+        const response = await modelToUse.invoke(messages, {
+          signal: this.currentAbortController?.signal,
+        });
+
+        this.currentAbortController = null;
+
+        const fullContent = this.extractTextContent(response.content);
+        if (fullContent) {
+          yield fullContent;
+        }
+
+        const toolCalls = response.tool_calls || [];
+
+        const assistantPrompt: Prompt = {
+          role: 'assistant',
+          content: fullContent,
+          toolCalls:
+            toolCalls.length > 0
+              ? toolCalls.map(tc => ({
+                  type: 'function',
+                  id: tc.id,
+                  function: {
+                    name: tc.name,
+                    arguments: JSON.stringify(tc.args || {}),
+                  },
+                }))
+              : undefined,
+        };
+
+        if (toolCalls.length > 0) {
+          this.history.push(assistantPrompt);
+          await this.handleToolCallsForStreaming(toolCalls, assistantPrompt);
+          for await (const chunk of this.processToolResponsesStream()) {
+            yield chunk;
+          }
+          return this.history[this.history.length - 1];
+        }
+
+        this.history.push(assistantPrompt);
+        return assistantPrompt;
+      }
+
+      // Stream the response (for providers that properly support streaming tool calls)
       const stream = await modelToUse.stream(messages, {
         signal: this.currentAbortController?.signal,
       });
@@ -401,7 +446,8 @@ export default class LangChainManager extends AIManager {
    */
   private canUseDirectToolCalling(): boolean {
     // All major providers support direct tool calling
-    return ['openai', 'azure', 'anthropic', 'mistral', 'gemini', 'vllm'].includes(this.providerId);
+    // 'local' (Ollama) supports tool calling via invoke() but NOT via stream()
+    return ['openai', 'azure', 'anthropic', 'mistral', 'gemini', 'vllm', 'local'].includes(this.providerId);
   }
 
   /**
@@ -914,16 +960,24 @@ The user is waiting for you to explain what the tools discovered. Provide a dire
   }
 
   // Handle requests for local models (simplified)
+  // Uses invoke() (non-streaming) because Ollama drops tool_calls in streaming mode
   private async handleLocalModelRequest(message: string, model: BaseChatModel): Promise<Prompt> {
+    // Use the boundModel (with tools) when available so tool calls are generated
+    const modelToUse = this.boundModel || model;
     const systemMessage = new SystemMessage(this.createSystemPrompt());
     const userMessage = new HumanMessage(message);
-    const messages = [systemMessage, userMessage];
+    const messages = [systemMessage, ...this.prepareChatHistory(), userMessage];
 
-    const response = await model.invoke(messages, {
-      signal: this.currentAbortController.signal,
+    const response = await modelToUse.invoke(messages, {
+      signal: this.currentAbortController?.signal,
     });
 
     this.currentAbortController = null;
+
+    // Handle tool calls if present (Ollama supports tool calling via invoke)
+    if (response.tool_calls?.length) {
+      return await this.handleToolCalls(response);
+    }
 
     const assistantPrompt: Prompt = {
       role: 'assistant',
