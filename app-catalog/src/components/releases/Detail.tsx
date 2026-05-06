@@ -158,7 +158,8 @@ export default function ReleaseDetail() {
               releaseHistory.releases.map((release: any) => {
                 return (
                   <MenuItem value={release?.version}>
-                    {release?.version} . {release?.info.description}
+                    {release?.version} - {release?.info?.description || 'N/A'} (
+                    {new Date(release?.info.last_deployed).toLocaleString()})
                   </MenuItem>
                 );
               })}
@@ -167,7 +168,11 @@ export default function ReleaseDetail() {
         <DialogActions>
           <Button
             onClick={() => {
-              rollbackRelease(release.namespace, release.name, revertVersion).then(() => {
+              rollbackRelease(
+                release.namespace,
+                release.name,
+                Number.parseInt(revertVersion, 10)
+              ).then(() => {
                 setRollbackPopup(false);
                 setUpdate(!update);
               });
