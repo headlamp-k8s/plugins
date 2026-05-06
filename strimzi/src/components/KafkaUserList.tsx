@@ -7,16 +7,24 @@ import {
   type ColumnType,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Kafka, KafkaUser } from '../resources';
+import { Kafka, KafkaV1, KafkaUser, KafkaUserV1 } from '../resources';
 import type { CreateKafkaUserPayload, KafkaUserInterface } from '../resources';
 import { getErrorMessage } from '../utils/errors';
+import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
+import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 import { SecureSecretDisplay } from './SecureSecretDisplay';
 import { Toast, ToastMessage } from './Toast';
 import { KafkaUserCreateFormModal, type UserFormData } from './KafkaUserCreateFormModal';
 
 export function KafkaUserList() {
   const theme = useTheme();
-  const { items: kafkaClusters } = Kafka.useList({});
+  const { ready, installed, kafka: kafkaVersion } = useStrimziApiVersions();
+  const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
+  const KafkaUserClass = kafkaVersion === 'v1' ? KafkaUserV1 : KafkaUser;
+  const kafkaApiPath = `/apis/kafka.strimzi.io/${kafkaVersion}`;
+
+  // All hooks must be called before any early return (Rules of Hooks).
+  const { items: kafkaClusters } = KafkaClass.useList({});
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
@@ -80,7 +88,7 @@ export function KafkaUserList() {
     setLoading(true);
     try {
       const userResource: CreateKafkaUserPayload = {
-        apiVersion: 'kafka.strimzi.io/v1beta2',
+        apiVersion: `kafka.strimzi.io/${kafkaVersion}`,
         kind: 'KafkaUser',
         metadata: {
           name: formData.name,
@@ -104,7 +112,7 @@ export function KafkaUserList() {
       }
 
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${formData.namespace}/kafkausers`,
+        `${kafkaApiPath}/namespaces/${formData.namespace}/kafkausers`,
         {
           method: 'POST',
           body: JSON.stringify(userResource),
@@ -142,7 +150,7 @@ export function KafkaUserList() {
 
     try {
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${deletingUser.metadata.namespace}/kafkausers/${deletingUser.metadata.name}`,
+        `${kafkaApiPath}/namespaces/${deletingUser.metadata.namespace}/kafkausers/${deletingUser.metadata.name}`,
         { method: 'DELETE' }
       );
       setToast({ message: `User "${deletingUser.metadata.name}" deleted successfully`, type: 'success' });
@@ -264,11 +272,13 @@ export function KafkaUserList() {
     'age',
   ];
 
+  if (ready && !installed) return <StrimziNotInstalledMessage />;
+
   return (
     <>
       <ResourceListView
         title="Kafka Users"
-        resourceClass={KafkaUser}
+        resourceClass={KafkaUserClass}
         columns={columns}
         headerProps={{
           titleSideActions: [

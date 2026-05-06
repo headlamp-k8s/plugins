@@ -41,7 +41,7 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 ## 📋 Prerequisites
 
 - [Headlamp](https://headlamp.dev/) installed
-- A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) deployed
+- A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) deployed (0.x with `v1beta2` APIs, or 1.0+ with `v1` APIs; the plugin detects and uses whichever version the cluster serves)
 
 ## 🚀 Quick Start
 

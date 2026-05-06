@@ -96,3 +96,8 @@ export class Kafka extends KubeObject<KafkaInterface> {
     return 'N/A';
   }
 }
+
+/** Kafka resource class targeting the `kafka.strimzi.io/v1` API (Strimzi 1.0.0+). */
+export class KafkaV1 extends Kafka {
+  static apiVersion = 'kafka.strimzi.io/v1';
+}
