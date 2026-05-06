@@ -1,7 +1,11 @@
 import {
+  getConnectorDesiredState,
+  isConnectReady,
+  isConnectorPaused,
   isKafkaReady,
   isTopicReady,
   isUserReady,
+  type KafkaConnectorLike,
   type ReadyConditionResource,
 } from './crds-helpers';
 
@@ -121,6 +125,81 @@ describe('CRD helper functions', () => {
       };
 
       expect(isUserReady(user)).toBe(false);
+    });
+  });
+
+  describe('isConnectReady', () => {
+    it('should return true when Connect cluster is ready', () => {
+      const connect: ReadyConditionResource = {
+        status: {
+          conditions: [{ type: 'Ready', status: 'True' }],
+        },
+      };
+
+      expect(isConnectReady(connect)).toBe(true);
+    });
+
+    it('should return false when Connect cluster is not ready', () => {
+      const connect: ReadyConditionResource = {
+        status: {
+          conditions: [{ type: 'Ready', status: 'False' }],
+        },
+      };
+
+      expect(isConnectReady(connect)).toBe(false);
+    });
+
+    it('should return false when status is missing', () => {
+      const connect: ReadyConditionResource = {};
+
+      expect(isConnectReady(connect)).toBe(false);
+    });
+  });
+
+  describe('isConnectorPaused', () => {
+    it('should return true when spec.state is "paused"', () => {
+      const connector: KafkaConnectorLike = { spec: { state: 'paused' } };
+      expect(isConnectorPaused(connector)).toBe(true);
+    });
+
+    it('should return false when spec.state is "running"', () => {
+      const connector: KafkaConnectorLike = { spec: { state: 'running' } };
+      expect(isConnectorPaused(connector)).toBe(false);
+    });
+
+    it('should treat deprecated spec.pause=true as paused', () => {
+      const connector: KafkaConnectorLike = { spec: { pause: true } };
+      expect(isConnectorPaused(connector)).toBe(true);
+    });
+
+    it('should let spec.state win over spec.pause when both are set', () => {
+      const connector: KafkaConnectorLike = {
+        spec: { state: 'running', pause: true },
+      };
+      expect(isConnectorPaused(connector)).toBe(false);
+    });
+
+    it('should default to running (not paused) when neither field is set', () => {
+      const connector: KafkaConnectorLike = { spec: {} };
+      expect(isConnectorPaused(connector)).toBe(false);
+    });
+  });
+
+  describe('getConnectorDesiredState', () => {
+    it('should return spec.state when set', () => {
+      expect(getConnectorDesiredState({ spec: { state: 'stopped' } })).toBe('stopped');
+    });
+
+    it('should normalise deprecated spec.pause=true to "paused"', () => {
+      expect(getConnectorDesiredState({ spec: { pause: true } })).toBe('paused');
+    });
+
+    it('should default to "running" when nothing is set', () => {
+      expect(getConnectorDesiredState({ spec: {} })).toBe('running');
+    });
+
+    it('should default to "running" when spec is missing', () => {
+      expect(getConnectorDesiredState({})).toBe('running');
     });
   });
 });

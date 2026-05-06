@@ -2,6 +2,8 @@
  * Mock Strimzi CRs for Storybook (no cluster required).
  */
 import type { KafkaInterface } from '../resources/kafka';
+import type { KafkaConnectInterface } from '../resources/kafkaConnect';
+import type { KafkaConnectorInterface } from '../resources/kafkaConnector';
 import type { KafkaTopicInterface } from '../resources/kafkaTopic';
 import type { KafkaUserInterface } from '../resources/kafkaUser';
 
@@ -116,5 +118,143 @@ export const mockKafkaUsers: KafkaUserInterface[] = [
       authorization: { type: 'none' },
     },
     status: { conditions: [{ type: 'Ready', status: 'False', lastTransitionTime: ts }] },
+  },
+];
+
+export const mockKafkaConnects: KafkaConnectInterface[] = [
+  {
+    apiVersion: 'kafka.strimzi.io/v1beta2',
+    kind: 'KafkaConnect',
+    metadata: {
+      name: 'analytics-connect',
+      namespace: 'default',
+      creationTimestamp: ts,
+      uid: 'kc1',
+    },
+    spec: {
+      replicas: 3,
+      bootstrapServers: 'my-cluster-kafka-bootstrap:9092',
+      version: '3.7.0',
+      config: { 'group.id': 'analytics-connect-cluster' },
+    },
+    status: {
+      conditions: [{ type: 'Ready', status: 'True', lastTransitionTime: ts }],
+      url: 'http://analytics-connect-connect-api.default.svc:8083',
+      replicas: 3,
+      connectorPlugins: [
+        { class: 'io.debezium.connector.postgresql.PostgresConnector', type: 'source', version: '2.5.0' },
+        { class: 'io.confluent.connect.s3.S3SinkConnector', type: 'sink', version: '10.5.0' },
+      ],
+    },
+  },
+  {
+    apiVersion: 'kafka.strimzi.io/v1beta2',
+    kind: 'KafkaConnect',
+    metadata: {
+      name: 'edge-connect',
+      namespace: 'kafka',
+      creationTimestamp: ts,
+      uid: 'kc2',
+    },
+    spec: {
+      replicas: 1,
+      bootstrapServers: 'kraft-only-kafka-bootstrap:9092',
+    },
+    status: {
+      conditions: [{ type: 'Ready', status: 'False', lastTransitionTime: ts, reason: 'NotReady' }],
+    },
+  },
+];
+
+export const mockKafkaConnectors: KafkaConnectorInterface[] = [
+  {
+    apiVersion: 'kafka.strimzi.io/v1beta2',
+    kind: 'KafkaConnector',
+    metadata: {
+      name: 'orders-cdc',
+      namespace: 'default',
+      creationTimestamp: ts,
+      uid: 'kn1',
+      labels: { 'strimzi.io/cluster': 'analytics-connect' },
+    },
+    spec: {
+      class: 'io.debezium.connector.postgresql.PostgresConnector',
+      tasksMax: 1,
+      state: 'running',
+      config: {
+        'database.hostname': 'orders-db.default.svc',
+        'database.dbname': 'orders',
+        'topic.prefix': 'orders',
+      },
+    },
+    status: {
+      conditions: [{ type: 'Ready', status: 'True', lastTransitionTime: ts }],
+      tasksMax: 1,
+      topics: ['orders.public.line_items', 'orders.public.orders'],
+      connectorStatus: {
+        name: 'orders-cdc',
+        type: 'source',
+        connector: { state: 'RUNNING', worker_id: '10.0.0.5:8083' },
+        tasks: [{ id: 0, state: 'RUNNING', worker_id: '10.0.0.5:8083' }],
+      },
+    },
+  },
+  {
+    apiVersion: 'kafka.strimzi.io/v1beta2',
+    kind: 'KafkaConnector',
+    metadata: {
+      name: 'audit-s3',
+      namespace: 'default',
+      creationTimestamp: ts,
+      uid: 'kn2',
+      labels: { 'strimzi.io/cluster': 'analytics-connect' },
+    },
+    spec: {
+      class: 'io.confluent.connect.s3.S3SinkConnector',
+      tasksMax: 2,
+      state: 'paused',
+      config: {
+        'topics': 'audit-events',
+        's3.bucket.name': 'audit-events-prod',
+      },
+    },
+    status: {
+      conditions: [{ type: 'Ready', status: 'True', lastTransitionTime: ts }],
+      tasksMax: 2,
+      connectorStatus: {
+        name: 'audit-s3',
+        type: 'sink',
+        connector: { state: 'PAUSED', worker_id: '10.0.0.6:8083' },
+        tasks: [
+          { id: 0, state: 'PAUSED', worker_id: '10.0.0.6:8083' },
+          { id: 1, state: 'PAUSED', worker_id: '10.0.0.6:8083' },
+        ],
+      },
+    },
+  },
+  {
+    apiVersion: 'kafka.strimzi.io/v1beta2',
+    kind: 'KafkaConnector',
+    metadata: {
+      name: 'broken-connector',
+      namespace: 'kafka',
+      creationTimestamp: ts,
+      uid: 'kn3',
+      labels: { 'strimzi.io/cluster': 'edge-connect' },
+    },
+    spec: {
+      class: 'org.example.NonExistentConnector',
+      tasksMax: 1,
+    },
+    status: {
+      conditions: [
+        {
+          type: 'Ready',
+          status: 'False',
+          lastTransitionTime: ts,
+          reason: 'ConnectorClassNotFound',
+        },
+      ],
+    },
   },
 ];
