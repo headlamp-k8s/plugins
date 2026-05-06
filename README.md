@@ -46,6 +46,7 @@ Please see [headlamp plugins on Artifact Hub](https://artifacthub.io/packages/se
 | [KubeVirt](https://github.com/naval-group/headlamp-kubevirt) | A comprehensive plugin for managing KubeVirt virtual machines: full VM lifecycle, VNC/serial console, VM Doctor (diagnostics, forensics, disk inspector), templates, image catalog, metrics, and more. | [ArtifactHub](https://artifacthub.io/packages/headlamp/headlamp-kubevirt/headlamp_kubevirt) | [@naval-group](https://github.com/naval-group) |
 | [Strimzi](https://github.com/cesaroangelo/strimzi-headlamp) | A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources. | [Demo](https://www.youtube.com/watch?v=MNt28s6b5d8) | [@cesaroangelo](https://github.com/cesaroangelo) |
 | [Fortem IDP](https://github.com/cybrixcc/headlamp-fortem) | View and manage Fortem environments, clusters, and cost metrics directly in Headlamp. Fortem is a self-hosted AI-native Kubernetes Internal Developer Platform. | [ArtifactHub](https://artifacthub.io/packages/headlamp/fortem/fortem) | [@dspv](https://github.com/dspv) |
+| [MetalLB](https://github.com/YotamKorah/headlamp-metallb-plugin) | View and manage MetalLB resources in Headlamp. MetalLB is a load-balancer implementation for bare metal Kubernetes clusters, using standard routing protocols. | [ArtifactHub](https://artifacthub.io/packages/headlamp/headlamp-metallb-plugin/headlamp-metallb-plugin) | [@YotamKorah](https://github.com/YotamKorah) | 
 
 
 
