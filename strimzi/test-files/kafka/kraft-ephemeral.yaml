@@ -1,7 +1,7 @@
-# KRaft Kafka with KafkaNodePool (Strimzi operators that enable node pools).
+# KRaft Kafka with KafkaNodePool (Strimzi 1.0.0+).
 # Cluster name: strimzi-demo-kraft — use topics/users labeled for this name.
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: strimzi-demo-kraft
@@ -11,8 +11,8 @@ metadata:
     strimzi.io/kraft: enabled
 spec:
   kafka:
-    version: 3.8.0
-    metadataVersion: 3.8-IV0
+    version: 4.0.0
+    metadataVersion: 4.0-IV3
     listeners:
       - name: plain
         port: 9092
@@ -32,7 +32,7 @@ spec:
     topicOperator: {}
     userOperator: {}
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
   name: brokers

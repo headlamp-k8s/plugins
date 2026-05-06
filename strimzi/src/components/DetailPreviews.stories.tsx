@@ -8,16 +8,9 @@ import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/compone
 import { Meta, StoryObj } from '@storybook/react';
 import { mockKafkaClusters, mockKafkaTopics, mockKafkaUsers } from '../storybookMocks/strimziMocks';
 
-function kafkaClusterMode(k: (typeof mockKafkaClusters)[0]): string {
-  return k.spec?.zookeeper ? 'ZooKeeper' : 'KRaft';
-}
-
 function kafkaReplicasDisplay(k: (typeof mockKafkaClusters)[0]): string {
-  const zk = k.spec?.zookeeper?.replicas;
   const br = k.spec?.kafka?.replicas;
-  if (zk !== undefined) return `${zk} Zookeeper / ${br} Kafka`;
-  if (br !== undefined) return String(br);
-  return 'N/A';
+  return br !== undefined ? String(br) : 'N/A';
 }
 
 function kafkaReady(k: (typeof mockKafkaClusters)[0]): string {
@@ -38,7 +31,6 @@ function KafkaClusterDetailPreview() {
       <SectionBox title="Overview">
         <NameValueTable
           rows={[
-            { name: 'Mode', value: kafkaClusterMode(item) },
             { name: 'Kafka Version', value: item.spec?.kafka?.version ?? 'N/A' },
             { name: 'Replicas', value: kafkaReplicasDisplay(item) },
             { name: 'Status', value: kafkaReady(item) },
@@ -49,7 +41,6 @@ function KafkaClusterDetailPreview() {
         <NameValueTable
           rows={[
             { name: 'Kafka replicas', value: item.spec?.kafka?.replicas ?? '-' },
-            { name: 'ZooKeeper replicas', value: item.spec?.zookeeper?.replicas ?? '-' },
           ]}
         />
       </SectionBox>

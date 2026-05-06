@@ -4,6 +4,8 @@ import { StrimziStatus } from './common';
 /**
  * Kafka custom resource spec. Doc also defines clusterCa, clientsCa, cruiseControl,
  * kafkaExporter, maintenanceTimeWindows; we type only the fields used by the plugin.
+ * Strimzi 1.0.0 removed the `.spec.zookeeper` field along with all ZooKeeper-based
+ * deployments; KRaft is the only supported control plane.
  * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaSpec-reference
  * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaClusterSpec-reference
  */
@@ -25,14 +27,6 @@ export interface KafkaSpec {
     };
     metadataVersion?: string;
   };
-  zookeeper?: {
-    replicas: number;
-    storage: {
-      type: string;
-      size?: string;
-      deleteClaim?: boolean;
-    };
-  };
   entityOperator?: {
     topicOperator?: Record<string, unknown>;
     userOperator?: Record<string, unknown>;
@@ -51,7 +45,7 @@ export interface KafkaInterface extends KubeObjectInterface {
  * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-Kafka-reference
  */
 export class Kafka extends KubeObject<KafkaInterface> {
-  static apiVersion = 'kafka.strimzi.io/v1beta2';
+  static apiVersion = 'kafka.strimzi.io/v1';
   static kind = 'Kafka';
   static apiName = 'kafkas';
   static isNamespaced = true;
@@ -72,10 +66,6 @@ export class Kafka extends KubeObject<KafkaInterface> {
     return this.status?.conditions?.find((c: { type: string }) => c.type === 'Ready')?.status;
   }
 
-  get clusterMode(): 'KRaft' | 'ZooKeeper' {
-    return this.spec?.zookeeper ? 'ZooKeeper' : 'KRaft';
-  }
-
   get kafkaVersion(): string {
     return this.spec?.kafka?.version || 'N/A';
   }
@@ -84,15 +74,8 @@ export class Kafka extends KubeObject<KafkaInterface> {
     return this.spec?.kafka?.replicas;
   }
 
-  get zookeeperReplicas(): number | undefined {
-    return this.spec?.zookeeper?.replicas;
-  }
-
   get replicasDisplay(): string {
-    const zk = this.zookeeperReplicas;
     const k = this.kafkaReplicas;
-    if (zk !== undefined) return `${zk} Zookeeper / ${k} Kafka`;
-    if (k !== undefined) return String(k);
-    return 'N/A';
+    return k !== undefined ? String(k) : 'N/A';
   }
 }

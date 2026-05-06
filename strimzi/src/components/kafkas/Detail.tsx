@@ -21,7 +21,6 @@ export function KafkaDetail(props: { namespace?: string; name?: string }) {
       extraInfo={item =>
         item
           ? [
-              { name: 'Mode', value: item.clusterMode },
               { name: 'Kafka Version', value: item.kafkaVersion },
               { name: 'Replicas', value: item.replicasDisplay },
               { name: 'Status', value: String(item.readyStatus ?? 'Unknown') },
@@ -38,7 +37,6 @@ export function KafkaDetail(props: { namespace?: string; name?: string }) {
                     <NameValueTable
                       rows={[
                         { name: 'Kafka replicas', value: item.kafkaReplicas ?? '-' },
-                        { name: 'ZooKeeper replicas', value: item.zookeeperReplicas ?? '-' },
                       ]}
                     />
                   </SectionBox>

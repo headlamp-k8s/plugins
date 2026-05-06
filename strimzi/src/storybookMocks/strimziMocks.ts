@@ -9,7 +9,7 @@ const ts = '2024-01-15T10:00:00Z';
 
 export const mockKafkaClusters: KafkaInterface[] = [
   {
-    apiVersion: 'kafka.strimzi.io/v1beta2',
+    apiVersion: 'kafka.strimzi.io/v1',
     kind: 'Kafka',
     metadata: {
       name: 'my-cluster',
@@ -20,22 +20,21 @@ export const mockKafkaClusters: KafkaInterface[] = [
     },
     spec: {
       kafka: {
-        version: '3.7.0',
+        version: '4.0.0',
         replicas: 3,
         listeners: [{ name: 'plain', port: 9092, type: 'internal', tls: false }],
         storage: { type: 'persistent-claim', size: '100Gi' },
       },
-      zookeeper: { replicas: 3, storage: { type: 'persistent-claim', size: '10Gi' } },
     },
     status: {
       conditions: [{ type: 'Ready', status: 'True', lastTransitionTime: ts }],
     },
   },
   {
-    apiVersion: 'kafka.strimzi.io/v1beta2',
+    apiVersion: 'kafka.strimzi.io/v1',
     kind: 'Kafka',
     metadata: {
-      name: 'kraft-only',
+      name: 'dev-cluster',
       namespace: 'kafka',
       creationTimestamp: ts,
       uid: 'k2',
@@ -43,7 +42,7 @@ export const mockKafkaClusters: KafkaInterface[] = [
     },
     spec: {
       kafka: {
-        version: '3.8.0',
+        version: '4.0.0',
         replicas: 1,
         listeners: [{ name: 'plain', port: 9092, type: 'internal', tls: false }],
         storage: { type: 'jbod', deleteClaim: false },
@@ -57,7 +56,7 @@ export const mockKafkaClusters: KafkaInterface[] = [
 
 export const mockKafkaTopics: KafkaTopicInterface[] = [
   {
-    apiVersion: 'kafka.strimzi.io/v1beta2',
+    apiVersion: 'kafka.strimzi.io/v1',
     kind: 'KafkaTopic',
     metadata: {
       name: 'orders',
@@ -70,14 +69,14 @@ export const mockKafkaTopics: KafkaTopicInterface[] = [
     status: { conditions: [{ type: 'Ready', status: 'True', lastTransitionTime: ts }] },
   },
   {
-    apiVersion: 'kafka.strimzi.io/v1beta2',
+    apiVersion: 'kafka.strimzi.io/v1',
     kind: 'KafkaTopic',
     metadata: {
       name: 'events',
       namespace: 'kafka',
       creationTimestamp: ts,
       uid: 't2',
-      labels: { 'strimzi.io/cluster': 'kraft-only' },
+      labels: { 'strimzi.io/cluster': 'dev-cluster' },
     },
     spec: { partitions: 3, replicas: 1 },
     status: { conditions: [{ type: 'Ready', status: 'False', lastTransitionTime: ts }] },
@@ -86,7 +85,7 @@ export const mockKafkaTopics: KafkaTopicInterface[] = [
 
 export const mockKafkaUsers: KafkaUserInterface[] = [
   {
-    apiVersion: 'kafka.strimzi.io/v1beta2',
+    apiVersion: 'kafka.strimzi.io/v1',
     kind: 'KafkaUser',
     metadata: {
       name: 'app-producer',
@@ -102,14 +101,14 @@ export const mockKafkaUsers: KafkaUserInterface[] = [
     status: { conditions: [{ type: 'Ready', status: 'True', lastTransitionTime: ts }] },
   },
   {
-    apiVersion: 'kafka.strimzi.io/v1beta2',
+    apiVersion: 'kafka.strimzi.io/v1',
     kind: 'KafkaUser',
     metadata: {
       name: 'tls-client',
       namespace: 'kafka',
       creationTimestamp: ts,
       uid: 'u2',
-      labels: { 'strimzi.io/cluster': 'kraft-only' },
+      labels: { 'strimzi.io/cluster': 'dev-cluster' },
     },
     spec: {
       authentication: { type: 'tls' },

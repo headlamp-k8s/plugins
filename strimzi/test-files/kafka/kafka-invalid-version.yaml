@@ -1,14 +1,16 @@
 # Intentionally invalid Kafka version — expect cluster to stay Not Ready (operator cannot roll out).
 # Do not use for topics/users testing.
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: strimzi-demo-broken
   namespace: strimzi-headlamp-test
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
 spec:
   kafka:
-    version: 1.0.0
-    replicas: 1
+    version: 0.0.0-invalid
     listeners:
       - name: plain
         port: 9092
@@ -22,10 +24,21 @@ spec:
       min.insync.replicas: 1
     storage:
       type: ephemeral
-  zookeeper:
-    replicas: 1
-    storage:
-      type: ephemeral
   entityOperator:
     topicOperator: {}
     userOperator: {}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: brokers
+  namespace: strimzi-headlamp-test
+  labels:
+    strimzi.io/cluster: strimzi-demo-broken
+spec:
+  replicas: 1
+  roles:
+    - broker
+    - controller
+  storage:
+    type: ephemeral

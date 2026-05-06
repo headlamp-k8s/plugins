@@ -80,7 +80,7 @@ export function KafkaUserList() {
     setLoading(true);
     try {
       const userResource: CreateKafkaUserPayload = {
-        apiVersion: 'kafka.strimzi.io/v1beta2',
+        apiVersion: 'kafka.strimzi.io/v1',
         kind: 'KafkaUser',
         metadata: {
           name: formData.name,
@@ -104,7 +104,7 @@ export function KafkaUserList() {
       }
 
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${formData.namespace}/kafkausers`,
+        `/apis/kafka.strimzi.io/v1/namespaces/${formData.namespace}/kafkausers`,
         {
           method: 'POST',
           body: JSON.stringify(userResource),
@@ -142,7 +142,7 @@ export function KafkaUserList() {
 
     try {
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${deletingUser.metadata.namespace}/kafkausers/${deletingUser.metadata.name}`,
+        `/apis/kafka.strimzi.io/v1/namespaces/${deletingUser.metadata.namespace}/kafkausers/${deletingUser.metadata.name}`,
         { method: 'DELETE' }
       );
       setToast({ message: `User "${deletingUser.metadata.name}" deleted successfully`, type: 'success' });

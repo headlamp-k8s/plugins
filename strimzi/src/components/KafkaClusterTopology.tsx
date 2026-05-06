@@ -12,7 +12,7 @@ import '@xyflow/react/dist/style.css';
 import { Icon } from '@iconify/react';
 import { Button, ButtonGroup, Box, useTheme, Chip } from '@mui/material';
 import type { KafkaInterface } from '../resources';
-import { KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
+import { KafkaNodePool, StrimziPodSet } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
 import { hexToRgba } from '../utils/topologyColors';
@@ -583,7 +583,6 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
 
   const theme = useTopologyTheme();
 
-  const isKRaft = React.useMemo(() => isKRaftMode(kafka), [kafka]);
   const clusterReady = React.useMemo(
     () => kafka.status?.conditions?.find(c => c.type === 'Ready')?.status === 'True',
     [kafka.status]
@@ -595,8 +594,8 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
     const namespace = kafka.metadata.namespace;
 
     Promise.all([
-      ApiProxy.request('/apis/kafka.strimzi.io/v1beta2/kafkanodepools'),
-      ApiProxy.request('/apis/core.strimzi.io/v1beta2/strimzipodsets'),
+      ApiProxy.request('/apis/kafka.strimzi.io/v1/kafkanodepools'),
+      ApiProxy.request('/apis/core.strimzi.io/v1/strimzipodsets'),
       ApiProxy.request(
         `/api/v1/namespaces/${namespace}/pods?labelSelector=strimzi.io/cluster=${clusterName}`
       ),
@@ -647,8 +646,6 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
     // This ensures cluster/namespace dimensions are accurate
     let allPoolDimensions: Array<{ poolName: string; podDimensions: PodDimensions[]; dimensions: NodePoolDimensions }> = [];
     let kraftLegacyDimensions: { podDimensions: PodDimensions[]; groupWidth: number; groupHeight: number } | null = null;
-    let zkDimensions: { podDimensions: PodDimensions[]; groupWidth: number; groupHeight: number } | null = null;
-    let zkBrokerDimensions: { podDimensions: PodDimensions[]; groupWidth: number; groupHeight: number } | null = null;
 
     if (nodePools.length > 0) {
       // Calculate dimensions for all NodePools
@@ -679,8 +676,10 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
           dimensions: calculateNodePoolDimensions(podDimensions)
         };
       });
-    } else if (isKRaft) {
-      // KRaft legacy - calculate broker dimensions
+    } else {
+      // Fallback: Kafka resource without KafkaNodePools (e.g. NodePools not yet
+      // reconciled). Render brokers from `.spec.kafka.replicas`. In Strimzi v1
+      // KafkaNodePools are mandatory, so this path is mostly transient.
       const brokerCount = kafka.spec.kafka.replicas;
       const brokerPodDimensions: PodDimensions[] = [];
       for (let i = 0; i < brokerCount; i++) {
@@ -705,69 +704,12 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
         groupWidth: PADDING.group.left + PADDING.group.right + totalBrokerWidth + brokerSpacing,
         groupHeight: PADDING.group.top + PADDING.group.bottom + maxBrokerHeight,
       };
-    } else {
-      // ZooKeeper mode - calculate both ZK and Kafka broker dimensions
-      const zkCount = kafka.spec.zookeeper?.replicas || 0;
-      const brokerCount = kafka.spec.kafka.replicas;
-
-      // Calculate ZooKeeper dimensions
-      if (zkCount > 0) {
-        const zkPodDimensions: PodDimensions[] = [];
-        for (let i = 0; i < zkCount; i++) {
-          const podName = `${clusterName}-zookeeper-${i}`;
-          const pod = pods.find(p => p.metadata?.name === podName);
-          zkPodDimensions.push(
-            calculatePodDimensions({
-              name: 'zookeeper',
-              nodeId: i,
-              role: 'Metadata',
-              podIP: pod?.status?.podIP || 'N/A',
-              phase: pod?.status?.phase || 'Unknown',
-            })
-          );
-        }
-        const totalZkWidth = zkPodDimensions.reduce((sum, dim) => sum + dim.width, 0);
-        const maxZkHeight = Math.max(...zkPodDimensions.map(dim => dim.height));
-        const zkSpacing = (zkCount - 1) * LAYOUT.NODE_SPACING;
-
-        zkDimensions = {
-          podDimensions: zkPodDimensions,
-          groupWidth: PADDING.group.left + PADDING.group.right + totalZkWidth + zkSpacing,
-          groupHeight: PADDING.group.top + PADDING.group.bottom + maxZkHeight,
-        };
-      }
-
-      // Calculate Kafka broker dimensions
-      const brokerPodDimensions: PodDimensions[] = [];
-      for (let i = 0; i < brokerCount; i++) {
-        const podName = `${clusterName}-kafka-${i}`;
-        const pod = pods.find(p => p.metadata?.name === podName);
-        brokerPodDimensions.push(
-          calculatePodDimensions({
-            name: 'kafka',
-            nodeId: i,
-            role: 'Broker',
-            podIP: pod?.status?.podIP || 'N/A',
-            phase: pod?.status?.phase || 'Unknown',
-          })
-        );
-      }
-      const totalBrokerWidth = brokerPodDimensions.reduce((sum, dim) => sum + dim.width, 0);
-      const maxBrokerHeight = Math.max(...brokerPodDimensions.map(dim => dim.height));
-      const brokerSpacing = (brokerCount - 1) * LAYOUT.NODE_SPACING;
-
-      zkBrokerDimensions = {
-        podDimensions: brokerPodDimensions,
-        groupWidth: PADDING.group.left + PADDING.group.right + totalBrokerWidth + brokerSpacing,
-        groupHeight: PADDING.group.top + PADDING.group.bottom + maxBrokerHeight,
-      };
     }
 
     // PHASE 2: Calculate cluster dimensions using REAL pod dimensions
     let clusterWidth = 400;
     let clusterHeight = 400;
     let maxPoolWidth = 0; // Maximum width among all NodePools (for alignment)
-    let maxPodSetWidth = 0; // Maximum width among all PodSets in ZK mode (for alignment)
     let maxPodSetInnerWidth = 0; // Maximum width among all PodSets in NodePools mode (for alignment)
 
     if (nodePools.length > 0) {
@@ -782,25 +724,10 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
 
       clusterWidth = Math.max(maxPoolWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
       clusterHeight = LAYOUT.CLUSTER_LABEL_HEIGHT + LAYOUT.CLUSTER_VERTICAL_MARGIN_START + totalPoolHeight + LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
-    } else if (isKRaft && kraftLegacyDimensions) {
-      // KRaft legacy
+    } else if (kraftLegacyDimensions) {
+      // Fallback: no NodePools yet — use broker count from spec
       clusterWidth = Math.max(kraftLegacyDimensions.groupWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
       clusterHeight = LAYOUT.CLUSTER_LABEL_HEIGHT + LAYOUT.CLUSTER_VERTICAL_MARGIN_LEGACY + kraftLegacyDimensions.groupHeight + LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
-    } else {
-      // ZooKeeper mode - use pre-calculated dimensions
-      const zkGroupWidth = zkDimensions?.groupWidth || 0;
-      const zkGroupHeight = zkDimensions?.groupHeight || 0;
-      const brokerGroupWidth = zkBrokerDimensions?.groupWidth || 0;
-      const brokerGroupHeight = zkBrokerDimensions?.groupHeight || 0;
-
-      maxPodSetWidth = Math.max(zkGroupWidth, brokerGroupWidth);
-      clusterWidth = Math.max(maxPodSetWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
-      clusterHeight =
-        LAYOUT.CLUSTER_LABEL_HEIGHT +
-        LAYOUT.CLUSTER_VERTICAL_MARGIN_START +
-        (zkGroupHeight > 0 ? zkGroupHeight + LAYOUT.GROUP_SPACING : 0) +
-        brokerGroupHeight +
-        LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
     }
 
     // Namespace dimensions
@@ -938,9 +865,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
                     marginTop: '2px',
                   }}
                 >
-                  {isKRaft
-                    ? `Replicas: ${kafka.spec.kafka.replicas}`
-                    : `Brokers: ${kafka.spec.kafka.replicas}, ZooKeeper: ${kafka.spec.zookeeper?.replicas || 0}`}
+                  {`Replicas: ${kafka.spec.kafka.replicas}`}
                 </span>
               )}
               <div style={{ marginTop: '6px' }}>
@@ -966,7 +891,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
           </div>
         ),
         editInfo: onEditResource ? {
-          resourceUrl: `/apis/kafka.strimzi.io/v1beta2/namespaces/${namespace}/kafkas/${clusterName}`,
+          resourceUrl: `/apis/kafka.strimzi.io/v1/namespaces/${namespace}/kafkas/${clusterName}`,
           resourceName: clusterName,
           resourceKind: 'Kafka',
         } : undefined,
@@ -1059,7 +984,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
             resourceType: 'KafkaNodePool',
             replicaInfo: `Replicas: ${replicas}`,
             editInfo: onEditResource ? {
-              resourceUrl: `/apis/kafka.strimzi.io/v1beta2/namespaces/${namespace}/kafkanodepools/${poolName}`,
+              resourceUrl: `/apis/kafka.strimzi.io/v1/namespaces/${namespace}/kafkanodepools/${poolName}`,
               resourceName: poolName,
               resourceKind: 'KafkaNodePool',
             } : undefined,
@@ -1101,7 +1026,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
               resourceType: 'StrimziPodSet',
               replicaInfo: `Ready Pods: ${readyPodsCount}/${nodeIds.length}`,
               editInfo: onEditResource ? {
-                resourceUrl: `/apis/core.strimzi.io/v1beta2/namespaces/${namespace}/strimzipodsets/${podSet.metadata.name}`,
+                resourceUrl: `/apis/core.strimzi.io/v1/namespaces/${namespace}/strimzipodsets/${podSet.metadata.name}`,
                 resourceName: podSet.metadata.name,
                 resourceKind: 'StrimziPodSet',
               } : undefined,
@@ -1139,14 +1064,12 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
 
         currentY += poolHeight + LAYOUT.GROUP_SPACING;
       });
-    } else if (isKRaft && kraftLegacyDimensions) {
-      // KRaft legacy (no node pools) - StrimziPodSet → Pod structure
-      // Use pre-calculated dimensions
+    } else if (kraftLegacyDimensions) {
+      // Fallback: no NodePools (transient). Render broker pods from spec count.
       const brokerCount = kafka.spec.kafka.replicas;
       const { podDimensions: brokerPodDimensions, groupWidth, groupHeight } = kraftLegacyDimensions;
       const groupX = (clusterWidth - groupWidth) / 2;
 
-      // Find the StrimziPodSet for KRaft legacy mode
       const kafkaPodSet = podSets.find(ps => ps.metadata.name === `${clusterName}-kafka`);
 
       if (kafkaPodSet) {
@@ -1167,7 +1090,6 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
           extent: 'parent' as const,
         });
 
-        // Calculate ready pods count
         let readyPodsCount = 0;
         for (let i = 0; i < brokerCount; i++) {
           const podName = `${clusterName}-kafka-${i}`;
@@ -1184,7 +1106,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
             resourceType: 'StrimziPodSet',
             replicaInfo: `Ready Pods: ${readyPodsCount}/${brokerCount}`,
             editInfo: onEditResource ? {
-              resourceUrl: `/apis/core.strimzi.io/v1beta2/namespaces/${namespace}/strimzipodsets/${kafkaPodSet.metadata.name}`,
+              resourceUrl: `/apis/core.strimzi.io/v1/namespaces/${namespace}/strimzipodsets/${kafkaPodSet.metadata.name}`,
               resourceName: kafkaPodSet.metadata.name,
               resourceKind: 'StrimziPodSet',
             } : undefined,
@@ -1218,172 +1140,10 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
           cumulativeX += dimensions.width + LAYOUT.NODE_SPACING;
         }
       }
-    } else {
-      // ZooKeeper mode - StrimziPodSets stacked vertically (ZK on top, Kafka below), horizontal pods
-      const zkCount = kafka.spec.zookeeper?.replicas || 0;
-      const brokerCount = kafka.spec.kafka.replicas;
-
-      let currentY = startY;
-
-      // Find StrimziPodSets for ZooKeeper and Kafka
-      const zkPodSet = podSets.find(ps => ps.metadata.name === `${clusterName}-zookeeper`);
-      const kafkaPodSet = podSets.find(ps => ps.metadata.name === `${clusterName}-kafka`);
-
-      // ZooKeeper StrimziPodSet (on top)
-      if (zkCount > 0 && zkPodSet && zkDimensions) {
-        // Use pre-calculated dimensions
-        const { podDimensions: zkPodDimensions, groupHeight: zkGroupHeight } = zkDimensions;
-        const groupX = (clusterWidth - maxPodSetWidth) / 2;
-
-        generatedNodes.push({
-          id: 'podset-zk',
-          type: 'group',
-          position: { x: groupX, y: currentY },
-          data: { label: '' },
-          style: {
-            width: maxPodSetWidth,
-            height: zkGroupHeight,
-            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
-            border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${theme.colors.nodeBorder}`,
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-          },
-          parentId: 'cluster',
-          extent: 'parent' as const,
-        });
-
-        // Calculate ready pods count for ZooKeeper
-        let zkReadyPodsCount = 0;
-        for (let i = 0; i < zkCount; i++) {
-          const podName = `${clusterName}-zookeeper-${i}`;
-          const pod = pods.find(p => p.metadata?.name === podName);
-          if (isPodReady(pod)) zkReadyPodsCount++;
-        }
-
-        generatedNodes.push(
-          createGroupLabel({
-            id: 'podset-zk-label',
-            title: zkPodSet.metadata.name,
-            parentId: 'podset-zk',
-            theme,
-            resourceType: 'StrimziPodSet',
-            replicaInfo: `Ready Pods: ${zkReadyPodsCount}/${zkCount}`,
-            editInfo: onEditResource ? {
-              resourceUrl: `/apis/core.strimzi.io/v1beta2/namespaces/${namespace}/strimzipodsets/${zkPodSet.metadata.name}`,
-              resourceName: zkPodSet.metadata.name,
-              resourceKind: 'StrimziPodSet',
-            } : undefined,
-          })
-        );
-
-        let cumulativeX = PADDING.group.left;
-        for (let i = 0; i < zkCount; i++) {
-          const podName = `${clusterName}-zookeeper-${i}`;
-          const pod = pods.find(p => p.metadata?.name === podName);
-          const dimensions = zkPodDimensions[i];
-
-          generatedNodes.push(
-            createPodNode({
-              id: `pod-zk-${i}`,
-              name: 'zookeeper',
-              nodeId: i,
-              role: 'Metadata',
-              parentId: 'podset-zk',
-              position: {
-                x: cumulativeX,
-                y: PADDING.group.top,
-              },
-              pod,
-              theme,
-              width: dimensions.width,
-              height: dimensions.height,
-            })
-          );
-
-          cumulativeX += dimensions.width + LAYOUT.NODE_SPACING;
-        }
-
-        currentY += zkGroupHeight + LAYOUT.GROUP_SPACING;
-      }
-
-      // Kafka StrimziPodSet (below ZK)
-      if (kafkaPodSet && zkBrokerDimensions) {
-        // Use pre-calculated dimensions
-        const { podDimensions: brokerPodDimensions, groupHeight: brokerGroupHeight } = zkBrokerDimensions;
-        const brokerGroupX = (clusterWidth - maxPodSetWidth) / 2;
-
-        generatedNodes.push({
-          id: 'podset-kafka',
-          type: 'group',
-          position: { x: brokerGroupX, y: currentY },
-          data: { label: '' },
-          style: {
-            width: maxPodSetWidth,
-            height: brokerGroupHeight,
-            backgroundColor: hexToRgba(theme.colors.nodeBackground, LAYOUT.GROUP_BG_OPACITY),
-            border: `${LAYOUT.NAMESPACE_BORDER_WIDTH}px solid ${theme.colors.nodeBorder}`,
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-          },
-          parentId: 'cluster',
-          extent: 'parent' as const,
-        });
-
-        // Calculate ready pods count for Kafka brokers
-        let kafkaReadyPodsCount = 0;
-        for (let i = 0; i < brokerCount; i++) {
-          const podName = `${clusterName}-kafka-${i}`;
-          const pod = pods.find(p => p.metadata?.name === podName);
-          if (isPodReady(pod)) kafkaReadyPodsCount++;
-        }
-
-        generatedNodes.push(
-          createGroupLabel({
-            id: 'podset-kafka-label',
-            title: kafkaPodSet.metadata.name,
-            parentId: 'podset-kafka',
-            theme,
-            resourceType: 'StrimziPodSet',
-            replicaInfo: `Ready Pods: ${kafkaReadyPodsCount}/${brokerCount}`,
-            editInfo: onEditResource ? {
-              resourceUrl: `/apis/core.strimzi.io/v1beta2/namespaces/${namespace}/strimzipodsets/${kafkaPodSet.metadata.name}`,
-              resourceName: kafkaPodSet.metadata.name,
-              resourceKind: 'StrimziPodSet',
-            } : undefined,
-          })
-        );
-
-        let cumulativeX = PADDING.group.left;
-        for (let i = 0; i < brokerCount; i++) {
-          const podName = `${clusterName}-kafka-${i}`;
-          const pod = pods.find(p => p.metadata?.name === podName);
-          const dimensions = brokerPodDimensions[i];
-
-          generatedNodes.push(
-            createPodNode({
-              id: `pod-broker-${i}`,
-              name: 'kafka',
-              nodeId: i,
-              role: 'Broker',
-              parentId: 'podset-kafka',
-              position: {
-                x: cumulativeX,
-                y: PADDING.group.top,
-              },
-              pod,
-              theme,
-              width: dimensions.width,
-              height: dimensions.height,
-            })
-          );
-
-          cumulativeX += dimensions.width + LAYOUT.NODE_SPACING;
-        }
-      }
     }
 
     setNodes(generatedNodes);
-  }, [kafka, isKRaft, nodePools, podSets, pods, loading, clusterReady, theme, onEditResource]);
+  }, [kafka, nodePools, podSets, pods, loading, clusterReady, theme, onEditResource]);
 
   if (loading) {
     return (

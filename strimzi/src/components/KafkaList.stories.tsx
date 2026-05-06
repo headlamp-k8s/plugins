@@ -9,20 +9,13 @@ import { Meta, StoryObj } from '@storybook/react';
 import type { KafkaInterface } from '../resources/kafka';
 import { mockKafkaClusters } from '../storybookMocks/strimziMocks';
 
-function kafkaClusterMode(k: KafkaInterface): string {
-  return k.spec?.zookeeper ? 'ZooKeeper' : 'KRaft';
-}
-
 function kafkaVersion(k: KafkaInterface): string {
   return k.spec?.kafka?.version || 'N/A';
 }
 
 function kafkaReplicasDisplay(k: KafkaInterface): string {
-  const zk = k.spec?.zookeeper?.replicas;
   const br = k.spec?.kafka?.replicas;
-  if (zk !== undefined) return `${zk} Zookeeper / ${br} Kafka`;
-  if (br !== undefined) return String(br);
-  return 'N/A';
+  return br !== undefined ? String(br) : 'N/A';
 }
 
 function kafkaReady(k: KafkaInterface): string {
@@ -44,7 +37,6 @@ export function PureKafkaList({ items, onTopologyClick }: PureKafkaListProps) {
         columns={[
           { label: 'Name', getter: (row: KafkaInterface) => row.metadata.name },
           { label: 'Namespace', getter: (row: KafkaInterface) => row.metadata.namespace },
-          { label: 'Mode', getter: kafkaClusterMode },
           { label: 'Version', getter: kafkaVersion },
           { label: 'Replicas', getter: kafkaReplicasDisplay },
           { label: 'Status', getter: kafkaReady },

@@ -14,17 +14,6 @@ export interface ReadyConditionResource {
   };
 }
 
-/**
- * Minimal type for Kafka-like resources (spec.zookeeper, status.conditions).
- * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-Kafka-reference
- */
-export interface KafkaLike {
-  spec?: { zookeeper?: unknown };
-  status?: {
-    conditions?: Array<{ type: string; status: string }>;
-  };
-}
-
 export function isKafkaReady(kafka: ReadyConditionResource): boolean {
   const condition = kafka.status?.conditions?.find(c => c.type === 'Ready');
   return condition?.status === 'True';
@@ -38,12 +27,4 @@ export function isTopicReady(topic: ReadyConditionResource): boolean {
 export function isUserReady(user: ReadyConditionResource): boolean {
   const condition = user.status?.conditions?.find(c => c.type === 'Ready');
   return condition?.status === 'True';
-}
-
-export function isKRaftMode(kafka: KafkaLike): boolean {
-  return !kafka.spec?.zookeeper;
-}
-
-export function getClusterMode(kafka: KafkaLike): 'KRaft' | 'ZooKeeper' {
-  return isKRaftMode(kafka) ? 'KRaft' : 'ZooKeeper';
 }

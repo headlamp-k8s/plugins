@@ -47,7 +47,7 @@ export function KafkaTopicList() {
     setLoading(true);
     try {
       const topicResource = {
-        apiVersion: 'kafka.strimzi.io/v1beta2',
+        apiVersion: 'kafka.strimzi.io/v1',
         kind: 'KafkaTopic',
         metadata: {
           name: formData.name,
@@ -68,7 +68,7 @@ export function KafkaTopicList() {
       };
 
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${formData.namespace}/kafkatopics`,
+        `/apis/kafka.strimzi.io/v1/namespaces/${formData.namespace}/kafkatopics`,
         {
           method: 'POST',
           body: JSON.stringify(topicResource),
@@ -112,7 +112,7 @@ export function KafkaTopicList() {
       };
 
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${editingTopic.metadata.namespace}/kafkatopics/${editingTopic.metadata.name}`,
+        `/apis/kafka.strimzi.io/v1/namespaces/${editingTopic.metadata.namespace}/kafkatopics/${editingTopic.metadata.name}`,
         {
           method: 'PUT',
           body: JSON.stringify(updatedTopic),
@@ -142,7 +142,7 @@ export function KafkaTopicList() {
 
     try {
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${deletingTopic.metadata.namespace}/kafkatopics/${deletingTopic.metadata.name}`,
+        `/apis/kafka.strimzi.io/v1/namespaces/${deletingTopic.metadata.namespace}/kafkatopics/${deletingTopic.metadata.name}`,
         { method: 'DELETE' }
       );
       setToast({ message: `Topic "${deletingTopic.metadata.name}" deleted successfully`, type: 'success' });

@@ -92,8 +92,6 @@ export interface StrimziPodSet {
 
 // Helper functions (re-exported from crds-helpers so tests can run without loading resource classes)
 export {
-  isKRaftMode,
-  getClusterMode,
   isKafkaReady,
   isTopicReady,
   isUserReady,

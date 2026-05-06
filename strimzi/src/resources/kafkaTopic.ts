@@ -23,7 +23,7 @@ export interface KafkaTopicInterface extends KubeObjectInterface {
  * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaTopic-reference
  */
 export class KafkaTopic extends KubeObject<KafkaTopicInterface> {
-  static apiVersion = 'kafka.strimzi.io/v1beta2';
+  static apiVersion = 'kafka.strimzi.io/v1';
   static kind = 'KafkaTopic';
   static apiName = 'kafkatopics';
   static isNamespaced = true;

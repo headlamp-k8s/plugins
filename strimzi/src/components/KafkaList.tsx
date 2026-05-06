@@ -17,11 +17,6 @@ export function KafkaList() {
     'name',
     'namespace',
     {
-      id: 'mode',
-      label: 'Mode',
-      getValue: (item: Kafka) => item.clusterMode,
-    },
-    {
       id: 'version',
       label: 'Version',
       getValue: (item: Kafka) => item.kafkaVersion,
