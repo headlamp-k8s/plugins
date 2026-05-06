@@ -9,6 +9,7 @@ import {
 import { KafkaConnect, KafkaConnectV1 } from '../resources/kafkaConnect';
 import { readyChipProps } from '../utils/readyChip';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
+import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 
 /**
  * List view for Strimzi `KafkaConnect` resources (Kafka Connect clusters).
@@ -20,8 +21,10 @@ import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
  */
 export function KafkaConnectList() {
   const theme = useTheme();
-  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const { ready, installed, kafka: kafkaVersion } = useStrimziApiVersions();
   const KafkaConnectClass = kafkaVersion === 'v1' ? KafkaConnectV1 : KafkaConnect;
+
+  if (ready && !installed) return <StrimziNotInstalledMessage />;
 
   const columns: (ColumnType | ResourceTableColumn<KafkaConnect>)[] = [
     'name',

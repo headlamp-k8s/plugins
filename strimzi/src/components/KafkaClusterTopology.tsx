@@ -635,7 +635,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
         console.error('Failed to fetch Kafka topology data:', err);
         setLoading(false);
       });
-  }, [kafka.metadata.name, kafka.metadata.namespace]);
+  }, [kafka.metadata.name, kafka.metadata.namespace, kafkaVersion, coreVersion]);
 
   // Generate topology nodes
   React.useEffect(() => {

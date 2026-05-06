@@ -9,10 +9,13 @@ import { Kafka, KafkaV1 } from '../resources/kafka';
 import { KafkaTopologyModal } from './KafkaTopologyModal';
 import type { KafkaInterface } from '../resources/kafka';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
+import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 
 export function KafkaList() {
-  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const { ready, installed, kafka: kafkaVersion } = useStrimziApiVersions();
   const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
+
+  if (ready && !installed) return <StrimziNotInstalledMessage />;
 
   const [selectedKafka, setSelectedKafka] = React.useState<KafkaInterface | null>(null);
   const [isTopologyModalOpen, setIsTopologyModalOpen] = React.useState(false);

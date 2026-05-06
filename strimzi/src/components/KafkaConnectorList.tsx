@@ -19,6 +19,7 @@ import { KafkaConnector, KafkaConnectorV1 } from '../resources/kafkaConnector';
 import type { KafkaConnectorInterface, KafkaConnectorState } from '../resources/kafkaConnector';
 import { getErrorMessage } from '../utils/errors';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
+import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 import { readyChipProps } from '../utils/readyChip';
 import { Toast, ToastMessage } from './Toast';
 
@@ -39,8 +40,10 @@ const STATE_CHIP_COLORS: Record<KafkaConnectorState, 'success' | 'warning' | 'de
  */
 export function KafkaConnectorList() {
   const theme = useTheme();
-  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const { ready, installed, kafka: kafkaVersion } = useStrimziApiVersions();
   const KafkaConnectorClass = kafkaVersion === 'v1' ? KafkaConnectorV1 : KafkaConnector;
+
+  if (ready && !installed) return <StrimziNotInstalledMessage />;
 
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [pendingState, setPendingState] = React.useState<{

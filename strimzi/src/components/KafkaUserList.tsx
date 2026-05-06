@@ -7,20 +7,24 @@ import {
   type ColumnType,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Kafka, KafkaUser, KafkaUserV1 } from '../resources';
+import { Kafka, KafkaV1, KafkaUser, KafkaUserV1 } from '../resources';
 import type { CreateKafkaUserPayload, KafkaUserInterface } from '../resources';
 import { getErrorMessage } from '../utils/errors';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
+import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 import { SecureSecretDisplay } from './SecureSecretDisplay';
 import { Toast, ToastMessage } from './Toast';
 import { KafkaUserCreateFormModal, type UserFormData } from './KafkaUserCreateFormModal';
 
 export function KafkaUserList() {
   const theme = useTheme();
-  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const { ready, installed, kafka: kafkaVersion } = useStrimziApiVersions();
+  const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
   const KafkaUserClass = kafkaVersion === 'v1' ? KafkaUserV1 : KafkaUser;
   const kafkaApiPath = `/apis/kafka.strimzi.io/${kafkaVersion}`;
-  const { items: kafkaClusters } = Kafka.useList({});
+
+  // All hooks must be called before any early return (Rules of Hooks).
+  const { items: kafkaClusters } = KafkaClass.useList({});
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
@@ -267,6 +271,8 @@ export function KafkaUserList() {
     },
     'age',
   ];
+
+  if (ready && !installed) return <StrimziNotInstalledMessage />;
 
   return (
     <>
