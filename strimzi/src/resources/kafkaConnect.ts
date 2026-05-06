@@ -121,3 +121,8 @@ export class KafkaConnect extends KubeObject<KafkaConnectInterface> {
     return this.status?.connectorPlugins ?? [];
   }
 }
+
+/** KafkaConnect resource class targeting the `kafka.strimzi.io/v1` API (Strimzi 1.0.0+). */
+export class KafkaConnectV1 extends KafkaConnect {
+  static apiVersion = 'kafka.strimzi.io/v1';
+}

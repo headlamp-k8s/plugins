@@ -6,8 +6,9 @@ import {
   type ColumnType,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KafkaConnect } from '../resources/kafkaConnect';
+import { KafkaConnect, KafkaConnectV1 } from '../resources/kafkaConnect';
 import { readyChipProps } from '../utils/readyChip';
+import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 
 /**
  * List view for Strimzi `KafkaConnect` resources (Kafka Connect clusters).
@@ -19,6 +20,8 @@ import { readyChipProps } from '../utils/readyChip';
  */
 export function KafkaConnectList() {
   const theme = useTheme();
+  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const KafkaConnectClass = kafkaVersion === 'v1' ? KafkaConnectV1 : KafkaConnect;
 
   const columns: (ColumnType | ResourceTableColumn<KafkaConnect>)[] = [
     'name',
@@ -64,6 +67,6 @@ export function KafkaConnectList() {
   ];
 
   return (
-    <ResourceListView title="Kafka Connect Clusters" resourceClass={KafkaConnect} columns={columns} />
+    <ResourceListView title="Kafka Connect Clusters" resourceClass={KafkaConnectClass} columns={columns} />
   );
 }

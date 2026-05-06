@@ -7,14 +7,18 @@ import {
   type ColumnType,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Kafka, KafkaTopic } from '../resources';
+import { Kafka, KafkaTopic, KafkaTopicV1 } from '../resources';
 import type { KafkaTopicInterface } from '../resources';
 import { getErrorMessage } from '../utils/errors';
+import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { Toast, ToastMessage } from './Toast';
 import { TopicFormModal, type TopicFormData } from './TopicFormModal';
 
 export function KafkaTopicList() {
   const theme = useTheme();
+  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const KafkaTopicClass = kafkaVersion === 'v1' ? KafkaTopicV1 : KafkaTopic;
+  const kafkaApiPath = `/apis/kafka.strimzi.io/${kafkaVersion}`;
   const { items: kafkaClusters } = Kafka.useList({});
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -47,7 +51,7 @@ export function KafkaTopicList() {
     setLoading(true);
     try {
       const topicResource = {
-        apiVersion: 'kafka.strimzi.io/v1beta2',
+        apiVersion: 'kafka.strimzi.io/' + kafkaVersion,
         kind: 'KafkaTopic',
         metadata: {
           name: formData.name,
@@ -68,7 +72,7 @@ export function KafkaTopicList() {
       };
 
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${formData.namespace}/kafkatopics`,
+        `${kafkaApiPath}/namespaces/${formData.namespace}/kafkatopics`,
         {
           method: 'POST',
           body: JSON.stringify(topicResource),
@@ -112,7 +116,7 @@ export function KafkaTopicList() {
       };
 
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${editingTopic.metadata.namespace}/kafkatopics/${editingTopic.metadata.name}`,
+        `${kafkaApiPath}/namespaces/${editingTopic.metadata.namespace}/kafkatopics/${editingTopic.metadata.name}`,
         {
           method: 'PUT',
           body: JSON.stringify(updatedTopic),
@@ -142,7 +146,7 @@ export function KafkaTopicList() {
 
     try {
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${deletingTopic.metadata.namespace}/kafkatopics/${deletingTopic.metadata.name}`,
+        `${kafkaApiPath}/namespaces/${deletingTopic.metadata.namespace}/kafkatopics/${deletingTopic.metadata.name}`,
         { method: 'DELETE' }
       );
       setToast({ message: `Topic "${deletingTopic.metadata.name}" deleted successfully`, type: 'success' });
@@ -252,7 +256,7 @@ export function KafkaTopicList() {
     <>
       <ResourceListView
         title="Kafka Topics"
-        resourceClass={KafkaTopic}
+        resourceClass={KafkaTopicClass}
         columns={columns}
         headerProps={{
           titleSideActions: [

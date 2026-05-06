@@ -7,15 +7,19 @@ import {
   type ColumnType,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Kafka, KafkaUser } from '../resources';
+import { Kafka, KafkaUser, KafkaUserV1 } from '../resources';
 import type { CreateKafkaUserPayload, KafkaUserInterface } from '../resources';
 import { getErrorMessage } from '../utils/errors';
+import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { SecureSecretDisplay } from './SecureSecretDisplay';
 import { Toast, ToastMessage } from './Toast';
 import { KafkaUserCreateFormModal, type UserFormData } from './KafkaUserCreateFormModal';
 
 export function KafkaUserList() {
   const theme = useTheme();
+  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const KafkaUserClass = kafkaVersion === 'v1' ? KafkaUserV1 : KafkaUser;
+  const kafkaApiPath = `/apis/kafka.strimzi.io/${kafkaVersion}`;
   const { items: kafkaClusters } = Kafka.useList({});
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -80,7 +84,7 @@ export function KafkaUserList() {
     setLoading(true);
     try {
       const userResource: CreateKafkaUserPayload = {
-        apiVersion: 'kafka.strimzi.io/v1beta2',
+        apiVersion: `kafka.strimzi.io/${kafkaVersion}`,
         kind: 'KafkaUser',
         metadata: {
           name: formData.name,
@@ -104,7 +108,7 @@ export function KafkaUserList() {
       }
 
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${formData.namespace}/kafkausers`,
+        `${kafkaApiPath}/namespaces/${formData.namespace}/kafkausers`,
         {
           method: 'POST',
           body: JSON.stringify(userResource),
@@ -142,7 +146,7 @@ export function KafkaUserList() {
 
     try {
       await ApiProxy.request(
-        `/apis/kafka.strimzi.io/v1beta2/namespaces/${deletingUser.metadata.namespace}/kafkausers/${deletingUser.metadata.name}`,
+        `${kafkaApiPath}/namespaces/${deletingUser.metadata.namespace}/kafkausers/${deletingUser.metadata.name}`,
         { method: 'DELETE' }
       );
       setToast({ message: `User "${deletingUser.metadata.name}" deleted successfully`, type: 'success' });
@@ -268,7 +272,7 @@ export function KafkaUserList() {
     <>
       <ResourceListView
         title="Kafka Users"
-        resourceClass={KafkaUser}
+        resourceClass={KafkaUserClass}
         columns={columns}
         headerProps={{
           titleSideActions: [

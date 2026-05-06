@@ -15,9 +15,10 @@ import {
   type ColumnType,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { KafkaConnector } from '../resources/kafkaConnector';
+import { KafkaConnector, KafkaConnectorV1 } from '../resources/kafkaConnector';
 import type { KafkaConnectorInterface, KafkaConnectorState } from '../resources/kafkaConnector';
 import { getErrorMessage } from '../utils/errors';
+import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { readyChipProps } from '../utils/readyChip';
 import { Toast, ToastMessage } from './Toast';
 
@@ -38,6 +39,9 @@ const STATE_CHIP_COLORS: Record<KafkaConnectorState, 'success' | 'warning' | 'de
  */
 export function KafkaConnectorList() {
   const theme = useTheme();
+  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const KafkaConnectorClass = kafkaVersion === 'v1' ? KafkaConnectorV1 : KafkaConnector;
+
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [pendingState, setPendingState] = React.useState<{
     connector: KafkaConnectorInterface;
@@ -48,7 +52,7 @@ export function KafkaConnectorList() {
     connector: KafkaConnectorInterface,
     targetState: KafkaConnectorState
   ) => {
-    const path = `/apis/kafka.strimzi.io/v1beta2/namespaces/${connector.metadata.namespace}/kafkaconnectors/${connector.metadata.name}`;
+    const path = `/apis/kafka.strimzi.io/${kafkaVersion}/namespaces/${connector.metadata.namespace}/kafkaconnectors/${connector.metadata.name}`;
     try {
       await ApiProxy.request(path, {
         method: 'PATCH',
@@ -183,7 +187,7 @@ export function KafkaConnectorList() {
 
   return (
     <>
-      <ResourceListView title="Kafka Connectors" resourceClass={KafkaConnector} columns={columns} />
+      <ResourceListView title="Kafka Connectors" resourceClass={KafkaConnectorClass} columns={columns} />
       <Dialog
         open={pendingState !== null}
         onClose={() => setPendingState(null)}

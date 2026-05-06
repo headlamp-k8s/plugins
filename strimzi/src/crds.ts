@@ -19,10 +19,15 @@ export interface K8sListResponse<T> {
 // Re-export resource classes and their interfaces
 export {
   Kafka,
+  KafkaV1,
   KafkaConnect,
+  KafkaConnectV1,
   KafkaConnector,
+  KafkaConnectorV1,
   KafkaTopic,
+  KafkaTopicV1,
   KafkaUser,
+  KafkaUserV1,
   type ConnectorPlugin,
   type KafkaConnectInterface,
   type KafkaConnectSpec,
