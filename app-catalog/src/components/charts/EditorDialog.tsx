@@ -24,8 +24,6 @@ export function EditorDialog(props: {
   handleEditor: (open: boolean) => void;
   chartProfile: string;
 }) {
-  if (!props.chart) return null;
-
   const { openEditor, handleEditor, chart, chartProfile } = props;
   const { t } = useTranslation();
   const [installLoading, setInstallLoading] = useState(false);
@@ -57,6 +55,8 @@ export function EditorDialog(props: {
       setSelectedNamespace(namespaceNames[0]);
     }
   }, [selectedNamespace, namespaceNames]);
+
+  if (!props.chart) return null;
 
   // Fetch chart values for a given package and version (when chart version changed in editor dialog)
   function refreshChartValue(packageID: string, packageVersion: string) {
