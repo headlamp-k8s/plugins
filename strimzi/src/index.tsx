@@ -1,5 +1,6 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
+import { StrimziErrorBoundary } from './components/StrimziErrorBoundary';
 import { KafkaDetail } from './components/kafkas/Detail';
 import { KafkaList } from './components/KafkaList';
 import { KafkaTopicDetail } from './components/topics/Detail';
@@ -11,13 +12,30 @@ import { KafkaConnectList } from './components/KafkaConnectList';
 import { KafkaConnectorDetail } from './components/connectors/Detail';
 import { KafkaConnectorList } from './components/KafkaConnectorList';
 
+/**
+ * Wraps a component in StrimziErrorBoundary so that any uncaught render
+ * error inside the plugin is contained and never propagates to Headlamp's
+ * root React tree (which would break the home page cluster indicators).
+ */
+function safe(Component: React.ComponentType): () => React.ReactElement {
+  function SafeWrapper(): React.ReactElement {
+    return React.createElement(
+      StrimziErrorBoundary,
+      null,
+      React.createElement(Component)
+    );
+  }
+  SafeWrapper.displayName = `Safe(${Component.displayName ?? Component.name})`;
+  return SafeWrapper;
+}
+
 // List routes
 registerRoute({
   path: '/strimzi/kafkas',
   sidebar: 'kafkas',
   name: 'Kafka Clusters',
   exact: true,
-  component: () => React.createElement(KafkaList),
+  component: safe(KafkaList),
 });
 
 registerRoute({
@@ -25,7 +43,7 @@ registerRoute({
   sidebar: 'topics',
   name: 'Kafka Topics',
   exact: true,
-  component: () => React.createElement(KafkaTopicList),
+  component: safe(KafkaTopicList),
 });
 
 registerRoute({
@@ -33,7 +51,7 @@ registerRoute({
   sidebar: 'users',
   name: 'Kafka Users',
   exact: true,
-  component: () => React.createElement(KafkaUserList),
+  component: safe(KafkaUserList),
 });
 
 registerRoute({
@@ -41,7 +59,7 @@ registerRoute({
   sidebar: 'connects',
   name: 'Kafka Connect Clusters',
   exact: true,
-  component: () => React.createElement(KafkaConnectList),
+  component: safe(KafkaConnectList),
 });
 
 registerRoute({
@@ -49,7 +67,7 @@ registerRoute({
   sidebar: 'connectors',
   name: 'Kafka Connectors',
   exact: true,
-  component: () => React.createElement(KafkaConnectorList),
+  component: safe(KafkaConnectorList),
 });
 
 // Detail routes (used by ResourceListView name link and direct navigation)
@@ -58,7 +76,7 @@ registerRoute({
   sidebar: 'kafkas',
   name: 'Kafka Cluster',
   exact: true,
-  component: () => React.createElement(KafkaDetail),
+  component: safe(KafkaDetail),
 });
 
 registerRoute({
@@ -66,7 +84,7 @@ registerRoute({
   sidebar: 'topics',
   name: 'Kafka Topic',
   exact: true,
-  component: () => React.createElement(KafkaTopicDetail),
+  component: safe(KafkaTopicDetail),
 });
 
 registerRoute({
@@ -74,7 +92,7 @@ registerRoute({
   sidebar: 'users',
   name: 'Kafka User',
   exact: true,
-  component: () => React.createElement(KafkaUserDetail),
+  component: safe(KafkaUserDetail),
 });
 
 registerRoute({
@@ -82,7 +100,7 @@ registerRoute({
   sidebar: 'connects',
   name: 'Kafka Connect Cluster',
   exact: true,
-  component: () => React.createElement(KafkaConnectDetail),
+  component: safe(KafkaConnectDetail),
 });
 
 registerRoute({
@@ -90,7 +108,7 @@ registerRoute({
   sidebar: 'connectors',
   name: 'Kafka Connector',
   exact: true,
-  component: () => React.createElement(KafkaConnectorDetail),
+  component: safe(KafkaConnectorDetail),
 });
 
 // Register sidebar entries
