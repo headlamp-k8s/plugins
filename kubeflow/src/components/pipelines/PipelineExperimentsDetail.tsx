@@ -15,16 +15,16 @@
  */
 
 import {
+  ConditionsTable,
   DetailsGrid,
   Link as HeadlampLink,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Box from '@mui/material/Box';
 import { useParams } from 'react-router-dom';
 import { PipelineExperimentClass } from '../../resources/pipelineExperiment';
 import { PipelineRunClass } from '../../resources/pipelineRun';
-import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
+import { KubeflowJsonViewerAction } from '../common/KubeflowJsonViewerAction';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import { getPipelineRunDetailsPath, getPipelineRunDurationLabel } from '../common/pipelineUtils';
 import { SectionPage } from '../common/SectionPage';
@@ -48,6 +48,20 @@ export function PipelineExperimentsDetail(props: { namespace?: string; name?: st
         name={name as string}
         namespace={namespace}
         withEvents
+        actions={item =>
+          item && [
+            {
+              id: 'kubeflow.pipeline-experiment-json',
+              action: (
+                <KubeflowJsonViewerAction
+                  title="View Raw JSON"
+                  value={item.jsonData}
+                  activityId={`json-pipeline-experiment-${item.metadata.namespace}-${item.metadata.name}`}
+                />
+              ),
+            },
+          ]
+        }
         extraInfo={item =>
           item && [
             {
@@ -134,29 +148,14 @@ export function PipelineExperimentsDetail(props: { namespace?: string; name?: st
               ? [
                   {
                     id: 'conditions',
-                    section: <KubeflowConditionsSection conditions={item.conditions} />,
+                    section: (
+                      <SectionBox title="Conditions">
+                        <ConditionsTable resource={item.jsonData} />
+                      </SectionBox>
+                    ),
                   },
                 ]
               : []),
-            {
-              id: 'spec-preview',
-              section: (
-                <SectionBox title="Raw Spec Preview">
-                  <Box
-                    component="pre"
-                    sx={{
-                      margin: 0,
-                      overflowX: 'auto',
-                      whiteSpace: 'pre-wrap',
-                      fontFamily: 'monospace',
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    {JSON.stringify(item.spec, null, 2)}
-                  </Box>
-                </SectionBox>
-              ),
-            },
           ];
         }}
       />

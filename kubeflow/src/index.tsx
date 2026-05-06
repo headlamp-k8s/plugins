@@ -18,6 +18,13 @@ import { addIcon } from '@iconify/react';
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
 import { PlaceholderPage } from './components/common/Placeholder';
+import { KatibExperimentsDetail } from './components/katib/KatibExperimentsDetail';
+import { KatibExperimentsList } from './components/katib/KatibExperimentsList';
+import { KatibOverview } from './components/katib/KatibOverview';
+import { KatibSuggestionsDetail } from './components/katib/KatibSuggestionsDetail';
+import { KatibSuggestionsList } from './components/katib/KatibSuggestionsList';
+import { KatibTrialsDetail } from './components/katib/KatibTrialsDetail';
+import { KatibTrialsList } from './components/katib/KatibTrialsList';
 import { NotebooksDetail } from './components/notebooks/NotebooksDetail';
 import { NotebooksList } from './components/notebooks/NotebooksList';
 import { NotebooksOverview } from './components/notebooks/NotebooksOverview';
@@ -327,35 +334,81 @@ registerRoute({
   component: () => <PipelineArtifacts />,
 });
 
-registerSubMenu(
-  'kubeflow-katib',
-  '/kubeflow/katib',
-  'kubeflow',
-  'Katib',
-  'mdi:tune',
-  '/apis/kubeflow.org/v1beta1/experiments'
-);
-registerSubChild(
-  'kubeflow-katib-experiments',
-  '/kubeflow/katib/experiments',
-  'kubeflow-katib',
-  'Experiments',
-  '/apis/kubeflow.org/v1beta1/experiments'
-);
-registerSubChild(
-  'kubeflow-katib-trials',
-  '/kubeflow/katib/trials',
-  'kubeflow-katib',
-  'Trials',
-  '/apis/kubeflow.org/v1beta1/trials'
-);
-registerSubChild(
-  'kubeflow-katib-suggestions',
-  '/kubeflow/katib/suggestions',
-  'kubeflow-katib',
-  'Suggestions',
-  '/apis/kubeflow.org/v1beta1/suggestions'
-);
+registerSidebarEntry({
+  parent: 'kubeflow',
+  name: 'kubeflow-katib',
+  label: 'Katib',
+  url: '/kubeflow/katib',
+  icon: 'mdi:tune',
+});
+registerRoute({
+  path: '/kubeflow/katib',
+  sidebar: 'kubeflow-katib',
+  name: 'kubeflow-katib-overview',
+  exact: true,
+  component: () => <KatibOverview />,
+});
+registerSidebarEntry({
+  parent: 'kubeflow-katib',
+  name: 'kubeflow-katib-experiments',
+  label: 'Experiments',
+  url: '/kubeflow/katib/experiments',
+});
+registerRoute({
+  path: '/kubeflow/katib/experiments',
+  sidebar: 'kubeflow-katib-experiments',
+  name: 'kubeflow-katib-experiments-list',
+  exact: true,
+  component: () => <KatibExperimentsList />,
+});
+registerRoute({
+  path: '/kubeflow/katib/experiments/:namespace/:name',
+  sidebar: 'kubeflow-katib-experiments',
+  name: 'kubeflow-katib-experiments-detail',
+  exact: true,
+  component: () => <KatibExperimentsDetail />,
+});
+registerSidebarEntry({
+  parent: 'kubeflow-katib',
+  name: 'kubeflow-katib-trials',
+  label: 'Trials',
+  url: '/kubeflow/katib/trials',
+});
+registerRoute({
+  path: '/kubeflow/katib/trials',
+  sidebar: 'kubeflow-katib-trials',
+  name: 'kubeflow-katib-trials-list',
+  exact: true,
+  component: () => <KatibTrialsList />,
+});
+registerRoute({
+  path: '/kubeflow/katib/trials/:namespace/:name',
+  sidebar: 'kubeflow-katib-trials',
+  name: 'kubeflow-katib-trials-detail',
+  exact: true,
+  component: () => <KatibTrialsDetail />,
+});
+
+registerSidebarEntry({
+  parent: 'kubeflow-katib',
+  name: 'kubeflow-katib-suggestions',
+  label: 'Suggestions',
+  url: '/kubeflow/katib/suggestions',
+});
+registerRoute({
+  path: '/kubeflow/katib/suggestions',
+  sidebar: 'kubeflow-katib-suggestions',
+  name: 'kubeflow-katib-suggestions-list',
+  exact: true,
+  component: () => <KatibSuggestionsList />,
+});
+registerRoute({
+  path: '/kubeflow/katib/suggestions/:namespace/:name',
+  sidebar: 'kubeflow-katib-suggestions',
+  name: 'kubeflow-katib-suggestions-detail',
+  exact: true,
+  component: () => <KatibSuggestionsDetail />,
+});
 
 registerSubMenu(
   'kubeflow-training',

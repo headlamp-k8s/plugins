@@ -1,4 +1,5 @@
 import {
+  ConditionsTable,
   Link as HeadlampLink,
   NameValueTable,
   SectionBox,
@@ -10,7 +11,6 @@ import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { PipelineExperimentClass } from '../../resources/pipelineExperiment';
 import { PipelineRunClass } from '../../resources/pipelineRun';
-import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import { getPipelineRunDetailsPath } from '../common/pipelineUtils';
 import { TestProvider } from '../common/TestProvider';
@@ -82,7 +82,11 @@ function PipelineExperimentsDetailContent(props: { experiment: any; runs: any[] 
         />
       </SectionBox>
 
-      {item.conditions.length > 0 && <KubeflowConditionsSection conditions={item.conditions} />}
+      {item.conditions.length > 0 && (
+        <SectionBox title="Conditions">
+          <ConditionsTable resource={item.jsonData} />
+        </SectionBox>
+      )}
     </Box>
   );
 }

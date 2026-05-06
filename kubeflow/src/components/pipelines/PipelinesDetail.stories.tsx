@@ -1,17 +1,18 @@
 import {
+  ConditionsTable,
   Link as HeadlampLink,
   NameValueTable,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { PipelineClass } from '../../resources/pipeline';
 import { PipelineVersionClass } from '../../resources/pipelineVersion';
-import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   countPipelineVersionsForPipeline,
@@ -30,10 +31,30 @@ import {
  * Isolated presentational view of a single Pipeline detail.
  * Decoupled from Headlamp's DetailsGrid to avoid redundant Redux dependencies in Storybook.
  */
-function PipelinesDetailContent(props: { pipeline: any; versions: any[] }) {
-  const { pipeline: rawPipeline, versions: rawVersions } = props;
+function PipelinesDetailContent(props: { pipeline: any; versions: any[]; loading?: boolean }) {
+  const { pipeline: rawPipeline, versions: rawVersions, loading } = props;
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '400px',
+        }}
+      >
+        <CircularProgress />
+        <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+          Loading Pipeline Details...
+        </Typography>
+      </Box>
+    );
+  }
+
   const pipeline = new PipelineClass(rawPipeline);
-  const versions = rawVersions.map(v => new PipelineVersionClass(v));
+  const versions = (rawVersions || []).map(v => new PipelineVersionClass(v));
 
   const relatedVersions = getPipelineVersionsForPipeline(
     versions,
@@ -238,7 +259,9 @@ function PipelinesDetailContent(props: { pipeline: any; versions: any[] }) {
       )}
 
       {pipeline.conditions.length > 0 && (
-        <KubeflowConditionsSection conditions={pipeline.conditions} />
+        <SectionBox title="Conditions">
+          <ConditionsTable resource={pipeline.jsonData} />
+        </SectionBox>
       )}
 
       <SectionBox title="Raw Spec Preview">
@@ -293,6 +316,34 @@ export const Complex: Story = {
   args: {
     pipeline: mockPipelineComplex,
     versions: allVersions,
+  },
+};
+
+export const ErrorCondition: Story = {
+  args: {
+    pipeline: {
+      ...mockPipeline,
+      status: {
+        conditions: [
+          {
+            type: 'Ready',
+            status: 'False',
+            reason: 'ReconciliationError',
+            message: 'Failed to fetch pipeline spec from external repository.',
+            lastTransitionTime: new Date().toISOString(),
+          },
+        ],
+      },
+    },
+    versions: [],
+  },
+};
+
+export const Loading: Story = {
+  args: {
+    pipeline: mockPipeline,
+    versions: [],
+    loading: true,
   },
 };
 

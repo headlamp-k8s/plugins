@@ -15,15 +15,15 @@
  */
 
 import {
+  ConditionsTable,
   DetailsGrid,
   Link as HeadlampLink,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Box from '@mui/material/Box';
 import { useParams } from 'react-router-dom';
 import { PipelineRecurringRunClass } from '../../resources/pipelineRecurringRun';
-import { KubeflowConditionsSection } from '../common/KubeflowConditionsSection';
+import { KubeflowJsonViewerAction } from '../common/KubeflowJsonViewerAction';
 import { PipelineStatusBadge } from '../common/PipelineStatusBadge';
 import {
   getPipelineDetailsPath,
@@ -61,6 +61,20 @@ export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: 
         name={name as string}
         namespace={namespace}
         withEvents
+        actions={item =>
+          item && [
+            {
+              id: 'kubeflow.recurringrun-json',
+              action: (
+                <KubeflowJsonViewerAction
+                  title="View Raw JSON"
+                  value={item.jsonData}
+                  activityId={`json-recurring-run-${item.metadata.namespace}-${item.metadata.name}`}
+                />
+              ),
+            },
+          ]
+        }
         extraInfo={item =>
           item && [
             {
@@ -181,29 +195,14 @@ export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: 
                   ? [
                       {
                         id: 'conditions',
-                        section: <KubeflowConditionsSection conditions={item.conditions} />,
+                        section: (
+                          <SectionBox title="Conditions">
+                            <ConditionsTable resource={item.jsonData} />
+                          </SectionBox>
+                        ),
                       },
                     ]
                   : []),
-                {
-                  id: 'spec-preview',
-                  section: (
-                    <SectionBox title="Raw Spec Preview">
-                      <Box
-                        component="pre"
-                        sx={{
-                          margin: 0,
-                          overflowX: 'auto',
-                          whiteSpace: 'pre-wrap',
-                          fontFamily: 'monospace',
-                          fontSize: '0.85rem',
-                        }}
-                      >
-                        {JSON.stringify(item.spec, null, 2)}
-                      </Box>
-                    </SectionBox>
-                  ),
-                },
               ]
             : []
         }

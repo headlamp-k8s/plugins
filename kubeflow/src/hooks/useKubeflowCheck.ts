@@ -18,7 +18,12 @@ import { useEffect, useState } from 'react';
 import { isAnyKubeflowFamilyInstalled, isApiGroupInstalled } from '../checks/isKubeflowInstalled';
 
 export function useApiGroupInstalled(apiPath: string) {
-  const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
+  const [isInstalled, setIsInstalled] = useState<boolean | null>(() => {
+    if (typeof window !== 'undefined' && (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK) {
+      return true;
+    }
+    return null;
+  });
 
   useEffect(() => {
     // Check for Storybook global mock
@@ -45,7 +50,12 @@ export function useApiGroupInstalled(apiPath: string) {
 }
 
 export function useAnyKubeflowFamilyInstalled() {
-  const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
+  const [isInstalled, setIsInstalled] = useState<boolean | null>(() => {
+    if (typeof window !== 'undefined' && (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK) {
+      return true;
+    }
+    return null;
+  });
 
   useEffect(() => {
     // Check for Storybook global mock

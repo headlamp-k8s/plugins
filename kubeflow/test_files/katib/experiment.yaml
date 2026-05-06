@@ -1,0 +1,19 @@
+apiVersion: kubeflow.org/v1beta1
+kind: Experiment
+metadata:
+  name: demo-katib-experiment
+  namespace: kubeflow-user
+spec:
+  objective:
+    type: maximize
+    objectiveMetricName: accuracy
+  algorithm:
+    algorithmName: random
+  parallelTrialCount: 2
+  maxTrialCount: 6
+  parameters:
+  - name: lr
+    parameterType: double
+    feasibleSpace:
+      min: "0.001"
+      max: "0.1"
