@@ -10,7 +10,7 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 
 ## ✨ Features
 
-- **Kafka Clusters**: View Kafka cluster resources with KRaft/ZooKeeper mode detection
+- **Kafka Clusters**: View Kafka cluster resources (KRaft, Strimzi 1.0.0+)
 - **Kafka Topics**: Full CRUD operations (Create, Read, Update, Delete)
   - Create topics with custom partitions, replicas, retention, and compression
   - Edit topic configurations (partitions, replicas, retention, min ISR)
@@ -28,7 +28,8 @@ A Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources di
 ## 📋 Prerequisites
 
 - [Headlamp](https://headlamp.dev/) installed
-- A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) deployed
+- A Kubernetes cluster with [Strimzi operator](https://strimzi.io/) **1.0.0 or later** deployed
+  (Strimzi 1.0.0 moves all CRDs to `kafka.strimzi.io/v1`; the older `v1beta2` API is no longer served)
 
 ## 🚀 Quick Start
 
