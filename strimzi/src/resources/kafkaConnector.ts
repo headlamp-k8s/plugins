@@ -125,3 +125,16 @@ export class KafkaConnector extends KubeObject<KafkaConnectorInterface> {
     return this.status?.tasksMax ?? this.spec?.tasksMax;
   }
 }
+
+/**
+ * KafkaConnector resource class targeting the `kafka.strimzi.io/v1` API
+ * (Strimzi 1.0.0+). In v1, `spec.pause` is removed; `spec.state` is the
+ * only supported lifecycle field.
+ */
+export class KafkaConnectorV1 extends KafkaConnector {
+  static apiVersion = 'kafka.strimzi.io/v1';
+
+  get desiredState(): KafkaConnectorState {
+    return this.spec?.state ?? 'running';
+  }
+}

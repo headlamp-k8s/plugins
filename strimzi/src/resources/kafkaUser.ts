@@ -85,3 +85,8 @@ export class KafkaUser extends KubeObject<KafkaUserInterface> {
     return this.spec?.authorization?.type ?? 'None';
   }
 }
+
+/** KafkaUser resource class targeting the `kafka.strimzi.io/v1` API (Strimzi 1.0.0+). */
+export class KafkaUserV1 extends KafkaUser {
+  static apiVersion = 'kafka.strimzi.io/v1';
+}
