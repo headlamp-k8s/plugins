@@ -207,6 +207,17 @@ export function RevisionsList() {
           ),
       },
       {
+        id: 'image',
+        label: 'Image',
+        gridTemplate: 'auto',
+        getValue: rev => rev.primaryImage ?? '',
+        render: rev => (
+          <Typography variant="body2" color="text.secondary" noWrap title={rev.primaryImage}>
+            {rev.primaryImage?.split('@')[0] || '-'}
+          </Typography>
+        ),
+      },
+      {
         id: 'ready',
         label: 'Ready',
         gridTemplate: 'auto',
@@ -220,15 +231,21 @@ export function RevisionsList() {
         ),
       },
       {
-        id: 'image',
-        label: 'Image',
+        id: 'reason',
+        label: 'Reason',
         gridTemplate: 'auto',
-        getValue: rev => rev.primaryImage ?? '',
-        render: rev => (
-          <Typography variant="body2" color="text.secondary" noWrap title={rev.primaryImage}>
-            {rev.primaryImage?.split('@')[0] || '-'}
-          </Typography>
-        ),
+        getValue: rev => rev.readyCondition?.reason?.toLowerCase() || '',
+        render: rev => {
+          const reason = rev.readyCondition?.reason;
+          if (!reason) {
+            return (
+              <Typography variant="body2" color="text.secondary">
+                -
+              </Typography>
+            );
+          }
+          return <Typography variant="body2">{reason}</Typography>;
+        },
       },
       {
         id: 'traffic',

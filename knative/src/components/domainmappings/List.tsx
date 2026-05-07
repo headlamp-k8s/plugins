@@ -82,6 +82,28 @@ export function useDomainMappingColumns(
         },
       },
       {
+        id: 'reason',
+        label: 'Reason',
+        gridTemplate: 'auto',
+        disableFiltering: true,
+        getValue: item => {
+          const dm = item as KnativeDomainMapping;
+          return getReadyCondition(dm).reason?.toLowerCase() || '';
+        },
+        render: item => {
+          const dm = item as KnativeDomainMapping;
+          const reason = getReadyCondition(dm).reason;
+          if (!reason) {
+            return (
+              <Typography variant="body2" color="text.secondary">
+                -
+              </Typography>
+            );
+          }
+          return <Typography variant="body2">{reason}</Typography>;
+        },
+      },
+      {
         id: 'clusterdomainclaim',
         label: 'ClusterDomainClaim',
         gridTemplate: 'auto',
