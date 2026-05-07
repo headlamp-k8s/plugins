@@ -21,6 +21,7 @@ type ClusterData = {
   isMetricsEnabled?: boolean;
   address?: string;
   subPath?: string;
+  externalUrl?: string;
   defaultTimespan?: string;
   defaultResolution?: string;
 };
@@ -110,6 +111,9 @@ export async function getPrometheusPrefix(cluster: string): Promise<string | nul
   if (clusterData?.address) {
     const [namespace, service] = clusterData?.address.split('/');
     return `${namespace}/services/${service}`;
+  }
+  if (clusterData?.externalUrl) {
+    return clusterData.externalUrl;
   }
   return null;
 }

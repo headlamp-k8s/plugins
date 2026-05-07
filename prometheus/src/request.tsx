@@ -309,23 +309,32 @@ export async function fetchMetrics(data: {
   if (data.query) {
     params.append('query', data.query);
   }
-  var url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
-  if (data.subPath && data.subPath !== '') {
-    if (data.subPath.startsWith('/')) {
-      data.subPath = data.subPath.slice(1);
+  let url: string;
+  const isExternalUrl = data.prefix.startsWith('http://') || data.prefix.startsWith('https://');
+  if (isExternalUrl) {
+    let base = data.prefix.replace(/\/$/, '');
+    if (data.subPath && data.subPath !== '') {
+      const subPath = data.subPath.replace(/^\//, '').replace(/\/$/, '');
+      base = `${base}/${subPath}`;
     }
-    if (data.subPath.endsWith('/')) {
-      data.subPath = data.subPath.slice(0, -1);
+    url = `${base}/api/v1/query_range?${params.toString()}`;
+  } else {
+    url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
+    if (data.subPath && data.subPath !== '') {
+      const subPath = data.subPath.replace(/^\//, '').replace(/\/$/, '');
+      url = `/api/v1/namespaces/${
+        data.prefix
+      }/proxy/${subPath}/api/v1/query_range?${params.toString()}`;
     }
-    url = `/api/v1/namespaces/${data.prefix}/proxy/${
-      data.subPath
-    }/api/v1/query_range?${params.toString()}`;
   }
 
-  const response = await request(url, {
-    method: 'GET',
-    isJSON: false,
-  });
+  const response = isExternalUrl
+    ? await fetch(url)
+    : await request(url, {
+        method: 'GET',
+        isJSON: false,
+      });
+
   if (response.status === 200) {
     return response.json();
   } else {

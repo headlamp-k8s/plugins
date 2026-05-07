@@ -21,6 +21,14 @@ import { useEffect, useState } from 'react';
  * @returns {boolean} True if the address is valid, false otherwise.
  */
 function isValidAddress(address: string): boolean {
+  if (address.startsWith('http://') || address.startsWith('https://')) {
+    try {
+      new URL(address);
+      return true;
+    } catch {
+      return false;
+    }
+  }
   const regex = /^[a-z0-9-]+\/[a-z0-9-]+:[0-9]+$/;
   return regex.test(address);
 }
@@ -39,6 +47,7 @@ interface SettingsProps {
       autoDetect?: boolean;
       address?: string;
       subPath?: string;
+      externalUrl?: string;
       defaultTimespan?: string;
       defaultResolution?: string;
     }
@@ -170,6 +179,28 @@ export function Settings(props: SettingsProps) {
       ),
     },
     {
+      name: t('External Prometheus URL'),
+      value: (
+        <TextField
+          disabled={!isAddressFieldEnabled}
+          placeholder="https://prometheus.example.com"
+          helperText={t(
+            'Optional: Use an external Prometheus URL instead of an in-cluster service. Example: https://prometheus.example.com'
+          )}
+          value={selectedClusterData.externalUrl || ''}
+          onChange={e => {
+            onDataChange({
+              ...(data || {}),
+              [selectedCluster]: {
+                ...((data || {})[selectedCluster] || {}),
+                externalUrl: e.target.value || undefined,
+              },
+            });
+          }}
+        />
+      ),
+    },
+    {
       name: t('Prometheus Service Address'),
       value: (
         <Box display="flex" flexDirection="column" width="100%">
@@ -180,7 +211,7 @@ export function Settings(props: SettingsProps) {
                 addressError
                   ? t('Invalid format. Use: namespace/service-name:port')
                   : t(
-                      'Address of the Prometheus Service, only used when auto-detection is disabled. Format: namespace/service-name:port'
+                      'In-cluster address (namespace/service-name:port). Leave empty if using an External Prometheus URL above.'
                     )
               }
               error={addressError}
