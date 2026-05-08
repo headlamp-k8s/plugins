@@ -27,9 +27,26 @@ import {
 } from '@mui/material';
 import { useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
 import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
 
+// App-bar actions render on every page, so the badge has to gate itself.
+// We only render when we're in a cluster context AND Kyverno is actually
+// installed (engine + PolicyReport CRDs). Wraps the data-fetching content
+// in a separate component so its useList hooks don't run when hidden.
 export function ComplianceBadge() {
+  const cluster = K8s.useCluster();
+  const crds = useKyvernoCRDs();
+
+  const hasKyvernoEngine = crds.legacy || crds.cel;
+  if (!cluster || crds.loading || !hasKyvernoEngine || !crds.reports) {
+    return null;
+  }
+
+  return <ComplianceBadgeContent />;
+}
+
+function ComplianceBadgeContent() {
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
