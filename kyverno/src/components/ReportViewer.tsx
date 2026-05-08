@@ -27,10 +27,29 @@ import {
 import { SummaryChips } from './common';
 import { ResultsTable } from './ResultsTable';
 
-interface ReportViewerProps {
+// Any report class (PolicyReport, ClusterPolicyReport, AdmissionReport, EphemeralReport, ...)
+// must expose these accessors. They normalise the wgpolicyk8s and kyverno.io schema differences.
+export interface ReportLike {
+  jsonData: PolicyReportInterface;
+  summary: PolicyReportSummary;
+  results: PolicyReportResult[];
+  scope?: PolicyReportInterface['scope'];
+}
+
+// Generic over the item type so we don't need an `unknown as ReportLike` cast at the
+// use site. Each concrete class (PolicyReport, AdmissionReport, ...) exposes the
+// required summary/results/scope getters via a shared base — they all satisfy
+// `ReportClass<T extends ReportLike>`.
+export interface ReportClass<T extends ReportLike> {
+  useGet: (name: string, namespace?: string) => readonly [T | null, unknown];
+}
+
+interface ReportViewerProps<T extends ReportLike = ReportLike> {
   name: string;
   namespace?: string;
   isClusterScoped?: boolean;
+  /** Override the resource class (e.g. for AdmissionReport / EphemeralReport). */
+  resourceClass?: ReportClass<T>;
 }
 
 function ReportSummarySection({ summary }: { summary: PolicyReportSummary }) {
@@ -62,16 +81,7 @@ function ReportResultsSection({ results }: { results: PolicyReportResult[] }) {
   );
 }
 
-function ReportContent({
-  report,
-}: {
-  report: {
-    jsonData: PolicyReportInterface;
-    summary: PolicyReportSummary;
-    results: PolicyReportResult[];
-    scope?: PolicyReportInterface['scope'];
-  };
-}) {
+function ReportContent({ report }: { report: ReportLike }) {
   const { t } = useTranslation();
   return (
     <Box sx={{ p: 2 }}>
@@ -98,9 +108,20 @@ function ReportContent({
   );
 }
 
-export function ReportViewer({ name, namespace, isClusterScoped }: ReportViewerProps) {
+export function ReportViewer<T extends ReportLike = ReportLike>({
+  name,
+  namespace,
+  isClusterScoped,
+  resourceClass,
+}: ReportViewerProps<T>) {
   const { t } = useTranslation();
-  const ResourceClass = isClusterScoped ? ClusterPolicyReport : PolicyReport;
+  // PolicyReport/ClusterPolicyReport's static-side `useGet<K extends KubeObject>` is
+  // wider than ReportClass<ReportLike>, so we cast through unknown here. The runtime
+  // shape is enforced by the shared base class accessors.
+  const fallback = isClusterScoped ? ClusterPolicyReport : PolicyReport;
+  const ResourceClass: ReportClass<ReportLike> =
+    (resourceClass as ReportClass<ReportLike> | undefined) ??
+    (fallback as unknown as ReportClass<ReportLike>);
   const [report, error] = ResourceClass.useGet(name, namespace);
 
   if (error) {

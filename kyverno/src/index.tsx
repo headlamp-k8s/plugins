@@ -32,11 +32,20 @@ import { ComplianceBadge } from './components/ComplianceBadge';
 import { CRDGroup, CRDGuard } from './components/CRDGuard';
 import { Dashboard } from './components/Dashboard';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
+import { KyvernoReportList } from './components/KyvernoReportList';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
 import { ViolationsView } from './components/ViolationsView';
 import { registerKyvernoIcon } from './kyvernoIcon';
+import {
+  AdmissionReport,
+  BackgroundScanReport,
+  ClusterAdmissionReport,
+  ClusterBackgroundScanReport,
+  ClusterEphemeralReport,
+  EphemeralReport,
+} from './resources/kyvernoReports';
 
 registerKyvernoIcon();
 
@@ -214,6 +223,96 @@ registerKyvernoPage({
   path: '/kyverno/clusterpolicyreports',
   requires: 'reports',
   component: () => <ClusterPolicyReportList />,
+});
+
+registerKyvernoPage({
+  name: 'AdmissionReports',
+  parent: 'KyvernoReports',
+  label: 'Admission Reports',
+  path: '/kyverno/admissionreports',
+  requires: 'kyvernoV2Reports',
+  component: () => (
+    <KyvernoReportList
+      titleKey="Admission Reports"
+      resourceClass={AdmissionReport}
+      activityIdPrefix="kyverno-admrpt"
+    />
+  ),
+});
+
+registerKyvernoPage({
+  name: 'ClusterAdmissionReports',
+  parent: 'KyvernoReports',
+  label: 'Cluster Admission Reports',
+  path: '/kyverno/clusteradmissionreports',
+  requires: 'kyvernoV2Reports',
+  component: () => (
+    <KyvernoReportList
+      titleKey="Cluster Admission Reports"
+      resourceClass={ClusterAdmissionReport}
+      activityIdPrefix="kyverno-cadmrpt"
+    />
+  ),
+});
+
+registerKyvernoPage({
+  name: 'BackgroundScanReports',
+  parent: 'KyvernoReports',
+  label: 'Background Scan Reports',
+  path: '/kyverno/backgroundscanreports',
+  requires: 'kyvernoV2Reports',
+  component: () => (
+    <KyvernoReportList
+      titleKey="Background Scan Reports"
+      resourceClass={BackgroundScanReport}
+      activityIdPrefix="kyverno-bgscan"
+    />
+  ),
+});
+
+registerKyvernoPage({
+  name: 'ClusterBackgroundScanReports',
+  parent: 'KyvernoReports',
+  label: 'Cluster Background Scan Reports',
+  path: '/kyverno/clusterbackgroundscanreports',
+  requires: 'kyvernoV2Reports',
+  component: () => (
+    <KyvernoReportList
+      titleKey="Cluster Background Scan Reports"
+      resourceClass={ClusterBackgroundScanReport}
+      activityIdPrefix="kyverno-cbgscan"
+    />
+  ),
+});
+
+registerKyvernoPage({
+  name: 'EphemeralReports',
+  parent: 'KyvernoReports',
+  label: 'Ephemeral Reports',
+  path: '/kyverno/ephemeralreports',
+  requires: 'ephemeralReports',
+  component: () => (
+    <KyvernoReportList
+      titleKey="Ephemeral Reports"
+      resourceClass={EphemeralReport}
+      activityIdPrefix="kyverno-ephrpt"
+    />
+  ),
+});
+
+registerKyvernoPage({
+  name: 'ClusterEphemeralReports',
+  parent: 'KyvernoReports',
+  label: 'Cluster Ephemeral Reports',
+  path: '/kyverno/clusterephemeralreports',
+  requires: 'ephemeralReports',
+  component: () => (
+    <KyvernoReportList
+      titleKey="Cluster Ephemeral Reports"
+      resourceClass={ClusterEphemeralReport}
+      activityIdPrefix="kyverno-cephrpt"
+    />
+  ),
 });
 
 // --- Violations ---
