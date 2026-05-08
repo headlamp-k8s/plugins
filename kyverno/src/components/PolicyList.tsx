@@ -17,7 +17,8 @@
 import { Icon } from '@iconify/react';
 import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Chip, Link as MuiLink } from '@mui/material';
+import { Box, Chip, Link as MuiLink, Typography } from '@mui/material';
+import { usePolicyResultCounts } from '../hooks/usePolicyResultCounts';
 import { KyvernoPolicy } from '../resources/kyvernoPolicy';
 import { PolicyViewer } from './PolicyViewer';
 
@@ -37,6 +38,8 @@ function openPolicyActivity(item: KyvernoPolicy) {
 }
 
 export function PolicyList() {
+  const counts = usePolicyResultCounts();
+
   return (
     <ResourceListView
       title="Policies"
@@ -87,11 +90,11 @@ export function PolicyList() {
           label: 'Rule Types',
           getValue: item => item.ruleTypes.join(', '),
           render: item => (
-            <span style={{ display: 'inline-flex', gap: 4 }}>
+            <Box sx={{ display: 'inline-flex', gap: 0.5 }}>
               {item.ruleTypes.map(t => (
                 <Chip key={t} label={t} size="small" variant="outlined" />
               ))}
-            </span>
+            </Box>
           ),
         },
         {
@@ -99,6 +102,27 @@ export function PolicyList() {
           label: 'Rules',
           getValue: item => item.rules.length,
           gridTemplate: '0.4fr',
+        },
+        {
+          id: 'results',
+          label: 'Results',
+          getValue: item =>
+            counts.forNamespaced(item.jsonData.metadata.name, item.jsonData.metadata.namespace || '')
+              ?.total ?? 0,
+          render: item => {
+            const c = counts.forNamespaced(
+              item.jsonData.metadata.name,
+              item.jsonData.metadata.namespace || ''
+            );
+            if (counts.loading && !c) return <Typography variant="body2">…</Typography>;
+            if (!c || c.total === 0) return <Typography variant="body2">—</Typography>;
+            return (
+              <Typography variant="body2" color={c.fail > 0 ? 'error' : 'text.primary'}>
+                {c.fail} / {c.total} failed
+              </Typography>
+            );
+          },
+          gridTemplate: '0.8fr',
         },
         'age',
       ]}
