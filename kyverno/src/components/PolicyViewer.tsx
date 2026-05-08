@@ -19,6 +19,7 @@ import {
   AuthVisible,
   DeleteButton,
   EditButton,
+  EditorDialog,
   NameValueTable,
   SectionBox,
   Table,
@@ -27,6 +28,7 @@ import { Box, Chip, CircularProgress, Typography } from '@mui/material';
 import {
   KyvernoClusterPolicy,
   KyvernoPolicy,
+  KyvernoPolicyInterface,
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
@@ -98,6 +100,22 @@ function KyvernoMetadataSection({ annotations }: { annotations?: Record<string, 
   return (
     <SectionBox title={t('Policy Metadata')}>
       <NameValueTable rows={rows} />
+    </SectionBox>
+  );
+}
+
+function YamlSection({ jsonData }: { jsonData: KyvernoPolicyInterface }) {
+  const { t } = useTranslation();
+  return (
+    <SectionBox title={t('YAML')}>
+      <EditorDialog
+        noDialog
+        open
+        item={jsonData}
+        onSave={null}
+        onClose={() => {}}
+        allowToHideManagedFields
+      />
     </SectionBox>
   );
 }
@@ -301,6 +319,7 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
         <RulesTable rules={policy.rules} />
       </SectionBox>
       <AssociatedReportsSection policyName={policy.jsonData.metadata.name} />
+      <YamlSection jsonData={policy.jsonData} />
     </Box>
   );
 }
