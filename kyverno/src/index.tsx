@@ -28,6 +28,14 @@ import { ComplianceBadge } from './components/ComplianceBadge';
 import { CRDGuard } from './components/CRDGuard';
 import { Dashboard } from './components/Dashboard';
 import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
+import {
+  AdmissionReportList,
+  BackgroundScanReportList,
+  ClusterAdmissionReportList,
+  ClusterBackgroundScanReportList,
+  ClusterEphemeralReportList,
+  EphemeralReportList,
+} from './components/KyvernoReportList';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
@@ -275,6 +283,114 @@ registerRoute({
   component: () => (
     <CRDGuard requires="reports">
       <ClusterPolicyReportList />
+    </CRDGuard>
+  ),
+});
+
+registerSidebarEntry({
+  name: 'AdmissionReports',
+  url: '/kyverno/admissionreports',
+  parent: 'KyvernoReports',
+  label: 'Admission Reports',
+});
+
+registerRoute({
+  path: '/kyverno/admissionreports',
+  sidebar: 'AdmissionReports',
+  name: 'AdmissionReports',
+  component: () => (
+    <CRDGuard requires="kyvernoV2Reports">
+      <AdmissionReportList />
+    </CRDGuard>
+  ),
+});
+
+registerSidebarEntry({
+  name: 'ClusterAdmissionReports',
+  url: '/kyverno/clusteradmissionreports',
+  parent: 'KyvernoReports',
+  label: 'Cluster Admission Reports',
+});
+
+registerRoute({
+  path: '/kyverno/clusteradmissionreports',
+  sidebar: 'ClusterAdmissionReports',
+  name: 'ClusterAdmissionReports',
+  component: () => (
+    <CRDGuard requires="kyvernoV2Reports">
+      <ClusterAdmissionReportList />
+    </CRDGuard>
+  ),
+});
+
+registerSidebarEntry({
+  name: 'BackgroundScanReports',
+  url: '/kyverno/backgroundscanreports',
+  parent: 'KyvernoReports',
+  label: 'Background Scan Reports',
+});
+
+registerRoute({
+  path: '/kyverno/backgroundscanreports',
+  sidebar: 'BackgroundScanReports',
+  name: 'BackgroundScanReports',
+  component: () => (
+    <CRDGuard requires="kyvernoV2Reports">
+      <BackgroundScanReportList />
+    </CRDGuard>
+  ),
+});
+
+registerSidebarEntry({
+  name: 'ClusterBackgroundScanReports',
+  url: '/kyverno/clusterbackgroundscanreports',
+  parent: 'KyvernoReports',
+  label: 'Cluster Background Scan Reports',
+});
+
+registerRoute({
+  path: '/kyverno/clusterbackgroundscanreports',
+  sidebar: 'ClusterBackgroundScanReports',
+  name: 'ClusterBackgroundScanReports',
+  component: () => (
+    <CRDGuard requires="kyvernoV2Reports">
+      <ClusterBackgroundScanReportList />
+    </CRDGuard>
+  ),
+});
+
+registerSidebarEntry({
+  name: 'EphemeralReports',
+  url: '/kyverno/ephemeralreports',
+  parent: 'KyvernoReports',
+  label: 'Ephemeral Reports',
+});
+
+registerRoute({
+  path: '/kyverno/ephemeralreports',
+  sidebar: 'EphemeralReports',
+  name: 'EphemeralReports',
+  component: () => (
+    <CRDGuard requires="ephemeralReports">
+      <EphemeralReportList />
+    </CRDGuard>
+  ),
+});
+
+registerSidebarEntry({
+  name: 'ClusterEphemeralReports',
+  url: '/kyverno/clusterephemeralreports',
+  parent: 'KyvernoReports',
+  label: 'Cluster Ephemeral Reports',
+});
+
+registerRoute({
+  path: '/kyverno/clusterephemeralreports',
+  sidebar: 'ClusterEphemeralReports',
+  name: 'ClusterEphemeralReports',
+  component: () => (
+    <CRDGuard requires="ephemeralReports">
+      <ClusterEphemeralReportList />
     </CRDGuard>
   ),
 });

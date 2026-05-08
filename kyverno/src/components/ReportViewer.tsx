@@ -26,10 +26,30 @@ import {
 import { SummaryChips } from './common';
 import { ResultsTable } from './ResultsTable';
 
+// Any report class (PolicyReport, ClusterPolicyReport, AdmissionReport, EphemeralReport, ...)
+// must expose these accessors. They normalise the wgpolicyk8s and kyverno.io schema differences.
+export interface ReportLike {
+  jsonData: PolicyReportInterface;
+  summary: PolicyReportSummary;
+  results: PolicyReportResult[];
+  scope?: PolicyReportInterface['scope'];
+}
+
+// Structural type: any class with a static `useGet`. The SDK types each subclass's
+// `useGet` against its own jsonData shape (PolicyReportInterface vs KyvernoReportInterface),
+// so we don't constrain the return tuple — we assert ReportLike at use. Each concrete
+// class (PolicyReport, AdmissionReport, ...) exposes the required summary/results/scope
+// getters via a shared base.
+export interface ReportClass {
+  useGet: (name: string, namespace?: string) => readonly [unknown, unknown];
+}
+
 interface ReportViewerProps {
   name: string;
   namespace?: string;
   isClusterScoped?: boolean;
+  /** Override the resource class (e.g. for AdmissionReport / EphemeralReport). */
+  resourceClass?: ReportClass;
 }
 
 function ReportSummarySection({ summary }: { summary: PolicyReportSummary }) {
@@ -89,9 +109,15 @@ function ReportContent({
   );
 }
 
-export function ReportViewer({ name, namespace, isClusterScoped }: ReportViewerProps) {
-  const ResourceClass = isClusterScoped ? ClusterPolicyReport : PolicyReport;
-  const [report, error] = ResourceClass.useGet(name, namespace);
+export function ReportViewer({
+  name,
+  namespace,
+  isClusterScoped,
+  resourceClass,
+}: ReportViewerProps) {
+  const ResourceClass: ReportClass =
+    resourceClass ?? (isClusterScoped ? ClusterPolicyReport : PolicyReport);
+  const [rawReport, error] = ResourceClass.useGet(name, namespace);
 
   if (error) {
     return (
@@ -101,7 +127,7 @@ export function ReportViewer({ name, namespace, isClusterScoped }: ReportViewerP
     );
   }
 
-  if (!report) {
+  if (!rawReport) {
     return (
       <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
@@ -109,5 +135,5 @@ export function ReportViewer({ name, namespace, isClusterScoped }: ReportViewerP
     );
   }
 
-  return <ReportContent report={report} />;
+  return <ReportContent report={rawReport as unknown as ReportLike} />;
 }

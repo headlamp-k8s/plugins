@@ -32,6 +32,10 @@ const defaultMessages: Record<CRDGroup, string> = {
   cleanup: 'Kyverno cleanup policies (kyverno.io/v2) were not detected on this cluster.',
   reports: 'Policy Reports (wgpolicyk8s.io/v1alpha2) were not detected on this cluster.',
   exceptions: 'Policy Exceptions (kyverno.io/v2) were not detected on this cluster.',
+  kyvernoV2Reports:
+    'Kyverno admission/background-scan reports (kyverno.io/v2) were not detected on this cluster.',
+  ephemeralReports:
+    'Kyverno ephemeral reports (reports.kyverno.io/v1) were not detected on this cluster. Kyverno 1.11+ is required.',
 };
 
 export function CRDGuard({ requires, children, message }: CRDGuardProps) {
