@@ -18,6 +18,7 @@ import {
   AuthVisible,
   DeleteButton,
   EditButton,
+  EditorDialog,
   NameValueTable,
   SectionBox,
   Table,
@@ -105,6 +106,21 @@ function KyvernoMetadataSection({ annotations }: { annotations?: Record<string, 
   return (
     <SectionBox title="Policy Metadata">
       <NameValueTable rows={rows} />
+    </SectionBox>
+  );
+}
+
+function YamlSection({ jsonData }: { jsonData: KyvernoPolicyInterface }) {
+  return (
+    <SectionBox title="YAML">
+      <EditorDialog
+        noDialog
+        open
+        item={jsonData}
+        onSave={null}
+        onClose={() => {}}
+        allowToHideManagedFields
+      />
     </SectionBox>
   );
 }
@@ -301,6 +317,7 @@ function PolicyContent({
         <RulesTable rules={policy.rules} />
       </SectionBox>
       <AssociatedReportsSection policyName={policy.jsonData.metadata.name} />
+      <YamlSection jsonData={policy.jsonData} />
     </Box>
   );
 }
