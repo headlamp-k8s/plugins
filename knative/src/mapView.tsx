@@ -19,10 +19,11 @@ import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useMemo } from 'react';
 import { ClusterDomainClaim, KnativeDomainMapping, KRevision, KService } from './resources/knative';
 
-export const makeKubeToKubeEdge = (from: any, to: any): any => ({
+export const makeKubeToKubeEdge = (from: any, to: any, options: any = {}): any => ({
   id: `${from.metadata.uid}-${to.metadata.uid}`,
   source: from.metadata.uid,
   target: to.metadata.uid,
+  ...options,
 });
 
 const KServiceDetails = ({ node }: { node: any }) => (
@@ -158,12 +159,16 @@ const knativeServiceSource: any = {
     return useMemo(() => {
       if (!kservices) return null;
 
-      const nodes = kservices.map(kservice => ({
-        id: kservice.metadata.uid,
-        kubeObject: kservice,
-        detailsComponent: KServiceDetails,
-        weight: 1100,
-      }));
+      const nodes = kservices.map(kservice => {
+        const status = kservice.isReady ? 'success' : 'error';
+        return {
+          id: kservice.metadata.uid,
+          kubeObject: kservice,
+          detailsComponent: KServiceDetails,
+          weight: 1100,
+          status,
+        };
+      });
 
       const edges: any[] = [];
       return {
@@ -199,8 +204,14 @@ const knativeRevisionSource: any = {
 
         if (parentSvc) {
           traffic = rev.getTrafficInService(parentSvc);
-          edges.push(makeKubeToKubeEdge(parentSvc, rev));
+          const trafficStr = traffic?.length
+            ? traffic.map((t: any) => `${t.percent || 0}%`).join(', ')
+            : undefined;
+
+          edges.push(makeKubeToKubeEdge(parentSvc, rev, trafficStr ? { label: trafficStr } : {}));
         }
+
+        const status = rev.isReady ? 'success' : 'error';
 
         return {
           id: rev.metadata.uid,
@@ -208,6 +219,7 @@ const knativeRevisionSource: any = {
           detailsComponent: RevisionDetails,
           weight: 1100,
           traffic,
+          status,
         };
       });
 
@@ -254,11 +266,15 @@ const knativeDomainMappingSource: any = {
           }
         }
 
+        const isReady = dm.status?.conditions?.find(c => c.type === 'Ready')?.status === 'True';
+        const status = isReady ? 'success' : 'error';
+
         return {
           id: dm.metadata.uid,
           kubeObject: dm,
           detailsComponent: DomainMappingDetails,
           weight: 1100,
+          status,
         };
       });
 

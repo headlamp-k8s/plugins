@@ -143,6 +143,11 @@ registerRoute({
 
 registerMapSource(knativePluginSource);
 
+registerKindIcon('serving.knative.dev/Service', {
+  icon: <Icon icon="custom:knative" width="70%" height="70%" />,
+  color: 'rgb(7, 102, 174)',
+});
+
 registerKindIcon('Revision', {
   icon: <Icon icon="custom:knative" width="70%" height="70%" />,
   color: 'rgb(7, 102, 174)',

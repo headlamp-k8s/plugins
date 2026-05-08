@@ -37,9 +37,10 @@ interface GlanceProps {
 export function DomainMappingGlance({ node }: GlanceProps) {
   const kubeObject = node.kubeObject;
   const isKnativeDomainMapping =
-    kubeObject?.kind === KnativeDomainMapping.kind &&
-    typeof kubeObject?.apiVersion === 'string' &&
-    kubeObject.apiVersion.startsWith('serving.knative.dev/');
+    kubeObject instanceof KnativeDomainMapping ||
+    (kubeObject?.kind === KnativeDomainMapping.kind &&
+      typeof kubeObject?.apiVersion === 'string' &&
+      kubeObject.apiVersion.startsWith('serving.knative.dev/'));
 
   if (isKnativeDomainMapping) {
     const dm = kubeObject as KnativeDomainMapping;
@@ -53,7 +54,7 @@ export function DomainMappingGlance({ node }: GlanceProps) {
         >
           Ready: {readyStatus}
         </StatusLabel>
-        {dm.spec?.ref?.name && <StatusLabel status="">Target: {dm.spec.ref.name}</StatusLabel>}
+        {dm.spec?.ref?.name && <StatusLabel>Target: {dm.spec.ref.name}</StatusLabel>}
       </Box>
     );
   }
