@@ -85,6 +85,12 @@ For UI plugin contributors, a full Kubeflow controller installation is not requi
    kubectl apply -f https://raw.githubusercontent.com/kubeflow/manifests/master/applications/trainer/upstream/base/crds/trainer.kubeflow.org_clustertrainingruntimes.yaml
    ```
 
+   **Spark Operators:**
+   ```bash
+   kubectl apply --server-side -f https://raw.githubusercontent.com/kubeflow/spark-operator/master/charts/spark-operator-chart/crds/sparkoperator.k8s.io_sparkapplications.yaml
+   kubectl apply --server-side -f https://raw.githubusercontent.com/kubeflow/spark-operator/master/charts/spark-operator-chart/crds/sparkoperator.k8s.io_scheduledsparkapplications.yaml
+   ```
+
 ## Running the Plugin Locally
 
 To test modifications dynamically:
