@@ -1,0 +1,11 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: failed-service
+  namespace: knative-map-test
+spec:
+  template:
+    spec:
+      containers:
+        - image: busybox
+          command: ["sh", "-c", "exit 1"]

@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-k8s-service
+  namespace: knative-map-test
+spec:
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: not-knative
+---
+apiVersion: serving.knative.dev/v1beta1
+kind: DomainMapping
+metadata:
+  name: my-unique-core-mapping.local-test.dev
+  namespace: knative-map-test
+spec:
+  ref:
+    name: core-k8s-service
+    kind: Service
+    apiVersion: v1

@@ -1,0 +1,16 @@
+# Step 1: Apply this first to create revision rollback-service-v1
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: rollback-service
+  namespace: knative-map-test
+spec:
+  template:
+    metadata:
+      name: rollback-service-v1
+    spec:
+      containers:
+        - image: gcr.io/knative-samples/helloworld-go
+          env:
+            - name: TARGET
+              value: "v1"

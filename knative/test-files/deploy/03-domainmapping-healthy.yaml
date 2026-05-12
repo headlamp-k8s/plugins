@@ -1,0 +1,17 @@
+apiVersion: networking.internal.knative.dev/v1alpha1
+kind: ClusterDomainClaim
+metadata:
+  name: healthy.knative-map-test.local
+spec:
+  namespace: knative-map-test
+---
+apiVersion: serving.knative.dev/v1beta1
+kind: DomainMapping
+metadata:
+  name: healthy.knative-map-test.local
+  namespace: knative-map-test
+spec:
+  ref:
+    name: healthy-service
+    kind: Service
+    apiVersion: serving.knative.dev/v1
