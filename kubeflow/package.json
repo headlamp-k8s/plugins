@@ -34,7 +34,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.13.0"
+    "@kinvolk/headlamp-plugin": "^0.14.0"
   },
   "headlamp": {
     "i18n": [
