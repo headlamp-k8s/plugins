@@ -30,7 +30,7 @@ export function deleteRelease(namespace: string, releaseName: string) {
   });
 }
 
-export function rollbackRelease(namespace: string, releaseName: string, version: string) {
+export function rollbackRelease(namespace: string, releaseName: string, version: number) {
   return request(`/helm/releases/rollback?name=${releaseName}&namespace=${namespace}`, {
     method: 'PUT',
     headers: { ...getHeadlampAPIHeaders() },
