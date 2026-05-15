@@ -244,7 +244,6 @@ registerRoute({
   sidebar: 'notifications',
   component: () => <Notifications />,
   exact: true,
-  name: 'notifications',
 });
 
 registerRoute({

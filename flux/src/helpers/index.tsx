@@ -195,7 +195,6 @@ export function NameLink(resourceClass: KubeObjectClass) {
           namespace: row.original.jsonData.metadata.namespace,
           pluralName: pluralName,
         }}
-        activeCluster={row.original.cluster}
       >
         {cell.getValue()}
       </Link>
