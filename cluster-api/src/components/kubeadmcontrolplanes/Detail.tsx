@@ -16,6 +16,7 @@ import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { getKCPInitialized, KubeadmControlPlane } from '../../resources/kubeadmcontrolplane';
 import { useCapiApiVersion } from '../../utils/capiVersion';
+import { getKubeadmControlPlaneActions } from '../actions';
 import {
   KubeadmConfigSection,
   OwnedMachinesSection,
@@ -227,6 +228,7 @@ function KubeadmControlPlaneDetailWithData({
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
+      actions={kcp => (kcp ? getKubeadmControlPlaneActions(kcp) : [])}
       extraInfo={() => extraInfo}
       extraSections={kcp => [
         {

@@ -1,0 +1,20 @@
+extraScrapeConfigs: |
+  - job_name: capi-controller-manager
+    scheme: https
+    authorization:
+      type: Bearer
+      credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tls_config:
+      insecure_skip_verify: true
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - capi-system
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_control_plane]
+        action: keep
+        regex: controller-manager
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: metrics
