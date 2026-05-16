@@ -353,6 +353,22 @@ export default class LangChainManager extends AIManager {
             },
           });
         }
+        case 'openai-compatible': {
+          if (!sanitizedConfig.baseUrl) {
+            throw new Error('Base URL is required for OpenAI-compatible providers');
+          }
+          if (!sanitizedConfig.model) {
+            throw new Error('Model is required for OpenAI-compatible providers');
+          }
+          return new ChatOpenAI({
+            apiKey: sanitizedConfig.apiKey || 'sk-noop',
+            model: sanitizedConfig.model,
+            verbose: true,
+            configuration: {
+              baseURL: sanitizedConfig.baseUrl.replace(/\/+$/, ''),
+            },
+          });
+        }
         case 'local': {
           if (!sanitizedConfig.baseUrl) {
             throw new Error('Base URL is required for local models');
@@ -401,7 +417,15 @@ export default class LangChainManager extends AIManager {
    */
   private canUseDirectToolCalling(): boolean {
     // All major providers support direct tool calling
-    return ['openai', 'azure', 'anthropic', 'mistral', 'gemini', 'vllm'].includes(this.providerId);
+    return [
+      'openai',
+      'azure',
+      'anthropic',
+      'mistral',
+      'gemini',
+      'vllm',
+      'openai-compatible',
+    ].includes(this.providerId);
   }
 
   /**
