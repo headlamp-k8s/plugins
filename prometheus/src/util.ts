@@ -161,8 +161,14 @@ function getResourceApiVersion(resource?: ResourceIdentity): string | undefined 
   return resource?.jsonData?.apiVersion ?? resource?.apiVersion;
 }
 
-const resourceApiVersionRules: Record<string, string> = {
-  Job: 'batch/v1',
+const resourceApiVersionRules: Record<string, RegExp> = {
+  Job: /^batch\/v1$/,
+  Cluster: /^cluster\.x-k8s\.io\//,
+  Machine: /^cluster\.x-k8s\.io\//,
+  MachineDeployment: /^cluster\.x-k8s\.io\//,
+  MachineSet: /^cluster\.x-k8s\.io\//,
+  MachinePool: /^cluster\.x-k8s\.io\//,
+  KubeadmControlPlane: /^controlplane\.cluster\.x-k8s\.io\//,
 };
 
 export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean {
@@ -171,12 +177,13 @@ export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean 
   if (!kind || !ChartEnabledKinds.includes(kind)) {
     return false;
   }
-
-  const requiredApiVersion = resourceApiVersionRules[kind];
-  if (requiredApiVersion) {
-    return getResourceApiVersion(resource) === requiredApiVersion;
+  const apiVersionPattern = resourceApiVersionRules[kind];
+  if (apiVersionPattern) {
+    const apiVersion = getResourceApiVersion(resource);
+    if (!apiVersion || !apiVersionPattern.test(apiVersion)) {
+      return false;
+    }
   }
-
   return true;
 }
 
@@ -193,6 +200,12 @@ const ChartEnabledKinds = [
   'ScaledJob',
   'NodePool',
   'NodeClaim',
+  'Cluster',
+  'MachineDeployment',
+  'MachineSet',
+  'Machine',
+  'MachinePool',
+  'KubeadmControlPlane',
 ];
 
 /**
