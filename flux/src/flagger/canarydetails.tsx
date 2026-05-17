@@ -17,6 +17,7 @@ import {
   Typography,
 } from '@mui/material';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ResumeAction, SuspendAction } from '../actions';
 import FlaggerAvailabilityCheck, { useCanary } from './availabilitycheck';
@@ -34,6 +35,7 @@ export default function CanaryDetails() {
 
 function CanaryDetailsRenderer({ resource }: { resource: any }) {
   const { namespace, name } = useParams<{ name: string; namespace: string }>();
+  const { t } = useTranslation();
 
   const resourceClass = React.useMemo(() => {
     return resource.makeCRClass();
@@ -56,19 +58,19 @@ function CanaryDetailsRenderer({ resource }: { resource: any }) {
 
         const info: any[] = [
           {
-            name: 'Suspend',
-            value: item.jsonData?.spec?.suspend ? 'True' : 'False',
+            name: t('Suspend'),
+            value: item.jsonData?.spec?.suspend ? t('True') : t('False'),
           },
           {
-            name: 'Status',
+            name: t('Status'),
             value: <CanaryStatus status={item.jsonData?.status?.phase || 'Unknown'} />,
           },
           {
-            name: 'Service',
+            name: t('Service'),
             value: item.jsonData?.spec?.service?.name || '-',
           },
           {
-            name: 'Target',
+            name: t('Target'),
             value: (
               <Stack direction="row" spacing={1}>
                 {targetRef.kind && (
@@ -98,15 +100,15 @@ function CanaryDetailsRenderer({ resource }: { resource: any }) {
             ),
           },
           {
-            name: 'Analysis',
+            name: t('Analysis'),
             value: analysis ? <AnalysisSection analysis={analysis} /> : '-',
           },
           {
-            name: 'Metrics',
+            name: t('Metrics'),
             value: analysis?.metrics ? <MetricsSection metrics={analysis.metrics} /> : '-',
           },
           {
-            name: 'Webhooks',
+            name: t('Webhooks'),
             value: analysis?.webhooks ? <WebhooksSection webhooks={analysis.webhooks} /> : '-',
           },
         ];

@@ -13,7 +13,7 @@ import { registerFluxHeaderActionsProcessor } from './actions/headerActionsProce
 import Canaries from './flagger/canaries';
 import CanaryDetails from './flagger/canarydetails';
 import { HelmReleases } from './helm-releases/HelmReleaseList';
-import { FluxHelmReleaseDetailView, registerHelmRelease } from './helm-releases/HelmReleaseSingle';
+import { FluxHelmReleaseDetailView } from './helm-releases/HelmReleaseSingle';
 import { ImageAutomation } from './image-automation/ImageAutomationList';
 import { FluxImageAutomationDetailView } from './image-automation/ImageAutomationSingle';
 import { Kustomizations } from './kustomizations/KustomizationList';
@@ -29,7 +29,6 @@ import { FluxSourceDetailView } from './sources/SourceSingle';
 import { TerraformList } from './terraforms/TerraformList';
 import { TerraformDetailView } from './terraforms/TerraformSingle';
 
-registerHelmRelease();
 registerFluxHeaderActionsProcessor();
 
 // Track whether Flux CRDs exist per cluster to hide sidebar children.

@@ -1,7 +1,6 @@
-import { registerDetailsViewSection } from '@kinvolk/headlamp-plugin/lib';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
-  ConditionsTable,
   DetailsGrid,
   Link,
   SectionBox,
@@ -27,6 +26,7 @@ import { HelmInventory } from './Inventory';
 export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
   const { name = params.name, namespace = params.namespace } = props;
+  const { t } = useTranslation();
 
   return (
     <DetailsGrid
@@ -54,22 +54,22 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
 
         const info: any[] = [
           {
-            name: 'Status',
+            name: t('Status'),
             value: <StatusLabel item={item} />,
           },
           {
-            name: 'Chart',
+            name: t('Chart'),
             value: sourceName,
           },
           {
-            name: 'Reconcile Strategy',
+            name: t('Reconcile Strategy'),
             value: item.jsonData?.spec.chart?.spec?.reconcileStrategy,
           },
         ];
 
         if (item.jsonData?.spec?.chartRef || item.jsonData?.spec?.chart?.spec?.sourceRef) {
           info.push({
-            name: 'Source Ref',
+            name: t('Source Ref'),
             value: (
               <Link
                 routeName="source"
@@ -86,23 +86,23 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
         }
 
         info.push({
-          name: 'Version',
+          name: t('Version'),
           value: item.jsonData?.spec.chart?.spec?.version,
         });
 
         info.push({
-          name: 'Suspend',
-          value: item.jsonData.spec?.suspend ? 'True' : 'False',
+          name: t('Suspend'),
+          value: item.jsonData.spec?.suspend ? t('True') : t('False'),
         });
 
         info.push({
-          name: 'Interval',
+          name: t('Interval'),
           value: item.jsonData.spec?.interval,
         });
 
         if (!item.jsonData.spec?.suspend) {
           info.push({
-            name: 'Next Reconciliation',
+            name: t('Next Reconciliation'),
             value: <RemainingTimeDisplay item={item} />,
           });
         }
@@ -117,7 +117,7 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
           {
             id: 'flux.helmrelease-values',
             section: item.jsonData?.spec?.values && (
-              <SectionBox title="Values">
+              <SectionBox title={t('Values')}>
                 <Editor
                   language="yaml"
                   value={YAML.stringify(item.jsonData?.spec?.values)}
@@ -130,7 +130,7 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
           {
             id: 'flux.helmrelease-inventory',
             section: (
-              <SectionBox title="Inventory">
+              <SectionBox title={t('Inventory')}>
                 <HelmInventory name={item.metadata.name} namespace={item.metadata.namespace} />
               </SectionBox>
             ),
@@ -138,12 +138,12 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
           {
             id: 'flux.helmrelease-dependencies',
             section: item.jsonData?.spec?.dependsOn && (
-              <SectionBox title="Dependencies">
+              <SectionBox title={t('Dependencies')}>
                 <Table
                   data={item.jsonData?.spec?.dependsOn}
                   columns={[
                     {
-                      header: 'Name',
+                      header: t('Name'),
                       accessorFn: dep => (
                         <Link
                           routeName="helm"
@@ -157,7 +157,7 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
                       ),
                     },
                     {
-                      header: 'Namespace',
+                      header: t('Namespace'),
                       accessorFn: dep => (
                         <Link
                           routeName="namespace"
@@ -181,69 +181,3 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
     />
   );
 }
-
-export const registerHelmRelease = () => {
-  registerDetailsViewSection(({ resource }: { resource: HelmRelease }) => {
-    console.log('flux', { resource });
-    if (resource.kind !== 'HelmRelease') return null;
-
-    const themeName = localStorage.getItem('headlampThemePreference');
-
-    const cr = resource;
-
-    return (
-      <>
-        {cr && cr?.jsonData?.spec?.values && (
-          <SectionBox title="Values">
-            <Editor
-              language="yaml"
-              value={YAML.stringify(cr?.jsonData?.spec?.values)}
-              height={200}
-              theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-            />
-          </SectionBox>
-        )}
-
-        <SectionBox title="Inventory">
-          <HelmInventory name={resource.metadata.name} namespace={resource.metadata.namespace} />
-        </SectionBox>
-
-        <SectionBox title="Dependencies">
-          <Table
-            data={cr?.jsonData?.spec?.dependsOn}
-            columns={[
-              {
-                header: 'Name',
-                accessorFn: item => (
-                  <Link
-                    routeName="helm"
-                    params={{
-                      name: item.name,
-                      namespace: item.namespace || resource.metadata.namespace,
-                    }}
-                  >
-                    {item.name}
-                  </Link>
-                ),
-              },
-              {
-                header: 'Namespace',
-                accessorFn: item => (
-                  <Link
-                    routeName="namespace"
-                    params={{ name: item.namespace || resource.metadata.namespace }}
-                  >
-                    {item.namespace || resource.metadata.namespace}
-                  </Link>
-                ),
-              },
-            ]}
-          />
-        </SectionBox>
-        <SectionBox title="Conditions">
-          <ConditionsTable resource={cr?.jsonData} />
-        </SectionBox>
-      </>
-    );
-  });
-};

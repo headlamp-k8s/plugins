@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
 import React from 'react';
 import { useParams } from 'react-router-dom';
@@ -17,6 +18,7 @@ export function Notification() {
     pluralName: string;
     name: string;
   }>();
+  const { t } = useTranslation();
   const resourceClass = (() => {
     switch (pluralName) {
       case 'alerts':
@@ -52,13 +54,13 @@ export function Notification() {
       extraInfo={resource => {
         if (!resource) return [];
         const info: any[] = [
-          { name: 'Suspend', value: resource.jsonData.spec?.suspend ? 'True' : 'False' },
+          { name: t('Suspend'), value: resource.jsonData.spec?.suspend ? t('True') : t('False') },
         ];
         const interval = resource.jsonData.spec?.interval;
-        info.push({ name: 'Interval', value: interval });
+        info.push({ name: t('Interval'), value: interval });
         if (!resource.jsonData.spec?.suspend) {
           info.push({
-            name: 'Next Reconciliation',
+            name: t('Next Reconciliation'),
             value: <RemainingTimeDisplay item={resource} />,
           });
         }
