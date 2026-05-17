@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { Router } from '@kinvolk/headlamp-plugin/lib';
 import { Link as HeadlampLink } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
   ActionButton,
@@ -125,7 +126,8 @@ export function NotebooksOverviewContent({
                 description="View All Notebooks"
                 icon="mdi:arrow-right"
                 onClick={() => {
-                  window.location.href = '/kubeflow/notebooks/servers';
+                  const url = Router.createRouteURL('kubeflow-notebooks-servers-list');
+                  window.location.href = url;
                 }}
               />
             </Box>
