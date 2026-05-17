@@ -37,7 +37,6 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
 
 export const registerHelmRelease = () => {
   registerDetailsViewSection(({ resource }: { resource: HelmRelease }) => {
-    console.log('flux', { resource });
     if (resource.kind !== 'HelmRelease') return null;
 
     const themeName = localStorage.getItem('headlampThemePreference');

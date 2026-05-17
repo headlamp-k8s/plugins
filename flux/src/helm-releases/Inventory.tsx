@@ -255,9 +255,7 @@ async function fetchResources(
       }));
     } catch (error) {
       if (error.status === 404) {
-        console.log(`No ${pluralName} found for chart ${chartName}`);
       } else {
-        console.error(error);
       }
       return [];
     }
