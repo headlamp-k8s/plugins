@@ -9,6 +9,7 @@ import { KarpenterChart } from '../src/components/Chart/KarpenterChart/Karpenter
 import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
+import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import {
@@ -121,6 +122,14 @@ function PrometheusMetrics(resource: KubeObject) {
         chartConfigs={getNodeClaimChartConfigs(name, nodepool)}
         defaultChart="creation-rate"
       />
+    );
+  }
+
+  if (resource.kind === 'Kafka') {
+    const namespace = resource.jsonData.metadata.namespace;
+
+    return (
+      <StrimziChart chartConfigs={getKafkaChartConfigs(namespace)} defaultChart="throughput" />
     );
   }
 }
