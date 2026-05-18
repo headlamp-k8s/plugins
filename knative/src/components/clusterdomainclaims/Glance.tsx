@@ -37,9 +37,10 @@ interface GlanceProps {
 export function ClusterDomainClaimGlance({ node }: GlanceProps) {
   const kubeObject = node.kubeObject;
   const isKnativeClusterDomainClaim =
-    kubeObject?.kind === ClusterDomainClaim.kind &&
-    typeof kubeObject?.apiVersion === 'string' &&
-    kubeObject.apiVersion.startsWith('networking.internal.knative.dev/');
+    kubeObject instanceof ClusterDomainClaim ||
+    (kubeObject?.kind === ClusterDomainClaim.kind &&
+      typeof kubeObject?.apiVersion === 'string' &&
+      kubeObject.apiVersion.startsWith('networking.internal.knative.dev/'));
 
   if (isKnativeClusterDomainClaim) {
     const cdc = kubeObject as ClusterDomainClaim;

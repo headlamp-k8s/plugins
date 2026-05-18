@@ -37,9 +37,10 @@ interface GlanceProps {
 export function KServiceGlance({ node }: GlanceProps) {
   const kubeObject = node.kubeObject;
   const isKnativeService =
-    kubeObject?.kind === KService.kind &&
-    typeof kubeObject?.apiVersion === 'string' &&
-    kubeObject.apiVersion.startsWith('serving.knative.dev/');
+    kubeObject instanceof KService ||
+    (kubeObject?.kind === KService.kind &&
+      typeof kubeObject?.apiVersion === 'string' &&
+      kubeObject.apiVersion.startsWith('serving.knative.dev/'));
 
   if (isKnativeService) {
     const svc = kubeObject as KService;
@@ -54,7 +55,7 @@ export function KServiceGlance({ node }: GlanceProps) {
           Ready: {readyStatus}
         </StatusLabel>
         {svc.status?.latestReadyRevisionName && (
-          <StatusLabel status="">Latest: {svc.status.latestReadyRevisionName}</StatusLabel>
+          <StatusLabel>Latest: {svc.status.latestReadyRevisionName}</StatusLabel>
         )}
       </Box>
     );

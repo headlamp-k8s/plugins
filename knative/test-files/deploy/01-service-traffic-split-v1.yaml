@@ -1,0 +1,15 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: traffic-split-service
+  namespace: knative-map-test
+spec:
+  template:
+    metadata:
+      name: traffic-split-service-v1
+    spec:
+      containers:
+        - image: gcr.io/knative-samples/helloworld-go
+          env:
+            - name: TARGET
+              value: "v1"

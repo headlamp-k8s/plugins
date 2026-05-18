@@ -1,0 +1,10 @@
+apiVersion: serving.knative.dev/v1beta1
+kind: DomainMapping
+metadata:
+  name: my-unique-broken-mapping.local-test.dev
+  namespace: knative-map-test
+spec:
+  ref:
+    name: non-existent-service
+    kind: Service
+    apiVersion: serving.knative.dev/v1

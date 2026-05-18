@@ -37,24 +37,37 @@ interface GlanceProps {
 export function RevisionGlance({ node }: GlanceProps) {
   const kubeObject = node.kubeObject;
   const isKnativeRevision =
-    kubeObject?.kind === KRevision.kind &&
-    typeof kubeObject?.apiVersion === 'string' &&
-    kubeObject.apiVersion.startsWith('serving.knative.dev/');
+    kubeObject instanceof KRevision ||
+    (kubeObject?.kind === KRevision.kind &&
+      typeof kubeObject?.apiVersion === 'string' &&
+      kubeObject.apiVersion.startsWith('serving.knative.dev/'));
 
   if (isKnativeRevision) {
     const rev = kubeObject as KRevision;
     const readyStatus = rev.isReady ? 'True' : 'False';
-    const trafficStr = node.traffic?.length
-      ? node.traffic.map((t: any) => `${t.percent || 0}%${t.tag ? ` (${t.tag})` : ''}`).join(', ')
-      : null;
+
+    let trafficStr: string | null = null;
+    let tagsStr: string | null = null;
+
+    if (node.traffic?.length) {
+      const percents: string[] = [];
+      const tags: string[] = [];
+      for (const t of node.traffic) {
+        percents.push(`${t.percent || 0}%`);
+        if (t.tag) tags.push(t.tag);
+      }
+      trafficStr = percents.join(', ');
+      tagsStr = tags.length ? tags.join(', ') : null;
+    }
 
     return (
       <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="revision-glance">
         <StatusLabel status={rev.isReady ? 'success' : 'error'}>Ready: {readyStatus}</StatusLabel>
-        {rev.parentService && <StatusLabel status="">Service: {rev.parentService}</StatusLabel>}
-        {trafficStr && <StatusLabel status="">Traffic: {trafficStr}</StatusLabel>}
+        {rev.parentService && <StatusLabel>Service: {rev.parentService}</StatusLabel>}
+        {trafficStr && <StatusLabel>Traffic: {trafficStr}</StatusLabel>}
+        {tagsStr && <StatusLabel>Tags: {tagsStr}</StatusLabel>}
         {rev.primaryImage && (
-          <StatusLabel status="">
+          <StatusLabel>
             Image: {rev.primaryImage.split('/').pop()?.split('@')[0] || rev.primaryImage}
           </StatusLabel>
         )}

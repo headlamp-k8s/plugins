@@ -1,0 +1,24 @@
+# Step 2: Apply this AFTER v1 is ready. Creates revision v2 but pins
+#         100% traffic to v1 (stable) and 0% to v2 (canary).
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: rollback-service
+  namespace: knative-map-test
+spec:
+  template:
+    metadata:
+      name: rollback-service-v2
+    spec:
+      containers:
+        - image: gcr.io/knative-samples/helloworld-go
+          env:
+            - name: TARGET
+              value: "v2"
+  traffic:
+    - revisionName: rollback-service-v1
+      percent: 100
+      tag: stable
+    - revisionName: rollback-service-v2
+      percent: 0
+      tag: canary
