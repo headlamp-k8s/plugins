@@ -1,10 +1,8 @@
 import {
-  ConditionsTable,
+  ConditionsSection,
+  DetailsGrid,
   Link,
-  MainInfoSection,
-  SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import {
   Box,
   Card,
@@ -21,7 +19,6 @@ import {
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { ResumeAction, SuspendAction } from '../actions';
-import { ObjectEventsRenderer } from '../helpers';
 import FlaggerAvailabilityCheck, { useCanary } from './availabilitycheck';
 import CanaryStatus from './canarystatus';
 
@@ -35,43 +32,40 @@ export default function CanaryDetails() {
   );
 }
 
-function CanaryDetailsRenderer({ resource }) {
+function CanaryDetailsRenderer({ resource }: { resource: any }) {
   const { namespace, name } = useParams<{ name: string; namespace: string }>();
-  const [cr, setCr] = React.useState(null);
 
   const resourceClass = React.useMemo(() => {
     return resource.makeCRClass();
   }, [resource]);
 
-  resourceClass.useApiGet(setCr, name, namespace);
-
-  const [events] = Event.useList({
-    namespace,
-    fieldSelector: `involvedObject.name=${name},involvedObject.kind=Canary`,
-  });
-
-  if (!cr) return null;
-
-  const targetRef = cr?.jsonData?.spec?.targetRef || {};
-  const analysis = cr?.jsonData?.spec?.analysis || {};
-  const service = cr?.jsonData?.spec?.service || {};
-
   return (
-    <>
-      <MainInfoSection
-        resource={cr}
-        extraInfo={[
+    <DetailsGrid
+      resourceType={resourceClass}
+      name={name}
+      namespace={namespace}
+      withEvents
+      actions={resource => {
+        if (!resource) return [];
+        return [<SuspendAction resource={resource} />, <ResumeAction resource={resource} />];
+      }}
+      extraInfo={item => {
+        if (!item) return [];
+        const targetRef = item.jsonData?.spec?.targetRef || {};
+        const analysis = item.jsonData?.spec?.analysis || {};
+
+        const info: any[] = [
           {
             name: 'Suspend',
-            value: cr?.jsonData?.spec?.suspend ? 'True' : 'False',
+            value: item.jsonData?.spec?.suspend ? 'True' : 'False',
           },
           {
             name: 'Status',
-            value: <CanaryStatus status={cr?.jsonData?.status?.phase || 'Unknown'} />,
+            value: <CanaryStatus status={item.jsonData?.status?.phase || 'Unknown'} />,
           },
           {
             name: 'Service',
-            value: service.name || '-',
+            value: item.jsonData?.spec?.service?.name || '-',
           },
           {
             name: 'Target',
@@ -85,7 +79,7 @@ function CanaryDetailsRenderer({ resource }) {
                     routeName={`${targetRef.kind.toLowerCase()}`}
                     params={{
                       name: targetRef.name,
-                      namespace: targetRef.namespace || cr?.jsonData?.metadata?.namespace,
+                      namespace: targetRef.namespace || item.jsonData?.metadata?.namespace,
                     }}
                   >
                     {targetRef.name}
@@ -115,16 +109,20 @@ function CanaryDetailsRenderer({ resource }) {
             name: 'Webhooks',
             value: analysis?.webhooks ? <WebhooksSection webhooks={analysis.webhooks} /> : '-',
           },
-        ]}
-        actions={[<SuspendAction resource={cr} />, <ResumeAction resource={cr} />]}
-      />
+        ];
 
-      <SectionBox title="Conditions">
-        <ConditionsTable resource={cr?.jsonData} />
-      </SectionBox>
-
-      <ObjectEventsRenderer events={events?.map(event => new Event(event)) || []} />
-    </>
+        return info;
+      }}
+      extraSections={item => {
+        if (!item) return [];
+        return [
+          {
+            id: 'flagger.canary-conditions',
+            section: <ConditionsSection resource={item.jsonData} />,
+          },
+        ];
+      }}
+    />
   );
 }
 
