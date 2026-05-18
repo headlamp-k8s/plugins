@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { K8s, Router, Utils } from '@kinvolk/headlamp-plugin/lib';
+import { AuthVisible } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   ActionButton,
   Link,
@@ -832,6 +833,7 @@ function FluxOverviewChart({ resourceClass }) {
 }
 
 function Controllers({ controllers }) {
+  const history = useHistory();
   return (
     <Table
       data={controllers}
@@ -856,6 +858,51 @@ function Controllers({ controllers }) {
         {
           header: 'Image',
           accessorFn: item => <SourceLink url={item.spec.containers[0].image} />,
+        },
+        {
+          header: 'Actions',
+          Cell: ({ row: { original: item } }) => (
+            <Box display="flex" gap={1}>
+              <AuthVisible
+                item={K8s.ResourceClasses.Pod}
+                authVerb="get"
+                subresource="log"
+                namespace={item.metadata.namespace}
+              >
+                <ActionButton
+                  icon="mdi:text-box-search-outline"
+                  description="Logs"
+                  onClick={() => {
+                    const url = Router.createRouteURL('podLogs', {
+                      namespace: item.metadata.namespace,
+                      name: item.metadata.name,
+                      container: item.spec.containers[0].name,
+                    });
+                    history.push(url);
+                  }}
+                />
+              </AuthVisible>
+              <AuthVisible
+                item={K8s.ResourceClasses.Pod}
+                authVerb="create"
+                subresource="exec"
+                namespace={item.metadata.namespace}
+              >
+                <ActionButton
+                  icon="mdi:terminal"
+                  description="Terminal"
+                  onClick={() => {
+                    const url = Router.createRouteURL('podTerminal', {
+                      namespace: item.metadata.namespace,
+                      name: item.metadata.name,
+                      container: item.spec.containers[0].name,
+                    });
+                    history.push(url);
+                  }}
+                />
+              </AuthVisible>
+            </Box>
+          ),
         },
       ]}
     />
