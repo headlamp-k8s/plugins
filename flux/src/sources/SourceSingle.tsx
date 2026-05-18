@@ -1,7 +1,7 @@
 import {
-  ConditionsTable,
+  ConditionsSection,
   DateLabel,
-  MainInfoSection,
+  DetailsGrid,
   NameValueTable,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
@@ -18,7 +18,6 @@ import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import { getSourceClassByPluralName } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
-import { ObjectEvents } from '../helpers/index';
 
 export function FluxSourceDetailView(props: {
   name?: string;
@@ -42,92 +41,93 @@ export function FluxSourceDetailView(props: {
     return <Flux404 message={`Unknown type ${pluralName}`} />;
   }
 
-  return <SourceDetailView name={name} namespace={namespace} resourceClass={resourceClass} />;
-}
-
-function SourceDetailView(props) {
-  const { name, namespace, resourceClass } = props;
-  const [resource, setResource] = React.useState(null);
-
-  resourceClass.useApiGet(setResource, name, namespace);
-
-  function prepareExtraInfo() {
-    const interval = resource?.jsonData.spec?.interval;
-    const extraInfo = [
-      {
-        name: 'Status',
-        value: <StatusLabel item={resource} />,
-      },
-      {
-        name: 'Interval',
-        value: interval,
-      },
-      {
-        name: 'Ref',
-        value: resource?.jsonData.spec?.ref && JSON.stringify(resource?.jsonData.spec?.ref),
-      },
-      {
-        name: 'Timeout',
-        value: resource?.jsonData.spec?.timeout,
-      },
-      {
-        name: 'URL',
-        value: <Link url={resource?.jsonData.spec?.url} />,
-        hide: !resource?.jsonData.spec?.url,
-      },
-      {
-        name: 'Chart',
-        hide: !resource?.jsonData.spec?.chart,
-        value: resource?.jsonData.spec?.chart,
-      },
-      {
-        name: 'Source Ref',
-        hide: !resource?.jsonData.spec?.sourceRef,
-        value:
-          resource?.jsonData.spec?.sourceRef && JSON.stringify(resource?.jsonData.spec?.sourceRef),
-      },
-      {
-        name: 'Version',
-        value: resource?.jsonData.spec?.version,
-        hide: !resource?.jsonData.spec?.version,
-      },
-      {
-        name: 'Suspend',
-        value: resource?.jsonData.spec?.suspend ? 'True' : 'False',
-      },
-    ];
-
-    if (!resource?.jsonData.spec?.suspend && resource?.jsonData.spec?.interval) {
-      extraInfo.push({
-        name: 'Next Reconciliation',
-        value: <RemainingTimeDisplay item={resource} />,
-      });
-    }
-
-    return extraInfo;
-  }
-
   return (
-    <>
-      <MainInfoSection
-        resource={resource}
-        actions={[
+    <DetailsGrid
+      resourceType={resourceClass}
+      name={name}
+      namespace={namespace}
+      withEvents
+      actions={resource => {
+        if (!resource) return [];
+        return [
           <SyncAction resource={resource} />,
           <SuspendAction resource={resource} />,
           <ResumeAction resource={resource} />,
           <ForceReconciliationAction resource={resource} />,
-        ]}
-        extraInfo={prepareExtraInfo()}
-      />
-      {resource && <ObjectEvents namespace={namespace} name={name} resourceClass={resourceClass} />}
-      {resource && (
-        <SectionBox title="Conditions">
-          <ConditionsTable resource={resource?.jsonData} showLastUpdate={false} />
-        </SectionBox>
-      )}
+        ];
+      }}
+      extraInfo={resource => {
+        if (!resource) return [];
+        const info: any[] = [
+          {
+            name: 'Status',
+            value: <StatusLabel item={resource} />,
+          },
+          {
+            name: 'Interval',
+            value: resource.jsonData.spec?.interval,
+          },
+          {
+            name: 'Ref',
+            value: resource.jsonData.spec?.ref && JSON.stringify(resource.jsonData.spec?.ref),
+          },
+          {
+            name: 'Timeout',
+            value: resource.jsonData.spec?.timeout,
+          },
+          {
+            name: 'URL',
+            value: <Link url={resource.jsonData.spec?.url} />,
+            hide: !resource.jsonData.spec?.url,
+          },
+          {
+            name: 'Chart',
+            hide: !resource.jsonData.spec?.chart,
+            value: resource.jsonData.spec?.chart,
+          },
+          {
+            name: 'Source Ref',
+            hide: !resource.jsonData.spec?.sourceRef,
+            value:
+              resource.jsonData.spec?.sourceRef &&
+              JSON.stringify(resource.jsonData.spec?.sourceRef),
+          },
+          {
+            name: 'Version',
+            value: resource.jsonData.spec?.version,
+            hide: !resource.jsonData.spec?.version,
+          },
+          {
+            name: 'Suspend',
+            value: resource.jsonData.spec?.suspend ? 'True' : 'False',
+          },
+        ];
 
-      {resource && <ArtifactTable artifact={resource?.jsonData?.status?.artifact} />}
-    </>
+        if (!resource.jsonData.spec?.suspend && resource.jsonData.spec?.interval) {
+          info.push({
+            name: 'Next Reconciliation',
+            value: <RemainingTimeDisplay item={resource} />,
+          });
+        }
+
+        return info;
+      }}
+      extraSections={resource => {
+        if (!resource) return [];
+        return [
+          {
+            id: 'flux.source-artifact',
+            section: resource.jsonData?.status?.artifact && (
+              <ArtifactTable artifact={resource.jsonData.status.artifact} />
+            ),
+          },
+          {
+            id: 'flux.source-conditions',
+            section: <ConditionsSection resource={resource.jsonData} />,
+          },
+        ];
+      }}
+    />
   );
 }
 
