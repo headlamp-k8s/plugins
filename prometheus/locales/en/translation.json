@@ -57,6 +57,7 @@
   "memory": "memory",
   "receive": "receive",
   "transmit": "transmit",
+  "metric chooser": "metric chooser",
   "Invalid Address Format": "Invalid Address Format",
   "Testing Connection": "Testing Connection",
   "Connection successful!": "Connection successful!",

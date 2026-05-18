@@ -193,6 +193,7 @@ const ChartEnabledKinds = [
   'ScaledJob',
   'NodePool',
   'NodeClaim',
+  'Kafka',
 ];
 
 /**
