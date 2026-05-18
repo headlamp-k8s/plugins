@@ -16,11 +16,14 @@
 
 import { Icon } from '@iconify/react';
 import {
+  K8s,
   registerKindIcon,
   registerKubeObjectGlance,
   registerMapSource,
   registerRoute,
   registerSidebarEntry,
+  registerSidebarEntryFilter,
+  Utils,
 } from '@kinvolk/headlamp-plugin/lib';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
@@ -47,6 +50,79 @@ function withQueryClient(Component: React.ComponentType) {
     );
   });
 }
+
+// Track whether Knative CRDs exist per cluster to hide sidebar.
+const knativeInstalledByCluster: Record<string, boolean> = {};
+const lastCheckedAt: Record<string, number> = {};
+const inFlight: Record<string, boolean> = {};
+const CHECK_TTL_MS = 30 * 1000;
+
+/**
+ * Checks if Knative is installed on the given cluster by probing for the
+ * core Knative Serving CRD ('services.serving.knative.dev').
+ * Uses a TTL-based cache and cancels the underlying Kubernetes watch to
+ * prevent socket/memory leaks.
+ *
+ * @param cluster The name of the cluster to check.
+ */
+function checkKnativeInstalled(cluster: string) {
+  const now = Date.now();
+  const fresh = now - (lastCheckedAt[cluster] ?? 0) < CHECK_TTL_MS;
+  if (inFlight[cluster] || fresh) {
+    return;
+  }
+  inFlight[cluster] = true;
+
+  let cancelFn: (() => void) | null = null;
+  let settled = false;
+
+  function settle(installed: boolean) {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    knativeInstalledByCluster[cluster] = installed;
+    lastCheckedAt[cluster] = Date.now();
+    inFlight[cluster] = false;
+
+    if (cancelFn) {
+      cancelFn();
+    }
+  }
+
+  const getFn = K8s.ResourceClasses.CustomResourceDefinition.apiGet(
+    () => settle(true),
+    'services.serving.knative.dev',
+    undefined,
+    () => settle(false),
+    { cluster }
+  );
+
+  getFn()
+    .then(cancel => {
+      cancelFn = cancel;
+      if (settled) {
+        cancelFn();
+      }
+    })
+    .catch(() => {
+      settle(false);
+    });
+}
+
+registerSidebarEntryFilter(entry => {
+  if (entry.name !== 'knative' && entry.parent !== 'knative') {
+    return entry;
+  }
+
+  const cluster = Utils.getCluster() ?? '';
+  checkKnativeInstalled(cluster);
+
+  if (knativeInstalledByCluster[cluster] === false) {
+    return null;
+  }
+  return entry;
+});
 
 // Sidebar entries for Knative
 registerSidebarEntry({
