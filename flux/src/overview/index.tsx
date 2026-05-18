@@ -1,7 +1,9 @@
 import { Icon } from '@iconify/react';
 import { K8s, Router, Utils } from '@kinvolk/headlamp-plugin/lib';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
+  AuthVisible,
   Link,
   NameValueTable,
   SectionBox,
@@ -177,6 +179,7 @@ function FluxHealthBanner({
   namespace: string | undefined;
 }) {
   const health = useFluxHealth(controllers, allResources, namespace);
+  const { t } = useTranslation();
 
   // Don't show the banner if no Flux resources exist at all.
   const totalResources = allResources.reduce((sum, r) => sum + (r.items?.length ?? 0), 0);
@@ -190,7 +193,7 @@ function FluxHealthBanner({
         <StatusLabel status="success">
           <Box display="flex" alignItems="center" gap={0.5}>
             <Icon icon="mdi:check-circle" width={18} height={18} />
-            All reconcilers healthy
+            {t('All reconcilers healthy')}
           </Box>
         </StatusLabel>
       ) : (
@@ -207,6 +210,7 @@ function FluxHealthBanner({
 
 export function FluxOverview() {
   const history = useHistory();
+  const { t } = useTranslation();
   const [sortFilter, setSortFilter] = useState(() => store.get()?.overviewSortFilter ?? 'failed');
   const [showFilter, setShowFilter] = useState(
     () => store.get()?.overviewShowFilter ?? 'configured'
@@ -391,18 +395,18 @@ export function FluxOverview() {
   // we'd briefly render "Flux is not installed" on clusters where it is.
   if (fluxCheck.isFluxCheckLoaded && !fluxCheck.hasFluxCRDs) {
     return (
-      <SectionBox title="Flux Overview">
+      <SectionBox title={t('Flux Overview')}>
         <Box p={3} display="flex" flexDirection="column" alignItems="center" gap={2}>
           <Icon icon="simple-icons:flux" width={48} height={48} />
-          <Typography variant="h6">Flux is not installed</Typography>
+          <Typography variant="h6">{t('Flux is not installed')}</Typography>
           <Typography variant="body2" color="text.secondary">
-            Flux is a set of continuous delivery solutions for Kubernetes.{' '}
+            {t('Flux is a set of continuous delivery solutions for Kubernetes.')}{' '}
             <a
               href="https://fluxcd.io/flux/installation/"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Learn how to install Flux
+              {t('Learn how to install Flux')}
             </a>
           </Typography>
         </Box>
@@ -413,32 +417,32 @@ export function FluxOverview() {
   return (
     <>
       <SectionBox
-        title="Flux Overview"
+        title={t('Flux Overview')}
         headerProps={{
           actions: [
             <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="sort">
-              <InputLabel>Sort By</InputLabel>
-              <Select value={sortFilter} label="Sort By" onChange={handleSortFilterChange}>
-                <MenuItem value="failed">Most Failed First</MenuItem>
-                <MenuItem value="failed-asc">Least Failed First</MenuItem>
-                <MenuItem value="total">Most Total Resources</MenuItem>
-                <MenuItem value="total-asc">Least Total Resources</MenuItem>
-                <MenuItem value="success">Most Successful</MenuItem>
-                <MenuItem value="success-asc">Least Successful</MenuItem>
-                <MenuItem value="alphabetical">Alphabetical A-Z</MenuItem>
-                <MenuItem value="alphabetical-desc">Alphabetical Z-A</MenuItem>
+              <InputLabel>{t('Sort By')}</InputLabel>
+              <Select value={sortFilter} label={t('Sort By')} onChange={handleSortFilterChange}>
+                <MenuItem value="failed">{t('Most Failed First')}</MenuItem>
+                <MenuItem value="failed-asc">{t('Least Failed First')}</MenuItem>
+                <MenuItem value="total">{t('Most Total Resources')}</MenuItem>
+                <MenuItem value="total-asc">{t('Least Total Resources')}</MenuItem>
+                <MenuItem value="success">{t('Most Successful')}</MenuItem>
+                <MenuItem value="success-asc">{t('Least Successful')}</MenuItem>
+                <MenuItem value="alphabetical">{t('Alphabetical A-Z')}</MenuItem>
+                <MenuItem value="alphabetical-desc">{t('Alphabetical Z-A')}</MenuItem>
               </Select>
             </FormControl>,
             <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="show">
-              <InputLabel>Show</InputLabel>
-              <Select value={showFilter} label="Show" onChange={handleShowFilterChange}>
-                <MenuItem value="configured">Configured Only</MenuItem>
-                <MenuItem value="all">All Resources</MenuItem>
+              <InputLabel>{t('Show')}</InputLabel>
+              <Select value={showFilter} label={t('Show')} onChange={handleShowFilterChange}>
+                <MenuItem value="configured">{t('Configured Only')}</MenuItem>
+                <MenuItem value="all">{t('All Resources')}</MenuItem>
               </Select>
             </FormControl>,
             <ActionButton
               key="settings"
-              description="Flux Settings"
+              description={t('Flux Settings')}
               icon="mdi:cog"
               onClick={() => {
                 const settingsUrl = Router.createRouteURL('pluginSettings', {
@@ -463,11 +467,11 @@ export function FluxOverview() {
           ))}
         </Box>
       </SectionBox>
-      <SectionBox title="Flux Checks">
+      <SectionBox title={t('Flux Checks')}>
         <Accordion>
           <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
             <Box p={1} sx={{ display: 'flex', alignItems: 'center' }} gap={1}>
-              <Box>Version Information</Box>
+              <Box>{t('Version Information')}</Box>
               <Box>
                 <StatusLabel status={!!fluxCheck.version ? 'success' : 'warning'}>
                   {fluxCheck.version || 'Unknown'}
@@ -483,7 +487,7 @@ export function FluxOverview() {
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
-                    Bootstrapped
+                    {t('Bootstrapped')}
                   </Box>{' '}
                 </StatusLabel>
               ) : (
@@ -492,7 +496,7 @@ export function FluxOverview() {
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:close" width={16} height={16} />
                     </Box>{' '}
-                    Not Bootstrapped
+                    {t('Not Bootstrapped')}
                   </Box>
                 </StatusLabel>
               )}
@@ -502,7 +506,7 @@ export function FluxOverview() {
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
-                    Distribution: {fluxCheck.distribution}
+                    {t('Distribution')}: {fluxCheck.distribution}
                   </Box>{' '}
                 </StatusLabel>
               )}
@@ -512,7 +516,7 @@ export function FluxOverview() {
         <Accordion>
           <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
             <Box p={1}>
-              <Box>Controllers</Box>
+              <Box>{t('Controllers')}</Box>
               {controllers?.length > 0 &&
                 (controllers?.every(controller => controller.status?.phase === 'Running') ? (
                   <StatusLabel status="success">
@@ -520,7 +524,7 @@ export function FluxOverview() {
                       <Box mt={0.2} mr={0.1}>
                         <Icon icon="mdi:check" width={16} height={16} />
                       </Box>
-                      All Controllers Ready
+                      {t('All Controllers Ready')}
                     </Box>{' '}
                   </StatusLabel>
                 ) : (
@@ -529,7 +533,7 @@ export function FluxOverview() {
                       <Box mt={0.2} mr={0.1}>
                         <Icon icon="mdi:close" width={16} height={16} />
                       </Box>{' '}
-                      Some Controllers Are Not Ready
+                      {t('Some Controllers Are Not Ready')}
                     </Box>
                   </StatusLabel>
                 ))}
@@ -544,14 +548,14 @@ export function FluxOverview() {
         <Accordion>
           <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
             <Box p={1}>
-              <Box>CRDs</Box>
+              <Box>{t('CRDs')}</Box>
               {fluxCheck.allCrdsSuccessful ? (
                 <StatusLabel status="success">
                   <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
-                    All Checks Passed
+                    {t('All Checks Passed')}
                   </Box>{' '}
                 </StatusLabel>
               ) : (
@@ -560,7 +564,7 @@ export function FluxOverview() {
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:close" width={16} height={16} />
                     </Box>{' '}
-                    Some CRDs Are Not Ready
+                    {t('Some CRDs Are Not Ready')}
                   </Box>
                 </StatusLabel>
               )}
@@ -597,6 +601,7 @@ declare module '@mui/material/styles' {
 function FluxOverviewChart({ resourceClass }) {
   const [crds] = resourceClass.useList();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   function prepareLink(name) {
     switch (name) {
@@ -637,35 +642,35 @@ function FluxOverviewChart({ resourceClass }) {
   function prepareName(name) {
     switch (name) {
       case 'externalartifacts':
-        return 'External Artifacts';
+        return t('External Artifacts');
       case 'gitrepositories':
-        return 'Git Repositories';
+        return t('Git Repositories');
       case 'ocirepositories':
-        return 'OCI Repositories';
+        return t('OCI Repositories');
       case 'buckets':
-        return 'Buckets';
+        return t('Buckets');
       case 'helmrepositories':
-        return 'Helm Repositories';
+        return t('Helm Repositories');
       case 'helmcharts':
-        return 'Helm Charts';
+        return t('Helm Charts');
       case 'kustomizations':
-        return 'Kustomizations';
+        return t('Kustomizations');
       case 'helmreleases':
-        return 'Helm Releases';
+        return t('Helm Releases');
       case 'alerts':
-        return 'Alerts';
+        return t('Alerts');
       case 'providers':
-        return 'Providers';
+        return t('Providers');
       case 'receivers':
-        return 'Receivers';
+        return t('Receivers');
       case 'imagerepositories':
-        return 'Image Repositories';
+        return t('Image Repositories');
       case 'imageupdateautomations':
-        return 'Image Update Automations';
+        return t('Image Update Automations');
       case 'imagepolicies':
-        return 'Image Policies';
+        return t('Image Policies');
       case 'terraforms':
-        return 'Terraforms';
+        return t('Terraforms');
     }
 
     return '';
@@ -783,24 +788,16 @@ function FluxOverviewChart({ resourceClass }) {
           </Box>
           <Box sx={{ display: 'flex', flexDirection: 'column', mt: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-              <Box>
-                {success}/{total} running
-              </Box>
+              <Box>{t('{{success}}/{{total}} running', { success, total })}</Box>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-              <Box>
-                {failed}/{total} failed
-              </Box>
+              <Box>{t('{{failed}}/{{total}} failed', { failed, total })}</Box>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-              <Box>
-                {suspended}/{total} suspended
-              </Box>
+              <Box>{t('{{suspended}}/{{total}} suspended', { suspended, total })}</Box>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box>
-                {processing}/{total} processing
-              </Box>
+              <Box>{t('{{processing}}/{{total}} processing', { processing, total })}</Box>
             </Box>
           </Box>
         </Box>
@@ -832,6 +829,8 @@ function FluxOverviewChart({ resourceClass }) {
 }
 
 function Controllers({ controllers }) {
+  const { t } = useTranslation();
+  const history = useHistory();
   return (
     <Table
       data={controllers}
@@ -841,7 +840,7 @@ function Controllers({ controllers }) {
           routeName: 'pod',
         },
         {
-          header: 'Namespace',
+          header: t('Namespace'),
           accessorKey: 'metadata.namespace',
           Cell: ({ row: { original: item } }) => (
             <Link routeName="namespace" params={{ name: item.metadata.namespace }}>
@@ -850,12 +849,57 @@ function Controllers({ controllers }) {
           ),
         },
         {
-          header: 'Status',
+          header: t('Status'),
           accessorFn: item => item?.status.phase,
         },
         {
-          header: 'Image',
+          header: t('Image'),
           accessorFn: item => <SourceLink url={item.spec.containers[0].image} />,
+        },
+        {
+          header: t('Actions'),
+          Cell: ({ row: { original: item } }) => (
+            <Box display="flex" gap={1}>
+              <AuthVisible
+                item={K8s.ResourceClasses.Pod}
+                authVerb="get"
+                subresource="log"
+                namespace={item.metadata.namespace}
+              >
+                <ActionButton
+                  icon="mdi:text-box-search-outline"
+                  description={t('Logs')}
+                  onClick={() => {
+                    const url = Router.createRouteURL('podLogs', {
+                      namespace: item.metadata.namespace,
+                      name: item.metadata.name,
+                      container: item.spec.containers[0].name,
+                    });
+                    history.push(url);
+                  }}
+                />
+              </AuthVisible>
+              <AuthVisible
+                item={K8s.ResourceClasses.Pod}
+                authVerb="create"
+                subresource="exec"
+                namespace={item.metadata.namespace}
+              >
+                <ActionButton
+                  icon="mdi:terminal"
+                  description={t('Terminal')}
+                  onClick={() => {
+                    const url = Router.createRouteURL('podTerminal', {
+                      namespace: item.metadata.namespace,
+                      name: item.metadata.name,
+                      container: item.spec.containers[0].name,
+                    });
+                    history.push(url);
+                  }}
+                />
+              </AuthVisible>
+            </Box>
+          ),
         },
       ]}
     />
