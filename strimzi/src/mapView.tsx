@@ -6,11 +6,12 @@ import { KafkaConnectDetail } from './components/connects/Detail';
 import { KafkaConnectorDetail } from './components/connectors/Detail';
 import { KafkaTopicDetail } from './components/topics/Detail';
 import { KafkaUserDetail } from './components/users/Detail';
-import { Kafka } from './resources/kafka';
-import { KafkaConnect } from './resources/kafkaConnect';
-import { KafkaConnector } from './resources/kafkaConnector';
-import { KafkaTopic } from './resources/kafkaTopic';
-import { KafkaUser } from './resources/kafkaUser';
+import { useStrimziApiVersions } from './hooks/useStrimziApiVersions';
+import { Kafka, KafkaV1 } from './resources/kafka';
+import { KafkaConnect, KafkaConnectV1 } from './resources/kafkaConnect';
+import { KafkaConnector, KafkaConnectorV1 } from './resources/kafkaConnector';
+import { KafkaTopic, KafkaTopicV1 } from './resources/kafkaTopic';
+import { KafkaUser, KafkaUserV1 } from './resources/kafkaUser';
 
 const STRIMZI_BLUE = 'rgb(0, 132, 255)';
 const CLUSTER_LABEL = 'strimzi.io/cluster';
@@ -60,12 +61,21 @@ const userIcon = <Icon icon="mdi:account-key" width="100%" height="100%" color={
 const connectIcon = <Icon icon="mdi:transit-connection-variant" width="100%" height="100%" color={STRIMZI_BLUE} />;
 const connectorIcon = <Icon icon="mdi:swap-horizontal" width="100%" height="100%" color={STRIMZI_BLUE} />;
 
+/**
+ * Strimzi 1.0+ retires the v1beta2 API and serves the CRDs as v1. Each map
+ * source resolves the API version the current cluster actually serves (via
+ * the shared `useStrimziApiVersions` probe) and picks the matching KubeObject
+ * class, the same way the list and detail views do. Pinning v1beta2 here
+ * would leave the map empty on v1-only clusters.
+ */
 const kafkaSource = {
   id: 'strimzi-kafkas',
   label: 'Kafka clusters',
   icon: kafkaIcon,
   useData() {
-    const [kafkas] = Kafka.useList();
+    const { kafka: kafkaVersion } = useStrimziApiVersions();
+    const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
+    const [kafkas] = KafkaClass.useList();
     return useMemo(() => {
       if (!kafkas) return null;
       const KafkaNodeDetails = makeDetailsComponent(KafkaDetail);
@@ -85,8 +95,11 @@ const kafkaTopicSource = {
   label: 'Kafka topics',
   icon: topicIcon,
   useData() {
-    const [topics] = KafkaTopic.useList();
-    const [kafkas] = Kafka.useList();
+    const { kafka: kafkaVersion } = useStrimziApiVersions();
+    const KafkaTopicClass = kafkaVersion === 'v1' ? KafkaTopicV1 : KafkaTopic;
+    const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
+    const [topics] = KafkaTopicClass.useList();
+    const [kafkas] = KafkaClass.useList();
     return useMemo(() => {
       if (!topics) return null;
       const TopicNodeDetails = makeDetailsComponent(KafkaTopicDetail);
@@ -114,8 +127,11 @@ const kafkaUserSource = {
   label: 'Kafka users',
   icon: userIcon,
   useData() {
-    const [users] = KafkaUser.useList();
-    const [kafkas] = Kafka.useList();
+    const { kafka: kafkaVersion } = useStrimziApiVersions();
+    const KafkaUserClass = kafkaVersion === 'v1' ? KafkaUserV1 : KafkaUser;
+    const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
+    const [users] = KafkaUserClass.useList();
+    const [kafkas] = KafkaClass.useList();
     return useMemo(() => {
       if (!users) return null;
       const UserNodeDetails = makeDetailsComponent(KafkaUserDetail);
@@ -143,7 +159,9 @@ const kafkaConnectSource = {
   label: 'Kafka Connect clusters',
   icon: connectIcon,
   useData() {
-    const [connects] = KafkaConnect.useList();
+    const { kafka: kafkaVersion } = useStrimziApiVersions();
+    const KafkaConnectClass = kafkaVersion === 'v1' ? KafkaConnectV1 : KafkaConnect;
+    const [connects] = KafkaConnectClass.useList();
     return useMemo(() => {
       if (!connects) return null;
       const ConnectNodeDetails = makeDetailsComponent(KafkaConnectDetail);
@@ -163,8 +181,11 @@ const kafkaConnectorSource = {
   label: 'Kafka connectors',
   icon: connectorIcon,
   useData() {
-    const [connectors] = KafkaConnector.useList();
-    const [connects] = KafkaConnect.useList();
+    const { kafka: kafkaVersion } = useStrimziApiVersions();
+    const KafkaConnectorClass = kafkaVersion === 'v1' ? KafkaConnectorV1 : KafkaConnector;
+    const KafkaConnectClass = kafkaVersion === 'v1' ? KafkaConnectV1 : KafkaConnect;
+    const [connectors] = KafkaConnectorClass.useList();
+    const [connects] = KafkaConnectClass.useList();
     return useMemo(() => {
       if (!connectors) return null;
       const ConnectorNodeDetails = makeDetailsComponent(KafkaConnectorDetail);
