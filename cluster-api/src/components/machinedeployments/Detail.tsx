@@ -15,6 +15,7 @@ import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { MachineDeployment } from '../../resources/machinedeployment';
 import { useCapiApiVersion } from '../../utils/capiVersion';
+import { getMachineDeploymentActions } from '../actions';
 import {
   OwnedMachinesSection,
   renderReplicas,
@@ -205,6 +206,7 @@ function MachineDeploymentDetailContentWithData(
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
+      actions={resource => (resource ? getMachineDeploymentActions(resource) : [])}
       extraInfo={() => extraInfo}
       extraSections={() => [
         {

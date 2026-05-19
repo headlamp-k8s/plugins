@@ -211,6 +211,7 @@ export function TopologyControlledAction() {
           userSelect: 'none',
           verticalAlign: 'middle',
           transition: 'background-color 0.15s ease',
+          mx: 1,
           '&:hover': {
             backgroundColor: 'rgba(186, 117, 23, 0.08)',
           },

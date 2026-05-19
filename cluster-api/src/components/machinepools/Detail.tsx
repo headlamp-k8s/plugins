@@ -13,6 +13,7 @@ import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { MachinePool } from '../../resources/machinepool';
 import { useCapiApiVersion } from '../../utils/capiVersion';
+import { getMachinePoolActions } from '../actions';
 import {
   OwnedMachinesSection,
   renderReplicas,
@@ -137,6 +138,7 @@ function MachinePoolDetailContentWithData({
         withEvents
         name={crName}
         namespace={namespace}
+        actions={mp => (mp ? getMachinePoolActions(mp) : [])}
         extraInfo={() => extraInfo}
         extraSections={(mp: MachinePool) => [
           {

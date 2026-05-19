@@ -65,11 +65,13 @@ export interface ChartProps {
     [key: string]: any;
   };
   CustomTooltip?: ({ active, payload, label }) => JSX.Element | null;
+  stacked?: boolean;
   subPath?: string;
 }
 
 export default function Chart(props: ChartProps) {
   const { t } = useTranslation();
+  const { stacked = true } = props;
 
   enum ChartState {
     LOADING,
@@ -142,23 +144,32 @@ export default function Chart(props: ChartProps) {
       setState(ChartState.NO_DATA);
       setMetrics([]);
     }
-    // if all the plots are in success state, set the state to success
-    else if (Object.values(fetchedMetrics).every(plot => plot.state === ChartState.SUCCESS)) {
+    // if any plot is in error state, set the state to error
+    else if (Object.values(fetchedMetrics).some(plot => plot.state === ChartState.ERROR)) {
+      setState(ChartState.ERROR);
+    }
+    // otherwise, if at least some plots are in success or no data state, set the state to success
+    else {
       // merge the data from all the plots into a single object
-      const mergedData = fetchedMetrics[Object.keys(fetchedMetrics)[0]].data.map(
-        (element, index) => {
-          const mergedElement = { timestamp: element.timestamp };
-          for (const plotName of Object.keys(fetchedMetrics)) {
-            mergedElement[plotName] = fetchedMetrics[plotName].data[index]?.y ?? null;
-          }
-          return mergedElement;
-        }
+      // use the first successful plot as the base for timestamps
+      const firstSuccessfulPlot = Object.values(fetchedMetrics).find(
+        plot => plot.state === ChartState.SUCCESS
       );
+
+      if (!firstSuccessfulPlot) {
+        setState(ChartState.NO_DATA);
+        return;
+      }
+
+      const mergedData = firstSuccessfulPlot.data.map((element, index) => {
+        const mergedElement = { timestamp: element.timestamp };
+        for (const plotName of Object.keys(fetchedMetrics)) {
+          mergedElement[plotName] = fetchedMetrics[plotName].data[index]?.y ?? null;
+        }
+        return mergedElement;
+      });
       setMetrics(mergedData);
       setState(ChartState.SUCCESS);
-    } else {
-      // default to error if any of the plots has no data or is in error state
-      setState(ChartState.ERROR);
     }
   };
 
@@ -228,7 +239,7 @@ export default function Chart(props: ChartProps) {
         {props.plots.map(plot => (
           <Area
             key={plot.name}
-            stackId="1"
+            stackId={stacked ? '1' : undefined}
             type="step"
             dataKey={plot.name}
             stroke={plot.strokeColor}
