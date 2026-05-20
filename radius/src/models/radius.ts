@@ -41,6 +41,7 @@ const RADIUS_API_INFO = [{ group: 'radapp.io', version: 'v1alpha3' }];
 export const DeploymentResourceClass = makeCustomResourceClass({
   apiInfo: RADIUS_API_INFO,
   isNamespaced: true,
+  kind: 'DeploymentResource',
   singularName: 'deploymentresource',
   pluralName: 'deploymentresources',
 });
@@ -52,6 +53,7 @@ export const DeploymentResourceClass = makeCustomResourceClass({
 export const RecipeClass = makeCustomResourceClass({
   apiInfo: RADIUS_API_INFO,
   isNamespaced: true,
+  kind: 'Recipe',
   singularName: 'recipe',
   pluralName: 'recipes',
 });
@@ -64,6 +66,7 @@ export const RecipeClass = makeCustomResourceClass({
 export const ApplicationClass = makeCustomResourceClass({
   apiInfo: RADIUS_API_INFO,
   isNamespaced: true,
+  kind: 'Application',
   singularName: 'application',
   pluralName: 'applications',
 });
@@ -71,6 +74,7 @@ export const ApplicationClass = makeCustomResourceClass({
 export const EnvironmentClass = makeCustomResourceClass({
   apiInfo: RADIUS_API_INFO,
   isNamespaced: true,
+  kind: 'Environment',
   singularName: 'environment',
   pluralName: 'environments',
 });
@@ -78,6 +82,7 @@ export const EnvironmentClass = makeCustomResourceClass({
 export const ContainerClass = makeCustomResourceClass({
   apiInfo: RADIUS_API_INFO,
   isNamespaced: true,
+  kind: 'Container',
   singularName: 'container',
   pluralName: 'containers',
 });

@@ -13,7 +13,7 @@ import React from 'react';
 import ClusterStatus from './ClusterStatus';
 import CommandCluster from './CommandCluster/CommandCluster';
 import CreateClusterPage from './CreateClusterPage';
-import MinikubeIcon from './minikube.svg';
+import MinikubeIcon from './minikube.svg?react';
 
 const DEBUG = false;
 
