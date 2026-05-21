@@ -1,4 +1,7 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { volcanoJobApiVersion } from '../utils/volcanoApi';
+import { volcanoJobTypeLabel } from '../utils/volcanoLabels';
+import { volcanoRoutePaths } from '../utils/volcanoRoutes';
 
 /**
  * Task definition inside a Volcano Job spec.
@@ -202,8 +205,6 @@ export type JobPhase =
   | 'Terminated'
   | 'Failed';
 
-const volcanoJobTypeLabel = 'volcano.sh/job-type';
-
 /**
  * Current state details for a Volcano Job.
  * @see https://github.com/volcano-sh/apis/blob/ae35b8b12bc5ccb6ff5a62fcd9dca06234197e63/pkg/apis/batch/v1alpha1/job.go#L333
@@ -279,16 +280,16 @@ export interface KubeVolcanoJob extends KubeObjectInterface {
 export class VolcanoJob extends KubeObject<KubeVolcanoJob> {
   static kind = 'VolcanoJob';
   static apiName = 'jobs';
-  static apiVersion = 'batch.volcano.sh/v1alpha1';
+  static apiVersion = volcanoJobApiVersion;
   static isNamespaced = true;
 
   static get detailsRoute() {
-    return '/volcano/jobs/:namespace/:name';
+    return volcanoRoutePaths.jobDetail;
   }
 
   static getBaseObject() {
     return {
-      apiVersion: 'batch.volcano.sh/v1alpha1',
+      apiVersion: volcanoJobApiVersion,
       kind: 'Job',
       metadata: {
         name: '',

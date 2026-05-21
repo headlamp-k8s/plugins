@@ -1,4 +1,6 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { volcanoFlowApiVersion } from '../utils/volcanoApi';
+import { volcanoRoutePaths } from '../utils/volcanoRoutes';
 import { LifecyclePolicy, TaskSpec } from './job';
 
 /**
@@ -64,16 +66,16 @@ export interface KubeVolcanoJobTemplate extends KubeObjectInterface {
 export class VolcanoJobTemplate extends KubeObject<KubeVolcanoJobTemplate> {
   static kind = 'JobTemplate';
   static apiName = 'jobtemplates';
-  static apiVersion = 'flow.volcano.sh/v1alpha1';
+  static apiVersion = volcanoFlowApiVersion;
   static isNamespaced = true;
 
   static get detailsRoute() {
-    return '/volcano/jobtemplates/:namespace/:name';
+    return volcanoRoutePaths.jobTemplateDetail;
   }
 
   static getBaseObject() {
     return {
-      apiVersion: 'flow.volcano.sh/v1alpha1',
+      apiVersion: volcanoFlowApiVersion,
       kind: 'JobTemplate',
       metadata: {
         name: '',

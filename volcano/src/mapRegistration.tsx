@@ -7,10 +7,11 @@ import {
 import { QueueGlance } from './components/map/QueueGlance';
 import { volcanoSource } from './mapView';
 import { volcanoJobApiGroup, volcanoSchedulingApiGroup } from './utils/volcanoApi';
+import { volcanoIconColor, volcanoIconName } from './volcanoIcon';
 
 const volcanoKindIcon = {
-  icon: <Icon icon="custom:volcano" width="70%" height="70%" />,
-  color: 'rgb(229, 39, 25)',
+  icon: <Icon icon={volcanoIconName} width="70%" height="70%" />,
+  color: volcanoIconColor,
 };
 
 export function registerVolcanoMapExtensions() {

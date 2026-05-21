@@ -13,59 +13,13 @@ import { VolcanoCommand } from '../../resources/command';
 import { VolcanoJob } from '../../resources/job';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { getJobStatusColor } from '../../utils/status';
+import { volcanoJobNameLabel, volcanoJobNamespaceLabel } from '../../utils/volcanoLabels';
+import { getRelatedPodGroup } from '../../utils/volcanoRelationships';
+import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { formatStringList, getPolicyRows, getTaskContainerRows, getTaskRows } from './detailRows';
 import JobCommandActionButton from './JobCommandActionButton';
 import { JobLogsHeaderButton } from './JobLogsViewer';
 import { getJobPodIssues, groupJobPodIssues, PodResource } from './pods';
-
-/**
- * Resolves the PodGroup related to a Volcano Job.
- *
- * Matching order:
- * 1) ownerReference UID match
- * 2) canonical PodGroup name `<job-name>-<job-uid>`
- * 3) legacy PodGroup name `<job-name>`
- *
- * @param job Volcano Job shown in the details page.
- * @param podGroups PodGroups listed in the same namespace.
- * @returns Related PodGroup when found; otherwise `null`.
- */
-function getRelatedPodGroup(
-  job: VolcanoJob,
-  podGroups: VolcanoPodGroup[] | null
-): VolcanoPodGroup | null {
-  if (!podGroups?.length) {
-    return null;
-  }
-
-  const byOwnerReference = podGroups.find(podGroup =>
-    podGroup.metadata.ownerReferences?.some(
-      ownerReference => ownerReference.kind === 'Job' && ownerReference.uid === job.metadata.uid
-    )
-  );
-
-  if (byOwnerReference) {
-    return byOwnerReference;
-  }
-
-  const jobName = job.metadata.name;
-  const jobUid = job.metadata.uid;
-
-  if (jobName && jobUid) {
-    const canonicalName = `${jobName}-${jobUid}`;
-    const byCanonicalName = podGroups.find(podGroup => podGroup.metadata.name === canonicalName);
-
-    if (byCanonicalName) {
-      return byCanonicalName;
-    }
-  }
-
-  if (jobName) {
-    return podGroups.find(podGroup => podGroup.metadata.name === jobName) || null;
-  }
-
-  return null;
-}
 
 /**
  * Builds the Pod Status section for the Job details page.
@@ -397,7 +351,7 @@ export default function JobDetail(props: { namespace?: string; name?: string; cl
     cluster,
     labelSelector:
       name && namespace
-        ? `volcano.sh/job-name=${name},volcano.sh/job-namespace=${namespace}`
+        ? `${volcanoJobNameLabel}=${name},${volcanoJobNamespaceLabel}=${namespace}`
         : undefined,
   });
 
@@ -432,7 +386,7 @@ export default function JobDetail(props: { namespace?: string; name?: string; cl
           {
             name: 'Queue',
             value: (
-              <Link routeName="volcano-queue-detail" params={{ name: job.queue }}>
+              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: job.queue }}>
                 {job.queue}
               </Link>
             ),
@@ -442,7 +396,7 @@ export default function JobDetail(props: { namespace?: string; name?: string; cl
             value:
               relatedPodGroup && podGroupNamespace ? (
                 <Link
-                  routeName="volcano-podgroup-detail"
+                  routeName={volcanoRouteNames.podGroupDetail}
                   params={{ namespace: podGroupNamespace, name: relatedPodGroup.metadata.name }}
                 >
                   {relatedPodGroup.metadata.name}

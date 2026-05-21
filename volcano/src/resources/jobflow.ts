@@ -1,4 +1,6 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { volcanoFlowApiVersion } from '../utils/volcanoApi';
+import { volcanoRoutePaths } from '../utils/volcanoRoutes';
 import { VolcanoJobSpec } from './job';
 
 export type JobFlowPhase = 'Pending' | 'Running' | 'Failed' | 'Terminating' | 'Succeed' | string;
@@ -206,16 +208,16 @@ export interface KubeVolcanoJobFlow extends KubeObjectInterface {
 export class VolcanoJobFlow extends KubeObject<KubeVolcanoJobFlow> {
   static kind = 'JobFlow';
   static apiName = 'jobflows';
-  static apiVersion = 'flow.volcano.sh/v1alpha1';
+  static apiVersion = volcanoFlowApiVersion;
   static isNamespaced = true;
 
   static get detailsRoute() {
-    return '/volcano/jobflows/:namespace/:name';
+    return volcanoRoutePaths.jobFlowDetail;
   }
 
   static getBaseObject() {
     return {
-      apiVersion: 'flow.volcano.sh/v1alpha1',
+      apiVersion: volcanoFlowApiVersion,
       kind: 'JobFlow',
       metadata: {
         name: '',

@@ -11,6 +11,11 @@ import { LifecyclePolicy, TaskSpec, VolcanoJob } from '../../resources/job';
 import { VolcanoJobFlow } from '../../resources/jobflow';
 import { VolcanoJobTemplate } from '../../resources/jobtemplate';
 import { getJobFlowStatusColor, getJobStatusColor } from '../../utils/status';
+import {
+  volcanoCreatedByJobFlowLabel,
+  volcanoCreatedByJobTemplateLabel,
+} from '../../utils/volcanoLabels';
+import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { VolcanoFlowInstallCheck } from '../common/CommonComponents';
 import {
   formatStringList,
@@ -18,9 +23,6 @@ import {
   getTaskContainerRows,
   getTaskRows,
 } from '../jobs/detailRows';
-
-const createdByJobTemplateLabel = 'volcano.sh/createdByJobTemplate';
-const createdByJobFlowLabel = 'volcano.sh/createdByJobFlow';
 
 function renderEmptySection(title: string, message: string) {
   return {
@@ -195,7 +197,7 @@ function getReferencedBySection(
               label: 'JobFlow',
               getter: row => (
                 <Link
-                  routeName="volcano-jobflow-detail"
+                  routeName={volcanoRouteNames.jobFlowDetail}
                   params={{
                     namespace: row.jobFlow.metadata.namespace,
                     name: row.jobFlow.metadata.name,
@@ -271,14 +273,14 @@ function getGeneratedJobsSection(
             {
               label: 'JobFlow',
               getter: row => {
-                const label = row.job?.metadata.labels?.[createdByJobFlowLabel];
+                const label = row.job?.metadata.labels?.[volcanoCreatedByJobFlowLabel];
                 if (!label) {
                   return '-';
                 }
 
                 const [namespace, name] = label.split('.', 2);
                 return namespace && name ? (
-                  <Link routeName="volcano-jobflow-detail" params={{ namespace, name }}>
+                  <Link routeName={volcanoRouteNames.jobFlowDetail} params={{ namespace, name }}>
                     {name}
                   </Link>
                 ) : (
@@ -346,7 +348,7 @@ export default function JobTemplateDetail() {
   const [generatedJobs] = VolcanoJob.useList({
     namespace,
     labelSelector:
-      namespace && name ? `${createdByJobTemplateLabel}=${namespace}.${name}` : undefined,
+      namespace && name ? `${volcanoCreatedByJobTemplateLabel}=${namespace}.${name}` : undefined,
   });
 
   return (
@@ -362,7 +364,10 @@ export default function JobTemplateDetail() {
                 {
                   name: 'Queue',
                   value: (
-                    <Link routeName="volcano-queue-detail" params={{ name: jobTemplate.queue }}>
+                    <Link
+                      routeName={volcanoRouteNames.queueDetail}
+                      params={{ name: jobTemplate.queue }}
+                    >
                       {jobTemplate.queue}
                     </Link>
                   ),

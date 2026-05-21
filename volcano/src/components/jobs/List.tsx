@@ -1,6 +1,7 @@
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { VolcanoJob } from '../../resources/job';
 import { getJobStatusColor } from '../../utils/status';
+import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { VolcanoCoreInstallCheck } from '../common/CommonComponents';
 
 /**
@@ -30,7 +31,7 @@ export default function JobList() {
             label: 'Queue',
             getValue: (job: VolcanoJob) => job.queue,
             render: (job: VolcanoJob) => (
-              <Link routeName="volcano-queue-detail" params={{ name: job.queue }}>
+              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: job.queue }}>
                 {job.queue}
               </Link>
             ),

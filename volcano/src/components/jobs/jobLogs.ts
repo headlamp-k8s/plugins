@@ -1,3 +1,5 @@
+import { volcanoJobNameLabel } from '../../utils/volcanoLabels';
+
 interface PodLike {
   metadata?: {
     name?: string;
@@ -21,7 +23,7 @@ interface PodWithPhase extends PodLike {
   };
 }
 
-export const JOB_NAME_LABEL = 'volcano.sh/job-name';
+export const JOB_NAME_LABEL = volcanoJobNameLabel;
 
 const NO_PODS_MESSAGE =
   'No pods have been created for this Job yet. It may still be pending or unschedulable. Check Pod Issues and Events.';
