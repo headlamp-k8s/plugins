@@ -45,6 +45,11 @@ import { PipelinesList } from './components/pipelines/PipelinesList';
 import { PipelinesOverview } from './components/pipelines/PipelinesOverview';
 import { PipelineVersionsDetail } from './components/pipelines/PipelineVersionsDetail';
 import { PipelineVersionsList } from './components/pipelines/PipelineVersionsList';
+import { ScheduledSparkApplicationsDetail } from './components/spark/ScheduledSparkApplicationsDetail';
+import { ScheduledSparkApplicationsList } from './components/spark/ScheduledSparkApplicationsList';
+import { SparkApplicationsDetail } from './components/spark/SparkApplicationsDetail';
+import { SparkApplicationsList } from './components/spark/SparkApplicationsList';
+import { SparkOverview } from './components/spark/SparkOverview';
 import { normalizeApiPathForDiscovery } from './hooks/useKubeflowCheck';
 
 addIcon('custom:kubeflow', {
@@ -440,25 +445,64 @@ registerSubChild(
   '/apis/trainer.kubeflow.org/v1alpha1/clustertrainingruntimes'
 );
 
-registerSubMenu(
-  'kubeflow-spark',
-  '/kubeflow/spark',
-  'kubeflow',
-  'Spark',
-  'mdi:flash',
-  '/apis/sparkoperator.k8s.io/v1beta2/sparkapplications'
-);
-registerSubChild(
-  'kubeflow-spark-apps',
-  '/kubeflow/spark/sparkapplications',
-  'kubeflow-spark',
-  'SparkApplications',
-  '/apis/sparkoperator.k8s.io/v1beta2/sparkapplications'
-);
-registerSubChild(
-  'kubeflow-spark-scheduled',
-  '/kubeflow/spark/scheduledsparkapplications',
-  'kubeflow-spark',
-  'ScheduledSparkApplications',
-  '/apis/sparkoperator.k8s.io/v1beta2/scheduledsparkapplications'
-);
+registerSidebarEntry({
+  parent: 'kubeflow',
+  name: 'kubeflow-spark',
+  label: 'Spark',
+  url: '/kubeflow/spark',
+  icon: 'mdi:flash',
+});
+
+registerRoute({
+  path: '/kubeflow/spark',
+  sidebar: 'kubeflow-spark',
+  name: 'kubeflow-spark-overview',
+  exact: true,
+  component: () => <SparkOverview />,
+});
+
+registerSidebarEntry({
+  parent: 'kubeflow-spark',
+  name: 'kubeflow-spark-applications',
+  label: 'Spark Applications',
+  url: '/kubeflow/spark/sparkapplications',
+});
+
+registerRoute({
+  path: '/kubeflow/spark/sparkapplications',
+  sidebar: 'kubeflow-spark-applications',
+  name: 'kubeflow-spark-applications-list',
+  exact: true,
+  component: () => <SparkApplicationsList />,
+});
+
+registerRoute({
+  path: '/kubeflow/spark/sparkapplications/:namespace/:name',
+  sidebar: 'kubeflow-spark-applications',
+  name: 'kubeflow-spark-applications-detail',
+  exact: true,
+  component: () => <SparkApplicationsDetail />,
+});
+
+registerSidebarEntry({
+  parent: 'kubeflow-spark',
+  name: 'kubeflow-spark-scheduled',
+  label: 'Scheduled Spark Apps',
+  url: '/kubeflow/spark/scheduledsparkapplications',
+});
+
+registerRoute({
+  path: '/kubeflow/spark/scheduledsparkapplications',
+  sidebar: 'kubeflow-spark-scheduled',
+  name: 'kubeflow-spark-scheduled-list',
+  exact: true,
+  component: () => <ScheduledSparkApplicationsList />,
+});
+
+registerRoute({
+  path: '/kubeflow/spark/scheduledsparkapplications/:namespace/:name',
+  sidebar: 'kubeflow-spark-scheduled',
+  name: 'kubeflow-spark-scheduled-detail',
+  exact: true,
+  component: () => <ScheduledSparkApplicationsDetail />,
+});
