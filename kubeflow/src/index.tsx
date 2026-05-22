@@ -17,7 +17,6 @@
 import { addIcon } from '@iconify/react';
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
-import { PlaceholderPage } from './components/common/Placeholder';
 import { KatibExperimentsDetail } from './components/katib/KatibExperimentsDetail';
 import { KatibExperimentsList } from './components/katib/KatibExperimentsList';
 import { KatibOverview } from './components/katib/KatibOverview';
@@ -50,7 +49,15 @@ import { ScheduledSparkApplicationsList } from './components/spark/ScheduledSpar
 import { SparkApplicationsDetail } from './components/spark/SparkApplicationsDetail';
 import { SparkApplicationsList } from './components/spark/SparkApplicationsList';
 import { SparkOverview } from './components/spark/SparkOverview';
-import { normalizeApiPathForDiscovery } from './hooks/useKubeflowCheck';
+import { ClusterTrainingRuntimesList } from './components/training/ClusterTrainingRuntimesList';
+import { TrainingOverview } from './components/training/TrainingOverview';
+import {
+  ClusterTrainingRuntimesDetail,
+  TrainingRuntimesDetail,
+} from './components/training/TrainingRuntimeDetails';
+import { TrainingRuntimesList } from './components/training/TrainingRuntimesList';
+import { TrainJobsDetail } from './components/training/TrainJobsDetail';
+import { TrainJobsList } from './components/training/TrainJobsList';
 
 addIcon('custom:kubeflow', {
   body: `<path fill="#4279f4" d="m35.59 43.66 2.836 70.645 51.027-65.121a4.716 4.716 0 0 1 3.164-1.774 4.705 4.705 0 0 1 3.48 1.004l31.829 25.547-10.38-45.395Zm0 0"/><path fill="#0028aa" d="M40.191 127.262h45.266l-27.793-22.297Zm0 0"/><path fill="#014bd1" d="M93.902 58.723 63.461 97.566l32.434 26.024 30.77-38.582Zm0 0"/><path fill="#bedcff" d="m27.055 36.848.004-.008 26.77-33.57L10.66 24.059 0 70.769Zm0 0"/><path fill="#6ca1ff" d="m.594 85.105 28.672 35.954-2.73-68.485Zm0 0"/><path fill="#a1c3ff" d="M109.215 20.54 67.937.66l-25.69 32.215Zm0 0"/>`,
@@ -73,58 +80,6 @@ registerRoute({
   exact: true,
   component: () => <Overview />,
 });
-
-function registerSubMenu(
-  name: string,
-  url: string,
-  parent: string,
-  label: string,
-  icon: string,
-  apiPath: string
-) {
-  registerSidebarEntry({
-    parent,
-    name,
-    label,
-    url,
-    icon,
-  });
-
-  registerRoute({
-    path: url,
-    sidebar: name,
-    name: `${name}-placeholder`,
-    exact: true,
-    component: () => (
-      <PlaceholderPage title={label} apiPath={normalizeApiPathForDiscovery(apiPath)} />
-    ),
-  });
-}
-
-function registerSubChild(
-  name: string,
-  url: string,
-  parent: string,
-  label: string,
-  apiPath: string
-) {
-  registerSidebarEntry({
-    parent,
-    name,
-    label,
-    url,
-  });
-
-  registerRoute({
-    path: url,
-    sidebar: name,
-    name: `${name}-placeholder`,
-    exact: true,
-    component: () => (
-      <PlaceholderPage title={label} apiPath={normalizeApiPathForDiscovery(apiPath)} />
-    ),
-  });
-}
 
 registerSidebarEntry({
   parent: 'kubeflow',
@@ -415,35 +370,83 @@ registerRoute({
   component: () => <KatibSuggestionsDetail />,
 });
 
-registerSubMenu(
-  'kubeflow-training',
-  '/kubeflow/training',
-  'kubeflow',
-  'Training',
-  'mdi:school',
-  '/apis/trainer.kubeflow.org/v1alpha1/trainjobs'
-);
-registerSubChild(
-  'kubeflow-training-trainjobs',
-  '/kubeflow/training/trainjobs',
-  'kubeflow-training',
-  'TrainJobs',
-  '/apis/trainer.kubeflow.org/v1alpha1/trainjobs'
-);
-registerSubChild(
-  'kubeflow-training-runtimes',
-  '/kubeflow/training/trainingruntimes',
-  'kubeflow-training',
-  'TrainingRuntimes',
-  '/apis/trainer.kubeflow.org/v1alpha1/trainingruntimes'
-);
-registerSubChild(
-  'kubeflow-training-clusterruntimes',
-  '/kubeflow/training/clustertrainingruntimes',
-  'kubeflow-training',
-  'ClusterTrainingRuntimes',
-  '/apis/trainer.kubeflow.org/v1alpha1/clustertrainingruntimes'
-);
+registerSidebarEntry({
+  parent: 'kubeflow',
+  name: 'kubeflow-training',
+  label: 'Training',
+  url: '/kubeflow/training',
+  icon: 'mdi:school',
+});
+registerRoute({
+  path: '/kubeflow/training',
+  sidebar: 'kubeflow-training',
+  name: 'kubeflow-training-overview',
+  exact: true,
+  component: () => <TrainingOverview />,
+});
+
+registerSidebarEntry({
+  parent: 'kubeflow-training',
+  name: 'kubeflow-training-trainjobs',
+  label: 'TrainJobs',
+  url: '/kubeflow/training/trainjobs',
+});
+registerRoute({
+  path: '/kubeflow/training/trainjobs',
+  sidebar: 'kubeflow-training-trainjobs',
+  name: 'kubeflow-training-trainjobs-list',
+  exact: true,
+  component: () => <TrainJobsList />,
+});
+registerRoute({
+  path: '/kubeflow/training/trainjobs/:namespace/:name',
+  sidebar: 'kubeflow-training-trainjobs',
+  name: 'kubeflow-training-trainjobs-detail',
+  exact: true,
+  component: () => <TrainJobsDetail />,
+});
+
+registerSidebarEntry({
+  parent: 'kubeflow-training',
+  name: 'kubeflow-training-runtimes',
+  label: 'TrainingRuntimes',
+  url: '/kubeflow/training/trainingruntimes',
+});
+registerRoute({
+  path: '/kubeflow/training/trainingruntimes',
+  sidebar: 'kubeflow-training-runtimes',
+  name: 'kubeflow-training-runtimes-list',
+  exact: true,
+  component: () => <TrainingRuntimesList />,
+});
+registerRoute({
+  path: '/kubeflow/training/trainingruntimes/:namespace/:name',
+  sidebar: 'kubeflow-training-runtimes',
+  name: 'kubeflow-training-runtimes-detail',
+  exact: true,
+  component: () => <TrainingRuntimesDetail />,
+});
+
+registerSidebarEntry({
+  parent: 'kubeflow-training',
+  name: 'kubeflow-training-clusterruntimes',
+  label: 'ClusterTrainingRuntimes',
+  url: '/kubeflow/training/clustertrainingruntimes',
+});
+registerRoute({
+  path: '/kubeflow/training/clustertrainingruntimes',
+  sidebar: 'kubeflow-training-clusterruntimes',
+  name: 'kubeflow-training-clusterruntimes-list',
+  exact: true,
+  component: () => <ClusterTrainingRuntimesList />,
+});
+registerRoute({
+  path: '/kubeflow/training/clustertrainingruntimes/:name',
+  sidebar: 'kubeflow-training-clusterruntimes',
+  name: 'kubeflow-training-clusterruntimes-detail',
+  exact: true,
+  component: () => <ClusterTrainingRuntimesDetail />,
+});
 
 registerSidebarEntry({
   parent: 'kubeflow',
