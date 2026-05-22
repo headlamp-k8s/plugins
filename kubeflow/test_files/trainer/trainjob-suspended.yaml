@@ -1,0 +1,30 @@
+apiVersion: trainer.kubeflow.org/v1alpha1
+kind: TrainJob
+metadata:
+  name: demo-trainjob-suspended
+  namespace: kubeflow-user
+  labels:
+    app.kubernetes.io/part-of: headlamp-kubeflow-trainer-demo
+spec:
+  suspend: true
+  managedBy: trainer.kubeflow.org/trainjob-controller
+  runtimeRef:
+    apiGroup: trainer.kubeflow.org
+    kind: ClusterTrainingRuntime
+    name: demo-cluster-runtime
+  trainer:
+    image: busybox:1.36
+    command:
+      - sh
+      - -c
+    args:
+      - echo suspended trainjob placeholder && sleep 600
+    numNodes: 1
+    numProcPerNode: 2
+    resourcesPerNode:
+      requests:
+        cpu: "250m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
