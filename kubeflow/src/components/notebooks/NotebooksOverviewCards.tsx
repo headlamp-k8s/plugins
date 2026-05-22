@@ -5,12 +5,14 @@ import {
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import React from 'react';
+import { useHistory } from 'react-router-dom';
 import { NotebookClass } from '../../resources/notebook';
 import { NotebookStatusBadge } from '../common/NotebookStatusBadge';
 import { NotebookTypeBadge } from '../common/NotebookTypeBadge';
@@ -27,6 +29,8 @@ export function NotebooksOverviewContent({
   profiles,
   podDefaults,
 }: NotebooksOverviewContentProps) {
+  const history = useHistory();
+  const cluster = useCluster();
   // Normalize items natively (whether raw CRs from storybook or NotebookClasses from live api)
   const normalizedNotebooks = notebooks.map(nb => (nb.jsonData ? nb.jsonData : nb));
 
@@ -125,7 +129,11 @@ export function NotebooksOverviewContent({
                 description="View All Notebooks"
                 icon="mdi:arrow-right"
                 onClick={() => {
-                  window.location.href = '/kubeflow/notebooks/servers';
+                  history.push(
+                    cluster
+                      ? `/c/${cluster}/kubeflow/notebooks/servers`
+                      : '/kubeflow/notebooks/servers'
+                  );
                 }}
               />
             </Box>
