@@ -3,6 +3,17 @@ import { Activity, CommonComponents, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Terminal as XTerminal } from '@xterm/xterm';
 import React from 'react';
 
+interface PodLogsViewerProps {
+  /** Pod name to fetch logs for (e.g. "my-notebook-0") */
+  podName: string;
+  /** Namespace where the pod lives */
+  namespace: string;
+  /** Cluster to target */
+  cluster?: string;
+  /** Optional container name override */
+  containerName?: string;
+}
+
 interface NotebookLogsViewerProps {
   /** Pod name to fetch logs for (e.g. "my-notebook-0") */
   podName: string;
@@ -17,6 +28,23 @@ interface NotebookLogsViewerProps {
  * Designed to be launched via Activity.launch().
  */
 export function NotebookLogsViewer({ podName, namespace, cluster }: NotebookLogsViewerProps) {
+  return (
+    <PodContainerLogsViewer
+      podName={podName}
+      namespace={namespace}
+      cluster={cluster}
+      title={`Logs: ${podName}`}
+    />
+  );
+}
+
+export function PodContainerLogsViewer({
+  podName,
+  namespace,
+  cluster,
+  containerName,
+  title,
+}: PodLogsViewerProps & { title?: string }) {
   const [podItem, podError] = K8s.ResourceClasses.Pod.useGet(podName, namespace, { cluster });
   const [logs, setLogs] = React.useState<{ logs: string[]; lastLineShown: number }>({
     logs: [],
@@ -28,15 +56,15 @@ export function NotebookLogsViewer({ podName, namespace, cluster }: NotebookLogs
   React.useEffect(() => {
     if (!podItem) return;
 
-    const containerName = podItem.spec?.containers?.[0]?.name;
-    if (!containerName) return;
+    const resolvedContainerName = containerName || podItem.spec?.containers?.[0]?.name;
+    if (!resolvedContainerName) return;
 
     xtermRef.current?.clear();
     setLogs({ logs: [], lastLineShown: -1 });
     setShowReconnectButton(false);
 
     const cancel = podItem.getLogs(
-      containerName,
+      resolvedContainerName,
       ({ logs: newLogs }: { logs: string[]; hasJsonLogs: boolean }) => {
         setLogs(current => {
           if (current.lastLineShown >= newLogs.length) {
@@ -62,14 +90,14 @@ export function NotebookLogsViewer({ podName, namespace, cluster }: NotebookLogs
     );
 
     return () => cancel();
-  }, [podItem]);
+  }, [containerName, podItem]);
 
   if (podError) {
     return (
       <CommonComponents.LogViewer
         noDialog
         open
-        title={`Logs: ${podName}`}
+        title={title || `Logs: ${podName}`}
         logs={[`Error loading pod: ${(podError as any)?.message ?? 'Unknown error'}`]}
         onClose={() => {}}
       />
@@ -80,8 +108,8 @@ export function NotebookLogsViewer({ podName, namespace, cluster }: NotebookLogs
     <CommonComponents.LogViewer
       noDialog
       open
-      title={`Logs: ${podName}`}
-      downloadName={podName}
+      title={title || `Logs: ${podName}`}
+      downloadName={containerName ? `${podName}-${containerName}` : podName}
       logs={logs.logs}
       xtermRef={xtermRef}
       onClose={() => {}}
@@ -114,7 +142,38 @@ export function launchPodLogs({
     cluster,
     icon: <Icon icon="mdi:text-box-outline" width="100%" height="100%" />,
     location: 'full',
-    content: <NotebookLogsViewer podName={podName} namespace={namespace} cluster={cluster} />,
+    content: <PodContainerLogsViewer podName={podName} namespace={namespace} cluster={cluster} />,
+  });
+}
+
+export function launchPodContainerLogs({
+  podName,
+  namespace,
+  cluster,
+  containerName,
+  title,
+}: {
+  podName: string;
+  namespace: string;
+  cluster?: string;
+  containerName: string;
+  title?: string;
+}) {
+  Activity.launch({
+    id: `pod-logs-${namespace}-${podName}-${containerName}`,
+    title: title || `Logs: ${podName} / ${containerName}`,
+    cluster,
+    icon: <Icon icon="mdi:text-box-outline" width="100%" height="100%" />,
+    location: 'full',
+    content: (
+      <PodContainerLogsViewer
+        podName={podName}
+        namespace={namespace}
+        cluster={cluster}
+        containerName={containerName}
+        title={title || `Logs: ${podName} / ${containerName}`}
+      />
+    ),
   });
 }
 
@@ -447,5 +506,107 @@ export function launchDeploymentLogs({
         cluster={cluster}
       />
     ),
+  });
+}
+
+export function TrainJobLogsViewer({
+  jobName,
+  namespace,
+  cluster,
+}: {
+  jobName: string;
+  namespace: string;
+  cluster?: string;
+}) {
+  const [pods] = K8s.ResourceClasses.Pod.useList({ namespace, cluster });
+
+  if (!pods) {
+    return (
+      <CommonComponents.LogViewer
+        noDialog
+        open
+        title={`Logs: ${jobName}`}
+        logs={['Discovering primary pod for TrainJob...']}
+        onClose={() => {}}
+      />
+    );
+  }
+
+  const jobPods = pods.filter(pod => {
+    return (
+      pod.metadata?.labels?.['jobset.sigs.k8s.io/jobset-name'] === jobName ||
+      pod.metadata?.labels?.['training.kubeflow.org/job-name'] === jobName ||
+      pod.metadata?.name?.startsWith(`${jobName}-`)
+    );
+  });
+
+  const primaryPod = jobPods.sort((a, b) => {
+    const aName = a.metadata?.name || '';
+    const bName = b.metadata?.name || '';
+    const aIsPrimary =
+      aName.includes('launcher') ||
+      aName.includes('master') ||
+      aName.includes('chief') ||
+      aName.includes('-0')
+        ? 1
+        : 0;
+    const bIsPrimary =
+      bName.includes('launcher') ||
+      bName.includes('master') ||
+      bName.includes('chief') ||
+      bName.includes('-0')
+        ? 1
+        : 0;
+
+    if (aIsPrimary !== bIsPrimary) return bIsPrimary - aIsPrimary;
+
+    const aRunning = a.status?.phase === 'Running' ? 1 : 0;
+    const bRunning = b.status?.phase === 'Running' ? 1 : 0;
+    if (aRunning !== bRunning) return bRunning - aRunning;
+
+    return aName.localeCompare(bName);
+  })[0];
+
+  if (!primaryPod) {
+    return (
+      <CommonComponents.LogViewer
+        noDialog
+        open
+        title={`Logs: ${jobName}`}
+        logs={[`No pods found for TrainJob ${jobName}. They may not have been scheduled yet.`]}
+        onClose={() => {}}
+      />
+    );
+  }
+
+  return (
+    <PodContainerLogsViewer
+      podName={primaryPod.metadata.name}
+      namespace={namespace}
+      cluster={cluster}
+      title={`Logs: ${jobName} (${primaryPod.metadata.name})`}
+    />
+  );
+}
+
+/**
+ * Launches a side-pane log viewer for a TrainJob.
+ */
+export function launchTrainJobLogs({
+  jobName,
+  namespace,
+  cluster,
+}: {
+  jobName: string;
+  namespace: string;
+  cluster?: string;
+}) {
+  Activity.launch({
+    id: `trainjob-logs-${namespace}-${jobName}`,
+    title: `Logs: ${jobName}`,
+    cluster,
+    icon: <Icon icon="mdi:text-box-outline" width="100%" height="100%" />,
+    location: 'full',
+    content: <TrainJobLogsViewer jobName={jobName} namespace={namespace} cluster={cluster} />,
   });
 }
