@@ -9,6 +9,7 @@ import { KarpenterChart } from '../src/components/Chart/KarpenterChart/Karpenter
 import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
+import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
 import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
@@ -132,6 +133,35 @@ function PrometheusMetrics(resource: KubeObject) {
       <StrimziChart chartConfigs={getKafkaChartConfigs(namespace)} defaultChart="throughput" />
     );
   }
+  if (
+    resourceKind === 'Service' &&
+    resource.jsonData?.apiVersion?.startsWith('serving.knative.dev')
+  ) {
+    return (
+      <KnativeChart
+        namespace={resource.jsonData.metadata.namespace}
+        serviceName={resource.jsonData.metadata.name}
+      />
+    );
+  }
+
+  if (
+    resourceKind === 'Revision' &&
+    resource.jsonData?.apiVersion?.startsWith('serving.knative.dev')
+  ) {
+    return (
+      <KnativeChart
+        namespace={resource.jsonData.metadata.namespace}
+        serviceName={
+          resource.jsonData.metadata.labels?.['serving.knative.dev/service'] ||
+          resource.jsonData.metadata.name
+        }
+        revisionName={resource.jsonData.metadata.name}
+      />
+    );
+  }
+
+  return null;
 }
 
 registerPluginSettings(PLUGIN_NAME, Settings, true);
