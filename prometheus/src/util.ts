@@ -163,6 +163,8 @@ function getResourceApiVersion(resource?: ResourceIdentity): string | undefined 
 
 const resourceApiVersionRules: Record<string, string> = {
   Job: 'batch/v1',
+  Service: 'serving.knative.dev/v1',
+  Revision: 'serving.knative.dev/v1',
 };
 
 export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean {
@@ -194,6 +196,8 @@ const ChartEnabledKinds = [
   'NodePool',
   'NodeClaim',
   'Kafka',
+  'Service',
+  'Revision',
 ];
 
 /**
@@ -266,7 +270,7 @@ export type PrometheusResponse = {
     result?: PrometheusResult[];
   };
 };
-export type ChartDataPoint = { timestamp: number; y: number };
+export type ChartDataPoint = { timestamp: number; y: number | null };
 
 /**
  * Extracts chart data from a Prometheus time series result.
@@ -274,10 +278,13 @@ export type ChartDataPoint = { timestamp: number; y: number };
  * @returns {ChartDataPoint[]} - Parsed array of { timestamp, y } objects.
  */
 function extractChartData(values: PrometheusValue[] = []): ChartDataPoint[] {
-  return values.map(([timestamp, value]) => ({
-    timestamp,
-    y: Number(value),
-  }));
+  return values.map(([timestamp, value]) => {
+    const num = Number(value);
+    return {
+      timestamp,
+      y: isNaN(num) ? null : num,
+    };
+  });
 }
 
 /**

@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getTimeRangeAndStepSize } from '../../../util';
+import { ChartDataPoint, getTimeRangeAndStepSize } from '../../../util';
 
 /**
  * Props for the Chart component.
@@ -44,7 +44,8 @@ export interface ChartProps {
     name: string;
     fillColor: string;
     strokeColor: string;
-    dataProcessor: (data: any) => any[];
+    dataProcessor: (data: any) => ChartDataPoint[];
+    stackId?: string | null;
   }>;
   referenceLines?: Array<{
     x?: number;
@@ -142,23 +143,39 @@ export default function Chart(props: ChartProps) {
       setState(ChartState.NO_DATA);
       setMetrics([]);
     }
-    // if all the plots are in success state, set the state to success
-    else if (Object.values(fetchedMetrics).every(plot => plot.state === ChartState.SUCCESS)) {
-      // merge the data from all the plots into a single object
-      const mergedData = fetchedMetrics[Object.keys(fetchedMetrics)[0]].data.map(
-        (element, index) => {
-          const mergedElement = { timestamp: element.timestamp };
-          for (const plotName of Object.keys(fetchedMetrics)) {
-            mergedElement[plotName] = fetchedMetrics[plotName].data[index]?.y ?? null;
-          }
-          return mergedElement;
+    // if any plot has a real error, set the state to error
+    else if (Object.values(fetchedMetrics).some(plot => plot.state === ChartState.ERROR)) {
+      setError(previousError => previousError ?? t('Failed to load chart data.'));
+      setState(ChartState.ERROR);
+    }
+    // otherwise merge SUCCESS plots together; treat NO_DATA plots as empty
+    else {
+      const mergedDataMap: Record<number, any> = {};
+
+      for (const plotName of Object.keys(fetchedMetrics)) {
+        if (fetchedMetrics[plotName].state === ChartState.SUCCESS) {
+          fetchedMetrics[plotName].data.forEach(element => {
+            if (!mergedDataMap[element.timestamp]) {
+              mergedDataMap[element.timestamp] = { timestamp: element.timestamp };
+            }
+            mergedDataMap[element.timestamp][plotName] = element.y ?? null;
+          });
         }
-      );
+      }
+
+      const mergedData = Object.values(mergedDataMap).map(element => {
+        for (const plotName of Object.keys(fetchedMetrics)) {
+          if (element[plotName] === undefined) {
+            element[plotName] = null;
+          }
+        }
+        return element;
+      });
+
+      mergedData.sort((a, b) => a.timestamp - b.timestamp);
+
       setMetrics(mergedData);
       setState(ChartState.SUCCESS);
-    } else {
-      // default to error if any of the plots has no data or is in error state
-      setState(ChartState.ERROR);
     }
   };
 
@@ -228,7 +245,11 @@ export default function Chart(props: ChartProps) {
         {props.plots.map(plot => (
           <Area
             key={plot.name}
-            stackId="1"
+            {...(plot.stackId === undefined
+              ? { stackId: '1' }
+              : plot.stackId !== null
+              ? { stackId: plot.stackId }
+              : {})}
             type="step"
             dataKey={plot.name}
             stroke={plot.strokeColor}
