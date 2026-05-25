@@ -34,7 +34,9 @@
   },
   "overrides": {
     "typescript": "5.6.2",
-    "ws": "8.21.0"
+    "ws": "8.21.0",
+    "ajv@<6.14.0": "^6.14.0",
+    "ajv@>=8.0.0 <8.18.0": "^8.18.0"
   },
   "devDependencies": {
     "@kinvolk/headlamp-plugin": "^0.14.0"
