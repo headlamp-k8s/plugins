@@ -1,4 +1,10 @@
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerKindIcon,
+  registerMapSource,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
+import { Icon } from '@iconify/react';
 import React from 'react';
 import { KafkaDetail } from './components/kafkas/Detail';
 import { KafkaList } from './components/KafkaList';
@@ -11,6 +17,7 @@ import { KafkaConnectList } from './components/KafkaConnectList';
 import { KafkaConnectorDetail } from './components/connectors/Detail';
 import { KafkaConnectorList } from './components/KafkaConnectorList';
 import { StrimziErrorBoundary } from './components/StrimziErrorBoundary';
+import { strimziSource } from './mapView';
 
 /**
  * Wraps a component in StrimziErrorBoundary so that any uncaught render
@@ -149,4 +156,35 @@ registerSidebarEntry({
   name: 'connectors',
   label: 'Kafka Connectors',
   url: '/strimzi/connectors',
+});
+
+// Register Strimzi resources as nodes on Headlamp's Map view, with edges
+// connecting topics/users/connectors to the Kafka cluster they target.
+registerMapSource(strimziSource);
+
+const STRIMZI_BLUE = 'rgb(0, 132, 255)';
+
+registerKindIcon('Kafka', {
+  icon: <Icon icon="mdi:server-network" width="70%" height="70%" />,
+  color: STRIMZI_BLUE,
+});
+
+registerKindIcon('KafkaTopic', {
+  icon: <Icon icon="mdi:file-tree" width="70%" height="70%" />,
+  color: STRIMZI_BLUE,
+});
+
+registerKindIcon('KafkaUser', {
+  icon: <Icon icon="mdi:account-key" width="70%" height="70%" />,
+  color: STRIMZI_BLUE,
+});
+
+registerKindIcon('KafkaConnect', {
+  icon: <Icon icon="mdi:transit-connection-variant" width="70%" height="70%" />,
+  color: STRIMZI_BLUE,
+});
+
+registerKindIcon('KafkaConnector', {
+  icon: <Icon icon="mdi:swap-horizontal" width="70%" height="70%" />,
+  color: STRIMZI_BLUE,
 });
