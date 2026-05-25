@@ -10,20 +10,22 @@ import Typography from '@mui/material/Typography';
  * Props for the KubeflowJsonViewer component and its launch actions.
  * @see {@link https://microsoft.github.io/monaco-editor/ Monaco Editor}
  */
-interface KubeflowJsonViewerProps {
+export interface KubeflowJsonViewerProps {
   /** The title displayed in the viewer header and tab. */
   title: string;
   /** The JSON object or raw JSON string to be formatted and displayed. */
   value: unknown;
   /** Optional ID for the Headlamp Activity to prevent opening duplicate tabs. */
   activityId?: string;
+  /** The language used for syntax highlighting (default: 'json'). */
+  language?: string;
 }
 
 /**
  * Component that renders a Monaco JSON viewer.
  * Designed to be launched via Activity.launch().
  */
-export function KubeflowJsonViewer({ title, value }: KubeflowJsonViewerProps) {
+export function KubeflowJsonViewer({ title, value, language = 'json' }: KubeflowJsonViewerProps) {
   const theme = useTheme();
   let serializedValue = '';
 
@@ -60,7 +62,7 @@ export function KubeflowJsonViewer({ title, value }: KubeflowJsonViewerProps) {
       <Box sx={{ flexGrow: 1, minHeight: 0 }}>
         <Editor
           value={serializedValue}
-          language="json"
+          language={language}
           theme={theme.palette.mode === 'dark' ? 'vs-dark' : 'light'}
           options={{
             readOnly: true,
@@ -77,26 +79,36 @@ export function KubeflowJsonViewer({ title, value }: KubeflowJsonViewerProps) {
 /**
  * Launches a full-screen JSON viewer in a new Headlamp tab/activity.
  */
-export function launchKubeflowJsonViewer(title: string, value: unknown, activityId?: string) {
+export function launchKubeflowJsonViewer(
+  title: string,
+  value: unknown,
+  activityId?: string,
+  language?: string
+) {
   const defaultId = `json-viewer-${title.replace(/\s+/g, '-').toLowerCase()}`;
   Activity.launch({
     id: activityId || defaultId,
     title: title,
     icon: <Icon icon="mdi:code-json" width="100%" height="100%" />,
     location: 'full',
-    content: <KubeflowJsonViewer title={title} value={value} />,
+    content: <KubeflowJsonViewer title={title} value={value} language={language} />,
   });
 }
 
 /**
  * Renders a details-page action that opens a read-only Monaco JSON viewer in a new tab.
  */
-export function KubeflowJsonViewerAction({ title, value, activityId }: KubeflowJsonViewerProps) {
+export function KubeflowJsonViewerAction({
+  title,
+  value,
+  activityId,
+  language,
+}: KubeflowJsonViewerProps) {
   return (
     <ActionButton
       description={title}
       icon="mdi:code-json"
-      onClick={() => launchKubeflowJsonViewer(title, value, activityId)}
+      onClick={() => launchKubeflowJsonViewer(title, value, activityId, language)}
     />
   );
 }

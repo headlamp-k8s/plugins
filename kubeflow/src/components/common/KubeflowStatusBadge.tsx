@@ -33,7 +33,9 @@ export interface KubeflowStatusBadgeInfo {
 }
 
 interface KubeflowStatusBadgeProps {
-  statusInfo: KubeflowStatusBadgeInfo;
+  statusInfo?: KubeflowStatusBadgeInfo;
+  /** Alias for statusInfo to maintain compatibility across plugins. */
+  info?: KubeflowStatusBadgeInfo;
 }
 
 function getDefaultStatusIcon(status: StatusLabelProps['status']): string {
@@ -49,18 +51,23 @@ function getDefaultStatusIcon(status: StatusLabelProps['status']): string {
 /**
  * Renders a Headlamp-style status chip with a consistent icon and optional tooltip.
  */
-export function KubeflowStatusBadge({ statusInfo }: KubeflowStatusBadgeProps) {
-  const icon = statusInfo.icon ?? getDefaultStatusIcon(statusInfo.status);
+export function KubeflowStatusBadge({ statusInfo, info }: KubeflowStatusBadgeProps) {
+  const activeInfo = statusInfo || info;
+  if (!activeInfo) {
+    return null;
+  }
+
+  const icon = activeInfo.icon ?? getDefaultStatusIcon(activeInfo.status);
   const badge = (
-    <StatusLabel status={statusInfo.status}>
-      {statusInfo.label}
+    <StatusLabel status={activeInfo.status}>
+      {activeInfo.label}
       <Icon aria-hidden icon={icon} width="1.2rem" height="1.2rem" />
     </StatusLabel>
   );
 
-  if (statusInfo.reason) {
+  if (activeInfo.reason) {
     return (
-      <LightTooltip title={statusInfo.reason} interactive>
+      <LightTooltip title={activeInfo.reason} interactive>
         <Box display="inline">{badge}</Box>
       </LightTooltip>
     );

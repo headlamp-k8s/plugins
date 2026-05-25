@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography';
  * Props for the KubeflowDiffViewer component and its launch actions.
  * @see {@link https://microsoft.github.io/monaco-editor/ Monaco Editor}
  */
-interface KubeflowDiffViewerProps {
+export interface KubeflowDiffViewerProps {
   /** The title displayed in the viewer header and tab. */
   title: string;
   /** The original string content (e.g., previous version). */

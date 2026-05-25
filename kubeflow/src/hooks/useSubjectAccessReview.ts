@@ -1,7 +1,7 @@
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
 
-interface ResourceAttributes {
+export interface ResourceAttributes {
   group?: string;
   version?: string;
   resource: string;
@@ -10,13 +10,13 @@ interface ResourceAttributes {
   namespace?: string;
 }
 
-interface UseSubjectAccessReviewOptions {
+export interface UseSubjectAccessReviewOptions {
   user: string;
   resourceAttributes: ResourceAttributes;
   cluster?: string;
 }
 
-interface SubjectAccessReviewResult {
+export interface SubjectAccessReviewResult {
   allowed: boolean | null;
   reason: string;
   isLoading: boolean;

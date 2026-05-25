@@ -27,18 +27,25 @@ export interface KubeflowTypeBadgeInfo {
 }
 
 interface KubeflowTypeBadgeProps {
-  typeInfo: KubeflowTypeBadgeInfo;
+  typeInfo?: KubeflowTypeBadgeInfo;
+  /** Alias for typeInfo to maintain compatibility across plugins. */
+  info?: KubeflowTypeBadgeInfo;
 }
 
 /**
  * Renders a theme-aware type badge using standard MUI and Headlamp styling.
  */
-export function KubeflowTypeBadge({ typeInfo }: KubeflowTypeBadgeProps) {
+export function KubeflowTypeBadge({ typeInfo, info }: KubeflowTypeBadgeProps) {
+  const activeInfo = typeInfo || info;
+  if (!activeInfo) {
+    return null;
+  }
+
   return (
     <Chip
-      color={typeInfo.color}
-      icon={<Icon aria-hidden icon={typeInfo.icon} width="16" height="16" />}
-      label={typeInfo.label}
+      color={activeInfo.color}
+      icon={<Icon aria-hidden icon={activeInfo.icon} width="16" height="16" />}
+      label={activeInfo.label}
       size="small"
       variant="outlined"
     />
