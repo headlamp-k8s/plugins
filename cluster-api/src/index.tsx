@@ -48,6 +48,7 @@ import { MachinesList } from './components/machines/List';
 import { MachineSetDetail } from './components/machinesets/Detail';
 import { MachineSetGlance } from './components/machinesets/Glance';
 import { MachineSetsList } from './components/machinesets/List';
+import Overview from './components/overview/Overview';
 import { clusterApiSource } from './mapView';
 import { Cluster } from './resources/cluster';
 import { ClusterClass } from './resources/clusterclass';
@@ -177,7 +178,7 @@ function registerClusterApiResource(config: ResourceRegistrationConfig) {
 // Register main Cluster API sidebar entry
 registerSidebarEntry({
   name: 'Cluster-api',
-  url: '/cluster-api/capiclusters',
+  url: '/cluster-api/overview',
   icon: 'capi:logo',
   parent: null,
   label: 'Cluster API',
@@ -199,6 +200,17 @@ registerSection(
   '/cluster-api/kubeadmconfigs'
 );
 registerSection('capi-ops', 'Operations', 'mdi:heart-pulse', '/cluster-api/machinehealthchecks');
+
+registerRoute({
+  path: '/cluster-api/overview',
+  sidebar: 'Cluster-api',
+  name: 'cluster-api-overview',
+  component: () => (
+    <CapiRouteWrapper>
+      <Overview />
+    </CapiRouteWrapper>
+  ),
+});
 
 const clusterApiResources: ResourceRegistrationConfig[] = [
   {
