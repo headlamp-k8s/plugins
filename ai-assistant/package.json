@@ -42,7 +42,7 @@
     "@langchain/deepseek": "1.0.27",
     "@langchain/google-genai": "^2.1.31",
     "@langchain/mistralai": "^1.1.0",
-    "@langchain/ollama": "^1.2.2",
+    "@langchain/ollama": "^1.2.7",
     "@langchain/openai": "^1.2.6",
     "@monaco-editor/react": "^4.5.2",
     "@types/react-syntax-highlighter": "^15.5.13",
