@@ -255,6 +255,6 @@ describe('getRecurringRunSchedule', () => {
   });
 
   it('formats interval schedule', () => {
-    expect(getRecurringRunSchedule({ spec: { intervalSecond: 3600 } })).toBe('Every 1h');
+    expect(getRecurringRunSchedule({ spec: { intervalSecond: 3600 } })).toBe('Every 60m');
   });
 });

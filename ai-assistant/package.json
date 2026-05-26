@@ -33,7 +33,7 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.13.0-alpha.14"
+    "@kinvolk/headlamp-plugin": "^0.14.0"
   },
   "dependencies": {
     "@ag-ui/client": "^0.0.45",
