@@ -74,7 +74,6 @@ export const CapiClusterCacheChart = (props: CapiClusterCacheChartProps) => {
       interval={props.timespan}
       resolution={props.resolution}
       subPath={props.subPath}
-      stacked={false}
     />
   );
 };

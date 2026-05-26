@@ -26,6 +26,9 @@ import {
 
 /**
  * Generates reconciliation and workqueue chart configs for a given controller.
+ *
+ * @param controller - The name of the CAPI controller (e.g., 'machinedeployment', 'cluster').
+ * @returns An array of chart configurations for the given controller's reconcile operations, workers, queue, and SSA cache.
  */
 function reconcileCharts(controller: string) {
   return [
@@ -84,7 +87,10 @@ function reconcileCharts(controller: string) {
 }
 
 /**
- * Generates admission webhook chart configs.
+ * Generates admission webhook chart configurations for a specific resource kind.
+ *
+ * @param kind - The resource kind the webhook handles (e.g., 'MachineDeployment', 'Cluster').
+ * @returns An array of chart configurations for monitoring the performance of the specified admission webhook.
  */
 function webhookCharts(kind: string) {
   return [
@@ -103,16 +109,33 @@ function webhookCharts(kind: string) {
   ];
 }
 
+/**
+ * Retrieves the Prometheus chart configurations specific to MachineDeployments.
+ *
+ * @returns An array containing reconcile and webhook chart configurations for MachineDeployments.
+ */
 export const getMachineDeploymentChartConfigs = () => [
   ...reconcileCharts('machinedeployment'),
   ...webhookCharts('MachineDeployment'),
 ];
 
+/**
+ * Retrieves the Prometheus chart configurations specific to MachineSets.
+ *
+ * @returns An array containing reconcile and webhook chart configurations for MachineSets.
+ */
 export const getMachineSetChartConfigs = () => [
   ...reconcileCharts('machineset'),
   ...webhookCharts('MachineSet'),
 ];
 
+/**
+ * Retrieves the Prometheus chart configurations specific to Clusters, including cache monitoring.
+ *
+ * @param name - The name of the cluster.
+ * @param namespace - The namespace where the cluster resides.
+ * @returns An array containing cluster cache, reconcile, and webhook chart configurations.
+ */
 export const getClusterChartConfigs = (name: string, namespace: string) => [
   {
     key: 'cache',
@@ -131,16 +154,31 @@ export const getClusterChartConfigs = (name: string, namespace: string) => [
   ...webhookCharts('Cluster'),
 ];
 
+/**
+ * Retrieves the Prometheus chart configurations specific to Machines.
+ *
+ * @returns An array containing reconcile and webhook chart configurations for Machines.
+ */
 export const getMachineChartConfigs = () => [
   ...reconcileCharts('machine'),
   ...webhookCharts('Machine'),
 ];
 
+/**
+ * Retrieves the Prometheus chart configurations specific to MachinePools.
+ *
+ * @returns An array containing reconcile and webhook chart configurations for MachinePools.
+ */
 export const getMachinePoolChartConfigs = () => [
   ...reconcileCharts('machinepool'),
   ...webhookCharts('MachinePool'),
 ];
 
+/**
+ * Retrieves the Prometheus chart configurations specific to KubeadmControlPlanes.
+ *
+ * @returns An array containing reconcile and webhook chart configurations for KubeadmControlPlanes.
+ */
 export const getKubeadmControlPlaneChartConfigs = () => [
   ...reconcileCharts('kubeadmcontrolplane'),
   ...webhookCharts('KubeadmControlPlane'),

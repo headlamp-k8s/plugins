@@ -200,7 +200,6 @@ function PrometheusMetrics(resource: KubeObject) {
     );
   }
   return null;
-
 }
 
 registerPluginSettings(PLUGIN_NAME, Settings, true);

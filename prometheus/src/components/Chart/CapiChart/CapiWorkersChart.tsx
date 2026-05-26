@@ -57,7 +57,6 @@ export const CapiWorkersChart = (props: CapiWorkersChartProps) => {
       interval={props.timespan}
       resolution={props.resolution}
       subPath={props.subPath}
-      stacked={false}
     />
   );
 };

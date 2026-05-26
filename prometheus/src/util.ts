@@ -161,7 +161,6 @@ function getResourceApiVersion(resource?: ResourceIdentity): string | undefined 
   return resource?.jsonData?.apiVersion ?? resource?.apiVersion;
 }
 
-
 const resourceApiVersionRules: Record<string, RegExp> = {
   Job: /^batch\/v1$/,
   Cluster: /^cluster\.x-k8s\.io\//,

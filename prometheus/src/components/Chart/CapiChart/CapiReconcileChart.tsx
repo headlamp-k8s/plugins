@@ -57,7 +57,6 @@ export const CapiReconcileChart = (props: CapiReconcileChartProps) => {
       interval={props.timespan}
       resolution={props.resolution}
       subPath={props.subPath}
-      stacked={false}
     />
   );
 };

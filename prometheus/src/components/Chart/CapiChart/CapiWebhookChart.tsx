@@ -81,7 +81,6 @@ export const CapiWebhookChart = (props: CapiWebhookChartProps) => {
           interval={props.timespan}
           resolution={props.resolution}
           subPath={props.subPath}
-          stacked={false}
         />
       </Box>
       <Box sx={{ flex: 1 }}>
@@ -96,7 +95,6 @@ export const CapiWebhookChart = (props: CapiWebhookChartProps) => {
           interval={props.timespan}
           resolution={props.resolution}
           subPath={props.subPath}
-          stacked={false}
         />
       </Box>
     </Box>
