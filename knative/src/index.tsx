@@ -16,7 +16,6 @@
 
 import { Icon } from '@iconify/react';
 import {
-  K8s,
   registerKindIcon,
   registerKubeObjectGlance,
   registerMapSource,
@@ -34,6 +33,7 @@ import { KServicesList } from './components/kservices/List';
 import { NetworkingOverview } from './components/networking/Overview';
 import { RevisionDetail } from './components/revisions/Detail';
 import { RevisionsList } from './components/revisions/List';
+import { isKnativeInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
 import { knativePluginSource } from './mapView';
 
@@ -58,56 +58,21 @@ const inFlight: Record<string, boolean> = {};
 const CHECK_TTL_MS = 30 * 1000;
 
 /**
- * Checks if Knative is installed on the given cluster by probing for the
- * core Knative Serving CRD ('services.serving.knative.dev').
- * Uses a TTL-based cache and cancels the underlying Kubernetes watch to
- * prevent socket/memory leaks.
+ * Checks if Knative is installed on the given cluster using the shared
+ * installed check.
  *
  * @param cluster The name of the cluster to check.
  */
-function checkKnativeInstalled(cluster: string) {
+async function checkKnativeInstalled(cluster: string) {
   const now = Date.now();
   const fresh = now - (lastCheckedAt[cluster] ?? 0) < CHECK_TTL_MS;
   if (inFlight[cluster] || fresh) {
     return;
   }
   inFlight[cluster] = true;
-
-  let cancelFn: (() => void) | null = null;
-  let settled = false;
-
-  function settle(installed: boolean) {
-    if (settled) {
-      return;
-    }
-    settled = true;
-    knativeInstalledByCluster[cluster] = installed;
-    lastCheckedAt[cluster] = Date.now();
-    inFlight[cluster] = false;
-
-    if (cancelFn) {
-      cancelFn();
-    }
-  }
-
-  const getFn = K8s.ResourceClasses.CustomResourceDefinition.apiGet(
-    () => settle(true),
-    'services.serving.knative.dev',
-    undefined,
-    () => settle(false),
-    { cluster }
-  );
-
-  getFn()
-    .then(cancel => {
-      cancelFn = cancel;
-      if (settled) {
-        cancelFn();
-      }
-    })
-    .catch(() => {
-      settle(false);
-    });
+  knativeInstalledByCluster[cluster] = await isKnativeInstalled([cluster]);
+  lastCheckedAt[cluster] = Date.now();
+  inFlight[cluster] = false;
 }
 
 registerSidebarEntryFilter(entry => {
@@ -116,7 +81,7 @@ registerSidebarEntryFilter(entry => {
   }
 
   const cluster = Utils.getCluster() ?? '';
-  checkKnativeInstalled(cluster);
+  void checkKnativeInstalled(cluster);
 
   if (knativeInstalledByCluster[cluster] === false) {
     return null;
