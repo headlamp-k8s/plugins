@@ -1,0 +1,22 @@
+status:
+  conditions:
+    - type: Suspended
+      status: "True"
+      reason: UserRequested
+      message: TrainJob has been intentionally paused by the operator
+      lastTransitionTime: "2026-05-22T10:35:00Z"
+      lastUpdateTime: "2026-05-22T10:35:00Z"
+  jobsStatus:
+    - name: demo-trainjob-suspended-launcher-0
+      ready: 0
+      active: 0
+      succeeded: 0
+      failed: 0
+      suspended: 1
+  trainerStatus:
+    progressPercentage: 0
+    estimatedRemainingSeconds: 0
+    lastUpdatedTime: "2026-05-22T10:35:00Z"
+    metrics:
+      - name: lifecycle
+        value: paused

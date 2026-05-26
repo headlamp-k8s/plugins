@@ -208,6 +208,14 @@ export function parseCpuQuantity(value: unknown): number {
   if (!quantity) {
     return 0;
   }
+  if (quantity.endsWith('n')) {
+    const nanoCores = Number.parseFloat(quantity.slice(0, -1));
+    return Number.isFinite(nanoCores) ? nanoCores / 1e9 : 0;
+  }
+  if (quantity.endsWith('u')) {
+    const microCores = Number.parseFloat(quantity.slice(0, -1));
+    return Number.isFinite(microCores) ? microCores / 1e6 : 0;
+  }
   if (quantity.endsWith('m')) {
     const milliCores = Number.parseFloat(quantity.slice(0, -1));
     return Number.isFinite(milliCores) ? milliCores / 1000 : 0;

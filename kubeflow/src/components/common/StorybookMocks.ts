@@ -19,6 +19,8 @@ import {
   ScheduledSparkApplicationClass,
   SparkApplicationClass,
 } from '../../resources/sparkApplication';
+import { ClusterTrainingRuntimeClass, TrainingRuntimeClass } from '../../resources/trainingRuntime';
+import { TrainJobClass } from '../../resources/trainJob';
 import {
   allKatibExperiments,
   allKatibSuggestions,
@@ -36,6 +38,11 @@ import {
   allScheduledSparkApplications,
   allSparkApplications,
 } from '../spark/__fixtures__/mockData';
+import {
+  allClusterTrainingRuntimes,
+  allTrainingRuntimes,
+  allTrainJobs,
+} from '../training/__fixtures__/mockData';
 
 // 1. Set global mock flag for hooks to detect Storybook environment
 (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK = true;
@@ -55,6 +62,9 @@ const mockMappings: Record<string, any[]> = {
   KatibTrial: allKatibTrials,
   SparkApplication: allSparkApplications,
   ScheduledSparkApplication: allScheduledSparkApplications,
+  TrainJob: allTrainJobs,
+  TrainingRuntime: allTrainingRuntimes,
+  ClusterTrainingRuntime: allClusterTrainingRuntimes,
 };
 
 // Reusable mock hook
@@ -116,6 +126,9 @@ function createUseGetMock(cls: any, items: any[]) {
   { cls: KatibTrialClass, name: 'KatibTrial' },
   { cls: SparkApplicationClass, name: 'SparkApplication' },
   { cls: ScheduledSparkApplicationClass, name: 'ScheduledSparkApplication' },
+  { cls: TrainJobClass, name: 'TrainJob' },
+  { cls: TrainingRuntimeClass, name: 'TrainingRuntime' },
+  { cls: ClusterTrainingRuntimeClass, name: 'ClusterTrainingRuntime' },
 ].forEach(({ cls, name }) => {
   const mockData = mockMappings[name] || [];
   (cls as any).useList = createUseListMock(cls, mockData);

@@ -1,0 +1,59 @@
+apiVersion: trainer.kubeflow.org/v1alpha1
+kind: TrainJob
+metadata:
+  name: demo-trainjob
+  namespace: kubeflow-user
+  labels:
+    app.kubernetes.io/part-of: headlamp-kubeflow-trainer-demo
+spec:
+  managedBy: trainer.kubeflow.org/trainjob-controller
+  activeDeadlineSeconds: 7200
+  runtimeRef:
+    apiGroup: trainer.kubeflow.org
+    kind: TrainingRuntime
+    name: demo-team-runtime
+  initializer:
+    dataset:
+      storageUri: s3://trainer-demo/datasets/mnist
+      secretRef:
+        name: trainer-demo-storage
+      env:
+        - name: DATASET_FORMAT
+          value: parquet
+    model:
+      storageUri: s3://trainer-demo/models/checkpoint
+      secretRef:
+        name: trainer-demo-storage
+  trainer:
+    image: busybox:1.36
+    command:
+      - sh
+      - -c
+    args:
+      - echo starting headlamp trainer demo && sleep 3600
+    numNodes: 2
+    numProcPerNode: 1
+    resourcesPerNode:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "1"
+        memory: "1Gi"
+    env:
+      - name: EXPERIMENT_NAME
+        value: headlamp-trainer-demo
+  runtimePatches:
+    - manager: headlamp-ui
+      trainingRuntimeSpec:
+        template:
+          metadata:
+            annotations:
+              headlamp.dev/runtime-preview: enabled
+          spec:
+            replicatedJobs:
+              - name: node
+                template:
+                  metadata:
+                    annotations:
+                      headlamp.dev/replicated-job: patched

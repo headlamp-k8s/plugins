@@ -1,0 +1,31 @@
+status:
+  conditions:
+    - type: Running
+      status: "True"
+      reason: TrainerRunning
+      message: Trainer pods are actively processing data
+      lastTransitionTime: "2026-05-22T10:15:00Z"
+  jobsStatus:
+    - name: demo-trainjob-node-0
+      ready: 1
+      active: 1
+      succeeded: 0
+      failed: 0
+      suspended: 0
+    - name: demo-trainjob-node-1
+      ready: 1
+      active: 0
+      succeeded: 1
+      failed: 0
+      suspended: 0
+  trainerStatus:
+    progressPercentage: 62
+    estimatedRemainingSeconds: 1800
+    lastUpdatedTime: "2026-05-22T10:32:00Z"
+    metrics:
+      - name: train_loss
+        value: "0.432"
+      - name: eval_accuracy
+        value: "0.941"
+      - name: gpu_utilization
+        value: "71"

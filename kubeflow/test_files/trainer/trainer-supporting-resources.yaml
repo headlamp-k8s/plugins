@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trainer-demo-storage
+  namespace: kubeflow-user
+type: Opaque
+stringData:
+  accessKeyId: dummy-access-key
+  secretAccessKey: dummy-secret-key
+  endpoint: https://object-store.demo.invalid
