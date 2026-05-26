@@ -47,7 +47,8 @@ type AutoscalingPatchBody = {
   spec: {
     template: {
       metadata?: {
-        annotations: Record<string, string>;
+        name?: string | null;
+        annotations?: Record<string, string>;
       };
       spec?: {
         containerConcurrency?: number;
@@ -193,7 +194,10 @@ export class KService extends KubeObject<KServiceResource> {
     return {
       spec: {
         template: {
-          ...(hasAnnotationsPatch ? { metadata: { annotations: annotationsPatch } } : {}),
+          metadata: {
+            name: null as any,
+            ...(hasAnnotationsPatch ? { annotations: annotationsPatch } : {}),
+          },
           ...(hasTemplateSpecPatch ? { spec: templateSpecPatch } : {}),
         },
       },

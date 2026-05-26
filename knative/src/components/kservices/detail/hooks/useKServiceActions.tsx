@@ -226,6 +226,7 @@ export function useKServiceActions(
         spec: {
           template: {
             metadata: {
+              name: null as any,
               annotations: {
                 'knative.headlamp.dev/redeployAt': now,
               },
