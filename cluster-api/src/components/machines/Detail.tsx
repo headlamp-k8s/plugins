@@ -18,6 +18,7 @@ import {
   getExtraInfoFromPrinterColumns,
 } from '../../utils/crdPrinterColumns';
 import { TemplateSection } from '../common';
+import { getMachineActions } from './Actions';
 
 type MachineNode = {
   kubeObject: Machine;
@@ -124,6 +125,7 @@ function MachineDetailContentWithData(props: MachineDetailContentPropsWithVersio
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
+      actions={machine => (machine ? getMachineActions(machine) : [])}
       extraInfo={extraInfo}
       extraSections={machine => {
         const machineStatus = machine?.status;

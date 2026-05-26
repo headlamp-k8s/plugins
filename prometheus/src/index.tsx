@@ -6,11 +6,20 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { KarpenterChart } from '../src/components/Chart/KarpenterChart/KarpenterChart';
+import { CapiChart } from './components/Chart/CapiChart/CapiChart';
 import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
 import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
+import {
+  getClusterChartConfigs,
+  getKubeadmControlPlaneChartConfigs,
+  getMachineChartConfigs,
+  getMachineDeploymentChartConfigs,
+  getMachinePoolChartConfigs,
+  getMachineSetChartConfigs,
+} from './components/Config/capiChart/capiChartConfigs';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import {
@@ -125,7 +134,6 @@ function PrometheusMetrics(resource: KubeObject) {
       />
     );
   }
-
   if (resource.kind === 'Kafka') {
     const namespace = resource.jsonData.metadata.namespace;
 
@@ -160,7 +168,37 @@ function PrometheusMetrics(resource: KubeObject) {
       />
     );
   }
+  // cluster api resources
+  if (resource.kind === 'Cluster') {
+    const name = resource.jsonData.metadata.name;
+    const namespace = resource.jsonData.metadata.namespace;
 
+    return (
+      <CapiChart chartConfigs={getClusterChartConfigs(name, namespace)} defaultChart="cache" />
+    );
+  }
+
+  if (resource.kind === 'MachineDeployment') {
+    return <CapiChart chartConfigs={getMachineDeploymentChartConfigs()} defaultChart="reconcile" />;
+  }
+
+  if (resource.kind === 'MachineSet') {
+    return <CapiChart chartConfigs={getMachineSetChartConfigs()} defaultChart="reconcile" />;
+  }
+
+  if (resource.kind === 'Machine') {
+    return <CapiChart chartConfigs={getMachineChartConfigs()} defaultChart="reconcile" />;
+  }
+
+  if (resource.kind === 'MachinePool') {
+    return <CapiChart chartConfigs={getMachinePoolChartConfigs()} defaultChart="reconcile" />;
+  }
+
+  if (resource.kind === 'KubeadmControlPlane') {
+    return (
+      <CapiChart chartConfigs={getKubeadmControlPlaneChartConfigs()} defaultChart="reconcile" />
+    );
+  }
   return null;
 }
 

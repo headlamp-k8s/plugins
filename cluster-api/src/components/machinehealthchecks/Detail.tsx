@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { MachineHealthCheck } from '../../resources/machinehealthcheck';
 import { useCapiApiVersion } from '../../utils/capiVersion';
+import { getMachineHealthCheckActions } from '../actions';
 import { HealthCheckSection } from '../common';
 
 interface MachineHealthCheckNode {
@@ -46,6 +47,7 @@ export function MachineHealthCheckDetail({ node }: { node?: MachineHealthCheckNo
         withEvents
         name={crName}
         namespace={namespace}
+        actions={resource => (resource ? getMachineHealthCheckActions(resource) : [])}
         extraInfo={item => {
           return [
             {

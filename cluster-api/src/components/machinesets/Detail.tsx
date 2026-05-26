@@ -15,6 +15,7 @@ import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { MachineSet } from '../../resources/machineset';
 import { useCapiApiVersion } from '../../utils/capiVersion';
+import { getMachineSetActions } from '../actions';
 import {
   OwnedMachinesSection,
   renderReplicas,
@@ -180,6 +181,7 @@ function MachineSetDetailContentWithData({
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
+      actions={resource => (resource ? getMachineSetActions(resource) : [])}
       extraInfo={() => extraInfo}
       extraSections={() => [
         {

@@ -15,7 +15,7 @@ import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { Cluster, type ReplicasStatus } from '../../resources/cluster';
 import { useCapiApiVersion } from '../../utils/capiVersion';
-import { GetKubeconfigAction } from '../actions';
+import { getClusterActions } from '../actions';
 import { OwnedMachinesSection, renderReplicas } from '../common';
 import { getPhaseStatus, renderReference } from '../common/util';
 import { renderConditionStatus } from '../common/util';
@@ -149,9 +149,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
       withEvents
       name={crName}
       namespace={namespace ?? undefined}
-      actions={(resource: Cluster) =>
-        resource ? [<GetKubeconfigAction resource={resource} />] : []
-      }
+      actions={(resource: Cluster) => (resource ? getClusterActions(resource) : [])}
       extraInfo={() => {
         const clusterClassName = spec?.topology?.class ?? spec?.topology?.classRef?.name;
 
