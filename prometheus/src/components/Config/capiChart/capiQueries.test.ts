@@ -6,7 +6,7 @@ import {
   capiReconcileRateQuery,
   capiSsaCacheHitsRateQuery,
   capiWebhookRateQuery,
-} from '../capiChart/capiQueries';
+} from './capiQueries';
 
 describe('CAPI PromQL query helpers', () => {
   test('capiReconcileRateQuery uses top-level or between aggregates', () => {

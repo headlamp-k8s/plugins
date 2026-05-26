@@ -6,6 +6,12 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { KarpenterChart } from '../src/components/Chart/KarpenterChart/KarpenterChart';
+import { CapiChart } from './components/Chart/CapiChart/CapiChart';
+import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
+import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
+import { KedaChart } from './components/Chart/KedaChart/KedaChart';
+import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
+import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
 import {
   getClusterChartConfigs,
   getKubeadmControlPlaneChartConfigs,
@@ -13,13 +19,7 @@ import {
   getMachineDeploymentChartConfigs,
   getMachinePoolChartConfigs,
   getMachineSetChartConfigs,
-} from './chartConfigs/capiChart/capiChartConfigs';
-import { CapiChart } from './components/Chart/CapiChart/CapiChart';
-import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
-import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
-import { KedaChart } from './components/Chart/KedaChart/KedaChart';
-import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
-import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
+} from './components/Config/capiChart/capiChartConfigs';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import {

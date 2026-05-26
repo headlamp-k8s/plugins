@@ -12,7 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Cluster } from '../../resources/cluster';
 import { KubeadmControlPlane } from '../../resources/kubeadmcontrolplane';
 import { MachineDeployment } from '../../resources/machinedeployment';
@@ -38,7 +38,7 @@ export interface ReconciliationActionProps {
     | MachineHealthCheck;
 }
 
-function getErrorMessage(error: unknown): string {
+export function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -46,8 +46,9 @@ function getErrorMessage(error: unknown): string {
  * Connect a Cluster to Headlamp using its kubeconfig Secret.
  *
  * Contract: secret.jsonData.data.value is a base64-encoded kubeconfig YAML
- * (standard Kubernetes Secret encoding). We decode it with atob() before
- * passing to Headlamp.setCluster(), which expects plain YAML text.
+ * (standard Kubernetes Secret encoding). We decode it via TextDecoder so that
+ * binary cert bytes in the base64 payload do not cause atob() to throw
+ * InvalidCharacterError.
  */
 async function connectClusterToHeadlamp(
   resource: Cluster,
@@ -62,7 +63,6 @@ async function connectClusterToHeadlamp(
   const namespace = resource.metadata?.namespace || 'default';
 
   if (!secret) {
-    // Fix: distinguish RBAC/fetch errors from genuinely absent secrets
     const msg = secretError
       ? `Failed to load Secret "${secretName}": ${getErrorMessage(secretError)}`
       : `Secret "${secretName}" is not available yet in namespace "${namespace}". Please wait for the cluster to finish provisioning and try again.`;
@@ -92,9 +92,10 @@ async function connectClusterToHeadlamp(
     loadingRef.current = true;
     enqueueSnackbar('Connecting to cluster...', { variant: 'info' });
 
-    const kubeconfig = atob(kubeconfigBase64);
-    await Headlamp.setCluster({ kubeconfig });
+    const bytes = Uint8Array.from(atob(kubeconfigBase64), c => c.charCodeAt(0));
+    const kubeconfig = new TextDecoder('utf-8').decode(bytes);
 
+    await Headlamp.setCluster({ kubeconfig });
     enqueueSnackbar('Cluster connected successfully', { variant: 'success' });
   } catch (error) {
     enqueueSnackbar(`Failed to connect: ${getErrorMessage(error)}`, { variant: 'error' });
@@ -122,9 +123,7 @@ export function GetKubeconfigAction(props: GetKubeconfigActionProps) {
         if (secretQuery.isLoading) {
           enqueueSnackbar(
             'Cluster connection details are still loading. Please try again shortly.',
-            {
-              variant: 'info',
-            }
+            { variant: 'info' }
           );
           return;
         }
@@ -176,10 +175,11 @@ function StandaloneScaleInputs({
   const errors = [controlPlanesError, machineDeploymentsError, machinePoolsError].filter(Boolean);
   const loading =
     controlPlanes === undefined || machineDeployments === undefined || machinePools === undefined;
+  const stableOnLoaded = useCallback(onLoaded, []);
 
   useEffect(() => {
-    onLoaded(controlPlanes ?? null, machineDeployments ?? null, machinePools ?? null, errors);
-  }, [controlPlanes, machineDeployments, machinePools, errors.length]);
+    stableOnLoaded(controlPlanes ?? null, machineDeployments ?? null, machinePools ?? null, errors);
+  }, [controlPlanes, machineDeployments, machinePools, stableOnLoaded]);
 
   if (loading) return <Typography>Loading scalable resources...</Typography>;
 
@@ -205,6 +205,11 @@ function StandaloneScaleInputs({
     </>
   );
 }
+const MIN_REPLICAS_CONTROL_PLANE = 1;
+const MIN_REPLICAS_WORKERS = 0;
+function isControlPlaneKey(key: string): boolean {
+  return key === 'cp' || key.startsWith('cp-');
+}
 
 export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProps) {
   const [open, setOpen] = useState(false);
@@ -224,13 +229,12 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
   const topology = cluster.spec?.topology;
   const isTopology = !!topology;
 
-  // Initialize drafts for topology-managed clusters when dialog opens
   useEffect(() => {
     if (!open || !isTopology || !topology) return;
     if (hasInitializedDrafts.current) return;
 
     const initialDrafts: Record<string, number> = {};
-    initialDrafts['cp'] = topology.controlPlane?.replicas ?? 0;
+    initialDrafts['cp'] = topology.controlPlane?.replicas ?? 1;
     topology.workers?.machineDeployments?.forEach((md, i) => {
       initialDrafts[`md-${i}`] = md.replicas ?? 0;
     });
@@ -256,7 +260,7 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
 
     const initialDrafts: Record<string, number> = {};
     controlPlanes.forEach(cp => {
-      initialDrafts[`cp-${cp.metadata.name}`] = cp.spec?.replicas ?? 0;
+      initialDrafts[`cp-${cp.metadata.name}`] = cp.spec?.replicas ?? 1;
     });
     machineDeployments.forEach(md => {
       initialDrafts[`md-${md.metadata.name}`] = md.spec?.replicas ?? 0;
@@ -280,27 +284,36 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
     setLoading(true);
     try {
       if (isTopology && topology) {
-        const patch: any = { spec: { topology: { ...topology } } };
-        if ('cp' in drafts) {
-          patch.spec.topology.controlPlane = { ...topology.controlPlane, replicas: drafts['cp'] };
-        }
-        if (topology.workers) {
-          const newWorkers = { ...topology.workers };
-          if (newWorkers.machineDeployments) {
-            newWorkers.machineDeployments = newWorkers.machineDeployments.map((md, i) => ({
-              ...md,
-              replicas: drafts[`md-${i}`] ?? md.replicas,
-            }));
-          }
-          if (newWorkers.machinePools) {
-            newWorkers.machinePools = newWorkers.machinePools.map((pool, i) => ({
-              ...pool,
-              replicas: drafts[`pool-${i}`] ?? pool.replicas,
-            }));
-          }
-          patch.spec.topology.workers = newWorkers;
-        }
-        await cluster.patch(patch);
+        const controlPlanePatch =
+          'cp' in drafts ? { controlPlane: { replicas: drafts['cp'] } } : {};
+
+        const mdPatches = topology.workers?.machineDeployments?.map((md, i) => ({
+          ...md,
+          replicas: drafts[`md-${i}`] ?? md.replicas,
+        }));
+        const poolPatches = topology.workers?.machinePools?.map((pool, i) => ({
+          ...pool,
+          replicas: drafts[`pool-${i}`] ?? pool.replicas,
+        }));
+
+        const workersPatch =
+          mdPatches !== undefined || poolPatches !== undefined
+            ? {
+                workers: {
+                  ...(mdPatches !== undefined ? { machineDeployments: mdPatches } : {}),
+                  ...(poolPatches !== undefined ? { machinePools: poolPatches } : {}),
+                },
+              }
+            : {};
+
+        await cluster.patch({
+          spec: {
+            topology: {
+              ...controlPlanePatch,
+              ...workersPatch,
+            },
+          },
+        });
       } else {
         const { controlPlanes, machineDeployments, machinePools } = standaloneResources;
         const promises = [];
@@ -330,30 +343,47 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
 
   const renderScaleRow = (label: string, draftKey: string) => {
     const replicas = drafts[draftKey] ?? 0;
+    const isCP = isControlPlaneKey(draftKey);
+    const minReplicas = isCP ? MIN_REPLICAS_CONTROL_PLANE : MIN_REPLICAS_WORKERS;
+    const showOddWarning = isCP && replicas > 0 && replicas % 2 === 0;
+
     return (
       <Box
         display="flex"
-        alignItems="center"
-        justifyContent="space-between"
+        flexDirection="column"
         key={draftKey}
         sx={{ py: 1, borderBottom: 1, borderColor: 'divider' }}
       >
-        <Typography variant="body2">{label}</Typography>
-        <Box display="flex" alignItems="center" gap={1}>
-          <ActionButton
-            description={`Decrease ${label} replicas`}
-            icon="mdi:minus-circle-outline"
-            onClick={() => setDrafts(prev => ({ ...prev, [draftKey]: Math.max(0, replicas - 1) }))}
-          />
-          <Typography sx={{ minWidth: '2ch', textAlign: 'center', fontWeight: 'bold' }}>
-            {replicas}
-          </Typography>
-          <ActionButton
-            description={`Increase ${label} replicas`}
-            icon="mdi:plus-circle-outline"
-            onClick={() => setDrafts(prev => ({ ...prev, [draftKey]: replicas + 1 }))}
-          />
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Typography variant="body2">{label}</Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <ActionButton
+              description={`Decrease ${label} replicas`}
+              icon="mdi:minus-circle-outline"
+              onClick={() =>
+                setDrafts(prev => ({
+                  ...prev,
+                  // FIX: enforce per-row minimum — control plane cannot go below 1
+                  [draftKey]: Math.max(minReplicas, replicas - 1),
+                }))
+              }
+            />
+            <Typography sx={{ minWidth: '2ch', textAlign: 'center', fontWeight: 'bold' }}>
+              {replicas}
+            </Typography>
+            <ActionButton
+              description={`Increase ${label} replicas`}
+              icon="mdi:plus-circle-outline"
+              onClick={() => setDrafts(prev => ({ ...prev, [draftKey]: replicas + 1 }))}
+            />
+          </Box>
         </Box>
+        {/* FIX: surface etcd quorum warning for even control plane counts */}
+        {showOddWarning && (
+          <Typography variant="caption" color="warning.main" sx={{ mt: 0.5 }}>
+            Even replica counts can break etcd quorum. Use 1, 3, or 5.
+          </Typography>
+        )}
       </Box>
     );
   };
@@ -370,7 +400,7 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
     <>
       <ActionButton description="Scale Cluster" icon="mdi:resize" onClick={() => setOpen(true)} />
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-        <DialogTitle>Scale Cluster "{name}"</DialogTitle>
+        <DialogTitle>Scale Cluster &quot;{name}&quot;</DialogTitle>
         <DialogContent dividers>
           {standaloneErrors.length > 0 && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -395,7 +425,6 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
               <Typography variant="subtitle2" color="primary" gutterBottom>
                 Standalone Resources
               </Typography>
-              {/* Only mounts when dialog is open + non-topology: avoids unnecessary watches */}
               {open && (
                 <StandaloneScaleInputs
                   name={name}
@@ -426,15 +455,10 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
 }
 
 /**
- * PauseReconciliationAction pauses reconciliation for a resource.
- * Returns null if already paused.
+ * PauseReconciliationAction pauses CAPI reconciliation for a resource.
  */
 export function PauseReconciliationAction({ resource }: ReconciliationActionProps) {
   const { enqueueSnackbar } = useSnackbar();
-  const isPaused = resource.metadata?.annotations?.['cluster.x-k8s.io/paused'] === 'true';
-
-  if (isPaused) return null;
-
   const handlePause = async () => {
     try {
       await resource.patch({
@@ -442,7 +466,9 @@ export function PauseReconciliationAction({ resource }: ReconciliationActionProp
       });
       enqueueSnackbar(`${resource.kind} reconciliation paused`, { variant: 'success' });
     } catch (error: any) {
-      enqueueSnackbar(`Failed to pause reconciliation: ${error.message}`, { variant: 'error' });
+      enqueueSnackbar(`Failed to pause reconciliation: ${getErrorMessage(error)}`, {
+        variant: 'error',
+      });
     }
   };
 
@@ -456,14 +482,10 @@ export function PauseReconciliationAction({ resource }: ReconciliationActionProp
 }
 
 /**
- * ResumeReconciliationAction resumes reconciliation for a resource.
- * Returns null if not paused.
+ * ResumeReconciliationAction resumes CAPI reconciliation for a resource.
  */
 export function ResumeReconciliationAction({ resource }: ReconciliationActionProps) {
   const { enqueueSnackbar } = useSnackbar();
-  const isPaused = resource.metadata?.annotations?.['cluster.x-k8s.io/paused'] === 'true';
-
-  if (!isPaused) return null;
 
   const handleResume = async () => {
     try {
@@ -472,7 +494,9 @@ export function ResumeReconciliationAction({ resource }: ReconciliationActionPro
       });
       enqueueSnackbar(`${resource.kind} reconciliation resumed`, { variant: 'success' });
     } catch (error: any) {
-      enqueueSnackbar(`Failed to resume reconciliation: ${error.message}`, { variant: 'error' });
+      enqueueSnackbar(`Failed to resume reconciliation: ${getErrorMessage(error)}`, {
+        variant: 'error',
+      });
     }
   };
 
@@ -486,16 +510,13 @@ export function ResumeReconciliationAction({ resource }: ReconciliationActionPro
 }
 
 /**
- * Returns pause/resume actions for any pausable resource.
- * Replaces the previously duplicated per-resource helpers.
- * Note: PauseReconciliationAction and ResumeReconciliationAction already
- * return null when not applicable, so no outer isPaused check is needed.
+ * Returns pause/resume actions for any pausable CAPI resource.
  */
 export function getPausableReconciliationActions(resource: ReconciliationActionProps['resource']) {
-  return [
-    <PauseReconciliationAction key="pause" resource={resource} />,
-    <ResumeReconciliationAction key="resume" resource={resource} />,
-  ];
+  const isPaused = resource.metadata?.annotations?.['cluster.x-k8s.io/paused'] === 'true';
+  return isPaused
+    ? [<ResumeReconciliationAction key="resume" resource={resource} />]
+    : [<PauseReconciliationAction key="pause" resource={resource} />];
 }
 
 export function getMachineDeploymentActions(resource: MachineDeployment) {

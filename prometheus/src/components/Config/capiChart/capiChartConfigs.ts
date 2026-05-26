@@ -1,10 +1,10 @@
-import { CapiClusterCacheChart } from '../../components/Chart/CapiChart/CapiClusterCacheChart';
-import { CapiQueueChart } from '../../components/Chart/CapiChart/CapiQueueChart';
-import { CapiReconcileChart } from '../../components/Chart/CapiChart/CapiReconcileChart';
-import { CapiReconcileDurationChart } from '../../components/Chart/CapiChart/CapiReconcileDurationChart';
-import { CapiSsaCacheChart } from '../../components/Chart/CapiChart/CapiSsaCacheChart';
-import { CapiWebhookChart } from '../../components/Chart/CapiChart/CapiWebhookChart';
-import { CapiWorkersChart } from '../../components/Chart/CapiChart/CapiWorkersChart';
+import { CapiClusterCacheChart } from '../../Chart/CapiChart/CapiClusterCacheChart';
+import { CapiQueueChart } from '../../Chart/CapiChart/CapiQueueChart';
+import { CapiReconcileChart } from '../../Chart/CapiChart/CapiReconcileChart';
+import { CapiReconcileDurationChart } from '../../Chart/CapiChart/CapiReconcileDurationChart';
+import { CapiSsaCacheChart } from '../../Chart/CapiChart/CapiSsaCacheChart';
+import { CapiWebhookChart } from '../../Chart/CapiChart/CapiWebhookChart';
+import { CapiWorkersChart } from '../../Chart/CapiChart/CapiWorkersChart';
 import {
   capiActiveWorkersQuery,
   capiClientCacheWaitDurationQuery,
