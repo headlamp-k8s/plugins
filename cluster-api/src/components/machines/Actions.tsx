@@ -4,7 +4,7 @@ import { useSnackbar } from 'notistack';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { Machine } from '../../resources/machine';
-import { getErrorMessage } from '../actions';
+import { getErrorMessage, PauseReconciliationAction, ResumeReconciliationAction } from '../actions';
 
 /**
  * Whether CAPI reconciliation is currently paused for this machine.
@@ -70,61 +70,6 @@ export function ReplaceMachineAction({ machine }: { machine: Machine }) {
     >
       <ActionButton description="Replace Machine" icon="mdi:restart" onClick={() => {}} />
     </ConfirmButton>
-  );
-}
-
-/**
- * Pause CAPI reconciliation for this Machine.
- *
- * FIX (action bar stability): renders a disabled button when already paused
- * instead of conditionally mounting/unmounting, so the bar layout does not
- * shift after the user clicks pause.
- */
-export function PauseMachineAction({ machine }: { machine: Machine }) {
-  const { enqueueSnackbar } = useSnackbar();
-
-  const handlePause = async () => {
-    try {
-      await machine.patch({
-        metadata: { annotations: { 'cluster.x-k8s.io/paused': 'true' } },
-      });
-      enqueueSnackbar('Machine reconciliation paused', { variant: 'success' });
-    } catch (err: any) {
-      enqueueSnackbar(`Failed to pause machine: ${getErrorMessage(err)}`, { variant: 'error' });
-    }
-  };
-
-  return (
-    <ActionButton
-      description="Pause Reconciliation"
-      icon="mdi:pause-circle-outline"
-      onClick={handlePause}
-    />
-  );
-}
-
-/**
- * Resume CAPI reconciliation for this Machine.
- */
-export function ResumeMachineAction({ machine }: { machine: Machine }) {
-  const { enqueueSnackbar } = useSnackbar();
-  const handleResume = async () => {
-    try {
-      await machine.patch({
-        metadata: { annotations: { 'cluster.x-k8s.io/paused': null } },
-      });
-      enqueueSnackbar('Machine reconciliation resumed', { variant: 'success' });
-    } catch (err: any) {
-      enqueueSnackbar(`Failed to resume machine: ${getErrorMessage(err)}`, { variant: 'error' });
-    }
-  };
-
-  return (
-    <ActionButton
-      description="Resume Reconciliation"
-      icon="mdi:play-circle-outline"
-      onClick={handleResume}
-    />
   );
 }
 
@@ -206,9 +151,9 @@ export function getMachineActions(machine: Machine) {
 
   const paused = isMachinePaused(machine);
   if (paused) {
-    actions.push(<ResumeMachineAction key="resume" machine={machine} />);
+    actions.push(<ResumeReconciliationAction key="resume" resource={machine} />);
   } else {
-    actions.push(<PauseMachineAction key="pause" machine={machine} />);
+    actions.push(<PauseReconciliationAction key="pause" resource={machine} />);
   }
 
   if (providerID) {

@@ -13,12 +13,15 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Machine } from 'src/resources/machine';
 import { Cluster } from '../../resources/cluster';
 import { KubeadmControlPlane } from '../../resources/kubeadmcontrolplane';
 import { MachineDeployment } from '../../resources/machinedeployment';
 import { MachineHealthCheck } from '../../resources/machinehealthcheck';
 import { MachinePool } from '../../resources/machinepool';
 import { MachineSet } from '../../resources/machineset';
+
+const PAUSED_ANNOTATION = 'cluster.x-k8s.io/paused';
 
 export interface GetKubeconfigActionProps {
   resource: Cluster;
@@ -35,7 +38,8 @@ export interface ReconciliationActionProps {
     | KubeadmControlPlane
     | MachineSet
     | Cluster
-    | MachineHealthCheck;
+    | MachineHealthCheck
+    | Machine;
 }
 
 export function getErrorMessage(error: unknown): string {
@@ -363,7 +367,6 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
               onClick={() =>
                 setDrafts(prev => ({
                   ...prev,
-                  // FIX: enforce per-row minimum — control plane cannot go below 1
                   [draftKey]: Math.max(minReplicas, replicas - 1),
                 }))
               }
@@ -378,7 +381,6 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
             />
           </Box>
         </Box>
-        {/* FIX: surface etcd quorum warning for even control plane counts */}
         {showOddWarning && (
           <Typography variant="caption" color="warning.main" sx={{ mt: 0.5 }}>
             Even replica counts can break etcd quorum. Use 1, 3, or 5.
@@ -462,7 +464,7 @@ export function PauseReconciliationAction({ resource }: ReconciliationActionProp
   const handlePause = async () => {
     try {
       await resource.patch({
-        metadata: { annotations: { 'cluster.x-k8s.io/paused': 'true' } },
+        metadata: { annotations: { [PAUSED_ANNOTATION]: 'true' } },
       });
       enqueueSnackbar(`${resource.kind} reconciliation paused`, { variant: 'success' });
     } catch (error: any) {
@@ -490,7 +492,7 @@ export function ResumeReconciliationAction({ resource }: ReconciliationActionPro
   const handleResume = async () => {
     try {
       await resource.patch({
-        metadata: { annotations: { 'cluster.x-k8s.io/paused': null } },
+        metadata: { annotations: { [PAUSED_ANNOTATION]: null } },
       });
       enqueueSnackbar(`${resource.kind} reconciliation resumed`, { variant: 'success' });
     } catch (error: any) {
@@ -513,7 +515,7 @@ export function ResumeReconciliationAction({ resource }: ReconciliationActionPro
  * Returns pause/resume actions for any pausable CAPI resource.
  */
 export function getPausableReconciliationActions(resource: ReconciliationActionProps['resource']) {
-  const isPaused = resource.metadata?.annotations?.['cluster.x-k8s.io/paused'] === 'true';
+  const isPaused = resource.metadata?.annotations?.[PAUSED_ANNOTATION] === 'true';
   return isPaused
     ? [<ResumeReconciliationAction key="resume" resource={resource} />]
     : [<PauseReconciliationAction key="pause" resource={resource} />];
