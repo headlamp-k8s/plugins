@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/cert-manager",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Headlamp plugin for cert-manager",
   "scripts": {
     "start": "headlamp-plugin start",
