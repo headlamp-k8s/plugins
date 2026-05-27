@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   MainInfoSection,
@@ -22,6 +23,7 @@ export function Notification() {
     pluralName: string;
     name: string;
   }>();
+
   const resourceClass = (() => {
     switch (pluralName) {
       case 'alerts':
@@ -49,16 +51,20 @@ export function Notification() {
 
 function NotificationDetails(props) {
   const { name, namespace, resourceClass } = props;
+  const { t } = useTranslation();
   const [resource] = resourceClass.useGet(name, namespace);
 
   function prepareExtraInfo() {
     const extraInfo = [];
-    extraInfo.push({ name: 'Suspend', value: resource?.jsonData.spec?.suspend ? 'True' : 'False' });
+    extraInfo.push({
+      name: t('Suspend'),
+      value: resource?.jsonData.spec?.suspend ? t('True') : t('False'),
+    });
     const interval = resource?.jsonData.spec?.interval;
-    extraInfo.push({ name: 'Interval', value: interval });
+    extraInfo.push({ name: t('Interval'), value: interval });
     if (!resource?.jsonData.spec?.suspend) {
       extraInfo.push({
-        name: 'Next Reconciliation',
+        name: t('Next Reconciliation'),
         value: <RemainingTimeDisplay item={resource} />,
       });
     }
@@ -76,7 +82,7 @@ function NotificationDetails(props) {
           <ForceReconciliationAction resource={resource} />,
         ]}
       />
-      <SectionBox title="Conditions">
+      <SectionBox title={t('Conditions')}>
         <ConditionsTable resource={resource?.jsonData} />
       </SectionBox>
     </>

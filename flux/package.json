@@ -39,5 +39,10 @@
   },
   "overrides": {
     "typescript": "5.6.2"
+  },
+  "headlamp": {
+    "i18n": [
+      "en"
+    ]
   }
 }

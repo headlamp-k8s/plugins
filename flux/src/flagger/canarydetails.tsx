@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link,
@@ -38,6 +39,7 @@ export default function CanaryDetails() {
 function CanaryDetailsRenderer({ resource }) {
   const { namespace, name } = useParams<{ name: string; namespace: string }>();
   const [cr, setCr] = React.useState(null);
+  const { t } = useTranslation();
 
   const resourceClass = React.useMemo(() => {
     return resource.makeCRClass();
@@ -62,19 +64,19 @@ function CanaryDetailsRenderer({ resource }) {
         resource={cr}
         extraInfo={[
           {
-            name: 'Suspend',
-            value: cr?.jsonData?.spec?.suspend ? 'True' : 'False',
+            name: t('Suspend'),
+            value: cr?.jsonData?.spec?.suspend ? t('True') : t('False'),
           },
           {
-            name: 'Status',
-            value: <CanaryStatus status={cr?.jsonData?.status?.phase || 'Unknown'} />,
+            name: t('Status'),
+            value: <CanaryStatus status={cr?.jsonData?.status?.phase || t('Unknown')} />,
           },
           {
-            name: 'Service',
+            name: t('Service'),
             value: service.name || '-',
           },
           {
-            name: 'Target',
+            name: t('Target'),
             value: (
               <Stack direction="row" spacing={1}>
                 {targetRef.kind && (
@@ -104,15 +106,15 @@ function CanaryDetailsRenderer({ resource }) {
             ),
           },
           {
-            name: 'Analysis',
+            name: t('Analysis'),
             value: analysis ? <AnalysisSection analysis={analysis} /> : '-',
           },
           {
-            name: 'Metrics',
+            name: t('Metrics'),
             value: analysis?.metrics ? <MetricsSection metrics={analysis.metrics} /> : '-',
           },
           {
-            name: 'Webhooks',
+            name: t('Webhooks'),
             value: analysis?.webhooks ? <WebhooksSection webhooks={analysis.webhooks} /> : '-',
           },
         ]}

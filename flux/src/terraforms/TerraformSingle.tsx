@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   MainInfoSection,
@@ -18,17 +19,18 @@ import { ObjectEvents } from '../helpers/index';
 export function TerraformDetailView(props: { name?: string; namespace?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
   const { name = params.name, namespace = params.namespace } = props;
+  const { t } = useTranslation();
   const [cr] = Terraform.useGet(name, namespace);
 
   function prepareExtraInfo() {
     if (!cr) return [];
     return [
-      { name: 'Status', value: <StatusLabel item={cr} /> },
-      { name: 'Source', value: cr?.jsonData?.spec?.sourceRef?.name },
-      { name: 'Path', value: cr?.jsonData?.spec?.path },
-      { name: 'Workspace', value: cr?.jsonData?.spec?.workspace },
-      { name: 'Interval', value: cr?.jsonData?.spec?.interval },
-      { name: 'Suspend', value: cr?.jsonData?.spec?.suspend ? 'True' : 'False' },
+      { name: t('Status'), value: <StatusLabel item={cr} /> },
+      { name: t('Source'), value: cr?.jsonData?.spec?.sourceRef?.name },
+      { name: t('Path'), value: cr?.jsonData?.spec?.path },
+      { name: t('Workspace'), value: cr?.jsonData?.spec?.workspace },
+      { name: t('Interval'), value: cr?.jsonData?.spec?.interval },
+      { name: t('Suspend'), value: cr?.jsonData?.spec?.suspend ? t('True') : t('False') },
     ];
   }
 
@@ -47,7 +49,7 @@ export function TerraformDetailView(props: { name?: string; namespace?: string }
       {cr && (
         <MainInfoSection resource={cr} extraInfo={prepareExtraInfo()} actions={prepareActions()} />
       )}
-      <SectionBox title="Conditions">
+      <SectionBox title={t('Conditions')}>
         <ConditionsTable resource={cr?.jsonData} />
       </SectionBox>
       <ObjectEvents name={name} namespace={namespace} resourceClass={Terraform} />

@@ -1,4 +1,4 @@
-import { registerDetailsViewSection } from '@kinvolk/headlamp-plugin/lib';
+import { registerDetailsViewSection, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link,
@@ -104,6 +104,7 @@ export const registerHelmRelease = () => {
 function CustomResourceDetails(props) {
   const { name, namespace } = props;
   const [cr] = HelmRelease.useGet(name, namespace);
+  const { t } = useTranslation();
 
   function prepareExtraInfo(cr) {
     if (!cr) {
@@ -116,22 +117,22 @@ function CustomResourceDetails(props) {
     } = getSourceNameAndPluralKind(cr);
     const extraInfo = [
       {
-        name: 'Status',
+        name: t('Status'),
         value: <StatusLabel item={cr} />,
       },
       {
-        name: 'Chart',
+        name: t('Chart'),
         value: sourceName,
       },
       {
-        name: 'Reconcile Strategy',
+        name: t('Reconcile Strategy'),
         value: cr?.jsonData?.spec.chart?.spec?.reconcileStrategy,
       },
     ];
 
     if (cr?.jsonData?.spec?.chartRef) {
       extraInfo.push({
-        name: 'Source Ref',
+        name: t('Source Ref'),
         value: (
           <Link
             routeName="source"
@@ -149,7 +150,7 @@ function CustomResourceDetails(props) {
 
     if (cr?.jsonData?.spec?.chart?.spec?.sourceRef) {
       extraInfo.push({
-        name: 'Source Ref',
+        name: t('Source Ref'),
         value: (
           <Link
             routeName="source"
@@ -165,23 +166,23 @@ function CustomResourceDetails(props) {
       });
     }
     extraInfo.push({
-      name: 'Version',
+      name: t('Version'),
       value: cr?.jsonData?.spec.chart?.spec?.version,
     });
     extraInfo.push({
-      name: 'Suspend',
-      value: cr?.jsonData.spec?.suspend ? 'True' : 'False',
+      name: t('Suspend'),
+      value: cr?.jsonData.spec?.suspend ? t('True') : t('False'),
     });
 
     const interval = cr?.jsonData.spec?.interval;
     extraInfo.push({
-      name: 'Interval',
+      name: t('Interval'),
       value: interval,
     });
 
     if (!cr?.jsonData.spec?.suspend) {
       extraInfo.push({
-        name: 'Next Reconciliation',
+        name: t('Next Reconciliation'),
         value: <RemainingTimeDisplay item={cr} />,
       });
     }
@@ -214,7 +215,7 @@ function CustomResourceDetails(props) {
         />
       )}
       {cr && cr?.jsonData?.spec?.values && (
-        <SectionBox title="Values">
+        <SectionBox title={t('Values')}>
           <Editor
             language="yaml"
             value={YAML.stringify(cr?.jsonData?.spec?.values)}
@@ -224,16 +225,16 @@ function CustomResourceDetails(props) {
         </SectionBox>
       )}
 
-      <SectionBox title="Inventory">
+      <SectionBox title={t('Inventory')}>
         <HelmInventory name={name} namespace={namespace} />
       </SectionBox>
 
-      <SectionBox title="Dependencies">
+      <SectionBox title={t('Dependencies')}>
         <Table
           data={cr?.jsonData?.spec?.dependsOn}
           columns={[
             {
-              header: 'Name',
+              header: t('Name'),
               accessorFn: item => (
                 <Link
                   routeName="helm"
@@ -247,7 +248,7 @@ function CustomResourceDetails(props) {
               ),
             },
             {
-              header: 'Namespace',
+              header: t('Namespace'),
               accessorFn: item => (
                 <Link routeName="namespace" params={{ name: item.namespace || namespace }}>
                   {item.namespace || namespace}
@@ -257,7 +258,7 @@ function CustomResourceDetails(props) {
           ]}
         />
       </SectionBox>
-      <SectionBox title="Conditions">
+      <SectionBox title={t('Conditions')}>
         <ConditionsTable resource={cr?.jsonData} />
       </SectionBox>
     </>
