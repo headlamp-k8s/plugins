@@ -116,5 +116,9 @@
   "Failed Healthchecks / s": "Failed Healthchecks / s",
   "Client Cache Wait (s)": "Client Cache Wait (s)",
   "Cache Hits / s": "Cache Hits / s",
-  "Cache Misses / s": "Cache Misses / s"
+  "Cache Misses / s": "Cache Misses / s",
+  "Request Rate": "Request Rate",
+  "Latency": "Latency",
+  "Resources": "Resources",
+  "By Revision": "By Revision"
 }

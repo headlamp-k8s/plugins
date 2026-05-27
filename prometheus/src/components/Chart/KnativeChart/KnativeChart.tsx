@@ -68,8 +68,9 @@ export function KnativeChart({
 }) {
   const { t } = useTranslation();
   const cluster = useCluster() || '';
-  const configStore = useMemo(() => getConfigStore(), []);
-  const clusterConfig = configStore.useConfig();
+  const configStore = getConfigStore();
+  const useClusterConfig = configStore.useConfig();
+  const clusterConfig = useClusterConfig();
   const theme = useTheme();
 
   // Build chart configs: include "By Revision" only on KService view (no revisionName)
@@ -106,7 +107,7 @@ export function KnativeChart({
     }
 
     return configs;
-  }, [revisionName]);
+  }, [revisionName, t]);
 
   const [refresh, setRefresh] = useState<boolean>(true);
   const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
