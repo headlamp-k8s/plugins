@@ -15,9 +15,15 @@
  */
 
 import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerKubeObjectGlance,
+  registerMapSource,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
 import { KatibExperimentsDetail } from './components/katib/KatibExperimentsDetail';
+import { KatibExperimentsGlance } from './components/katib/KatibExperimentsGlance';
 import { KatibExperimentsList } from './components/katib/KatibExperimentsList';
 import { KatibOverview } from './components/katib/KatibOverview';
 import { KatibSuggestionsDetail } from './components/katib/KatibSuggestionsDetail';
@@ -25,11 +31,14 @@ import { KatibSuggestionsList } from './components/katib/KatibSuggestionsList';
 import { KatibTrialsDetail } from './components/katib/KatibTrialsDetail';
 import { KatibTrialsList } from './components/katib/KatibTrialsList';
 import { NotebooksDetail } from './components/notebooks/NotebooksDetail';
+import { NotebooksGlance } from './components/notebooks/NotebooksGlance';
 import { NotebooksList } from './components/notebooks/NotebooksList';
 import { NotebooksOverview } from './components/notebooks/NotebooksOverview';
 import { PodDefaultsDetail } from './components/notebooks/PodDefaultsDetail';
+import { PodDefaultsGlance } from './components/notebooks/PodDefaultsGlance';
 import { PodDefaultsList } from './components/notebooks/PodDefaultsList';
 import { ProfilesDetail } from './components/notebooks/ProfilesDetail';
+import { ProfilesGlance } from './components/notebooks/ProfilesGlance';
 import { ProfilesList } from './components/notebooks/ProfilesList';
 import { Overview } from './components/overview/Overview';
 import { PipelineArtifacts } from './components/pipelines/PipelineArtifacts';
@@ -40,6 +49,7 @@ import { PipelineRecurringRunsList } from './components/pipelines/PipelineRecurr
 import { PipelineRunsDetail } from './components/pipelines/PipelineRunsDetail';
 import { PipelineRunsList } from './components/pipelines/PipelineRunsList';
 import { PipelinesDetail } from './components/pipelines/PipelinesDetail';
+import { PipelinesGlance } from './components/pipelines/PipelinesGlance';
 import { PipelinesList } from './components/pipelines/PipelinesList';
 import { PipelinesOverview } from './components/pipelines/PipelinesOverview';
 import { PipelineVersionsDetail } from './components/pipelines/PipelineVersionsDetail';
@@ -47,6 +57,7 @@ import { PipelineVersionsList } from './components/pipelines/PipelineVersionsLis
 import { ScheduledSparkApplicationsDetail } from './components/spark/ScheduledSparkApplicationsDetail';
 import { ScheduledSparkApplicationsList } from './components/spark/ScheduledSparkApplicationsList';
 import { SparkApplicationsDetail } from './components/spark/SparkApplicationsDetail';
+import { SparkApplicationsGlance } from './components/spark/SparkApplicationsGlance';
 import { SparkApplicationsList } from './components/spark/SparkApplicationsList';
 import { SparkOverview } from './components/spark/SparkOverview';
 import { ClusterTrainingRuntimesList } from './components/training/ClusterTrainingRuntimesList';
@@ -57,7 +68,9 @@ import {
 } from './components/training/TrainingRuntimeDetails';
 import { TrainingRuntimesList } from './components/training/TrainingRuntimesList';
 import { TrainJobsDetail } from './components/training/TrainJobsDetail';
+import { TrainJobsGlance } from './components/training/TrainJobsGlance';
 import { TrainJobsList } from './components/training/TrainJobsList';
+import { kubeflowApiSource } from './mapView';
 
 addIcon('custom:kubeflow', {
   body: `<path fill="#4279f4" d="m35.59 43.66 2.836 70.645 51.027-65.121a4.716 4.716 0 0 1 3.164-1.774 4.705 4.705 0 0 1 3.48 1.004l31.829 25.547-10.38-45.395Zm0 0"/><path fill="#0028aa" d="M40.191 127.262h45.266l-27.793-22.297Zm0 0"/><path fill="#014bd1" d="M93.902 58.723 63.461 97.566l32.434 26.024 30.77-38.582Zm0 0"/><path fill="#bedcff" d="m27.055 36.848.004-.008 26.77-33.57L10.66 24.059 0 70.769Zm0 0"/><path fill="#6ca1ff" d="m.594 85.105 28.672 35.954-2.73-68.485Zm0 0"/><path fill="#a1c3ff" d="M109.215 20.54 67.937.66l-25.69 32.215Zm0 0"/>`,
@@ -509,3 +522,15 @@ registerRoute({
   exact: true,
   component: () => <ScheduledSparkApplicationsDetail />,
 });
+
+// Register on-hover "glance" tooltips for kubeflow resource types
+registerKubeObjectGlance({ id: 'notebook-glance', component: NotebooksGlance });
+registerKubeObjectGlance({ id: 'profile-glance', component: ProfilesGlance });
+registerKubeObjectGlance({ id: 'poddefault-glance', component: PodDefaultsGlance });
+registerKubeObjectGlance({ id: 'katibexperiment-glance', component: KatibExperimentsGlance });
+registerKubeObjectGlance({ id: 'pipeline-glance', component: PipelinesGlance });
+registerKubeObjectGlance({ id: 'sparkapp-glance', component: SparkApplicationsGlance });
+registerKubeObjectGlance({ id: 'trainjob-glance', component: TrainJobsGlance });
+
+// Register the map source
+registerMapSource(kubeflowApiSource);
