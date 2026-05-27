@@ -1,0 +1,22 @@
+version: 0.1.1
+name: headlamp_cert-manager
+displayName: cert-manager
+createdAt: "2026-05-27T00:00:00Z"
+logoURL: "https://raw.githubusercontent.com/cert-manager/cert-manager/refs/heads/master/logo/logo.png"
+description: A UI for viewing and managing cert-manager.
+changes:
+  - kind: added
+    description: "Cloudflare DNS01 solver fields (account email, API key secret, API token secret) are now rendered in the ACME challenge view on Challenge and Issuer detail pages. Thanks to @YotamKorah #592"
+  - kind: changed
+    description: "SecretKeySelector references now link to the corresponding Secret detail page. Thanks to @YotamKorah"
+  - kind: added
+    description: "Storybook stories for UI components to support visual testing. Thanks to @3DSA #498"
+  - kind: fixed
+    description: "Handle undefined values gracefully in the Cloudflare solver renderer. Thanks to @YotamKorah"
+  - kind: fixed
+    description: "Avoid undefined error when CertificateRequest.status.conditions is unset. Thanks to @mudit06mah"
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/cert-manager-0.1.1/headlamp-k8s-cert-manager-0.1.1.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:2b06caae0a207e2c30ce0d21bc4d672ae0a71a2cffc23a4585199110533032ab"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
