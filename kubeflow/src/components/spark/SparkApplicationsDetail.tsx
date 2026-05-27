@@ -1,4 +1,4 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   ConditionsTable,
@@ -39,35 +39,40 @@ function getServiceRoute(cluster: string | undefined, namespace: string, name: s
   return `/c/${cluster || 'main'}/namespaces/${namespace}/services/${name}`;
 }
 
-function getVolumeMountRows(sparkApplication: SparkApplicationClass) {
-  const volumes = sparkApplication.spec.volumes ?? [];
-  const sections = [
-    {
-      scope: 'Driver',
-      mounts: sparkApplication.driverSpec.volumeMounts ?? [],
-    },
-    {
-      scope: 'Executor',
-      mounts: sparkApplication.executorSpec.volumeMounts ?? [],
-    },
-  ];
-
-  return sections.flatMap(section =>
-    section.mounts.map((mount: any) => {
-      const volume = volumes.find((candidate: any) => candidate.name === mount.name);
-
-      return {
-        component: section.scope,
-        mount: `${mount.name} -> ${mount.mountPath}`,
-        source: `${describeSparkVolume(volume)}${mount.readOnly ? ' (ReadOnly)' : ''}`,
-      };
-    })
-  );
-}
-
-export function SparkApplicationsDetail(props: { namespace?: string; name?: string }) {
+export function SparkApplicationsDetail(props: { namespace?: string; name?: string; node?: any }) {
+  const { t } = useTranslation();
   const params = useParams<{ namespace: string; name: string }>();
-  const { namespace = params.namespace, name = params.name } = props;
+  const {
+    namespace = params.namespace || props.node?.kubeObject?.metadata?.namespace,
+    name = params.name || props.node?.kubeObject?.metadata?.name,
+  } = props;
+
+  function getVolumeMountRows(sparkApplication: SparkApplicationClass) {
+    const volumes = sparkApplication.spec.volumes ?? [];
+    const sections = [
+      {
+        scope: t('Driver'),
+        mounts: sparkApplication.driverSpec.volumeMounts ?? [],
+      },
+      {
+        scope: t('Executor'),
+        mounts: sparkApplication.executorSpec.volumeMounts ?? [],
+      },
+    ];
+
+    return sections.flatMap(section =>
+      section.mounts.map((mount: any) => {
+        const volume = volumes.find((candidate: any) => candidate.name === mount.name);
+
+        return {
+          component: section.scope,
+          mount: `${mount.name} -> ${mount.mountPath}`,
+          source: `${describeSparkVolume(volume)}${mount.readOnly ? t(' (ReadOnly)') : ''}`,
+        };
+      })
+    );
+  }
+
   const [podsByOperatorLabel] = K8s.ResourceClasses.Pod.useList({
     namespace,
     labelSelector: `sparkoperator.k8s.io/app-name=${name}`,
@@ -93,7 +98,7 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
   }, [podsByLegacyLabel, podsByOperatorLabel]);
 
   return (
-    <SectionPage title="Spark Application Detail" apiPath="/apis/sparkoperator.k8s.io/v1beta2">
+    <SectionPage title={t('Spark Application Detail')} apiPath="/apis/sparkoperator.k8s.io/v1beta2">
       <DetailsGrid
         resourceType={SparkApplicationClass}
         name={name as string}
@@ -113,14 +118,14 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                     id: 'kubeflow.spark-driver-logs',
                     action: (
                       <ActionButton
-                        description="View Driver Logs"
+                        description={t('View Driver Logs')}
                         icon="mdi:text-box-outline"
                         onClick={() =>
                           launchPodLogs({
                             podName: item.driverPodName,
                             namespace: item.metadata.namespace,
                             cluster: item.cluster,
-                            title: `Driver Logs: ${item.metadata.name}`,
+                            title: t('Driver Logs: {{name}}', { name: item.metadata.name }),
                           })
                         }
                       />
@@ -132,7 +137,7 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
               id: 'kubeflow.spark-raw-json',
               action: (
                 <KubeflowJsonViewerAction
-                  title="View Raw JSON"
+                  title={t('View Raw JSON')}
                   value={item.jsonData}
                   activityId={`json-spark-${item.metadata.namespace}-${item.metadata.name}`}
                 />
@@ -142,7 +147,7 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
               id: 'kubeflow.spark-raw-yaml',
               action: (
                 <KubeflowJsonViewerAction
-                  title="View Raw YAML"
+                  title={t('View Raw YAML')}
                   value={yaml.dump(item.jsonData)}
                   language="yaml"
                   activityId={`yaml-spark-${item.metadata.namespace}-${item.metadata.name}`}
@@ -155,11 +160,11 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                     id: 'kubeflow.spark-last-applied-diff',
                     action: (
                       <KubeflowDiffViewerAction
-                        title="Compare Live vs Last Applied Spec"
+                        title={t('Compare Live vs Last Applied Spec')}
                         original={yaml.dump(lastAppliedSpec)}
                         modified={yaml.dump(item.spec)}
-                        originalLabel="Last Applied"
-                        modifiedLabel="Live Spec"
+                        originalLabel={t('Last Applied')}
+                        modifiedLabel={t('Live Spec')}
                         activityId={`diff-spark-${item.metadata.namespace}-${item.metadata.name}`}
                       />
                     ),
@@ -171,23 +176,23 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
         extraInfo={item =>
           item && [
             {
-              name: 'Status',
+              name: t('Status'),
               value: <SparkApplicationStatusBadge sparkApplication={item} />,
             },
             {
-              name: 'Type',
+              name: t('Type'),
               value: <SparkApplicationTypeBadge type={item.applicationType} />,
             },
             {
-              name: 'Spark Version',
+              name: t('Spark Version'),
               value: item.sparkVersion || '-',
             },
             {
-              name: 'Mode',
+              name: t('Mode'),
               value: item.mode || '-',
             },
             {
-              name: 'Spark UI',
+              name: t('Spark UI'),
               value: item.driverInfo.webUIServiceName ? (
                 <HeadlampLink
                   route={getServiceRoute(
@@ -203,31 +208,31 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
               ),
             },
             {
-              name: 'Driver Pod',
+              name: t('Driver Pod'),
               value: item.driverPodName || '-',
             },
             {
-              name: 'Executors',
+              name: t('Executors'),
               value: getSparkExecutorSummary(item),
             },
             {
-              name: 'Service Account',
-              value: item.serviceAccountName || 'default',
+              name: t('Service Account'),
+              value: item.serviceAccountName || t('default'),
             },
             {
-              name: 'Main File',
+              name: t('Main File'),
               value: item.spec.mainApplicationFile || '-',
             },
             {
-              name: 'Main Class',
+              name: t('Main Class'),
               value: item.spec.mainClass || '-',
             },
             {
-              name: 'Submission Attempts',
+              name: t('Submission Attempts'),
               value: item.submissionAttempts || '-',
             },
             {
-              name: 'Execution Attempts',
+              name: t('Execution Attempts'),
               value: item.executionAttempts || '-',
             },
           ]
@@ -250,35 +255,35 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-health-summary',
               section: (
-                <SectionBox title="Health Summary">
+                <SectionBox title={t('Health Summary')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Application State',
+                        name: t('Application State'),
                         value: <SparkApplicationStatusBadge sparkApplication={item} />,
                       },
                       {
-                        name: 'Driver State Source',
+                        name: t('Driver State Source'),
                         value: item.applicationStateLabel || '-',
                       },
                       {
-                        name: 'Submission ID',
+                        name: t('Submission ID'),
                         value: item.status?.submissionID || '-',
                       },
                       {
-                        name: 'Spark Application ID',
+                        name: t('Spark Application ID'),
                         value: item.status?.sparkApplicationId || '-',
                       },
                       {
-                        name: 'Last Submission Attempt',
+                        name: t('Last Submission Attempt'),
                         value: item.lastSubmissionAttemptTime || '-',
                       },
                       {
-                        name: 'Termination Time',
+                        name: t('Termination Time'),
                         value: item.terminationTime || '-',
                       },
                       {
-                        name: 'Error Message',
+                        name: t('Error Message'),
                         value: item.applicationErrorMessage || '-',
                       },
                     ]}
@@ -289,13 +294,13 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-topology',
               section: podRows.length > 0 && (
-                <SectionBox title="Driver & Executor Topology">
+                <SectionBox title={t('Driver & Executor Topology')}>
                   <SimpleTable
                     data={podRows}
                     columns={[
-                      { label: 'Role', getter: row => row.role },
+                      { label: t('Role'), getter: row => row.role },
                       {
-                        label: 'Pod',
+                        label: t('Pod'),
                         getter: row =>
                           row.rawPod ? (
                             <HeadlampLink
@@ -308,19 +313,19 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                           ),
                       },
                       {
-                        label: 'Phase',
+                        label: t('Phase'),
                         getter: row => row.phase || '-',
                       },
                       {
-                        label: 'Restarts',
+                        label: t('Restarts'),
                         getter: row => row.restartCount,
                       },
                       {
-                        label: 'Node',
+                        label: t('Node'),
                         getter: row => row.nodeName,
                       },
                       {
-                        label: 'Pod IP',
+                        label: t('Pod IP'),
                         getter: row => row.podIP,
                       },
                     ]}
@@ -331,21 +336,21 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-logs',
               section: (
-                <SectionBox title="Logs">
+                <SectionBox title={t('Logs')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Driver',
+                        name: t('Driver'),
                         value: item.driverPodName ? (
                           <ActionButton
-                            description={`Open ${item.driverPodName}`}
+                            description={t('Open {{name}}', { name: item.driverPodName })}
                             icon="mdi:text-box-outline"
                             onClick={() =>
                               launchPodLogs({
                                 podName: item.driverPodName,
                                 namespace: item.metadata.namespace,
                                 cluster: item.cluster,
-                                title: `Driver Logs: ${item.metadata.name}`,
+                                title: t('Driver Logs: {{name}}', { name: item.metadata.name }),
                               })
                             }
                           />
@@ -359,14 +364,14 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                           name: row.name,
                           value: (
                             <ActionButton
-                              description={`Open ${row.name}`}
+                              description={t('Open {{name}}', { name: row.name })}
                               icon="mdi:text-box-outline"
                               onClick={() =>
                                 launchPodLogs({
                                   podName: row.name,
                                   namespace: item.metadata.namespace,
                                   cluster: item.cluster,
-                                  title: `Executor Logs: ${row.name}`,
+                                  title: t('Executor Logs: {{name}}', { name: row.name }),
                                 })
                               }
                             />
@@ -380,78 +385,86 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-resources-scaling',
               section: (
-                <SectionBox title="Resources & Scaling">
+                <SectionBox title={t('Resources & Scaling')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Driver CPU',
+                        name: t('Driver CPU'),
                         value: item.driverSpec.cores
-                          ? `${item.driverSpec.cores} core(s)`
+                          ? t('{{count}} core(s)', { count: item.driverSpec.cores })
                           : item.driverSpec.coreRequest || '-',
                       },
                       {
-                        name: 'Driver CPU Limit',
+                        name: t('Driver CPU Limit'),
                         value: item.driverSpec.coreLimit || '-',
                       },
                       {
-                        name: 'Driver Memory',
+                        name: t('Driver Memory'),
                         value: item.driverSpec.memory || '-',
                       },
                       {
-                        name: 'Driver Memory Overhead',
+                        name: t('Driver Memory Overhead'),
                         value: item.driverSpec.memoryOverhead || '-',
                       },
                       {
-                        name: 'Driver GPU',
+                        name: t('Driver GPU'),
                         value: item.driverSpec.gpu
-                          ? `${item.driverSpec.gpu.quantity}x ${item.driverSpec.gpu.name}`
+                          ? t('{{count}}x {{name}}', {
+                              count: item.driverSpec.gpu.quantity,
+                              name: item.driverSpec.gpu.name,
+                            })
                           : '-',
                       },
                       {
-                        name: 'Executor CPU',
+                        name: t('Executor CPU'),
                         value: item.executorSpec.cores
-                          ? `${item.executorSpec.cores} core(s)`
+                          ? t('{{count}} core(s)', { count: item.executorSpec.cores })
                           : item.executorSpec.coreRequest || '-',
                       },
                       {
-                        name: 'Executor CPU Limit',
+                        name: t('Executor CPU Limit'),
                         value: item.executorSpec.coreLimit || '-',
                       },
                       {
-                        name: 'Executor Memory',
+                        name: t('Executor Memory'),
                         value: item.executorSpec.memory || '-',
                       },
                       {
-                        name: 'Executor Memory Overhead',
+                        name: t('Executor Memory Overhead'),
                         value: item.executorSpec.memoryOverhead || '-',
                       },
                       {
-                        name: 'Executor GPU',
+                        name: t('Executor GPU'),
                         value: item.executorSpec.gpu
-                          ? `${item.executorSpec.gpu.quantity}x ${item.executorSpec.gpu.name}`
+                          ? t('{{count}}x {{name}}', {
+                              count: item.executorSpec.gpu.quantity,
+                              name: item.executorSpec.gpu.name,
+                            })
                           : '-',
                       },
                       {
-                        name: 'Desired Executors',
+                        name: t('Desired Executors'),
                         value: item.executorSpec.instances ?? '-',
                       },
                       {
-                        name: 'Dynamic Allocation',
+                        name: t('Dynamic Allocation'),
                         value: dynamicAllocation?.enabled ? (
                           <Box>
-                            Enabled (Min: {dynamicAllocation.minExecutors ?? 0}, Max:{' '}
-                            {dynamicAllocation.maxExecutors ?? '∞'})
+                            {t('Enabled (Min: {{min}}, Max: {{max}})', {
+                              min: dynamicAllocation.minExecutors ?? 0,
+                              max: dynamicAllocation.maxExecutors ?? '∞',
+                            })}
                           </Box>
                         ) : (
-                          'Disabled'
+                          t('Disabled')
                         ),
                       },
                       {
-                        name: 'Batch Scheduler',
+                        name: t('Batch Scheduler'),
                         value: item.spec.batchScheduler || '-',
                       },
                       {
-                        name: 'Queue',
+                        name: t('Queue'),
                         value: item.spec.batchSchedulerOptions?.queue || '-',
                       },
                     ]}
@@ -467,7 +480,7 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                 );
                 const driverEnv = (item.driverSpec.env ?? []).map((env: any) => ({
                   name: env.name,
-                  value: env.value ?? (env.valueFrom ? 'From: [valueFrom]' : '-'),
+                  value: env.value ?? (env.valueFrom ? t('From: [valueFrom]') : '-'),
                 }));
                 const allDriverEnv = [...driverEnvVars, ...driverEnv];
 
@@ -476,7 +489,7 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                 );
                 const executorEnv = (item.executorSpec.env ?? []).map((env: any) => ({
                   name: env.name,
-                  value: env.value ?? (env.valueFrom ? 'From: [valueFrom]' : '-'),
+                  value: env.value ?? (env.valueFrom ? t('From: [valueFrom]') : '-'),
                 }));
                 const allExecutorEnv = [...executorEnvVars, ...executorEnv];
 
@@ -485,12 +498,12 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                 }
 
                 return (
-                  <SectionBox title="Environment Variables">
+                  <SectionBox title={t('Environment Variables')}>
                     <Box sx={{ display: 'grid', gap: 3 }}>
                       {allDriverEnv.length > 0 && (
                         <Box>
                           <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
-                            Driver
+                            {t('Driver')}
                           </Typography>
                           <NameValueTable rows={allDriverEnv} />
                         </Box>
@@ -498,7 +511,7 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                       {allExecutorEnv.length > 0 && (
                         <Box>
                           <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
-                            Executor
+                            {t('Executor')}
                           </Typography>
                           <NameValueTable rows={allExecutorEnv} />
                         </Box>
@@ -511,31 +524,31 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-placement',
               section: (
-                <SectionBox title="Scheduling & Placement">
+                <SectionBox title={t('Scheduling & Placement')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Driver Node Selector',
+                        name: t('Driver Node Selector'),
                         value: JSON.stringify(item.driverSpec.nodeSelector) || '-',
                       },
                       {
-                        name: 'Executor Node Selector',
+                        name: t('Executor Node Selector'),
                         value: JSON.stringify(item.executorSpec.nodeSelector) || '-',
                       },
                       {
-                        name: 'Driver Affinity',
-                        value: item.driverSpec.affinity ? 'Configured' : '-',
+                        name: t('Driver Affinity'),
+                        value: item.driverSpec.affinity ? t('Configured') : '-',
                       },
                       {
-                        name: 'Executor Affinity',
-                        value: item.executorSpec.affinity ? 'Configured' : '-',
+                        name: t('Executor Affinity'),
+                        value: item.executorSpec.affinity ? t('Configured') : '-',
                       },
                       {
-                        name: 'Driver Tolerations',
+                        name: t('Driver Tolerations'),
                         value: item.driverSpec.tolerations?.length || '-',
                       },
                       {
-                        name: 'Executor Tolerations',
+                        name: t('Executor Tolerations'),
                         value: item.executorSpec.tolerations?.length || '-',
                       },
                     ]}
@@ -546,27 +559,27 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-config-mounts',
               section: (
-                <SectionBox title="Config & Mount Inspection">
+                <SectionBox title={t('Config & Mount Inspection')}>
                   <Box sx={{ display: 'grid', gap: 2 }}>
                     <NameValueTable
                       rows={[
                         {
-                          name: 'Spark ConfigMap',
+                          name: t('Spark ConfigMap'),
                           value: item.spec.sparkConfigMap || '-',
                         },
                         {
-                          name: 'Hadoop ConfigMap',
+                          name: t('Hadoop ConfigMap'),
                           value: item.spec.hadoopConfigMap || '-',
                         },
                         {
-                          name: 'Driver ConfigMaps',
+                          name: t('Driver ConfigMaps'),
                           value:
                             item.driverSpec.configMaps
                               ?.map(configMap => configMap.name)
                               .join(', ') || '-',
                         },
                         {
-                          name: 'Executor ConfigMaps',
+                          name: t('Executor ConfigMaps'),
                           value:
                             item.executorSpec.configMaps
                               ?.map(configMap => configMap.name)
@@ -579,9 +592,9 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                       <SimpleTable
                         data={volumeMountRows}
                         columns={[
-                          { label: 'Component', getter: row => row.component },
-                          { label: 'Mount', getter: row => row.mount },
-                          { label: 'Source', getter: row => row.source },
+                          { label: t('Component'), getter: row => row.component },
+                          { label: t('Mount'), getter: row => row.mount },
+                          { label: t('Source'), getter: row => row.source },
                         ]}
                       />
                     )}
@@ -590,21 +603,21 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
                       <SimpleTable
                         data={[
                           ...sparkConfEntries.map(([key, value]) => ({
-                            scope: 'Spark',
+                            scope: t('Spark'),
                             key,
                             value,
                           })),
                           ...hadoopConfEntries.map(([key, value]) => ({
-                            scope: 'Hadoop',
+                            scope: t('Hadoop'),
                             key,
                             value,
                           })),
                         ]}
                         columns={[
-                          { label: 'Scope', getter: row => row.scope },
-                          { label: 'Key', getter: row => row.key },
+                          { label: t('Scope'), getter: row => row.scope },
+                          { label: t('Key'), getter: row => row.key },
                           {
-                            label: 'Value',
+                            label: t('Value'),
                             getter: row => (
                               <LightTooltip title={row.value} interactive>
                                 <span>{row.value}</span>
@@ -621,27 +634,27 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-application-definition',
               section: (
-                <SectionBox title="Application Definition">
+                <SectionBox title={t('Application Definition')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Image',
+                        name: t('Image'),
                         value: item.spec.image || item.driverSpec.image || '-',
                       },
                       {
-                        name: 'Image Pull Policy',
+                        name: t('Image Pull Policy'),
                         value: item.spec.imagePullPolicy || '-',
                       },
                       {
-                        name: 'Python Version',
+                        name: t('Python Version'),
                         value: item.spec.pythonVersion || '-',
                       },
                       {
-                        name: 'Restart Policy',
+                        name: t('Restart Policy'),
                         value: item.spec.restartPolicy?.type || '-',
                       },
                       {
-                        name: 'Arguments',
+                        name: t('Arguments'),
                         value: argumentsList.length > 0 ? argumentsList.join(' ') : '-',
                       },
                     ]}
@@ -652,23 +665,23 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-monitoring',
               section: monitoring && (
-                <SectionBox title="Monitoring">
+                <SectionBox title={t('Monitoring')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Expose Driver Metrics',
-                        value: monitoring.exposeDriverMetrics ? 'Yes' : 'No',
+                        name: t('Expose Driver Metrics'),
+                        value: monitoring.exposeDriverMetrics ? t('Yes') : t('No'),
                       },
                       {
-                        name: 'Expose Executor Metrics',
-                        value: monitoring.exposeExecutorMetrics ? 'Yes' : 'No',
+                        name: t('Expose Executor Metrics'),
+                        value: monitoring.exposeExecutorMetrics ? t('Yes') : t('No'),
                       },
                       {
-                        name: 'Prometheus Monitoring',
-                        value: monitoring.prometheus ? 'Enabled' : 'Disabled',
+                        name: t('Prometheus Monitoring'),
+                        value: monitoring.prometheus ? t('Enabled') : t('Disabled'),
                       },
                       {
-                        name: 'Metrics Properties File',
+                        name: t('Metrics Properties File'),
                         value: monitoring.metricsPropertiesFile || '-',
                       },
                     ]}
@@ -684,11 +697,11 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
               id: 'spark-security',
               section:
                 securityWarnings.length > 0 ? (
-                  <SectionBox title="Security Notes">
+                  <SectionBox title={t('Security Notes')}>
                     <Box sx={{ display: 'grid', gap: 2 }}>
                       {securityWarnings.map(warning => (
                         <Alert key={warning} severity="warning" variant="outlined">
-                          {warning}
+                          {t(warning)}
                         </Alert>
                       ))}
                     </Box>
@@ -698,28 +711,29 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-advanced',
               section: (
-                <SectionBox title="Advanced">
+                <SectionBox title={t('Advanced')}>
                   <Box sx={{ display: 'grid', gap: 1 }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Use the actions above to inspect the raw JSON/YAML or compare the live spec to
-                      the last applied manifest when the cluster stores declarative history.
+                      {t(
+                        'Use the actions above to inspect the raw JSON/YAML or compare the live spec to the last applied manifest when the cluster stores declarative history.'
+                      )}
                     </Typography>
                     <NameValueTable
                       rows={[
                         {
-                          name: 'Last Applied Diff Available',
+                          name: t('Last Applied Diff Available'),
                           value: item.metadata.annotations?.[
                             'kubectl.kubernetes.io/last-applied-configuration'
                           ]
-                            ? 'Yes'
-                            : 'No',
+                            ? t('Yes')
+                            : t('No'),
                         },
                         {
-                          name: 'TTL Seconds',
+                          name: t('TTL Seconds'),
                           value: item.spec.timeToLiveSeconds ?? '-',
                         },
                         {
-                          name: 'Submission Mode',
+                          name: t('Submission Mode'),
                           value: item.mode || '-',
                         },
                       ]}
@@ -731,7 +745,7 @@ export function SparkApplicationsDetail(props: { namespace?: string; name?: stri
             {
               id: 'spark-conditions',
               section: (item.jsonData.status as any)?.conditions?.length > 0 && (
-                <SectionBox title="Conditions">
+                <SectionBox title={t('Conditions')}>
                   <ConditionsTable resource={item.jsonData} />
                 </SectionBox>
               ),

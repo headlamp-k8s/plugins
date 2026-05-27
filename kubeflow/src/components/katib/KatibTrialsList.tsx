@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   Link as HeadlampLink,
@@ -15,10 +16,12 @@ import { SectionPage } from '../common/SectionPage';
  * Renders the Katib Trial list view with core trial status and metrics columns.
  */
 export function KatibTrialsList() {
+  const { t } = useTranslation();
+
   return (
-    <SectionPage title="Katib Trials" apiPath="/apis/kubeflow.org/v1beta1/trials">
+    <SectionPage title={t('Katib Trials')} apiPath="/apis/kubeflow.org/v1beta1/trials">
       <ResourceListView
-        title="Katib Trials"
+        title={t('Katib Trials')}
         resourceClass={KatibTrialClass}
         enableRowActions
         actions={[
@@ -38,7 +41,7 @@ export function KatibTrialsList() {
                 <ListItemIcon>
                   <Icon icon="mdi:text-box-outline" width={20} />
                 </ListItemIcon>
-                <ListItemText>View Worker Logs</ListItemText>
+                <ListItemText>{t('View Worker Logs')}</ListItemText>
               </MenuItem>
             ),
           },
@@ -46,7 +49,7 @@ export function KatibTrialsList() {
         columns={[
           {
             id: 'name',
-            label: 'Name',
+            label: t('Name'),
             getValue: (item: KatibTrialClass) => item.metadata.name,
             render: (item: KatibTrialClass) => (
               <HeadlampLink
@@ -60,7 +63,7 @@ export function KatibTrialsList() {
           'namespace',
           {
             id: 'experiment',
-            label: 'Experiment',
+            label: t('Experiment'),
             getValue: (item: KatibTrialClass) => item.ownerExperiment || '-',
             render: (item: KatibTrialClass) =>
               item.ownerExperiment ? (
@@ -76,7 +79,7 @@ export function KatibTrialsList() {
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (item: KatibTrialClass) =>
               getKatibConditionStatus(item.latestCondition).label,
             render: (item: KatibTrialClass) => (
@@ -85,24 +88,24 @@ export function KatibTrialsList() {
           },
           {
             id: 'metric',
-            label: 'Metric Result',
+            label: t('Metric Result'),
             getValue: (item: KatibTrialClass) => item.objectiveMetricValue || '-',
           },
           {
             id: 'start-time',
-            label: 'Start Time',
+            label: t('Start Time'),
             getValue: (item: KatibTrialClass) => item.startTime || '-',
             render: (item: KatibTrialClass) => <DateLabel date={item.startTime} />,
           },
           {
             id: 'end-time',
-            label: 'End Time',
+            label: t('End Time'),
             getValue: (item: KatibTrialClass) => item.completionTime || '-',
             render: (item: KatibTrialClass) => <DateLabel date={item.completionTime} />,
           },
           {
             id: 'reason',
-            label: 'Reason',
+            label: t('Reason'),
             getValue: (item: KatibTrialClass) => item.failureReason || '-',
           },
           'age',

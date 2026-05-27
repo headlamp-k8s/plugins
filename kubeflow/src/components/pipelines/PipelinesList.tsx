@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   ResourceListView,
@@ -34,6 +35,7 @@ import { SectionPage } from '../common/SectionPage';
  * Lists Kubeflow Pipeline resources available on the cluster.
  */
 export function PipelinesList() {
+  const { t } = useTranslation();
   const [pipelineVersions] = PipelineVersionClass.useList();
   const versions = pipelineVersions ?? [];
 
@@ -52,14 +54,14 @@ export function PipelinesList() {
   }, [versions]);
 
   return (
-    <SectionPage title="Pipelines" apiPath="/apis/pipelines.kubeflow.org/v2beta1/pipelines">
+    <SectionPage title={t('Pipelines')} apiPath="/apis/pipelines.kubeflow.org/v2beta1/pipelines">
       <ResourceListView
-        title="Pipelines"
+        title={t('Pipelines')}
         resourceClass={PipelineClass}
         columns={[
           {
             id: 'name',
-            label: 'Name',
+            label: t('Name'),
             getValue: (item: PipelineClass) => item.metadata.name,
             render: (item: PipelineClass) => (
               <HeadlampLink
@@ -73,17 +75,17 @@ export function PipelinesList() {
           'namespace',
           {
             id: 'display-name',
-            label: 'Display Name',
+            label: t('Display Name'),
             getValue: (item: PipelineClass) => item.displayName || '-',
           },
           {
             id: 'description',
-            label: 'Description',
+            label: t('Description'),
             getValue: (item: PipelineClass) => item.description || '-',
           },
           {
             id: 'latest-version',
-            label: 'Latest Version',
+            label: t('Latest Version'),
             getValue: (item: PipelineClass) => {
               const key = `${item.metadata.namespace}/${item.metadata.name}`;
               return latestVersionsMap.get(key)?.metadata?.name ?? '-';
@@ -111,7 +113,7 @@ export function PipelinesList() {
           },
           {
             id: 'version-count',
-            label: 'Versions',
+            label: t('Versions'),
             getValue: (item: PipelineClass) =>
               countPipelineVersionsForPipeline(
                 versions,
@@ -121,7 +123,7 @@ export function PipelinesList() {
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (item: PipelineClass) => getPipelineResourceStatus(item).label,
             render: (item: PipelineClass) => <PipelineStatusBadge resource={item} />,
           },

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   ResourceListView,
@@ -11,15 +12,17 @@ import { SectionPage } from '../common/SectionPage';
  * Renders the Katib Suggestion list view with request and assignment status fields.
  */
 export function KatibSuggestionsList() {
+  const { t } = useTranslation();
+
   return (
-    <SectionPage title="Katib Suggestions" apiPath="/apis/kubeflow.org/v1beta1/suggestions">
+    <SectionPage title={t('Katib Suggestions')} apiPath="/apis/kubeflow.org/v1beta1/suggestions">
       <ResourceListView
-        title="Katib Suggestions"
+        title={t('Katib Suggestions')}
         resourceClass={KatibSuggestionClass}
         columns={[
           {
             id: 'name',
-            label: 'Name',
+            label: t('Name'),
             getValue: (item: KatibSuggestionClass) => item.metadata.name,
             render: (item: KatibSuggestionClass) => (
               <HeadlampLink
@@ -33,22 +36,22 @@ export function KatibSuggestionsList() {
           'namespace',
           {
             id: 'algorithm',
-            label: 'Algorithm',
+            label: t('Algorithm'),
             getValue: (item: KatibSuggestionClass) => item.spec.algorithm?.algorithmName || '-',
           },
           {
             id: 'requested',
-            label: 'Requested',
+            label: t('Requested'),
             getValue: (item: KatibSuggestionClass) => item.spec.requests ?? '-',
           },
           {
             id: 'assigned',
-            label: 'Assigned',
+            label: t('Assigned'),
             getValue: (item: KatibSuggestionClass) => item.status.suggestionCount ?? 0,
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (item: KatibSuggestionClass) =>
               getKatibConditionStatus(item.latestCondition).label,
             render: (item: KatibSuggestionClass) => (

@@ -1,4 +1,4 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   SectionBox,
@@ -23,20 +23,25 @@ interface PermissionCheck {
   subresource?: string;
 }
 
-function formatAccess(allowed: boolean | null, isLoading: boolean, error: string): React.ReactNode {
+function formatAccess(
+  allowed: boolean | null,
+  isLoading: boolean,
+  error: string,
+  t: any
+): React.ReactNode {
   if (isLoading) {
-    return <StatusLabel>Checking</StatusLabel>;
+    return <StatusLabel>{t('Checking')}</StatusLabel>;
   }
   if (error) {
-    return <StatusLabel status="warning">Unknown</StatusLabel>;
+    return <StatusLabel status="warning">{t('Unknown')}</StatusLabel>;
   }
   if (allowed === null) {
-    return <StatusLabel>Unknown</StatusLabel>;
+    return <StatusLabel>{t('Unknown')}</StatusLabel>;
   }
   return allowed ? (
-    <StatusLabel status="success">Allowed</StatusLabel>
+    <StatusLabel status="success">{t('Allowed')}</StatusLabel>
   ) : (
-    <StatusLabel status="error">Denied</StatusLabel>
+    <StatusLabel status="error">{t('Denied')}</StatusLabel>
   );
 }
 
@@ -51,6 +56,7 @@ function KatibPermissionAccess({
   cluster?: string;
   check: PermissionCheck;
 }) {
+  const { t } = useTranslation();
   const resourceAttributes = React.useMemo(
     () => ({
       group: 'kubeflow.org',
@@ -71,7 +77,7 @@ function KatibPermissionAccess({
 
   return (
     <Box sx={{ display: 'grid', gap: 0.5 }}>
-      {formatAccess(access.allowed, access.isLoading, access.error)}
+      {formatAccess(access.allowed, access.isLoading, access.error, t)}
       {(access.error || access.reason) && (
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           {access.error || access.reason}
@@ -81,10 +87,8 @@ function KatibPermissionAccess({
   );
 }
 
-export function KatibRbacSection({
-  experiment,
-  title = 'RBAC & Service Accounts',
-}: KatibRbacSectionProps) {
+export function KatibRbacSection({ experiment, title }: KatibRbacSectionProps) {
+  const { t } = useTranslation();
   const namespace = experiment.metadata.namespace;
   const workerServiceAccount = experiment.trialServiceAccountName || 'default';
   const suggestionServiceAccount = experiment.suggestionServiceAccountName || 'default';
@@ -104,48 +108,48 @@ export function KatibRbacSection({
   const checks: PermissionCheck[] = React.useMemo(
     () => [
       {
-        label: 'Read Trials',
+        label: t('Read Trials'),
         verb: 'list',
         resource: 'trials',
       },
       {
-        label: 'Update Trial status',
+        label: t('Update Trial status'),
         verb: 'update',
         resource: 'trials',
         subresource: 'status',
       },
       {
-        label: 'Patch Trial status',
+        label: t('Patch Trial status'),
         verb: 'patch',
         resource: 'trials',
         subresource: 'status',
       },
     ],
-    []
+    [t]
   );
 
   return (
-    <SectionBox title={title}>
+    <SectionBox title={title || t('RBAC & Service Accounts')}>
       <Box sx={{ display: 'grid', gap: 2 }}>
         <SimpleTable
           data={[
             {
-              role: 'Trial Worker',
+              role: t('Trial Worker'),
               serviceAccount: workerServiceAccount,
               subject: workerServiceAccountUser,
-              exists: workerSa ? 'Yes' : workerSaError ? 'No' : 'Checking...',
+              exists: workerSa ? t('Yes') : workerSaError ? t('No') : t('Checking...'),
             },
             {
-              role: 'Suggestion / Early Stopping',
+              role: t('Suggestion / Early Stopping'),
               serviceAccount: suggestionServiceAccount,
               subject: suggestionServiceAccountUser,
-              exists: suggestionSa ? 'Yes' : suggestionSaError ? 'No' : 'Checking...',
+              exists: suggestionSa ? t('Yes') : suggestionSaError ? t('No') : t('Checking...'),
             },
           ]}
           columns={[
-            { label: 'Role', getter: row => row.role },
+            { label: t('Role'), getter: row => row.role },
             {
-              label: 'Service Account',
+              label: t('Service Account'),
               getter: row => (
                 <HeadlampLink
                   routeName="ServiceAccount"
@@ -156,25 +160,25 @@ export function KatibRbacSection({
                 </HeadlampLink>
               ),
             },
-            { label: 'Subject', getter: row => row.subject },
-            { label: 'Exists', getter: row => row.exists },
+            { label: t('Subject'), getter: row => row.subject },
+            { label: t('Exists'), getter: row => row.exists },
           ]}
         />
 
-        <Typography variant="subtitle2">Trial Worker Permissions</Typography>
+        <Typography variant="subtitle2">{t('Trial Worker Permissions')}</Typography>
         <SimpleTable
           data={checks}
           columns={[
-            { label: 'Permission', getter: check => check.label },
+            { label: t('Permission'), getter: check => check.label },
             {
-              label: 'Resource',
+              label: t('Resource'),
               getter: check =>
                 check.subresource
                   ? `${check.verb} ${check.resource}/${check.subresource}`
                   : `${check.verb} ${check.resource}`,
             },
             {
-              label: 'Access',
+              label: t('Access'),
               getter: check => (
                 <KatibPermissionAccess
                   serviceAccountUser={workerServiceAccountUser}
@@ -187,20 +191,20 @@ export function KatibRbacSection({
           ]}
         />
 
-        <Typography variant="subtitle2">Suggestion / Early Stopping Permissions</Typography>
+        <Typography variant="subtitle2">{t('Suggestion / Early Stopping Permissions')}</Typography>
         <SimpleTable
           data={checks}
           columns={[
-            { label: 'Permission', getter: check => check.label },
+            { label: t('Permission'), getter: check => check.label },
             {
-              label: 'Resource',
+              label: t('Resource'),
               getter: check =>
                 check.subresource
                   ? `${check.verb} ${check.resource}/${check.subresource}`
                   : `${check.verb} ${check.resource}`,
             },
             {
-              label: 'Access',
+              label: t('Access'),
               getter: check => (
                 <KatibPermissionAccess
                   serviceAccountUser={suggestionServiceAccountUser}

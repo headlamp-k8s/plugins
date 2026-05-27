@@ -1,26 +1,29 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { LightTooltip, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip } from '@mui/material';
 import { PodDefaultClass } from '../../resources/podDefault';
 import { SectionPage } from '../common/SectionPage';
 
 export function PodDefaultsList() {
+  const { t } = useTranslation();
+
   return (
-    <SectionPage title="PodDefaults" apiPath="/apis/kubeflow.org/v1alpha1">
+    <SectionPage title={t('PodDefaults')} apiPath="/apis/kubeflow.org/v1alpha1">
       <ResourceListView
-        title="PodDefaults"
+        title={t('PodDefaults')}
         resourceClass={PodDefaultClass}
         columns={[
           'name',
           'namespace',
           {
             id: 'description',
-            label: 'Description',
+            label: t('Description'),
             getValue: item => item?.jsonData?.spec?.desc || '-',
           },
           {
             id: 'selector',
-            label: 'Selector Labels',
+            label: t('Selector Labels'),
             getValue: item => {
               const matchLabels = item?.jsonData?.spec?.selector?.matchLabels;
               if (!matchLabels) return '-';
@@ -36,7 +39,7 @@ export function PodDefaultsList() {
                 <LightTooltip title={labels.join('\n')} interactive>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
                     <Icon icon="mdi:tag-outline" aria-hidden />
-                    <span>{labels.length} label(s)</span>
+                    <span>{t('{{count}} label(s)', { count: labels.length })}</span>
                   </Box>
                 </LightTooltip>
               );
@@ -44,12 +47,16 @@ export function PodDefaultsList() {
           },
           {
             id: 'env-count',
-            label: 'Injections',
+            label: t('Injections'),
             getValue: item => {
               const envVars = item?.jsonData?.spec?.env || [];
               const volumes = item?.jsonData?.spec?.volumes || [];
               const mounts = item?.jsonData?.spec?.volumeMounts || [];
-              return `${envVars.length} Env, ${volumes.length} Vol, ${mounts.length} Mnt`;
+              return t('{{envCount}} Env, {{volCount}} Vol, {{mntCount}} Mnt', {
+                envCount: envVars.length,
+                volCount: volumes.length,
+                mntCount: mounts.length,
+              });
             },
             render: item => {
               const envVars = item?.jsonData?.spec?.env || [];
@@ -58,17 +65,24 @@ export function PodDefaultsList() {
               return (
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   {envVars.length > 0 && (
-                    <Chip size="small" color="primary" label={`${envVars.length} Env`} />
+                    <Chip
+                      size="small"
+                      color="primary"
+                      label={t('{{count}} Env', { count: envVars.length })}
+                    />
                   )}
                   {(volumes.length > 0 || mounts.length > 0) && (
                     <Chip
                       size="small"
                       color="warning"
-                      label={`${volumes.length} Vol / ${mounts.length} Mnt`}
+                      label={t('{{volCount}} Vol / {{mntCount}} Mnt', {
+                        volCount: volumes.length,
+                        mntCount: mounts.length,
+                      })}
                     />
                   )}
                   {envVars.length === 0 && volumes.length === 0 && mounts.length === 0 && (
-                    <span>None</span>
+                    <span>{t('None')}</span>
                   )}
                 </Box>
               );

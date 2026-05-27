@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   ResourceListView,
@@ -8,15 +9,17 @@ import { KubeflowStatusBadge } from '../common/KubeflowStatusBadge';
 import { SectionPage } from '../common/SectionPage';
 
 export function KatibExperimentsList() {
+  const { t } = useTranslation();
+
   return (
-    <SectionPage title="Katib Experiments" apiPath="/apis/kubeflow.org/v1beta1/experiments">
+    <SectionPage title={t('Katib Experiments')} apiPath="/apis/kubeflow.org/v1beta1/experiments">
       <ResourceListView
-        title="Katib Experiments"
+        title={t('Katib Experiments')}
         resourceClass={KatibExperimentClass}
         columns={[
           {
             id: 'name',
-            label: 'Name',
+            label: t('Name'),
             getValue: (item: KatibExperimentClass) => item.metadata.name,
             render: (item: KatibExperimentClass) => (
               <HeadlampLink
@@ -30,42 +33,44 @@ export function KatibExperimentsList() {
           'namespace',
           {
             id: 'algorithm',
-            label: 'Algorithm',
+            label: t('Algorithm'),
             getValue: (item: KatibExperimentClass) => item.algorithmName || '-',
           },
           {
             id: 'objective',
-            label: 'Objective',
+            label: t('Objective'),
             getValue: (item: KatibExperimentClass) =>
               item.objectiveMetricName
-                ? `${item.objectiveType || 'maximize'}:${item.objectiveMetricName}`
+                ? `${t(item.objectiveType || 'maximize')}:${item.objectiveMetricName}`
                 : '-',
           },
           {
             id: 'trials',
-            label: 'Trials',
+            label: t('Trials'),
             getValue: (item: KatibExperimentClass) =>
               `${item.status.currentTrialCount ?? 0}/${item.spec.maxTrialCount ?? '-'}`,
           },
           {
             id: 'parallel',
-            label: 'Parallel',
+            label: t('Parallel'),
             getValue: (item: KatibExperimentClass) => item.spec.parallelTrialCount ?? '-',
           },
           {
             id: 'failed',
-            label: 'Failed',
+            label: t('Failed'),
             getValue: (item: KatibExperimentClass) => item.status.failedTrialCount ?? 0,
           },
           {
             id: 'early-stopping',
-            label: 'Early Stopping',
+            label: t('Early Stopping'),
             getValue: (item: KatibExperimentClass) =>
-              item.earlyStoppingEnabled ? item.earlyStoppingAlgorithm || 'Enabled' : 'Disabled',
+              item.earlyStoppingEnabled
+                ? t(item.earlyStoppingAlgorithm || 'Enabled')
+                : t('Disabled'),
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (item: KatibExperimentClass) =>
               getKatibConditionStatus(item.latestCondition).label,
             render: (item: KatibExperimentClass) => (

@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
@@ -13,10 +14,12 @@ import { TrainJobStatusBadge } from './TrainJobStatusBadge';
  * Lists Kubeflow TrainJobs with runtime, progress, and suspend-state columns.
  */
 export function TrainJobsList() {
+  const { t } = useTranslation();
+
   return (
-    <SectionPage title="TrainJobs" apiPath="/apis/trainer.kubeflow.org/v1alpha1/trainjobs">
+    <SectionPage title={t('TrainJobs')} apiPath="/apis/trainer.kubeflow.org/v1alpha1/trainjobs">
       <ResourceListView
-        title="TrainJobs"
+        title={t('TrainJobs')}
         resourceClass={TrainJobClass}
         enableRowActions
         actions={[
@@ -36,7 +39,7 @@ export function TrainJobsList() {
                 <ListItemIcon>
                   <Icon icon="mdi:text-box-outline" width={20} />
                 </ListItemIcon>
-                <ListItemText>View Primary Pod Logs</ListItemText>
+                <ListItemText>{t('View Primary Pod Logs')}</ListItemText>
               </MenuItem>
             ),
           },
@@ -46,43 +49,44 @@ export function TrainJobsList() {
           'namespace',
           {
             id: 'runtimeRef',
-            label: 'Runtime Ref',
-            getValue: (item: TrainJobClass) => formatRuntimeRef(item),
-            render: (item: TrainJobClass) => formatRuntimeRef(item),
+            label: t('Runtime Ref'),
+            getValue: (item: TrainJobClass) => formatRuntimeRef(item, t),
+            render: (item: TrainJobClass) => formatRuntimeRef(item, t),
           },
           {
             id: 'status',
-            label: 'Phase / Conditions',
-            getValue: (item: TrainJobClass) => item.phase || 'Pending',
+            label: t('Phase / Conditions'),
+            getValue: (item: TrainJobClass) => item.phase || t('Pending'),
             render: (item: TrainJobClass) => <TrainJobStatusBadge job={item} />,
           },
           {
             id: 'progress',
-            label: 'Progress',
+            label: t('Progress'),
             getValue: (item: TrainJobClass) => item.progress || '-',
             render: (item: TrainJobClass) => formatPercent(item.progress),
           },
           {
             id: 'suspend',
-            label: 'Suspended',
-            getValue: (item: TrainJobClass) => (item.suspended ? 'Yes' : 'No'),
-            render: (item: TrainJobClass) => (item.suspended ? 'Yes' : 'No'),
+            label: t('Suspended'),
+            getValue: (item: TrainJobClass) => (item.suspended ? t('Yes') : t('No')),
+            render: (item: TrainJobClass) => (item.suspended ? t('Yes') : t('No')),
           },
           {
             id: 'managedBy',
-            label: 'Managed By',
+            label: t('Managed By'),
             getValue: (item: TrainJobClass) => item.managedBy || '-',
             render: (item: TrainJobClass) => item.managedBy || '-',
           },
           {
             id: 'jobs',
-            label: 'Child Jobs',
+            label: t('Child Jobs'),
             getValue: (item: TrainJobClass) => `${item.jobsStatus.length}`,
             render: (item: TrainJobClass) =>
               item.jobsStatus.length > 0
                 ? item.jobsStatus
                     .map(
-                      status => `${status.name || 'job'}:${status.ready ?? 0}/${status.active ?? 0}`
+                      status =>
+                        `${status.name || t('job')}:${status.ready ?? 0}/${status.active ?? 0}`
                     )
                     .join(', ')
                 : '-',

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   ConditionsTable,
@@ -16,11 +17,12 @@ import { SectionPage } from '../common/SectionPage';
  * Renders the Katib Trial detail view with metrics, conditions, and raw JSON access.
  */
 export function KatibTrialsDetail(props: { namespace?: string; name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
 
   return (
-    <SectionPage title="Katib Trial Detail" apiPath="/apis/kubeflow.org/v1beta1/trials">
+    <SectionPage title={t('Katib Trial Detail')} apiPath="/apis/kubeflow.org/v1beta1/trials">
       <DetailsGrid
         resourceType={KatibTrialClass}
         name={name as string}
@@ -32,7 +34,7 @@ export function KatibTrialsDetail(props: { namespace?: string; name?: string }) 
               id: 'kubeflow.katib-trial-logs',
               action: (
                 <ActionButton
-                  description="View Worker Logs"
+                  description={t('View Worker Logs')}
                   icon="mdi:text-box-outline"
                   onClick={() =>
                     launchKatibTrialLogs({
@@ -48,7 +50,7 @@ export function KatibTrialsDetail(props: { namespace?: string; name?: string }) 
               id: 'kubeflow.katib-trial-json',
               action: (
                 <KubeflowJsonViewerAction
-                  title="View Raw JSON"
+                  title={t('View Raw JSON')}
                   value={item.jsonData}
                   activityId={`json-katib-trial-${item.metadata.namespace}-${item.metadata.name}`}
                 />
@@ -58,14 +60,14 @@ export function KatibTrialsDetail(props: { namespace?: string; name?: string }) 
         }
         extraInfo={item =>
           item && [
-            { name: 'Experiment', value: item.ownerExperiment || '-' },
-            { name: 'Objective Metric', value: item.spec.objective?.objectiveMetricName || '-' },
-            { name: 'Objective Type', value: item.spec.objective?.type || '-' },
-            { name: 'Objective Goal', value: item.spec.objective?.goal ?? '-' },
-            { name: 'Metric Result', value: item.objectiveMetricValue || '-' },
-            { name: 'Start Time', value: <DateLabel date={item.startTime} /> },
-            { name: 'End Time', value: <DateLabel date={item.completionTime} /> },
-            { name: 'Reason', value: item.failureReason || '-' },
+            { name: t('Experiment'), value: item.ownerExperiment || '-' },
+            { name: t('Objective Metric'), value: item.spec.objective?.objectiveMetricName || '-' },
+            { name: t('Objective Type'), value: item.spec.objective?.type || '-' },
+            { name: t('Objective Goal'), value: item.spec.objective?.goal ?? '-' },
+            { name: t('Metric Result'), value: item.objectiveMetricValue || '-' },
+            { name: t('Start Time'), value: <DateLabel date={item.startTime} /> },
+            { name: t('End Time'), value: <DateLabel date={item.completionTime} /> },
+            { name: t('Reason'), value: item.failureReason || '-' },
           ]
         }
         extraSections={item => {
@@ -78,10 +80,10 @@ export function KatibTrialsDetail(props: { namespace?: string; name?: string }) 
                   {
                     id: 'metrics',
                     section: (
-                      <SectionBox title="Observed Metrics">
+                      <SectionBox title={t('Observed Metrics')}>
                         <NameValueTable
                           rows={metrics.map(metric => ({
-                            name: metric.name ?? 'metric',
+                            name: metric.name ?? t('metric'),
                             value: metric.value ?? '-',
                           }))}
                         />
@@ -95,7 +97,7 @@ export function KatibTrialsDetail(props: { namespace?: string; name?: string }) 
                   {
                     id: 'conditions',
                     section: (
-                      <SectionBox title="Conditions">
+                      <SectionBox title={t('Conditions')}>
                         <ConditionsTable resource={item.jsonData} />
                       </SectionBox>
                     ),

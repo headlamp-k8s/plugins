@@ -34,14 +34,14 @@ import {
  */
 
 export function ScheduledSparkApplicationsDetail(props: { namespace?: string; name?: string }) {
+  const { t, i18n } = useTranslation();
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
-  const { i18n } = useTranslation();
   const [sparkApplications] = SparkApplicationClass.useList({ namespace });
 
   return (
     <SectionPage
-      title="Scheduled Spark Application Detail"
+      title={t('Scheduled Spark Application Detail')}
       apiPath="/apis/sparkoperator.k8s.io/v1beta2"
     >
       <DetailsGrid
@@ -61,7 +61,7 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
               id: 'kubeflow.scheduled-spark-raw-json',
               action: (
                 <KubeflowJsonViewerAction
-                  title="View Raw JSON"
+                  title={t('View Raw JSON')}
                   value={item.jsonData}
                   activityId={`json-scheduled-spark-${item.metadata.namespace}-${item.metadata.name}`}
                 />
@@ -71,7 +71,7 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
               id: 'kubeflow.scheduled-spark-raw-yaml',
               action: (
                 <KubeflowJsonViewerAction
-                  title="View Raw YAML"
+                  title={t('View Raw YAML')}
                   value={yaml.dump(item.jsonData)}
                   language="yaml"
                   activityId={`yaml-scheduled-spark-${item.metadata.namespace}-${item.metadata.name}`}
@@ -84,11 +84,11 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
                     id: 'kubeflow.scheduled-spark-last-applied-diff',
                     action: (
                       <KubeflowDiffViewerAction
-                        title="Compare Live vs Last Applied Template"
+                        title={t('Compare Live vs Last Applied Template')}
                         original={yaml.dump(lastAppliedTemplate)}
                         modified={yaml.dump(item.template)}
-                        originalLabel="Last Applied Template"
-                        modifiedLabel="Live Template"
+                        originalLabel={t('Last Applied Template')}
+                        modifiedLabel={t('Live Template')}
                         activityId={`diff-scheduled-spark-${item.metadata.namespace}-${item.metadata.name}`}
                       />
                     ),
@@ -100,11 +100,11 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
         extraInfo={item =>
           item && [
             {
-              name: 'Status',
+              name: t('Status'),
               value: <ScheduledSparkApplicationStatusBadge scheduledSparkApplication={item} />,
             },
             {
-              name: 'Schedule',
+              name: t('Schedule'),
               value: (() => {
                 const schedule = item.schedule;
                 if (!schedule) return '-';
@@ -118,35 +118,35 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
               })(),
             },
             {
-              name: 'Concurrency Policy',
+              name: t('Concurrency Policy'),
               value: item.concurrencyPolicy || '-',
             },
             {
-              name: 'Suspend',
-              value: item.suspend ? 'Yes' : 'No',
+              name: t('Suspend'),
+              value: item.suspend ? t('Yes') : t('No'),
             },
             {
-              name: 'Template Type',
+              name: t('Template Type'),
               value: <SparkApplicationTypeBadge type={item.template.type} />,
             },
             {
-              name: 'Template Mode',
+              name: t('Template Mode'),
               value: item.template.mode || '-',
             },
             {
-              name: 'Template Spark Version',
+              name: t('Template Spark Version'),
               value: item.template.sparkVersion || '-',
             },
             {
-              name: 'Last Run Name',
+              name: t('Last Run Name'),
               value: item.lastRunName || '-',
             },
             {
-              name: 'Last Run',
+              name: t('Last Run'),
               value: item.lastRun || '-',
             },
             {
-              name: 'Next Run',
+              name: t('Next Run'),
               value: item.nextRun || '-',
             },
           ]
@@ -163,11 +163,11 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
             {
               id: 'scheduled-spark-schedule',
               section: (
-                <SectionBox title="Schedule Configuration">
+                <SectionBox title={t('Schedule Configuration')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Schedule',
+                        name: t('Schedule'),
                         value: (() => {
                           const schedule = item.schedule;
                           if (!schedule) return '-';
@@ -181,23 +181,23 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
                         })(),
                       },
                       {
-                        name: 'Concurrency Policy',
+                        name: t('Concurrency Policy'),
                         value: item.concurrencyPolicy || '-',
                       },
                       {
-                        name: 'Successful History Limit',
+                        name: t('Successful History Limit'),
                         value: item.spec.successfulRunHistoryLimit ?? '-',
                       },
                       {
-                        name: 'Failed History Limit',
+                        name: t('Failed History Limit'),
                         value: item.spec.failedRunHistoryLimit ?? '-',
                       },
                       {
-                        name: 'Schedule State',
+                        name: t('Schedule State'),
                         value: item.scheduleState || '-',
                       },
                       {
-                        name: 'Reason',
+                        name: t('Reason'),
                         value: item.scheduleReason || '-',
                       },
                     ]}
@@ -208,51 +208,51 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
             {
               id: 'scheduled-spark-template',
               section: (
-                <SectionBox title="Template SparkApplication Spec">
+                <SectionBox title={t('Template SparkApplication Spec')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Image',
+                        name: t('Image'),
                         value: item.template.image || '-',
                       },
                       {
-                        name: 'Spark Version',
+                        name: t('Spark Version'),
                         value: item.template.sparkVersion || '-',
                       },
                       {
-                        name: 'Mode',
+                        name: t('Mode'),
                         value: item.template.mode || '-',
                       },
                       {
-                        name: 'Main File',
+                        name: t('Main File'),
                         value: item.template.mainApplicationFile || '-',
                       },
                       {
-                        name: 'Main Class',
+                        name: t('Main Class'),
                         value: item.template.mainClass || '-',
                       },
                       {
-                        name: 'Service Account',
-                        value: item.template.driver?.serviceAccount || 'default',
+                        name: t('Service Account'),
+                        value: item.template.driver?.serviceAccount || t('default'),
                       },
                       {
-                        name: 'Driver CPU/Memory',
+                        name: t('Driver CPU/Memory'),
                         value: `${item.template.driver?.cores || '-'} / ${
                           item.template.driver?.memory || '-'
                         }`,
                       },
                       {
-                        name: 'Executor Instances',
+                        name: t('Executor Instances'),
                         value: item.template.executor?.instances ?? '-',
                       },
                       {
-                        name: 'Executor CPU/Memory',
+                        name: t('Executor CPU/Memory'),
                         value: `${item.template.executor?.cores || '-'} / ${
                           item.template.executor?.memory || '-'
                         }`,
                       },
                       {
-                        name: 'Arguments',
+                        name: t('Arguments'),
                         value: item.template.arguments?.join(' ') || '-',
                       },
                     ]}
@@ -263,13 +263,13 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
             {
               id: 'scheduled-spark-runs',
               section: (
-                <SectionBox title="Recent Spawned SparkApplications">
+                <SectionBox title={t('Recent Spawned SparkApplications')}>
                   {relatedRuns.length > 0 ? (
                     <SimpleTable
                       data={relatedRuns}
                       columns={[
                         {
-                          label: 'Name',
+                          label: t('Name'),
                           getter: run => (
                             <HeadlampLink
                               route={SparkApplicationClass.detailsRoute.replace(
@@ -282,22 +282,22 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
                           ),
                         },
                         {
-                          label: 'Status',
+                          label: t('Status'),
                           getter: run => <SparkApplicationStatusBadge sparkApplication={run} />,
                         },
                         {
-                          label: 'Driver',
+                          label: t('Driver'),
                           getter: run => run.driverPodName || '-',
                         },
                         {
-                          label: 'Age',
+                          label: t('Age'),
                           getter: run => run.metadata.creationTimestamp || '-',
                         },
                       ]}
                     />
                   ) : (
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      No SparkApplication runs are currently linked to this schedule.
+                      {t('No SparkApplication runs are currently linked to this schedule.')}
                     </Typography>
                   )}
                 </SectionBox>
@@ -306,19 +306,19 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
             {
               id: 'scheduled-spark-advanced',
               section: (
-                <SectionBox title="Advanced">
+                <SectionBox title={t('Advanced')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Last Applied Template Diff Available',
-                        value: lastAppliedTemplate ? 'Yes' : 'No',
+                        name: t('Last Applied Template Diff Available'),
+                        value: lastAppliedTemplate ? t('Yes') : t('No'),
                       },
                       {
-                        name: 'Past Successful Runs',
+                        name: t('Past Successful Runs'),
                         value: item.status.pastSuccessfulRunNames?.join(', ') || '-',
                       },
                       {
-                        name: 'Past Failed Runs',
+                        name: t('Past Failed Runs'),
                         value: item.status.pastFailedRunNames?.join(', ') || '-',
                       },
                     ]}
@@ -329,7 +329,7 @@ export function ScheduledSparkApplicationsDetail(props: { namespace?: string; na
             {
               id: 'scheduled-spark-conditions',
               section: (item.jsonData.status as any)?.conditions?.length > 0 && (
-                <SectionBox title="Conditions">
+                <SectionBox title={t('Conditions')}>
                   <ConditionsTable resource={item.jsonData} />
                 </SectionBox>
               ),

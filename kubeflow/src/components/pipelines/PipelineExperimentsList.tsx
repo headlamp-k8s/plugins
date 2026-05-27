@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   ResourceListView,
@@ -31,6 +32,7 @@ import { SectionPage } from '../common/SectionPage';
  * Lists Kubeflow Experiment resources available on the cluster.
  */
 export function PipelineExperimentsList() {
+  const { t } = useTranslation();
   const [runs] = PipelineRunClass.useList();
   const runList = runs ?? [];
 
@@ -45,16 +47,16 @@ export function PipelineExperimentsList() {
 
   return (
     <SectionPage
-      title="Pipeline Experiments"
+      title={t('Pipeline Experiments')}
       apiPath="/apis/pipelines.kubeflow.org/v2beta1/experiments"
     >
       <ResourceListView
-        title="Pipeline Experiments"
+        title={t('Pipeline Experiments')}
         resourceClass={PipelineExperimentClass}
         columns={[
           {
             id: 'name',
-            label: 'Name',
+            label: t('Name'),
             getValue: (item: PipelineExperimentClass) => item.metadata.name,
             render: (item: PipelineExperimentClass) => (
               <HeadlampLink
@@ -68,22 +70,22 @@ export function PipelineExperimentsList() {
           'namespace',
           {
             id: 'display-name',
-            label: 'Display Name',
+            label: t('Display Name'),
             getValue: (item: PipelineExperimentClass) => item.displayName || '-',
           },
           {
             id: 'description',
-            label: 'Description',
+            label: t('Description'),
             getValue: (item: PipelineExperimentClass) => item.description || '-',
           },
           {
             id: 'runs',
-            label: 'Runs',
+            label: t('Runs'),
             getValue: (item: PipelineExperimentClass) => countRuns(item),
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (item: PipelineExperimentClass) => getPipelineResourceStatus(item).label,
             render: (item: PipelineExperimentClass) => <PipelineStatusBadge resource={item} />,
           },

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   ResourceListView,
@@ -34,18 +35,20 @@ import { SectionPage } from '../common/SectionPage';
  * Lists Kubeflow RecurringRun resources available on the cluster.
  */
 export function PipelineRecurringRunsList() {
+  const { t } = useTranslation();
+
   return (
     <SectionPage
-      title="Recurring Runs"
+      title={t('Recurring Runs')}
       apiPath="/apis/pipelines.kubeflow.org/v2beta1/recurringruns"
     >
       <ResourceListView
-        title="Recurring Runs"
+        title={t('Recurring Runs')}
         resourceClass={PipelineRecurringRunClass}
         columns={[
           {
             id: 'name',
-            label: 'Name',
+            label: t('Name'),
             getValue: (item: PipelineRecurringRunClass) => item.metadata.name,
             render: (item: PipelineRecurringRunClass) => (
               <HeadlampLink
@@ -59,12 +62,12 @@ export function PipelineRecurringRunsList() {
           'namespace',
           {
             id: 'display-name',
-            label: 'Display Name',
+            label: t('Display Name'),
             getValue: (item: PipelineRecurringRunClass) => item.displayName || '-',
           },
           {
             id: 'pipeline',
-            label: 'Pipeline',
+            label: t('Pipeline'),
             getValue: (item: PipelineRecurringRunClass) => item.pipelineName || '-',
             render: (item: PipelineRecurringRunClass) =>
               item.pipelineName ? (
@@ -80,7 +83,7 @@ export function PipelineRecurringRunsList() {
           },
           {
             id: 'pipeline-version',
-            label: 'Pipeline Version',
+            label: t('Pipeline Version'),
             getValue: (item: PipelineRecurringRunClass) => item.pipelineVersionName || '-',
             render: (item: PipelineRecurringRunClass) =>
               item.pipelineVersionName ? (
@@ -96,12 +99,12 @@ export function PipelineRecurringRunsList() {
           },
           {
             id: 'schedule',
-            label: 'Schedule',
+            label: t('Schedule'),
             getValue: (item: PipelineRecurringRunClass) => getRecurringRunSchedule(item),
           },
           {
             id: 'experiment',
-            label: 'Experiment',
+            label: t('Experiment'),
             getValue: (item: PipelineRecurringRunClass) => item.experimentName || '-',
             render: (item: PipelineRecurringRunClass) =>
               item.experimentName ? (
@@ -117,18 +120,18 @@ export function PipelineRecurringRunsList() {
           },
           {
             id: 'enabled',
-            label: 'Enabled',
+            label: t('Enabled'),
             getValue: (item: PipelineRecurringRunClass) =>
-              item.isEnabled === undefined ? '-' : item.isEnabled ? 'Yes' : 'No',
+              item.isEnabled === undefined ? '-' : item.isEnabled ? t('Yes') : t('No'),
           },
           {
             id: 'next-run',
-            label: 'Next Run',
+            label: t('Next Run'),
             getValue: (item: PipelineRecurringRunClass) => item.status.nextRunTime || '-',
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (item: PipelineRecurringRunClass) => getPipelineResourceStatus(item).label,
             render: (item: PipelineRecurringRunClass) => <PipelineStatusBadge resource={item} />,
           },

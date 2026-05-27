@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   Link as HeadlampLink,
@@ -61,6 +62,7 @@ interface PipelinesOverviewContentProps {
 }
 
 export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
+  const { t } = useTranslation();
   const {
     summaryCards,
     controlPlaneRows,
@@ -81,16 +83,17 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
   return (
     <Box sx={{ padding: '24px 16px', pt: '32px' }}>
       <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
-        Pipelines Dashboard
+        {t('Pipelines Dashboard')}
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 4 }}>
-        Pipelines and PipelineVersions across Kubeflow namespaces
+        {t('Pipelines and PipelineVersions across Kubeflow namespaces')}
       </Typography>
 
       {hasListErrors ? (
         <Alert severity="warning" sx={{ mb: 4, borderRadius: '4px' }}>
-          Some Pipelines resources could not be listed. Cards marked as Not installed, Not
-          authorized, or Unavailable reflect the current access state.
+          {t(
+            'Some Pipelines resources could not be listed. Cards marked as Not installed, Not authorized, or Unavailable reflect the current access state.'
+          )}
         </Alert>
       ) : null}
 
@@ -123,72 +126,73 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
       </Grid>
 
       <Box sx={{ mt: 4 }}>
-        <SectionBox title="KFP Control Plane">
+        <SectionBox title={t('KFP Control Plane')}>
           <SimpleTable
             columns={[
-              { label: 'Field', getter: (row: { label: string }) => row.label },
-              { label: 'Value', getter: (row: { value: string }) => row.value },
+              { label: t('Field'), getter: (row: { label: string }) => row.label },
+              { label: t('Value'), getter: (row: { value: string }) => row.value },
             ]}
             data={controlPlaneRows}
-            emptyMessage="Control plane information unavailable."
+            emptyMessage={t('Control plane information unavailable.')}
           />
         </SectionBox>
       </Box>
 
       <Box sx={{ mt: 4 }}>
-        <SectionBox title="RBAC & Access">
+        <SectionBox title={t('RBAC & Access')}>
           <SimpleTable
             columns={[
-              { label: 'Resource', getter: (row: { resource: string }) => row.resource },
-              { label: 'List Access', getter: (row: { access: string }) => row.access },
+              { label: t('Resource'), getter: (row: { resource: string }) => row.resource },
+              { label: t('List Access'), getter: (row: { access: string }) => row.access },
             ]}
             data={accessRows}
-            emptyMessage="No authorization data available."
+            emptyMessage={t('No authorization data available.')}
           />
         </SectionBox>
       </Box>
 
       {deploymentAvailability ? (
         <Alert severity="info" variant="outlined" sx={{ mt: 4 }}>
-          Deployment data is {deploymentAvailability.toLowerCase()} so the KFP deployment table is
-          hidden.
+          {t('Deployment data is {{availability}} so the KFP deployment table is hidden.', {
+            availability: deploymentAvailability.toLowerCase(),
+          })}
         </Alert>
       ) : kfpDeployments.length > 0 ? (
         <Box sx={{ mt: 4 }}>
-          <SectionBox title="KFP Deployments">
+          <SectionBox title={t('KFP Deployments')}>
             <SimpleTable
               columns={[
                 {
-                  label: 'Name',
+                  label: t('Name'),
                   getter: (item: any) => item.metadata.name,
                 },
                 {
-                  label: 'Namespace',
+                  label: t('Namespace'),
                   getter: (item: any) => item.metadata.namespace,
                 },
                 {
-                  label: 'Ready',
+                  label: t('Ready'),
                   getter: (item: any) =>
                     `${item.jsonData?.status?.readyReplicas ?? item.status?.readyReplicas ?? 0}/${
                       item.jsonData?.spec?.replicas ?? item.spec?.replicas ?? 0
                     }`,
                 },
                 {
-                  label: 'Available',
+                  label: t('Available'),
                   getter: (item: any) =>
                     item.jsonData?.status?.availableReplicas ?? item.status?.availableReplicas ?? 0,
                 },
                 {
-                  label: 'Age',
+                  label: t('Age'),
                   getter: (item: any) => (typeof item.getAge === 'function' ? item.getAge() : '-'),
                 },
                 {
-                  label: 'Actions',
+                  label: t('Actions'),
                   getter: (item: any) => <DeploymentLogsButton deployment={item} />,
                 },
               ]}
               data={kfpDeployments}
-              emptyMessage="No Kubeflow Pipelines deployments detected."
+              emptyMessage={t('No Kubeflow Pipelines deployments detected.')}
             />
           </SectionBox>
         </Box>
@@ -196,16 +200,16 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
 
       {failureRows.length > 0 ? (
         <Box sx={{ mt: 4 }}>
-          <SectionBox title="Recent Failures">
+          <SectionBox title={t('Recent Failures')}>
             <SimpleTable
               columns={[
-                { label: 'Type', getter: row => row.kind },
-                { label: 'Name', getter: row => row.link },
-                { label: 'Namespace', getter: row => row.namespace ?? '-' },
-                { label: 'Status', getter: row => row.status },
+                { label: t('Type'), getter: row => row.kind },
+                { label: t('Name'), getter: row => row.link },
+                { label: t('Namespace'), getter: row => row.namespace ?? '-' },
+                { label: t('Status'), getter: row => row.status },
               ]}
               data={failureRows.slice(0, 10)}
-              emptyMessage="No failed resources detected."
+              emptyMessage={t('No failed resources detected.')}
             />
           </SectionBox>
         </Box>
@@ -213,11 +217,11 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
 
       {!pipelineAvailability ? (
         <Box sx={{ mt: 4 }}>
-          <SectionBox title="Recent Pipelines">
+          <SectionBox title={t('Recent Pipelines')}>
             <SimpleTable
               columns={[
                 {
-                  label: 'Name',
+                  label: t('Name'),
                   getter: (item: PipelineClass) => {
                     const data = (item as any).jsonData || item;
                     return (
@@ -231,11 +235,11 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
                   },
                 },
                 {
-                  label: 'Namespace',
+                  label: t('Namespace'),
                   getter: (item: any) => (item.jsonData || item).metadata.namespace,
                 },
                 {
-                  label: 'Latest Version',
+                  label: t('Latest Version'),
                   getter: (item: PipelineClass) => {
                     const data = (item as any).jsonData || item;
                     const latestVersion = getLatestPipelineVersionForPipeline(
@@ -262,7 +266,7 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
                   },
                 },
                 {
-                  label: 'Versions',
+                  label: t('Versions'),
                   getter: (item: PipelineClass) => {
                     const data = (item as any).jsonData || item;
                     return countPipelineVersionsForPipeline(
@@ -273,12 +277,12 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
                   },
                 },
                 {
-                  label: 'Status',
+                  label: t('Status'),
                   getter: (item: PipelineClass) => <PipelineStatusBadge resource={item} />,
                 },
               ]}
               data={recentPipelines}
-              emptyMessage="No pipelines found."
+              emptyMessage={t('No pipelines found.')}
             />
           </SectionBox>
         </Box>
@@ -286,11 +290,11 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
 
       {!versionAvailability ? (
         <Box sx={{ mt: 4 }}>
-          <SectionBox title="Recent Pipeline Versions">
+          <SectionBox title={t('Recent Pipeline Versions')}>
             <SimpleTable
               columns={[
                 {
-                  label: 'Name',
+                  label: t('Name'),
                   getter: (item: PipelineVersionClass) => {
                     const data = (item as any).jsonData || item;
                     return (
@@ -304,11 +308,11 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
                   },
                 },
                 {
-                  label: 'Namespace',
+                  label: t('Namespace'),
                   getter: (item: any) => (item.jsonData || item).metadata.namespace,
                 },
                 {
-                  label: 'Pipeline',
+                  label: t('Pipeline'),
                   getter: (item: PipelineVersionClass) => {
                     const data = (item as any).jsonData || item;
                     const pipelineName = data.pipelineName || data.spec?.pipelineName;
@@ -325,17 +329,17 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
                   },
                 },
                 {
-                  label: 'Description',
+                  label: t('Description'),
                   getter: (item: PipelineVersionClass) =>
                     (item as any).description || (item as any).spec?.description || '-',
                 },
                 {
-                  label: 'Status',
+                  label: t('Status'),
                   getter: (item: PipelineVersionClass) => <PipelineStatusBadge resource={item} />,
                 },
               ]}
               data={recentVersions}
-              emptyMessage="No pipeline versions found."
+              emptyMessage={t('No pipeline versions found.')}
             />
           </SectionBox>
         </Box>
@@ -343,11 +347,11 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
 
       {!runAvailability ? (
         <Box sx={{ mt: 4 }}>
-          <SectionBox title="Recent Pipeline Runs">
+          <SectionBox title={t('Recent Pipeline Runs')}>
             <SimpleTable
               columns={[
                 {
-                  label: 'Name',
+                  label: t('Name'),
                   getter: (item: PipelineRunClass) => {
                     const data = (item as any).jsonData || item;
                     return (
@@ -361,11 +365,11 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
                   },
                 },
                 {
-                  label: 'Namespace',
+                  label: t('Namespace'),
                   getter: (item: any) => (item.jsonData || item).metadata.namespace,
                 },
                 {
-                  label: 'Pipeline',
+                  label: t('Pipeline'),
                   getter: (item: PipelineRunClass) => {
                     const data = (item as any).jsonData || item;
                     const pipelineName = data.pipelineName || data.spec?.pipelineName;
@@ -382,20 +386,20 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
                   },
                 },
                 {
-                  label: 'Duration',
+                  label: t('Duration'),
                   getter: (item: PipelineRunClass) => getPipelineRunDurationLabel(item),
                 },
                 {
-                  label: 'Pipeline Root',
+                  label: t('Pipeline Root'),
                   getter: (item: PipelineRunClass) => getPipelineRunRoot(item) || '-',
                 },
                 {
-                  label: 'Status',
+                  label: t('Status'),
                   getter: (item: PipelineRunClass) => <PipelineStatusBadge resource={item} />,
                 },
               ]}
               data={recentRuns}
-              emptyMessage="No pipeline runs found."
+              emptyMessage={t('No pipeline runs found.')}
             />
           </SectionBox>
         </Box>
@@ -408,9 +412,10 @@ export function PipelinesOverviewContent(props: PipelinesOverviewContentProps) {
  * Helper component to find pods and launch logs for a KFP Deployment.
  */
 function DeploymentLogsButton({ deployment }: { deployment: any }) {
+  const { t } = useTranslation();
   return (
     <ActionButton
-      description="View Latest Pod Logs"
+      description={t('View Latest Pod Logs')}
       icon="mdi:text-box-outline"
       onClick={() =>
         launchDeploymentLogs({

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link as HeadlampLink } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import Deployment from '@kinvolk/headlamp-plugin/lib/k8s/deployment';
@@ -53,20 +54,21 @@ function sortByCreationTimestampDesc<T extends { metadata: { creationTimestamp?:
   });
 }
 
-function formatAccessLabel(allowed: boolean | null, isLoading: boolean): string {
+function formatAccessLabel(allowed: boolean | null, isLoading: boolean, t: any): string {
   if (isLoading) {
-    return 'Checking...';
+    return t('Checking...');
   }
   if (allowed === null) {
     return '-';
   }
-  return allowed ? 'Allowed' : 'Denied';
+  return allowed ? t('Allowed') : t('Denied');
 }
 
 /**
  * Renders the overview page for the Kubeflow Pipelines family.
  */
 export function PipelinesOverview() {
+  const { t } = useTranslation();
   const clusterName = useCluster();
   const [pipelines, pipelinesError] = PipelineClass.useList();
   const [pipelineVersions, pipelineVersionsError] = PipelineVersionClass.useList();
@@ -112,12 +114,12 @@ export function PipelinesOverview() {
 
   if (isLoading) {
     return (
-      <SectionPage title="Pipelines Dashboard" apiPath="/apis/pipelines.kubeflow.org/v2beta1">
+      <SectionPage title={t('Pipelines Dashboard')} apiPath="/apis/pipelines.kubeflow.org/v2beta1">
         <Box
           sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}
         >
           <CircularProgress />
-          <Typography sx={{ ml: 2 }}>Loading Pipelines Dashboard...</Typography>
+          <Typography sx={{ ml: 2 }}>{t('Loading Pipelines Dashboard...')}</Typography>
         </Box>
       </SectionPage>
     );
@@ -165,7 +167,8 @@ export function PipelinesOverview() {
       experimentAvailability
   );
 
-  const nativeApiMode = pipelinesError?.status === 404 ? 'No' : pipelinesError ? 'Unknown' : 'Yes';
+  const nativeApiMode =
+    pipelinesError?.status === 404 ? t('No') : pipelinesError ? t('Unknown') : t('Yes');
 
   const namespaces = new Set<string>();
   [pipelineList, versionList, runList, recurringRunList, experimentList].forEach(list => {
@@ -204,50 +207,55 @@ export function PipelinesOverview() {
 
   const summaryCards = [
     {
-      title: 'Pipelines',
+      title: t('Pipelines'),
       value: pipelineAvailability ?? pipelineList.length,
       icon: 'mdi:sitemap',
       subtitle: pipelineAvailability
-        ? 'Pipeline data unavailable'
-        : `${readyCount} ready, ${failedCount} failed`,
+        ? t('Pipeline data unavailable')
+        : t('{{ready}} ready, {{failed}} failed', { ready: readyCount, failed: failedCount }),
     },
     {
-      title: 'Pipeline Versions',
+      title: t('Pipeline Versions'),
       value: versionAvailability ?? versionList.length,
       icon: 'mdi:source-branch',
       subtitle: versionAvailability
-        ? 'PipelineVersion data unavailable'
-        : `${versionList.length} total versions discovered`,
+        ? t('PipelineVersion data unavailable')
+        : t('{{count}} total versions discovered', { count: versionList.length }),
     },
     {
-      title: 'Runs',
+      title: t('Runs'),
       value: runAvailability ?? runList.length,
       icon: 'mdi:play-circle-outline',
       subtitle: runAvailability
-        ? 'Run data unavailable'
-        : `${runRunningCount} running, ${runSuccessCount} succeeded, ${runFailureCount} failed`,
+        ? t('Run data unavailable')
+        : t('{{running}} running, {{succeeded}} succeeded, {{failed}} failed', {
+            running: runRunningCount,
+            succeeded: runSuccessCount,
+            failed: runFailureCount,
+          }),
     },
     {
-      title: 'Recurring Runs',
+      title: t('Recurring Runs'),
       value: recurringAvailability ?? recurringRunList.length,
       icon: 'mdi:calendar-refresh',
       subtitle: recurringAvailability
-        ? 'Recurring run data unavailable'
-        : `${recurringEnabledCount} enabled`,
+        ? t('Recurring run data unavailable')
+        : t('{{count}} enabled', { count: recurringEnabledCount }),
     },
     {
-      title: 'Experiments',
+      title: t('Experiments'),
       value: experimentAvailability ?? experimentList.length,
       icon: 'mdi:flask-outline',
       subtitle: experimentAvailability
-        ? 'Experiment data unavailable'
-        : `${experimentList.length} experiment${experimentList.length !== 1 ? 's' : ''}`,
+        ? t('Experiment data unavailable')
+        : t('{{count}} experiment(s)', { count: experimentList.length }),
     },
     {
-      title: 'Namespaces',
+      title: t('Namespaces'),
       value: namespaces.size,
       icon: 'mdi:folder-multiple',
-      subtitle: namespaces.size > 0 ? 'KFP data across namespaces' : 'No namespaces detected yet',
+      subtitle:
+        namespaces.size > 0 ? t('KFP data across namespaces') : t('No namespaces detected yet'),
     },
   ];
 
@@ -257,43 +265,43 @@ export function PipelinesOverview() {
 
   const versionsPerPipeline =
     pipelineAvailability || versionAvailability
-      ? pipelineAvailability || versionAvailability || 'Unavailable'
+      ? pipelineAvailability || versionAvailability || t('Unavailable')
       : pipelineList.length > 0
       ? (versionList.length / pipelineList.length).toFixed(1)
       : '0.0';
 
   const controlPlaneRows = [
-    { label: 'Cluster', value: clusterName ?? 'Unknown' },
+    { label: t('Cluster'), value: clusterName ?? t('Unknown') },
     {
-      label: 'Detected Namespaces',
+      label: t('Detected Namespaces'),
       value: namespaces.size > 0 ? Array.from(namespaces).join(', ') : '-',
     },
-    { label: 'Native API Mode', value: nativeApiMode },
-    { label: 'API Service', value: apiServiceLabel },
-    { label: 'API Endpoint', value: apiEndpoint },
-    { label: 'Versions / Pipeline', value: versionsPerPipeline },
+    { label: t('Native API Mode'), value: nativeApiMode },
+    { label: t('API Service'), value: apiServiceLabel },
+    { label: t('API Endpoint'), value: apiEndpoint },
+    { label: t('Versions / Pipeline'), value: versionsPerPipeline },
   ];
 
   const accessRows = [
     {
-      resource: 'Pipelines',
-      access: formatAccessLabel(pipelineAccess.allowed, pipelineAccess.isLoading),
+      resource: t('Pipelines'),
+      access: formatAccessLabel(pipelineAccess.allowed, pipelineAccess.isLoading, t),
     },
     {
-      resource: 'Pipeline Versions',
-      access: formatAccessLabel(versionAccess.allowed, versionAccess.isLoading),
+      resource: t('Pipeline Versions'),
+      access: formatAccessLabel(versionAccess.allowed, versionAccess.isLoading, t),
     },
     {
-      resource: 'Runs',
-      access: formatAccessLabel(runAccess.allowed, runAccess.isLoading),
+      resource: t('Runs'),
+      access: formatAccessLabel(runAccess.allowed, runAccess.isLoading, t),
     },
     {
-      resource: 'Recurring Runs',
-      access: formatAccessLabel(recurringAccess.allowed, recurringAccess.isLoading),
+      resource: t('Recurring Runs'),
+      access: formatAccessLabel(recurringAccess.allowed, recurringAccess.isLoading, t),
     },
     {
-      resource: 'Experiments',
-      access: formatAccessLabel(experimentAccess.allowed, experimentAccess.isLoading),
+      resource: t('Experiments'),
+      access: formatAccessLabel(experimentAccess.allowed, experimentAccess.isLoading, t),
     },
   ];
 
@@ -301,7 +309,7 @@ export function PipelinesOverview() {
     ...pipelineList
       .filter(item => getPipelineResourceStatus(item).status === 'error')
       .map(item => ({
-        kind: 'Pipeline',
+        kind: t('Pipeline'),
         name: item.metadata.name,
         namespace: item.metadata.namespace,
         status: <PipelineStatusBadge resource={item} />,
@@ -318,7 +326,7 @@ export function PipelinesOverview() {
     ...versionList
       .filter(item => getPipelineResourceStatus(item).status === 'error')
       .map(item => ({
-        kind: 'PipelineVersion',
+        kind: t('PipelineVersion'),
         name: item.metadata.name,
         namespace: item.metadata.namespace,
         status: <PipelineStatusBadge resource={item} />,
@@ -335,7 +343,7 @@ export function PipelinesOverview() {
     ...runList
       .filter(item => getPipelineResourceStatus(item).status === 'error')
       .map(item => ({
-        kind: 'Run',
+        kind: t('Run'),
         name: item.metadata.name,
         namespace: item.metadata.namespace,
         status: <PipelineStatusBadge resource={item} />,
@@ -356,7 +364,7 @@ export function PipelinesOverview() {
   });
 
   return (
-    <SectionPage title="Pipelines Dashboard" apiPath="/apis/pipelines.kubeflow.org/v2beta1">
+    <SectionPage title={t('Pipelines Dashboard')} apiPath="/apis/pipelines.kubeflow.org/v2beta1">
       <PipelinesOverviewContent
         summaryCards={summaryCards}
         controlPlaneRows={controlPlaneRows}

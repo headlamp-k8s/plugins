@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { LightTooltip, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ListItemIcon, ListItemText, MenuItem } from '@mui/material';
 import React from 'react';
@@ -14,10 +15,12 @@ import { getSparkExecutorSummary } from '../common/sparkUtils';
  * Displays a table of spark jobs with their type, status, and driver/executor info.
  */
 export function SparkApplicationsList() {
+  const { t } = useTranslation();
+
   return (
-    <SectionPage title="Spark Applications" apiPath="/apis/sparkoperator.k8s.io/v1beta2">
+    <SectionPage title={t('Spark Applications')} apiPath="/apis/sparkoperator.k8s.io/v1beta2">
       <ResourceListView
-        title="Spark Applications"
+        title={t('Spark Applications')}
         resourceClass={SparkApplicationClass}
         enableRowActions
         actions={[
@@ -45,14 +48,14 @@ export function SparkApplicationsList() {
                       podName: driverPodName,
                       namespace: item.metadata.namespace,
                       cluster: item.cluster,
-                      title: `Driver Logs: ${item.metadata.name}`,
+                      title: t('Driver Logs: {{name}}', { name: item.metadata.name }),
                     });
                   }}
                 >
                   <ListItemIcon>
                     <Icon icon="mdi:text-box-outline" width={20} />
                   </ListItemIcon>
-                  <ListItemText>View Driver Logs</ListItemText>
+                  <ListItemText>{t('View Driver Logs')}</ListItemText>
                 </MenuItem>
               );
             },
@@ -63,7 +66,7 @@ export function SparkApplicationsList() {
           'namespace',
           {
             id: 'type',
-            label: 'Type',
+            label: t('Type'),
             getValue: (item: SparkApplicationClass) => item.applicationType || '-',
             render: (item: SparkApplicationClass) => (
               <SparkApplicationTypeBadge type={item.applicationType} />
@@ -71,17 +74,17 @@ export function SparkApplicationsList() {
           },
           {
             id: 'mode',
-            label: 'Mode',
+            label: t('Mode'),
             getValue: (item: SparkApplicationClass) => item.mode || '-',
           },
           {
             id: 'spark-version',
-            label: 'Spark Version',
+            label: t('Spark Version'),
             getValue: (item: SparkApplicationClass) => item.sparkVersion || '-',
           },
           {
             id: 'driver-pod',
-            label: 'Driver',
+            label: t('Driver'),
             getValue: (item: SparkApplicationClass) => item.driverPodName || '-',
             render: (item: SparkApplicationClass) => {
               const driverPodName = item.driverPodName;
@@ -98,30 +101,30 @@ export function SparkApplicationsList() {
           },
           {
             id: 'executors',
-            label: 'Executors',
+            label: t('Executors'),
             getValue: (item: SparkApplicationClass) => getSparkExecutorSummary(item),
           },
           {
             id: 'attempts',
-            label: 'Attempts',
+            label: t('Attempts'),
             getValue: (item: SparkApplicationClass) => item.submissionAttempts || 0,
           },
           {
             id: 'status',
-            label: 'Status',
-            getValue: (item: SparkApplicationClass) => item.applicationStateLabel || 'Pending',
+            label: t('Status'),
+            getValue: (item: SparkApplicationClass) => item.applicationStateLabel || t('Pending'),
             render: (item: SparkApplicationClass) => (
               <SparkApplicationStatusBadge sparkApplication={item} />
             ),
           },
           {
             id: 'start',
-            label: 'Start',
+            label: t('Start'),
             getValue: (item: SparkApplicationClass) => item.lastSubmissionAttemptTime || '-',
           },
           {
             id: 'finish',
-            label: 'Finish',
+            label: t('Finish'),
             getValue: (item: SparkApplicationClass) => item.terminationTime || '-',
           },
           'age',

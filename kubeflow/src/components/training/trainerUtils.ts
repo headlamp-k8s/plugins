@@ -16,6 +16,7 @@
 
 import type { KubeContainer } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import type { KubePod } from '@kinvolk/headlamp-plugin/lib/k8s/pod';
+import type { TFunction } from 'i18next';
 import type {
   KubeflowTrainingRuntime,
   MLPolicy,
@@ -160,8 +161,11 @@ export function isRuntimeObject(
 /**
  * Returns the display scope for a runtime resource.
  */
-export function getRuntimeScopeLabel(runtime: TrainingRuntimeClass | ClusterTrainingRuntimeClass) {
-  return isNamespacedRuntime(runtime) ? 'Namespace' : 'Cluster';
+export function getRuntimeScopeLabel(
+  runtime: TrainingRuntimeClass | ClusterTrainingRuntimeClass,
+  t: TFunction
+) {
+  return isNamespacedRuntime(runtime) ? t('Namespace') : t('Cluster');
 }
 
 /**
@@ -188,9 +192,9 @@ export function getRuntimeFamily(runtime: {
 /**
  * Formats a TrainJob runtime reference as `Kind/Name`.
  */
-export function formatRuntimeRef(job: TrainJobClass) {
+export function formatRuntimeRef(job: TrainJobClass, t?: TFunction) {
   if (!job.runtimeName) {
-    return 'Unspecified';
+    return t ? t('Unspecified') : 'Unspecified';
   }
   return `${job.runtimeKind}/${job.runtimeName}`;
 }
@@ -235,7 +239,7 @@ export function getGpuQuantity(resources?: {
 /**
  * Summarizes aggregated child job state for a TrainJob row.
  */
-export function summarizeJobsStatus(job: TrainJobClass) {
+export function summarizeJobsStatus(job: TrainJobClass, t?: TFunction) {
   if (job.jobsStatus.length === 0) {
     return '-';
   }
@@ -251,6 +255,10 @@ export function summarizeJobsStatus(job: TrainJobClass) {
     },
     { ready: 0, active: 0, failed: 0, succeeded: 0, suspended: 0 }
   );
+
+  if (t) {
+    return t('ready:{{ready}} active:{{active}} ok:{{succeeded}} failed:{{failed}}', totals as any);
+  }
 
   return `ready:${totals.ready} active:${totals.active} ok:${totals.succeeded} failed:${totals.failed}`;
 }
@@ -269,13 +277,13 @@ export function formatPercent(value?: string) {
 /**
  * Formats seconds into a short human-readable duration.
  */
-export function formatDurationSeconds(seconds?: number | null) {
+export function formatDurationSeconds(seconds?: number | null, t?: TFunction) {
   if (seconds === undefined || seconds === null || Number.isNaN(seconds)) {
     return '-';
   }
 
   if (seconds < 60) {
-    return `${seconds}s`;
+    return t ? t('{{seconds}}s', { seconds }) : `${seconds}s`;
   }
 
   const hours = Math.floor(seconds / 3600);
@@ -283,12 +291,12 @@ export function formatDurationSeconds(seconds?: number | null) {
   const secs = seconds % 60;
 
   if (hours > 0) {
-    return `${hours}h ${minutes}m`;
+    return t ? t('{{hours}}h {{minutes}}m', { hours, minutes }) : `${hours}h ${minutes}m`;
   }
   if (minutes > 0) {
-    return `${minutes}m ${secs}s`;
+    return t ? t('{{minutes}}m {{seconds}}s', { minutes, seconds: secs }) : `${minutes}m ${secs}s`;
   }
-  return `${secs}s`;
+  return t ? t('{{seconds}}s', { seconds: secs }) : `${secs}s`;
 }
 
 /**
@@ -309,7 +317,8 @@ export function formatMetrics(metrics?: TrainerMetric[] | null) {
  * Aggregates CPU and memory usage across pod metrics objects.
  */
 export function inferPodMetricSummary(
-  metrics: Array<{ containers?: Array<{ usage?: Record<string, string> }> }>
+  metrics: Array<{ containers?: Array<{ usage?: Record<string, string> }> }>,
+  t?: TFunction
 ) {
   const totalCpu = metrics.reduce((sum, metric) => {
     return (
@@ -330,24 +339,27 @@ export function inferPodMetricSummary(
   }, 0);
 
   return {
-    cpu: totalCpu > 0 ? formatCpuCores(totalCpu) : '-',
-    memory: totalMemory > 0 ? formatMemoryGiB(totalMemory) : '-',
+    cpu: totalCpu > 0 ? formatCpuCores(totalCpu, t) : '-',
+    memory: totalMemory > 0 ? formatMemoryGiB(totalMemory, t) : '-',
   };
 }
 
-function formatCpuCores(cores: number) {
+function formatCpuCores(cores: number, t?: TFunction) {
   if (cores >= 1) {
-    return `${cores.toFixed(cores % 1 === 0 ? 0 : 1)} cores`;
+    const val = cores.toFixed(cores % 1 === 0 ? 0 : 1);
+    return t ? t('{{val}} cores', { val }) : `${val} cores`;
   }
   return `${Math.round(cores * 1000)}m`;
 }
 
-function formatMemoryGiB(gib: number) {
+function formatMemoryGiB(gib: number, t?: TFunction) {
   if (gib >= 1) {
-    return `${gib.toFixed(gib >= 10 ? 0 : 1)} Gi`;
+    const val = gib.toFixed(gib >= 10 ? 0 : 1);
+    return t ? t('{{val}} Gi', { val }) : `${val} Gi`;
   }
   const mib = gib * 1024;
-  return `${mib.toFixed(mib >= 10 ? 0 : 1)} Mi`;
+  const val = mib.toFixed(mib >= 10 ? 0 : 1);
+  return t ? t('{{val}} Mi', { val }) : `${val} Mi`;
 }
 
 /**
@@ -587,21 +599,25 @@ export function getContainerResourceSummary(container?: KubeContainer) {
 /**
  * Summarizes the runtime scheduling policy for list and detail views.
  */
-export function getSchedulingSummary(runtime: {
-  podGroupPolicy?: {
-    volcano?: { queue?: string; priorityClassName?: string };
-    coscheduling?: { scheduleTimeoutSeconds?: number };
-  };
-}) {
+export function getSchedulingSummary(
+  runtime: {
+    podGroupPolicy?: {
+      volcano?: { queue?: string; priorityClassName?: string };
+      coscheduling?: { scheduleTimeoutSeconds?: number };
+    };
+  },
+  t?: TFunction
+) {
   if (runtime.podGroupPolicy?.volcano) {
-    return `Volcano${
-      runtime.podGroupPolicy.volcano.queue ? ` / ${runtime.podGroupPolicy.volcano.queue}` : ''
-    }`;
+    const queue = runtime.podGroupPolicy.volcano.queue;
+    return t
+      ? t('Volcano{{queueInfo}}', { queueInfo: queue ? ` / ${queue}` : '' })
+      : `Volcano${queue ? ` / ${queue}` : ''}`;
   }
   if (runtime.podGroupPolicy?.coscheduling) {
-    return 'Coscheduling';
+    return t ? t('Coscheduling') : 'Coscheduling';
   }
-  return 'Disabled';
+  return t ? t('Disabled') : 'Disabled';
 }
 
 /**

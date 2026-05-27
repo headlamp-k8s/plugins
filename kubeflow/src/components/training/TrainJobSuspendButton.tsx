@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, ConfirmDialog } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { clusterAction } from '@kinvolk/headlamp-plugin/lib/redux/clusterActionSlice';
 import React from 'react';
@@ -9,21 +10,35 @@ import { TrainJobClass } from '../../resources/trainJob';
  * Renders the suspend or resume action for a TrainJob with confirmation.
  */
 export function TrainJobSuspendButton({ item }: { item: TrainJobClass }) {
+  const { t } = useTranslation('kubeflow');
   const dispatch = useDispatch<any>();
   const location = useLocation();
   const [open, setOpen] = React.useState(false);
 
   const nextSuspendState = !item.suspended;
-  const label = item.suspended ? 'Resume' : 'Suspend';
+  const label = item.suspended ? t('kubeflow|Resume') : t('kubeflow|Suspend');
+  const verb = item.suspended ? t('kubeflow|resume') : t('kubeflow|suspend');
   const icon = item.suspended ? 'mdi:play-circle-outline' : 'mdi:pause-circle-outline';
 
   function handleConfirm() {
     dispatch(
       clusterAction(() => item.patch({ spec: { suspend: nextSuspendState } }), {
-        startMessage: `${label} request sent for ${item.metadata.name}...`,
-        cancelledMessage: `${label} cancelled for ${item.metadata.name}.`,
-        successMessage: `${label} updated for ${item.metadata.name}.`,
-        errorMessage: `Failed to ${label.toLowerCase()} ${item.metadata.name}.`,
+        startMessage: t('kubeflow|{{label}} request sent for {{name}}...', {
+          label,
+          name: item.metadata.name,
+        }),
+        cancelledMessage: t('kubeflow|{{label}} cancelled for {{name}}.', {
+          label,
+          name: item.metadata.name,
+        }),
+        successMessage: t('kubeflow|{{label}} updated for {{name}}.', {
+          label,
+          name: item.metadata.name,
+        }),
+        errorMessage: t('kubeflow|Failed to {{verb}} {{name}}.', {
+          verb,
+          name: item.metadata.name,
+        }),
         cancelUrl: location.pathname,
         startUrl: location.pathname,
         errorUrl: location.pathname,
@@ -37,10 +52,11 @@ export function TrainJobSuspendButton({ item }: { item: TrainJobClass }) {
       <ActionButton description={label} icon={icon} onClick={() => setOpen(true)} />
       <ConfirmDialog
         open={open}
-        title={`${label} TrainJob`}
-        description={`Are you sure you want to ${label.toLowerCase()} TrainJob ${
-          item.metadata.name
-        }?`}
+        title={t('kubeflow|{{label}} TrainJob', { label })}
+        description={t('kubeflow|Are you sure you want to {{verb}} TrainJob {{name}}?', {
+          verb,
+          name: item.metadata.name,
+        })}
         handleClose={() => setOpen(false)}
         confirmLabel={label}
         onConfirm={handleConfirm}

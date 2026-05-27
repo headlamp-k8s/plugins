@@ -38,9 +38,12 @@ import { SectionPage } from '../common/SectionPage';
 /**
  * Renders the detail page for a Kubeflow Pipeline resource.
  */
-export function PipelinesDetail(props: { namespace?: string; name?: string }) {
+export function PipelinesDetail(props: { namespace?: string; name?: string; node?: any }) {
   const params = useParams<{ namespace: string; name: string }>();
-  const { namespace = params.namespace, name = params.name } = props;
+  const {
+    namespace = params.namespace || props.node?.kubeObject?.metadata?.namespace,
+    name = params.name || props.node?.kubeObject?.metadata?.name,
+  } = props;
   const [pipelineVersions] = PipelineVersionClass.useList();
   const versions = pipelineVersions ?? [];
 

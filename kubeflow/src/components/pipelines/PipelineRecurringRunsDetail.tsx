@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   DetailsGrid,
@@ -48,12 +49,13 @@ function formatRuntimeValue(value: unknown): string {
  * Renders the detail page for a Kubeflow RecurringRun resource.
  */
 export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
 
   return (
     <SectionPage
-      title="Recurring Run Detail"
+      title={t('Recurring Run Detail')}
       apiPath="/apis/pipelines.kubeflow.org/v2beta1/recurringruns"
     >
       <DetailsGrid
@@ -67,7 +69,7 @@ export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: 
               id: 'kubeflow.recurringrun-json',
               action: (
                 <KubeflowJsonViewerAction
-                  title="View Raw JSON"
+                  title={t('View Raw JSON')}
                   value={item.jsonData}
                   activityId={`json-recurring-run-${item.metadata.namespace}-${item.metadata.name}`}
                 />
@@ -78,23 +80,23 @@ export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: 
         extraInfo={item =>
           item && [
             {
-              name: 'Status',
+              name: t('Status'),
               value: <PipelineStatusBadge resource={item} />,
             },
             {
-              name: 'Display Name',
+              name: t('Display Name'),
               value: item.displayName || '-',
             },
             {
-              name: 'Description',
+              name: t('Description'),
               value: item.description || '-',
             },
             {
-              name: 'Phase',
+              name: t('Phase'),
               value: item.phase || '-',
             },
             {
-              name: 'Pipeline',
+              name: t('Pipeline'),
               value: item.pipelineName ? (
                 <HeadlampLink
                   routeName={getPipelineDetailsPath()}
@@ -107,7 +109,7 @@ export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: 
               ),
             },
             {
-              name: 'Pipeline Version',
+              name: t('Pipeline Version'),
               value: item.pipelineVersionName ? (
                 <HeadlampLink
                   routeName={getPipelineVersionDetailsPath()}
@@ -120,7 +122,7 @@ export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: 
               ),
             },
             {
-              name: 'Experiment',
+              name: t('Experiment'),
               value: item.experimentName ? (
                 <HeadlampLink
                   routeName={getPipelineExperimentDetailsPath()}
@@ -133,35 +135,35 @@ export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: 
               ),
             },
             {
-              name: 'Schedule',
+              name: t('Schedule'),
               value: getRecurringRunSchedule(item),
             },
             {
-              name: 'Enabled',
-              value: item.isEnabled === undefined ? '-' : item.isEnabled ? 'Yes' : 'No',
+              name: t('Enabled'),
+              value: item.isEnabled === undefined ? '-' : item.isEnabled ? t('Yes') : t('No'),
             },
             {
-              name: 'Max Concurrency',
+              name: t('Max Concurrency'),
               value: item.maxConcurrency ?? '-',
             },
             {
-              name: 'Pipeline Root',
+              name: t('Pipeline Root'),
               value: getPipelineRunRoot(item) || '-',
             },
             {
-              name: 'Service Account',
+              name: t('Service Account'),
               value: item.serviceAccountName || '-',
             },
             {
-              name: 'Last Run',
+              name: t('Last Run'),
               value: item.status.lastRunTime || '-',
             },
             {
-              name: 'Next Run',
+              name: t('Next Run'),
               value: item.status.nextRunTime || '-',
             },
             {
-              name: 'Message',
+              name: t('Message'),
               value: item.status.message || '-',
             },
           ]
@@ -174,17 +176,23 @@ export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: 
                       {
                         id: 'runtime-config',
                         section: (
-                          <SectionBox title="Runtime Configuration">
+                          <SectionBox title={t('Runtime Configuration')}>
                             <SimpleTable
                               columns={[
-                                { label: 'Field', getter: (row: { label: string }) => row.label },
-                                { label: 'Value', getter: (row: { value: string }) => row.value },
+                                {
+                                  label: t('Field'),
+                                  getter: (row: { label: string }) => row.label,
+                                },
+                                {
+                                  label: t('Value'),
+                                  getter: (row: { value: string }) => row.value,
+                                },
                               ]}
                               data={Object.entries(item.spec.runtimeConfig).map(([key, value]) => ({
                                 label: key,
                                 value: formatRuntimeValue(value),
                               }))}
-                              emptyMessage="No runtime configuration provided."
+                              emptyMessage={t('No runtime configuration provided.')}
                             />
                           </SectionBox>
                         ),
@@ -196,7 +204,7 @@ export function PipelineRecurringRunsDetail(props: { namespace?: string; name?: 
                       {
                         id: 'conditions',
                         section: (
-                          <SectionBox title="Conditions">
+                          <SectionBox title={t('Conditions')}>
                             <ConditionsTable resource={item.jsonData} />
                           </SectionBox>
                         ),
