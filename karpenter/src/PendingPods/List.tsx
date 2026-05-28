@@ -91,17 +91,7 @@ export const PendingPodsRenderer = (props: { pods?: PendingPod[] }) => {
                     first: timeAgo(item.firstOccurrence),
                   });
                 }
-                const eventDate = timeAgo(item.lastOccurrence, { format: 'mini' });
-                let label: string;
-                if (item.count > 1) {
-                  label = t('{{date}} {{count}} times since {{first}}', {
-                    date: eventDate,
-                    count: item.count,
-                    first: timeAgo(item.firstOccurrence),
-                  });
-                } else {
-                  label = eventDate;
-                }
+                const label = timeAgo(item.lastOccurrence, { format: 'mini' });
                 return (
                   <HoverInfoLabel
                     label={label}

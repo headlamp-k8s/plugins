@@ -1,9 +1,8 @@
 import { getPercentStr, getResourceStr } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Typography } from '@mui/material';
+import type { TFunction } from 'i18next';
 
-type Translator = (key: string, options?: Record<string, unknown>) => string;
-
-export const CPUtooltip = (used: number, limit: number, t: Translator) => {
+export const CPUtooltip = (used: number, limit: number, t: TFunction) => {
   const percent = limit > 0 ? getPercentStr(used, limit) : t('No limit set');
 
   return (
@@ -13,7 +12,7 @@ export const CPUtooltip = (used: number, limit: number, t: Translator) => {
   );
 };
 
-export const Memorytooltip = (used: number, limit: number, t: Translator) => {
+export const Memorytooltip = (used: number, limit: number, t: TFunction) => {
   const percentage = limit > 0 ? getPercentStr(used, limit) : t('No limit set');
 
   return (

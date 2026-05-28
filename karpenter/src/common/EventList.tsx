@@ -88,15 +88,7 @@ export default function CustomObjectEventList(props: ObjectEventListProps) {
                   first: timeAgo(item.firstOccurrence),
                 });
               }
-              const eventDate = timeAgo(item.lastOccurrence, { format: 'mini' });
-              const label =
-                item.count > 1
-                  ? t('{{date}} {{count}} since {{first}}', {
-                      date: eventDate,
-                      count: item.count,
-                      first: timeAgo(item.firstOccurrence),
-                    })
-                  : eventDate;
+              const label = timeAgo(item.lastOccurrence, { format: 'mini' });
 
               return (
                 <HoverInfoLabel

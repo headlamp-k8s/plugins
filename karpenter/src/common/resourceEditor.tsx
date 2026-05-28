@@ -322,7 +322,7 @@ export function DiffEditorDialog({
             }}
             confirmTitle={t('Are you sure?')}
             confirmDescription={t(
-              'This will discard your changes in the editor. Do you want to proceed ?'
+              'This will discard your changes in the editor. Do you want to proceed?'
             )}
           >
             {t('Undo Changes')}
