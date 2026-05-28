@@ -1,4 +1,4 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   ConditionsTable,
@@ -49,6 +49,7 @@ import { TrainJobStatusBadge } from './TrainJobStatusBadge';
 import { TrainJobSuspendButton } from './TrainJobSuspendButton';
 
 function WarningBanner({ warnings }: { warnings: ReturnType<typeof buildTrainJobWarnings> }) {
+  const { t } = useTranslation('kubeflow');
   if (warnings.length === 0) {
     return null;
   }
@@ -57,7 +58,7 @@ function WarningBanner({ warnings }: { warnings: ReturnType<typeof buildTrainJob
     <Stack spacing={1}>
       {warnings.map(warning => (
         <Alert key={`${warning.severity}-${warning.title}`} severity={warning.severity}>
-          <strong>{warning.title}:</strong> {warning.message}
+          <strong>{t(warning.title)}:</strong> {warning.message}
         </Alert>
       ))}
     </Stack>
@@ -67,9 +68,13 @@ function WarningBanner({ warnings }: { warnings: ReturnType<typeof buildTrainJob
 /**
  * Renders the TrainJob operator view with status, logs, events, and child resources.
  */
-export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
+export function TrainJobsDetail(props: { namespace?: string; name?: string; node?: any }) {
+  const { t } = useTranslation('kubeflow');
   const params = useParams<{ namespace: string; name: string }>();
-  const { namespace = params.namespace, name = params.name } = props;
+  const {
+    namespace = params.namespace || props.node?.kubeObject?.metadata?.namespace,
+    name = params.name || props.node?.kubeObject?.metadata?.name,
+  } = props;
 
   const [job] = TrainJobClass.useGet(name as string, namespace);
   const [namespaceRuntimes, namespaceRuntimesError] = TrainingRuntimeClass.useList({ namespace });
@@ -159,25 +164,28 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
   }, [childPods, podMetrics]);
 
   const metricsLookup = getPodMetricLookup(metricsForChildPods);
-  const aggregatedMetricSummary = inferPodMetricSummary(metricsForChildPods);
+  const aggregatedMetricSummary = inferPodMetricSummary(metricsForChildPods, t);
   const runtimePatchPreview = buildRuntimePatchPreview(runtime, job?.runtimePatches ?? []);
 
   return (
-    <SectionPage title="TrainJob Detail" apiPath="/apis/trainer.kubeflow.org/v1alpha1/trainjobs">
+    <SectionPage
+      title={t('TrainJob Detail')}
+      apiPath="/apis/trainer.kubeflow.org/v1alpha1/trainjobs"
+    >
       <DetailsGrid
         resourceType={TrainJobClass}
         name={name as string}
         namespace={namespace}
         extraInfo={item =>
           item && [
-            { name: 'Status', value: <TrainJobStatusBadge job={item} /> },
-            { name: 'Runtime Ref', value: formatRuntimeRef(item) },
-            { name: 'Suspended', value: item.suspended ? 'Yes' : 'No' },
-            { name: 'Managed By', value: item.managedBy || '-' },
-            { name: 'Num Nodes', value: item.numNodes ?? runtime?.defaultNumNodes ?? '-' },
-            { name: 'Num Proc / Node', value: item.numProcPerNode || '-' },
-            { name: 'Progress', value: formatPercent(item.progress) },
-            { name: 'Last Updated', value: item.lastUpdatedTime || '-' },
+            { name: t('Status'), value: <TrainJobStatusBadge job={item} /> },
+            { name: t('Runtime Ref'), value: formatRuntimeRef(item, t) },
+            { name: t('Suspended'), value: item.suspended ? t('Yes') : t('No') },
+            { name: t('Managed By'), value: item.managedBy || '-' },
+            { name: t('Num Nodes'), value: item.numNodes ?? runtime?.defaultNumNodes ?? '-' },
+            { name: t('Num Proc / Node'), value: item.numProcPerNode || '-' },
+            { name: t('Progress'), value: formatPercent(item.progress) },
+            { name: t('Last Updated'), value: item.lastUpdatedTime || '-' },
           ]
         }
         actions={item =>
@@ -186,7 +194,7 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
               id: 'kubeflow.trainjob-logs',
               action: (
                 <ActionButton
-                  description="View Primary Pod Logs"
+                  description={t('View Primary Pod Logs')}
                   icon="mdi:text-box-outline"
                   onClick={() =>
                     launchTrainJobLogs({
@@ -203,12 +211,12 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
               action:
                 item.runtimePatches.length > 0 && runtime ? (
                   <KubeflowDiffViewerAction
-                    title="Preview Runtime Patches"
+                    title={t('Preview Runtime Patches')}
                     activityId={`trainjob-runtime-patches-${item.metadata.namespace}-${item.metadata.name}`}
                     original={yaml.dump(runtimePatchPreview.baseSpec)}
                     modified={yaml.dump(runtimePatchPreview.mergedSpec)}
-                    originalLabel={`Base ${runtime.kind}`}
-                    modifiedLabel="Patched Runtime Preview"
+                    originalLabel={t('Base {{kind}}', { kind: runtime.kind })}
+                    modifiedLabel={t('Patched Runtime Preview')}
                   />
                 ) : null,
             },
@@ -216,7 +224,7 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
               id: 'kubeflow.trainjob-json',
               action: (
                 <KubeflowJsonViewerAction
-                  title="View Raw JSON"
+                  title={t('View Raw JSON')}
                   value={item.jsonData}
                   activityId={`json-trainjob-${item.metadata.namespace}-${item.metadata.name}`}
                 />
@@ -241,56 +249,56 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
             {
               id: 'trainjob-tabs',
               section: (
-                <SectionBox title="TrainJob Workspace">
+                <SectionBox title={t('TrainJob Workspace')}>
                   <Tabs
-                    ariaLabel="TrainJob detail tabs"
+                    ariaLabel={t('TrainJob detail tabs')}
                     tabs={[
                       {
-                        label: 'Overview',
+                        label: t('Overview'),
                         component: (
                           <Stack spacing={2}>
                             <WarningBanner warnings={warnings} />
-                            <SectionBox title="Runtime & Scheduling">
+                            <SectionBox title={t('Runtime & Scheduling')}>
                               <NameValueTable
                                 rows={[
-                                  { name: 'Runtime Ref', value: formatRuntimeRef(item) },
-                                  { name: 'Resolved Runtime', value: getRuntimeLabel(runtime) },
+                                  { name: t('Runtime Ref'), value: formatRuntimeRef(item) },
+                                  { name: t('Resolved Runtime'), value: getRuntimeLabel(runtime) },
                                   {
-                                    name: 'Scheduling',
+                                    name: t('Scheduling'),
                                     value: getSchedulingSummary(runtime || {}),
                                   },
                                   {
-                                    name: 'Template Jobs',
+                                    name: t('Template Jobs'),
                                     value: getRuntimeTemplateJobNames(runtime) || '-',
                                   },
-                                  { name: 'Managed By', value: item.managedBy || '-' },
+                                  { name: t('Managed By'), value: item.managedBy || '-' },
                                   {
-                                    name: 'Suspend Flag',
+                                    name: t('Suspend Flag'),
                                     value: item.suspended ? 'true' : 'false',
                                   },
                                 ]}
                               />
                             </SectionBox>
-                            <SectionBox title="Trainer">
+                            <SectionBox title={t('Trainer')}>
                               <NameValueTable
                                 rows={[
-                                  { name: 'Image', value: item.trainerImage || '-' },
+                                  { name: t('Image'), value: item.trainerImage || '-' },
                                   {
-                                    name: 'Command',
+                                    name: t('Command'),
                                     value: item.trainer.command?.join(' ') || '-',
                                   },
-                                  { name: 'Args', value: item.trainer.args?.join(' ') || '-' },
+                                  { name: t('Args'), value: item.trainer.args?.join(' ') || '-' },
                                   {
-                                    name: 'Num Nodes',
+                                    name: t('Num Nodes'),
                                     value: item.numNodes ?? runtime?.defaultNumNodes ?? '-',
                                   },
-                                  { name: 'Num Proc / Node', value: item.numProcPerNode || '-' },
+                                  { name: t('Num Proc / Node'), value: item.numProcPerNode || '-' },
                                   {
-                                    name: 'Resources / Node',
+                                    name: t('Resources / Node'),
                                     value: formatResourcesSummary(item.trainer.resourcesPerNode),
                                   },
                                   {
-                                    name: 'Environment Variables',
+                                    name: t('Environment Variables'),
                                     value: item.trainer.env?.length
                                       ? `${item.trainer.env.length}`
                                       : '0',
@@ -299,23 +307,23 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
                               />
                             </SectionBox>
                             {(item.spec.initializer?.dataset || item.spec.initializer?.model) && (
-                              <SectionBox title="Initializer">
+                              <SectionBox title={t('Initializer')}>
                                 <NameValueTable
                                   rows={[
                                     {
-                                      name: 'Dataset URI',
+                                      name: t('Dataset URI'),
                                       value: item.spec.initializer?.dataset?.storageUri || '-',
                                     },
                                     {
-                                      name: 'Dataset Secret',
+                                      name: t('Dataset Secret'),
                                       value: item.spec.initializer?.dataset?.secretRef?.name || '-',
                                     },
                                     {
-                                      name: 'Model URI',
+                                      name: t('Model URI'),
                                       value: item.spec.initializer?.model?.storageUri || '-',
                                     },
                                     {
-                                      name: 'Model Secret',
+                                      name: t('Model Secret'),
                                       value: item.spec.initializer?.model?.secretRef?.name || '-',
                                     },
                                   ]}
@@ -326,40 +334,40 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
                         ),
                       },
                       {
-                        label: 'Spec',
+                        label: t('Spec'),
                         component: (
                           <Stack spacing={2}>
-                            <SectionBox title="TrainJob Spec">
+                            <SectionBox title={t('TrainJob Spec')}>
                               <NameValueTable
                                 rows={[
                                   {
-                                    name: 'Runtime Patch Managers',
+                                    name: t('Runtime Patch Managers'),
                                     value: getRuntimePatchManagers(item.runtimePatches) || '-',
                                   },
                                   {
-                                    name: 'Runtime Patch Entries',
+                                    name: t('Runtime Patch Entries'),
                                     value: `${item.runtimePatches.length}`,
                                   },
                                   {
-                                    name: 'Active Deadline Seconds',
+                                    name: t('Active Deadline Seconds'),
                                     value: item.spec.activeDeadlineSeconds ?? '-',
                                   },
                                 ]}
                               />
                             </SectionBox>
                             {runtime && (
-                              <SectionBox title="Resolved Runtime">
+                              <SectionBox title={t('Resolved Runtime')}>
                                 <NameValueTable
                                   rows={[
-                                    { name: 'Runtime Kind', value: runtime.kind },
-                                    { name: 'Runtime Name', value: runtime.getName() },
-                                    { name: 'Framework', value: runtime.framework || '-' },
+                                    { name: t('Runtime Kind'), value: runtime.kind },
+                                    { name: t('Runtime Name'), value: runtime.getName() },
+                                    { name: t('Framework'), value: runtime.framework || '-' },
                                     {
-                                      name: 'Default Nodes',
+                                      name: t('Default Nodes'),
                                       value: runtime.defaultNumNodes ?? '-',
                                     },
                                     {
-                                      name: 'Scheduling Policy',
+                                      name: t('Scheduling Policy'),
                                       value: getSchedulingSummary(runtime),
                                     },
                                   ]}
@@ -367,18 +375,18 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
                               </SectionBox>
                             )}
                             {item.runtimePatches.length > 0 && runtime && (
-                              <SectionBox title="Runtime Patch Preview">
+                              <SectionBox title={t('Runtime Patch Preview')}>
                                 <Stack direction="row" spacing={2}>
                                   <KubeflowDiffViewerAction
-                                    title="Preview Runtime Patches"
+                                    title={t('Preview Runtime Patches')}
                                     activityId={`trainjob-runtime-patches-tab-${item.metadata.namespace}-${item.metadata.name}`}
                                     original={yaml.dump(runtimePatchPreview.baseSpec)}
                                     modified={yaml.dump(runtimePatchPreview.mergedSpec)}
-                                    originalLabel={`Base ${runtime.kind}`}
-                                    modifiedLabel="Patched Runtime Preview"
+                                    originalLabel={t('Base {{kind}}', { kind: runtime.kind })}
+                                    modifiedLabel={t('Patched Runtime Preview')}
                                   />
                                   <KubeflowJsonViewerAction
-                                    title="View RuntimePatches JSON"
+                                    title={t('View RuntimePatches JSON')}
                                     value={item.runtimePatches}
                                     activityId={`runtime-patches-json-${item.metadata.namespace}-${item.metadata.name}`}
                                   />
@@ -389,90 +397,99 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
                         ),
                       },
                       {
-                        label: 'Status',
+                        label: t('Status'),
                         component: (
                           <Stack spacing={2}>
-                            <SectionBox title="Progress & Health">
+                            <SectionBox title={t('Progress & Health')}>
                               <NameValueTable
                                 rows={[
                                   {
-                                    name: 'Current Phase',
+                                    name: t('Current Phase'),
                                     value: (
                                       <KubeflowStatusBadge
                                         statusInfo={getTrainJobStatusInfo(item)}
                                       />
                                     ),
                                   },
-                                  { name: 'Progress', value: formatPercent(item.progress) },
+                                  { name: t('Progress'), value: formatPercent(item.progress) },
                                   {
-                                    name: 'Estimated Remaining',
+                                    name: t('Estimated Remaining'),
                                     value: formatDurationSeconds(
                                       item.estimatedRemainingTimeSeconds
                                     ),
                                   },
-                                  { name: 'Last Updated', value: item.lastUpdatedTime || '-' },
-                                  { name: 'CPU Usage (Pods)', value: aggregatedMetricSummary.cpu },
+                                  { name: t('Last Updated'), value: item.lastUpdatedTime || '-' },
                                   {
-                                    name: 'Memory Usage (Pods)',
+                                    name: t('CPU Usage (Pods)'),
+                                    value: aggregatedMetricSummary.cpu,
+                                  },
+                                  {
+                                    name: t('Memory Usage (Pods)'),
                                     value: aggregatedMetricSummary.memory,
                                   },
                                   {
-                                    name: 'GPU / Node',
+                                    name: t('GPU / Node'),
                                     value: getGpuQuantity(item.trainer.resourcesPerNode) || '-',
                                   },
                                   {
-                                    name: 'GPU Metric',
+                                    name: t('GPU Metric'),
                                     value:
                                       getMetricValue(item.trainerStatus?.metrics, /gpu/i) ||
-                                      'Not reported',
+                                      t('Not reported'),
                                   },
                                 ]}
                               />
                             </SectionBox>
-                            <SectionBox title="Current Metrics">
+                            <SectionBox title={t('Current Metrics')}>
                               <NameValueTable
                                 rows={
                                   formatMetrics(item.trainerStatus?.metrics).length > 0
                                     ? formatMetrics(item.trainerStatus?.metrics)
                                     : [
                                         {
-                                          name: 'Metrics',
-                                          value: 'No trainer metrics reported yet.',
+                                          name: t('Metrics'),
+                                          value: t('No trainer metrics reported yet.'),
                                         },
                                       ]
                                 }
                               />
                             </SectionBox>
-                            <SectionBox title="Child Job Status">
+                            <SectionBox title={t('Child Job Status')}>
                               <SimpleTable
                                 data={item.jobsStatus}
                                 columns={[
-                                  { label: 'Name', getter: (status: any) => status.name || '-' },
-                                  { label: 'Ready', getter: (status: any) => status.ready ?? 0 },
-                                  { label: 'Active', getter: (status: any) => status.active ?? 0 },
+                                  { label: t('Name'), getter: (status: any) => status.name || '-' },
+                                  { label: t('Ready'), getter: (status: any) => status.ready ?? 0 },
                                   {
-                                    label: 'Succeeded',
+                                    label: t('Active'),
+                                    getter: (status: any) => status.active ?? 0,
+                                  },
+                                  {
+                                    label: t('Succeeded'),
                                     getter: (status: any) => status.succeeded ?? 0,
                                   },
-                                  { label: 'Failed', getter: (status: any) => status.failed ?? 0 },
                                   {
-                                    label: 'Suspended',
+                                    label: t('Failed'),
+                                    getter: (status: any) => status.failed ?? 0,
+                                  },
+                                  {
+                                    label: t('Suspended'),
                                     getter: (status: any) => status.suspended ?? 0,
                                   },
                                 ]}
-                                emptyMessage="No child job status has been reported yet."
+                                emptyMessage={t('No child job status has been reported yet.')}
                               />
                             </SectionBox>
-                            <SectionBox title="Conditions">
+                            <SectionBox title={t('Conditions')}>
                               <ConditionsTable resource={item.jsonData} />
                             </SectionBox>
                           </Stack>
                         ),
                       },
                       {
-                        label: 'Logs',
+                        label: t('Logs'),
                         component: (
-                          <SectionBox title="Pod / Container Logs">
+                          <SectionBox title={t('Pod / Container Logs')}>
                             <SimpleTable
                               data={childPods.flatMap((pod: any) =>
                                 getPodContainers(pod).map(entry => ({
@@ -483,23 +500,23 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
                               )}
                               columns={[
                                 {
-                                  label: 'Pod',
+                                  label: t('Pod'),
                                   getter: ({ pod }: any) => pod.metadata?.name || '-',
                                 },
                                 {
-                                  label: 'Phase',
+                                  label: t('Phase'),
                                   getter: ({ pod }: any) => getPodPhase(pod),
                                 },
                                 {
-                                  label: 'Container',
+                                  label: t('Container'),
                                   getter: ({ container }: any) => container.name || '-',
                                 },
                                 {
-                                  label: 'Restarts',
+                                  label: t('Restarts'),
                                   getter: ({ status }: any) => status?.restartCount ?? 0,
                                 },
                                 {
-                                  label: 'Logs',
+                                  label: t('Logs'),
                                   getter: ({ pod, container }: any) => (
                                     <HeadlampLink
                                       route="#"
@@ -513,50 +530,50 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
                                         });
                                       }}
                                     >
-                                      View Logs
+                                      {t('View Logs')}
                                     </HeadlampLink>
                                   ),
                                 },
                               ]}
-                              emptyMessage="No child pods found for this TrainJob yet."
+                              emptyMessage={t('No child pods found for this TrainJob yet.')}
                             />
                           </SectionBox>
                         ),
                       },
                       {
-                        label: 'Events',
+                        label: t('Events'),
                         component: <ObjectEventList object={item} />,
                       },
                       {
-                        label: 'Child Resources',
+                        label: t('Child Resources'),
                         component: (
                           <Stack spacing={2}>
-                            <SectionBox title="JobSet">
+                            <SectionBox title={t('JobSet')}>
                               <NameValueTable
                                 rows={[
                                   {
-                                    name: 'JobSet',
+                                    name: t('JobSet'),
                                     value: jobSet ? (
                                       <HeadlampLink route={jobSet.getDetailsLink()}>
                                         {jobSet.getName()}
                                       </HeadlampLink>
                                     ) : (
-                                      'Not found'
+                                      t('Not found')
                                     ),
                                   },
                                   {
-                                    name: 'Namespace',
+                                    name: t('Namespace'),
                                     value: jobSet?.getNamespace() || item.metadata.namespace || '-',
                                   },
                                 ]}
                               />
                             </SectionBox>
-                            <SectionBox title="Jobs">
+                            <SectionBox title={t('Jobs')}>
                               <SimpleTable
                                 data={childJobs}
                                 columns={[
                                   {
-                                    label: 'Name',
+                                    label: t('Name'),
                                     getter: (childJob: any) => (
                                       <HeadlampLink route={childJob.getDetailsLink()}>
                                         {childJob.getName()}
@@ -564,62 +581,62 @@ export function TrainJobsDetail(props: { namespace?: string; name?: string }) {
                                     ),
                                   },
                                   {
-                                    label: 'Completions',
+                                    label: t('Completions'),
                                     getter: (childJob: any) =>
                                       `${childJob.status?.succeeded ?? 0}/${
                                         childJob.spec?.completions ?? '-'
                                       }`,
                                   },
                                   {
-                                    label: 'Parallelism',
+                                    label: t('Parallelism'),
                                     getter: (childJob: any) => childJob.spec?.parallelism ?? '-',
                                   },
                                   {
-                                    label: 'Active',
+                                    label: t('Active'),
                                     getter: (childJob: any) => childJob.status?.active ?? 0,
                                   },
                                 ]}
-                                emptyMessage="No child Jobs found."
+                                emptyMessage={t('No child Jobs found.')}
                               />
                             </SectionBox>
-                            <SectionBox title="Pods & Metrics">
+                            <SectionBox title={t('Pods & Metrics')}>
                               <SimpleTable
                                 data={childPods}
                                 columns={[
                                   {
-                                    label: 'Pod',
+                                    label: t('Pod'),
                                     getter: (pod: any) => (
                                       <HeadlampLink route={pod.getDetailsLink()}>
                                         {pod.getName()}
                                       </HeadlampLink>
                                     ),
                                   },
-                                  { label: 'Phase', getter: (pod: any) => getPodPhase(pod) },
+                                  { label: t('Phase'), getter: (pod: any) => getPodPhase(pod) },
                                   {
-                                    label: 'CPU',
+                                    label: t('CPU'),
                                     getter: (pod: any) => metricsLookup[pod.getName()]?.cpu || '-',
                                   },
                                   {
-                                    label: 'Memory',
+                                    label: t('Memory'),
                                     getter: (pod: any) =>
                                       metricsLookup[pod.getName()]?.memory || '-',
                                   },
                                   {
-                                    label: 'GPU Req',
+                                    label: t('GPU Req'),
                                     getter: (pod: any) =>
                                       getGpuQuantity(pod.spec?.containers?.[0]?.resources) || '-',
                                   },
                                   {
-                                    label: 'Container Resources',
+                                    label: t('Container Resources'),
                                     getter: (pod: any) =>
                                       getContainerResourceSummary(pod.spec?.containers?.[0]),
                                   },
                                   {
-                                    label: 'Scheduling',
+                                    label: t('Scheduling'),
                                     getter: (pod: any) => getUnschedulableMessage(pod) || '-',
                                   },
                                 ]}
-                                emptyMessage="No child Pods found."
+                                emptyMessage={t('No child Pods found.')}
                               />
                             </SectionBox>
                           </Stack>

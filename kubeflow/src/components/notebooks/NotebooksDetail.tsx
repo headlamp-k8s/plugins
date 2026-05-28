@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   ConditionsTable,
@@ -15,12 +16,16 @@ import { NotebookStatusBadge } from '../common/NotebookStatusBadge';
 import { NotebookTypeBadge } from '../common/NotebookTypeBadge';
 import { SectionPage } from '../common/SectionPage';
 
-export function NotebooksDetail(props: { namespace?: string; name?: string }) {
+export function NotebooksDetail(props: { namespace?: string; name?: string; node?: any }) {
+  const { t } = useTranslation('kubeflow');
   const params = useParams<{ namespace: string; name: string }>();
-  const { namespace = params.namespace, name = params.name } = props;
+  const {
+    namespace = params.namespace || props.node?.kubeObject?.metadata?.namespace,
+    name = params.name || props.node?.kubeObject?.metadata?.name,
+  } = props;
 
   return (
-    <SectionPage title="Notebook Detail" apiPath="/apis/kubeflow.org/v1">
+    <SectionPage title={t('kubeflow|Notebook Detail')} apiPath="/apis/kubeflow.org/v1">
       <DetailsGrid
         resourceType={NotebookClass}
         name={name as string}
@@ -32,7 +37,7 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
               id: 'kubeflow.notebook-logs',
               action: (
                 <ActionButton
-                  description="View Notebook Logs"
+                  description={t('kubeflow|View Notebook Logs')}
                   icon="mdi:text-box-outline"
                   onClick={() =>
                     launchNotebookLogs({
@@ -49,11 +54,11 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
         extraInfo={item =>
           item && [
             {
-              name: 'Status',
+              name: t('frequent|Status'),
               value: <NotebookStatusBadge jsonData={item.jsonData} />,
             },
             {
-              name: 'Type',
+              name: t('frequent|Type'),
               value: (() => {
                 const image = item.containerImage;
                 if (!image) return '-';
@@ -61,28 +66,29 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
               })(),
             },
             {
-              name: 'Ready Replicas',
+              name: t('kubeflow|Ready Replicas'),
               value: item.readyReplicas ?? 0,
             },
             {
-              name: 'Container Image',
+              name: t('kubeflow|Container Image'),
               value: item.containerImage || '-',
             },
             {
-              name: 'Container Port',
+              name: t('kubeflow|Container Port'),
               value: (() => {
                 const containers = item.containers;
                 if (!containers || containers.length === 0) return '-';
                 const ports = containers[0]?.ports || [];
                 return (
-                  ports.map((p: any) => `${p.name || 'unnamed'}:${p.containerPort}`).join(', ') ||
-                  '-'
+                  ports
+                    .map((p: any) => `${p.name || t('kubeflow|unnamed')}:${p.containerPort}`)
+                    .join(', ') || '-'
                 );
               })(),
             },
             {
-              name: 'Service Account',
-              value: item.spec?.template?.spec?.serviceAccountName || 'default',
+              name: t('kubeflow|Service Account'),
+              value: item.spec?.template?.spec?.serviceAccountName || t('frequent|default'),
             },
           ]
         }
@@ -103,16 +109,28 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                   requests['amd.com/gpu'];
 
                 return (
-                  <SectionBox title="Resource Requirements">
+                  <SectionBox title={t('kubeflow|Resource Requirements')}>
                     <NameValueTable
                       rows={[
-                        { name: 'CPU Request', value: requests.cpu || 'Not set' },
-                        { name: 'CPU Limit', value: limits.cpu || 'Not set' },
-                        { name: 'Memory Request', value: requests.memory || 'Not set' },
-                        { name: 'Memory Limit', value: limits.memory || 'Not set' },
                         {
-                          name: 'GPU',
-                          value: gpuCount || 'None',
+                          name: t('kubeflow|CPU Request'),
+                          value: requests.cpu || t('frequent|Not set'),
+                        },
+                        {
+                          name: t('kubeflow|CPU Limit'),
+                          value: limits.cpu || t('frequent|Not set'),
+                        },
+                        {
+                          name: t('kubeflow|Memory Request'),
+                          value: requests.memory || t('frequent|Not set'),
+                        },
+                        {
+                          name: t('kubeflow|Memory Limit'),
+                          value: limits.memory || t('frequent|Not set'),
+                        },
+                        {
+                          name: t('kubeflow|GPU'),
+                          value: gpuCount || t('frequent|None'),
                         },
                       ]}
                     />
@@ -127,17 +145,17 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                 const volumeMounts = item.containers?.[0]?.volumeMounts || [];
                 if (volumeMounts.length === 0) return null;
                 return (
-                  <SectionBox title="Volumes & Mounts">
+                  <SectionBox title={t('frequent|Volumes & Mounts')}>
                     <NameValueTable
                       rows={volumeMounts.map((mount: any) => {
                         const vol = volumes.find((v: any) => v.name === mount.name);
-                        let volumeType: React.ReactNode = 'Unknown';
+                        let volumeType: React.ReactNode = t('frequent|Unknown');
                         if (vol) {
                           if ((vol as any).persistentVolumeClaim) {
                             const claimName = (vol as any).persistentVolumeClaim.claimName;
                             volumeType = (
                               <Box component="span">
-                                PVC:{' '}
+                                {t('kubeflow|PVC:')}{' '}
                                 <HeadlampLink
                                   route={`/c/${item.cluster}/persistentvolumeclaims/${item.metadata.namespace}/${claimName}`}
                                 >
@@ -146,13 +164,19 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                               </Box>
                             );
                           } else if ((vol as any).emptyDir !== undefined) {
-                            volumeType = 'EmptyDir';
+                            volumeType = t('kubeflow|EmptyDir');
                           } else if ((vol as any).configMap) {
-                            volumeType = `ConfigMap: ${(vol as any).configMap.name}`;
+                            volumeType = t('frequent|ConfigMap: {{name}}', {
+                              name: (vol as any).configMap.name,
+                            });
                           } else if ((vol as any).secret) {
-                            volumeType = `Secret: ${(vol as any).secret.secretName}`;
+                            volumeType = t('frequent|Secret: {{name}}', {
+                              name: (vol as any).secret.secretName,
+                            });
                           } else if ((vol as any).hostPath) {
-                            volumeType = `HostPath: ${(vol as any).hostPath.path}`;
+                            volumeType = t('frequent|HostPath: {{path}}', {
+                              path: (vol as any).hostPath.path,
+                            });
                           }
                         }
                         return {
@@ -167,7 +191,7 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                           value: (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               {volumeType}
-                              {mount.readOnly ? ' (ReadOnly)' : ''}
+                              {mount.readOnly ? <> ({t('kubeflow|ReadOnly')})</> : ''}
                             </Box>
                           ),
                         };
@@ -185,7 +209,7 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                 const envVars = containers[0]?.env || [];
                 if (envVars.length === 0) return null;
                 return (
-                  <SectionBox title="Environment Variables">
+                  <SectionBox title={t('frequent|Environment Variables')}>
                     <NameValueTable
                       rows={envVars.map((env: any) => ({
                         name: env.name,
@@ -193,15 +217,23 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                           if (env.value !== undefined && env.value !== null) return env.value;
                           if (env.valueFrom) {
                             if (env.valueFrom.secretKeyRef) {
-                              return `From: Secret ${env.valueFrom.secretKeyRef.name}/${env.valueFrom.secretKeyRef.key}`;
+                              return t('kubeflow|From: Secret {{name}}/{{key}}', {
+                                name: env.valueFrom.secretKeyRef.name,
+                                key: env.valueFrom.secretKeyRef.key,
+                              });
                             }
                             if (env.valueFrom.configMapKeyRef) {
-                              return `From: ConfigMap ${env.valueFrom.configMapKeyRef.name}/${env.valueFrom.configMapKeyRef.key}`;
+                              return t('kubeflow|From: ConfigMap {{name}}/{{key}}', {
+                                name: env.valueFrom.configMapKeyRef.name,
+                                key: env.valueFrom.configMapKeyRef.key,
+                              });
                             }
                             if (env.valueFrom.fieldRef) {
-                              return `From: FieldRef ${env.valueFrom.fieldRef.fieldPath}`;
+                              return t('kubeflow|From: FieldRef {{path}}', {
+                                path: env.valueFrom.fieldRef.fieldPath,
+                              });
                             }
-                            return 'From: Unknown source';
+                            return t('kubeflow|From: Unknown source');
                           }
                           return '-';
                         })(),
@@ -217,7 +249,7 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                 const containers = item.containers;
                 if (containers.length <= 1) return null;
                 return (
-                  <SectionBox title="Additional Containers (Sidecars)">
+                  <SectionBox title={t('kubeflow|Additional Containers (Sidecars)')}>
                     <NameValueTable
                       rows={containers.slice(1).map((c: any) => ({
                         name: c.name,
@@ -234,13 +266,15 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                 const tolerations = item.spec?.template?.spec?.tolerations || [];
                 if (tolerations.length === 0) return null;
                 return (
-                  <SectionBox title="Tolerations">
+                  <SectionBox title={t('frequent|Tolerations')}>
                     <NameValueTable
-                      rows={tolerations.map((t: any, i: number) => ({
-                        name: `Toleration ${i + 1}`,
-                        value: `${t.key || '*'}${t.operator ? ` ${t.operator}` : ''} ${
-                          t.value || ''
-                        } (Effect: ${t.effect || 'Any'})`,
+                      rows={tolerations.map((t_info: any, i: number) => ({
+                        name: t('frequent|Toleration {{index}}', { index: i + 1 }),
+                        value: `${t_info.key || '*'}${
+                          t_info.operator ? ` ${t_info.operator}` : ''
+                        } ${t_info.value || ''} (${t('frequent|Effect: {{effect}}', {
+                          effect: t_info.effect || t('frequent|Any'),
+                        })})`,
                       }))}
                     />
                   </SectionBox>
@@ -253,7 +287,7 @@ export function NotebooksDetail(props: { namespace?: string; name?: string }) {
                 const conditions = item.status?.conditions || [];
                 if (conditions.length === 0) return null;
                 return (
-                  <SectionBox title="Conditions">
+                  <SectionBox title={t('frequent|Conditions')}>
                     <ConditionsTable resource={item.jsonData} />
                   </SectionBox>
                 );

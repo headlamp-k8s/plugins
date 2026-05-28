@@ -11,19 +11,22 @@ import { SectionPage } from '../common/SectionPage';
  * Displays a table of scheduled spark jobs with human-readable cron schedules.
  */
 export function ScheduledSparkApplicationsList() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   return (
-    <SectionPage title="Scheduled Spark Applications" apiPath="/apis/sparkoperator.k8s.io/v1beta2">
+    <SectionPage
+      title={t('Scheduled Spark Applications')}
+      apiPath="/apis/sparkoperator.k8s.io/v1beta2"
+    >
       <ResourceListView
-        title="Scheduled Spark Applications"
+        title={t('Scheduled Spark Applications')}
         resourceClass={ScheduledSparkApplicationClass}
         columns={[
           'name',
           'namespace',
           {
             id: 'schedule',
-            label: 'Schedule',
+            label: t('Schedule'),
             getValue: (item: ScheduledSparkApplicationClass) => item.schedule || '-',
             render: (item: ScheduledSparkApplicationClass) => {
               const schedule = item.schedule;
@@ -39,30 +42,30 @@ export function ScheduledSparkApplicationsList() {
           },
           {
             id: 'concurrency',
-            label: 'Concurrency',
+            label: t('Concurrency'),
             getValue: (item: ScheduledSparkApplicationClass) => item.concurrencyPolicy || '-',
           },
           {
             id: 'template-type',
-            label: 'Template Type',
+            label: t('Template Type'),
             getValue: (item: ScheduledSparkApplicationClass) => item.template.type || '-',
           },
           {
             id: 'last-run',
-            label: 'Last Run',
+            label: t('Last Run'),
             getValue: (item: ScheduledSparkApplicationClass) =>
               item.lastRunName || item.lastRun || '-',
           },
           {
             id: 'next-run',
-            label: 'Next Run',
+            label: t('Next Run'),
             getValue: (item: ScheduledSparkApplicationClass) => item.nextRun || '-',
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (item: ScheduledSparkApplicationClass) =>
-              item.scheduleState || (item.suspend ? 'Suspended' : 'Scheduled'),
+              item.scheduleState || (item.suspend ? t('Suspended') : t('Scheduled')),
             render: (item: ScheduledSparkApplicationClass) => (
               <ScheduledSparkApplicationStatusBadge scheduledSparkApplication={item} />
             ),

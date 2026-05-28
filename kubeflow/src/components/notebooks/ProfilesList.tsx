@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box } from '@mui/material';
 import { ProfileClass } from '../../resources/profile';
@@ -7,16 +8,18 @@ import { ProfileStatusBadge } from '../common/ProfileStatusBadge';
 import { SectionPage } from '../common/SectionPage';
 
 export function ProfilesList() {
+  const { t } = useTranslation();
+
   return (
-    <SectionPage title="Profiles" apiPath="/apis/kubeflow.org/v1">
+    <SectionPage title={t('Profiles')} apiPath="/apis/kubeflow.org/v1">
       <ResourceListView
-        title="Profiles"
+        title={t('Profiles')}
         resourceClass={ProfileClass}
         columns={[
           'name',
           {
             id: 'owner',
-            label: 'Owner',
+            label: t('Owner'),
             getValue: item => {
               const owner = item?.jsonData?.spec?.owner;
               if (!owner) return '-';
@@ -41,34 +44,34 @@ export function ProfilesList() {
           },
           {
             id: 'cpu-quota',
-            label: 'CPU Quota',
+            label: t('CPU Quota'),
             getValue: item => {
-              return item?.jsonData?.spec?.resourceQuotaSpec?.hard?.cpu || 'Unlimited';
+              return item?.jsonData?.spec?.resourceQuotaSpec?.hard?.cpu || t('Unlimited');
             },
           },
           {
             id: 'memory-quota',
-            label: 'Memory Quota',
+            label: t('Memory Quota'),
             getValue: item => {
-              return item?.jsonData?.spec?.resourceQuotaSpec?.hard?.memory || 'Unlimited';
+              return item?.jsonData?.spec?.resourceQuotaSpec?.hard?.memory || t('Unlimited');
             },
           },
           {
             id: 'gpu-quota',
-            label: 'GPU Quota',
+            label: t('GPU Quota'),
             getValue: item => {
               const hard = item?.jsonData?.spec?.resourceQuotaSpec?.hard || {};
               return (
                 hard['requests.nvidia.com/gpu'] ||
                 hard['limits.nvidia.com/gpu'] ||
                 hard['nvidia.com/gpu'] ||
-                'None'
+                t('None')
               );
             },
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: item => getProfileStatus(item?.jsonData).label,
             render: item => <ProfileStatusBadge jsonData={item?.jsonData} />,
           },

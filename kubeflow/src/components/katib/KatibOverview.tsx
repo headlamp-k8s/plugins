@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   SectionBox,
@@ -49,6 +50,7 @@ function experimentProgress(experiment: KatibExperimentClass, trials: KatibTrial
 }
 
 export function KatibOverview() {
+  const { t } = useTranslation();
   const [expandedRbacKey, setExpandedRbacKey] = React.useState<string | false>(false);
   const [experiments, experimentsError] = KatibExperimentClass.useList();
   const [trials, trialsError] = KatibTrialClass.useList();
@@ -63,7 +65,7 @@ export function KatibOverview() {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading Katib Dashboard...</Typography>
+        <Typography sx={{ ml: 2 }}>{t('Loading Katib Dashboard...')}</Typography>
       </Box>
     );
   }
@@ -80,48 +82,57 @@ export function KatibOverview() {
 
   const cards = [
     {
-      title: 'Experiments',
+      title: t('Experiments'),
       value: experimentList.length,
-      subtitle: `${runningExperiments} running, ${failedExperiments} failed`,
+      subtitle: t('{{running}} running, {{failed}} failed', {
+        running: runningExperiments,
+        failed: failedExperiments,
+      }),
       icon: 'mdi:tune',
     },
     {
-      title: 'Trials',
+      title: t('Trials'),
       value: trialList.length,
-      subtitle: `${succeededTrials} succeeded, ${failedTrials} failed`,
+      subtitle: t('{{succeeded}} succeeded, {{failed}} failed', {
+        succeeded: succeededTrials,
+        failed: failedTrials,
+      }),
       icon: 'mdi:flask-outline',
     },
     {
-      title: 'Suggestions',
+      title: t('Suggestions'),
       value: suggestionList.length,
-      subtitle: `${suggestionList.reduce(
-        (count, item) => count + (item.status.suggestionCount ?? 0),
-        0
-      )} assigned`,
+      subtitle: t('{{count}} assigned', {
+        count: suggestionList.reduce(
+          (count, item) => count + (item.status.suggestionCount ?? 0),
+          0
+        ),
+      }),
       icon: 'mdi:lightbulb-outline',
     },
     {
-      title: 'Early Stopping',
+      title: t('Early Stopping'),
       value: experimentList.filter(item => item.earlyStoppingEnabled).length,
-      subtitle: 'Experiments with early stopping',
+      subtitle: t('Experiments with early stopping'),
       icon: 'mdi:timer-sand',
     },
   ];
 
   return (
-    <SectionPage title="Katib Dashboard" apiPath="/apis/kubeflow.org/v1beta1/experiments">
+    <SectionPage title={t('Katib Dashboard')} apiPath="/apis/kubeflow.org/v1beta1/experiments">
       <Box sx={{ padding: '24px 16px', pt: '32px' }}>
         <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
-          Katib Dashboard
+          {t('Katib Dashboard')}
         </Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 4 }}>
-          Experiment health, trial progress, and optimization activity across namespaces
+          {t('Experiment health, trial progress, and optimization activity across namespaces')}
         </Typography>
 
         {hasListErrors && (
           <Alert severity="warning" sx={{ mb: 4, borderRadius: '4px' }}>
-            Some Katib resources could not be listed. Metrics and counts may be incomplete due to
-            authorization or availability issues.
+            {t(
+              'Some Katib resources could not be listed. Metrics and counts may be incomplete due to authorization or availability issues.'
+            )}
           </Alert>
         )}
 
@@ -154,12 +165,12 @@ export function KatibOverview() {
         </Grid>
 
         <Box sx={{ mt: 4 }}>
-          <SectionBox title="Experiment Health">
+          <SectionBox title={t('Experiment Health')}>
             <SimpleTable
               data={experimentList}
               columns={[
                 {
-                  label: 'Name',
+                  label: t('Name'),
                   getter: (experiment: KatibExperimentClass) => (
                     <HeadlampLink
                       routeName="kubeflow-katib-experiments-detail"
@@ -173,11 +184,11 @@ export function KatibOverview() {
                   ),
                 },
                 {
-                  label: 'Namespace',
+                  label: t('Namespace'),
                   getter: (experiment: KatibExperimentClass) => experiment.metadata.namespace,
                 },
                 {
-                  label: 'Status',
+                  label: t('Status'),
                   getter: (experiment: KatibExperimentClass) => (
                     <KubeflowStatusBadge
                       statusInfo={getKatibConditionStatus(experiment.latestCondition)}
@@ -185,47 +196,47 @@ export function KatibOverview() {
                   ),
                 },
                 {
-                  label: 'Objective',
+                  label: t('Objective'),
                   getter: (experiment: KatibExperimentClass) =>
                     experiment.objectiveMetricName || '-',
                 },
                 {
-                  label: 'Algorithm',
+                  label: t('Algorithm'),
                   getter: (experiment: KatibExperimentClass) => experiment.algorithmName || '-',
                 },
                 {
-                  label: 'Search Space',
+                  label: t('Search Space'),
                   getter: (experiment: KatibExperimentClass) => experiment.searchSpaceSize,
                 },
                 {
-                  label: 'Progress',
+                  label: t('Progress'),
                   getter: (experiment: KatibExperimentClass) =>
                     experimentProgress(experiment, trialList),
                 },
                 {
-                  label: 'Early Stopping',
+                  label: t('Early Stopping'),
                   getter: (experiment: KatibExperimentClass) =>
                     experiment.earlyStoppingEnabled
                       ? experiment.earlyStoppingAlgorithm
-                      : 'Disabled',
+                      : t('Disabled'),
                 },
               ]}
-              emptyMessage="No Katib experiments found."
+              emptyMessage={t('No Katib experiments found.')}
             />
           </SectionBox>
         </Box>
 
         <Box sx={{ mt: 4 }}>
-          <SectionBox title="Progress & Best Trials">
+          <SectionBox title={t('Progress & Best Trials')}>
             <SimpleTable
               data={experimentList}
               columns={[
                 {
-                  label: 'Experiment',
+                  label: t('Experiment'),
                   getter: (experiment: KatibExperimentClass) => experiment.metadata.name,
                 },
                 {
-                  label: 'Progress',
+                  label: t('Progress'),
                   getter: (experiment: KatibExperimentClass) => {
                     const relatedTrials = getKatibRelatedTrials(experiment, trialList);
                     const maxTrials = experiment.spec.maxTrialCount ?? 0;
@@ -237,19 +248,22 @@ export function KatibOverview() {
                       <Box sx={{ display: 'grid', gap: 0.5, minWidth: 120 }}>
                         <LinearProgress variant="determinate" value={progress} />
                         <Typography variant="caption">
-                          {currentTrials}/{maxTrials || '-'} trials
+                          {t('{{current}}/{{max}} trials', {
+                            current: currentTrials,
+                            max: maxTrials || '-',
+                          })}
                         </Typography>
                       </Box>
                     );
                   },
                 },
                 {
-                  label: 'Terminal',
+                  label: t('Terminal'),
                   getter: (experiment: KatibExperimentClass) =>
                     getKatibTerminalTrialCount(getKatibRelatedTrials(experiment, trialList)),
                 },
                 {
-                  label: 'Best Trial',
+                  label: t('Best Trial'),
                   getter: (experiment: KatibExperimentClass) => {
                     const bestTrial = getKatibBestTrial(
                       getKatibRelatedTrials(experiment, trialList),
@@ -272,7 +286,7 @@ export function KatibOverview() {
                   },
                 },
                 {
-                  label: 'Best Metric',
+                  label: t('Best Metric'),
                   getter: (experiment: KatibExperimentClass) => {
                     const bestTrial = getKatibBestTrial(
                       getKatibRelatedTrials(experiment, trialList),
@@ -285,40 +299,40 @@ export function KatibOverview() {
                   },
                 },
               ]}
-              emptyMessage="No progress data available."
+              emptyMessage={t('No progress data available.')}
             />
           </SectionBox>
         </Box>
 
         <Box sx={{ mt: 4 }}>
-          <SectionBox title="Service Accounts & Worker Types">
+          <SectionBox title={t('Service Accounts & Worker Types')}>
             <SimpleTable
               data={experimentList}
               columns={[
                 {
-                  label: 'Experiment',
+                  label: t('Experiment'),
                   getter: (experiment: KatibExperimentClass) => experiment.metadata.name,
                 },
                 {
-                  label: 'Worker Kind',
+                  label: t('Worker Kind'),
                   getter: (experiment: KatibExperimentClass) => experiment.trialWorkerKind || '-',
                 },
                 {
-                  label: 'Trial Service Account',
+                  label: t('Trial Service Account'),
                   getter: (experiment: KatibExperimentClass) =>
-                    experiment.trialServiceAccountName || 'default',
+                    experiment.trialServiceAccountName || t('default'),
                 },
                 {
-                  label: 'Suggestion Service Account',
+                  label: t('Suggestion Service Account'),
                   getter: (experiment: KatibExperimentClass) =>
-                    experiment.suggestionServiceAccountName || 'default',
+                    experiment.suggestionServiceAccountName || t('default'),
                 },
                 {
-                  label: 'RBAC',
-                  getter: () => 'See checks below',
+                  label: t('RBAC'),
+                  getter: () => t('See checks below'),
                 },
               ]}
-              emptyMessage="No service account data available."
+              emptyMessage={t('No service account data available.')}
             />
           </SectionBox>
         </Box>
@@ -343,13 +357,15 @@ export function KatibOverview() {
               >
                 <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" width="18" />}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                    RBAC & Service Accounts: {experiment.metadata.name}
+                    {t('RBAC & Service Accounts: {{name}}', { name: experiment.metadata.name })}
                   </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <KatibRbacSection
                     experiment={experiment}
-                    title={`RBAC & Service Accounts: ${experiment.metadata.name}`}
+                    title={t('RBAC & Service Accounts: {{name}}', {
+                      name: experiment.metadata.name,
+                    })}
                   />
                 </AccordionDetails>
               </Accordion>

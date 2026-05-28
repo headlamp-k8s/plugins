@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   DetailsGrid,
@@ -37,6 +38,7 @@ import { SectionPage } from '../common/SectionPage';
  * Renders the detail page for a Kubeflow PipelineVersion resource.
  */
 export function PipelineVersionsDetail(props: { namespace?: string; name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
   const [pipelineVersions] = PipelineVersionClass.useList();
@@ -44,7 +46,7 @@ export function PipelineVersionsDetail(props: { namespace?: string; name?: strin
 
   return (
     <SectionPage
-      title="Pipeline Version Detail"
+      title={t('Pipeline Version Detail')}
       apiPath="/apis/pipelines.kubeflow.org/v2beta1/pipelineversions"
     >
       <DetailsGrid
@@ -58,7 +60,7 @@ export function PipelineVersionsDetail(props: { namespace?: string; name?: strin
               id: 'kubeflow.pipeline-version-json',
               action: (
                 <KubeflowJsonViewerAction
-                  title="View Raw JSON"
+                  title={t('View Raw JSON')}
                   value={item.jsonData}
                   activityId={`json-pipeline-version-${item.metadata.namespace}-${item.metadata.name}`}
                 />
@@ -69,31 +71,31 @@ export function PipelineVersionsDetail(props: { namespace?: string; name?: strin
         extraInfo={item =>
           item && [
             {
-              name: 'Status',
+              name: t('Status'),
               value: <PipelineStatusBadge resource={item} />,
             },
             {
-              name: 'Display Name',
+              name: t('Display Name'),
               value: item.displayName || '-',
             },
             {
-              name: 'Description',
+              name: t('Description'),
               value: item.description || '-',
             },
             {
-              name: 'Spec Name',
+              name: t('Spec Name'),
               value: item.pipelineSpecName || '-',
             },
             {
-              name: 'SDK Version',
+              name: t('SDK Version'),
               value: item.pipelineSdkVersion || '-',
             },
             {
-              name: 'Phase',
+              name: t('Phase'),
               value: item.phase || '-',
             },
             {
-              name: 'Parent Pipeline',
+              name: t('Parent Pipeline'),
               value: item.pipelineName ? (
                 <HeadlampLink
                   routeName={getPipelineDetailsPath()}
@@ -106,7 +108,7 @@ export function PipelineVersionsDetail(props: { namespace?: string; name?: strin
               ),
             },
             {
-              name: 'Source',
+              name: t('Source'),
               value: hasPipelineVersionSource(item) ? item.sourceValue || item.sourceLabel : '-',
             },
           ]
@@ -119,33 +121,33 @@ export function PipelineVersionsDetail(props: { namespace?: string; name?: strin
                       {
                         id: 'source-details',
                         section: (
-                          <SectionBox title="Source Details">
+                          <SectionBox title={t('Source Details')}>
                             <SimpleTable
                               columns={[
                                 {
-                                  label: 'Field',
+                                  label: t('Field'),
                                   getter: (row: { label: string }) => row.label,
                                 },
                                 {
-                                  label: 'Value',
+                                  label: t('Value'),
                                   getter: (row: { value: string }) => row.value,
                                 },
                               ]}
                               data={[
                                 {
-                                  label: 'Source Type',
+                                  label: t('Source Type'),
                                   value: item.sourceLabel,
                                 },
                                 {
-                                  label: 'Pipeline Spec URI',
+                                  label: t('Pipeline Spec URI'),
                                   value: item.spec.pipelineSpecURI || '-',
                                 },
                                 {
-                                  label: 'Code Source URL',
+                                  label: t('Code Source URL'),
                                   value: item.spec.codeSourceURL || '-',
                                 },
                                 {
-                                  label: 'Embedded Pipeline Name',
+                                  label: t('Embedded Pipeline Name'),
                                   value: item.pipelineSpecName || '-',
                                 },
                               ]}
@@ -160,38 +162,38 @@ export function PipelineVersionsDetail(props: { namespace?: string; name?: strin
                       {
                         id: 'spec-summary',
                         section: (
-                          <SectionBox title="Pipeline Spec Summary">
+                          <SectionBox title={t('Pipeline Spec Summary')}>
                             <SimpleTable
                               columns={[
                                 {
-                                  label: 'Field',
+                                  label: t('Field'),
                                   getter: (row: { label: string }) => row.label,
                                 },
                                 {
-                                  label: 'Value',
+                                  label: t('Value'),
                                   getter: (row: { value: string }) => row.value,
                                 },
                               ]}
                               data={[
                                 {
-                                  label: 'Spec Name',
+                                  label: t('Spec Name'),
                                   value: item.pipelineSpecName || '-',
                                 },
                                 {
-                                  label: 'Spec Description',
+                                  label: t('Spec Description'),
                                   value: item.pipelineSpecDescription || '-',
                                 },
                                 {
-                                  label: 'SDK Version',
+                                  label: t('SDK Version'),
                                   value: item.pipelineSdkVersion || '-',
                                 },
                                 {
-                                  label: 'Tasks',
+                                  label: t('Tasks'),
                                   value:
                                     item.taskNames.length > 0 ? item.taskNames.join(', ') : '-',
                                 },
                                 {
-                                  label: 'Executors',
+                                  label: t('Executors'),
                                   value:
                                     item.executorNames.length > 0
                                       ? item.executorNames.join(', ')
@@ -219,11 +221,11 @@ export function PipelineVersionsDetail(props: { namespace?: string; name?: strin
                     {
                       id: 'other-versions',
                       section: (
-                        <SectionBox title="Other Versions in This Pipeline">
+                        <SectionBox title={t('Other Versions in This Pipeline')}>
                           <SimpleTable
                             columns={[
                               {
-                                label: 'Name',
+                                label: t('Name'),
                                 getter: (version: PipelineVersionClass) => (
                                   <HeadlampLink
                                     routeName={getPipelineVersionDetailsPath()}
@@ -237,24 +239,24 @@ export function PipelineVersionsDetail(props: { namespace?: string; name?: strin
                                 ),
                               },
                               {
-                                label: 'Display Name',
+                                label: t('Display Name'),
                                 getter: (version: PipelineVersionClass) =>
                                   version.displayName || '-',
                               },
                               {
-                                label: 'Description',
+                                label: t('Description'),
                                 getter: (version: PipelineVersionClass) =>
                                   version.description || '-',
                               },
                               {
-                                label: 'Status',
+                                label: t('Status'),
                                 getter: (version: PipelineVersionClass) => (
                                   <PipelineStatusBadge resource={version} />
                                 ),
                               },
                             ]}
                             data={siblingVersions}
-                            emptyMessage="No other versions found."
+                            emptyMessage={t('No other versions found.')}
                           />
                         </SectionBox>
                       ),
@@ -266,7 +268,7 @@ export function PipelineVersionsDetail(props: { namespace?: string; name?: strin
                       {
                         id: 'conditions',
                         section: (
-                          <SectionBox title="Conditions">
+                          <SectionBox title={t('Conditions')}>
                             <ConditionsTable resource={item.jsonData} />
                           </SectionBox>
                         ),

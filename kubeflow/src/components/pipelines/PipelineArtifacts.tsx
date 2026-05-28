@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   SectionBox,
@@ -63,6 +64,7 @@ function sortByCreationTimestampDesc<T extends { metadata: { creationTimestamp?:
  * Lists pipeline roots discovered across recent runs.
  */
 export function PipelineArtifacts() {
+  const { t } = useTranslation();
   const [runs, runsError] = PipelineRunClass.useList();
   const runList = runs ?? [];
 
@@ -97,34 +99,34 @@ export function PipelineArtifacts() {
 
   return (
     <SectionPage
-      title="Artifacts & Pipeline Root"
+      title={t('Artifacts & Pipeline Root')}
       apiPath="/apis/pipelines.kubeflow.org/v2beta1/runs"
     >
       <Box sx={{ padding: '24px 16px', pt: '32px' }}>
         <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
-          Artifacts & Pipeline Root
+          {t('Artifacts & Pipeline Root')}
         </Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 4 }}>
-          Storage roots discovered from recent pipeline runs
+          {t('Storage roots discovered from recent pipeline runs')}
         </Typography>
 
-        <SectionBox title="Pipeline Roots in Use">
+        <SectionBox title={t('Pipeline Roots in Use')}>
           <SimpleTable
             columns={[
               {
-                label: 'Pipeline Root',
+                label: t('Pipeline Root'),
                 getter: (row: PipelineRootSummary) => row.root,
               },
               {
-                label: 'Runs',
+                label: t('Runs'),
                 getter: (row: PipelineRootSummary) => row.runs,
               },
               {
-                label: 'Namespaces',
+                label: t('Namespaces'),
                 getter: (row: PipelineRootSummary) => row.namespaces.size,
               },
               {
-                label: 'Latest Run',
+                label: t('Latest Run'),
                 getter: (row: PipelineRootSummary) =>
                   row.latestRun ? (
                     <HeadlampLink
@@ -144,8 +146,8 @@ export function PipelineArtifacts() {
             data={rootSummaries}
             emptyMessage={
               runsError
-                ? 'Pipeline runs are unavailable or not installed.'
-                : 'No pipeline roots detected yet.'
+                ? t('Pipeline runs are unavailable or not installed.')
+                : t('No pipeline roots detected yet.')
             }
           />
         </SectionBox>

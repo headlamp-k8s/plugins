@@ -31,7 +31,7 @@ import { aggregateSparkResources, getSparkApplicationStatus } from '../common/sp
  * Displays summary cards, recent applications, and scheduled jobs.
  */
 function SparkOverviewPageContent() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [sparkApplications, sparkApplicationsError] = SparkApplicationClass.useList();
   const [scheduledSparkApplications, scheduledSparkApplicationsError] =
     ScheduledSparkApplicationClass.useList();
@@ -44,7 +44,7 @@ function SparkOverviewPageContent() {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading Spark Dashboard...</Typography>
+        <Typography sx={{ ml: 2 }}>{t('Loading Spark Dashboard...')}</Typography>
       </Box>
     );
   }
@@ -76,46 +76,52 @@ function SparkOverviewPageContent() {
 
   const summaryCards = [
     {
-      title: 'Spark Applications',
+      title: t('Spark Applications'),
       value: sparkApplicationsError ? '-' : applications.length,
       icon: 'mdi:flash',
       subtitle: sparkApplicationsError
         ? describeResourceError(sparkApplicationsError)
-        : `${runningCount} running, ${completedCount} completed${
-            failedCount > 0 ? `, ${failedCount} failed` : ''
-          }`,
+        : t('{{running}} running, {{completed}} completed{{failed}}', {
+            running: runningCount,
+            completed: completedCount,
+            failed: failedCount > 0 ? t(', {{count}} failed', { count: failedCount }) : '',
+          }),
     },
     {
-      title: 'Scheduled Jobs',
+      title: t('Scheduled Jobs'),
       value: scheduledSparkApplicationsError ? '-' : schedules.length,
       icon: 'mdi:calendar-clock',
       subtitle: scheduledSparkApplicationsError
         ? describeResourceError(scheduledSparkApplicationsError)
-        : `${suspendedScheduleCount} suspended`,
+        : t('{{count}} suspended', { count: suspendedScheduleCount }),
     },
     {
-      title: 'Total CPU Requested',
+      title: t('Total CPU Requested'),
       value: sparkApplicationsError ? '-' : `${totalResources.cpu.toFixed(1)}`,
       icon: 'mdi:cpu-64-bit',
       subtitle: sparkApplicationsError
         ? describeResourceError(sparkApplicationsError)
-        : `${totalResources.memory.toFixed(1)} Gi memory, ${totalResources.gpu} GPUs`,
+        : t('{{memory}} Gi memory, {{gpu}} GPUs', {
+            memory: totalResources.memory.toFixed(1),
+            gpu: totalResources.gpu,
+          }),
     },
   ];
 
   return (
     <Box sx={{ padding: '24px 16px', pt: '32px' }}>
       <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
-        Spark Dashboard
+        {t('Spark Dashboard')}
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 4 }}>
-        Health, schedules, and resource usage across namespaces
+        {t('Health, schedules, and resource usage across namespaces')}
       </Typography>
 
       {listErrors.length > 0 && (
         <Alert severity="warning" sx={{ mb: 4, borderRadius: '4px' }}>
-          Some Spark resources could not be listed. Cards and tables may be incomplete for the
-          current cluster or access level.
+          {t(
+            'Some Spark resources could not be listed. Cards and tables may be incomplete for the current cluster or access level.'
+          )}
         </Alert>
       )}
 
@@ -159,7 +165,7 @@ function SparkOverviewPageContent() {
                   width: '100%',
                 }}
               >
-                <Typography variant="h5">Recent Spark Applications</Typography>
+                <Typography variant="h5">{t('Recent Spark Applications')}</Typography>
                 <HeadlampLink
                   routeName="kubeflow-spark-applications-list"
                   sx={{
@@ -172,7 +178,7 @@ function SparkOverviewPageContent() {
                     '&:hover': { textDecoration: 'underline' },
                   }}
                 >
-                  View All <Icon icon="mdi:arrow-right" />
+                  {t('View All')} <Icon icon="mdi:arrow-right" />
                 </HeadlampLink>
               </Box>
             }
@@ -180,18 +186,18 @@ function SparkOverviewPageContent() {
             <SimpleTable
               data={applications.slice(0, 5)}
               columns={[
-                { label: 'Name', getter: item => item.metadata.name },
-                { label: 'Namespace', getter: item => item.metadata.namespace },
+                { label: t('Name'), getter: item => item.metadata.name },
+                { label: t('Namespace'), getter: item => item.metadata.namespace },
                 {
-                  label: 'Type',
+                  label: t('Type'),
                   getter: item => <SparkApplicationTypeBadge type={item.applicationType} />,
                 },
                 {
-                  label: 'Status',
+                  label: t('Status'),
                   getter: item => <SparkApplicationStatusBadge sparkApplication={item} />,
                 },
               ]}
-              emptyMessage="No Spark applications found."
+              emptyMessage={t('No Spark applications found.')}
             />
           </SectionBox>
         </Box>
@@ -210,7 +216,7 @@ function SparkOverviewPageContent() {
                     width: '100%',
                   }}
                 >
-                  <Typography variant="h5">Scheduled Spark Applications</Typography>
+                  <Typography variant="h5">{t('Scheduled Spark Applications')}</Typography>
                   <HeadlampLink
                     routeName="kubeflow-spark-scheduled-list"
                     sx={{
@@ -223,7 +229,7 @@ function SparkOverviewPageContent() {
                       '&:hover': { textDecoration: 'underline' },
                     }}
                   >
-                    View All <Icon icon="mdi:arrow-right" />
+                    {t('View All')} <Icon icon="mdi:arrow-right" />
                   </HeadlampLink>
                 </Box>
               }
@@ -231,9 +237,9 @@ function SparkOverviewPageContent() {
               <SimpleTable
                 data={schedules.slice(0, 5)}
                 columns={[
-                  { label: 'Name', getter: item => item.metadata.name },
+                  { label: t('Name'), getter: item => item.metadata.name },
                   {
-                    label: 'Schedule',
+                    label: t('Schedule'),
                     getter: item => {
                       const schedule = item.schedule;
                       if (!schedule) return '-';
@@ -247,13 +253,13 @@ function SparkOverviewPageContent() {
                     },
                   },
                   {
-                    label: 'Status',
+                    label: t('Status'),
                     getter: item => (
                       <ScheduledSparkApplicationStatusBadge scheduledSparkApplication={item} />
                     ),
                   },
                 ]}
-                emptyMessage="No scheduled Spark applications found."
+                emptyMessage={t('No scheduled Spark applications found.')}
               />
             </SectionBox>
           </Grid>
@@ -261,21 +267,21 @@ function SparkOverviewPageContent() {
 
         {namespaceRows.length > 0 && !sparkApplicationsError && (
           <Grid item xs={12} md={schedules.length > 0 ? 4 : 12}>
-            <SectionBox title="Applications by Namespace">
+            <SectionBox title={t('Applications by Namespace')}>
               <SimpleTable
                 columns={[
                   {
-                    label: 'Namespace',
+                    label: t('Namespace'),
                     getter: (row: { namespace: string }) => row.namespace,
                   },
                   {
-                    label: 'Count',
+                    label: t('Count'),
                     getter: (row: { namespace: string }) =>
                       applications.filter(app => app.metadata.namespace === row.namespace).length,
                   },
                 ]}
                 data={namespaceRows}
-                emptyMessage="No namespaces found."
+                emptyMessage={t('No namespaces found.')}
               />
             </SectionBox>
           </Grid>
@@ -290,8 +296,9 @@ function SparkOverviewPageContent() {
  * Wraps the dashboard content with capability checks via SectionPage.
  */
 export function SparkOverview() {
+  const { t } = useTranslation();
   return (
-    <SectionPage title="Spark Overview" apiPath="/apis/sparkoperator.k8s.io/v1beta2">
+    <SectionPage title={t('Spark Overview')} apiPath="/apis/sparkoperator.k8s.io/v1beta2">
       <SparkOverviewPageContent />
     </SectionPage>
   );

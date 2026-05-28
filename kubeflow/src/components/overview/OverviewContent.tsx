@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -42,6 +43,7 @@ export interface OverviewContentProps {
 }
 
 export function OverviewContent({ modules, extraCards = [] }: OverviewContentProps) {
+  const { t } = useTranslation();
   const anyInstalled = modules.some(m => m.isInstalled);
 
   const allWorkloads = modules.flatMap(m =>
@@ -70,18 +72,19 @@ export function OverviewContent({ modules, extraCards = [] }: OverviewContentPro
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box>
           <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
-            Kubeflow Control Center
+            {t('Kubeflow Control Center')}
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-            Platform workload detection and unified observability
+            {t('Platform workload detection and unified observability')}
           </Typography>
         </Box>
       </Box>
 
       {!anyInstalled && (
         <Alert severity="warning" sx={{ mb: 4, borderRadius: '4px' }}>
-          No Kubeflow components (CRDs) were detected on this cluster. Please ensure you have
-          installed your preferred ML components using the official manifests.
+          {t(
+            'No Kubeflow components (CRDs) were detected on this cluster. Please ensure you have installed your preferred ML components using the official manifests.'
+          )}
         </Alert>
       )}
 
@@ -123,7 +126,9 @@ export function OverviewContent({ modules, extraCards = [] }: OverviewContentPro
                     {module.errorText ?? module.items?.length ?? 0}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {module.errorText ? `${module.title} data unavailable` : 'Total Instances'}
+                    {module.errorText
+                      ? t('{{title}} data unavailable', { title: module.title })
+                      : t('Total Instances')}
                   </Typography>
                 </CardContent>
               </Card>
@@ -145,8 +150,8 @@ export function OverviewContent({ modules, extraCards = [] }: OverviewContentPro
                     aria-hidden
                   />
                   <Typography
-                    variant="subtitle2"
-                    sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}
+                    variant="overline"
+                    sx={{ ml: 1, fontWeight: 700, color: 'text.secondary' }}
                   >
                     {card.title}
                   </Typography>
@@ -176,30 +181,34 @@ export function OverviewContent({ modules, extraCards = [] }: OverviewContentPro
         {allWorkloads.length === 0 ? (
           anyInstalled ? (
             <Alert severity="info" variant="outlined">
-              The platform is installed but no ML workloads are currently running. Head over to the
-              sidebar to launch Notebooks or Pipelines!
+              {t(
+                'The platform is installed but no ML workloads are currently running. Head over to the sidebar to launch Notebooks or Pipelines!'
+              )}
             </Alert>
           ) : null
         ) : (
           <Grid container spacing={3}>
             {/* Active Instances Box */}
             <Grid item xs={12} lg={failedWorkloads.length > 0 ? 6 : 12}>
-              <SectionBox title="Healthy / Active Workloads">
+              <SectionBox title={t('Healthy / Active Workloads')}>
                 <SimpleTable
                   columns={[
-                    { label: 'Type', getter: (item: any) => item.moduleKey },
-                    { label: 'Name', getter: (item: any) => item.resource.metadata?.name || '-' },
+                    { label: t('Type'), getter: (item: any) => item.moduleKey },
                     {
-                      label: 'Namespace',
+                      label: t('Name'),
+                      getter: (item: any) => item.resource.metadata?.name || '-',
+                    },
+                    {
+                      label: t('Namespace'),
                       getter: (item: any) => item.resource.metadata?.namespace || '-',
                     },
                     {
-                      label: 'Status',
+                      label: t('Status'),
                       getter: (item: any) => getStatus(item.resource),
                     },
                   ]}
                   data={activeWorkloads}
-                  emptyMessage="No healthy or active workloads running right now."
+                  emptyMessage={t('No healthy or active workloads running right now.')}
                 />
               </SectionBox>
             </Grid>
@@ -207,12 +216,12 @@ export function OverviewContent({ modules, extraCards = [] }: OverviewContentPro
             {/* Failed Instances Box (Only rendered if failures exist) */}
             {failedWorkloads.length > 0 && (
               <Grid item xs={12} lg={6}>
-                <SectionBox title="Failed Workloads (Requires Attention)">
+                <SectionBox title={t('Failed Workloads (Requires Attention)')}>
                   <SimpleTable
                     columns={[
-                      { label: 'Type', getter: (item: any) => item.moduleKey },
+                      { label: t('Type'), getter: (item: any) => item.moduleKey },
                       {
-                        label: 'Name',
+                        label: t('Name'),
                         getter: (item: any) => (
                           <Typography
                             component="span"
@@ -223,16 +232,16 @@ export function OverviewContent({ modules, extraCards = [] }: OverviewContentPro
                         ),
                       },
                       {
-                        label: 'Namespace',
+                        label: t('Namespace'),
                         getter: (item: any) => item.resource.metadata?.namespace || '-',
                       },
                       {
-                        label: 'Status',
+                        label: t('Status'),
                         getter: (item: any) => getStatus(item.resource),
                       },
                     ]}
                     data={failedWorkloads}
-                    emptyMessage="No failed workloads found."
+                    emptyMessage={t('No failed workloads found.')}
                   />
                 </SectionBox>
               </Grid>

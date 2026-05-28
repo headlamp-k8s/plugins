@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DetailsGrid,
   EditButton,
@@ -27,6 +28,7 @@ function RuntimeWarnings({
   missingFramework: boolean;
   missingScheduling: boolean;
 }) {
+  const { t } = useTranslation();
   if (!missingFramework && !missingScheduling) {
     return null;
   }
@@ -35,14 +37,16 @@ function RuntimeWarnings({
     <Stack spacing={1}>
       {missingFramework && (
         <Alert severity="warning">
-          Runtime is missing the `trainer.kubeflow.org/framework` label, so framework detection is
-          best-effort only.
+          {t(
+            'Runtime is missing the `trainer.kubeflow.org/framework` label, so framework detection is best-effort only.'
+          )}
         </Alert>
       )}
       {missingScheduling && (
         <Alert severity="info">
-          Runtime does not define a PodGroupPolicy. Multi-node TrainJobs based on this runtime may
-          start without gang scheduling safeguards.
+          {t(
+            'Runtime does not define a PodGroupPolicy. Multi-node TrainJobs based on this runtime may start without gang scheduling safeguards.'
+          )}
         </Alert>
       )}
     </Stack>
@@ -64,6 +68,7 @@ function TrainingRuntimeDetailsContent<
   name: string;
   namespace?: string;
 }) {
+  const { t } = useTranslation();
   const [trainJobs] = TrainJobClass.useList(namespace ? { namespace } : undefined);
 
   return (
@@ -79,7 +84,7 @@ function TrainingRuntimeDetailsContent<
               id: 'kubeflow.runtime-json',
               action: (
                 <KubeflowJsonViewerAction
-                  title="View Raw JSON"
+                  title={t('View Raw JSON')}
                   value={item.jsonData}
                   activityId={[
                     'json-runtime',
@@ -104,23 +109,23 @@ function TrainingRuntimeDetailsContent<
         extraInfo={item =>
           item && [
             {
-              name: 'Scope',
-              value: item instanceof TrainingRuntimeClass ? 'Namespace' : 'Cluster',
+              name: t('Scope'),
+              value: item instanceof TrainingRuntimeClass ? t('Namespace') : t('Cluster'),
             },
             {
-              name: 'Framework',
+              name: t('Framework'),
               value: getRuntimeFamily(item),
             },
             {
-              name: 'Default Nodes',
+              name: t('Default Nodes'),
               value: item.defaultNumNodes ?? '-',
             },
             {
-              name: 'Scheduling',
-              value: getSchedulingSummary(item),
+              name: t('Scheduling'),
+              value: getSchedulingSummary(item, t),
             },
             {
-              name: 'Template Jobs',
+              name: t('Template Jobs'),
               value: item.templateJobCount,
             },
           ]
@@ -146,25 +151,25 @@ function TrainingRuntimeDetailsContent<
             {
               id: 'runtime-ml-policy',
               section: (
-                <SectionBox title="MLPolicy">
+                <SectionBox title={t('MLPolicy')}>
                   <NameValueTable
                     rows={[
-                      { name: 'Family', value: getRuntimeFamily(item) },
-                      { name: 'Default Nodes', value: item.defaultNumNodes ?? '-' },
+                      { name: t('Family'), value: getRuntimeFamily(item) },
+                      { name: t('Default Nodes'), value: item.defaultNumNodes ?? '-' },
                       {
-                        name: 'Torch NumProcPerNode',
+                        name: t('Torch NumProcPerNode'),
                         value: item.mlPolicy.torch?.numProcPerNode ?? '-',
                       },
                       {
-                        name: 'MPI NumProcPerNode',
+                        name: t('MPI NumProcPerNode'),
                         value: item.mlPolicy.mpi?.numProcPerNode ?? '-',
                       },
                       {
-                        name: 'MPI Implementation',
+                        name: t('MPI Implementation'),
                         value: item.mlPolicy.mpi?.mpiImplementation ?? '-',
                       },
                       {
-                        name: 'Flux NumProcPerNode',
+                        name: t('Flux NumProcPerNode'),
                         value: item.mlPolicy.flux?.numProcPerNode ?? '-',
                       },
                     ]}
@@ -175,20 +180,20 @@ function TrainingRuntimeDetailsContent<
             {
               id: 'runtime-scheduling',
               section: (
-                <SectionBox title="PodGroupPolicy">
+                <SectionBox title={t('PodGroupPolicy')}>
                   <NameValueTable
                     rows={[
-                      { name: 'Scheduling Mode', value: getSchedulingSummary(item) },
+                      { name: t('Scheduling Mode'), value: getSchedulingSummary(item, t) },
                       {
-                        name: 'Coscheduling Timeout',
+                        name: t('Coscheduling Timeout'),
                         value: item.podGroupPolicy.coscheduling?.scheduleTimeoutSeconds ?? '-',
                       },
                       {
-                        name: 'Volcano Queue',
+                        name: t('Volcano Queue'),
                         value: item.podGroupPolicy.volcano?.queue ?? '-',
                       },
                       {
-                        name: 'Volcano PriorityClass',
+                        name: t('Volcano PriorityClass'),
                         value: item.podGroupPolicy.volcano?.priorityClassName ?? '-',
                       },
                     ]}
@@ -199,12 +204,12 @@ function TrainingRuntimeDetailsContent<
             {
               id: 'runtime-template',
               section: (
-                <SectionBox title="Job Template">
+                <SectionBox title={t('Job Template')}>
                   <NameValueTable
                     rows={[
-                      { name: 'Replicated Jobs', value: item.templateJobCount },
+                      { name: t('Replicated Jobs'), value: item.templateJobCount },
                       {
-                        name: 'Containers',
+                        name: t('Containers'),
                         value: templateContainers.length > 0 ? templateContainers.join(', ') : '-',
                       },
                     ]}
@@ -218,15 +223,15 @@ function TrainingRuntimeDetailsContent<
                 <SectionBox
                   title={
                     item instanceof TrainingRuntimeClass
-                      ? 'Related TrainJobs in Namespace'
-                      : 'Related TrainJobs Across Namespaces'
+                      ? t('Related TrainJobs in Namespace')
+                      : t('Related TrainJobs Across Namespaces')
                   }
                 >
                   <SimpleTable
                     data={relatedJobs}
                     columns={[
                       {
-                        label: 'Name',
+                        label: t('Name'),
                         getter: (job: TrainJobClass) => (
                           <HeadlampLink
                             routeName="kubeflow-training-trainjobs-detail"
@@ -237,16 +242,19 @@ function TrainingRuntimeDetailsContent<
                         ),
                       },
                       {
-                        label: 'Namespace',
+                        label: t('Namespace'),
                         getter: (job: TrainJobClass) => job.metadata.namespace || '-',
                       },
                       {
-                        label: 'Status',
+                        label: t('Status'),
                         getter: (job: TrainJobClass) => <TrainJobStatusBadge job={job} />,
                       },
-                      { label: 'Managed By', getter: (job: TrainJobClass) => job.managedBy || '-' },
+                      {
+                        label: t('Managed By'),
+                        getter: (job: TrainJobClass) => job.managedBy || '-',
+                      },
                     ]}
-                    emptyMessage="No TrainJobs reference this runtime."
+                    emptyMessage={t('No TrainJobs reference this runtime.')}
                   />
                 </SectionBox>
               ),
@@ -262,13 +270,14 @@ function TrainingRuntimeDetailsContent<
  * Renders the detail page for a namespace-scoped TrainingRuntime.
  */
 export function TrainingRuntimesDetail(props: { namespace?: string; name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
 
   return (
     <TrainingRuntimeDetailsContent
       resourceType={TrainingRuntimeClass}
-      title="TrainingRuntime Detail"
+      title={t('TrainingRuntime Detail')}
       apiPath="/apis/trainer.kubeflow.org/v1alpha1/trainingruntimes"
       name={name as string}
       namespace={namespace}
@@ -280,13 +289,14 @@ export function TrainingRuntimesDetail(props: { namespace?: string; name?: strin
  * Renders the detail page for a cluster-scoped ClusterTrainingRuntime.
  */
 export function ClusterTrainingRuntimesDetail(props: { name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ name: string }>();
   const { name = params.name } = props;
 
   return (
     <TrainingRuntimeDetailsContent
       resourceType={ClusterTrainingRuntimeClass}
-      title="ClusterTrainingRuntime Detail"
+      title={t('ClusterTrainingRuntime Detail')}
       apiPath="/apis/trainer.kubeflow.org/v1alpha1/clustertrainingruntimes"
       name={name as string}
     />

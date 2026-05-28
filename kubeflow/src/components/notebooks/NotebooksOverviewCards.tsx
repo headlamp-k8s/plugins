@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link as HeadlampLink } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
   ActionButton,
@@ -31,6 +32,7 @@ export function NotebooksOverviewContent({
 }: NotebooksOverviewContentProps) {
   const history = useHistory();
   const cluster = useCluster();
+  const { t } = useTranslation();
   // Normalize items natively (whether raw CRs from storybook or NotebookClasses from live api)
   const normalizedNotebooks = notebooks.map(nb => (nb.jsonData ? nb.jsonData : nb));
 
@@ -49,40 +51,45 @@ export function NotebooksOverviewContent({
 
   const summaryCards = [
     {
-      title: 'Notebook Servers',
+      title: t('Notebook Servers'),
       value: notebooks.length,
       icon: 'mdi:notebook-outline',
-      subtitle: `${runningCount} running, ${pendingCount} pending${
-        failedCount > 0 ? `, ${failedCount} failed` : ''
-      }`,
+      subtitle: t('{{running}} running, {{pending}} pending{{failed}}', {
+        running: runningCount,
+        pending: pendingCount,
+        failed: failedCount > 0 ? t(', {{count}} failed', { count: failedCount }) : '',
+      }),
     },
     {
-      title: 'Profiles',
+      title: t('Profiles'),
       value: profiles.length,
       icon: 'mdi:account-group',
-      subtitle: `${profiles.length} tenant${profiles.length !== 1 ? 's' : ''} configured`,
+      subtitle: t('{{count}} tenant(s) configured', { count: profiles.length }),
     },
     {
-      title: 'PodDefaults',
+      title: t('PodDefaults'),
       value: podDefaults.length,
       icon: 'mdi:puzzle',
-      subtitle: `${podDefaults.length} injection rule${podDefaults.length !== 1 ? 's' : ''}`,
+      subtitle: t('{{count}} injection rule(s)', { count: podDefaults.length }),
     },
     {
-      title: 'Total CPU Requested',
+      title: t('Total CPU Requested'),
       value: `${totalResources.cpu.toFixed(1)}`,
       icon: 'mdi:cpu-64-bit',
-      subtitle: `${totalResources.memory.toFixed(1)} Gi memory, ${totalResources.gpu} GPUs`,
+      subtitle: t('{{memory}} Gi memory, {{gpu}} GPUs', {
+        memory: totalResources.memory.toFixed(1),
+        gpu: totalResources.gpu,
+      }),
     },
   ];
 
   return (
     <Box sx={{ padding: '24px 16px', pt: '32px' }}>
       <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
-        Notebooks Dashboard
+        {t('Notebooks Dashboard')}
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 4 }}>
-        Notebook servers, profiles, and PodDefaults overview
+        {t('Notebook servers, profiles, and PodDefaults overview')}
       </Typography>
 
       <Grid container spacing={3} sx={{ mb: 6 }}>
@@ -124,9 +131,9 @@ export function NotebooksOverviewContent({
                 width: '100%',
               }}
             >
-              <Typography variant="h5">Recent Notebook Servers</Typography>
+              <Typography variant="h5">{t('Recent Notebook Servers')}</Typography>
               <ActionButton
-                description="View All Notebooks"
+                description={t('View All Notebooks')}
                 icon="mdi:arrow-right"
                 onClick={() => {
                   history.push(
@@ -142,7 +149,7 @@ export function NotebooksOverviewContent({
           <SimpleTable
             columns={[
               {
-                label: 'Name',
+                label: t('Name'),
                 getter: (item: any) => {
                   const data = item.jsonData || item;
                   return (
@@ -159,14 +166,14 @@ export function NotebooksOverviewContent({
                 },
               },
               {
-                label: 'Namespace',
+                label: t('Namespace'),
                 getter: (item: any) => {
                   const data = item.jsonData || item;
                   return data.metadata?.namespace || '-';
                 },
               },
               {
-                label: 'Type',
+                label: t('Type'),
                 getter: (item: any) => {
                   const data = item.jsonData || item;
                   const containers = data.spec?.template?.spec?.containers || [];
@@ -174,7 +181,7 @@ export function NotebooksOverviewContent({
                 },
               },
               {
-                label: 'Status',
+                label: t('Status'),
                 getter: (item: any) => {
                   const data = item.jsonData || item;
                   return <NotebookStatusBadge jsonData={data} />;
@@ -182,7 +189,7 @@ export function NotebooksOverviewContent({
               },
             ]}
             data={notebooks.slice(0, 5)}
-            emptyMessage="No notebook servers found."
+            emptyMessage={t('No notebook servers found.')}
           />
         </SectionBox>
       )}

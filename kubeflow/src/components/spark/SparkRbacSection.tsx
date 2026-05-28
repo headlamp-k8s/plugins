@@ -1,4 +1,4 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   SectionBox,
@@ -24,24 +24,24 @@ interface SparkPermissionAccessProps {
   serviceAccountUser: string;
 }
 
-function formatAccess(allowed: boolean | null, isLoading: boolean, error: string) {
+function formatAccess(allowed: boolean | null, isLoading: boolean, error: string, t: any) {
   if (isLoading) {
-    return <StatusLabel>Checking</StatusLabel>;
+    return <StatusLabel>{t('Checking')}</StatusLabel>;
   }
 
   if (error) {
-    return <StatusLabel status="warning">Unknown</StatusLabel>;
+    return <StatusLabel status="warning">{t('Unknown')}</StatusLabel>;
   }
 
   if (allowed === null) {
-    return <StatusLabel status="warning">Unknown</StatusLabel>;
+    return <StatusLabel status="warning">{t('Unknown')}</StatusLabel>;
   }
 
   if (allowed) {
-    return <StatusLabel status="success">Allowed</StatusLabel>;
+    return <StatusLabel status="success">{t('Allowed')}</StatusLabel>;
   }
 
-  return <StatusLabel status="error">Denied</StatusLabel>;
+  return <StatusLabel status="error">{t('Denied')}</StatusLabel>;
 }
 
 function SparkPermissionAccess({
@@ -50,6 +50,7 @@ function SparkPermissionAccess({
   namespace,
   serviceAccountUser,
 }: SparkPermissionAccessProps) {
+  const { t } = useTranslation();
   const resourceAttributes = React.useMemo(
     () => ({
       resource: check.resource,
@@ -67,7 +68,7 @@ function SparkPermissionAccess({
 
   return (
     <Box sx={{ display: 'grid', gap: 0.5 }}>
-      {formatAccess(access.allowed, access.isLoading, access.error)}
+      {formatAccess(access.allowed, access.isLoading, access.error, t)}
       {(access.error || access.reason) && (
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           {access.error || access.reason}
@@ -82,6 +83,7 @@ export function SparkRbacSection({
 }: {
   sparkApplication: SparkApplicationClass;
 }) {
+  const { t } = useTranslation();
   const namespace = sparkApplication.metadata.namespace;
   const serviceAccountName = sparkApplication.serviceAccountName;
   const serviceAccountUser = `system:serviceaccount:${namespace}:${serviceAccountName}`;
@@ -93,39 +95,39 @@ export function SparkRbacSection({
 
   const checks = React.useMemo<SparkPermissionCheck[]>(() => {
     const requiredChecks: SparkPermissionCheck[] = [
-      { label: 'Create executor pods', resource: 'pods', verb: 'create' },
-      { label: 'Get executor pods', resource: 'pods', verb: 'get' },
-      { label: 'List executor pods', resource: 'pods', verb: 'list' },
-      { label: 'Watch executor pods', resource: 'pods', verb: 'watch' },
-      { label: 'Delete executor pods', resource: 'pods', verb: 'delete' },
-      { label: 'Create driver service', resource: 'services', verb: 'create' },
+      { label: t('Create executor pods'), resource: 'pods', verb: 'create' },
+      { label: t('Get executor pods'), resource: 'pods', verb: 'get' },
+      { label: t('List executor pods'), resource: 'pods', verb: 'list' },
+      { label: t('Watch executor pods'), resource: 'pods', verb: 'watch' },
+      { label: t('Delete executor pods'), resource: 'pods', verb: 'delete' },
+      { label: t('Create driver service'), resource: 'services', verb: 'create' },
     ];
 
     if (sparkApplication.spec.sparkConfigMap || sparkApplication.spec.hadoopConfigMap) {
       requiredChecks.push({
-        label: 'Read config maps',
+        label: t('Read config maps'),
         resource: 'configmaps',
         verb: 'get',
       });
     }
 
     return requiredChecks;
-  }, [sparkApplication.spec.hadoopConfigMap, sparkApplication.spec.sparkConfigMap]);
+  }, [sparkApplication.spec.hadoopConfigMap, sparkApplication.spec.sparkConfigMap, t]);
 
   return (
-    <SectionBox title="Service Account & RBAC">
+    <SectionBox title={t('Service Account & RBAC')}>
       <Box sx={{ display: 'grid', gap: 2 }}>
         <SimpleTable
           data={[
             {
               serviceAccountName,
               subject: serviceAccountUser,
-              exists: serviceAccount ? 'Yes' : serviceAccountError ? 'No' : 'Checking...',
+              exists: serviceAccount ? t('Yes') : serviceAccountError ? t('No') : t('Checking...'),
             },
           ]}
           columns={[
             {
-              label: 'Service Account',
+              label: t('Service Account'),
               getter: row => (
                 <HeadlampLink
                   routeName="ServiceAccount"
@@ -136,26 +138,27 @@ export function SparkRbacSection({
                 </HeadlampLink>
               ),
             },
-            { label: 'Subject', getter: row => row.subject },
-            { label: 'Exists', getter: row => row.exists },
+            { label: t('Subject'), getter: row => row.subject },
+            { label: t('Exists'), getter: row => row.exists },
           ]}
         />
 
         <Typography variant="subtitle2">
-          Driver pods need enough RBAC to create and manage executor pods and create the headless
-          driver service used by executors.
+          {t(
+            'Driver pods need enough RBAC to create and manage executor pods and create the headless driver service used by executors.'
+          )}
         </Typography>
 
         <SimpleTable
           data={checks}
           columns={[
-            { label: 'Permission', getter: check => check.label },
+            { label: t('Permission'), getter: check => check.label },
             {
-              label: 'Resource',
+              label: t('Resource'),
               getter: check => `${check.verb} ${check.resource}`,
             },
             {
-              label: 'Access',
+              label: t('Access'),
               getter: check => (
                 <SparkPermissionAccess
                   check={check}

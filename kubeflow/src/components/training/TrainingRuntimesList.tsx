@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { TrainingRuntimeClass } from '../../resources/trainingRuntime';
 import { SectionPage } from '../common/SectionPage';
@@ -7,46 +8,48 @@ import { getRuntimeFamily, getSchedulingSummary } from './trainerUtils';
  * Lists namespace-scoped TrainingRuntime resources.
  */
 export function TrainingRuntimesList() {
+  const { t } = useTranslation();
+
   return (
     <SectionPage
-      title="TrainingRuntimes"
+      title={t('TrainingRuntimes')}
       apiPath="/apis/trainer.kubeflow.org/v1alpha1/trainingruntimes"
     >
       <ResourceListView
-        title="TrainingRuntimes"
+        title={t('TrainingRuntimes')}
         resourceClass={TrainingRuntimeClass}
         columns={[
           'name',
           'namespace',
           {
             id: 'scope',
-            label: 'Scope',
-            getValue: () => 'Namespace',
-            render: () => 'Namespace',
+            label: t('Scope'),
+            getValue: () => t('Namespace'),
+            render: () => t('Namespace'),
           },
           {
             id: 'framework',
-            label: 'Framework',
+            label: t('Framework'),
             getValue: (item: TrainingRuntimeClass) => getRuntimeFamily(item),
             render: (item: TrainingRuntimeClass) => getRuntimeFamily(item),
           },
           {
             id: 'defaultNodes',
-            label: 'Default Nodes',
+            label: t('Default Nodes'),
             getValue: (item: TrainingRuntimeClass) => `${item.defaultNumNodes ?? '-'}`,
             render: (item: TrainingRuntimeClass) => item.defaultNumNodes ?? '-',
           },
           {
             id: 'mlPolicy',
-            label: 'ML Policy',
+            label: t('ML Policy'),
             getValue: (item: TrainingRuntimeClass) => getRuntimeFamily(item),
             render: (item: TrainingRuntimeClass) => getRuntimeFamily(item),
           },
           {
             id: 'scheduling',
-            label: 'Scheduling',
-            getValue: (item: TrainingRuntimeClass) => getSchedulingSummary(item),
-            render: (item: TrainingRuntimeClass) => getSchedulingSummary(item),
+            label: t('Scheduling'),
+            getValue: (item: TrainingRuntimeClass) => getSchedulingSummary(item, t),
+            render: (item: TrainingRuntimeClass) => getSchedulingSummary(item, t),
           },
           'age',
         ]}

@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   DateLabel,
@@ -25,6 +26,7 @@ import { TrainJobStatusBadge } from './TrainJobStatusBadge';
  * Renders the Training overview dashboard for TrainJobs and runtime coverage.
  */
 export function TrainingOverview() {
+  const { t } = useTranslation();
   const history = useHistory();
   const cluster = useCluster();
   const [trainJobs, trainJobsError] = TrainJobClass.useList();
@@ -41,7 +43,7 @@ export function TrainingOverview() {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading Training Dashboard...</Typography>
+        <Typography sx={{ ml: 2 }}>{t('Loading Training Dashboard...')}</Typography>
       </Box>
     );
   }
@@ -75,51 +77,60 @@ export function TrainingOverview() {
 
   const summaryCards = [
     {
-      title: 'TrainJobs',
+      title: t('TrainJobs'),
       value: trainJobsAvailability ?? jobs.length,
       icon: 'mdi:school',
       subtitle: trainJobsAvailability
-        ? 'TrainJob data unavailable'
-        : `${runningJobs.length} running, ${failedJobs.length} failed`,
+        ? t('TrainJob data unavailable')
+        : t('{{running}} running, {{failed}} failed', {
+            running: runningJobs.length,
+            failed: failedJobs.length,
+          }),
     },
     {
-      title: 'Suspended',
+      title: t('Suspended'),
       value: trainJobsAvailability ?? suspendedJobs.length,
       icon: 'mdi:pause-circle-outline',
-      subtitle: trainJobsAvailability ? 'TrainJob data unavailable' : 'Paused jobs awaiting resume',
+      subtitle: trainJobsAvailability
+        ? t('TrainJob data unavailable')
+        : t('Paused jobs awaiting resume'),
     },
     {
-      title: 'Namespace Runtimes',
+      title: t('Namespace Runtimes'),
       value: runtimesAvailability ?? runtimes.length,
       icon: 'mdi:application-brackets',
       subtitle: runtimesAvailability
-        ? 'Runtime data unavailable'
-        : 'Namespace-scoped configurations',
+        ? t('Runtime data unavailable')
+        : t('Namespace-scoped configurations'),
     },
     {
-      title: 'Cluster Runtimes',
+      title: t('Cluster Runtimes'),
       value: clusterRuntimesAvailability ?? clusterRuntimes.length,
       icon: 'mdi:application-braces',
       subtitle: clusterRuntimesAvailability
-        ? 'Runtime data unavailable'
-        : 'Cluster-wide configurations',
+        ? t('Runtime data unavailable')
+        : t('Cluster-wide configurations'),
     },
   ];
 
   return (
-    <SectionPage title="Training Dashboard" apiPath="/apis/trainer.kubeflow.org/v1alpha1/trainjobs">
+    <SectionPage
+      title={t('Training Dashboard')}
+      apiPath="/apis/trainer.kubeflow.org/v1alpha1/trainjobs"
+    >
       <Box sx={{ padding: '24px 16px', pt: '32px' }}>
         <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
-          Training Dashboard
+          {t('Training Dashboard')}
         </Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 4 }}>
-          TrainJobs and runtime coverage overview
+          {t('TrainJobs and runtime coverage overview')}
         </Typography>
 
         {hasListErrors && (
           <Alert severity="warning" sx={{ mb: 4, borderRadius: '4px' }}>
-            Some Training resources could not be listed. Cards marked as Not installed, Not
-            authorized, or Unavailable reflect the current access state.
+            {t(
+              'Some Training resources could not be listed. Cards marked as Not installed, Not authorized, or Unavailable reflect the current access state.'
+            )}
           </Alert>
         )}
 
@@ -164,9 +175,9 @@ export function TrainingOverview() {
                       width: '100%',
                     }}
                   >
-                    <Typography variant="h5">Recent TrainJobs</Typography>
+                    <Typography variant="h5">{t('Recent TrainJobs')}</Typography>
                     <ActionButton
-                      description="View All TrainJobs"
+                      description={t('View All TrainJobs')}
                       icon="mdi:arrow-right"
                       onClick={() => {
                         history.push(
@@ -183,7 +194,7 @@ export function TrainingOverview() {
                   data={recentJobs}
                   columns={[
                     {
-                      label: 'Name',
+                      label: t('Name'),
                       getter: (job: TrainJobClass) => (
                         <HeadlampLink
                           routeName="kubeflow-training-trainjobs-detail"
@@ -194,21 +205,27 @@ export function TrainingOverview() {
                       ),
                     },
                     {
-                      label: 'Namespace',
+                      label: t('Namespace'),
                       getter: (job: TrainJobClass) => job.metadata.namespace || '-',
                     },
-                    { label: 'Runtime', getter: (job: TrainJobClass) => formatRuntimeRef(job) },
                     {
-                      label: 'Status',
+                      label: t('Runtime'),
+                      getter: (job: TrainJobClass) => formatRuntimeRef(job, t),
+                    },
+                    {
+                      label: t('Status'),
                       getter: (job: TrainJobClass) => <TrainJobStatusBadge job={job} />,
                     },
-                    { label: 'Jobs', getter: (job: TrainJobClass) => summarizeJobsStatus(job) },
                     {
-                      label: 'Created',
+                      label: t('Jobs'),
+                      getter: (job: TrainJobClass) => summarizeJobsStatus(job, t),
+                    },
+                    {
+                      label: t('Created'),
                       getter: (job: TrainJobClass) => <DateLabel date={job.getCreationTs()} />,
                     },
                   ]}
-                  emptyMessage="No TrainJobs found."
+                  emptyMessage={t('No TrainJobs found.')}
                 />
               </SectionBox>
             </Grid>
@@ -216,12 +233,12 @@ export function TrainingOverview() {
 
           {!runtimesAvailability && !clusterRuntimesAvailability && allRuntimes.length > 0 && (
             <Grid item xs={12} lg={5}>
-              <SectionBox title="Runtime Coverage">
+              <SectionBox title={t('Runtime Coverage')}>
                 <SimpleTable
                   data={allRuntimes}
                   columns={[
                     {
-                      label: 'Name',
+                      label: t('Name'),
                       getter: runtime => (
                         <HeadlampLink
                           routeName={
@@ -243,20 +260,20 @@ export function TrainingOverview() {
                       ),
                     },
                     {
-                      label: 'Scope',
+                      label: t('Scope'),
                       getter: runtime =>
-                        runtime instanceof TrainingRuntimeClass ? 'Namespace' : 'Cluster',
+                        runtime instanceof TrainingRuntimeClass ? t('Namespace') : t('Cluster'),
                     },
                     {
-                      label: 'Framework',
+                      label: t('Framework'),
                       getter: runtime => getRuntimeFamily(runtime),
                     },
                     {
-                      label: 'Scheduling',
-                      getter: runtime => getSchedulingSummary(runtime),
+                      label: t('Scheduling'),
+                      getter: runtime => getSchedulingSummary(runtime, t),
                     },
                   ]}
-                  emptyMessage="No Trainer runtimes found."
+                  emptyMessage={t('No Trainer runtimes found.')}
                 />
               </SectionBox>
             </Grid>
@@ -266,12 +283,12 @@ export function TrainingOverview() {
         {!trainJobsAvailability && failedJobs.length > 0 && (
           <Grid container spacing={3} sx={{ mt: 3 }}>
             <Grid item xs={12}>
-              <SectionBox title="Failed TrainJobs">
+              <SectionBox title={t('Failed TrainJobs')}>
                 <SimpleTable
                   data={failedJobs.slice(0, 8)}
                   columns={[
                     {
-                      label: 'Name',
+                      label: t('Name'),
                       getter: (job: TrainJobClass) => (
                         <HeadlampLink
                           routeName="kubeflow-training-trainjobs-detail"
@@ -282,17 +299,20 @@ export function TrainingOverview() {
                       ),
                     },
                     {
-                      label: 'Namespace',
+                      label: t('Namespace'),
                       getter: (job: TrainJobClass) => job.metadata.namespace || '-',
                     },
-                    { label: 'Runtime', getter: (job: TrainJobClass) => formatRuntimeRef(job) },
                     {
-                      label: 'Reason',
+                      label: t('Runtime'),
+                      getter: (job: TrainJobClass) => formatRuntimeRef(job, t),
+                    },
+                    {
+                      label: t('Reason'),
                       getter: (job: TrainJobClass) =>
                         job.latestCondition?.reason || job.latestCondition?.message || '-',
                     },
                   ]}
-                  emptyMessage="No failed TrainJobs."
+                  emptyMessage={t('No failed TrainJobs.')}
                 />
               </SectionBox>
             </Grid>

@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   ResourceListView,
@@ -38,10 +39,12 @@ import { SectionPage } from '../common/SectionPage';
  * Lists Kubeflow Run resources available on the cluster.
  */
 export function PipelineRunsList() {
+  const { t } = useTranslation();
+
   return (
-    <SectionPage title="Pipeline Runs" apiPath="/apis/pipelines.kubeflow.org/v2beta1/runs">
+    <SectionPage title={t('Pipeline Runs')} apiPath="/apis/pipelines.kubeflow.org/v2beta1/runs">
       <ResourceListView
-        title="Pipeline Runs"
+        title={t('Pipeline Runs')}
         resourceClass={PipelineRunClass}
         enableRowActions
         actions={[
@@ -62,7 +65,7 @@ export function PipelineRunsList() {
                   <ListItemIcon>
                     <Icon icon="mdi:text-box-outline" width={20} />
                   </ListItemIcon>
-                  <ListItemText>View Latest Pod Logs</ListItemText>
+                  <ListItemText>{t('View Latest Pod Logs')}</ListItemText>
                 </MenuItem>
               );
             },
@@ -71,7 +74,7 @@ export function PipelineRunsList() {
         columns={[
           {
             id: 'name',
-            label: 'Name',
+            label: t('Name'),
             getValue: (item: PipelineRunClass) => item.metadata.name,
             render: (item: PipelineRunClass) => (
               <HeadlampLink
@@ -85,12 +88,12 @@ export function PipelineRunsList() {
           'namespace',
           {
             id: 'display-name',
-            label: 'Display Name',
+            label: t('Display Name'),
             getValue: (item: PipelineRunClass) => item.displayName || '-',
           },
           {
             id: 'pipeline',
-            label: 'Pipeline',
+            label: t('Pipeline'),
             getValue: (item: PipelineRunClass) => item.pipelineName || '-',
             render: (item: PipelineRunClass) =>
               item.pipelineName ? (
@@ -106,7 +109,7 @@ export function PipelineRunsList() {
           },
           {
             id: 'pipeline-version',
-            label: 'Pipeline Version',
+            label: t('Pipeline Version'),
             getValue: (item: PipelineRunClass) => item.pipelineVersionName || '-',
             render: (item: PipelineRunClass) =>
               item.pipelineVersionName ? (
@@ -122,7 +125,7 @@ export function PipelineRunsList() {
           },
           {
             id: 'experiment',
-            label: 'Experiment',
+            label: t('Experiment'),
             getValue: (item: PipelineRunClass) => item.experimentName || '-',
             render: (item: PipelineRunClass) =>
               item.experimentName ? (
@@ -138,17 +141,17 @@ export function PipelineRunsList() {
           },
           {
             id: 'duration',
-            label: 'Duration',
+            label: t('Duration'),
             getValue: (item: PipelineRunClass) => getPipelineRunDurationLabel(item),
           },
           {
             id: 'pipeline-root',
-            label: 'Pipeline Root',
+            label: t('Pipeline Root'),
             getValue: (item: PipelineRunClass) => getPipelineRunRoot(item) || '-',
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (item: PipelineRunClass) => getPipelineResourceStatus(item).label,
             render: (item: PipelineRunClass) => <PipelineStatusBadge resource={item} />,
           },

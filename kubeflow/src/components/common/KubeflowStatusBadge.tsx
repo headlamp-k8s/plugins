@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   LightTooltip,
   StatusLabel,
@@ -52,6 +53,7 @@ function getDefaultStatusIcon(status: StatusLabelProps['status']): string {
  * Renders a Headlamp-style status chip with a consistent icon and optional tooltip.
  */
 export function KubeflowStatusBadge({ statusInfo, info }: KubeflowStatusBadgeProps) {
+  const { t } = useTranslation();
   const activeInfo = statusInfo || info;
   if (!activeInfo) {
     return null;
@@ -60,7 +62,7 @@ export function KubeflowStatusBadge({ statusInfo, info }: KubeflowStatusBadgePro
   const icon = activeInfo.icon ?? getDefaultStatusIcon(activeInfo.status);
   const badge = (
     <StatusLabel status={activeInfo.status}>
-      {activeInfo.label}
+      {t(activeInfo.label)}
       <Icon aria-hidden icon={icon} width="1.2rem" height="1.2rem" />
     </StatusLabel>
   );

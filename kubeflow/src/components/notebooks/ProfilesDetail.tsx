@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   DetailsGrid,
@@ -11,12 +12,13 @@ import { ProfileClass } from '../../resources/profile';
 import { ProfileStatusBadge } from '../common/ProfileStatusBadge';
 import { SectionPage } from '../common/SectionPage';
 
-export function ProfilesDetail(props: { name?: string }) {
+export function ProfilesDetail(props: { name?: string; node?: any }) {
+  const { t } = useTranslation();
   const params = useParams<{ name: string }>();
-  const { name = params.name } = props;
+  const { name = params.name || props.node?.kubeObject?.metadata?.name } = props;
 
   return (
-    <SectionPage title="Profile Detail" apiPath="/apis/kubeflow.org/v1">
+    <SectionPage title={t('Profile Detail')} apiPath="/apis/kubeflow.org/v1">
       <DetailsGrid
         resourceType={ProfileClass}
         name={name}
@@ -24,11 +26,11 @@ export function ProfilesDetail(props: { name?: string }) {
         extraInfo={item =>
           item && [
             {
-              name: 'Owner Kind',
+              name: t('Owner Kind'),
               value: item?.jsonData?.spec?.owner?.kind || '-',
             },
             {
-              name: 'Owner Name',
+              name: t('Owner Name'),
               value: (() => {
                 const owner = item?.jsonData?.spec?.owner;
                 if (!owner) return '-';
@@ -47,7 +49,7 @@ export function ProfilesDetail(props: { name?: string }) {
               })(),
             },
             {
-              name: 'Status',
+              name: t('Status'),
               value: <ProfileStatusBadge jsonData={item?.jsonData} />,
             },
           ]
@@ -60,7 +62,7 @@ export function ProfilesDetail(props: { name?: string }) {
                 const hard = item?.jsonData?.spec?.resourceQuotaSpec?.hard;
                 if (!hard) return null;
                 return (
-                  <SectionBox title="Resource Quota">
+                  <SectionBox title={t('Resource Quota')}>
                     <NameValueTable
                       rows={Object.entries(hard).map(([key, val]) => ({
                         name: key,
@@ -77,10 +79,13 @@ export function ProfilesDetail(props: { name?: string }) {
                 const plugins = item?.jsonData?.spec?.plugins || [];
                 if (plugins.length === 0) return null;
                 return (
-                  <SectionBox title="Plugins">
+                  <SectionBox title={t('Plugins')}>
                     <NameValueTable
                       rows={plugins.map((p: any, i: number) => ({
-                        name: `Plugin ${i + 1} (${p.kind || 'Unknown'})`,
+                        name: t('Plugin {{index}} ({{kind}})', {
+                          index: i + 1,
+                          kind: p.kind || t('Unknown'),
+                        }),
                         value: (
                           <Box
                             sx={{
@@ -106,7 +111,7 @@ export function ProfilesDetail(props: { name?: string }) {
                 const conditions = item?.jsonData?.status?.conditions || [];
                 if (conditions.length === 0) return null;
                 return (
-                  <SectionBox title="Conditions">
+                  <SectionBox title={t('Conditions')}>
                     <ConditionsTable resource={item.jsonData} />
                   </SectionBox>
                 );

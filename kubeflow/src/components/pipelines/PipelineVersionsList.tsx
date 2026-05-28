@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link as HeadlampLink,
   ResourceListView,
@@ -31,18 +32,20 @@ import { SectionPage } from '../common/SectionPage';
  * Lists Kubeflow PipelineVersion resources available on the cluster.
  */
 export function PipelineVersionsList() {
+  const { t } = useTranslation();
+
   return (
     <SectionPage
-      title="Pipeline Versions"
+      title={t('Pipeline Versions')}
       apiPath="/apis/pipelines.kubeflow.org/v2beta1/pipelineversions"
     >
       <ResourceListView
-        title="Pipeline Versions"
+        title={t('Pipeline Versions')}
         resourceClass={PipelineVersionClass}
         columns={[
           {
             id: 'name',
-            label: 'Name',
+            label: t('Name'),
             getValue: (item: PipelineVersionClass) => item.metadata.name,
             render: (item: PipelineVersionClass) => (
               <HeadlampLink
@@ -56,17 +59,17 @@ export function PipelineVersionsList() {
           'namespace',
           {
             id: 'display-name',
-            label: 'Display Name',
+            label: t('Display Name'),
             getValue: (item: PipelineVersionClass) => item.displayName || '-',
           },
           {
             id: 'description',
-            label: 'Description',
+            label: t('Description'),
             getValue: (item: PipelineVersionClass) => item.description || '-',
           },
           {
             id: 'pipeline',
-            label: 'Pipeline',
+            label: t('Pipeline'),
             getValue: (item: PipelineVersionClass) => item.pipelineName || '-',
             render: (item: PipelineVersionClass) =>
               item.pipelineName ? (
@@ -82,7 +85,7 @@ export function PipelineVersionsList() {
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (item: PipelineVersionClass) => getPipelineResourceStatus(item).label,
             render: (item: PipelineVersionClass) => <PipelineStatusBadge resource={item} />,
           },

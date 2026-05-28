@@ -1,17 +1,18 @@
 import { StatusLabelProps } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { ChipProps } from '@mui/material/Chip';
+import type { TFunction } from 'i18next';
 
 /**
  * Normalizes HTTP/API errors encountered during resource fetching into
  * user-friendly UI strings ('Not authorized', 'Not installed', etc).
  */
-export function describeResourceError(error: any): string | null {
+export function describeResourceError(error: any, t?: TFunction): string | null {
   if (!error) return null;
 
   const status = typeof error === 'object' && error !== null ? (error as any).status : undefined;
-  if (status === 401 || status === 403) return 'Not authorized';
-  if (status === 404) return 'Not installed';
-  return 'Unavailable';
+  if (status === 401 || status === 403) return t ? t('Not authorized') : 'Not authorized';
+  if (status === 404) return t ? t('Not installed') : 'Not installed';
+  return t ? t('Unavailable') : 'Unavailable';
 }
 
 /**

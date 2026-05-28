@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
@@ -26,6 +27,7 @@ import { aggregateNotebookResources, describeResourceError } from '../common/not
 import { OverviewContent, type OverviewModule } from './OverviewContent';
 
 export function Overview() {
+  const { t } = useTranslation();
   // Fetch lists directly from cluster
   const [notebooks, notebooksError] = NotebookClass.useList();
   const [pipelines, pipelinesError] = PipelineClass.useList();
@@ -44,7 +46,7 @@ export function Overview() {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading Kubeflow Operator Dashboard...</Typography>
+        <Typography sx={{ ml: 2 }}>{t('Loading Kubeflow Operator Dashboard...')}</Typography>
       </Box>
     );
   }
@@ -53,7 +55,7 @@ export function Overview() {
 
   const modules: OverviewModule[] = [
     {
-      title: 'Notebooks',
+      title: t('Notebooks'),
       key: 'Notebook',
       icon: 'mdi:notebook',
       items: notebooks,
@@ -61,7 +63,7 @@ export function Overview() {
       errorText: describeResourceError(notebooksError),
     },
     {
-      title: 'Pipelines',
+      title: t('Pipelines'),
       key: 'Pipeline',
       icon: 'mdi:sitemap',
       items: pipelines,
@@ -69,7 +71,7 @@ export function Overview() {
       errorText: describeResourceError(pipelinesError),
     },
     {
-      title: 'Katib Experiments',
+      title: t('Katib Experiments'),
       key: 'Katib',
       icon: 'mdi:tune',
       items: katibExps,
@@ -77,7 +79,7 @@ export function Overview() {
       errorText: describeResourceError(katibError),
     },
     {
-      title: 'Training Jobs',
+      title: t('Training Jobs'),
       key: 'Training',
       icon: 'mdi:school',
       items: trainJobs,
@@ -85,7 +87,7 @@ export function Overview() {
       errorText: describeResourceError(trainError),
     },
     {
-      title: 'Spark Applications',
+      title: t('Spark Applications'),
       key: 'Spark',
       icon: 'mdi:flash',
       items: sparkApps,
@@ -99,16 +101,17 @@ export function Overview() {
       modules={modules}
       extraCards={[
         {
-          title: 'Notebook CPU Requested',
+          title: t('Notebook CPU Requested'),
           value: notebooksError
-            ? describeResourceError(notebooksError) ?? 'Unavailable'
+            ? describeResourceError(notebooksError) ?? t('Unavailable')
             : `${notebookResources.cpu.toFixed(1)}`,
           icon: 'mdi:cpu-64-bit',
           subtitle: notebooksError
-            ? 'Notebook resource totals unavailable'
-            : `${notebookResources.memory.toFixed(1)} Gi memory, ${
-                notebookResources.gpu
-              } GPUs requested`,
+            ? t('Notebook resource totals unavailable')
+            : t('{{memory}} Gi memory, {{gpu}} GPUs requested', {
+                memory: notebookResources.memory.toFixed(1),
+                gpu: notebookResources.gpu,
+              }),
         },
       ]}
     />

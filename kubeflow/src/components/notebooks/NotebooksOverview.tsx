@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -21,6 +22,7 @@ import {
 } from '../common/notebookUtils';
 
 function NotebooksOverviewPageContent() {
+  const { t } = useTranslation('kubeflow');
   const [notebooks, notebooksError] = NotebookClass.useList();
   const [profiles, profilesError] = ProfileClass.useList();
   const [podDefaults, podDefaultsError] = PodDefaultClass.useList();
@@ -34,7 +36,7 @@ function NotebooksOverviewPageContent() {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading Notebooks Dashboard...</Typography>
+        <Typography sx={{ ml: 2 }}>{t('kubeflow|Loading Notebooks Dashboard...')}</Typography>
       </Box>
     );
   }
@@ -93,41 +95,46 @@ function NotebooksOverviewPageContent() {
 
   const summaryCards = [
     {
-      title: 'Notebook Servers',
+      title: t('kubeflow|Notebook Servers'),
       value: notebookAvailability ?? notebooksList.length,
       icon: 'mdi:notebook-outline',
       subtitle: notebookAvailability
-        ? 'Notebook data unavailable'
-        : `${runningCount} running, ${pendingCount} pending${
-            failedCount > 0 ? `, ${failedCount} failed` : ''
-          }`,
+        ? t('kubeflow|Notebook data unavailable')
+        : t('kubeflow|{{running}} running, {{pending}} pending{{failed}}', {
+            running: runningCount,
+            pending: pendingCount,
+            failed: failedCount > 0 ? t('kubeflow|, {{count}} failed', { count: failedCount }) : '',
+          }),
       color: '', // Default Headlamp color is derived from theme by leaving empty or using specific palette
     },
     {
-      title: 'Profiles',
+      title: t('kubeflow|Profiles'),
       value: profileAvailability ?? profilesList.length,
       icon: 'mdi:account-group',
       subtitle: profileAvailability
-        ? 'Profiles data unavailable'
-        : `${profilesList.length} tenant${profilesList.length !== 1 ? 's' : ''} configured`,
+        ? t('kubeflow|Profiles data unavailable')
+        : t('kubeflow|{{count}} tenant(s) configured', { count: profilesList.length }),
       color: '',
     },
     {
-      title: 'PodDefaults',
+      title: t('kubeflow|PodDefaults'),
       value: podDefaultsAvailability ?? podDefaultsList.length,
       icon: 'mdi:puzzle',
       subtitle: podDefaultsAvailability
-        ? 'PodDefaults data unavailable'
-        : `${podDefaultsList.length} injection rule${podDefaultsList.length !== 1 ? 's' : ''}`,
+        ? t('kubeflow|PodDefaults data unavailable')
+        : t('kubeflow|{{count}} injection rule(s)', { count: podDefaultsList.length }),
       color: '',
     },
     {
-      title: 'Total CPU Requested',
+      title: t('kubeflow|Total CPU Requested'),
       value: notebookAvailability ?? `${totalResources.cpu.toFixed(1)}`,
       icon: 'mdi:cpu-64-bit',
       subtitle: notebookAvailability
-        ? 'Notebook resource totals unavailable'
-        : `${totalResources.memory.toFixed(1)} Gi memory, ${totalResources.gpu} GPUs`,
+        ? t('kubeflow|Notebook resource totals unavailable')
+        : t('kubeflow|{{memory}} Gi memory, {{gpu}} GPUs', {
+            memory: totalResources.memory.toFixed(1),
+            gpu: totalResources.gpu,
+          }),
       color: '',
     },
   ];
@@ -135,16 +142,17 @@ function NotebooksOverviewPageContent() {
   return (
     <Box sx={{ padding: '24px 16px', pt: '32px' }}>
       <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
-        Notebooks Dashboard
+        {t('kubeflow|Notebooks Dashboard')}
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 4 }}>
-        Notebook servers, profiles, and PodDefaults overview
+        {t('kubeflow|Notebook servers, profiles, and PodDefaults overview')}
       </Typography>
 
       {hasListErrors && (
         <Alert severity="warning" sx={{ mb: 4, borderRadius: '4px' }}>
-          Some Kubeflow resources could not be listed. Cards marked as Not installed, Not
-          authorized, or Unavailable reflect the current access state.
+          {t(
+            'kubeflow|Some Kubeflow resources could not be listed. Cards marked as Not installed, Not authorized, or Unavailable reflect the current access state.'
+          )}
         </Alert>
       )}
 
@@ -192,27 +200,31 @@ function NotebooksOverviewPageContent() {
 
       {notebookAvailability ? (
         <Alert severity="info" variant="outlined" sx={{ mb: 4 }}>
-          Notebook data is {notebookAvailability.toLowerCase()} so the notebook table, namespace
-          distribution, and image breakdown are hidden.
+          {t(
+            'kubeflow|Notebook data is {{availability}} so the notebook table, namespace distribution, and image breakdown are hidden.',
+            {
+              availability: notebookAvailability,
+            }
+          )}
         </Alert>
       ) : (
         <>
           {/* Recent Notebooks Table */}
           {notebooksList.length > 0 && (
             <Box sx={{ mb: 4 }}>
-              <SectionBox title="All Notebook Servers">
+              <SectionBox title={t('kubeflow|All Notebook Servers')}>
                 <SimpleTable
                   columns={[
                     {
-                      label: 'Name',
+                      label: t('frequent|Name'),
                       getter: (item: any) => item?.jsonData?.metadata?.name || '-',
                     },
                     {
-                      label: 'Namespace',
+                      label: t('frequent|Namespace'),
                       getter: (item: any) => item?.jsonData?.metadata?.namespace || '-',
                     },
                     {
-                      label: 'Type',
+                      label: t('frequent|Type'),
                       getter: (item: any) => {
                         const containers = item?.jsonData?.spec?.template?.spec?.containers || [];
                         const image = containers[0]?.image || '-';
@@ -220,7 +232,7 @@ function NotebooksOverviewPageContent() {
                       },
                     },
                     {
-                      label: 'Image',
+                      label: t('kubeflow|Image'),
                       getter: (item: any) => {
                         const containers = item?.jsonData?.spec?.template?.spec?.containers || [];
                         const image = containers[0]?.image || '-';
@@ -239,12 +251,12 @@ function NotebooksOverviewPageContent() {
                       },
                     },
                     {
-                      label: 'Status',
+                      label: t('frequent|Status'),
                       getter: (item: any) => <NotebookStatusBadge jsonData={item?.jsonData} />,
                     },
                   ]}
                   data={notebooksList}
-                  emptyMessage="No notebook servers found."
+                  emptyMessage={t('kubeflow|No notebook servers found.')}
                 />
               </SectionBox>
             </Box>
@@ -280,42 +292,42 @@ function NotebooksOverviewPageContent() {
               return (
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
-                    <SectionBox title="Notebooks by Namespace">
+                    <SectionBox title={t('kubeflow|Notebooks by Namespace')}>
                       <SimpleTable
                         columns={[
                           {
-                            label: 'Namespace',
+                            label: t('frequent|Namespace'),
                             getter: (row: { namespace: string }) => row.namespace,
                           },
                           {
-                            label: 'Count',
+                            label: t('frequent|Count'),
                             getter: (row: { namespace: string }) =>
                               countsByNamespace[row.namespace] ?? 0,
                           },
                         ]}
                         data={namespaceRows}
-                        emptyMessage="No namespaces found."
+                        emptyMessage={t('frequent|No namespaces found.')}
                       />
                     </SectionBox>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <SectionBox title="Images in Use">
+                    <SectionBox title={t('kubeflow|Images in Use')}>
                       <SimpleTable
                         columns={[
                           {
-                            label: 'Image',
+                            label: t('kubeflow|Image'),
                             getter: (row: { image: string }) => {
                               const parts = row.image.split('/');
                               return parts[parts.length - 1];
                             },
                           },
                           {
-                            label: 'Used By',
+                            label: t('kubeflow|Used By'),
                             getter: (row: { image: string }) => countsByImage[row.image] ?? 0,
                           },
                         ]}
                         data={imageRows}
-                        emptyMessage="No images found."
+                        emptyMessage={t('kubeflow|No images found.')}
                       />
                     </SectionBox>
                   </Grid>
@@ -329,6 +341,7 @@ function NotebooksOverviewPageContent() {
 }
 
 export function NotebooksOverview() {
+  const { t } = useTranslation('kubeflow');
   const { isInstalled: notebooksApiInstalled, isCheckLoading: notebooksApiLoading } =
     useApiGroupInstalled('/apis/kubeflow.org/v1');
 
@@ -338,7 +351,9 @@ export function NotebooksOverview() {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Checking cluster capabilities for Notebooks...</Typography>
+        <Typography sx={{ ml: 2 }}>
+          {t('kubeflow|Checking cluster capabilities for Notebooks...')}
+        </Typography>
       </Box>
     );
   }
@@ -347,10 +362,10 @@ export function NotebooksOverview() {
     return (
       <Box sx={{ padding: '24px 16px', pt: '32px' }}>
         <Typography variant="h1" sx={{ fontSize: '1.87rem', fontWeight: 700, mb: 1 }}>
-          Notebooks Dashboard
+          {t('kubeflow|Notebooks Dashboard')}
         </Typography>
         <Alert severity="warning" sx={{ mt: 2, borderRadius: '4px' }}>
-          Required Kubeflow Notebooks API group is not detected on this cluster.
+          {t('kubeflow|Required Kubeflow Notebooks API group is not detected on this cluster.')}
         </Alert>
       </Box>
     );
