@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ContainerInfo,
   ContainerInfoProps,
@@ -34,6 +34,8 @@ interface NotInstalledBannerProps {
 }
 
 export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProps) {
+  const { t } = useTranslation();
+
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
@@ -47,20 +49,20 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
       <Grid container spacing={2} direction="column" justifyContent="center" alignItems="center">
         <Grid item>
           <Typography variant="h5">
-            KEDA was not detected on your cluster. If you haven't already, please install it.
+            {t("KEDA was not detected on your cluster. If you haven't already, please install it.")}
           </Typography>
         </Grid>
         <Grid item>
           <Typography>
-            Learn how to{' '}
+            {t('Learn how to')}{' '}
             <MuiLink
               href="https://keda.sh/docs/latest/deploy"
               target="_blank"
               rel="noopener noreferrer"
             >
-              install
+              {t('install')}
             </MuiLink>{' '}
-            KEDA
+            {t('KEDA')}
           </Typography>
         </Grid>
       </Grid>
@@ -95,6 +97,8 @@ export function BaseKedaAuthenticationDetail({
   namespace,
   name,
 }: BaseKedaAuthenticationProps) {
+  const { t } = useTranslation();
+
   function isAuthTargetRef(value: any): value is AuthTargetRef {
     return (
       typeof value === 'object' &&
@@ -169,8 +173,8 @@ export function BaseKedaAuthenticationDetail({
         namespace={resourceType.isNamespaced ? namespace : undefined}
         extraInfo={item =>
           item && [
-            { name: 'API Version', value: resourceType.apiVersion },
-            { name: 'Kind', value: resourceType.kind },
+            { name: t('API Version'), value: resourceType.apiVersion },
+            { name: t('Kind'), value: resourceType.kind },
           ]
         }
         extraSections={item =>
@@ -179,7 +183,7 @@ export function BaseKedaAuthenticationDetail({
               Object.keys(item.spec).length > 0 && {
                 id: 'spec',
                 section: (
-                  <SectionBox title="Spec">
+                  <SectionBox title={t('Spec')}>
                     {Object.entries(item.spec).map(([key, value]) => (
                       <Fragment key={key}>
                         <h2>{key}</h2>
@@ -193,12 +197,12 @@ export function BaseKedaAuthenticationDetail({
               Object.keys(item.status).length > 0 && {
                 id: 'status',
                 section: (
-                  <SectionBox title="Status">
+                  <SectionBox title={t('Status')}>
                     {item.scaledjobs.length > 0 && (
                       <NameValueTable
                         rows={[
                           {
-                            name: 'ScaledJobs',
+                            name: t('ScaledJobs'),
                             value: item.scaledjobs.map((objName, i) =>
                               resourceType === TriggerAuthentication ? (
                                 <Fragment key={objName}>
@@ -225,7 +229,7 @@ export function BaseKedaAuthenticationDetail({
                       <NameValueTable
                         rows={[
                           {
-                            name: 'ScaledObjects',
+                            name: t('ScaledObjects'),
                             value: item.scaledobjects.map((objName, i) =>
                               resourceType === TriggerAuthentication ? (
                                 <Fragment key={objName}>
@@ -259,6 +263,8 @@ export function BaseKedaAuthenticationDetail({
 }
 
 export function BaseKedaAuthenticationList({ title, resourceType }: BaseKedaAuthenticationProps) {
+  const { t } = useTranslation();
+
   return (
     <KedaInstallCheck>
       <ResourceListView
@@ -270,7 +276,7 @@ export function BaseKedaAuthenticationList({ title, resourceType }: BaseKedaAuth
             ? [
                 {
                   id: 'namespace',
-                  label: 'Namespace',
+                  label: t('Namespace'),
                   getValue: null,
                   render: item => (
                     <Link routeName="namespace" params={{ name: item.metadata.namespace }}>
@@ -282,22 +288,22 @@ export function BaseKedaAuthenticationList({ title, resourceType }: BaseKedaAuth
             : []),
           {
             id: 'pod-identity',
-            label: 'Pod Identity',
+            label: t('Pod Identity'),
             getValue: item => item.podIdentity || '-',
           },
           {
             id: 'secret',
-            label: 'Secret',
+            label: t('Secret'),
             getValue: item => item.secretName || '-',
           },
           {
             id: 'env',
-            label: 'Env',
+            label: t('Env'),
             getValue: item => item.envName || '-',
           },
           {
             id: 'vault-address',
-            label: 'Vault Address',
+            label: t('Vault Address'),
             getValue: item => item.vaultAddress || '-',
           },
           'age',
@@ -313,24 +319,25 @@ export interface TriggersSectionProps {
 
 export function TriggersSection(props: TriggersSectionProps) {
   const { resource } = props;
+  const { t } = useTranslation();
 
   return (
-    <SectionBox title="Triggers">
+    <SectionBox title={t('Triggers')}>
       {resource.spec.triggers.map((trigger, index) => (
         <Fragment key={index}>
-          <h2>{`Trigger ${index + 1} (${trigger.type})`}</h2>
+          <h2>{t('Trigger {{index}} ({{type}})', { index: index + 1, type: trigger.type })}</h2>
           <NameValueTable
             rows={[
               {
-                name: 'Name',
+                name: t('Name'),
                 value: trigger.name ?? '-',
               },
               {
-                name: 'Type',
+                name: t('Type'),
                 value: trigger.type,
               },
               {
-                name: 'Metadata',
+                name: t('Metadata'),
                 value: (
                   <NameValueTable
                     rows={Object.entries(trigger.metadata).map(([key, value]) => ({
@@ -341,7 +348,7 @@ export function TriggersSection(props: TriggersSectionProps) {
                 ),
               },
               {
-                name: 'Authentication Reference',
+                name: t('Authentication Reference'),
                 value: trigger.authenticationRef ? (
                   <Link
                     routeName={trigger.authenticationRef.kind ?? TriggerAuthentication.kind}
@@ -358,11 +365,11 @@ export function TriggersSection(props: TriggersSectionProps) {
                 ),
               },
               {
-                name: 'Use Cached Metrics',
-                value: trigger.useCachedMetrics ? 'Yes' : 'No',
+                name: t('Use Cached Metrics'),
+                value: trigger.useCachedMetrics ? t('Yes') : t('No'),
               },
               {
-                name: 'Metric Type',
+                name: t('Metric Type'),
                 value: trigger.metricType ?? KedaTriggerMetricType.AVERAGEVALUE,
               },
             ]}
@@ -375,6 +382,7 @@ export function TriggersSection(props: TriggersSectionProps) {
 
 export function ContainersSection(props: { resource: KubeObjectInterface | null }) {
   const { resource } = props;
+  const { t } = useTranslation();
 
   let title = '…';
 
@@ -387,17 +395,17 @@ export function ContainersSection(props: { resource: KubeObjectInterface | null 
 
     if (resource.spec) {
       if (resource.spec.containers) {
-        title = 'Containers';
+        title = t('Containers');
         containers = resource.spec.containers;
       } else if (resource.spec.template && resource.spec.template.spec) {
-        title = 'Container Spec';
+        title = t('Container Spec');
         containers = resource.spec.template.spec.containers;
       } else if (
         resource.kind === ScaledJob.kind &&
         resource.spec.jobTargetRef?.template?.spec?.containers
       ) {
         // KEDA ScaledJob contains containers in jobTargetRef.template.spec.containers
-        title = 'Container Spec';
+        title = t('Container Spec');
         containers = resource.spec.jobTargetRef.template.spec.containers;
       }
     }
@@ -456,7 +464,7 @@ export function ContainersSection(props: { resource: KubeObjectInterface | null 
     <>
       <SectionBox title={title}>
         {numContainers === 0 ? (
-          <Empty>No data to be shown.</Empty>
+          <Empty>{t('No data to be shown.')}</Empty>
         ) : (
           containers.map((container: any) => (
             <ContainerInfo
@@ -470,7 +478,7 @@ export function ContainersSection(props: { resource: KubeObjectInterface | null 
       </SectionBox>
 
       {ephemContainers.length > 0 && (
-        <SectionBox title="Ephemeral Containers">
+        <SectionBox title={t('Ephemeral Containers')}>
           {ephemContainers.map((ephemContainer: KubeContainer) => (
             <ContainerInfo
               key={`ephem_container_${ephemContainer.name}`}
@@ -483,7 +491,7 @@ export function ContainersSection(props: { resource: KubeObjectInterface | null 
       )}
 
       {initContainers.length > 0 && (
-        <SectionBox title="Init Containers">
+        <SectionBox title={t('Init Containers')}>
           {initContainers.map((initContainer: KubeContainer, i: number) => (
             <ContainerInfo
               key={`init_container_${i}`}
@@ -553,6 +561,7 @@ export interface JobsListRendererProps {
 
 export function JobsListRenderer(props: JobsListRendererProps) {
   const { jobs, errors, hideColumns = [], reflectTableInURL = 'jobs', noNamespaceFilter } = props;
+  const { t } = useTranslation();
 
   function getCompletions(job: Job) {
     return `${job.spec.completions}/${job.spec.parallelism}`;
@@ -568,7 +577,7 @@ export function JobsListRenderer(props: JobsListRendererProps) {
 
   return (
     <ResourceListView
-      title="Jobs"
+      title={t('Jobs')}
       headerProps={{
         noNamespaceFilter,
       }}
@@ -580,14 +589,14 @@ export function JobsListRenderer(props: JobsListRendererProps) {
         'cluster',
         {
           id: 'completions',
-          label: 'Completions',
+          label: t('Completions'),
           gridTemplate: 'min-content',
           getValue: job => getCompletions(job),
           sort: sortByCompletions,
         },
         {
           id: 'conditions',
-          label: 'Conditions',
+          label: t('Conditions'),
           gridTemplate: 'min-content',
           getValue: job =>
             job.status?.conditions?.find(({ status }: { status: string }) => status === 'True') ??
@@ -596,7 +605,7 @@ export function JobsListRenderer(props: JobsListRendererProps) {
         },
         {
           id: 'duration',
-          label: 'Duration',
+          label: t('Duration'),
           gridTemplate: 'min-content',
           getValue: job => {
             const duration = job.getDuration();
@@ -609,7 +618,7 @@ export function JobsListRenderer(props: JobsListRendererProps) {
         },
         {
           id: 'containers',
-          label: 'Containers',
+          label: t('Containers'),
           getValue: job =>
             job
               .getContainers()
@@ -628,7 +637,7 @@ export function JobsListRenderer(props: JobsListRendererProps) {
         },
         {
           id: 'images',
-          label: 'Images',
+          label: t('Images'),
           gridTemplate: 'auto',
           getValue: job =>
             job

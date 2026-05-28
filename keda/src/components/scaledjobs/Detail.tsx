@@ -1,4 +1,4 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -48,6 +48,7 @@ export function OwnedJobsSection(props: OwnedJobsSectionProps) {
 }
 
 export function ScaledJobDetail(props: { namespace?: string; name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
 
@@ -78,35 +79,35 @@ export function ScaledJobDetail(props: { namespace?: string; name?: string }) {
         extraInfo={item =>
           item && [
             {
-              name: 'API Version',
+              name: t('API Version'),
               value: ScaledJob.apiVersion,
             },
             {
-              name: 'Kind',
+              name: t('Kind'),
               value: ScaledJob.kind,
             },
             {
-              name: 'Polling Interval',
+              name: t('Polling Interval'),
               value: `${item.pollingInterval}s`,
             },
             {
-              name: 'Successful Jobs History Limit',
+              name: t('Successful Jobs History Limit'),
               value: item.successfulJobsHistoryLimit,
             },
             {
-              name: 'Failed Jobs History Limit',
+              name: t('Failed Jobs History Limit'),
               value: item.failedJobsHistoryLimit,
             },
             {
-              name: 'Minimum Replica Count',
+              name: t('Minimum Replica Count'),
               value: item.minReplicaCount,
             },
             {
-              name: 'Maximum Replica Count',
+              name: t('Maximum Replica Count'),
               value: item.maxReplicaCount,
             },
             {
-              name: 'Env Source Container Name',
+              name: t('Env Source Container Name'),
               value: item.envSourceContainerName || '-',
             },
           ]
@@ -116,23 +117,23 @@ export function ScaledJobDetail(props: { namespace?: string; name?: string }) {
             {
               id: 'job-target-reference',
               section: (
-                <SectionBox title="Job Target Reference">
+                <SectionBox title={t('Job Target Reference')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Parallelism',
+                        name: t('Parallelism'),
                         value: item.jobTargetParallelism,
                       },
                       {
-                        name: 'Completions',
+                        name: t('Completions'),
                         value: item.jobTargetCompletions,
                       },
                       {
-                        name: 'Active Deadline Seconds',
+                        name: t('Active Deadline Seconds'),
                         value: item.jobTargetActiveDeadlineSeconds ?? '-',
                       },
                       {
-                        name: 'Backoff Limit',
+                        name: t('Backoff Limit'),
                         value: item.jobTargetBackoffLimit,
                       },
                     ]}
@@ -151,15 +152,15 @@ export function ScaledJobDetail(props: { namespace?: string; name?: string }) {
             {
               id: 'rollout-strategy',
               section: (
-                <SectionBox title="Rollout Strategy">
+                <SectionBox title={t('Rollout Strategy')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Strategy',
+                        name: t('Strategy'),
                         value: item.rolloutStrategy,
                       },
                       {
-                        name: 'Propagation Policy',
+                        name: t('Propagation Policy'),
                         value: item.rolloutPropagationPolicy,
                       },
                     ]}
@@ -170,30 +171,30 @@ export function ScaledJobDetail(props: { namespace?: string; name?: string }) {
             {
               id: 'scaling-strategy',
               section: (
-                <SectionBox title="Scaling Strategy">
+                <SectionBox title={t('Scaling Strategy')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Strategy',
+                        name: t('Strategy'),
                         value: item.scalingStrategy,
                       },
                       {
-                        name: 'Custom Scaling Queue Length Deduction',
+                        name: t('Custom Scaling Queue Length Deduction'),
                         value: item.scalingStrategyCustomScalingQueueLengthDeduction ?? '-',
                       },
                       {
-                        name: 'Custom Scaling Running Job Percentage',
+                        name: t('Custom Scaling Running Job Percentage'),
                         value: item.scalingStrategyCustomScalingRunningJobPercentage ?? '-',
                       },
                       {
-                        name: 'Pending Pod Conditions',
+                        name: t('Pending Pod Conditions'),
                         value:
                           item.scalingStrategyPendingPodConditions.length > 0
                             ? item.scalingStrategyPendingPodConditions.join(', ')
                             : '-',
                       },
                       {
-                        name: 'Multiple Scalers Calculation',
+                        name: t('Multiple Scalers Calculation'),
                         value: item.scalingStrategyMultipleScalersCalculation,
                       },
                     ]}

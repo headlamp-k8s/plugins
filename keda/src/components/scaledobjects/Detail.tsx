@@ -1,4 +1,4 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -21,6 +21,7 @@ import {
 } from '../common/ScalingActions';
 
 export function ScaledObjectDetail(props: { namespace?: string; name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
 
@@ -73,27 +74,27 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
         extraInfo={item =>
           item && [
             {
-              name: 'API Version',
+              name: t('API Version'),
               value: ScaledObject.apiVersion,
             },
             {
-              name: 'Kind',
+              name: t('Kind'),
               value: 'ScaledObject',
             },
             {
-              name: 'Polling Interval',
+              name: t('Polling Interval'),
               value: `${item.pollingInterval}s`,
             },
             {
-              name: 'Cooldown Period',
+              name: t('Cooldown Period'),
               value: `${item.cooldownPeriod}s`,
             },
             {
-              name: 'Initial Cooldown Period',
+              name: t('Initial Cooldown Period'),
               value: `${item.initialCooldownPeriod}s`,
             },
             {
-              name: 'Scale Target Reference',
+              name: t('Scale Target Reference'),
               value: (
                 <Link
                   routeName={item.scaleTargetKind}
@@ -107,7 +108,7 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
               ),
             },
             {
-              name: 'Env Source Container Name',
+              name: t('Env Source Container Name'),
               value: item.spec.scaleTargetRef.envSourceContainerName || (
                 <>
                   {(() => {
@@ -124,15 +125,15 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
               ),
             },
             {
-              name: 'Idle Replica Count',
+              name: t('Idle Replica Count'),
               value: item.idleReplicaCount ?? '-',
             },
             {
-              name: 'Minimum Replica Count',
+              name: t('Minimum Replica Count'),
               value: item.minReplicaCount,
             },
             {
-              name: 'Maximum Replica Count',
+              name: t('Maximum Replica Count'),
               value: item.maxReplicaCount,
             },
           ]
@@ -150,19 +151,19 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
             {
               id: 'status',
               section: item.status && (
-                <SectionBox title="Status">
+                <SectionBox title={t('Status')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'External Metric Names',
+                        name: t('External Metric Names'),
                         value:
                           item.status.externalMetricNames &&
                           item.status.externalMetricNames.length > 0
                             ? item.status.externalMetricNames.join(', ')
-                            : 'None',
+                            : t('None'),
                       },
                       {
-                        name: 'HPA Reference',
+                        name: t('HPA Reference'),
                         value: (
                           <Link
                             routeName="horizontalPodAutoscaler"
@@ -176,12 +177,12 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                         ),
                       },
                       {
-                        name: 'Last Active Time',
-                        value: item.status.lastActiveTime ?? 'N/A',
+                        name: t('Last Active Time'),
+                        value: item.status.lastActiveTime ?? t('N/A'),
                       },
                       {
-                        name: 'Original Replica Count',
-                        value: item.status.originalReplicaCount ?? 'N/A',
+                        name: t('Original Replica Count'),
+                        value: item.status.originalReplicaCount ?? t('N/A'),
                       },
                     ]}
                   />
@@ -191,15 +192,15 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
             {
               id: 'fallback',
               section: item.spec.fallback && (
-                <SectionBox title="Fallback">
+                <SectionBox title={t('Fallback')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Failure Threshold',
+                        name: t('Failure Threshold'),
                         value: item.spec.fallback.failureThreshold,
                       },
                       {
-                        name: 'Replicas',
+                        name: t('Replicas'),
                         value: item.spec.fallback.replicas,
                       },
                     ]}
@@ -210,45 +211,47 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
             {
               id: 'advanced',
               section: item.spec.advanced && (
-                <SectionBox title="Advanced Configuration">
+                <SectionBox title={t('Advanced Configuration')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Restore To Original Replica Count',
-                        value: item.spec.advanced.restoreToOriginalReplicaCount ? 'Yes' : 'No',
+                        name: t('Restore To Original Replica Count'),
+                        value: item.spec.advanced.restoreToOriginalReplicaCount
+                          ? t('Yes')
+                          : t('No'),
                       },
                       {
-                        name: 'HPA Config',
+                        name: t('HPA Config'),
                         value: item.spec.advanced.horizontalPodAutoscalerConfig && (
                           <NameValueTable
                             rows={[
                               {
-                                name: 'Name',
+                                name: t('Name'),
                                 value:
                                   item.spec.advanced.horizontalPodAutoscalerConfig.name ||
                                   `keda-hpa-${item.metadata.name}`,
                               },
                               {
-                                name: 'Behavior',
+                                name: t('Behavior'),
                                 value: item.spec.advanced.horizontalPodAutoscalerConfig
                                   .behavior && (
                                   <>
                                     {item.spec.advanced.horizontalPodAutoscalerConfig.behavior
                                       .scaleDown && (
                                       <>
-                                        <h4>Scale Down</h4>
+                                        <h4>{t('Scale Down')}</h4>
                                         <NameValueTable
                                           rows={[
                                             {
-                                              name: 'Stabilization Window',
+                                              name: t('Stabilization Window'),
                                               value: `${
                                                 item.spec.advanced.horizontalPodAutoscalerConfig
                                                   .behavior.scaleDown.stabilizationWindowSeconds ??
-                                                'Default'
+                                                t('Default')
                                               }s`,
                                             },
                                             {
-                                              name: 'Policies',
+                                              name: t('Policies'),
                                               value: item.spec.advanced
                                                 .horizontalPodAutoscalerConfig.behavior.scaleDown
                                                 .policies ? (
@@ -258,13 +261,13 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                                       <NameValueTable
                                                         key={i}
                                                         rows={[
-                                                          { name: 'Type', value: policy.type },
+                                                          { name: t('Type'), value: policy.type },
                                                           {
-                                                            name: 'Value',
+                                                            name: t('Value'),
                                                             value: `${policy.value}%`,
                                                           },
                                                           {
-                                                            name: 'Period',
+                                                            name: t('Period'),
                                                             value: `${policy.periodSeconds}s`,
                                                           },
                                                         ]}
@@ -273,7 +276,7 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                                   )}
                                                 </>
                                               ) : (
-                                                'None'
+                                                t('None')
                                               ),
                                             },
                                           ]}
@@ -283,19 +286,19 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                     {item.spec.advanced.horizontalPodAutoscalerConfig.behavior
                                       .scaleUp && (
                                       <>
-                                        <h4>Scale Up</h4>
+                                        <h4>{t('Scale Up')}</h4>
                                         <NameValueTable
                                           rows={[
                                             {
-                                              name: 'Stabilization Window',
+                                              name: t('Stabilization Window'),
                                               value: `${
                                                 item.spec.advanced.horizontalPodAutoscalerConfig
                                                   .behavior.scaleUp.stabilizationWindowSeconds ??
-                                                'Default'
+                                                t('Default')
                                               }s`,
                                             },
                                             {
-                                              name: 'Policies',
+                                              name: t('Policies'),
                                               value: item.spec.advanced
                                                 .horizontalPodAutoscalerConfig.behavior.scaleUp
                                                 .policies ? (
@@ -305,13 +308,13 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                                       <NameValueTable
                                                         key={i}
                                                         rows={[
-                                                          { name: 'Type', value: policy.type },
+                                                          { name: t('Type'), value: policy.type },
                                                           {
-                                                            name: 'Value',
+                                                            name: t('Value'),
                                                             value: `${policy.value}%`,
                                                           },
                                                           {
-                                                            name: 'Period',
+                                                            name: t('Period'),
                                                             value: `${policy.periodSeconds}s`,
                                                           },
                                                         ]}
@@ -320,7 +323,7 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                                   )}
                                                 </>
                                               ) : (
-                                                'None'
+                                                t('None')
                                               ),
                                             },
                                           ]}
@@ -337,27 +340,27 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                       ...(Object.keys(item.spec.advanced.scalingModifiers).length > 0
                         ? [
                             {
-                              name: 'Scaling Modifiers',
+                              name: t('Scaling Modifiers'),
                               value: (
                                 <NameValueTable
                                   rows={[
                                     {
-                                      name: 'Target',
+                                      name: t('Target'),
                                       value: item.spec.advanced.scalingModifiers.target,
                                     },
                                     {
-                                      name: 'Activation Target',
+                                      name: t('Activation Target'),
                                       value:
                                         item.spec.advanced.scalingModifiers.activationTarget ?? 0,
                                     },
                                     {
-                                      name: 'Metric Type',
+                                      name: t('Metric Type'),
                                       value:
                                         item.spec.advanced.scalingModifiers.metricType ||
                                         ScalingModifierMetricType.AVERAGEVALUE,
                                     },
                                     {
-                                      name: 'Formula',
+                                      name: t('Formula'),
                                       value: (
                                         <pre className="bg-gray-100 p-2 rounded">
                                           {item.spec.advanced.scalingModifiers.formula}
