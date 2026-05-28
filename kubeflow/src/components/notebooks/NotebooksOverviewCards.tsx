@@ -1,11 +1,11 @@
 import { Icon } from '@iconify/react';
+import { Router } from '@kinvolk/headlamp-plugin/lib';
 import { Link as HeadlampLink } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
   ActionButton,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -30,7 +30,7 @@ export function NotebooksOverviewContent({
   podDefaults,
 }: NotebooksOverviewContentProps) {
   const history = useHistory();
-  const cluster = useCluster();
+
   // Normalize items natively (whether raw CRs from storybook or NotebookClasses from live api)
   const normalizedNotebooks = notebooks.map(nb => (nb.jsonData ? nb.jsonData : nb));
 
@@ -129,11 +129,8 @@ export function NotebooksOverviewContent({
                 description="View All Notebooks"
                 icon="mdi:arrow-right"
                 onClick={() => {
-                  history.push(
-                    cluster
-                      ? `/c/${cluster}/kubeflow/notebooks/servers`
-                      : '/kubeflow/notebooks/servers'
-                  );
+                  const url = Router.createRouteURL('kubeflow-notebooks-servers-list');
+                  history.push(url);
                 }}
               />
             </Box>
