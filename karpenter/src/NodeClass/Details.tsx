@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -21,6 +22,7 @@ import { getHandleSaveHelper } from '../helpers/handleSave';
 import { useCloudProviderDetection } from '../hook/useCloudProviderDetection';
 
 export function NodeClassDetailView(props: { name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ name: string }>();
   const { name = params.name } = props;
   const [currentResource, setCurrentResource] = React.useState<KubeObject | null>(null);
@@ -50,11 +52,15 @@ export function NodeClassDetailView(props: { name?: string }) {
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <div>
+        {t('Error:')} {error}
+      </div>
+    );
   }
 
   if (!cloudProvider) {
-    return <div>No supported NodeClass found</div>;
+    return <div>{t('No supported NodeClass found')}</div>;
   }
 
   // Use the same logic as NodeClass List to get the correct config
@@ -73,7 +79,7 @@ export function NodeClassDetailView(props: { name?: string }) {
 
   // Ensure config has all required properties
   if (!config || !config.columns) {
-    return <div>Configuration error</div>;
+    return <div>{t('Configuration error')}</div>;
   }
   const NodeClass = createNodeClassClass(config);
 
@@ -120,7 +126,7 @@ export function NodeClassDetailView(props: { name?: string }) {
 
     const commonInfo = [
       {
-        name: 'Status',
+        name: t('Status'),
         value: <StatusLabel item={item} />,
       },
     ];
@@ -129,15 +135,15 @@ export function NodeClassDetailView(props: { name?: string }) {
       return [
         ...commonInfo,
         {
-          name: 'IAM Role',
+          name: t('IAM Role'),
           value: item.jsonData.spec?.role || '-',
         },
         {
-          name: 'Instance Profile',
+          name: t('Instance Profile'),
           value: item.jsonData.status?.instanceProfile || '-',
         },
         {
-          name: 'AMI Family',
+          name: t('AMI Family'),
           value: item.jsonData.spec?.amiFamily || '-',
         },
       ];
@@ -145,15 +151,15 @@ export function NodeClassDetailView(props: { name?: string }) {
       return [
         ...commonInfo,
         {
-          name: 'Image Family',
+          name: t('Image Family'),
           value: item.jsonData.spec?.imageFamily || '-',
         },
         {
-          name: 'Max Pods',
+          name: t('Max Pods'),
           value: item.jsonData.spec?.maxPods || '-',
         },
         {
-          name: 'OS Disk Size (GB)',
+          name: t('OS Disk Size (GB)'),
           value: item.jsonData.spec?.osDiskSizeGB || '-',
         },
       ];
@@ -177,15 +183,15 @@ export function NodeClassDetailView(props: { name?: string }) {
         {
           id: 'nodeclass-config',
           section: (
-            <SectionBox title="NodeClass Configuration">
+            <SectionBox title={t('NodeClass Configuration')}>
               <NameValueTable
                 rows={[
                   {
-                    name: 'Subnet Selectors',
+                    name: t('Subnet Selectors'),
                     value: renderSelectorTerms(item.jsonData.spec?.subnetSelectorTerms),
                   },
                   {
-                    name: 'Security Group Selectors',
+                    name: t('Security Group Selectors'),
                     value: renderSelectorTerms(item.jsonData.spec?.securityGroupSelectorTerms),
                   },
                 ]}
@@ -196,19 +202,19 @@ export function NodeClassDetailView(props: { name?: string }) {
         {
           id: 'status',
           section: (
-            <SectionBox title="Status">
+            <SectionBox title={t('Status')}>
               <NameValueTable
                 rows={[
                   {
-                    name: 'Security Group IDs',
+                    name: t('Security Group IDs'),
                     value: renderStatusItems(item.jsonData.status?.securityGroups?.map(g => g.id)),
                   },
                   {
-                    name: 'Subnet IDs',
+                    name: t('Subnet IDs'),
                     value: renderStatusItems(item.jsonData.status?.subnets?.map(s => s.id)),
                   },
                   {
-                    name: 'Availability Zones',
+                    name: t('Availability Zones'),
                     value: renderStatusItems(item.jsonData.status?.subnets?.map(s => s.zone)),
                   },
                 ]}
@@ -223,23 +229,23 @@ export function NodeClassDetailView(props: { name?: string }) {
         {
           id: 'nodeclass-config',
           section: (
-            <SectionBox title="NodeClass Configuration">
+            <SectionBox title={t('NodeClass Configuration')}>
               <NameValueTable
                 rows={[
                   {
-                    name: 'Image Family',
+                    name: t('Image Family'),
                     value: item.jsonData.spec?.imageFamily || '-',
                   },
                   {
-                    name: 'OS Disk Size (GB)',
+                    name: t('OS Disk Size (GB)'),
                     value: item.jsonData.spec?.osDiskSizeGB || '-',
                   },
                   {
-                    name: 'Max Pods',
+                    name: t('Max Pods'),
                     value: item.jsonData.spec?.maxPods || '-',
                   },
                   {
-                    name: 'Tags',
+                    name: t('Tags'),
                     value: renderAzureTags(item.jsonData.spec?.tags),
                   },
                 ]}
@@ -250,16 +256,18 @@ export function NodeClassDetailView(props: { name?: string }) {
         {
           id: 'status',
           section: (
-            <SectionBox title="Status">
+            <SectionBox title={t('Status')}>
               <NameValueTable
                 rows={[
                   {
-                    name: 'Kubernetes Version',
+                    name: t('Kubernetes Version'),
                     value: item.jsonData.status?.kubernetesVersion || '-',
                   },
                   {
-                    name: 'Available Images',
-                    value: `${item.jsonData.status?.images?.length || 0} image(s) available`,
+                    name: t('Available Images'),
+                    value: t('{{count}} image(s) available', {
+                      count: item.jsonData.status?.images?.length || 0,
+                    }),
                   },
                 ]}
               />
@@ -269,15 +277,15 @@ export function NodeClassDetailView(props: { name?: string }) {
         {
           id: 'images-detail',
           section: (
-            <SectionBox title="Available Images">
+            <SectionBox title={t('Available Images')}>
               {item.jsonData.status?.images && item.jsonData.status.images.length > 0 ? (
                 <NameValueTable
                   rows={item.jsonData.status.images.map((image, index) => ({
-                    name: `Image ${index + 1}`,
+                    name: t('Image {{index}}', { index: index + 1 }),
                     value: (
                       <Box>
                         <Box sx={{ mb: 1, fontFamily: 'monospace', fontSize: '0.875rem' }}>
-                          {image.id ? image.id.split('/').pop() : 'Unknown'}
+                          {image.id ? image.id.split('/').pop() : t('Unknown')}
                         </Box>
                         {image.requirements && image.requirements.length > 0 && (
                           <Box sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -295,7 +303,7 @@ export function NodeClassDetailView(props: { name?: string }) {
                 />
               ) : (
                 <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
-                  No images available
+                  {t('No images available')}
                 </Box>
               )}
             </SectionBox>

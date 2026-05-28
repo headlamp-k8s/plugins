@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   HoverInfoLabel,
   SectionBox,
@@ -34,6 +35,7 @@ export interface ObjectEventListProps {
 }
 
 export default function CustomObjectEventList(props: ObjectEventListProps) {
+  const { t } = useTranslation();
   let fieldSelector = `source=${props.source},involvedObject.kind=${props.kind}`;
 
   if (props.reason !== '' && props.reason !== undefined) {
@@ -52,23 +54,23 @@ export default function CustomObjectEventList(props: ObjectEventListProps) {
       <SimpleTable
         columns={[
           {
-            label: 'Type',
+            label: t('Type'),
             getter: item => item.type || '-',
           },
           {
-            label: 'Reason',
+            label: t('Reason'),
             getter: item => item.reason || '-',
           },
           {
-            label: 'From',
+            label: t('From'),
             getter: item => item.source.component || '-',
           },
           {
-            label: props.kind === 'Pod' ? 'Pod' : 'Node',
+            label: props.kind === 'Pod' ? t('Pod') : t('Node'),
             getter: item => item.jsonData.involvedObject?.name,
           },
           {
-            label: 'Message',
+            label: t('Message'),
             getter: item =>
               item && (
                 <ShowHideLabel labelId={item?.metadata?.uid || ''}>
@@ -77,17 +79,23 @@ export default function CustomObjectEventList(props: ObjectEventListProps) {
               ),
           },
           {
-            label: 'Age',
+            label: t('Age'),
             getter: item => {
               if (item.count > 1) {
-                return `${timeAgo(item.lastOccurrence)} (${item.count} times over ${timeAgo(
-                  item.firstOccurrence
-                )})`;
+                return t('{{last}} ({{count}} times over {{first}})', {
+                  last: timeAgo(item.lastOccurrence),
+                  count: item.count,
+                  first: timeAgo(item.firstOccurrence),
+                });
               }
               const eventDate = timeAgo(item.lastOccurrence, { format: 'mini' });
               const label =
                 item.count > 1
-                  ? `${eventDate} ${item.count} since ${timeAgo(item.firstOccurrence)}`
+                  ? t('{{date}} {{count}} since {{first}}', {
+                      date: eventDate,
+                      count: item.count,
+                      first: timeAgo(item.firstOccurrence),
+                    })
                   : eventDate;
 
               return (

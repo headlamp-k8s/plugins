@@ -1,4 +1,4 @@
-import { CallbackActionOptions } from '@kinvolk/headlamp-plugin/lib';
+import { CallbackActionOptions, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   AuthVisible,
@@ -17,6 +17,7 @@ interface EditConfigButtonProps {
 }
 
 export function EditConfigButton(props: EditConfigButtonProps) {
+  const { t } = useTranslation();
   const [isReadOnly, setIsReadOnly] = useState(false);
 
   const { resource, buttonStyle, handleClick } = props;
@@ -42,7 +43,7 @@ export function EditConfigButton(props: EditConfigButtonProps) {
       }}
     >
       <ActionButton
-        description={'Config Editor'}
+        description={t('Config Editor')}
         buttonStyle={buttonStyle}
         onClick={handleClick}
         icon="mdi:file-document-edit"

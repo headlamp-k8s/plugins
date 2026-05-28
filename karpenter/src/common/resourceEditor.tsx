@@ -1,4 +1,4 @@
-import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
+import { clusterAction, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { apply } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { ConfirmButton, Dialog, DialogProps } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
@@ -91,6 +91,7 @@ export function DiffEditorDialog({
   cloudProvider: providedCloudProvider,
   ...other
 }: DiffEditorDialogProps) {
+  const { t } = useTranslation();
   const [currentModifiedYaml, setCurrentModifiedYaml] = useState(modifiedYaml);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -138,7 +139,7 @@ export function DiffEditorDialog({
 
   const validateContent = (yamlContent: string) => {
     if (!karpenterValidate) {
-      setValidationErrors(['Schema validation not available']);
+      setValidationErrors([t('Schema validation not available')]);
       return false;
     }
 
@@ -148,7 +149,7 @@ export function DiffEditorDialog({
 
       docs.forEach((doc: any, index: number) => {
         if (!doc || typeof doc !== 'object') {
-          ajvErrors.push(`Document ${index + 1} is not a valid object.`);
+          ajvErrors.push(t('Document {{index}} is not a valid object.', { index: index + 1 }));
           return;
         }
 
@@ -156,7 +157,13 @@ export function DiffEditorDialog({
         if (!valid && karpenterValidate.errors) {
           karpenterValidate.errors.forEach(err => {
             const path = err.instancePath || '/';
-            ajvErrors.push(`Document ${index + 1} [${path}]: ${err.message}`);
+            ajvErrors.push(
+              t('Document {{index}} [{{path}}]: {{message}}', {
+                index: index + 1,
+                path,
+                message: err.message,
+              })
+            );
           });
         }
       });
@@ -164,14 +171,14 @@ export function DiffEditorDialog({
       setValidationErrors(ajvErrors);
       return ajvErrors.length === 0;
     } catch (e) {
-      setValidationErrors([`Invalid YAML: ${(e as Error).message}`]);
+      setValidationErrors([t('Invalid YAML: {{message}}', { message: (e as Error).message })]);
       return false;
     }
   };
 
   const handleSave = () => {
     if (validationErrors.length > 0) {
-      setError('Please fix validation errors before saving');
+      setError(t('Please fix validation errors before saving'));
       return;
     }
 
@@ -183,7 +190,7 @@ export function DiffEditorDialog({
         const validItems = newItemDefs.filter(obj => !!obj);
 
         if (validItems.length === 0) {
-          setError('No valid YAML content to apply');
+          setError(t('No valid YAML content to apply'));
           return;
         }
 
@@ -194,17 +201,19 @@ export function DiffEditorDialog({
           // @todo: this should not use redux dispatch but a plugin API instead.
           // @ts-ignore
           clusterAction(() => applyFunc(validItems, clusterName), {
-            startMessage: `Applying ${resourceNames.join(',')}…`,
-            cancelledMessage: `Cancelled applying ${resourceNames.join(',')}`,
-            successMessage: `Applied ${resourceNames.join(',')}.`,
-            errorMessage: `Failed to apply ${resourceNames.join(',')}.`,
+            startMessage: t('Applying {{names}}…', { names: resourceNames.join(',') }),
+            cancelledMessage: t('Cancelled applying {{names}}', {
+              names: resourceNames.join(','),
+            }),
+            successMessage: t('Applied {{names}}.', { names: resourceNames.join(',') }),
+            errorMessage: t('Failed to apply {{names}}.', { names: resourceNames.join(',') }),
             cancelUrl: location.pathname,
           })
         );
 
         onClose();
       } catch (e) {
-        setError(`Error applying configuration: ${(e as Error).message}`);
+        setError(t('Error applying configuration: {{message}}', { message: (e as Error).message }));
       }
     }
   };
@@ -216,7 +225,10 @@ export function DiffEditorDialog({
           if (value.status === 'rejected') {
             const errorDetail =
               value.reason?.message ||
-              `Failed to apply ${newItems[index].kind} ${newItems[index].metadata.name}`;
+              t('Failed to apply {{kind}} {{name}}', {
+                kind: newItems[index].kind,
+                name: newItems[index].metadata.name,
+              });
             setError(errorDetail);
             throw new Error(errorDetail);
           }
@@ -237,7 +249,10 @@ export function DiffEditorDialog({
   if (!dialogTitle && resource) {
     const itemName = resource.metadata?.name;
     const cloudProviderDisplay = activeCloudProvider === 'AZURE' ? 'Azure' : 'AWS';
-    dialogTitle = `Config Editor (${cloudProviderDisplay}): ${itemName}`;
+    dialogTitle = t('Config Editor ({{provider}}): {{name}}', {
+      provider: cloudProviderDisplay,
+      name: itemName,
+    });
   }
 
   return (
@@ -255,7 +270,7 @@ export function DiffEditorDialog({
         {(validationErrors.length > 0 || error) && (
           <Box sx={{ mb: 2 }}>
             <Alert severity="error">
-              <Typography variant="subtitle2">Validation Issues:</Typography>
+              <Typography variant="subtitle2">{t('Validation Issues:')}</Typography>
               <ul style={{ margin: 0, paddingLeft: 20 }}>
                 {validationErrors.map((err, i) => (
                   <li key={i}>{err}</li>
@@ -300,17 +315,17 @@ export function DiffEditorDialog({
             disabled={modifiedYaml === currentModifiedYaml}
             color="secondary"
             variant="contained"
-            aria-label={'Undo'}
+            aria-label={t('Undo')}
             onConfirm={() => {
               setCurrentModifiedYaml(modifiedYaml);
               validateContent(modifiedYaml);
             }}
-            confirmTitle={'Are you sure?'}
-            confirmDescription={
+            confirmTitle={t('Are you sure?')}
+            confirmDescription={t(
               'This will discard your changes in the editor. Do you want to proceed ?'
-            }
+            )}
           >
-            Undo Changes
+            {t('Undo Changes')}
           </ConfirmButton>
         )}
         <div style={{ flex: '1 0 0' }} />
@@ -319,7 +334,7 @@ export function DiffEditorDialog({
         )}
         <div style={{ flex: '1 0 0' }} />
         <Button onClick={onClose} color="secondary" variant="contained">
-          Close
+          {t('Close')}
         </Button>
         {!isReadOnly() && (
           <Button
@@ -328,7 +343,7 @@ export function DiffEditorDialog({
             variant="contained"
             disabled={modifiedYaml === currentModifiedYaml || validationErrors.length > 0}
           >
-            {saveLabel || 'Save & Apply'}
+            {saveLabel || t('Save & Apply')}
           </Button>
         )}
       </DialogActions>

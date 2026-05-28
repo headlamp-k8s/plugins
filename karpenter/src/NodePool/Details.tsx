@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DetailsGrid,
   Link,
@@ -20,6 +21,7 @@ import { renderDisruptionBudgets } from '../helpers/renderBudgets';
 import { nodePoolClass } from './List';
 
 export function NodePoolDetailView(props: { name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ name: string }>();
   const { name = params.name } = props;
   const NodePoolClass = nodePoolClass();
@@ -98,21 +100,30 @@ export function NodePoolDetailView(props: { name?: string }) {
           return (
             item && [
               {
-                name: 'CPU',
-                value: `${usedCPU} ${CPUlimit > 0 ? `of ${CPUlimit}` : '(No limit set)'}`,
+                name: t('CPU'),
+                value:
+                  CPUlimit > 0
+                    ? t('{{used}} of {{limit}}', { used: usedCPU, limit: CPUlimit })
+                    : t('{{used}} (No limit set)', { used: usedCPU }),
               },
               {
-                name: 'Memory',
-                value: `${getResourceStr(usedMemory, 'memory')} ${
-                  memoryLimit > 0 ? `of ${getResourceStr(memoryLimit, 'memory')}` : '(No limit set)'
-                }`,
+                name: t('Memory'),
+                value:
+                  memoryLimit > 0
+                    ? t('{{used}} of {{limit}}', {
+                        used: getResourceStr(usedMemory, 'memory'),
+                        limit: getResourceStr(memoryLimit, 'memory'),
+                      })
+                    : t('{{used}} (No limit set)', {
+                        used: getResourceStr(usedMemory, 'memory'),
+                      }),
               },
               {
-                name: 'Nodes',
+                name: t('Nodes'),
                 value: item.jsonData.status?.resources?.nodes,
               },
               {
-                name: 'Pods',
+                name: t('Pods'),
                 value: item.jsonData.status?.resources?.pods,
               },
             ]
@@ -123,24 +134,24 @@ export function NodePoolDetailView(props: { name?: string }) {
             {
               id: 'nodepool-disruption',
               section: (
-                <SectionBox title="Disruption Settings">
+                <SectionBox title={t('Disruption Settings')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Consolidation Policy',
+                        name: t('Consolidation Policy'),
                         value: item.jsonData.spec?.disruption?.consolidationPolicy || '-',
                       },
                       {
-                        name: 'Consolidate After',
+                        name: t('Consolidate After'),
                         value: item.jsonData.spec?.disruption?.consolidateAfter || '-',
                       },
                       {
-                        name: 'Disruption Budgets',
+                        name: t('Disruption Budgets'),
                         value:
                           renderDisruptionBudgets(item.jsonData.spec?.disruption?.budgets) || '-',
                       },
                       {
-                        name: 'Expire After',
+                        name: t('Expire After'),
                         value: item.jsonData.spec?.template?.spec?.expireAfter || '-',
                       },
                     ]}
@@ -151,11 +162,11 @@ export function NodePoolDetailView(props: { name?: string }) {
             {
               id: 'nodepool-template',
               section: (
-                <SectionBox title="Node Template Configuration">
+                <SectionBox title={t('Node Template Configuration')}>
                   <NameValueTable
                     rows={[
                       {
-                        name: 'Node Class',
+                        name: t('Node Class'),
                         value: (
                           <Link
                             routeName={'nodeclasses-detail'}
@@ -168,13 +179,13 @@ export function NodePoolDetailView(props: { name?: string }) {
                         ),
                       },
                       {
-                        name: 'Instance Requirements',
+                        name: t('Instance Requirements'),
                         value: renderInstanceRequirements(
                           item.jsonData.spec?.template?.spec?.requirements
                         ),
                       },
                       {
-                        name: 'Expire After',
+                        name: t('Expire After'),
                         value: item.jsonData.spec?.template?.spec?.expireAfter || '-',
                       },
                     ]}

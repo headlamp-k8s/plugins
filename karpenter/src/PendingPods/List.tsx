@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   HoverInfoLabel,
   Link,
@@ -11,18 +12,19 @@ import { PendingPod } from './Events';
 
 export const PendingPodsRenderer = (props: { pods?: PendingPod[] }) => {
   const { pods } = props;
+  const { t } = useTranslation();
   if (!pods) {
     return <></>;
   }
 
   return (
     <>
-      <SectionBox title={<SectionFilterHeader title={'Pending Pods'} noNamespaceFilter />}>
+      <SectionBox title={<SectionFilterHeader title={t('Pending Pods')} noNamespaceFilter />}>
         <Table
           columns={[
             {
               id: 'name',
-              header: 'Name',
+              header: t('Name'),
               accessorFn: item => (
                 <Link
                   routeName="Pod"
@@ -36,7 +38,7 @@ export const PendingPodsRenderer = (props: { pods?: PendingPod[] }) => {
               ),
             },
             {
-              header: 'Namespace',
+              header: t('Namespace'),
               accessorFn: item => (
                 <Link
                   routeName="namespace"
@@ -49,25 +51,25 @@ export const PendingPodsRenderer = (props: { pods?: PendingPod[] }) => {
               ),
             },
             {
-              header: 'Type',
+              header: t('Type'),
               accessorFn: item => {
                 return item.type;
               },
             },
             {
-              header: 'Reason',
+              header: t('Reason'),
               accessorFn: item => {
                 return item.reason;
               },
             },
             {
-              header: 'From',
+              header: t('From'),
               accessorFn: item => {
                 return item.source;
               },
             },
             {
-              header: 'Message',
+              header: t('Message'),
               accessorFn: item => {
                 return (
                   item && (
@@ -80,17 +82,23 @@ export const PendingPodsRenderer = (props: { pods?: PendingPod[] }) => {
             },
             {
               id: 'age',
-              header: 'Age',
+              header: t('Age'),
               accessorFn: item => {
                 if (item.count > 1) {
-                  return `${timeAgo(item.lastOccurrence)} (${item.count} times over ${timeAgo(
-                    item.firstOccurrence
-                  )})`;
+                  return t('{{last}} ({{count}} times over {{first}})', {
+                    last: timeAgo(item.lastOccurrence),
+                    count: item.count,
+                    first: timeAgo(item.firstOccurrence),
+                  });
                 }
                 const eventDate = timeAgo(item.lastOccurrence, { format: 'mini' });
                 let label: string;
                 if (item.count > 1) {
-                  label = `${eventDate} ${item.count} times since ${timeAgo(item.firstOccurrence)}`;
+                  label = t('{{date}} {{count}} times since {{first}}', {
+                    date: eventDate,
+                    count: item.count,
+                    first: timeAgo(item.firstOccurrence),
+                  });
                 } else {
                   label = eventDate;
                 }
