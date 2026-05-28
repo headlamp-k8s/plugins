@@ -1,44 +1,47 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ScaledJob } from '../../resources/scaledjob';
 import { KedaInstallCheck } from '../common/CommonComponents';
 
 export function ScaledJobsList() {
+  const { t } = useTranslation();
+
   return (
     <KedaInstallCheck>
       <ResourceListView
-        title="ScaledJobs"
+        title={t('ScaledJobs')}
         resourceClass={ScaledJob}
         columns={[
           'name',
           'namespace',
           {
             id: 'min-replica-count',
-            label: 'Min',
+            label: t('Min'),
             getValue: item => item.minReplicaCount,
           },
           {
             id: 'max-replica-count',
-            label: 'Max',
+            label: t('Max'),
             getValue: item => item.maxReplicaCount,
           },
           {
             id: 'ready-status',
-            label: 'Ready',
+            label: t('Ready'),
             getValue: item => `${item.readyStatus}`,
           },
           {
             id: 'active-status',
-            label: 'Active',
+            label: t('Active'),
             getValue: item => `${item.activeStatus}`,
           },
           {
             id: 'paused-status',
-            label: 'Paused',
+            label: t('Paused'),
             getValue: item => `${item.pausedStatus}`,
           },
           {
             id: 'triggers',
-            label: 'Triggers',
+            label: t('Triggers'),
             getValue: item =>
               Array.isArray(item?.spec?.triggers)
                 ? item.spec.triggers.map(trigger => trigger.type).join(',')

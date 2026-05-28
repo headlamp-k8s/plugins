@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, ConfirmDialog } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import {
@@ -44,6 +45,7 @@ function patchAnnotations(resource: KubeObject, annotations: Record<string, stri
 
 export function PauseScalingAction({ resource }: { resource: KubeObject }) {
   const { enqueueSnackbar } = useSnackbar();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   if (!resource || isPaused(resource) || hasPausedReplicas(resource)) {
@@ -52,7 +54,11 @@ export function PauseScalingAction({ resource }: { resource: KubeObject }) {
 
   return (
     <>
-      <ActionButton description="Pause Scaling" icon="mdi:pause" onClick={() => setOpen(true)} />
+      <ActionButton
+        description={t('Pause Scaling')}
+        icon="mdi:pause"
+        onClick={() => setOpen(true)}
+      />
       <ConfirmDialog
         open={open}
         handleClose={() => setOpen(false)}
@@ -61,26 +67,31 @@ export function PauseScalingAction({ resource }: { resource: KubeObject }) {
           patchAnnotations(resource, { [PAUSED_ANNOTATION]: 'true' })
             .then(response => {
               if (response.metadata.annotations?.[PAUSED_ANNOTATION] === 'true') {
-                enqueueSnackbar(`Successfully paused scaling for ${resource.metadata.name}`, {
-                  variant: 'success',
-                });
+                enqueueSnackbar(
+                  t('Successfully paused scaling for {{name}}', { name: resource.metadata.name }),
+                  { variant: 'success' }
+                );
               } else {
-                enqueueSnackbar(`Failed to pause scaling for ${resource.metadata.name}`, {
-                  variant: 'error',
-                });
+                enqueueSnackbar(
+                  t('Failed to pause scaling for {{name}}', { name: resource.metadata.name }),
+                  { variant: 'error' }
+                );
               }
             })
             .catch(error => {
               enqueueSnackbar(
-                `Failed to pause scaling for ${resource.metadata.name}: ${formatError(error)}`,
-                {
-                  variant: 'error',
-                }
+                t('Failed to pause scaling for {{name}}: {{error}}', {
+                  name: resource.metadata.name,
+                  error: formatError(error),
+                }),
+                { variant: 'error' }
               );
             });
         }}
-        title="Pause Scaling"
-        description={`Are you sure you want to pause scaling for ${resource.metadata.name}?`}
+        title={t('Pause Scaling')}
+        description={t('Are you sure you want to pause scaling for {{name}}?', {
+          name: resource.metadata.name,
+        })}
       />
     </>
   );
@@ -88,6 +99,7 @@ export function PauseScalingAction({ resource }: { resource: KubeObject }) {
 
 export function PausedReplicasAction({ resource }: { resource: KubeObject }) {
   const { enqueueSnackbar } = useSnackbar();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [replicas, setReplicas] = useState('');
 
@@ -98,7 +110,7 @@ export function PausedReplicasAction({ resource }: { resource: KubeObject }) {
   return (
     <>
       <ActionButton
-        description="Set Paused Replicas"
+        description={t('Set Paused Replicas')}
         icon="mdi:pause-octagon"
         onClick={() => {
           setReplicas(getPausedReplicasValue(resource));
@@ -106,15 +118,15 @@ export function PausedReplicasAction({ resource }: { resource: KubeObject }) {
         }}
       />
       <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Set Paused Replicas</DialogTitle>
+        <DialogTitle>{t('Set Paused Replicas')}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Pause scaling for <strong>{resource.metadata.name}</strong> and set the replica count to
-            a specific value.
+            {t('Pause scaling for')} <strong>{resource.metadata.name}</strong>{' '}
+            {t('and set the replica count to a specific value.')}
           </DialogContentText>
           <TextField
             margin="dense"
-            label="Replicas"
+            label={t('Replicas')}
             type="number"
             fullWidth
             value={replicas}
@@ -123,13 +135,13 @@ export function PausedReplicasAction({ resource }: { resource: KubeObject }) {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={() => setOpen(false)}>{t('Cancel')}</Button>
           <Button
             onClick={() => {
               const trimmedReplicas = replicas.trim();
               const value = Number(trimmedReplicas);
               if (trimmedReplicas === '' || !Number.isInteger(value) || value < 0) {
-                enqueueSnackbar('Invalid number: replicas must be a non-negative integer', {
+                enqueueSnackbar(t('Invalid number: replicas must be a non-negative integer'), {
                   variant: 'error',
                 });
                 return;
@@ -141,27 +153,34 @@ export function PausedReplicasAction({ resource }: { resource: KubeObject }) {
                     response.metadata.annotations?.[PAUSED_REPLICAS_ANNOTATION] === String(value)
                   ) {
                     enqueueSnackbar(
-                      `Successfully set paused replicas to ${value} for ${resource.metadata.name}`,
+                      t('Successfully set paused replicas to {{value}} for {{name}}', {
+                        value,
+                        name: resource.metadata.name,
+                      }),
                       { variant: 'success' }
                     );
                   } else {
-                    enqueueSnackbar(`Failed to set paused replicas for ${resource.metadata.name}`, {
-                      variant: 'error',
-                    });
+                    enqueueSnackbar(
+                      t('Failed to set paused replicas for {{name}}', {
+                        name: resource.metadata.name,
+                      }),
+                      { variant: 'error' }
+                    );
                   }
                 })
                 .catch(error => {
                   enqueueSnackbar(
-                    `Failed to set paused replicas for ${resource.metadata.name}: ${formatError(
-                      error
-                    )}`,
+                    t('Failed to set paused replicas for {{name}}: {{error}}', {
+                      name: resource.metadata.name,
+                      error: formatError(error),
+                    }),
                     { variant: 'error' }
                   );
                 });
             }}
             variant="contained"
           >
-            Apply
+            {t('Apply')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -171,6 +190,7 @@ export function PausedReplicasAction({ resource }: { resource: KubeObject }) {
 
 export function ResumeScalingAction({ resource }: { resource: KubeObject }) {
   const { enqueueSnackbar } = useSnackbar();
+  const { t } = useTranslation();
 
   if (!resource || (!isPaused(resource) && !hasPausedReplicas(resource))) {
     return null;
@@ -178,7 +198,7 @@ export function ResumeScalingAction({ resource }: { resource: KubeObject }) {
 
   return (
     <ActionButton
-      description="Resume Scaling"
+      description={t('Resume Scaling')}
       icon="mdi:play"
       onClick={() => {
         patchAnnotations(resource, {
@@ -190,21 +210,24 @@ export function ResumeScalingAction({ resource }: { resource: KubeObject }) {
               !response.metadata.annotations?.[PAUSED_ANNOTATION] &&
               !response.metadata.annotations?.[PAUSED_REPLICAS_ANNOTATION]
             ) {
-              enqueueSnackbar(`Successfully resumed scaling for ${resource.metadata.name}`, {
-                variant: 'success',
-              });
+              enqueueSnackbar(
+                t('Successfully resumed scaling for {{name}}', { name: resource.metadata.name }),
+                { variant: 'success' }
+              );
             } else {
-              enqueueSnackbar(`Failed to resume scaling for ${resource.metadata.name}`, {
-                variant: 'error',
-              });
+              enqueueSnackbar(
+                t('Failed to resume scaling for {{name}}', { name: resource.metadata.name }),
+                { variant: 'error' }
+              );
             }
           })
           .catch(error => {
             enqueueSnackbar(
-              `Failed to resume scaling for ${resource.metadata.name}: ${formatError(error)}`,
-              {
-                variant: 'error',
-              }
+              t('Failed to resume scaling for {{name}}: {{error}}', {
+                name: resource.metadata.name,
+                error: formatError(error),
+              }),
+              { variant: 'error' }
             );
           });
       }}
