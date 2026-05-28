@@ -14,15 +14,29 @@
  * limitations under the License.
  */
 
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Chip } from '@mui/material';
+import { Icon } from '@iconify/react';
+import { Chip, Link as MuiLink } from '@mui/material';
 import {
   DeletingPolicy,
   GeneratingPolicy,
   MutatingPolicy,
   ValidatingPolicy,
 } from '../resources/celPolicies';
+import { CELPolicyViewer } from './CELPolicyViewer';
+
+type CELPolicy = ValidatingPolicy | MutatingPolicy | GeneratingPolicy | DeletingPolicy;
+
+function openCELPolicyActivity(item: CELPolicy) {
+  Activity.launch({
+    id: `kyverno-cel-${item.jsonData.metadata.uid || item.jsonData.metadata.name}`,
+    location: 'split-right',
+    icon: <Icon icon="mdi:shield-edit" />,
+    title: item.jsonData.metadata.name,
+    content: <CELPolicyViewer policy={item} />,
+  });
+}
 
 function ReadyChip({ ready }: { ready: boolean }) {
   return <Chip label={ready ? 'True' : 'False'} color={ready ? 'success' : 'error'} size="small" />;
@@ -39,6 +53,15 @@ export function ValidatingPolicyList() {
           id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openCELPolicyActivity(item as ValidatingPolicy)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
         },
         {
           id: 'ready',
@@ -75,6 +98,15 @@ export function MutatingPolicyList() {
           id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openCELPolicyActivity(item as MutatingPolicy)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
         },
         {
           id: 'ready',
@@ -106,6 +138,15 @@ export function GeneratingPolicyList() {
           id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openCELPolicyActivity(item as GeneratingPolicy)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
         },
         {
           id: 'ready',
@@ -137,6 +178,15 @@ export function DeletingPolicyList() {
           id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openCELPolicyActivity(item as DeletingPolicy)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
         },
         {
           id: 'ready',
