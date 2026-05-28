@@ -32,6 +32,7 @@ import { useMemo, useState } from 'react';
 import {
   ClusterPolicyReport,
   PolicyReport,
+  PolicyReportInterface,
   PolicyReportResult,
   PolicyResultStatus,
 } from '../resources/policyReport';
@@ -41,6 +42,7 @@ type GroupBy = 'none' | 'policy' | 'namespace' | 'kind';
 
 interface ViolationEntry extends PolicyReportResult {
   reportNamespace?: string;
+  scope?: PolicyReportInterface['scope'];
 }
 
 const VIOLATION_STATUSES: PolicyResultStatus[] = ['fail', 'warn', 'error'];
@@ -57,6 +59,7 @@ function collectViolations(
         violations.push({
           ...result,
           reportNamespace: report.jsonData.metadata.namespace,
+          scope: report.jsonData.scope,
         });
       }
     }
@@ -65,7 +68,10 @@ function collectViolations(
   for (const report of clusterPolicyReports || []) {
     for (const result of report.results) {
       if (VIOLATION_STATUSES.includes(result.result)) {
-        violations.push({ ...result });
+        violations.push({
+          ...result,
+          scope: report.jsonData.scope,
+        });
       }
     }
   }
@@ -78,9 +84,14 @@ function getGroupKey(entry: ViolationEntry, groupBy: GroupBy): string {
     case 'policy':
       return entry.policy || 'Unknown';
     case 'namespace':
-      return entry.resources?.[0]?.namespace || entry.reportNamespace || 'cluster-scoped';
+      return (
+        entry.resources?.[0]?.namespace ||
+        entry.scope?.namespace ||
+        entry.reportNamespace ||
+        'cluster-scoped'
+      );
     case 'kind':
-      return entry.resources?.[0]?.kind || 'Unknown';
+      return entry.resources?.[0]?.kind || entry.scope?.kind || 'Unknown';
     default:
       return '';
   }
@@ -154,15 +165,16 @@ export function ViolationsView() {
     () => [
       {
         header: t('Resource'),
-        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || '-',
+        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
       },
       {
         header: t('Kind'),
-        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || '-',
+        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
       },
       {
         header: t('Namespace'),
-        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.namespace || v.reportNamespace || '-',
+        accessorFn: (v: ViolationEntry) =>
+          v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
       },
       {
         header: t('Policy'),
