@@ -15,8 +15,15 @@
  */
 
 import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  ApiProxy,
+  registerRoute,
+  registerSidebarEntry,
+  registerSidebarEntryFilter,
+  Utils,
+} from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
+import { KUBEFLOW_API_PATHS } from './checks/isKubeflowInstalled';
 import { KatibExperimentsDetail } from './components/katib/KatibExperimentsDetail';
 import { KatibExperimentsList } from './components/katib/KatibExperimentsList';
 import { KatibOverview } from './components/katib/KatibOverview';
@@ -63,6 +70,59 @@ addIcon('custom:kubeflow', {
   body: `<path fill="#4279f4" d="m35.59 43.66 2.836 70.645 51.027-65.121a4.716 4.716 0 0 1 3.164-1.774 4.705 4.705 0 0 1 3.48 1.004l31.829 25.547-10.38-45.395Zm0 0"/><path fill="#0028aa" d="M40.191 127.262h45.266l-27.793-22.297Zm0 0"/><path fill="#014bd1" d="M93.902 58.723 63.461 97.566l32.434 26.024 30.77-38.582Zm0 0"/><path fill="#bedcff" d="m27.055 36.848.004-.008 26.77-33.57L10.66 24.059 0 70.769Zm0 0"/><path fill="#6ca1ff" d="m.594 85.105 28.672 35.954-2.73-68.485Zm0 0"/><path fill="#a1c3ff" d="M109.215 20.54 67.937.66l-25.69 32.215Zm0 0"/>`,
   width: 128,
   height: 128,
+});
+
+// Track whether any Kubeflow APIs exist per cluster to hide the sidebar entries.
+const kubeflowInstalledByCluster: Record<string, boolean> = {};
+const lastCheckedAt: Record<string, number> = {};
+const inFlight: Record<string, boolean> = {};
+const CHECK_TTL_MS = 30 * 1000;
+
+function checkKubeflowInstalled(cluster: string) {
+  if (typeof window !== 'undefined' && (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK) {
+    kubeflowInstalledByCluster[cluster] = true;
+    return;
+  }
+  const now = Date.now();
+  const fresh = now - (lastCheckedAt[cluster] ?? 0) < CHECK_TTL_MS;
+  if (inFlight[cluster] || fresh) {
+    return;
+  }
+  inFlight[cluster] = true;
+
+  Promise.all(
+    KUBEFLOW_API_PATHS.map(path =>
+      ApiProxy.clusterRequest(path, { method: 'GET', cluster })
+        .then(() => true)
+        .catch(() => false)
+    )
+  )
+    .then(results => {
+      kubeflowInstalledByCluster[cluster] = results.some(Boolean);
+      lastCheckedAt[cluster] = Date.now();
+    })
+    .finally(() => {
+      inFlight[cluster] = false;
+    });
+}
+
+registerSidebarEntryFilter(entry => {
+  const isKubeflowEntry = entry.name === 'kubeflow' || entry.name.startsWith('kubeflow-');
+  if (!isKubeflowEntry) {
+    return entry;
+  }
+
+  if (typeof window !== 'undefined' && (window as any).HEADLAMP_KUBEFLOW_STORYBOOK_MOCK) {
+    return entry;
+  }
+
+  const cluster = Utils.getCluster() ?? '';
+  checkKubeflowInstalled(cluster);
+
+  if (kubeflowInstalledByCluster[cluster] === false) {
+    return null;
+  }
+  return entry;
 });
 
 registerSidebarEntry({
