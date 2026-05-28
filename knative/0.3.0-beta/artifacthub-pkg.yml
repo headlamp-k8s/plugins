@@ -1,0 +1,30 @@
+version: 0.3.0-beta
+name: "headlamp_knative"
+displayName: Knative
+createdAt: "2026-05-28T16:58:45Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/knative/logo.png"
+description: A UI for viewing and managing Knative.
+changes:
+  - kind: added
+    description: "Added list views for DomainMappings and ClusterDomainClaims to improve custom domain visibility in the plugin."
+  - kind: added
+    description: "Improved Knative map support for CRD relationships and added traffic-focused test manifests and usage guidance in the README."
+  - kind: changed
+    description: "Implemented dynamic sidebar filtering based on CRD discovery, so only available Knative resources are shown."
+  - kind: changed
+    description: "Reused the Knative installed check logic in the sidebar flow to avoid duplicate checks and keep behavior consistent."
+  - kind: changed
+    description: "Updated plugin tooling dependency to [@kinvolk/headlamp-plugin](https://www.npmjs.com/package/@kinvolk/headlamp-plugin) 0.14.0."
+  - kind: fixed
+    description: "Fixed map and glance error handling issues that could affect rendering in edge/error states."
+  - kind: fixed
+    description: "Fixed revision name validation in KService workflows."
+  - kind: fixed
+    description: "Added undefined parent service checks in revisions to prevent runtime issues for incomplete data."
+  - kind: fixed
+    description: "Fixed metadata.name handling for Knative resources."
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/knative-0.3.0-beta/headlamp-k8s-knative-0.3.0-beta.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:c3635420119a39dfde6972fc707dd9f7a7aa1835c5aee8f4e3bb2349175004d1"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
