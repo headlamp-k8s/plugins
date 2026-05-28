@@ -1,15 +1,17 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Loader, ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { CLOUD_PROVIDERS, getAWSConfig } from '../common/cloudProviders';
 import { createNodeClassClass } from '../helpers/createNodeClassClass';
 import { useCloudProviderDetection } from '../hook/useCloudProviderDetection';
 
 export function NodeClasses() {
+  const { t } = useTranslation();
   const { cloudProvider, loading, error } = useCloudProviderDetection();
 
   if (loading) {
     return (
       <div style={{ padding: '20px' }}>
-        <Loader title="Detecting Karpenter deployment type..." />
+        <Loader title={t('Detecting Karpenter deployment type...')} />
       </div>
     );
   }
@@ -17,7 +19,7 @@ export function NodeClasses() {
   if (error) {
     return (
       <div style={{ padding: '20px', background: '#ffebee', border: '1px solid #f44336' }}>
-        <h3>Detection Error</h3>
+        <h3>{t('Detection Error')}</h3>
         <p>{error}</p>
       </div>
     );
@@ -26,8 +28,10 @@ export function NodeClasses() {
   if (!cloudProvider) {
     return (
       <div style={{ padding: '20px', background: '#fff3e0', border: '1px solid #ff9800' }}>
-        <h3>No NodeClass CRDs Found</h3>
-        <p>No supported NodeClass Custom Resource Definitions were detected in this cluster.</p>
+        <h3>{t('No NodeClass CRDs Found')}</h3>
+        <p>
+          {t('No supported NodeClass Custom Resource Definitions were detected in this cluster.')}
+        </p>
       </div>
     );
   }
@@ -36,6 +40,7 @@ export function NodeClasses() {
 }
 
 function NodeClassesList({ cloudProvider }) {
+  const { t } = useTranslation();
   let config;
 
   if (typeof cloudProvider === 'object' && cloudProvider.provider === 'AWS') {
@@ -53,8 +58,12 @@ function NodeClassesList({ cloudProvider }) {
   if (!config || !config.columns) {
     return (
       <div style={{ padding: '20px', background: '#ffebee', border: '1px solid #f44336' }}>
-        <h3>Configuration Error</h3>
-        <p>Unable to load configuration for cloud provider: {JSON.stringify(cloudProvider)}</p>
+        <h3>{t('Configuration Error')}</h3>
+        <p>
+          {t('Unable to load configuration for cloud provider: {{provider}}', {
+            provider: JSON.stringify(cloudProvider),
+          })}
+        </p>
       </div>
     );
   }
@@ -72,9 +81,9 @@ function NodeClassesList({ cloudProvider }) {
   } catch (error) {
     return (
       <div style={{ padding: '20px', background: '#ffebee', border: '1px solid #f44336' }}>
-        <h3>ResourceListView Error</h3>
+        <h3>{t('ResourceListView Error')}</h3>
         <p>
-          <strong>Error:</strong> {error.message}
+          <strong>{t('Error:')}</strong> {error.message}
         </p>
       </div>
     );

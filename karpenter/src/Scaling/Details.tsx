@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -11,6 +12,7 @@ import CustomObjectEventList from '../common/EventList';
 import { nodeClaimClass } from './List';
 
 export function ScalingDetailView(props: { name?: string }) {
+  const { t } = useTranslation();
   const params = useParams<{ name: string }>();
 
   const { name = params.name } = props;
@@ -28,11 +30,11 @@ export function ScalingDetailView(props: { name?: string }) {
         return (
           item && [
             {
-              name: 'UID',
+              name: t('UID'),
               value: item.jsonData.metadata?.uid || '-',
             },
             {
-              name: 'NodePool',
+              name: t('NodePool'),
               value: (
                 <Link
                   routeName={'nodepools-detail'}
@@ -45,7 +47,7 @@ export function ScalingDetailView(props: { name?: string }) {
               ),
             },
             {
-              name: 'Status',
+              name: t('Status'),
               value: (
                 <StatusLabel>
                   {item.jsonData.status?.conditions[conditionsLength - 1]?.reason || '-'}
@@ -53,11 +55,11 @@ export function ScalingDetailView(props: { name?: string }) {
               ),
             },
             {
-              name: 'Instance Type',
+              name: t('Instance Type'),
               value: item.jsonData.metadata?.labels['node.kubernetes.io/instance-type'] || '-',
             },
             {
-              name: 'Capacity Type',
+              name: t('Capacity Type'),
               value: item.jsonData.metadata?.labels['karpenter.sh/capacity-type'] || '-',
             },
           ]
@@ -72,22 +74,22 @@ export function ScalingDetailView(props: { name?: string }) {
                 source="karpenter"
                 kind="Pod"
                 reason="Nominated"
-                title="Pod Placement Decisions"
+                title={t('Pod Placement Decisions')}
               />
             ),
           },
           {
             id: 'resources',
             section: (
-              <SectionBox title={'Resource Requested'}>
+              <SectionBox title={t('Resource Requested')}>
                 <NameValueTable
                   rows={[
                     {
-                      name: 'CPU',
+                      name: t('CPU'),
                       value: item.jsonData.spec?.resources?.requests?.cpu || '-',
                     },
                     {
-                      name: 'Pods',
+                      name: t('Pods'),
                       value: item.jsonData.spec?.resources?.requests?.pods || '-',
                     },
                   ]}
@@ -98,15 +100,15 @@ export function ScalingDetailView(props: { name?: string }) {
           {
             id: 'resources',
             section: (
-              <SectionBox title={'Resource Allocated'}>
+              <SectionBox title={t('Resource Allocated')}>
                 <NameValueTable
                   rows={[
                     {
-                      name: 'CPU',
+                      name: t('CPU'),
                       value: item.jsonData.status?.allocatable?.cpu || '-',
                     },
                     {
-                      name: 'Pods',
+                      name: t('Pods'),
                       value: item.jsonData.status?.allocatable?.pods || '-',
                     },
                   ]}
@@ -121,7 +123,7 @@ export function ScalingDetailView(props: { name?: string }) {
           {
             id: 'karpenter-scaling-pods',
             section: (
-              <CustomObjectEventList source="karpenter" kind="Node" title="Node Decisions" />
+              <CustomObjectEventList source="karpenter" kind="Node" title={t('Node Decisions')} />
             ),
           },
         ]

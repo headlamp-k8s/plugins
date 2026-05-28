@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { PercentageBar } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
@@ -42,15 +43,17 @@ export function nodePoolClass() {
 }
 
 function NodePoolsList() {
+  const { t } = useTranslation();
+
   return (
     <ResourceListView
-      title={'NodePools'}
+      title={t('NodePools')}
       resourceClass={nodePoolClass()}
       columns={[
         'name',
         {
           id: 'nodeclass-ref',
-          label: 'NodeClass',
+          label: t('NodeClass'),
           getValue: nodePool => nodePool.jsonData.spec?.template?.spec?.nodeClassRef?.name || '-',
           render: nodePool => {
             const nodePoolName = nodePool.jsonData.spec?.template?.spec?.nodeClassRef?.name;
@@ -68,12 +71,12 @@ function NodePoolsList() {
         },
         {
           id: 'nodepool-cpu',
-          label: 'CPU',
+          label: t('CPU'),
           getValue: nodePool => {
             const used = parseInt(nodePool.jsonData.status?.resources?.cpu || '0');
             const limit = parseInt(nodePool.jsonData.spec?.limits?.cpu || '0');
 
-            return limit > 0 ? `${used}/${limit}` : `${used} (No limit)`;
+            return limit > 0 ? `${used}/${limit}` : t('{{used}} (No limit)', { used });
           },
           render: nodePool => {
             const used = parseInt(nodePool.jsonData.status?.resources?.cpu || 0);
@@ -91,20 +94,20 @@ function NodePoolsList() {
               <PercentageBar
                 data={data}
                 total={effectiveLimit}
-                tooltipFunc={() => CPUtooltip(used, limit)}
+                tooltipFunc={() => CPUtooltip(used, limit, t)}
               />
             );
           },
         },
         {
           id: 'nodepool-memory',
-          label: 'Memory',
+          label: t('Memory'),
           getValue: nodePool => {
             const used = parseRam(nodePool.jsonData.status?.resources?.memory || '0');
             const limit = parseRam(nodePool.jsonData.spec?.limits?.memory || '0');
             return limit > 0
               ? `${getResourceStr(used, 'memory')}/${getResourceStr(limit, 'memory')}`
-              : `${getResourceStr(used, 'memory')} (No limit)`;
+              : t('{{used}} (No limit)', { used: getResourceStr(used, 'memory') });
           },
           render: nodePool => {
             const used = parseRam(nodePool.jsonData.status?.resources?.memory || '0');
@@ -121,23 +124,23 @@ function NodePoolsList() {
               <PercentageBar
                 data={data}
                 total={limit > 0 ? limit : 1}
-                tooltipFunc={() => Memorytooltip(used, limit)}
+                tooltipFunc={() => Memorytooltip(used, limit, t)}
               />
             );
           },
         },
         {
           id: 'nodepool-nodes',
-          label: 'Nodes',
+          label: t('Nodes'),
           getValue: nodePool => nodePool.jsonData.status?.resources?.nodes || 0,
         },
         {
           id: 'nodepool-status',
-          label: 'Status',
+          label: t('Status'),
           getValue: nodePool => {
             const conditions = nodePool.jsonData?.status?.conditions || [];
             const readyCondition = conditions.find(c => c.type === 'Ready');
-            return readyCondition?.status === 'True' ? 'Ready' : 'Not Ready';
+            return readyCondition?.status === 'True' ? t('Ready') : t('Not Ready');
           },
         },
         'age',
