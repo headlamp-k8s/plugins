@@ -244,11 +244,12 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                           rows={[
                                             {
                                               name: t('Stabilization Window'),
-                                              value: `${
-                                                item.spec.advanced.horizontalPodAutoscalerConfig
-                                                  .behavior.scaleDown.stabilizationWindowSeconds ??
-                                                t('Default')
-                                              }s`,
+                                              value:
+                                                typeof item.spec.advanced
+                                                  .horizontalPodAutoscalerConfig.behavior.scaleDown
+                                                  .stabilizationWindowSeconds === 'number'
+                                                  ? `${item.spec.advanced.horizontalPodAutoscalerConfig.behavior.scaleDown.stabilizationWindowSeconds}s`
+                                                  : t('Default'),
                                             },
                                             {
                                               name: t('Policies'),
@@ -291,11 +292,12 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                           rows={[
                                             {
                                               name: t('Stabilization Window'),
-                                              value: `${
-                                                item.spec.advanced.horizontalPodAutoscalerConfig
-                                                  .behavior.scaleUp.stabilizationWindowSeconds ??
-                                                t('Default')
-                                              }s`,
+                                              value:
+                                                typeof item.spec.advanced
+                                                  .horizontalPodAutoscalerConfig.behavior.scaleUp
+                                                  .stabilizationWindowSeconds === 'number'
+                                                  ? `${item.spec.advanced.horizontalPodAutoscalerConfig.behavior.scaleUp.stabilizationWindowSeconds}s`
+                                                  : t('Default'),
                                             },
                                             {
                                               name: t('Policies'),
