@@ -128,7 +128,9 @@ abstract class KyvernoPolicyBase extends KubeObject<KyvernoPolicyInterface> {
   }
 
   get ready(): boolean {
-    return this.status?.ready ?? false;
+    const conditions = this.status?.conditions || [];
+    const readyCond = conditions.find(c => c.type === 'Ready');
+    return readyCond?.status === 'True';
   }
 
   get rules(): PolicyRule[] {
