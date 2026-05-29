@@ -6,6 +6,7 @@ import JobDetail from './components/jobs/Detail';
 import JobList from './components/jobs/List';
 import JobTemplateDetail from './components/jobtemplates/Detail';
 import JobTemplateList from './components/jobtemplates/List';
+import Overview from './components/overview/Overview';
 import PodGroupDetail from './components/podgroups/Detail';
 import PodGroupList from './components/podgroups/List';
 import QueueDetail from './components/queues/Detail';
@@ -85,7 +86,22 @@ registerSidebarEntry({
   name: 'volcano',
   label: 'Volcano',
   icon: volcanoIconName,
-  url: volcanoRoutePaths.jobsList,
+  url: volcanoRoutePaths.overview,
+});
+
+registerRoute({
+  path: volcanoRoutePaths.overview,
+  sidebar: 'volcano-overview',
+  name: volcanoRouteNames.overview,
+  exact: true,
+  component: () => <Overview />,
+});
+
+registerSidebarEntry({
+  parent: 'volcano',
+  name: 'volcano-overview',
+  label: 'Overview',
+  url: volcanoRoutePaths.overview,
 });
 
 const volcanoResources: VolcanoResourceRegistration[] = [
