@@ -1,19 +1,22 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ScaledObject } from '../../resources/scaledobject';
 import { KedaInstallCheck } from '../common/CommonComponents';
 
 export function ScaledObjectsList() {
+  const { t } = useTranslation();
+
   return (
     <KedaInstallCheck>
       <ResourceListView
-        title="ScaledObjects"
+        title={t('ScaledObjects')}
         resourceClass={ScaledObject}
         columns={[
           'name',
           'namespace',
           {
             id: 'scale-target',
-            label: 'ScaleTarget',
+            label: t('ScaleTarget'),
             getValue: null,
             render: item => (
               <Link
@@ -26,32 +29,32 @@ export function ScaledObjectsList() {
           },
           {
             id: 'replica-count',
-            label: 'Min-Max',
+            label: t('Min-Max'),
             getValue: item => `${item.minReplicaCount}-${item.maxReplicaCount}`,
           },
           {
             id: 'ready-status',
-            label: 'Ready',
+            label: t('Ready'),
             getValue: item => `${item.readyStatus}`,
           },
           {
             id: 'active-status',
-            label: 'Active',
+            label: t('Active'),
             getValue: item => `${item.activeStatus}`,
           },
           {
             id: 'fallback-status',
-            label: 'Fallback',
+            label: t('Fallback'),
             getValue: item => `${item.fallbackStatus}`,
           },
           {
             id: 'paused-status',
-            label: 'Paused',
+            label: t('Paused'),
             getValue: item => `${item.pausedStatus}`,
           },
           {
             id: 'triggers',
-            label: 'Triggers',
+            label: t('Triggers'),
             getValue: item =>
               Array.isArray(item?.spec?.triggers)
                 ? item.spec.triggers.map(trigger => trigger.type).join(',')
