@@ -121,8 +121,9 @@ export function PausedReplicasAction({ resource }: { resource: KubeObject }) {
         <DialogTitle>{t('Set Paused Replicas')}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {t('Pause scaling for')} <strong>{resource.metadata.name}</strong>{' '}
-            {t('and set the replica count to a specific value.')}
+            {t('Pause scaling for {{name}} and set the replica count to a specific value.', {
+              name: resource.metadata.name,
+            })}
           </DialogContentText>
           <TextField
             margin="dense"
