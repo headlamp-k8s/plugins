@@ -127,6 +127,17 @@ describe('supportsPrometheusMetrics', () => {
       { kind: 'ScaledObject', jsonData: { kind: 'ScaledObject', apiVersion: 'keda.sh/v1alpha1' } },
       true,
     ],
+    [
+      'supports Volcano Queues',
+      { kind: 'Queue', jsonData: { kind: 'Queue', apiVersion: 'scheduling.volcano.sh/v1beta1' } },
+      true,
+    ],
+    [
+      'rejects non-Volcano Queues with same kind',
+      { kind: 'Queue', jsonData: { kind: 'Queue', apiVersion: 'example.com/v1' } },
+      false,
+    ],
+    ['rejects Queues without apiVersion', { kind: 'Queue', jsonData: { kind: 'Queue' } }, false],
     ['rejects unknown kinds', { kind: 'VolcanoJob', jsonData: { kind: 'VolcanoJob' } }, false],
     ['rejects missing resources', undefined, false],
   ])('%s', (_, resource, expected) => {

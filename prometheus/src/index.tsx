@@ -13,6 +13,10 @@ import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
 import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
 import {
+  getVolcanoQueueChartConfigs,
+  VolcanoChart,
+} from './components/Chart/VolcanoChart/VolcanoChart';
+import {
   getClusterChartConfigs,
   getKubeadmControlPlaneChartConfigs,
   getMachineChartConfigs,
@@ -168,6 +172,16 @@ function PrometheusMetrics(resource: KubeObject) {
       />
     );
   }
+
+  if (
+    resourceKind === 'Queue' &&
+    resource.jsonData?.apiVersion === 'scheduling.volcano.sh/v1beta1'
+  ) {
+    const name = resource.jsonData.metadata.name;
+
+    return <VolcanoChart chartConfigs={getVolcanoQueueChartConfigs(name)} defaultChart="cpu" />;
+  }
+
   // cluster api resources
   if (resource.kind === 'Cluster') {
     const name = resource.jsonData.metadata.name;
