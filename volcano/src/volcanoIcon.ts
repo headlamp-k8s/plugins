@@ -1,5 +1,8 @@
 import { addIcon } from '@iconify/react';
 
+export const volcanoIconName = 'custom:volcano';
+export const volcanoIconColor = 'rgb(229, 39, 25)';
+
 const VolcanoIconBody = `<path fill="currentColor" d="M34.3,11L29,5.7c-0.1-0.1-0.1-0.3,0-0.4l5.3-5.3c0.1-0.1,0.3-0.1,0.4,0l5.3,5.3c0.1,0.1,0.1,0.3,0,0.4
 L34.7,11C34.6,11.1,34.4,11.1,34.3,11z M32.9,11.8l-4.6-4.6C28.1,7,28,7,27.9,7.1l-4.6,4.6c-0.1,0.1-0.1,0.3,0,0.4l4.6,4.6
 c0.1,0.1,0.3,0.1,0.4,0l4.6-4.6C33,12,33,11.9,32.9,11.8z M45.7,11.8l-4.6-4.6C41,7,40.8,7,40.7,7.1l-4.6,4.6
@@ -36,7 +39,7 @@ C72.9,34.2,73,34.2,73.1,34.1z M79.6,39.9l2.1-2.1c0.1-0.1,0.1-0.3,0-0.4l-2.1-2.1c
 c-0.1,0.1-0.1,0.3,0,0.4l2.1,2.1C79.3,40,79.4,40,79.6,39.9z"/>`;
 
 export function registerVolcanoIcon() {
-  addIcon('custom:volcano', {
+  addIcon(volcanoIconName, {
     body: VolcanoIconBody,
     width: 82,
     height: 40,

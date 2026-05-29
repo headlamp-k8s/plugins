@@ -1,6 +1,7 @@
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { getPodGroupStatusColor } from '../../utils/status';
+import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { VolcanoCoreInstallCheck } from '../common/CommonComponents';
 
 /**
@@ -42,7 +43,7 @@ export default function PodGroupList() {
             label: 'Queue',
             getValue: (podGroup: VolcanoPodGroup) => podGroup.queue,
             render: (podGroup: VolcanoPodGroup) => (
-              <Link routeName="volcano-queue-detail" params={{ name: podGroup.queue }}>
+              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: podGroup.queue }}>
                 {podGroup.queue}
               </Link>
             ),

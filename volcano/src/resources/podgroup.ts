@@ -1,4 +1,6 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { volcanoSchedulingApiVersion } from '../utils/volcanoApi';
+import { volcanoRoutePaths } from '../utils/volcanoRoutes';
 
 export type PodGroupPhase = 'Pending' | 'Running' | 'Unknown' | 'Inqueue' | 'Completed';
 
@@ -69,16 +71,16 @@ export interface KubeVolcanoPodGroup extends KubeObjectInterface {
 export class VolcanoPodGroup extends KubeObject<KubeVolcanoPodGroup> {
   static kind = 'PodGroup';
   static apiName = 'podgroups';
-  static apiVersion = 'scheduling.volcano.sh/v1beta1';
+  static apiVersion = volcanoSchedulingApiVersion;
   static isNamespaced = true;
 
   static get detailsRoute() {
-    return '/volcano/podgroups/:namespace/:name';
+    return volcanoRoutePaths.podGroupDetail;
   }
 
   static getBaseObject() {
     return {
-      apiVersion: 'scheduling.volcano.sh/v1beta1',
+      apiVersion: volcanoSchedulingApiVersion,
       kind: 'PodGroup',
       metadata: {
         name: '',

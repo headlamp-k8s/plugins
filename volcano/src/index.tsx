@@ -11,7 +11,8 @@ import PodGroupList from './components/podgroups/List';
 import QueueDetail from './components/queues/Detail';
 import QueueList from './components/queues/List';
 import { registerVolcanoMapExtensions } from './mapRegistration';
-import { registerVolcanoIcon } from './volcanoIcon';
+import { volcanoRouteNames, volcanoRoutePaths } from './utils/volcanoRoutes';
+import { registerVolcanoIcon, volcanoIconName } from './volcanoIcon';
 
 registerVolcanoIcon();
 registerVolcanoMapExtensions();
@@ -24,8 +25,10 @@ interface VolcanoResourceRegistration {
   sidebarName: string;
   /** Sidebar label shown in the UI. */
   label: string;
-  /** Resource path segment under `/volcano`. */
-  path: string;
+  /** List route path for this resource. */
+  listPath: string;
+  /** Detail route path for this resource. */
+  detailPath: string;
   /** Route name for the list page. */
   listRouteName: string;
   /** Route name for the detail page. */
@@ -34,8 +37,6 @@ interface VolcanoResourceRegistration {
   ListComponent: ComponentType<any>;
   /** Detail page component for the resource. */
   DetailComponent: ComponentType<any>;
-  /** Whether detail route includes `:namespace`. */
-  hasNamespace: boolean;
 }
 
 /**
@@ -47,23 +48,23 @@ function registerVolcanoResource(config: VolcanoResourceRegistration) {
   const {
     sidebarName,
     label,
-    path,
+    listPath,
+    detailPath,
     listRouteName,
     detailRouteName,
     ListComponent,
     DetailComponent,
-    hasNamespace,
   } = config;
 
   registerSidebarEntry({
     parent: 'volcano',
     name: sidebarName,
     label,
-    url: `/volcano/${path}`,
+    url: listPath,
   });
 
   registerRoute({
-    path: `/volcano/${path}`,
+    path: listPath,
     sidebar: sidebarName,
     name: listRouteName,
     exact: true,
@@ -71,7 +72,7 @@ function registerVolcanoResource(config: VolcanoResourceRegistration) {
   });
 
   registerRoute({
-    path: `/volcano/${path}/${hasNamespace ? ':namespace/:name' : ':name'}`,
+    path: detailPath,
     sidebar: sidebarName,
     name: detailRouteName,
     exact: true,
@@ -83,60 +84,60 @@ registerSidebarEntry({
   parent: null,
   name: 'volcano',
   label: 'Volcano',
-  icon: 'custom:volcano',
-  url: '/volcano/jobs',
+  icon: volcanoIconName,
+  url: volcanoRoutePaths.jobsList,
 });
 
 const volcanoResources: VolcanoResourceRegistration[] = [
   {
     sidebarName: 'volcano-jobs',
     label: 'Jobs',
-    path: 'jobs',
-    listRouteName: 'volcano-jobs-list',
-    detailRouteName: 'volcano-job-detail',
+    listPath: volcanoRoutePaths.jobsList,
+    detailPath: volcanoRoutePaths.jobDetail,
+    listRouteName: volcanoRouteNames.jobsList,
+    detailRouteName: volcanoRouteNames.jobDetail,
     ListComponent: JobList,
     DetailComponent: JobDetail,
-    hasNamespace: true,
   },
   {
     sidebarName: 'volcano-jobtemplates',
     label: 'JobTemplates',
-    path: 'jobtemplates',
-    listRouteName: 'volcano-jobtemplates-list',
-    detailRouteName: 'volcano-jobtemplate-detail',
+    listPath: volcanoRoutePaths.jobTemplatesList,
+    detailPath: volcanoRoutePaths.jobTemplateDetail,
+    listRouteName: volcanoRouteNames.jobTemplatesList,
+    detailRouteName: volcanoRouteNames.jobTemplateDetail,
     ListComponent: JobTemplateList,
     DetailComponent: JobTemplateDetail,
-    hasNamespace: true,
   },
   {
     sidebarName: 'volcano-jobflows',
     label: 'JobFlows',
-    path: 'jobflows',
-    listRouteName: 'volcano-jobflows-list',
-    detailRouteName: 'volcano-jobflow-detail',
+    listPath: volcanoRoutePaths.jobFlowsList,
+    detailPath: volcanoRoutePaths.jobFlowDetail,
+    listRouteName: volcanoRouteNames.jobFlowsList,
+    detailRouteName: volcanoRouteNames.jobFlowDetail,
     ListComponent: JobFlowList,
     DetailComponent: JobFlowDetail,
-    hasNamespace: true,
   },
   {
     sidebarName: 'volcano-queues',
     label: 'Queues',
-    path: 'queues',
-    listRouteName: 'volcano-queues-list',
-    detailRouteName: 'volcano-queue-detail',
+    listPath: volcanoRoutePaths.queuesList,
+    detailPath: volcanoRoutePaths.queueDetail,
+    listRouteName: volcanoRouteNames.queuesList,
+    detailRouteName: volcanoRouteNames.queueDetail,
     ListComponent: QueueList,
     DetailComponent: QueueDetail,
-    hasNamespace: false,
   },
   {
     sidebarName: 'volcano-podgroups',
     label: 'PodGroups',
-    path: 'podgroups',
-    listRouteName: 'volcano-podgroups-list',
-    detailRouteName: 'volcano-podgroup-detail',
+    listPath: volcanoRoutePaths.podGroupsList,
+    detailPath: volcanoRoutePaths.podGroupDetail,
+    listRouteName: volcanoRouteNames.podGroupsList,
+    detailRouteName: volcanoRouteNames.podGroupDetail,
     ListComponent: PodGroupList,
     DetailComponent: PodGroupDetail,
-    hasNamespace: true,
   },
 ];
 

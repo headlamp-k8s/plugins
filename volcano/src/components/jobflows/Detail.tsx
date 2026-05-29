@@ -18,6 +18,7 @@ import {
   VolcanoJobFlow,
 } from '../../resources/jobflow';
 import { getJobFlowStatusColor, getJobStatusColor } from '../../utils/status';
+import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { VolcanoFlowInstallCheck } from '../common/CommonComponents';
 import {
   getFlowStepSummary,
@@ -109,7 +110,10 @@ function renderJobTemplateLinks(templateNames?: string[], namespace?: string) {
       {templateNames.map((templateName, index) => (
         <span key={templateName}>
           {index > 0 ? ', ' : ''}
-          <Link routeName="volcano-jobtemplate-detail" params={{ namespace, name: templateName }}>
+          <Link
+            routeName={volcanoRouteNames.jobTemplateDetail}
+            params={{ namespace, name: templateName }}
+          >
             {templateName}
           </Link>
         </span>
@@ -145,7 +149,7 @@ function getFlowsSection(jobFlow: VolcanoJobFlow) {
               label: 'JobTemplate',
               getter: summary => (
                 <Link
-                  routeName="volcano-jobtemplate-detail"
+                  routeName={volcanoRouteNames.jobTemplateDetail}
                   params={{ namespace: jobFlow.metadata.namespace, name: summary.flow.name }}
                 >
                   {summary.flow.name}
@@ -159,7 +163,7 @@ function getFlowsSection(jobFlow: VolcanoJobFlow) {
                   summary.generatedJobName
                 ) : (
                   <Link
-                    routeName="volcano-job-detail"
+                    routeName={volcanoRouteNames.jobDetail}
                     params={{
                       namespace: jobFlow.metadata.namespace,
                       name: summary.generatedJobName,
@@ -264,7 +268,7 @@ function getGeneratedJobsSection(jobFlow: VolcanoJobFlow) {
               getter: jobStatus =>
                 jobStatus.name ? (
                   <Link
-                    routeName="volcano-job-detail"
+                    routeName={volcanoRouteNames.jobDetail}
                     params={{ namespace: jobFlow.metadata.namespace, name: jobStatus.name }}
                   >
                     {jobStatus.name}
@@ -336,7 +340,7 @@ function getConditionsSection(jobFlow: VolcanoJobFlow) {
                 name: 'Job',
                 value: (
                   <Link
-                    routeName="volcano-job-detail"
+                    routeName={volcanoRouteNames.jobDetail}
                     params={{ namespace: jobFlow.metadata.namespace, name: jobName }}
                   >
                     {jobName}

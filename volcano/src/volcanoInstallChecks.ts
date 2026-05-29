@@ -1,4 +1,10 @@
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import {
+  getApiPath,
+  volcanoFlowApiVersion,
+  volcanoJobApiVersion,
+  volcanoSchedulingApiVersion,
+} from './utils/volcanoApi';
 
 async function areApiGroupsInstalled(apiPaths: string[]): Promise<boolean> {
   try {
@@ -14,11 +20,11 @@ async function areApiGroupsInstalled(apiPaths: string[]): Promise<boolean> {
 
 export async function isVolcanoCoreInstalled(): Promise<boolean> {
   return areApiGroupsInstalled([
-    '/apis/scheduling.volcano.sh/v1beta1',
-    '/apis/batch.volcano.sh/v1alpha1',
+    getApiPath(volcanoSchedulingApiVersion),
+    getApiPath(volcanoJobApiVersion),
   ]);
 }
 
 export async function isVolcanoFlowInstalled(): Promise<boolean> {
-  return areApiGroupsInstalled(['/apis/flow.volcano.sh/v1alpha1']);
+  return areApiGroupsInstalled([getApiPath(volcanoFlowApiVersion)]);
 }

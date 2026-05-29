@@ -8,6 +8,7 @@ import {
 import { useParams } from 'react-router-dom';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { getPodGroupStatusColor } from '../../utils/status';
+import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 
 /**
  * Builds the Progress section for a PodGroup.
@@ -161,7 +162,7 @@ export default function PodGroupDetail(props: {
           {
             name: 'Queue',
             value: (
-              <Link routeName="volcano-queue-detail" params={{ name: podGroup.queue }}>
+              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: podGroup.queue }}>
                 {podGroup.queue}
               </Link>
             ),

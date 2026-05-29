@@ -1,4 +1,6 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { volcanoSchedulingApiVersion } from '../utils/volcanoApi';
+import { volcanoRoutePaths } from '../utils/volcanoRoutes';
 
 export type QueueState = 'Open' | 'Closed' | 'Closing' | 'Unknown';
 
@@ -100,16 +102,16 @@ export interface KubeVolcanoQueue extends KubeObjectInterface {
 export class VolcanoQueue extends KubeObject<KubeVolcanoQueue> {
   static kind = 'Queue';
   static apiName = 'queues';
-  static apiVersion = 'scheduling.volcano.sh/v1beta1';
+  static apiVersion = volcanoSchedulingApiVersion;
   static isNamespaced = false;
 
   static get detailsRoute() {
-    return '/volcano/queues/:name';
+    return volcanoRoutePaths.queueDetail;
   }
 
   static getBaseObject() {
     return {
-      apiVersion: 'scheduling.volcano.sh/v1beta1',
+      apiVersion: volcanoSchedulingApiVersion,
       kind: 'Queue',
       metadata: {
         name: '',

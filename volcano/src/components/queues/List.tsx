@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { VolcanoQueue } from '../../resources/queue';
 import { getQueueStatusColor } from '../../utils/status';
+import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { VolcanoCoreInstallCheck } from '../common/CommonComponents';
 import { getQueuePodGroupStats } from './stats';
 
@@ -41,7 +42,10 @@ export default function QueueList() {
             getValue: (queue: VolcanoQueue) => queue.spec.parent || '-',
             render: (queue: VolcanoQueue) =>
               queue.spec.parent ? (
-                <Link routeName="volcano-queue-detail" params={{ name: queue.spec.parent }}>
+                <Link
+                  routeName={volcanoRouteNames.queueDetail}
+                  params={{ name: queue.spec.parent }}
+                >
                   {queue.spec.parent}
                 </Link>
               ) : (

@@ -1,4 +1,5 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { volcanoBusApiVersion } from '../utils/volcanoApi';
 import { VolcanoJob } from './job';
 import { VolcanoQueue } from './queue';
 
@@ -49,7 +50,7 @@ export interface KubeVolcanoCommand extends KubeObjectInterface {
 export class VolcanoCommand extends KubeObject<KubeVolcanoCommand> {
   static kind = 'Command';
   static apiName = 'commands';
-  static apiVersion = 'bus.volcano.sh/v1alpha1';
+  static apiVersion = volcanoBusApiVersion;
   static isNamespaced = true;
 }
 

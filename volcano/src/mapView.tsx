@@ -14,45 +14,28 @@ import { VolcanoJob } from './resources/job';
 import { VolcanoPodGroup } from './resources/podgroup';
 import { VolcanoQueue } from './resources/queue';
 import { getJobStatusColor, getPodGroupStatusColor, getQueueStatusColor } from './utils/status';
-import { isVolcanoJobApiVersion } from './utils/volcanoApi';
+import {
+  getPodJob,
+  getRelatedPodGroup,
+  getVolcanoPods,
+  type VolcanoOwnerReference,
+} from './utils/volcanoRelationships';
+import { volcanoIconColor, volcanoIconName } from './volcanoIcon';
 
 const volcanoMapIcon = (
-  <Icon icon="custom:volcano" width="100%" height="100%" color="rgb(229, 39, 25)" />
+  <Icon icon={volcanoIconName} width="100%" height="100%" color={volcanoIconColor} />
 );
 
 const PodResource = K8s.ResourceClasses.Pod;
-const volcanoJobNameLabel = 'volcano.sh/job-name';
-const volcanoJobNamespaceLabel = 'volcano.sh/job-namespace';
 
 type GraphNodeStatus = 'error' | 'success' | 'warning';
 type GraphDetailsComponentProps = { node: GraphNode };
-type VolcanoOwnerReference = {
-  apiVersion?: string;
-  kind?: string;
-  uid?: string;
-};
 type VolcanoMapKubeObject = KubeObject & {
   metadata: {
     uid: string;
     ownerReferences?: VolcanoOwnerReference[];
   };
 };
-
-function isVolcanoJobOwnerReference(ownerReference: VolcanoOwnerReference) {
-  return ownerReference.kind === 'Job' && isVolcanoJobApiVersion(ownerReference.apiVersion);
-}
-
-function referencesVolcanoJob(ownerReference: VolcanoOwnerReference, job: VolcanoJob) {
-  return isVolcanoJobOwnerReference(ownerReference) && ownerReference.uid === job.metadata.uid;
-}
-
-function hasVolcanoJobOwnerReference(kubeObject: VolcanoMapKubeObject) {
-  return (
-    kubeObject.metadata.ownerReferences?.some(ownerReference =>
-      isVolcanoJobOwnerReference(ownerReference)
-    ) || false
-  );
-}
 
 function makeVolcanoNode(
   kubeObject: VolcanoMapKubeObject,
@@ -159,28 +142,6 @@ function getQueueHierarchyEdges(queues: VolcanoQueue[]) {
   return edges;
 }
 
-function getRelatedPodGroup(job: VolcanoJob, podGroups: VolcanoPodGroup[]) {
-  const byOwnerReference = podGroups.find(podGroup =>
-    podGroup.metadata.ownerReferences?.some(ownerReference =>
-      referencesVolcanoJob(ownerReference, job)
-    )
-  );
-
-  if (byOwnerReference) {
-    return byOwnerReference;
-  }
-
-  // Owner refs are authoritative, name fallback keeps older objects connected when refs are absent.
-  const canonicalName = `${job.metadata.name}-${job.metadata.uid}`;
-  const byCanonicalName = podGroups.find(podGroup => podGroup.metadata.name === canonicalName);
-
-  if (byCanonicalName) {
-    return byCanonicalName;
-  }
-
-  return podGroups.find(podGroup => podGroup.metadata.name === job.metadata.name) || null;
-}
-
 function getJobToPodGroupEdges(jobs: VolcanoJob[], podGroups: VolcanoPodGroup[]) {
   const edges: GraphEdge[] = [];
 
@@ -192,42 +153,6 @@ function getJobToPodGroupEdges(jobs: VolcanoJob[], podGroups: VolcanoPodGroup[])
   });
 
   return edges;
-}
-
-function getVolcanoPods(pods: InstanceType<typeof PodResource>[]) {
-  return pods.filter(pod => {
-    const labels = pod.metadata.labels || {};
-    const jobName = labels[volcanoJobNameLabel];
-    const jobNamespace = labels[volcanoJobNamespaceLabel];
-    const hasVolcanoJobLabels = Boolean(jobName && jobNamespace);
-
-    return hasVolcanoJobOwnerReference(pod) || hasVolcanoJobLabels;
-  });
-}
-
-function getPodJob(pod: InstanceType<typeof PodResource>, jobs: VolcanoJob[]) {
-  const byOwnerReference = jobs.find(job =>
-    pod.metadata.ownerReferences?.some(ownerReference => referencesVolcanoJob(ownerReference, job))
-  );
-
-  if (byOwnerReference) {
-    return byOwnerReference;
-  }
-
-  const labels = pod.metadata.labels || {};
-  const jobName = labels[volcanoJobNameLabel];
-  const jobNamespace = labels[volcanoJobNamespaceLabel];
-
-  if (!jobName || !jobNamespace) {
-    return null;
-  }
-
-  return (
-    jobs.find(
-      candidate =>
-        candidate.metadata.name === jobName && candidate.metadata.namespace === jobNamespace
-    ) || null
-  );
 }
 
 function getPodToJobEdges(jobs: VolcanoJob[], pods: InstanceType<typeof PodResource>[]) {

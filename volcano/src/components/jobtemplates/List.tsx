@@ -1,5 +1,6 @@
 import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { VolcanoJobTemplate } from '../../resources/jobtemplate';
+import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { VolcanoFlowInstallCheck } from '../common/CommonComponents';
 
 /**
@@ -21,7 +22,7 @@ export default function JobTemplateList() {
             label: 'Queue',
             getValue: (jobTemplate: VolcanoJobTemplate) => jobTemplate.queue,
             render: (jobTemplate: VolcanoJobTemplate) => (
-              <Link routeName="volcano-queue-detail" params={{ name: jobTemplate.queue }}>
+              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: jobTemplate.queue }}>
                 {jobTemplate.queue}
               </Link>
             ),

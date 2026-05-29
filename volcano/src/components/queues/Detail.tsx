@@ -25,6 +25,7 @@ import {
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { VolcanoQueue } from '../../resources/queue';
 import { getQueueStatusColor } from '../../utils/status';
+import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { getQueuePodGroupStats, type QueuePodGroupStats } from './stats';
 
 interface QueueCommandActionButtonProps {
@@ -417,7 +418,10 @@ function getChildQueuesSection(queue: VolcanoQueue, queues: VolcanoQueue[] | nul
             {
               label: 'Name',
               getter: (childQueue: VolcanoQueue) => (
-                <Link routeName="volcano-queue-detail" params={{ name: childQueue.getName() }}>
+                <Link
+                  routeName={volcanoRouteNames.queueDetail}
+                  params={{ name: childQueue.getName() }}
+                >
                   {childQueue.getName()}
                 </Link>
               ),
@@ -484,7 +488,7 @@ export default function QueueDetail(props: { name?: string; cluster?: string }) 
           {
             name: 'Parent Queue',
             value: queue.spec.parent ? (
-              <Link routeName="volcano-queue-detail" params={{ name: queue.spec.parent }}>
+              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: queue.spec.parent }}>
                 {queue.spec.parent}
               </Link>
             ) : (
