@@ -1,10 +1,11 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { HoverInfoLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeCondition, KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
-import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { localeDate } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Typography } from '@mui/material';
 import React from 'react';
 import { parseDuration } from '../helpers';
+import { formatRemainingTime } from './remainingTime';
 
 export interface RemainingTimeDisplayProps {
   item: KubeObject;
@@ -169,7 +170,7 @@ export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
         <Typography>{t('In progress…')}</Typography>
       ) : (
         <HoverInfoLabel
-          label={t('In {{time}}', { time: timeAgo(nextAttemptStatus.nextAttempt) })}
+          label={t('In {{time}}', { time: formatRemainingTime(nextAttemptStatus.nextAttempt) })}
           hoverInfo={localeDate(new Date(nextAttemptStatus.nextAttempt))}
           icon="mdi:calendar"
         />
