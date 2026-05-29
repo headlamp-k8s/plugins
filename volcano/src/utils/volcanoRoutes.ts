@@ -1,4 +1,5 @@
 export const volcanoRouteNames = {
+  overview: 'volcano-overview',
   jobsList: 'volcano-jobs-list',
   jobDetail: 'volcano-job-detail',
   jobTemplatesList: 'volcano-jobtemplates-list',
@@ -12,6 +13,7 @@ export const volcanoRouteNames = {
 } as const;
 
 export const volcanoRoutePaths = {
+  overview: '/volcano',
   jobsList: '/volcano/jobs',
   jobDetail: '/volcano/jobs/:namespace/:name',
   jobTemplatesList: '/volcano/jobtemplates',
