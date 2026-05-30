@@ -18,11 +18,7 @@ import { useTheme } from '@mui/material/styles';
 import cytoscape, { type Core } from 'cytoscape';
 import { useEffect, useRef } from 'react';
 import { Edge, GraphView } from '../api/types';
-import {
-  applyAtlasPalette,
-  buildAtlasStylesheet,
-  elementsFromView,
-} from '../lib/cytoscape';
+import { applyAtlasPalette, buildAtlasStylesheet, elementsFromView } from '../lib/cytoscape';
 import { paletteForScheme } from '../lib/themePalettes';
 
 export interface NeighborGraphProps {
@@ -61,6 +57,14 @@ export function NeighborGraph({ centerId, centerLabel, incoming, outgoing }: Nei
   const theme = useTheme();
   const palette = paletteForScheme(theme.palette.mode === 'dark' ? 'dark' : 'light');
 
+  // Hold the current palette in a ref so the build effect can seed the
+  // initial stylesheet without listing `palette` as a dependency —
+  // otherwise a theme toggle would destroy and rebuild the whole
+  // instance (and rerun layout). Palette changes are handled in place
+  // by the applyAtlasPalette effect below.
+  const paletteRef = useRef(palette);
+  paletteRef.current = palette;
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
@@ -80,7 +84,7 @@ export function NeighborGraph({ centerId, centerLabel, incoming, outgoing }: Nei
         kind: p.kind,
         namespace: p.namespace,
         name: p.name,
-        label: id === centerId ? centerLabel : (p.kind && p.name ? `${p.kind}/${p.name}` : id),
+        label: id === centerId ? centerLabel : p.kind && p.name ? `${p.kind}/${p.name}` : id,
       })),
       edges: [
         ...incoming.map(e => ({ from: e.from, to: centerId, type: e.type, count: 1 })),
@@ -91,7 +95,7 @@ export function NeighborGraph({ centerId, centerLabel, incoming, outgoing }: Nei
     const cy = cytoscape({
       container,
       elements: elementsFromView(view),
-      style: buildAtlasStylesheet(palette) as unknown as cytoscape.StylesheetCSS[],
+      style: buildAtlasStylesheet(paletteRef.current) as unknown as cytoscape.StylesheetCSS[],
     });
     // Star layout — the centre node sits in the middle, neighbours
     // ring around it. levelWidth=1 forces a single neighbour ring.
@@ -109,7 +113,7 @@ export function NeighborGraph({ centerId, centerLabel, incoming, outgoing }: Nei
       cy.destroy();
       cyRef.current = null;
     };
-  }, [centerId, centerLabel, incoming, outgoing, palette]);
+  }, [centerId, centerLabel, incoming, outgoing]);
 
   // Live palette swap on theme toggle without rerunning layout.
   useEffect(() => {

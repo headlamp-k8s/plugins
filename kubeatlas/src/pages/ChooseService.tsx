@@ -58,8 +58,7 @@ export function ChooseService({ onSelect }: ChooseServiceProps) {
   if (services.length === 0) {
     return (
       <Alert severity="info">
-        No KubeAtlas Service found in this cluster. Install KubeAtlas first — see
-        the{' '}
+        No KubeAtlas Service found in this cluster. Install KubeAtlas first — see the{' '}
         <Link href={INSTALL_DOCS_URL} target="_blank" rel="noopener noreferrer">
           installation docs
         </Link>

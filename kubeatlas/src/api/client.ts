@@ -51,7 +51,7 @@ export async function fetchClusterGraph(svc: KubeAtlasService): Promise<GraphVie
 // proxy forwards them verbatim.
 export async function fetchNamespaceGraph(
   svc: KubeAtlasService,
-  namespace: string,
+  namespace: string
 ): Promise<GraphView> {
   const qs = `level=namespace&namespace=${encodeURIComponent(namespace)}`;
   const path = `${serviceProxyPath(svc, 'api/v1/graph')}?${qs}`;

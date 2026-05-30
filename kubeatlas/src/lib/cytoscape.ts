@@ -1,10 +1,6 @@
 import cytoscape, { type Core, type ElementDefinition } from 'cytoscape';
 import coseBilkent from 'cytoscape-cose-bilkent';
-import type {
-  GraphEdge as ViewEdge,
-  GraphNode as ViewNode,
-  GraphView as View,
-} from '../api/types';
+import type { GraphEdge as ViewEdge, GraphNode as ViewNode, GraphView as View } from '../api/types';
 import { clusterColour } from './clusterColour';
 import {
   type AtlasEdgePalette,
@@ -18,7 +14,8 @@ import {
 // bundler ships ESM defaults, so `??` covers both shapes the
 // upstream package exports.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const layoutExt: cytoscape.Ext = (coseBilkent as any).default ?? (coseBilkent as unknown as cytoscape.Ext);
+const layoutExt: cytoscape.Ext =
+  (coseBilkent as any).default ?? (coseBilkent as unknown as cytoscape.Ext);
 let layoutRegistered = false;
 function ensureLayout() {
   if (layoutRegistered) return;
@@ -123,7 +120,13 @@ const EDGE_STYLES: Record<string, EdgeStyleSpec> = {
   USES_SERVICEACCOUNT: { weight: 'medium', dash: 'longDash', domain: 'identity', arrow: 'open' },
   IMAGE_PULL_SECRET: { weight: 'medium', dash: 'longDash', domain: 'secret', arrow: 'open' },
   SELECTS: { weight: 'light', dash: 'shortDash', domain: 'structural', arrow: 'bar-end' },
-  ROUTES_TO: { weight: 'medium', dash: 'longDash', domain: 'traffic', arrow: 'filled-tri', flow: true },
+  ROUTES_TO: {
+    weight: 'medium',
+    dash: 'longDash',
+    domain: 'traffic',
+    arrow: 'filled-tri',
+    flow: true,
+  },
   RBAC_BINDS: { weight: 'medium', dash: 'longDash', domain: 'identity', arrow: 'diamond' },
   BINDS_SUBJECT: { weight: 'medium', dash: 'longDash', domain: 'identity', arrow: 'diamond' },
   BINDS_ROLE: { weight: 'medium', dash: 'longDash', domain: 'identity', arrow: 'diamond' },
@@ -137,7 +140,12 @@ const EDGE_STYLES: Record<string, EdgeStyleSpec> = {
   // softer "this autoscaler drives the replica count".
   SCALES: { weight: 'medium', dash: 'longShort', domain: 'structural', arrow: 'filled-tri' },
   PROTECTS: { weight: 'light', dash: 'dotted', domain: 'policy', arrow: 'diamond' },
-  BINDS_PLATFORM_IDENTITY: { weight: 'medium', dash: 'longShort', domain: 'federation', arrow: 'double-tri' },
+  BINDS_PLATFORM_IDENTITY: {
+    weight: 'medium',
+    dash: 'longShort',
+    domain: 'federation',
+    arrow: 'double-tri',
+  },
   CRD_REF: { weight: 'light', dash: 'longDash', domain: 'structural', arrow: 'open' },
 };
 
@@ -340,7 +348,7 @@ export function buildAtlasStylesheet(palette: AtlasPalette): cytoscape.Styleshee
         'border-color': palette.healthy,
         'border-width': 2.5,
         'overlay-color': palette.healthy,
-        'overlay-opacity': 0.10,
+        'overlay-opacity': 0.1,
         'overlay-padding': 4,
       },
     },
@@ -359,7 +367,7 @@ export function buildAtlasStylesheet(palette: AtlasPalette): cytoscape.Styleshee
         'border-color': palette.warning,
         'border-width': 2.5,
         'overlay-color': palette.warning,
-        'overlay-opacity': 0.10,
+        'overlay-opacity': 0.1,
         'overlay-padding': 4,
       },
     },
@@ -401,9 +409,7 @@ export function buildAtlasStylesheet(palette: AtlasPalette): cytoscape.Styleshee
         'line-color': color,
         'target-arrow-color': color,
         'line-style': spec.dash === 'solid' ? 'solid' : 'dashed',
-        ...(dash.length > 0
-          ? { 'line-dash-pattern': dash, 'line-dash-offset': 0 }
-          : {}),
+        ...(dash.length > 0 ? { 'line-dash-pattern': dash, 'line-dash-offset': 0 } : {}),
         'target-arrow-shape': ARROW_CY_SHAPE[spec.arrow],
       },
     });
@@ -439,7 +445,7 @@ export function mix(a: string, b: string, t: number): string {
   const r = Math.round(br + (ar - br) * t);
   const g = Math.round(bg + (ag - bg) * t);
   const bl = Math.round(bb + (ab - bb) * t);
-  return `#${[r, g, bl].map((x) => x.toString(16).padStart(2, '0')).join('')}`;
+  return `#${[r, g, bl].map(x => x.toString(16).padStart(2, '0')).join('')}`;
 }
 
 // ----- View → cytoscape elements ----------------------------------------
@@ -533,7 +539,7 @@ export function paletteFor(name: AtlasThemeName = DEFAULT_THEME): AtlasPalette {
 export function createCytoscape(
   container: HTMLElement,
   view: View,
-  palette: AtlasPalette = paletteFor(),
+  palette: AtlasPalette = paletteFor()
 ): Core {
   ensureLayout();
   const cy = cytoscape({
@@ -561,8 +567,7 @@ export function updateCytoscape(cy: Core, view: View): void {
  * graph reskins without dropping selection state.
  */
 export function applyAtlasPalette(cy: Core, palette: AtlasPalette): void {
-  cy
-    .style()
+  cy.style()
     .fromJson(buildAtlasStylesheet(palette) as unknown as cytoscape.StylesheetCSS[])
     .update();
 }

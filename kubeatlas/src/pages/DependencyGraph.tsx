@@ -70,11 +70,20 @@ export function DependencyGraphPage() {
   // canvas dim pass stay in sync.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [blastRootId, setBlastRootId] = useState<string | null>(null);
-  const [blastDepth] = useState(3);
+  const [blastDepth, setBlastDepth] = useState(3);
 
   // Fetch cluster graph + derive namespace list whenever the
   // KubeAtlas service changes.
   useEffect(() => {
+    // A service change invalidates everything derived from the old
+    // service: the namespace dropdown is repopulated below, so reset
+    // the selection to the cluster view (the previous namespace may
+    // not exist in the new service) and drop any open drawer / blast
+    // mode whose node ids belong to the old graph.
+    setNamespace(ALL_NAMESPACES);
+    setSelectedId(null);
+    setBlastRootId(null);
+
     if (!service) {
       setClusterGraph(null);
       setGraph(null);
@@ -190,11 +199,28 @@ export function DependencyGraphPage() {
             </Select>
           </FormControl>
           {blastRootId && (
-            <Chip
-              label={`Blast radius · ${blastRootId} · depth ${blastDepth}`}
-              color="primary"
-              onDelete={() => setBlastRootId(null)}
-            />
+            <>
+              <Chip
+                label={`Blast radius · ${blastRootId}`}
+                color="primary"
+                onDelete={() => setBlastRootId(null)}
+              />
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel id="blast-depth-label">Depth</InputLabel>
+                <Select
+                  labelId="blast-depth-label"
+                  label="Depth"
+                  value={String(blastDepth)}
+                  onChange={(e: SelectChangeEvent<string>) => setBlastDepth(Number(e.target.value))}
+                >
+                  {[1, 2, 3, 4, 5].map(d => (
+                    <MenuItem key={d} value={String(d)}>
+                      {d}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </>
           )}
         </Stack>
       )}
@@ -215,9 +241,7 @@ export function DependencyGraphPage() {
         </Alert>
       )}
 
-      {showCanvas && (
-        <GraphCanvas graph={graph} onSelect={setSelectedId} reachable={reachable} />
-      )}
+      {showCanvas && <GraphCanvas graph={graph} onSelect={setSelectedId} reachable={reachable} />}
 
       <DetailDrawer
         service={service}

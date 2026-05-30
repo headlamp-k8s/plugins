@@ -59,7 +59,7 @@ export interface DependenciesSectionProps {
 // a resource's details page. It finds a KubeAtlas Service, fetches
 // the resource's one-hop edges, and renders them as a small graph.
 export function DependenciesSection({ kind, namespace, name }: DependenciesSectionProps) {
-  const [services] = K8s.ResourceClasses.Service.useList({
+  const [services, servicesError] = K8s.ResourceClasses.Service.useList({
     labelSelector: KUBEATLAS_SERVICE_LABEL,
   });
   const [neighbors, setNeighbors] = useState<ResourceNeighbors | null>(null);
@@ -82,7 +82,12 @@ export function DependenciesSection({ kind, namespace, name }: DependenciesSecti
     setLoading(true);
     setError(null);
     setNeighbors(null);
-    fetchResourceNeighbors({ namespace: svcNamespace, name: svcName, port: svcPort }, namespace, kind, name)
+    fetchResourceNeighbors(
+      { namespace: svcNamespace, name: svcName, port: svcPort },
+      namespace,
+      kind,
+      name
+    )
       .then(result => {
         if (!cancelled) {
           setNeighbors(result);
@@ -103,11 +108,18 @@ export function DependenciesSection({ kind, namespace, name }: DependenciesSecti
     };
   }, [hasService, svcNamespace, svcName, svcPort, namespace, kind, name]);
 
-  const isEmpty =
-    neighbors !== null && neighbors.incoming.length + neighbors.outgoing.length === 0;
+  const isEmpty = neighbors !== null && neighbors.incoming.length + neighbors.outgoing.length === 0;
 
   return (
     <SectionBox title="KubeAtlas Dependencies">
+      {servicesError && (
+        <Alert severity="error">Could not list KubeAtlas Services: {servicesError.message}</Alert>
+      )}
+      {services === null && !servicesError && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+          <CircularProgress size={24} />
+        </Box>
+      )}
       {services !== null && !hasService && (
         <Alert severity="info">
           KubeAtlas is not installed in this cluster — no dependency data available.

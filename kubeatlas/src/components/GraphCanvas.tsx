@@ -7,11 +7,7 @@ import { useTheme } from '@mui/material/styles';
 import type { Core, EventObject } from 'cytoscape';
 import { useEffect, useRef } from 'react';
 import { GraphView } from '../api/types';
-import {
-  applyAtlasPalette,
-  createCytoscape,
-  updateCytoscape,
-} from '../lib/cytoscape';
+import { applyAtlasPalette, createCytoscape, updateCytoscape } from '../lib/cytoscape';
 import { paletteForScheme } from '../lib/themePalettes';
 
 export interface GraphCanvasProps {

@@ -48,8 +48,6 @@ describe('resourcePath', () => {
   });
 
   it('uses the "_" sentinel for a cluster-scoped resource', () => {
-    expect(resourcePath('', 'Node', 'worker-1')).toBe(
-      'api/v1/resources/_/Node/worker-1'
-    );
+    expect(resourcePath('', 'Node', 'worker-1')).toBe('api/v1/resources/_/Node/worker-1');
   });
 });

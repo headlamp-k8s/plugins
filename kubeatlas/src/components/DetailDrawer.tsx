@@ -162,8 +162,16 @@ export function DetailDrawer({
 
         {isResource && data && (
           <Stack spacing={2}>
-            <EdgeSection title={`Incoming · ${data.incoming.length}`} edges={data.incoming} dir="from" />
-            <EdgeSection title={`Outgoing · ${data.outgoing.length}`} edges={data.outgoing} dir="to" />
+            <EdgeSection
+              title={`Incoming · ${data.incoming.length}`}
+              edges={data.incoming}
+              dir="from"
+            />
+            <EdgeSection
+              title={`Outgoing · ${data.outgoing.length}`}
+              edges={data.outgoing}
+              dir="to"
+            />
           </Stack>
         )}
       </Box>
@@ -192,7 +200,13 @@ function EdgeSection({ title, edges, dir }: EdgeSectionProps) {
           {edges.slice(0, 50).map((e, i) => (
             <Box
               key={`${e.from}-${e.to}-${e.type}-${i}`}
-              sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 13, wordBreak: 'break-all' }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                fontSize: 13,
+                wordBreak: 'break-all',
+              }}
             >
               <Chip label={e.type} size="small" sx={{ height: 20, fontSize: 10 }} />
               <Box component="span" sx={{ flexGrow: 1 }}>

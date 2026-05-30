@@ -30,8 +30,9 @@ KubeAtlas web UI, embedded in the cluster console you already use.
 
 - **Blast radius** — from a selected node, click "↯ Show blast
   radius" to dim everything outside the BFS-reachable downstream
-  subgraph. Answers *"if I delete this Secret, what breaks?"*
-  without leaving Headlamp.
+  subgraph, and pick how many hops to follow with the depth
+  selector (1–5). Answers *"if I delete this Secret, what
+  breaks?"* without leaving Headlamp.
 
 - **Resource-detail integration** — on Headlamp's own per-resource
   pages, a "KubeAtlas Dependencies" section renders the one-hop
@@ -117,7 +118,8 @@ cluster sidebar.
    defaults). Confirm or override and continue.
 3. The canvas loads with the cluster-level view. Pick a namespace
    from the dropdown to focus, tap any node for the detail
-   drawer, or right-click for the blast-radius radial.
+   drawer and click **↯ Show blast radius** to highlight impact,
+   adjusting the depth selector to widen or narrow the reachable set.
 
 ## Publishing
 

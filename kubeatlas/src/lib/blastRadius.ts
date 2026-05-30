@@ -28,7 +28,7 @@ export function computeBlastRadius(
   view: View,
   rootId: string,
   direction: BlastDirection,
-  depth: number,
+  depth: number
 ): BlastRadiusResult {
   const reachable = new Set<string>([rootId]);
   const byHop = new Map<number, string[]>();
@@ -50,8 +50,8 @@ export function computeBlastRadius(
   while (frontier.length && hop < depth) {
     const next: string[] = [];
     for (const id of frontier) {
-      const out = direction !== 'upstream' ? (outAdj.get(id) ?? []) : [];
-      const inc = direction !== 'downstream' ? (inAdj.get(id) ?? []) : [];
+      const out = direction !== 'upstream' ? outAdj.get(id) ?? [] : [];
+      const inc = direction !== 'downstream' ? inAdj.get(id) ?? [] : [];
       for (const e of out) {
         edges.push(e);
         if (!reachable.has(e.to)) {
