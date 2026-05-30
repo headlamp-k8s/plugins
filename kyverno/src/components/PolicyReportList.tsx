@@ -15,12 +15,83 @@
  */
 
 import { Icon } from '@iconify/react';
-import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Link as MuiLink } from '@mui/material';
+import {
+  DateLabel,
+  SectionHeader,
+  SimpleTable,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Link as MuiLink } from '@mui/material';
 import { PolicyReport } from '../resources/policyReport';
 import { SummaryChips } from './common';
 import { ReportViewer } from './ReportViewer';
+
+// ── Pure component for Storybook (no API calls, accepts props directly) ───
+export interface PolicyReportRow {
+  name: string;
+  namespace?: string;
+  scope?: string;
+  pass: number;
+  fail: number;
+  warn: number;
+  error: number;
+  skip: number;
+  creationTimestamp?: string;
+}
+
+export function PurePolicyReportTable({
+  items,
+  onNameClick,
+}: {
+  items: PolicyReportRow[];
+  onNameClick?: (item: PolicyReportRow) => void;
+}) {
+  return (
+    <Box>
+      <SectionHeader title="Policy Reports" />
+      <SimpleTable
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: PolicyReportRow) =>
+              onNameClick ? (
+                <MuiLink component="button" onClick={() => onNameClick(row)} sx={{ textAlign: 'left' }}>
+                  {row.name}
+                </MuiLink>
+              ) : (
+                row.name
+              ),
+          },
+          { label: 'Namespace', getter: (row: PolicyReportRow) => row.namespace ?? '—' },
+          { label: 'Scope', getter: (row: PolicyReportRow) => row.scope ?? '—' },
+          { label: 'Pass', getter: (row: PolicyReportRow) => row.pass },
+          { label: 'Fail', getter: (row: PolicyReportRow) => row.fail },
+          { label: 'Warn', getter: (row: PolicyReportRow) => row.warn },
+          { label: 'Error', getter: (row: PolicyReportRow) => row.error },
+          { label: 'Skip', getter: (row: PolicyReportRow) => row.skip },
+          {
+            label: 'Summary',
+            getter: (row: PolicyReportRow) => (
+              <SummaryChips summary={{ pass: row.pass, fail: row.fail, warn: row.warn, error: row.error, skip: row.skip }} />
+            ),
+          },
+          {
+            label: 'Age',
+            getter: (row: PolicyReportRow) =>
+              row.creationTimestamp ? (
+                <DateLabel date={row.creationTimestamp} format="mini" />
+              ) : (
+                '—'
+              ),
+          },
+        ]}
+        data={items}
+        emptyMessage="No policy reports found"
+      />
+    </Box>
+  );
+}
 
 function openReportActivity(item: PolicyReport) {
   Activity.launch({
@@ -29,19 +100,15 @@ function openReportActivity(item: PolicyReport) {
     icon: <Icon icon="mdi:shield-check" />,
     title: `${item.jsonData.metadata.namespace}/${item.jsonData.metadata.name}`,
     content: (
-      <ReportViewer
-        name={item.jsonData.metadata.name}
-        namespace={item.jsonData.metadata.namespace}
-      />
+      <ReportViewer name={item.jsonData.metadata.name} namespace={item.jsonData.metadata.namespace} />
     ),
   });
 }
 
 export function PolicyReportList() {
-  const { t } = useTranslation();
   return (
     <ResourceListView
-      title={t('Policy Reports')}
+      title="Policy Reports"
       resourceClass={PolicyReport}
       columns={[
         {
@@ -61,7 +128,7 @@ export function PolicyReportList() {
         'namespace',
         {
           id: 'scope',
-          label: t('Scope'),
+          label: 'Scope',
           getValue: item => {
             const scope = item.scope;
             if (!scope) return '';
@@ -70,37 +137,37 @@ export function PolicyReportList() {
         },
         {
           id: 'pass',
-          label: t('Pass'),
+          label: 'Pass',
           getValue: item => item.summary.pass || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'fail',
-          label: t('Fail'),
+          label: 'Fail',
           getValue: item => item.summary.fail || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'warn',
-          label: t('Warn'),
+          label: 'Warn',
           getValue: item => item.summary.warn || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'error',
-          label: t('Error'),
+          label: 'Error',
           getValue: item => item.summary.error || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'skip',
-          label: t('Skip'),
+          label: 'Skip',
           getValue: item => item.summary.skip || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'summary',
-          label: t('Summary'),
+          label: 'Summary',
           render: item => <SummaryChips summary={item.summary} />,
           getValue: item => item.totalResults,
         },

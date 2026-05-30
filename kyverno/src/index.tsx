@@ -233,7 +233,7 @@ registerKyvernoPage({
   requires: 'kyvernoV2Reports',
   component: () => (
     <KyvernoReportList
-      titleKey="Admission Reports"
+      title="Admission Reports"
       resourceClass={AdmissionReport}
       activityIdPrefix="kyverno-admrpt"
     />
@@ -248,7 +248,7 @@ registerKyvernoPage({
   requires: 'kyvernoV2Reports',
   component: () => (
     <KyvernoReportList
-      titleKey="Cluster Admission Reports"
+      title="Cluster Admission Reports"
       resourceClass={ClusterAdmissionReport}
       activityIdPrefix="kyverno-cadmrpt"
     />
@@ -263,7 +263,7 @@ registerKyvernoPage({
   requires: 'kyvernoV2Reports',
   component: () => (
     <KyvernoReportList
-      titleKey="Background Scan Reports"
+      title="Background Scan Reports"
       resourceClass={BackgroundScanReport}
       activityIdPrefix="kyverno-bgscan"
     />
@@ -278,7 +278,7 @@ registerKyvernoPage({
   requires: 'kyvernoV2Reports',
   component: () => (
     <KyvernoReportList
-      titleKey="Cluster Background Scan Reports"
+      title="Cluster Background Scan Reports"
       resourceClass={ClusterBackgroundScanReport}
       activityIdPrefix="kyverno-cbgscan"
     />
@@ -293,7 +293,7 @@ registerKyvernoPage({
   requires: 'ephemeralReports',
   component: () => (
     <KyvernoReportList
-      titleKey="Ephemeral Reports"
+      title="Ephemeral Reports"
       resourceClass={EphemeralReport}
       activityIdPrefix="kyverno-ephrpt"
     />
@@ -308,7 +308,7 @@ registerKyvernoPage({
   requires: 'ephemeralReports',
   component: () => (
     <KyvernoReportList
-      titleKey="Cluster Ephemeral Reports"
+      title="Cluster Ephemeral Reports"
       resourceClass={ClusterEphemeralReport}
       activityIdPrefix="kyverno-cephrpt"
     />
