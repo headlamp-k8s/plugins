@@ -734,7 +734,7 @@ function FluxOverviewChart({ resourceClass }) {
         {
           name: 'success',
           value: adjustedSuccessPercent,
-          fill: theme.palette.chartStyles.fillColor,
+          fill: (theme.palette as any).chartStyles?.fillColor || '#4caf50',
         },
         {
           name: 'failed',

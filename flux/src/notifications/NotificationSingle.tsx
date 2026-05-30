@@ -1,9 +1,5 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import {
-  ConditionsTable,
-  MainInfoSection,
-  SectionBox,
-} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -15,7 +11,6 @@ import {
 import Flux404 from '../checkflux';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import { AlertNotification, ProviderNotification, ReceiverNotification } from '../common/Resources';
-import { ObjectEvents } from '../helpers/index';
 
 export function Notification() {
   const { namespace, pluralName, name } = useParams<{
@@ -23,6 +18,7 @@ export function Notification() {
     pluralName: string;
     name: string;
   }>();
+  const { t } = useTranslation();
 
   const resourceClass = (() => {
     switch (pluralName) {
@@ -38,53 +34,48 @@ export function Notification() {
   })();
 
   if (!resourceClass) {
-    return <Flux404 message={`Unknown type ${pluralName}`} />;
+    return <Flux404 message={t('Unknown type {{pluralName}}', { pluralName })} />;
   }
 
   return (
-    <>
-      <NotificationDetails name={name} namespace={namespace} resourceClass={resourceClass} />
-      <ObjectEvents name={name} namespace={namespace} resourceClass={resourceClass} />
-    </>
-  );
-}
-
-function NotificationDetails(props) {
-  const { name, namespace, resourceClass } = props;
-  const { t } = useTranslation();
-  const [resource] = resourceClass.useGet(name, namespace);
-
-  function prepareExtraInfo() {
-    const extraInfo = [];
-    extraInfo.push({
-      name: t('Suspend'),
-      value: resource?.jsonData.spec?.suspend ? t('True') : t('False'),
-    });
-    const interval = resource?.jsonData.spec?.interval;
-    extraInfo.push({ name: t('Interval'), value: interval });
-    if (!resource?.jsonData.spec?.suspend) {
-      extraInfo.push({
-        name: t('Next Reconciliation'),
-        value: <RemainingTimeDisplay item={resource} />,
-      });
-    }
-    return extraInfo;
-  }
-  return (
-    <>
-      <MainInfoSection
-        resource={resource}
-        extraInfo={prepareExtraInfo()}
-        actions={[
+    <DetailsGrid
+      resourceType={resourceClass}
+      name={name}
+      namespace={namespace}
+      withEvents
+      actions={resource => {
+        if (!resource) return [];
+        return [
           <SyncAction resource={resource} />,
           <SuspendAction resource={resource} />,
           <ResumeAction resource={resource} />,
           <ForceReconciliationAction resource={resource} />,
-        ]}
-      />
-      <SectionBox title={t('Conditions')}>
-        <ConditionsTable resource={resource?.jsonData} />
-      </SectionBox>
-    </>
+        ];
+      }}
+      extraInfo={resource => {
+        if (!resource) return [];
+        const info: any[] = [
+          { name: t('Suspend'), value: resource.jsonData?.spec?.suspend ? t('True') : t('False') },
+        ];
+        const interval = resource.jsonData?.spec?.interval;
+        info.push({ name: t('Interval'), value: interval });
+        if (!resource.jsonData?.spec?.suspend) {
+          info.push({
+            name: t('Next Reconciliation'),
+            value: <RemainingTimeDisplay item={resource} />,
+          });
+        }
+        return info;
+      }}
+      extraSections={resource => {
+        if (!resource) return [];
+        return [
+          {
+            id: 'flux.notification-conditions',
+            section: <ConditionsSection resource={resource.jsonData} />,
+          },
+        ];
+      }}
+    />
   );
 }
