@@ -15,12 +15,71 @@
  */
 
 import { Icon } from '@iconify/react';
-import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Link as MuiLink } from '@mui/material';
+import {
+  DateLabel,
+  SectionHeader,
+  SimpleTable,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Link as MuiLink } from '@mui/material';
 import { ClusterPolicyReport } from '../resources/policyReport';
 import { SummaryChips } from './common';
+import { PolicyReportRow } from './PolicyReportList';
 import { ReportViewer } from './ReportViewer';
+
+// ── Pure component for Storybook (no API calls, accepts props directly) ───
+export function PureClusterPolicyReportTable({
+  items,
+  onNameClick,
+}: {
+  items: PolicyReportRow[];
+  onNameClick?: (item: PolicyReportRow) => void;
+}) {
+  return (
+    <Box>
+      <SectionHeader title="Cluster Policy Reports" />
+      <SimpleTable
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: PolicyReportRow) =>
+              onNameClick ? (
+                <MuiLink component="button" onClick={() => onNameClick(row)} sx={{ textAlign: 'left' }}>
+                  {row.name}
+                </MuiLink>
+              ) : (
+                row.name
+              ),
+          },
+          { label: 'Scope', getter: (row: PolicyReportRow) => row.scope ?? '—' },
+          { label: 'Pass', getter: (row: PolicyReportRow) => row.pass },
+          { label: 'Fail', getter: (row: PolicyReportRow) => row.fail },
+          { label: 'Warn', getter: (row: PolicyReportRow) => row.warn },
+          { label: 'Error', getter: (row: PolicyReportRow) => row.error },
+          { label: 'Skip', getter: (row: PolicyReportRow) => row.skip },
+          {
+            label: 'Summary',
+            getter: (row: PolicyReportRow) => (
+              <SummaryChips summary={{ pass: row.pass, fail: row.fail, warn: row.warn, error: row.error, skip: row.skip }} />
+            ),
+          },
+          {
+            label: 'Age',
+            getter: (row: PolicyReportRow) =>
+              row.creationTimestamp ? (
+                <DateLabel date={row.creationTimestamp} format="mini" />
+              ) : (
+                '—'
+              ),
+          },
+        ]}
+        data={items}
+        emptyMessage="No cluster policy reports found"
+      />
+    </Box>
+  );
+}
 
 function openClusterReportActivity(item: ClusterPolicyReport) {
   Activity.launch({
@@ -28,15 +87,16 @@ function openClusterReportActivity(item: ClusterPolicyReport) {
     location: 'split-right',
     icon: <Icon icon="mdi:shield-check" />,
     title: item.jsonData.metadata.name,
-    content: <ReportViewer name={item.jsonData.metadata.name} isClusterScoped />,
+    content: (
+      <ReportViewer name={item.jsonData.metadata.name} isClusterScoped />
+    ),
   });
 }
 
 export function ClusterPolicyReportList() {
-  const { t } = useTranslation();
   return (
     <ResourceListView
-      title={t('Cluster Policy Reports')}
+      title="Cluster Policy Reports"
       resourceClass={ClusterPolicyReport}
       columns={[
         {
@@ -55,7 +115,7 @@ export function ClusterPolicyReportList() {
         },
         {
           id: 'scope',
-          label: t('Scope'),
+          label: 'Scope',
           getValue: item => {
             const scope = item.scope;
             if (!scope) return '';
@@ -64,37 +124,37 @@ export function ClusterPolicyReportList() {
         },
         {
           id: 'pass',
-          label: t('Pass'),
+          label: 'Pass',
           getValue: item => item.summary.pass || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'fail',
-          label: t('Fail'),
+          label: 'Fail',
           getValue: item => item.summary.fail || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'warn',
-          label: t('Warn'),
+          label: 'Warn',
           getValue: item => item.summary.warn || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'error',
-          label: t('Error'),
+          label: 'Error',
           getValue: item => item.summary.error || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'skip',
-          label: t('Skip'),
+          label: 'Skip',
           getValue: item => item.summary.skip || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'summary',
-          label: t('Summary'),
+          label: 'Summary',
           render: item => <SummaryChips summary={item.summary} />,
           getValue: item => item.totalResults,
         },

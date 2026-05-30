@@ -15,9 +15,10 @@
  */
 
 import { Icon } from '@iconify/react';
-import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Link as MuiLink } from '@mui/material';
+import { DateLabel, SectionHeader, SimpleTable } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Link as MuiLink } from '@mui/material';
 import {
   AdmissionReport,
   BackgroundScanReport,
@@ -29,7 +30,77 @@ import {
 import { SummaryChips } from './common';
 import { ReportClass, ReportLike, ReportViewer } from './ReportViewer';
 
-export type AnyKyvernoReportClass =
+// ── Pure component for Storybook (no API calls, accepts props directly) ───
+export interface KyvernoReportRow {
+  name: string;
+  namespace?: string;
+  owner?: string;
+  pass: number;
+  fail: number;
+  warn: number;
+  error: number;
+  skip: number;
+  creationTimestamp?: string;
+}
+
+export function PureKyvernoReportTable({
+  title,
+  isNamespaced,
+  items,
+  onNameClick,
+}: {
+  title: string;
+  isNamespaced: boolean;
+  items: KyvernoReportRow[];
+  onNameClick?: (item: KyvernoReportRow) => void;
+}) {
+  return (
+    <Box>
+      <SectionHeader title={title} />
+      <SimpleTable
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: KyvernoReportRow) =>
+              onNameClick ? (
+                <MuiLink component="button" onClick={() => onNameClick(row)} sx={{ textAlign: 'left' }}>
+                  {row.name}
+                </MuiLink>
+              ) : (
+                row.name
+              ),
+          },
+          ...(isNamespaced ? [{ label: 'Namespace', getter: (row: KyvernoReportRow) => row.namespace ?? '—' }] : []),
+          { label: 'Owner', getter: (row: KyvernoReportRow) => row.owner ?? '—' },
+          { label: 'Pass', getter: (row: KyvernoReportRow) => row.pass },
+          { label: 'Fail', getter: (row: KyvernoReportRow) => row.fail },
+          { label: 'Warn', getter: (row: KyvernoReportRow) => row.warn },
+          { label: 'Error', getter: (row: KyvernoReportRow) => row.error },
+          { label: 'Skip', getter: (row: KyvernoReportRow) => row.skip },
+          {
+            label: 'Summary',
+            getter: (row: KyvernoReportRow) => (
+              <SummaryChips summary={{ pass: row.pass, fail: row.fail, warn: row.warn, error: row.error, skip: row.skip }} />
+            ),
+          },
+          {
+            label: 'Age',
+            getter: (row: KyvernoReportRow) =>
+              row.creationTimestamp ? (
+                <DateLabel date={row.creationTimestamp} format="mini" />
+              ) : (
+                '—'
+              ),
+          },
+        ]}
+        data={items}
+        emptyMessage={`No ${title.toLowerCase()} found`}
+      />
+    </Box>
+  );
+}
+
+type AnyKyvernoReportClass =
   | typeof AdmissionReport
   | typeof ClusterAdmissionReport
   | typeof BackgroundScanReport
@@ -38,19 +109,17 @@ export type AnyKyvernoReportClass =
   | typeof ClusterEphemeralReport;
 
 interface KyvernoReportListProps<T extends AnyKyvernoReportClass> {
-  /** Untranslated title key, fed through useTranslation. */
-  titleKey: string;
+  title: string;
   resourceClass: T;
   /** Short id prefix used for the Activity panel — keeps panels distinct per kind. */
   activityIdPrefix: string;
 }
 
 export function KyvernoReportList<T extends AnyKyvernoReportClass>({
-  titleKey,
+  title,
   resourceClass,
   activityIdPrefix,
 }: KyvernoReportListProps<T>) {
-  const { t } = useTranslation();
   const isNamespaced = resourceClass.isNamespaced;
 
   function openReport(item: InstanceType<T>) {
@@ -74,12 +143,12 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
 
   return (
     <ResourceListView
-      title={t(titleKey)}
+      title={title}
       resourceClass={resourceClass}
       columns={[
         {
           id: 'name',
-          label: t('Name'),
+          label: 'Name',
           getValue: item => item.jsonData.metadata.name,
           render: item => (
             <MuiLink
@@ -94,7 +163,7 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
         ...(isNamespaced ? (['namespace'] as const) : []),
         {
           id: 'owner',
-          label: t('Owner'),
+          label: 'Owner',
           getValue: item => {
             const o = item.scope;
             if (!o || !o.kind) return '';
@@ -103,37 +172,37 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
         },
         {
           id: 'pass',
-          label: t('Pass'),
+          label: 'Pass',
           getValue: item => item.summary.pass || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'fail',
-          label: t('Fail'),
+          label: 'Fail',
           getValue: item => item.summary.fail || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'warn',
-          label: t('Warn'),
+          label: 'Warn',
           getValue: item => item.summary.warn || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'error',
-          label: t('Error'),
+          label: 'Error',
           getValue: item => item.summary.error || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'skip',
-          label: t('Skip'),
+          label: 'Skip',
           getValue: item => item.summary.skip || 0,
           gridTemplate: '0.5fr',
         },
         {
           id: 'summary',
-          label: t('Summary'),
+          label: 'Summary',
           render: item => <SummaryChips summary={item.summary} />,
           getValue: item => item.totalResults,
         },
@@ -142,3 +211,51 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
     />
   );
 }
+
+export const AdmissionReportList = () => (
+  <KyvernoReportList
+    title="Admission Reports"
+    resourceClass={AdmissionReport}
+    activityIdPrefix="kyverno-admrpt"
+  />
+);
+
+export const ClusterAdmissionReportList = () => (
+  <KyvernoReportList
+    title="Cluster Admission Reports"
+    resourceClass={ClusterAdmissionReport}
+    activityIdPrefix="kyverno-cadmrpt"
+  />
+);
+
+export const BackgroundScanReportList = () => (
+  <KyvernoReportList
+    title="Background Scan Reports"
+    resourceClass={BackgroundScanReport}
+    activityIdPrefix="kyverno-bgscan"
+  />
+);
+
+export const ClusterBackgroundScanReportList = () => (
+  <KyvernoReportList
+    title="Cluster Background Scan Reports"
+    resourceClass={ClusterBackgroundScanReport}
+    activityIdPrefix="kyverno-cbgscan"
+  />
+);
+
+export const EphemeralReportList = () => (
+  <KyvernoReportList
+    title="Ephemeral Reports"
+    resourceClass={EphemeralReport}
+    activityIdPrefix="kyverno-ephrpt"
+  />
+);
+
+export const ClusterEphemeralReportList = () => (
+  <KyvernoReportList
+    title="Cluster Ephemeral Reports"
+    resourceClass={ClusterEphemeralReport}
+    activityIdPrefix="kyverno-cephrpt"
+  />
+);

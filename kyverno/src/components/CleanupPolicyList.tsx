@@ -16,8 +16,58 @@
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Chip } from '@mui/material';
+import { DateLabel, SectionHeader, SimpleTable } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Chip } from '@mui/material';
 import { CleanupPolicy, ClusterCleanupPolicy } from '../resources/cleanupPolicy';
+
+// ── Pure components for Storybook (no API calls, accepts props directly) ───
+export interface CleanupPolicyRow {
+  name: string;
+  namespace?: string;
+  ready: boolean;
+  schedule: string;
+  lastExecutionTime?: string;
+  creationTimestamp?: string;
+}
+
+export function PureCleanupPolicyTable({ items }: { items: CleanupPolicyRow[] }) {
+  return (
+    <Box>
+      <SectionHeader title="Cleanup Policies" />
+      <SimpleTable
+        columns={[
+          { label: 'Name', getter: (row: CleanupPolicyRow) => row.name },
+          { label: 'Namespace', getter: (row: CleanupPolicyRow) => row.namespace ?? '—' },
+          { label: 'Ready', getter: (row: CleanupPolicyRow) => <Chip label={row.ready ? 'True' : 'False'} color={row.ready ? 'success' : 'error'} size="small" /> },
+          { label: 'Schedule', getter: (row: CleanupPolicyRow) => row.schedule },
+          { label: 'Last Execution', getter: (row: CleanupPolicyRow) => row.lastExecutionTime || '-' },
+          { label: 'Age', getter: (row: CleanupPolicyRow) => row.creationTimestamp ? <DateLabel date={row.creationTimestamp} format="mini" /> : '—' },
+        ]}
+        data={items}
+        emptyMessage="No cleanup policies found"
+      />
+    </Box>
+  );
+}
+
+export function PureClusterCleanupPolicyTable({ items }: { items: CleanupPolicyRow[] }) {
+  return (
+    <Box>
+      <SectionHeader title="Cluster Cleanup Policies" />
+      <SimpleTable
+        columns={[
+          { label: 'Name', getter: (row: CleanupPolicyRow) => row.name },
+          { label: 'Ready', getter: (row: CleanupPolicyRow) => <Chip label={row.ready ? 'True' : 'False'} color={row.ready ? 'success' : 'error'} size="small" /> },
+          { label: 'Schedule', getter: (row: CleanupPolicyRow) => row.schedule },
+          { label: 'Last Execution', getter: (row: CleanupPolicyRow) => row.lastExecutionTime || '-' },
+          { label: 'Age', getter: (row: CleanupPolicyRow) => row.creationTimestamp ? <DateLabel date={row.creationTimestamp} format="mini" /> : '—' },
+        ]}
+        data={items}
+        emptyMessage="No cluster cleanup policies found"
+      />
+    </Box>
+  );
+}
 
 export function CleanupPolicyList() {
   const { t } = useTranslation();
