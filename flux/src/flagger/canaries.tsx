@@ -7,19 +7,17 @@ import {
   SectionBox,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { ApiError } from '@kinvolk/headlamp-plugin/lib/k8s/api/v2/ApiError';
 import type { KubeCRD } from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { Box } from '@mui/material';
 import React from 'react';
 import FlaggerAvailabilityCheck, { useCanary } from './availabilitycheck';
+import { getCanaryResourceClass } from './canaryResourceClass';
 import CanaryStatus from './canarystatus';
 import { DeploymentProgress } from './deploymentprogress';
 
 export default function Canaries() {
   const [canary] = useCanary();
-  const canaryResourceClass = React.useMemo(() => {
-    return !canary || canary instanceof ApiError ? undefined : canary.makeCRClass();
-  }, [canary]);
+  const canaryResourceClass = React.useMemo(() => getCanaryResourceClass(canary), [canary]);
 
   return (
     <FlaggerAvailabilityCheck>
