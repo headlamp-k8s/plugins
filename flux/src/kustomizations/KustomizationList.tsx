@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox, SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
@@ -9,13 +10,14 @@ import { NameLink, useNamespaces } from '../helpers';
 export function Kustomizations() {
   const filterFunction = useFilterFunc();
   const [resources, error] = Kustomization.useList({ namespace: useNamespaces() });
+  const { t } = useTranslation();
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Kustomizations" />;
+    return <NotSupported typeName={t('Kustomizations')} />;
   }
 
   return (
-    <SectionBox title={<SectionFilterHeader title="Kustomizations" />}>
+    <SectionBox title={<SectionFilterHeader title={t('Kustomizations')} />}>
       <Table
         data={resources}
         // @ts-ignore -- TODO Update the sorting param

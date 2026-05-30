@@ -1,6 +1,5 @@
 import { Icon } from '@iconify/react';
-import { K8s, Router, Utils } from '@kinvolk/headlamp-plugin/lib';
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, Router, useTranslation, Utils } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   Link,
@@ -126,6 +125,7 @@ function useFluxHealth(
   namespace: string | undefined
 ): FluxHealthStatus {
   const [reports] = FluxReport.useList({ namespace });
+  const { t } = useTranslation();
 
   return React.useMemo(() => {
     const details: string[] = [];
@@ -140,7 +140,7 @@ function useFluxHealth(
       const failed = getFailedCount(items);
       if (failed > 0) {
         healthy = false;
-        details.push(`${name}: ${failed} failing`);
+        details.push(t('{{name}}: {{count}} failing', { name: t(name), count: failed }));
       }
     }
 
@@ -151,7 +151,7 @@ function useFluxHealth(
       const syncReady = report.jsonData?.spec?.sync?.ready;
       if (syncReady === false) {
         healthy = false;
-        details.push('Cluster sync is not ready');
+        details.push(t('Cluster sync is not ready'));
       }
     }
 
@@ -160,12 +160,12 @@ function useFluxHealth(
       const notRunning = controllers.filter(c => c.jsonData?.status?.phase !== 'Running');
       if (notRunning.length > 0) {
         healthy = false;
-        details.push(`${notRunning.length} controller(s) not running`);
+        details.push(t('{{count}} controller(s) not running', { count: notRunning.length }));
       }
     }
 
     return { healthy, details };
-  }, [reports, controllers, allResources]);
+  }, [reports, controllers, allResources, t]);
 }
 
 function FluxHealthBanner({
@@ -323,14 +323,14 @@ export function FluxOverview() {
 
     let resourceData = itemsWithClass.map(({ rc, items }) => {
       if (!Array.isArray(items)) {
-        return { rc, failed: 0, total: 0, success: 0, name: getDisplayName(rc) };
+        return { rc, failed: 0, total: 0, success: 0, name: t(getDisplayName(rc)) };
       }
       return {
         rc,
         failed: getFailedCount(items),
         total: items.length,
         success: getSuccessCount(items),
-        name: getDisplayName(rc),
+        name: t(getDisplayName(rc)),
       };
     });
 
@@ -376,6 +376,7 @@ export function FluxOverview() {
     terraforms,
     sortFilter,
     showFilter,
+    t,
   ]);
 
   const handleSortFilterChange = event => {
@@ -473,7 +474,7 @@ export function FluxOverview() {
               <Box>{t('Version Information')}</Box>
               <Box>
                 <StatusLabel status={!!fluxCheck.version ? 'success' : 'warning'}>
-                  {fluxCheck.version || 'Unknown'}
+                  {fluxCheck.version || t('Unknown')}
                 </StatusLabel>
               </Box>
             </Box>
@@ -505,7 +506,7 @@ export function FluxOverview() {
                     <Box mt={0.2} mr={0.1}>
                       <Icon icon="mdi:check" width={16} height={16} />
                     </Box>
-                    {t('Distribution')}: {fluxCheck.distribution}
+                    {t('Distribution: {{distribution}}', { distribution: fluxCheck.distribution })}
                   </Box>{' '}
                 </StatusLabel>
               )}
@@ -765,7 +766,7 @@ function FluxOverviewChart({ resourceClass }) {
         <Box>
           <Box>
             <Link routeName={prepareLink(resourceClass.apiName)} activeCluster={Utils.getCluster()}>
-              {prepareName(resourceClass.apiName)}
+              {t(prepareName(resourceClass.apiName))}
             </Link>
           </Box>
           <Box sx={{ display: 'flex', flexDirection: 'column', mt: 1 }}>

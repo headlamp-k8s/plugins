@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   Link,
@@ -44,14 +45,17 @@ function prepareLastUpdated(item: KubeCRD) {
   return condition?.lastTransitionTime;
 }
 
-function prepareNameColumn(colProps: Partial<NameColumn> = {}): TableCol {
+function prepareNameColumn(
+  colProps: Partial<NameColumn> = {},
+  t: (key: string) => string
+): TableCol {
   const { routeName, ...genericProps } = colProps;
 
   // Remove the extends property from the genericProps
   delete genericProps.extends;
 
   return {
-    header: 'Name',
+    header: t('Name'),
     accessorKey: 'metadata.name',
     Cell: ({ row: { original: item } }) => (
       <Link
@@ -71,6 +75,7 @@ function prepareNameColumn(colProps: Partial<NameColumn> = {}): TableCol {
 
 export function Table(props: TableProps) {
   const { columns, data, ...otherProps } = props;
+  const { t } = useTranslation();
 
   const processedColumns = React.useMemo(() => {
     return columns.map(column => {
@@ -78,7 +83,7 @@ export function Table(props: TableProps) {
         switch (column) {
           case 'namespace':
             return {
-              header: 'Namespace',
+              header: t('Namespace'),
               accessorKey: 'metadata.namespace',
               Cell: ({ row: { original: item } }) => (
                 <Link
@@ -92,17 +97,17 @@ export function Table(props: TableProps) {
               ),
             };
           case 'name':
-            return prepareNameColumn();
+            return prepareNameColumn(undefined, t);
           case 'lastUpdated':
             return {
-              header: 'Last Updated',
+              header: t('Last Updated'),
               accessorFn: item => prepareLastUpdated(item),
               Cell: ({ cell }: any) => <DateLabel format="mini" date={cell.getValue()} />,
             };
           case 'age':
             return {
               id: 'age',
-              header: 'Age',
+              header: t('Age'),
               gridTemplate: 'min-content',
               accessorFn: (item: KubeObject) =>
                 -new Date(item.metadata.creationTimestamp).getTime(),
@@ -117,7 +122,7 @@ export function Table(props: TableProps) {
             };
           case 'source':
             return {
-              header: 'Source',
+              header: t('Source'),
               accessorFn: item => {
                 const { name } = getSourceNameAndPluralKind(item);
                 return name;
@@ -140,13 +145,13 @@ export function Table(props: TableProps) {
             };
           case 'status':
             return {
-              header: 'Status',
-              accessorFn: item => getStatusText(item),
+              header: t('Status'),
+              accessorFn: item => t(getStatusText(item)),
               Cell: ({ row: { original: item } }: any) => <StatusLabel item={item} />,
             };
           case 'revision':
             return {
-              header: 'Revision',
+              header: t('Revision'),
               accessorFn: item => {
                 const reference = item.jsonData.status?.lastAttemptedRevision;
                 return (
@@ -158,7 +163,7 @@ export function Table(props: TableProps) {
             };
           case 'message':
             return {
-              header: 'Message',
+              header: t('Message'),
               accessorFn: item => {
                 const message = item.jsonData.status?.conditions?.find(
                   c => c.type === 'Ready'
@@ -176,12 +181,12 @@ export function Table(props: TableProps) {
       }
 
       if ((column as NameColumn).extends === 'name') {
-        return prepareNameColumn(column as NameColumn);
+        return prepareNameColumn(column as NameColumn, t);
       }
 
       return column;
     });
-  }, [columns]);
+  }, [columns, t]);
 
   return (
     <HTable

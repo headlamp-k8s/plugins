@@ -37,11 +37,12 @@ export function FluxSourceDetailView(props: {
     namespace = params.namespace,
     pluralName = params.pluralName,
   } = props;
+  const { t } = useTranslation();
 
   const resourceClass = getSourceClassByPluralName(pluralName);
 
   if (!resourceClass) {
-    return <Flux404 message={`Unknown type ${pluralName}`} />;
+    return <Flux404 message={t('Unknown type {{pluralName}}', { pluralName })} />;
   }
 
   return <SourceDetailView name={name} namespace={namespace} resourceClass={resourceClass} />;
@@ -166,7 +167,7 @@ function ArtifactTable(props: { artifact: any }) {
             value: artifact.size,
           },
           {
-            name: 'URL',
+            name: t('URL'),
             value: <Link url={artifact.url} wrap />,
           },
         ]}

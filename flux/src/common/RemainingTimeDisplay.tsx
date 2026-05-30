@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { HoverInfoLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeCondition, KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
@@ -63,6 +64,7 @@ interface NextAttemptStatus {
 
 export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
   const { item } = props;
+  const { t } = useTranslation();
   const timeoutRef = React.useRef<number>();
   const [timeRemaining, setTimeRemaining] = React.useState<number>();
   const [nextAttemptStatus, setNextAttemptStatus] = React.useState<NextAttemptStatus>({
@@ -160,14 +162,14 @@ export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
   return (
     <Box>
       {nextAttemptStatus.isStalled ? (
-        <Typography>Stalled</Typography>
+        <Typography>{t('Stalled')}</Typography>
       ) : nextAttemptStatus.lastReconcileUnknown ? (
-        <Typography>Unable to calculate</Typography>
+        <Typography>{t('Unable to calculate')}</Typography>
       ) : nextAttemptStatus.isReconciling || timeRemaining <= 0 ? (
-        <Typography>In progress…</Typography>
+        <Typography>{t('In progress…')}</Typography>
       ) : (
         <HoverInfoLabel
-          label={`In ${timeAgo(nextAttemptStatus.nextAttempt)}`}
+          label={t('In {{time}}', { time: timeAgo(nextAttemptStatus.nextAttempt) })}
           hoverInfo={localeDate(new Date(nextAttemptStatus.nextAttempt))}
           icon="mdi:calendar"
         />
