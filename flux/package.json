@@ -38,7 +38,8 @@
     "yaml": "^2.5.0"
   },
   "overrides": {
-    "typescript": "5.6.2"
+    "typescript": "5.6.2",
+    "ws": "8.21.0"
   },
   "headlamp": {
     "i18n": [
