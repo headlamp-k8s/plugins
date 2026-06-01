@@ -66,6 +66,7 @@
     "typescript": "5.6.2",
     "refractor": {
       "prismjs": "^1.30.0"
-    }
+    },
+    "ws": "8.21.0"
   }
 }
