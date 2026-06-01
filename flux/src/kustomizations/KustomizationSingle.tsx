@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link,
@@ -37,6 +38,7 @@ export function FluxKustomizationDetailView(props: { name?: string; namespace?: 
 function KustomizationDetails(props) {
   const { name, namespace } = props;
   const [cr] = Kustomization.useGet(name, namespace);
+  const { t } = useTranslation();
 
   function prepareExtraInfo(cr) {
     if (!cr) {
@@ -49,23 +51,23 @@ function KustomizationDetails(props) {
     } = getSourceNameAndPluralKind(cr);
     const extraInfo = [
       {
-        name: 'Status',
+        name: t('Status'),
         value: <StatusLabel item={cr} />,
       },
       {
-        name: 'Force',
+        name: t('Force'),
         value: cr?.jsonData.spec?.force.toString(),
       },
       {
-        name: 'Path',
+        name: t('Path'),
         value: cr?.jsonData.spec?.path,
       },
       {
-        name: 'Prune',
+        name: t('Prune'),
         value: cr?.jsonData.spec?.prune,
       },
       {
-        name: 'SourceRef',
+        name: t('SourceRef'),
         value: (
           <Link
             routeName="source"
@@ -81,19 +83,19 @@ function KustomizationDetails(props) {
       },
     ];
     extraInfo.push({
-      name: 'Suspend',
-      value: cr?.jsonData.spec?.suspend ? 'True' : 'False',
+      name: t('Suspend'),
+      value: cr?.jsonData.spec?.suspend ? t('True') : t('False'),
     });
 
     const interval = cr?.jsonData.spec?.interval;
     extraInfo.push({
-      name: 'Interval',
+      name: t('Interval'),
       value: interval,
     });
 
     if (!cr?.jsonData.spec?.suspend) {
       extraInfo.push({
-        name: 'Next Reconciliation',
+        name: t('Next Reconciliation'),
         value: <RemainingTimeDisplay item={cr} />,
       });
     }
@@ -121,7 +123,7 @@ function KustomizationDetails(props) {
     <>
       <MainInfoSection resource={cr} extraInfo={prepareExtraInfo(cr)} actions={prepareActions()} />
       {cr?.jsonData?.spec?.values && (
-        <SectionBox title="Values">
+        <SectionBox title={t('Values')}>
           <Editor
             language="yaml"
             value={YAML.stringify(cr?.jsonData?.spec?.values)}
@@ -132,15 +134,15 @@ function KustomizationDetails(props) {
       )}
       {cr && (
         <>
-          <SectionBox title="Inventory">
+          <SectionBox title={t('Inventory')}>
             <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
           </SectionBox>
-          <SectionBox title="Dependencies">
+          <SectionBox title={t('Dependencies')}>
             <Table
               data={cr?.jsonData?.spec?.dependsOn}
               columns={[
                 {
-                  header: 'Name',
+                  header: t('Name'),
                   accessorFn: item => {
                     return (
                       <Link
@@ -156,7 +158,7 @@ function KustomizationDetails(props) {
                   },
                 },
                 {
-                  header: 'Namespace',
+                  header: t('Namespace'),
                   accessorFn: item => (
                     <Link routeName="namespace" params={{ name: item.namespace || namespace }}>
                       {item.namespace || namespace}
@@ -166,7 +168,7 @@ function KustomizationDetails(props) {
               ]}
             />
           </SectionBox>
-          <SectionBox title="Conditions">
+          <SectionBox title={t('Conditions')}>
             <ConditionsTable resource={cr?.jsonData} />
           </SectionBox>
         </>

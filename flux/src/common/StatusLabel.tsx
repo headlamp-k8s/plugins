@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel as HLStatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeCRD } from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
@@ -18,13 +19,14 @@ export function getStatusText(item: KubeObject | KubeCRD): string {
 
 export default function StatusLabel(props: StatusLabelProps) {
   const { item } = props;
+  const { t } = useTranslation();
   const ready = item?.jsonData?.status?.conditions?.find((c: any) => c.type === 'Ready');
 
   if (!ready) {
     return <span>-</span>;
   }
 
-  const text = getStatusText(item);
+  const text = t(getStatusText(item));
 
   if (item?.jsonData?.spec?.suspend) {
     return <HLStatusLabel status="warning">{text}</HLStatusLabel>;

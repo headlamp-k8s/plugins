@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
@@ -16,29 +17,30 @@ import Table, { TableProps } from '../common/Table';
 import { useNamespaces } from '../helpers';
 
 export function FluxSources() {
+  const { t } = useTranslation();
   return (
     <>
       <FluxSource
         resourceClass={GitRepository}
         pluralName="gitrepositories"
-        title={'Git Repositories'}
+        title={t('Git Repositories')}
       />
       <FluxSource
         resourceClass={HelmRepository}
         pluralName="helmrepositories"
-        title={'Helm Repositories'}
+        title={t('Helm Repositories')}
       />
-      <FluxSource resourceClass={HelmChart} pluralName="helmcharts" title={'Helm Charts'} />
+      <FluxSource resourceClass={HelmChart} pluralName="helmcharts" title={t('Helm Charts')} />
       <FluxSource
         resourceClass={OCIRepository}
         pluralName="ocirepositories"
-        title={'OCI Repositories'}
+        title={t('OCI Repositories')}
       />
-      <FluxSource resourceClass={BucketRepository} pluralName="buckets" title={'Buckets'} />
+      <FluxSource resourceClass={BucketRepository} pluralName="buckets" title={t('Buckets')} />
       <FluxSource
         resourceClass={ExternalArtifact}
         pluralName="externalartifacts"
-        title={'External Artifacts'}
+        title={t('External Artifacts')}
       />
     </>
   );
@@ -54,7 +56,9 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
   const filterFunction = useFilterFunc();
   const { resourceClass, title, pluralName } = props;
   const [resources, error] = resourceClass.useList({ namespace: useNamespaces() });
+  const { t } = useTranslation();
 
+  // eslint-disable-next-line react/no-unstable-nested-components
   function prepareColumns() {
     const columns: TableProps['columns'] = [
       {
@@ -86,7 +90,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
   if (isHelmChart) {
     // add chart column to second index
     columns.splice(colIndexToInsert++, 0, {
-      header: 'Chart',
+      header: t('Chart'),
       accessorFn: item => {
         const chart = item?.jsonData?.spec?.chart;
         return chart || '-';
@@ -95,7 +99,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
 
     // add Version  column to third index
     columns.splice(colIndexToInsert++, 0, {
-      header: 'Version',
+      header: t('Version'),
       accessorFn: item => {
         const version = item?.jsonData?.spec?.version;
         return version || '-';
@@ -105,7 +109,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
     // add source kind column to fourth index
 
     columns.splice(colIndexToInsert++, 0, {
-      header: 'Source Kind',
+      header: t('Source Kind'),
       accessorFn: item => {
         const sourceKind = item?.jsonData?.spec?.sourceRef.kind;
         return sourceKind || '-';
@@ -115,7 +119,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
     // add source name column to fifth index
 
     columns.splice(colIndexToInsert++, 0, {
-      header: 'Source Name',
+      header: t('Source Name'),
       accessorFn: item => {
         const sourceName = item?.jsonData?.spec?.sourceRef.name;
         if (sourceName) {
@@ -137,7 +141,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
     });
   } else {
     columns.splice(colIndexToInsert++, 0, {
-      header: 'URL',
+      header: t('URL'),
       accessorFn: item => {
         const url = item?.jsonData?.spec?.url;
         return url ? <SourceLink url={url} wrap /> : '-';

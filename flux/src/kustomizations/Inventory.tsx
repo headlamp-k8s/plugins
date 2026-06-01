@@ -1,4 +1,4 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
@@ -34,6 +34,7 @@ export function GetResourcesFromInventory(
   }>
 ) {
   const [resources, setResources] = React.useState<KubeObject[]>([]);
+  const { t } = useTranslation();
 
   React.useEffect(() => {
     props.inventory?.forEach(item => {
@@ -78,12 +79,12 @@ export function GetResourcesFromInventory(
       data={resources}
       columns={[
         {
-          header: 'Name',
+          header: t('Name'),
           accessorKey: 'metadata.name',
           Cell: ({ row: { original: item } }) => inventoryNameLink(item),
         },
         {
-          header: 'Namespace',
+          header: t('Namespace'),
           accessorFn: item => item.metadata?.namespace ?? '',
           id: 'namespace',
           Cell: ({ row: { original: item } }) =>
@@ -101,22 +102,22 @@ export function GetResourcesFromInventory(
             ),
         },
         {
-          header: 'Kind',
+          header: t('Kind'),
           accessorFn: (item: KubeObject) => item.kind,
         },
         {
-          header: 'Ready',
+          header: t('Ready'),
           accessorFn: (item: KubeObject) => {
             if (item.jsonData?.status) {
               return item.jsonData.status.conditions?.findIndex(c => c.type === 'Ready') !== -1
-                ? 'True'
-                : 'False';
+                ? t('True')
+                : t('False');
             }
-            return 'Unknown';
+            return t('Unknown');
           },
         },
         {
-          header: 'Age',
+          header: t('Age'),
           accessorFn: (item: KubeObject) => {
             if (item?.metadata?.creationTimestamp) {
               return <DateLabel date={item?.metadata?.creationTimestamp} />;

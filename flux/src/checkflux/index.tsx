@@ -1,8 +1,11 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Link } from '@mui/material';
+import React from 'react';
 
 export default function Flux404(props: Readonly<{ message: string; docs?: string }>) {
   const { message, docs } = props;
+  const { t } = useTranslation();
 
   // return a box with a message that flux is not installed and a link to the flux installation guide
   return (
@@ -15,13 +18,13 @@ export default function Flux404(props: Readonly<{ message: string; docs?: string
         maxWidth: '600px',
       }}
     >
-      <h1>{message}</h1>
+      <h1>{t(message)}</h1>
       <p>
-        Follow the{' '}
+        {t('Follow the')}{' '}
         <Link target="_blank" href={docs ?? 'https://fluxcd.io/docs/installation/'}>
-          installation guide
+          {t('installation guide')}
         </Link>{' '}
-        to install flux on your cluster
+        {t('to install flux on your cluster')}
       </p>
     </Box>
   );
@@ -29,15 +32,16 @@ export default function Flux404(props: Readonly<{ message: string; docs?: string
 
 export function NotSupported(props: { typeName: string }) {
   const { typeName } = props;
+  const { t } = useTranslation();
   return (
-    <SectionBox title={typeName}>
-      <p>Flux installation has no support for {typeName}.</p>
+    <SectionBox title={t(typeName)}>
+      <p>{t('Flux installation has no support for {{typeName}}.', { typeName: t(typeName) })}</p>
       <p>
-        Follow the{' '}
+        {t('Follow the')}{' '}
         <Link target="_blank" href="https://fluxcd.io/docs/installation/">
-          installation guide
+          {t('installation guide')}
         </Link>{' '}
-        to support {typeName} on your cluster
+        {t('to support {{typeName}} on your cluster', { typeName: t(typeName) })}
       </p>
     </SectionBox>
   );
