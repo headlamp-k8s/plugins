@@ -1,4 +1,4 @@
-import { Headlamp } from '@kinvolk/headlamp-plugin/lib';
+import { Headlamp, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Secret from '@kinvolk/headlamp-plugin/lib/K8s/secret';
 import {
@@ -59,7 +59,8 @@ async function connectClusterToHeadlamp(
   secret: Secret | null | undefined,
   secretError: unknown,
   enqueueSnackbar: (message: string, options?: any) => void,
-  loadingRef: React.MutableRefObject<boolean>
+  loadingRef: React.MutableRefObject<boolean>,
+  t: (key: string, options?: any) => string
 ) {
   if (loadingRef.current) return;
 
@@ -68,8 +69,14 @@ async function connectClusterToHeadlamp(
 
   if (!secret) {
     const msg = secretError
-      ? `Failed to load Secret "${secretName}": ${getErrorMessage(secretError)}`
-      : `Secret "${secretName}" is not available yet in namespace "${namespace}". Please wait for the cluster to finish provisioning and try again.`;
+      ? t('Failed to load Secret "{{name}}": {{error}}', {
+          name: secretName,
+          error: getErrorMessage(secretError),
+        })
+      : t(
+          'Secret "{{name}}" is not available yet in namespace "{{namespace}}". Please wait for the cluster to finish provisioning and try again.',
+          { name: secretName, namespace }
+        );
     enqueueSnackbar(msg, { variant: secretError ? 'error' : 'warning' });
     return;
   }
@@ -78,7 +85,7 @@ async function connectClusterToHeadlamp(
   const infraKind = resource.spec?.infrastructureRef?.kind;
 
   if (!kubeconfigBase64) {
-    enqueueSnackbar('Kubeconfig not available yet. Cluster may still be provisioning.', {
+    enqueueSnackbar(t('Kubeconfig not available yet. Cluster may still be provisioning.'), {
       variant: 'warning',
     });
     return;
@@ -86,7 +93,12 @@ async function connectClusterToHeadlamp(
 
   if (infraKind === 'DockerCluster') {
     enqueueSnackbar(
-      `Docker provider detected. Run:\nkind get kubeconfig --name ${resource.metadata?.name} > ${resource.metadata?.name}.kubeconfig`,
+      t(
+        'Docker provider detected. Run:\nkind get kubeconfig --name {{name}} > {{name}}.kubeconfig',
+        {
+          name: resource.metadata?.name,
+        }
+      ),
       { variant: 'warning' }
     );
     return;
@@ -94,15 +106,17 @@ async function connectClusterToHeadlamp(
 
   try {
     loadingRef.current = true;
-    enqueueSnackbar('Connecting to cluster...', { variant: 'info' });
+    enqueueSnackbar(t('Connecting to cluster...'), { variant: 'info' });
 
     const bytes = Uint8Array.from(atob(kubeconfigBase64), c => c.charCodeAt(0));
     const kubeconfig = new TextDecoder('utf-8').decode(bytes);
 
     await Headlamp.setCluster({ kubeconfig });
-    enqueueSnackbar('Cluster connected successfully', { variant: 'success' });
+    enqueueSnackbar(t('Cluster connected successfully'), { variant: 'success' });
   } catch (error) {
-    enqueueSnackbar(`Failed to connect: ${getErrorMessage(error)}`, { variant: 'error' });
+    enqueueSnackbar(t('Failed to connect: {{error}}', { error: getErrorMessage(error) }), {
+      variant: 'error',
+    });
   } finally {
     loadingRef.current = false;
   }
@@ -110,6 +124,7 @@ async function connectClusterToHeadlamp(
 
 export function GetKubeconfigAction(props: GetKubeconfigActionProps) {
   const { resource } = props;
+  const { t } = useTranslation();
   const loadingRef = useRef(false);
   const { enqueueSnackbar } = useSnackbar();
 
@@ -120,18 +135,29 @@ export function GetKubeconfigAction(props: GetKubeconfigActionProps) {
 
   return (
     <ActionButton
-      description="Connect Cluster"
-      longDescription="Connect this workload cluster to Headlamp using its generated kubeconfig"
+      description={t('Connect Cluster')}
+      longDescription={t(
+        'Connect this workload cluster to Headlamp using its generated kubeconfig'
+      )}
       icon={'mdi:cloud-download'}
       onClick={() => {
         if (secretQuery.isLoading) {
           enqueueSnackbar(
-            'Cluster connection details are still loading. Please try again shortly.',
-            { variant: 'info' }
+            t('Cluster connection details are still loading. Please try again shortly.'),
+            {
+              variant: 'info',
+            }
           );
           return;
         }
-        connectClusterToHeadlamp(resource, secret, secretQuery.error, enqueueSnackbar, loadingRef);
+        connectClusterToHeadlamp(
+          resource,
+          secret,
+          secretQuery.error,
+          enqueueSnackbar,
+          loadingRef,
+          t
+        );
       }}
     />
   );
@@ -163,6 +189,7 @@ function StandaloneScaleInputs({
   onLoaded,
   renderScaleRow,
 }: StandaloneScaleInputsProps) {
+  const { t } = useTranslation();
   const [controlPlanes, controlPlanesError] = KubeadmControlPlane.useList({
     namespace,
     labelSelector: `cluster.x-k8s.io/cluster-name=${name}`,
@@ -185,7 +212,7 @@ function StandaloneScaleInputs({
     stableOnLoaded(controlPlanes ?? null, machineDeployments ?? null, machinePools ?? null, errors);
   }, [controlPlanes, machineDeployments, machinePools, stableOnLoaded]);
 
-  if (loading) return <Typography>Loading scalable resources...</Typography>;
+  if (loading) return <Typography>{t('Loading scalable resources...')}</Typography>;
 
   const hasResources =
     (controlPlanes?.length ?? 0) > 0 ||
@@ -195,16 +222,25 @@ function StandaloneScaleInputs({
   return (
     <>
       {controlPlanes?.map(cp =>
-        renderScaleRow(`Control Plane: ${cp.metadata.name}`, `cp-${cp.metadata.name}`)
+        renderScaleRow(
+          t('Control Plane: {{name}}', { name: cp.metadata.name }),
+          `cp-${cp.metadata.name}`
+        )
       )}
       {machineDeployments?.map(md =>
-        renderScaleRow(`Worker MD: ${md.metadata.name}`, `md-${md.metadata.name}`)
+        renderScaleRow(
+          t('Worker MD: {{name}}', { name: md.metadata.name }),
+          `md-${md.metadata.name}`
+        )
       )}
       {machinePools?.map(pool =>
-        renderScaleRow(`Worker Pool: ${pool.metadata.name}`, `pool-${pool.metadata.name}`)
+        renderScaleRow(
+          t('Worker Pool: {{name}}', { name: pool.metadata.name }),
+          `pool-${pool.metadata.name}`
+        )
       )}
       {!hasResources && errors.length === 0 && (
-        <Typography>No scalable resources found for this cluster.</Typography>
+        <Typography>{t('No scalable resources found for this cluster.')}</Typography>
       )}
     </>
   );
@@ -216,6 +252,7 @@ function isControlPlaneKey(key: string): boolean {
 }
 
 export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
@@ -336,10 +373,12 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
         }
         await Promise.all(promises);
       }
-      enqueueSnackbar('Scaling triggered successfully', { variant: 'success' });
+      enqueueSnackbar(t('Scaling triggered successfully'), { variant: 'success' });
       handleClose();
     } catch (error) {
-      enqueueSnackbar(`Failed to scale: ${getErrorMessage(error)}`, { variant: 'error' });
+      enqueueSnackbar(t('Failed to scale: {{error}}', { error: getErrorMessage(error) }), {
+        variant: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -362,7 +401,7 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
           <Typography variant="body2">{label}</Typography>
           <Box display="flex" alignItems="center" gap={1}>
             <ActionButton
-              description={`Decrease ${label} replicas`}
+              description={t('Decrease {{label}} replicas', { label })}
               icon="mdi:minus-circle-outline"
               onClick={() =>
                 setDrafts(prev => ({
@@ -375,7 +414,7 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
               {replicas}
             </Typography>
             <ActionButton
-              description={`Increase ${label} replicas`}
+              description={t('Increase {{label}} replicas', { label })}
               icon="mdi:plus-circle-outline"
               onClick={() => setDrafts(prev => ({ ...prev, [draftKey]: replicas + 1 }))}
             />
@@ -383,7 +422,7 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
         </Box>
         {showOddWarning && (
           <Typography variant="caption" color="warning.main" sx={{ mt: 0.5 }}>
-            Even replica counts can break etcd quorum. Use 1, 3, or 5.
+            {t('Even replica counts can break etcd quorum. Use 1, 3, or 5.')}
           </Typography>
         )}
       </Box>
@@ -400,32 +439,38 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
 
   return (
     <>
-      <ActionButton description="Scale Cluster" icon="mdi:resize" onClick={() => setOpen(true)} />
+      <ActionButton
+        description={t('Scale Cluster')}
+        icon="mdi:resize"
+        onClick={() => setOpen(true)}
+      />
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-        <DialogTitle>Scale Cluster &quot;{name}&quot;</DialogTitle>
+        <DialogTitle>{t('Scale Cluster "{{name}}"', { name })}</DialogTitle>
         <DialogContent dividers>
           {standaloneErrors.length > 0 && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              Failed to load scalable resources: {standaloneErrors.map(getErrorMessage).join(' ')}
+              {t('Failed to load scalable resources: {{errors}}', {
+                errors: standaloneErrors.map(getErrorMessage).join(' '),
+              })}
             </Alert>
           )}
           {isTopology ? (
             <>
               <Typography variant="subtitle2" color="primary" gutterBottom>
-                Topology Managed
+                {t('Topology Managed')}
               </Typography>
-              {renderScaleRow('Control Plane', 'cp')}
+              {renderScaleRow(t('Control Plane'), 'cp')}
               {topology.workers?.machineDeployments?.map((md, i) =>
-                renderScaleRow(`Worker MD: ${md.name}`, `md-${i}`)
+                renderScaleRow(t('Worker MD: {{name}}', { name: md.name }), `md-${i}`)
               )}
               {topology.workers?.machinePools?.map((pool, i) =>
-                renderScaleRow(`Worker Pool: ${pool.name}`, `pool-${i}`)
+                renderScaleRow(t('Worker Pool: {{name}}', { name: pool.name }), `pool-${i}`)
               )}
             </>
           ) : (
             <>
               <Typography variant="subtitle2" color="primary" gutterBottom>
-                Standalone Resources
+                {t('Standalone Resources')}
               </Typography>
               {open && (
                 <StandaloneScaleInputs
@@ -441,14 +486,14 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleClose}>{t('Cancel')}</Button>
           <Button
             onClick={handleApply}
             color="primary"
             variant="contained"
             disabled={applyDisabled}
           >
-            {loading ? 'Applying...' : 'Apply Scaling'}
+            {loading ? t('Applying...') : t('Apply Scaling')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -460,23 +505,29 @@ export function ClusterScaleAction({ resource: cluster }: ClusterScaleActionProp
  * PauseReconciliationAction pauses CAPI reconciliation for a resource.
  */
 export function PauseReconciliationAction({ resource }: ReconciliationActionProps) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const handlePause = async () => {
     try {
       await resource.patch({
         metadata: { annotations: { [PAUSED_ANNOTATION]: 'true' } },
       });
-      enqueueSnackbar(`${resource.kind} reconciliation paused`, { variant: 'success' });
-    } catch (error: any) {
-      enqueueSnackbar(`Failed to pause reconciliation: ${getErrorMessage(error)}`, {
-        variant: 'error',
+      enqueueSnackbar(t('{{kind}} reconciliation paused', { kind: resource.kind }), {
+        variant: 'success',
       });
+    } catch (error: any) {
+      enqueueSnackbar(
+        t('Failed to pause reconciliation: {{error}}', { error: getErrorMessage(error) }),
+        {
+          variant: 'error',
+        }
+      );
     }
   };
 
   return (
     <ActionButton
-      description="Pause Reconciliation"
+      description={t('Pause Reconciliation')}
       icon="mdi:pause-circle-outline"
       onClick={handlePause}
     />
@@ -487,6 +538,7 @@ export function PauseReconciliationAction({ resource }: ReconciliationActionProp
  * ResumeReconciliationAction resumes CAPI reconciliation for a resource.
  */
 export function ResumeReconciliationAction({ resource }: ReconciliationActionProps) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
 
   const handleResume = async () => {
@@ -494,17 +546,22 @@ export function ResumeReconciliationAction({ resource }: ReconciliationActionPro
       await resource.patch({
         metadata: { annotations: { [PAUSED_ANNOTATION]: null } },
       });
-      enqueueSnackbar(`${resource.kind} reconciliation resumed`, { variant: 'success' });
-    } catch (error: any) {
-      enqueueSnackbar(`Failed to resume reconciliation: ${getErrorMessage(error)}`, {
-        variant: 'error',
+      enqueueSnackbar(t('{{kind}} reconciliation resumed', { kind: resource.kind }), {
+        variant: 'success',
       });
+    } catch (error: any) {
+      enqueueSnackbar(
+        t('Failed to resume reconciliation: {{error}}', { error: getErrorMessage(error) }),
+        {
+          variant: 'error',
+        }
+      );
     }
   };
 
   return (
     <ActionButton
-      description="Resume Reconciliation"
+      description={t('Resume Reconciliation')}
       icon="mdi:play-circle-outline"
       onClick={handleResume}
     />

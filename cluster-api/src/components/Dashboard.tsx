@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Button, Paper, Typography } from '@mui/material';
 
@@ -7,8 +8,9 @@ import { Button, Paper, Typography } from '@mui/material';
  * Provides clear messaging and a link to the official quick-start guide.
  */
 export default function Dashboard() {
+  const { t } = useTranslation();
   return (
-    <SectionBox title="Cluster API">
+    <SectionBox title={t('Cluster API')}>
       <Paper
         elevation={0}
         sx={{
@@ -31,16 +33,16 @@ export default function Dashboard() {
           style={{ color: '#ed6c02', marginBottom: '24px' }}
         />
         <Typography variant="h5" color="text.primary" gutterBottom sx={{ fontWeight: 600 }}>
-          Cluster API Not Detected
+          {t('Cluster API Not Detected')}
         </Typography>
         <Typography
           variant="body1"
           color="text.secondary"
           sx={{ mb: 4, maxWidth: 600, lineHeight: 1.6 }}
         >
-          The Custom Resource Definitions (CRDs) required for the Kubernetes Cluster API (CAPI) were
-          not found in the currently active cluster. You need to initialize a management cluster to
-          manage and visualize your resources here.
+          {t(
+            'The Custom Resource Definitions (CRDs) required for the Kubernetes Cluster API (CAPI) were not found in the currently active cluster. You need to initialize a management cluster to manage and visualize your resources here.'
+          )}
         </Typography>
         <Button
           variant="contained"
@@ -51,7 +53,7 @@ export default function Dashboard() {
           size="large"
           sx={{ px: 4, py: 1.2, textTransform: 'none', fontWeight: 500, borderRadius: 1.5 }}
         >
-          Open Quick Start Guide
+          {t('Open Quick Start Guide')}
         </Button>
       </Paper>
     </SectionBox>
