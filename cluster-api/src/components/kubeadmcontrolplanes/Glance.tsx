@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import { Box } from '@mui/system';
@@ -13,6 +14,7 @@ import { getPhaseStatus } from '../common/util';
  * @param props.node - The map node containing the resource.
  */
 export function KubeadmControlPlaneGlance({ node }: { node: GraphNode }) {
+  const { t } = useTranslation();
   if (node.kubeObject?.kind !== KubeadmControlPlane.kind) {
     return null;
   }
@@ -56,39 +58,45 @@ export function KubeadmControlPlaneGlance({ node }: { node: GraphNode }) {
 
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="kcp-glance">
-      {clustername && <StatusLabel status="">{`Cluster: ${clustername}`}</StatusLabel>}
+      {clustername && (
+        <StatusLabel status="">
+          {t('Cluster: {{clusterName}}', { clusterName: clustername })}
+        </StatusLabel>
+      )}
       {version && <StatusLabel status="">{`${version}`}</StatusLabel>}
 
-      {provider && <StatusLabel status="">{`Provider: ${provider}`}</StatusLabel>}
-      <StatusLabel status="">{`Strategy: ${strategy}`}</StatusLabel>
+      {provider && <StatusLabel status="">{t('Provider: {{provider}}', { provider })}</StatusLabel>}
+      <StatusLabel status="">{t('Strategy: {{strategy}}', { strategy })}</StatusLabel>
       {observedGeneration !== undefined && (
-        <StatusLabel status="">{`Gen: ${observedGeneration}`}</StatusLabel>
+        <StatusLabel status="">
+          {t('Gen: {{generation}}', { generation: observedGeneration })}
+        </StatusLabel>
       )}
       {initialized !== undefined && (
         <StatusLabel status={initialized ? 'success' : 'warning'}>
-          {initialized ? 'Initialized' : 'Not Initialized'}
+          {initialized ? t('Initialized') : t('Not Initialized')}
         </StatusLabel>
       )}
       <StatusLabel status={getPhaseStatus(phaseLabel)}>
-        {`Replicas: ${ready}/${desired}`}
+        {t('Replicas: {{ready}}/{{desired}}', { ready, desired })}
       </StatusLabel>
       {available !== undefined && (
         <StatusLabel status={available >= desired ? 'success' : 'warning'}>
-          {`Available: ${available}`}
+          {t('Available: {{available}}', { available })}
         </StatusLabel>
       )}
       {upToDate !== undefined && (
         <StatusLabel status={upToDate >= desired ? 'success' : 'warning'}>
-          {`Up-to-date: ${upToDate}`}
+          {t('Up-to-date: {{upToDate}}', { upToDate })}
         </StatusLabel>
       )}
 
       {readyCondition && (
         <StatusLabel status={isReady ? 'success' : 'error'}>
-          {isReady ? 'Ready' : 'Not Ready'}
+          {isReady ? t('Ready') : t('Not Ready')}
         </StatusLabel>
       )}
-      {paused && <StatusLabel status="warning">Paused</StatusLabel>}
+      {paused && <StatusLabel status="warning">{t('Paused')}</StatusLabel>}
     </Box>
   );
 }

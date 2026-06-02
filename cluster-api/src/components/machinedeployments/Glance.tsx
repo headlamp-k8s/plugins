@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import { Box } from '@mui/system';
@@ -18,6 +19,7 @@ import { getPhaseStatus } from '../common/util';
  * @param props.node - The map node containing the resource.
  */
 export function MachineDeploymentGlance({ node }: { node: GraphNode }) {
+  const { t } = useTranslation();
   if (node.kubeObject?.kind !== MachineDeployment.kind) {
     // Return null if the node cannot be rendered by this glance
     return null;
@@ -45,29 +47,33 @@ export function MachineDeploymentGlance({ node }: { node: GraphNode }) {
 
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="md-glance">
-      {clusterName && <StatusLabel status="">{`Cluster: ${clusterName}`}</StatusLabel>}
-      {provider && <StatusLabel status="">{`Provider: ${provider}`}</StatusLabel>}
-      <StatusLabel status="">{`Strategy: ${strategy}`}</StatusLabel>
+      {clusterName && (
+        <StatusLabel status="">{t('Cluster: {{clusterName}}', { clusterName })}</StatusLabel>
+      )}
+      {provider && <StatusLabel status="">{t('Provider: {{provider}}', { provider })}</StatusLabel>}
+      <StatusLabel status="">{t('Strategy: {{strategy}}', { strategy })}</StatusLabel>
       <StatusLabel status={phase ? getPhaseStatus(phase) : ''}>
-        {`Replicas: ${ready}/${desired}`}
+        {t('Replicas: {{ready}}/{{desired}}', { ready, desired })}
       </StatusLabel>
       {available !== undefined && (
         <StatusLabel status={available >= desired ? 'success' : 'warning'}>
-          {`Available: ${available}`}
+          {t('Available: {{available}}', { available })}
         </StatusLabel>
       )}
       {upToDate !== undefined && (
         <StatusLabel status={upToDate >= desired ? 'success' : 'warning'}>
-          {`Up-to-date: ${upToDate}`}
+          {t('Up-to-date: {{upToDate}}', { upToDate })}
         </StatusLabel>
       )}
-      {phase && <StatusLabel status={getPhaseStatus(phase)}>{`Phase: ${phase}`}</StatusLabel>}
+      {phase && (
+        <StatusLabel status={getPhaseStatus(phase)}>{t('Phase: {{phase}}', { phase })}</StatusLabel>
+      )}
       {readyCondition && (
         <StatusLabel status={isReady ? 'success' : 'error'}>
-          {isReady ? 'Ready' : 'Not Ready'}
+          {isReady ? t('Ready') : t('Not Ready')}
         </StatusLabel>
       )}
-      {paused && <StatusLabel status="warning">Paused</StatusLabel>}
+      {paused && <StatusLabel status="warning">{t('Paused')}</StatusLabel>}
     </Box>
   );
 }
