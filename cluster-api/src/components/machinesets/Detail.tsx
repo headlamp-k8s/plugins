@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -39,6 +40,7 @@ interface MachineSetDetailProps {
  * Main detail view component for the MachineSet resource.
  */
 export function MachineSetDetail({ node }: MachineSetDetailProps) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -46,7 +48,7 @@ export function MachineSetDetail({ node }: MachineSetDetailProps) {
   const crName = nameParam || node?.kubeObject?.metadata?.name;
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
 
-  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+  if (!crName) return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
 
   return (
     <MachineSetDetailContent crName={crName} namespace={namespace} crdName={MachineSet.crdName} />
@@ -86,17 +88,21 @@ function MachineSetDetailContentWithData({
   VersionedMachineSet,
   crdName,
 }: MachineSetDetailContentPropsWithVersion) {
+  const { t } = useTranslation();
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedMachineSet.useGet(crName, namespace ?? undefined);
 
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading MachineSet {crName}: {itemError?.message}
+        {t('Error loading MachineSet {{crName}}: {{message}}', {
+          crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
-  if (!item) return <Loader title="Loading MachineSet details" />;
+  if (!item) return <Loader title={t('Loading MachineSet details')} />;
 
   const spec = item.spec;
   const status = item.status;
@@ -106,7 +112,7 @@ function MachineSetDetailContentWithData({
 
   const extraInfo: NameValueTableRow[] = [
     {
-      name: 'Definition',
+      name: t('Definition'),
       value: (
         <Link routeName="crd" params={{ name: crdName }}>
           {crdName}
@@ -115,29 +121,29 @@ function MachineSetDetailContentWithData({
       hide: !crd,
     },
     {
-      name: 'Cluster',
+      name: t('Cluster'),
       value: spec?.clusterName ?? '-',
     },
     {
-      name: 'Replicas',
-      value: renderReplicas(item),
+      name: t('Replicas'),
+      value: renderReplicas(item, t),
       hide: !showReplicas(item),
     },
     {
-      name: 'Delete Policy',
+      name: t('Delete Policy'),
       value: deleteOrder,
     },
     {
-      name: 'Min Ready Seconds',
+      name: t('Min Ready Seconds'),
       value: spec?.minReadySeconds ?? 0,
     },
     {
-      name: 'Machine Naming Strategy',
+      name: t('Machine Naming Strategy'),
       value: spec?.machineNamingStrategy?.template ?? '-',
       hide: !spec?.machineNamingStrategy?.template,
     },
     {
-      name: 'Selector',
+      name: t('Selector'),
       value: spec?.selector?.matchLabels ? (
         <MetadataDictGrid dict={spec.selector.matchLabels as Record<string, string>} />
       ) : (
@@ -145,7 +151,7 @@ function MachineSetDetailContentWithData({
       ),
     },
     {
-      name: 'Observed Generation',
+      name: t('Observed Generation'),
       value:
         status?.observedGeneration !== undefined
           ? `${status.observedGeneration} / ${item.metadata?.generation ?? '-'}`
@@ -156,7 +162,7 @@ function MachineSetDetailContentWithData({
     ...(failure?.failureReason
       ? [
           {
-            name: 'Failure Reason',
+            name: t('Failure Reason'),
             value: <StatusLabel status="error">{failure.failureReason}</StatusLabel>,
           },
         ]
@@ -164,7 +170,7 @@ function MachineSetDetailContentWithData({
     ...(failure?.failureMessage
       ? [
           {
-            name: 'Failure Message',
+            name: t('Failure Message'),
             value: (
               <Typography component="span" sx={{ color: 'error.main' }}>
                 {failure.failureMessage}
@@ -207,7 +213,7 @@ function MachineSetDetailContentWithData({
         {
           id: 'cluster-api.machine-set-template',
           section: (
-            <SectionBox title="Machine Template">
+            <SectionBox title={t('Machine Template')}>
               <TemplateSection item={item} />
             </SectionBox>
           ),
@@ -223,13 +229,14 @@ function MachineSetDetailContentWithData({
  * @param props - Component properties.
  */
 function MachineSetDetailContent(props: MachineSetDetailContentProps) {
+  const { t } = useTranslation();
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedMachineSet = useMemo(
     () => (apiVersion ? MachineSet.withApiVersion(apiVersion) : MachineSet),
     [apiVersion]
   );
-  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  if (!apiVersion) return <Loader title={t('Detecting Cluster API version')} />;
   return (
     <MachineSetDetailContentWithData
       {...props}
