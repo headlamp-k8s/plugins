@@ -1,0 +1,26 @@
+version: 0.2.0-beta
+name: headlamp_cluster-api
+displayName: Cluster API plugin for Headlamp
+createdAt: "2026-06-05T00:00:00Z"
+logoURL: "https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/main/logos/kubernetes-cluster-logos_final-02.svg"
+description: A comprehensive Headlamp plugin for managing Kubernetes Cluster API (CAPI) resources with a powerful, intuitive graphical interface for declarative cluster lifecycle management.
+changes:
+  - kind: added
+    description: "Glance components for Cluster, ClusterClass, KubeadmConfig, MachineHealthCheck, and other resources for quick status overview in the map view."
+  - kind: added
+    description: "Cluster Error Overview dashboard with cluster health analysis, error definitions, and error overview components."
+  - kind: added
+    description: "Machine management actions: view, replace, pause, and resume machine reconciliation."
+  - kind: added
+    description: "Shared Pause and Resume reconciliation action components, replacing local per-resource implementations."
+  - kind: added
+    description: "Prometheus metrics support for Cluster API resources via the Prometheus plugin integration."
+  - kind: added
+    description: "Prometheus Helm values file (yamls/capi-prometheus-values.yaml) for configuring CAPI metrics scraping."
+  - kind: changed
+    description: "Map view updated with CAPI status derivation and v1beta2 Glance component support, enhancing map rendering logic."
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/cluster-api-0.2.0-beta/headlamp-k8s-cluster-api-0.2.0-beta.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:7384a74b72caeff0f32ce45fc3828b173876ea06412fac3b12186a8a9b4d9907"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
