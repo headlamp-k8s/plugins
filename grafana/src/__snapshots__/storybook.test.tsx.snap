@@ -3,26 +3,7 @@
 exports[`GrafanaButtonPure Stories > renders Default correctly 1`] = `
 <div>
   <button
-    aria-haspopup="true"
-    aria-label="View in Grafana"
-    class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeLarge css-bc0omg-MuiButtonBase-root-MuiIconButton-root"
-    data-mui-internal-clone-element="true"
-    tabindex="0"
-    type="button"
-  >
-    <span />
-    <span
-      class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
-    />
-  </button>
-</div>
-`;
-
-exports[`GrafanaButtonPure Stories > renders InIframe correctly 1`] = `
-<div>
-  <button
-    aria-haspopup="true"
-    aria-label="View in Grafana"
+    aria-label="View in Grafana (opens in new tab)"
     class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeLarge css-bc0omg-MuiButtonBase-root-MuiIconButton-root"
     data-mui-internal-clone-element="true"
     tabindex="0"
@@ -68,21 +49,21 @@ exports[`SettingsPure Stories > renders Default correctly 1`] = `
         class="MuiFormControl-root css-pe0pe4-MuiFormControl-root"
       >
         <label
-          class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard css-1xqhkuv-MuiFormLabel-root-MuiInputLabel-root"
+          class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-outlined css-1f7ywh2-MuiFormLabel-root-MuiInputLabel-root"
           data-shrink="true"
           id="Grafana-cluster-selector"
         >
           Cluster
         </label>
         <div
-          class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-m7fptp-MuiInputBase-root-MuiInput-root-MuiSelect-root"
+          class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl css-uwmwwo-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
         >
           <div
             aria-controls=":r1:"
             aria-expanded="false"
             aria-haspopup="listbox"
             aria-labelledby="Grafana-cluster-selector Grafana-cluster-selector-select"
-            class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input css-9t3t1q-MuiSelect-select-MuiInputBase-input-MuiInput-input"
+            class="MuiSelect-select MuiSelect-outlined MuiInputBase-input MuiOutlinedInput-input css-1lfw172-MuiSelect-select-MuiInputBase-input-MuiOutlinedInput-input"
             id="Grafana-cluster-selector-select"
             role="combobox"
             tabindex="0"
@@ -98,7 +79,7 @@ exports[`SettingsPure Stories > renders Default correctly 1`] = `
           />
           <svg
             aria-hidden="true"
-            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-pqjvzy-MuiSvgIcon-root-MuiSelect-icon"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconOutlined css-hfutr2-MuiSvgIcon-root-MuiSelect-icon"
             data-testid="ArrowDropDownIcon"
             focusable="false"
             viewBox="0 0 24 24"
@@ -107,9 +88,21 @@ exports[`SettingsPure Stories > renders Default correctly 1`] = `
               d="M7 10l5 5 5-5z"
             />
           </svg>
+          <fieldset
+            aria-hidden="true"
+            class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+          >
+            <legend
+              class="css-sl37lx-MuiNotchedOutlined-root"
+            >
+              <span>
+                Cluster
+              </span>
+            </legend>
+          </fieldset>
         </div>
         <p
-          class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-filled css-nnd8o8-MuiFormHelperText-root"
+          class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained MuiFormHelperText-filled css-11mrhxr-MuiFormHelperText-root"
         >
           Clusters marked with "✓" have assigned Grafana URLs.
         </p>
@@ -126,14 +119,23 @@ exports[`SettingsPure Stories > renders Default correctly 1`] = `
           class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-9 MuiGrid-grid-md-10 css-ui3itl-MuiGrid-root"
         >
           <div
-            class="MuiFormControl-root MuiTextField-root css-1u3bzj6-MuiFormControl-root-MuiTextField-root"
+            class="MuiFormControl-root MuiFormControl-fullWidth MuiTextField-root css-wb57ya-MuiFormControl-root-MuiTextField-root"
           >
+            <label
+              class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard css-1xqhkuv-MuiFormLabel-root-MuiInputLabel-root"
+              data-shrink="true"
+              for=":r2:"
+              id=":r2:-label"
+            >
+              Grafana URL
+            </label>
             <div
-              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-16i65zs-MuiInputBase-root-MuiInput-root"
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl css-kefb05-MuiInputBase-root-MuiInput-root"
             >
               <input
                 aria-describedby=":r2:-helper-text"
                 aria-invalid="false"
+                aria-label="Grafana URL"
                 class="MuiInputBase-input MuiInput-input css-1x51dt5-MuiInputBase-input-MuiInput-input"
                 id=":r2:"
                 type="text"
@@ -186,21 +188,21 @@ exports[`SettingsPure Stories > renders InvalidUrl correctly 1`] = `
         class="MuiFormControl-root css-pe0pe4-MuiFormControl-root"
       >
         <label
-          class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard css-1xqhkuv-MuiFormLabel-root-MuiInputLabel-root"
+          class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-outlined css-1f7ywh2-MuiFormLabel-root-MuiInputLabel-root"
           data-shrink="true"
           id="Grafana-cluster-selector"
         >
           Cluster
         </label>
         <div
-          class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl css-m7fptp-MuiInputBase-root-MuiInput-root-MuiSelect-root"
+          class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl css-uwmwwo-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
         >
           <div
             aria-controls=":r4:"
             aria-expanded="false"
             aria-haspopup="listbox"
             aria-labelledby="Grafana-cluster-selector Grafana-cluster-selector-select"
-            class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input css-9t3t1q-MuiSelect-select-MuiInputBase-input-MuiInput-input"
+            class="MuiSelect-select MuiSelect-outlined MuiInputBase-input MuiOutlinedInput-input css-1lfw172-MuiSelect-select-MuiInputBase-input-MuiOutlinedInput-input"
             id="Grafana-cluster-selector-select"
             role="combobox"
             tabindex="0"
@@ -216,7 +218,7 @@ exports[`SettingsPure Stories > renders InvalidUrl correctly 1`] = `
           />
           <svg
             aria-hidden="true"
-            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-pqjvzy-MuiSvgIcon-root-MuiSelect-icon"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconOutlined css-hfutr2-MuiSvgIcon-root-MuiSelect-icon"
             data-testid="ArrowDropDownIcon"
             focusable="false"
             viewBox="0 0 24 24"
@@ -225,9 +227,21 @@ exports[`SettingsPure Stories > renders InvalidUrl correctly 1`] = `
               d="M7 10l5 5 5-5z"
             />
           </svg>
+          <fieldset
+            aria-hidden="true"
+            class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+          >
+            <legend
+              class="css-sl37lx-MuiNotchedOutlined-root"
+            >
+              <span>
+                Cluster
+              </span>
+            </legend>
+          </fieldset>
         </div>
         <p
-          class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-filled css-nnd8o8-MuiFormHelperText-root"
+          class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained MuiFormHelperText-filled css-11mrhxr-MuiFormHelperText-root"
         >
           Clusters marked with "✓" have assigned Grafana URLs.
         </p>
@@ -244,14 +258,23 @@ exports[`SettingsPure Stories > renders InvalidUrl correctly 1`] = `
           class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-9 MuiGrid-grid-md-10 css-ui3itl-MuiGrid-root"
         >
           <div
-            class="MuiFormControl-root MuiTextField-root css-1u3bzj6-MuiFormControl-root-MuiTextField-root"
+            class="MuiFormControl-root MuiFormControl-fullWidth MuiTextField-root css-wb57ya-MuiFormControl-root-MuiTextField-root"
           >
+            <label
+              class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard MuiFormLabel-colorPrimary Mui-error MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-standard css-1xqhkuv-MuiFormLabel-root-MuiInputLabel-root"
+              data-shrink="true"
+              for=":r5:"
+              id=":r5:-label"
+            >
+              Grafana URL
+            </label>
             <div
-              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary Mui-error MuiInputBase-formControl css-16i65zs-MuiInputBase-root-MuiInput-root"
+              class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary Mui-error MuiInputBase-fullWidth MuiInputBase-formControl css-kefb05-MuiInputBase-root-MuiInput-root"
             >
               <input
                 aria-describedby=":r5:-helper-text"
                 aria-invalid="true"
+                aria-label="Grafana URL"
                 class="MuiInputBase-input MuiInput-input css-1x51dt5-MuiInputBase-input-MuiInput-input"
                 id=":r5:"
                 type="text"

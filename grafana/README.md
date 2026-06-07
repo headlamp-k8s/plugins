@@ -6,7 +6,7 @@ The [Grafana Headlamp Plugin](https://github.com/headlamp-k8s/plugins/tree/main/
 
 Use the Grafana plugin to seamlessly jump from a Kubernetes resource view in Headlamp straight to its corresponding metrics in Grafana!
 
-This is an alpha release. Please leave any feedback as a [GitHub issue](https://github.com/headlamp-k8s/plugins/issues/new), or drop by the `#headlamp` channel on the Kubernetes Slack.
+This is a beta release. Please leave any feedback as a [GitHub issue](https://github.com/headlamp-k8s/plugins/issues/new), or drop by the `#headlamp` channel on the Kubernetes Slack.
 
 ## Setup
 

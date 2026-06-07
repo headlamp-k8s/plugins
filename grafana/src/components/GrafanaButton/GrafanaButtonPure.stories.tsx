@@ -5,11 +5,8 @@ export default {
   title: 'Components/GrafanaButtonPure',
   component: GrafanaButtonPure,
   argTypes: {
-    kubernetesId: { control: 'text' },
-    namespace: { control: 'text' },
+    dashboard: { control: 'text' },
     grafanaUrl: { control: 'text' },
-    isInIframe: { control: 'boolean' },
-    onIframeMessage: { action: 'iframe message' },
   },
 } as Meta;
 
@@ -17,17 +14,6 @@ const Template: StoryFn<GrafanaButtonPureProps> = args => <GrafanaButtonPure {..
 
 export const Default = Template.bind({});
 Default.args = {
-  kubernetesId: 'example-id',
-  namespace: 'default',
-  grafanaUrl: 'https://Grafana.example.com',
-  isInIframe: false,
-};
-
-export const InIframe = Template.bind({});
-InIframe.args = {
-  ...Default.args,
-  isInIframe: true,
-  onIframeMessage: (message: { action: string; redirectPath: string }) => {
-    window.alert(`iframe message: ${JSON.stringify(message)}`);
-  },
+  dashboard: '/d/example',
+  grafanaUrl: 'https://grafana.example.com',
 };

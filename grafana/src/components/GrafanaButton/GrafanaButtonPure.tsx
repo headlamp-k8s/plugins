@@ -13,12 +13,18 @@ export function GrafanaButtonPure({ dashboard, grafanaUrl }: GrafanaButtonPurePr
 
     let redirectUrl = dashboard;
     if (grafanaUrl && !dashboard.startsWith('http')) {
-      const base = grafanaUrl.endsWith('/') ? grafanaUrl : `${grafanaUrl}/`;
-      const relative = dashboard.startsWith('/') ? dashboard.slice(1) : dashboard;
-      redirectUrl = new URL(relative, base).toString();
+      try {
+        const base = grafanaUrl.endsWith('/') ? grafanaUrl : `${grafanaUrl}/`;
+        const relative = dashboard.startsWith('/') ? dashboard.slice(1) : dashboard;
+        redirectUrl = new URL(relative, base).toString();
+      } catch (e) {
+        const base = grafanaUrl.endsWith('/') ? grafanaUrl : `${grafanaUrl}/`;
+        const relative = dashboard.startsWith('/') ? dashboard.slice(1) : dashboard;
+        redirectUrl = `${base}${relative}`;
+      }
     }
 
-    window.open(redirectUrl, '_blank');
+    window.open(redirectUrl, '_blank', 'noopener,noreferrer');
   };
 
   if (!grafanaUrl && !dashboard.startsWith('http')) {
@@ -26,11 +32,10 @@ export function GrafanaButtonPure({ dashboard, grafanaUrl }: GrafanaButtonPurePr
   }
 
   return (
-    <Tooltip title="View in Grafana">
+    <Tooltip title="View in Grafana (opens in new tab)">
       <IconButton
         onClick={handleClick}
-        aria-label="View in Grafana"
-        aria-haspopup="true"
+        aria-label="View in Grafana (opens in new tab)"
         size="large"
       >
         <Icon icon="simple-icons:grafana" width="20" />

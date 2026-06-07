@@ -18,12 +18,17 @@ type Config = {
   [cluster: string]: ClusterLevelConf;
 };
 
+let configStoreInstance: ConfigStore<Config> | null = null;
+
 /**
  * Returns a ConfigStore instance for the Grafana plugin.
  * @returns {ConfigStore<Config>} A ConfigStore instance for managing the Grafana plugin configuration.
  */
 export function getConfigStore(): ConfigStore<Config> {
-  return new ConfigStore<Config>('@headlamp-k8s/grafana');
+  if (!configStoreInstance) {
+    configStoreInstance = new ConfigStore<Config>('@headlamp-k8s/grafana');
+  }
+  return configStoreInstance;
 }
 
 /**

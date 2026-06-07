@@ -35,6 +35,9 @@ export const SettingsPure: React.FC<SettingsPureProps> = ({
       name: 'Grafana URL',
       value: (
         <TextField
+          fullWidth
+          label="Grafana URL"
+          inputProps={{ 'aria-label': 'Grafana URL' }}
           helperText={!validUrl && grafanaUrl ? 'Invalid URL' : 'Enter Grafana URL'}
           error={!validUrl && grafanaUrl !== ''}
           value={grafanaUrl}
@@ -46,11 +49,12 @@ export const SettingsPure: React.FC<SettingsPureProps> = ({
 
   return (
     <SectionBox title="Settings">
-      <FormControl sx={{ minWidth: 120 }}>
+      <FormControl sx={{ minWidth: 120 }} variant="outlined">
         <InputLabel id="Grafana-cluster-selector">Cluster</InputLabel>
         <Select
           labelId="Grafana-cluster-selector"
           id="Grafana-cluster-selector-select"
+          label="Cluster"
           value={selectedCluster}
           onChange={e => onClusterChange(e.target.value as string)}
           renderValue={value => value}
