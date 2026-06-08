@@ -701,6 +701,11 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
                 const deployedAt = new Date(release.info.last_deployed).getTime();
                 return <DateLabel key={deployedAt} date={deployedAt} format="mini" />;
               },
+              sort: (a, b) => {
+                const aTime = new Date(a.info.last_deployed).getTime();
+                const bTime = new Date(b.info.last_deployed).getTime();
+                return aTime - bTime;
+              },
             },
             {
               label: t('Actions'),
