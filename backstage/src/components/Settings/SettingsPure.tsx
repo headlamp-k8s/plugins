@@ -1,5 +1,5 @@
 import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { MenuItem, Select } from '@mui/material';
+import { Alert, MenuItem, Select } from '@mui/material';
 import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
@@ -46,6 +46,17 @@ export const SettingsPure: React.FC<SettingsPureProps> = ({
 
   return (
     <SectionBox title="Settings">
+      <Alert
+        severity="info"
+        sx={theme => ({
+          mb: 2,
+          color: theme.palette.text.primary,
+          backgroundColor: theme.palette.background.paper,
+        })}
+      >
+        The "View in Backstage" button is shown only on resources that have Backstage labels (e.g.
+        "backstage.io/kubernetes-id").
+      </Alert>
       <FormControl sx={{ minWidth: 120 }}>
         <InputLabel id="backstage-cluster-selector">Cluster</InputLabel>
         <Select

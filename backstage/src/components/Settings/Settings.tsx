@@ -12,11 +12,11 @@ function validateUrl(url: string): boolean {
 }
 
 interface SettingsProps {
-  data: SettingsData;
-  onDataChange: (newData: SettingsData) => void;
+  data?: SettingsData;
+  onDataChange?: (newData: SettingsData) => void;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ data, onDataChange }) => {
+export const Settings: React.FC<SettingsProps> = ({ data = {}, onDataChange }) => {
   const clusters = useClustersConf() || {};
   const [selectedCluster, setSelectedCluster] = useState('');
   const [validUrl, setValidUrl] = useState(false);
@@ -53,7 +53,7 @@ export const Settings: React.FC<SettingsProps> = ({ data, onDataChange }) => {
         }
       }
 
-      onDataChange(newData);
+      onDataChange?.(newData);
       setValidUrl(validateUrl(newURL));
     },
     [data, onDataChange, selectedCluster]
