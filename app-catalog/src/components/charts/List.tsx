@@ -213,7 +213,12 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             // Capture available versions from the response and set AVAILABLE_VERSIONS
             globalThis.AVAILABLE_VERSIONS = AvailableComponentVersions(data.entries);
           } else {
-            setCharts(Object.fromEntries(data.packages.map((chart: any) => [chart.name, chart])));
+            // Key by package_id (not name): ArtifactHub can return the same chart name from
+            // multiple repositories on a single page, and keying by name would collapse those
+            // duplicates, leaving fewer cards than were fetched.
+            setCharts(
+              Object.fromEntries(data.packages.map((chart: any) => [chart.package_id, chart]))
+            );
             setChartsTotalCount(parseInt(total));
           }
         } catch (err) {
@@ -231,17 +236,17 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
     if (charts && Object.keys(charts).length > 0) {
       const fetchIcons = async () => {
         try {
-          const iconUrls = {};
+          const iconUrls: { [url: string]: string } = {};
           // charts is a map of name -> chart[]
           const list = Object.values(charts as HelmIndex).flat();
           const iconPromises = list.map(async (chart: any) => {
             // const iconPromises = Object.values(charts).flatMap(chartArray =>
             //   chartArray.map(async chart => {
-            const iconURL = chart.icon ?? '';
+            const iconURL: string = chart.icon ?? '';
             if (iconURL === '') {
               return;
             }
-            const isURL = urlString => {
+            const isURL = (urlString: string) => {
               try {
                 new URL(urlString);
                 return true;
@@ -360,22 +365,17 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
             }}
           >
             {
-              // Filter out the charts meeting the value entered for search field and display only the matching charts
-              Object.keys(
-                Object.keys(charts)
-                  .filter(key => key.includes(search))
-                  .reduce((obj, key) => {
-                    return Object.assign(obj, {
-                      [key]: charts[key],
-                    });
-                  }, {})
-              ).map(chartName => {
-                // When a chart contains multiple versions, only display the first version
-                return (
-                  Array.isArray(charts[chartName])
-                    ? charts[chartName]?.slice?.(0, 1) || []
-                    : [charts[chartName]]
-                ).map(chart => {
+              // Flatten the charts into a single list (a value is either a single chart or, for
+              // vanilla Helm repos, an array of versions where we only show the first), then
+              // filter by the search term against the chart name. Filtering on the chart name
+              // rather than the map key keeps search working now that the map is keyed by a
+              // unique id (e.g. package_id) instead of the name.
+              Object.values(charts)
+                .flatMap((value: any) =>
+                  Array.isArray(value) ? value?.slice?.(0, 1) || [] : [value]
+                )
+                .filter((chart: any) => (chart?.name ?? '').includes(search))
+                .map((chart: any) => {
                   return (
                     <Card
                       key={`${chart.name}-${chart.version}`}
@@ -587,8 +587,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
                       </CardActions>
                     </Card>
                   );
-                });
-              })
+                })
             }
           </Box>
         )}

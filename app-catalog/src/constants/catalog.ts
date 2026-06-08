@@ -9,7 +9,9 @@ export const CUSTOM_CHART_VALUES_PREFIX = 'CUSTOM_CHART_VALUES_PREFIX';
 // The name of the helm repository added before installing an application, while using vanilla helm repository
 export const APP_CATALOG_HELM_REPOSITORY = 'app-catalog';
 
-export const PAGE_OFFSET_COUNT_FOR_CHARTS = 9;
+// Page size for the charts list. 12 divides evenly into the 2/3/4/6 responsive
+// grid column counts, so rows fill without a ragged trailing row.
+export const PAGE_OFFSET_COUNT_FOR_CHARTS = 12;
 
 // Constants for the supported protocols
 export const HELM_PROTOCOL = 'helm';
