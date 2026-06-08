@@ -41,8 +41,8 @@ function ForceReconciliationAction(props) {
             .then(response => {
               enqueueSnackbar(
                 response.spec.force
-                  ? `Successfully Disabled force reconciliation for ${resource.metadata.name}`
-                  : `Successfully Enabled force reconciliation for ${resource.metadata.name}`,
+                  ? `Successfully Enabled force reconciliation for ${resource.metadata.name}`
+                  : `Successfully Disabled force reconciliation for ${resource.metadata.name}`,
                 { variant: 'success' }
               );
             })
@@ -51,13 +51,15 @@ function ForceReconciliationAction(props) {
             });
         }}
         title={
-          resource.jsonData.force ? 'Enable Force Reconciliation' : 'Disable Force Reconciliation'
+          resource.jsonData.spec.force
+            ? 'Disable Force Reconciliation'
+            : 'Enable Force Reconciliation'
         }
         description={`${
-          resource.jsonData.force
-            ? 'Are you sure you want to enable force reconciliation for '
-            : 'Are you sure you want to disable force reconciliation for '
-        }${resource?.jsonData.metadata.name}?`}
+          resource.jsonData.spec.force
+            ? 'Are you sure you want to disable force reconciliation for '
+            : 'Are you sure you want to enable force reconciliation for '
+        }${resource.metadata.name}?`}
       />
     </>
   );
