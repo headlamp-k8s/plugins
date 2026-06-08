@@ -700,6 +700,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
               getter: (release: Release) => (
                 <ReleaseActionsMenu
                   release={release}
+                  latestAppVersion={latestMap[release.name]}
                   onUpgrade={handleUpgrade}
                   onRollback={handleRollback}
                   onDelete={handleDelete}
