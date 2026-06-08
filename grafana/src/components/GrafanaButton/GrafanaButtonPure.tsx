@@ -14,10 +14,12 @@ export function GrafanaButtonPure({ dashboard, grafanaUrl }: GrafanaButtonPurePr
     let redirectUrl = dashboard;
     if (grafanaUrl && !dashboard.startsWith('http')) {
       try {
-        const base = grafanaUrl.endsWith('/') ? grafanaUrl : `${grafanaUrl}/`;
-        const relative = dashboard.startsWith('/') ? dashboard.slice(1) : dashboard;
-        redirectUrl = new URL(relative, base).toString();
+        // Use URL constructor with the full dashboard path (including query params)
+        // The second arg (base) ensures proper resolution
+        const url = new URL(dashboard, grafanaUrl);
+        redirectUrl = url.toString();
       } catch (e) {
+        // Fallback to string concatenation if URL parsing fails
         const base = grafanaUrl.endsWith('/') ? grafanaUrl : `${grafanaUrl}/`;
         const relative = dashboard.startsWith('/') ? dashboard.slice(1) : dashboard;
         redirectUrl = `${base}${relative}`;
