@@ -692,7 +692,15 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
             },
             {
               label: t('Updated'),
-              getter: release => <DateLabel date={release.info.last_deployed} format="mini" />,
+              // Key by the deploy timestamp (epoch) so a fresh DateLabel/TimeAgo mounts
+              // whenever the value changes. Without this, SimpleTable reuses the cell
+              // across rows on re-sort/re-render and headlamp's TimeAgo (which captures
+              // the date in a one-time effect with empty deps) keeps showing the
+              // previous row's age.
+              getter: release => {
+                const deployedAt = new Date(release.info.last_deployed).getTime();
+                return <DateLabel key={deployedAt} date={deployedAt} format="mini" />;
+              },
             },
             {
               label: t('Actions'),

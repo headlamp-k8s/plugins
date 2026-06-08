@@ -305,7 +305,12 @@ export default function ReleaseDetail() {
               },
               {
                 label: t('Updated'),
-                getter: data => <DateLabel date={data.info.last_deployed} format="mini" />,
+                // Key by the deploy timestamp (epoch) so TimeAgo remounts when the value
+                // changes, instead of showing a reused row's stale age after a re-sort.
+                getter: data => {
+                  const deployedAt = new Date(data.info.last_deployed).getTime();
+                  return <DateLabel key={deployedAt} date={deployedAt} format="mini" />;
+                },
               },
             ]}
           />
