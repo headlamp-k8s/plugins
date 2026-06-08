@@ -19,7 +19,7 @@ const SERVICE_PROXY = '/serviceproxy';
  * @param url - The URL to be encoded as a query parameter.
  * @returns The encoded URL as a query parameter.
  */
-const getURLSearchParams = url => {
+const getURLSearchParams = (url: string) => {
   return new URLSearchParams({ request: url }).toString();
 };
 
@@ -60,13 +60,15 @@ export async function fetchChartsFromArtifact(
     } else if (chartCfg.chartProfile === COMMUNITY_REPO) {
       let requestParam = '';
       if (!category || category.value === 0) {
-        requestParam = `api/v1/packages/search?kind=0&ts_query_web=${search}&sort=relevance&facets=true&limit=${limit}&offset=${
+        requestParam = `api/v1/packages/search?kind=0&ts_query_web=${search}&sort=relevance&facets=true&verified_publisher=${verified}&limit=${limit}&offset=${
           (page - 1) * limit
         }`;
       } else {
         requestParam = `api/v1/packages/search?kind=0&ts_query_web=${search}&category=${
           category.value
-        }&sort=relevance&facets=true&limit=${limit}&offset=${(page - 1) * limit}`;
+        }&sort=relevance&facets=true&verified_publisher=${verified}&limit=${limit}&offset=${
+          (page - 1) * limit
+        }`;
       }
 
       const url =
@@ -93,9 +95,27 @@ export async function fetchChartsFromArtifact(
   url.searchParams.set('deprecated', 'false');
   url.searchParams.set('verified_publisher', verified.toString());
 
-  const response = await fetch(url.toString());
-  const total = response.headers?.get('pagination-total-count') ?? 0;
+  // Route through Headlamp's external proxy instead of fetching artifacthub.io directly.
+  // A direct fetch from the Electron renderer is blocked by CORS: ArtifactHub sits behind
+  // CloudFront, which serves cached responses (X-Cache: Hit) without an
+  // Access-Control-Allow-Origin header, so whether a request succeeds depends on the edge
+  // cache state. The proxy performs the request server-side, avoiding CORS entirely.
+  const response = await fetch(`http://localhost:4466/externalproxy`, {
+    headers: {
+      'Forward-To': url.toString(),
+    },
+  });
   const jsonResponse = await response.json();
+
+  // The external proxy does not forward upstream response headers, so the usual
+  // `pagination-total-count` header is unavailable here. Instead, derive a total that keeps
+  // the pagination "next" control enabled while a full page of results is returned, and
+  // disables it once a page comes back partial or empty (i.e. the last page).
+  const pageItemCount = jsonResponse?.packages?.length ?? 0;
+  const total =
+    pageItemCount === limit
+      ? page * limit + 1 // a full page implies there may be more
+      : (page - 1) * limit + pageItemCount; // partial/empty page is the last one
   return { data: jsonResponse, total };
 }
 
@@ -196,7 +216,12 @@ export async function fetchLatestAppVersion(chartName: string): Promise<string> 
     url.searchParams.set('kind', '0');
     url.searchParams.set('ts_query_web', chartName);
 
-    const response = await fetch(url.toString());
+    // Route through Headlamp's external proxy to avoid CORS, same as fetchChartsFromArtifact.
+    const response = await fetch(`http://localhost:4466/externalproxy`, {
+      headers: {
+        'Forward-To': url.toString(),
+      },
+    });
     const dataResponse = await response.json();
     const packages: any[] = dataResponse?.packages ?? [];
 
