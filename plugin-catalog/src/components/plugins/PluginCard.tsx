@@ -12,7 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import { PluginPackage } from './List';
-import PluginIcon from './plugin-icon.svg?react';
+import PluginIcon from './plugin-icon.svg';
 
 export interface PluginCardProps {
   plugin: PluginPackage;

@@ -15,3 +15,12 @@
  */
 
 /// <reference types="@kinvolk/headlamp-plugin" />
+
+// headlamp-plugin's vite config runs vite-plugin-svgr with `include: '**/*.svg'`,
+// so a bare `*.svg` import is transformed into a React component (the `?react`
+// query is NOT honored by the build and would yield a URL string at runtime).
+// Override the default `*.svg` => string typing so tsc agrees with the build.
+declare module '*.svg' {
+  const content: React.FunctionComponent<React.SVGAttributes<SVGElement>>;
+  export default content;
+}
