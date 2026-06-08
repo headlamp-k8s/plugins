@@ -7,7 +7,18 @@ import {
   SectionBox,
   SectionHeader,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Button, CardMedia, Link, Snackbar, Tooltip, Typography } from '@mui/material';
+import {
+  Button,
+  CardMedia,
+  FormControl,
+  Link,
+  MenuItem,
+  Select,
+  SelectChangeEvent,
+  Snackbar,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import Markdown from 'markdown-to-jsx';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
@@ -86,7 +97,9 @@ export interface PluginDetailResp {
  * @property {string | null} currentActionMessage - The message related to the current action.
  * @property {number} currentActionProgress - The progress of the current action.
  * @property {string | null} alertMessage - The message to be displayed in the alert.
- * @property {() => void} onInstall - A function that is called when the plugin is installed.
+ * @property {string} selectedVersion - The version currently selected for installation.
+ * @property {(version: string) => void} onVersionChange - A function that is called when the user selects a different version to install.
+ * @property {(version: string) => void} onInstall - A function that is called when the plugin is installed, with the version selected for installation.
  * @property {(pluginName: string) => void} onUpdate - A function that is called when the plugin is updated.
  * @property {(pluginName: string) => void} onUninstall - A function that is called when the plugin is uninstalled.
  * @property {() => void} onCancel - A function that is called when the current action is cancelled.
@@ -99,7 +112,9 @@ export interface PurePluginDetailProps {
   currentActionMessage: string | null;
   currentActionProgress: number;
   alertMessage: string | null;
-  onInstall: () => void;
+  selectedVersion: string;
+  onVersionChange: (version: string) => void;
+  onInstall: (version: string) => void;
   onUpdate: (pluginName: string) => void;
   onUninstall: (pluginName: string) => void;
   onCancel: () => void;
@@ -131,6 +146,8 @@ export function PurePluginDetail({
   currentActionMessage,
   currentActionProgress,
   alertMessage,
+  selectedVersion,
+  onVersionChange,
   onInstall,
   onUpdate,
   onUninstall,
@@ -148,6 +165,26 @@ export function PurePluginDetail({
       `${artifactHubURLBase}&org=${pluginDetail.repository.organization_name}`,
     ];
   }, [pluginDetail]);
+
+  // Versions available for installation, sorted newest first.
+  const sortedVersions = React.useMemo(() => {
+    if (!pluginDetail?.available_versions?.length) {
+      return [];
+    }
+    return [...pluginDetail.available_versions].sort((a, b) => {
+      // Compare valid semver directly so prerelease ordering is preserved
+      // (e.g. 0.1.0-beta-1 < 0.1.0-beta-2 < 0.1.0); coercing would drop it.
+      if (semver.valid(a.version) && semver.valid(b.version)) {
+        return semver.rcompare(a.version, b.version);
+      }
+      return b.version.localeCompare(a.version);
+    });
+  }, [pluginDetail]);
+
+  // Only offer a selector when there is more than one version to choose from;
+  // otherwise the single available version is shown as plain text.
+  const showVersionSelector =
+    !!pluginDetail && !pluginDetail.isInstalled && sortedVersions.length > 1;
 
   return (
     <>
@@ -216,7 +253,7 @@ export function PurePluginDetail({
                           color: 'inherit',
                         },
                       }}
-                      onClick={onInstall}
+                      onClick={() => onInstall(selectedVersion)}
                     >
                       Install
                     </Button>
@@ -244,7 +281,24 @@ export function PurePluginDetail({
               { name: 'Description', value: pluginDetail.description },
               {
                 name: 'Available Version',
-                value: pluginDetail.version,
+                value: showVersionSelector ? (
+                  <FormControl size="small" sx={{ minWidth: 160 }}>
+                    <Select
+                      value={selectedVersion}
+                      onChange={(event: SelectChangeEvent) => onVersionChange(event.target.value)}
+                      disabled={currentAction !== null}
+                    >
+                      {sortedVersions.map(availableVersion => (
+                        <MenuItem key={availableVersion.version} value={availableVersion.version}>
+                          {availableVersion.version}
+                          {availableVersion.version === pluginDetail.version ? ' (latest)' : ''}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                ) : (
+                  pluginDetail.version
+                ),
               },
               {
                 name: 'Installed Version',
@@ -276,8 +330,14 @@ export function PurePluginDetail({
   );
 }
 
-function fetchHeadlampPluginDetail(repoName: string, pluginName: string) {
-  const url = `https://artifacthub.io/api/v1/packages/headlamp/${repoName}/${pluginName}`;
+function fetchHeadlampPluginDetail(repoName: string, pluginName: string, version?: string) {
+  // ArtifactHub serves a specific version's metadata (including its readme) when the
+  // version is appended as a path segment; without it the latest version is returned.
+  // Encode each path segment so special characters don't break the proxied request.
+  const basePath = `https://artifacthub.io/api/v1/packages/headlamp/${encodeURIComponent(
+    repoName
+  )}/${encodeURIComponent(pluginName)}`;
+  const url = version ? `${basePath}/${encodeURIComponent(version)}` : basePath;
 
   return fetch(`http://localhost:4466/externalproxy`, {
     method: 'GET',
@@ -325,6 +385,10 @@ export function PluginDetail() {
   const [currentActionMessage, setCurrentActionMessage] = useState<string | null>(null);
   const [currentActionProgress, setCurrentActionProgress] = useState<number>(0);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  // The version selected for installation; defaults to the latest once details load.
+  const [selectedVersion, setSelectedVersion] = useState<string>('');
+  // Tracks the most recent version-readme request so out-of-order responses are ignored.
+  const latestReadmeRequest = React.useRef<string>('');
   const url = `https://artifacthub.io/packages/headlamp/${repoName}/${pluginName}`;
 
   const fetchStatus = async () => {
@@ -381,6 +445,9 @@ export function PluginDetail() {
         const data = await fetchHeadlampPluginDetail(repoName, pluginName);
         const enrichedPluginData = await checkIfPluginIsInstalled(data);
         setPluginDetail(enrichedPluginData);
+        // Default to the latest version, but don't override a version the user
+        // has already picked (this runs again whenever currentAction changes).
+        setSelectedVersion(prev => prev || enrichedPluginData.version);
       }
 
       fetchStatus();
@@ -399,9 +466,28 @@ export function PluginDetail() {
     }
   }, [currentAction]);
 
-  const handleInstall = (pluginName: string) => {
+  const handleInstall = (pluginName: string, version?: string) => {
     setCurrentAction('Install');
-    PluginManager.install(identifier, pluginName, url);
+    // ArtifactHub serves a specific version's metadata at the same URL with the
+    // version appended as a path segment, which the desktop backend resolves.
+    const installURL = version ? `${url}/${encodeURIComponent(version)}` : url;
+    PluginManager.install(identifier, pluginName, installURL);
+  };
+
+  const handleVersionChange = async (version: string) => {
+    setSelectedVersion(version);
+    latestReadmeRequest.current = version;
+    try {
+      const versionDetail = await fetchHeadlampPluginDetail(repoName, pluginName, version);
+      // Ignore the response if the user has since selected another version.
+      if (latestReadmeRequest.current !== version) {
+        return;
+      }
+      setPluginDetail(prev => (prev ? { ...prev, readme: versionDetail.readme } : prev));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAlertMessage(`Failed to load details for version ${version}: ${message}`);
+    }
   };
 
   const handleUpdate = (pluginName: string) => {
@@ -431,7 +517,9 @@ export function PluginDetail() {
       currentActionMessage={currentActionMessage}
       currentActionProgress={currentActionProgress}
       alertMessage={alertMessage}
-      onInstall={() => handleInstall(pluginDetail!.display_name)}
+      selectedVersion={selectedVersion}
+      onVersionChange={handleVersionChange}
+      onInstall={(version: string) => handleInstall(pluginDetail!.display_name, version)}
       onUpdate={handleUpdate}
       onUninstall={handleUninstall}
       onCancel={handleCancel}

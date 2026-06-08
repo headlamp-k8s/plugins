@@ -80,10 +80,19 @@ Default.args = {
   currentActionState: null,
   currentActionMessage: null,
   currentActionProgress: 0,
-  onInstall: () => alert('Install action triggered'),
+  selectedVersion: '1.0.0',
+  onVersionChange: version => alert(`Version changed to ${version}`),
+  onInstall: version => alert(`Install action triggered for version ${version}`),
   onUpdate: pluginName => alert(`Update action triggered for ${pluginName}`),
   onUninstall: pluginName => alert(`Uninstall action triggered for ${pluginName}`),
   onCancel: () => alert('Cancel action triggered'),
+};
+
+export const Installable = Template.bind({});
+Installable.args = {
+  ...Default.args,
+  pluginDetail: { ...samplePluginDetail, isInstalled: false, version: '1.1.0' },
+  selectedVersion: '1.1.0',
 };
 
 export const Installing = Template.bind({});
