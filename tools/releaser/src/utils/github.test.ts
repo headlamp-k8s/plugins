@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Octokit } from '@octokit/rest';
 import fs from 'fs';
 import { 
@@ -16,6 +16,7 @@ vi.mock('fs');
 vi.mock('./git.js');
 
 describe('github utilities', () => {
+  const originalEnv = process.env;
   const mockOctokit = {
     repos: {
       getReleaseByTag: vi.fn(),
@@ -29,7 +30,11 @@ describe('github utilities', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(Octokit).mockReturnValue(mockOctokit as any);
-    process.env.GITHUB_TOKEN = 'mock-token';
+    process.env = { ...originalEnv, GITHUB_TOKEN: 'mock-token' };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   describe('getOwnerAndRepo', () => {
