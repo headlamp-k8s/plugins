@@ -8,28 +8,39 @@ export interface GrafanaButtonPureProps {
 }
 
 export function GrafanaButtonPure({ dashboard, grafanaUrl }: GrafanaButtonPureProps) {
+  const resolvedUrl = React.useMemo(() => {
+    try {
+      if (!grafanaUrl) {
+        return null;
+      }
+
+      const base = new URL(grafanaUrl);
+      const url = new URL(dashboard, base);
+
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return null;
+      }
+
+      // Only allow navigation within the configured Grafana instance.
+      if (url.origin !== base.origin) {
+        return null;
+      }
+
+      return url.toString();
+    } catch (e) {
+      return null;
+    }
+  }, [dashboard, grafanaUrl]);
+
   const handleClick = (event: React.MouseEvent) => {
     event.preventDefault();
-
-    let redirectUrl = dashboard;
-    if (grafanaUrl && !dashboard.startsWith('http')) {
-      try {
-        // Use URL constructor with the full dashboard path (including query params)
-        // The second arg (base) ensures proper resolution
-        const url = new URL(dashboard, grafanaUrl);
-        redirectUrl = url.toString();
-      } catch (e) {
-        // Fallback to string concatenation if URL parsing fails
-        const base = grafanaUrl.endsWith('/') ? grafanaUrl : `${grafanaUrl}/`;
-        const relative = dashboard.startsWith('/') ? dashboard.slice(1) : dashboard;
-        redirectUrl = `${base}${relative}`;
-      }
+    if (!resolvedUrl) {
+      return;
     }
-
-    window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+    window.open(resolvedUrl, '_blank', 'noopener,noreferrer');
   };
 
-  if (!grafanaUrl && !dashboard.startsWith('http')) {
+  if (!resolvedUrl) {
     return null;
   }
 
