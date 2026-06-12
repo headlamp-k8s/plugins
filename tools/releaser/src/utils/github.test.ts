@@ -16,7 +16,7 @@ vi.mock('node:fs');
 vi.mock('./git.js');
 
 describe('github utilities', () => {
-  const originalEnv = process.env;
+  const originalEnv = { ...process.env };
   const mockOctokit = {
     repos: {
       getReleaseByTag: vi.fn(),
@@ -34,7 +34,7 @@ describe('github utilities', () => {
   });
 
   afterEach(() => {
-    process.env = originalEnv;
+    process.env = { ...originalEnv };
   });
 
   describe('getOwnerAndRepo', () => {
