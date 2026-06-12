@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Octokit } from '@octokit/rest';
-import * as fs from 'node:fs';
+import * as fs from 'fs';
 import { 
   getOwnerAndRepo, 
   getOctokit, 
@@ -14,7 +14,7 @@ import {
 vi.mock('@octokit/rest', () => ({
   Octokit: vi.fn(),
 }));
-vi.mock('node:fs');
+vi.mock('fs');
 vi.mock('./git.js');
 
 describe('github utilities', () => {
