@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execFileSync } from 'child_process';
 import fs from 'fs';
+import path from 'path';
 import { 
   getRepoRoot, 
   getPluginVersion, 
@@ -73,7 +74,11 @@ describe('git utilities', () => {
       vi.mocked(execFileSync).mockReturnValue('abc123commitsha\n');
       const sha = getVersionBumpCommit('my-plugin', '1.2.3');
       expect(sha).toBe('abc123commitsha');
-      expect(execFileSync).toHaveBeenCalledWith('git', expect.arrayContaining(['log', '--format=%H', '-S', '"version": "1.2.3"']), expect.anything());
+      expect(execFileSync).toHaveBeenCalledWith(
+        'git',
+        ['log', '--format=%H', '-S', '"version": "1.2.3"', '--', path.join('my-plugin', 'package.json')],
+        expect.anything()
+      );
     });
 
     it('should fallback to latest package.json change if exact match not found', () => {

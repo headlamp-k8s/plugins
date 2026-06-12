@@ -68,16 +68,16 @@ describe('plugin utilities', () => {
     });
 
     it('should skip directories without package.json or correct keywords/scripts', () => {
-        vi.mocked(fs.readdirSync).mockReturnValue([
-          { name: 'not-a-plugin', isDirectory: () => true },
-        ] as any);
-  
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ name: 'just-a-dir' }));
-  
-        const plugins = getAllPlugins();
-        expect(plugins).toEqual([]);
-      });
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'not-a-plugin', isDirectory: () => true },
+      ] as any);
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ name: 'just-a-dir' }));
+
+      const plugins = getAllPlugins();
+      expect(plugins).toEqual([]);
+    });
   });
 
   describe('getPluginInfo', () => {
