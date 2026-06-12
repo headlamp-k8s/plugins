@@ -1,4 +1,9 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import {
+  getGangProgressLabel,
+  getGangProgressPercent,
+  getReadyMemberCount,
+} from '../utils/gangProgress';
 import { volcanoSchedulingApiVersion } from '../utils/volcanoApi';
 import { volcanoRoutePaths } from '../utils/volcanoRoutes';
 
@@ -127,5 +132,17 @@ export class VolcanoPodGroup extends KubeObject<KubeVolcanoPodGroup> {
 
   get failedCount(): number {
     return this.status?.failed || 0;
+  }
+
+  get readyMemberCount(): number {
+    return getReadyMemberCount(this.runningCount, this.succeededCount);
+  }
+
+  get gangProgressLabel(): string {
+    return getGangProgressLabel(this.minMember, this.readyMemberCount);
+  }
+
+  get gangProgressPercent(): number | null {
+    return getGangProgressPercent(this.minMember, this.readyMemberCount);
   }
 }
