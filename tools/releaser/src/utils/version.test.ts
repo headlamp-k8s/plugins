@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { sanitizeVersion, validateVersion } from './version.js';
-import chalk from 'chalk';
-
 describe('version utilities', () => {
   describe('sanitizeVersion', () => {
     let consoleSpy: any;
