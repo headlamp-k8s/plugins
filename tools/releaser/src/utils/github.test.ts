@@ -11,12 +11,13 @@ import {
   publishRelease 
 } from './github.js';
 
-vi.mock('@octokit/rest');
+vi.mock('@octokit/rest', () => ({
+  Octokit: vi.fn(),
+}));
 vi.mock('node:fs');
 vi.mock('./git.js');
 
 describe('github utilities', () => {
-  const originalEnv = { ...process.env };
   const mockOctokit = {
     repos: {
       getReleaseByTag: vi.fn(),
@@ -30,11 +31,11 @@ describe('github utilities', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(Octokit).mockReturnValue(mockOctokit as any);
-    process.env = { ...originalEnv, GITHUB_TOKEN: 'mock-token' };
+    vi.stubEnv('GITHUB_TOKEN', 'mock-token');
   });
 
   afterEach(() => {
-    process.env = { ...originalEnv };
+    vi.unstubAllEnvs();
   });
 
   describe('getOwnerAndRepo', () => {
