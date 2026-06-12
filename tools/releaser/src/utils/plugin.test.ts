@@ -67,9 +67,21 @@ describe('plugin utilities', () => {
       expect(plugins).toEqual(['plugin-a', 'plugin-b']);
     });
 
-    it('should skip directories without package.json or correct keywords/scripts', () => {
+    it('should skip directories without package.json', () => {
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'not-a-plugin', isDirectory: () => true },
+      ] as any);
+
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      const plugins = getAllPlugins();
+      expect(plugins).toEqual([]);
+      expect(fs.existsSync).toHaveBeenCalled();
+    });
+
+    it('should skip directories with invalid keywords/scripts', () => {
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'just-a-dir', isDirectory: () => true },
       ] as any);
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
