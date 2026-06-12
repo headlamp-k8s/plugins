@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, MockInstance } from 'vitest';
 import { sanitizeVersion, validateVersion } from './version.js';
 describe('version utilities', () => {
   describe('sanitizeVersion', () => {
-    let consoleSpy: any;
+    let consoleSpy: MockInstance;
 
     beforeEach(() => {
       consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
