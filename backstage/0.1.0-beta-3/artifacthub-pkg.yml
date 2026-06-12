@@ -1,0 +1,15 @@
+version: 0.1.0-beta-3
+name: headlamp_backstage
+displayName: Backstage
+createdAt: '2026-06-11T17:14:17Z'
+description: Adds an Open with Backstage action to Headlamp resource detail pages and supports Backstage Headlamp integration.
+changes:
+  - kind: changed
+    description: 'Update plugin dependencies'
+  - kind: changed
+    description: 'Add plugin settings information and fix lint issues'
+annotations:
+  headlamp/plugin/archive-url: 'https://github.com/headlamp-k8s/plugins/releases/download/backstage-0.1.0-beta-3/headlamp-k8s-backstage-0.1.0-beta-3.tar.gz'
+  headlamp/plugin/archive-checksum: 'SHA256:62544c020176e2f75fce420c70a038d8f9c2ea787a2fe0abfabed2d823bc0b25'
+  headlamp/plugin/version-compat: '>=0.22'
+  headlamp/plugin/distro-compat: 'in-cluster,web,docker-desktop,desktop'
