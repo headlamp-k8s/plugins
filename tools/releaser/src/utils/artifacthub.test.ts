@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as crypto from 'node:crypto';
 import * as yaml from 'js-yaml';
 import { 
   hasArtifactHubFile, 
@@ -13,8 +13,8 @@ import {
 import * as pluginUtils from './plugin.js';
 import * as githubUtils from './github.js';
 
-vi.mock('fs');
-vi.mock('crypto');
+vi.mock('node:fs');
+vi.mock('node:crypto');
 vi.mock('js-yaml');
 vi.mock('./plugin.js');
 vi.mock('./github.js');
