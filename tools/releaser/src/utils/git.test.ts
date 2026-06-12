@@ -19,7 +19,9 @@ import {
   tagExists
 } from './git.js';
 
-vi.mock('child_process');
+vi.mock('child_process', () => ({
+  execFileSync: vi.fn(),
+}));
 vi.mock('fs');
 
 describe('git utilities', () => {
