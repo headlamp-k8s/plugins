@@ -8,8 +8,8 @@
     "plugin-releaser": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
-    "start": "tsc && node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "npm run build && node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
