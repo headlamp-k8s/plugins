@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { MockInstance } from 'vitest';
 import { sanitizeVersion, validateVersion } from './version.js';
 describe('version utilities', () => {
@@ -8,6 +8,10 @@ describe('version utilities', () => {
 
     beforeEach(() => {
       consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleSpy.mockRestore();
     });
 
     it('should return the same version if no leading v', () => {
