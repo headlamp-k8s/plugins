@@ -14,8 +14,19 @@ import * as pluginUtils from './plugin.js';
 import * as githubUtils from './github.js';
 
 vi.mock('fs');
-vi.mock('crypto');
-vi.mock('js-yaml');
+vi.mock('crypto', () => {
+  const mock = {
+    createHash: vi.fn(),
+  };
+  return {
+    ...mock,
+    default: mock,
+  };
+});
+vi.mock('js-yaml', () => ({
+  load: vi.fn(),
+  dump: vi.fn(),
+}));
 vi.mock('./plugin.js');
 vi.mock('./github.js');
 
