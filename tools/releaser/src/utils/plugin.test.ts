@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { getPluginPath, getAllPlugins, getPluginInfo, findTarball } from './plugin.js';
 import * as gitUtils from './git.js';
 
-vi.mock('node:fs');
+vi.mock('fs');
 vi.mock('./git.js');
 
 describe('plugin utilities', () => {

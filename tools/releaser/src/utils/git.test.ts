@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as child_process from 'node:child_process';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as child_process from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 import { 
   getRepoRoot, 
   getPluginVersion, 
@@ -19,8 +19,8 @@ import {
   tagExists
 } from './git.js';
 
-vi.mock('node:child_process');
-vi.mock('node:fs');
+vi.mock('child_process');
+vi.mock('fs');
 
 describe('git utilities', () => {
   beforeEach(() => {
