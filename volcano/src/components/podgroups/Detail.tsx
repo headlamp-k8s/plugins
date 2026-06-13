@@ -5,6 +5,7 @@ import {
   SectionBox,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box, LinearProgress, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { getPodGroupStatusColor } from '../../utils/status';
@@ -17,17 +18,29 @@ import { volcanoRouteNames } from '../../utils/volcanoRoutes';
  * @returns Section descriptor used by `DetailsGrid`.
  */
 function getProgressSection(podGroup: VolcanoPodGroup) {
+  const progressPercent = podGroup.gangProgressPercent;
+
   return {
     id: 'progress',
     section: (
       <SectionBox title="Progress">
         <NameValueTable
           rows={[
+            { name: 'Ready Members', value: podGroup.readyMemberCount },
+            { name: 'Gang Status', value: podGroup.gangProgressLabel },
             { name: 'Running', value: podGroup.runningCount },
             { name: 'Succeeded', value: podGroup.succeededCount },
             { name: 'Failed', value: podGroup.failedCount },
           ]}
         />
+        {progressPercent !== null && (
+          <Box sx={{ mt: 2, px: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Gang progress: {podGroup.readyMemberCount}/{podGroup.minMember} ready
+            </Typography>
+            <LinearProgress variant="determinate" value={progressPercent} />
+          </Box>
+        )}
       </SectionBox>
     ),
   };
