@@ -129,26 +129,49 @@ export function EditorDialog(props: {
 
   function checkInstallStatus(releaseName: string) {
     setTimeout(() => {
-      getActionStatus(releaseName, 'install').then((response: any) => {
-        if (response.status === 'processing') {
-          checkInstallStatus(releaseName);
-        } else if (!response.status || response.status !== 'success') {
+      getActionStatus(releaseName, 'install')
+        .then((response: any) => {
+          if (response.status === 'processing') {
+            checkInstallStatus(releaseName);
+          } else if (response.status !== 'success') {
+            enqueueSnackbar(
+              t('Error installing release {{ releaseName }}: {{ message }}', {
+                releaseName,
+                message: response.message || t('unknown error'),
+              }),
+              {
+                variant: 'error',
+                autoHideDuration: 5000,
+              }
+            );
+            handleEditor(false);
+            setInstallLoading(false);
+          } else {
+            enqueueSnackbar(
+              t('Release {{ releaseName }} installed successfully', { releaseName }),
+              {
+                variant: 'success',
+                autoHideDuration: 5000,
+              }
+            );
+            handleEditor(false);
+            setInstallLoading(false);
+          }
+        })
+        .catch((err: Error) => {
           enqueueSnackbar(
-            t('Error creating release {{ message }}', { message: response.message }),
+            t('Error checking install status for {{ releaseName }}: {{ message }}', {
+              releaseName,
+              message: err?.message || t('unknown error'),
+            }),
             {
               variant: 'error',
+              autoHideDuration: 5000,
             }
           );
           handleEditor(false);
           setInstallLoading(false);
-        } else {
-          enqueueSnackbar(t('Release {{ releaseName }} created successfully', { releaseName }), {
-            variant: 'success',
-          });
-          handleEditor(false);
-          setInstallLoading(false);
-        }
-      });
+        });
     }, 2000);
   }
 
@@ -212,23 +235,39 @@ export function EditorDialog(props: {
               t('Installation request for {{ releaseName }} accepted', { releaseName }),
               {
                 variant: 'info',
+                autoHideDuration: 5000,
               }
             );
-            handleEditor(false);
             checkInstallStatus(releaseName);
           })
-          .catch(error => {
+          .catch((error: Error) => {
+            setInstallLoading(false);
             handleEditor(false);
-            enqueueSnackbar(t('Error creating release request {{ error }}', { error }), {
-              variant: 'error',
-            });
+            enqueueSnackbar(
+              t('Error creating release {{ releaseName }}: {{ message }}', {
+                releaseName,
+                message: error?.message || String(error),
+              }),
+              {
+                variant: 'error',
+                autoHideDuration: 5000,
+              }
+            );
           });
       })
-      .catch(error => {
+      .catch((error: Error) => {
+        setInstallLoading(false);
         handleEditor(false);
-        enqueueSnackbar(t('Error adding repository {{ error }}', { error }), {
-          variant: 'error',
-        });
+        enqueueSnackbar(
+          t('Error adding repository {{ repoName }}: {{ message }}', {
+            repoName,
+            message: error?.message || String(error),
+          }),
+          {
+            variant: 'error',
+            autoHideDuration: 5000,
+          }
+        );
       });
   }
 
