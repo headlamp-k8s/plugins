@@ -1,16 +1,41 @@
-import { PlaceholderPage } from '../../PlaceholderPage';
+import {
+  type ColumnType,
+  ResourceListView,
+  type ResourceTableColumn,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { BmcMachine } from '../../../resources/bmcMachine';
+import { fallback, renderStatus } from '../../common/listHelpers';
 
 export function BmcMachineList() {
+  const columns: (ColumnType | ResourceTableColumn<BmcMachine>)[] = [
+    'name',
+    'namespace',
+    {
+      id: 'powerState',
+      label: 'Power State',
+      getValue: item => fallback(item.status?.powerState),
+      render: item => renderStatus(item.status?.powerState),
+    },
+    {
+      id: 'connection',
+      label: 'Connection',
+      getValue: item => fallback(item.spec?.connection ? 'Configured' : undefined),
+    },
+    {
+      id: 'conditions',
+      label: 'Conditions',
+      getValue: item => fallback(item.status?.conditions?.at(-1)?.type),
+    },
+    'age',
+  ];
+
   return (
-    <PlaceholderPage
+    <ResourceListView
       title="BMC Machines"
-      description="This page will show BMC-managed physical machines."
-      plannedItems={[
-        'Name, namespace, and power state',
-        'Connection and provider summary',
-        'Condition and last update status',
-        'Links to related BMC jobs and hardware',
-      ]}
+      resourceClass={BmcMachine}
+      columns={columns}
+      reflectInURL="tinkerbell-bmc-machines"
+      id="tinkerbell-bmc-machines"
     />
   );
 }
