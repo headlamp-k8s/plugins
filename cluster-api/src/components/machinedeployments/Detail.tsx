@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -41,6 +42,7 @@ interface MachineDeploymentDetailProps {
  * Main detail view component for the MachineDeployment resource.
  */
 export function MachineDeploymentDetail({ node }: MachineDeploymentDetailProps) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -48,7 +50,7 @@ export function MachineDeploymentDetail({ node }: MachineDeploymentDetailProps) 
   const crName = nameParam || node?.kubeObject?.metadata?.name;
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
 
-  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+  if (!crName) return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
 
   return (
     <MachineDeploymentDetailContent
@@ -90,6 +92,7 @@ interface MachineDeploymentDetailContentPropsWithVersion
 function MachineDeploymentDetailContentWithData(
   props: MachineDeploymentDetailContentPropsWithVersion
 ) {
+  const { t } = useTranslation();
   const { crName, namespace, crdName, VersionedMachineDeployment } = props;
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
 
@@ -98,11 +101,14 @@ function MachineDeploymentDetailContentWithData(
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading MachineDeployment {crName}: {itemError?.message}
+        {t('Error loading MachineDeployment {{crName}}: {{message}}', {
+          crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
-  if (!item) return <Loader title="Loading MachineDeployment details" />;
+  if (!item) return <Loader title={t('Loading MachineDeployment details')} />;
 
   const spec = item.spec;
   const status = item.status;
@@ -112,7 +118,7 @@ function MachineDeploymentDetailContentWithData(
 
   const extraInfo: NameValueTableRow[] = [
     {
-      name: 'Definition',
+      name: t('Definition'),
       value: (
         <Link routeName="crd" params={{ name: crdName }}>
           {crdName}
@@ -121,30 +127,30 @@ function MachineDeploymentDetailContentWithData(
       hide: !crd,
     },
     {
-      name: 'Cluster',
+      name: t('Cluster'),
       value: spec?.clusterName ?? '-',
     },
     {
-      name: 'Replicas',
-      value: renderReplicas(item) ?? '-',
+      name: t('Replicas'),
+      value: renderReplicas(item, t) ?? '-',
       hide: !showReplicas(item),
     },
     {
-      name: 'Strategy Type',
+      name: t('Strategy Type'),
       value: renderUpdateStrategy(item),
       hide: !showUpdateStrategy(item),
     },
 
     {
-      name: 'Delete Policy',
+      name: t('Delete Policy'),
       value: deleteOrder,
     },
     {
-      name: 'Min Ready Seconds',
+      name: t('Min Ready Seconds'),
       value: spec?.minReadySeconds ?? 0,
     },
     {
-      name: 'Paused',
+      name: t('Paused'),
       value: renderConditionStatus(spec?.paused ? 'true' : 'false', undefined, {
         trueLabel: 'true',
         falseLabel: 'false',
@@ -153,13 +159,13 @@ function MachineDeploymentDetailContentWithData(
       }),
     },
     {
-      name: 'Rollout After',
+      name: t('Rollout After'),
       value: spec?.rolloutAfter
         ? new Date(spec.rolloutAfter).toLocaleString()
         : 'default (immediate)',
     },
     {
-      name: 'Selector',
+      name: t('Selector'),
       value: spec?.selector?.matchLabels ? (
         <MetadataDictGrid dict={spec.selector.matchLabels as Record<string, string>} />
       ) : (
@@ -167,7 +173,7 @@ function MachineDeploymentDetailContentWithData(
       ),
     },
     {
-      name: 'Observed Generation',
+      name: t('Observed Generation'),
       value:
         status?.observedGeneration !== undefined
           ? `${status.observedGeneration} / ${item.metadata?.generation ?? '-'}`
@@ -175,13 +181,13 @@ function MachineDeploymentDetailContentWithData(
       hide: status?.observedGeneration === undefined,
     },
     {
-      name: 'Version',
+      name: t('Version'),
       value: spec?.template?.spec?.version ?? '-',
     },
     ...(failure?.failureReason
       ? [
           {
-            name: 'Failure Reason',
+            name: t('Failure Reason'),
             value: <StatusLabel status="error">{failure.failureReason}</StatusLabel>,
           },
         ]
@@ -189,7 +195,7 @@ function MachineDeploymentDetailContentWithData(
     ...(failure?.failureMessage
       ? [
           {
-            name: 'Failure Message',
+            name: t('Failure Message'),
             value: (
               <Typography component="span" sx={{ color: 'error.main' }}>
                 {failure.failureMessage}
@@ -218,7 +224,7 @@ function MachineDeploymentDetailContentWithData(
         {
           id: 'cluster-api.machine-deployment-template',
           section: (
-            <SectionBox title="Machine Template">
+            <SectionBox title={t('Machine Template')}>
               <TemplateSection item={item} />
             </SectionBox>
           ),
@@ -248,13 +254,14 @@ function MachineDeploymentDetailContentWithData(
  * @param props - Component properties.
  */
 function MachineDeploymentDetailContent(props: MachineDeploymentDetailContentProps) {
+  const { t } = useTranslation();
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedMachineDeployment = useMemo(
     () => (apiVersion ? MachineDeployment.withApiVersion(apiVersion) : MachineDeployment),
     [apiVersion]
   );
-  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  if (!apiVersion) return <Loader title={t('Detecting Cluster API version')} />;
   return (
     <MachineDeploymentDetailContentWithData
       {...props}

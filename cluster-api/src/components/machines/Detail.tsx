@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -30,11 +31,11 @@ type MachineNode = {
  * @param machine - The machine object to evaluate.
  * @returns The role string ('Control Plane' or 'Worker').
  */
-function getMachineRole(machine: Machine): string {
+function getMachineRole(machine: Machine, t: (key: string) => string): string {
   const owners = machine.metadata?.ownerReferences ?? [];
   return owners.some((ref: { kind?: string }) => ref.kind === 'KubeadmControlPlane')
-    ? 'Control Plane'
-    : 'Worker';
+    ? t('Control Plane')
+    : t('Worker');
 }
 
 /**
@@ -45,6 +46,7 @@ function getMachineRole(machine: Machine): string {
  * @param props.node - Optional node object containing already fetched machine data.
  */
 export function MachineDetail({ node }: { node?: MachineNode }) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -53,7 +55,7 @@ export function MachineDetail({ node }: { node?: MachineNode }) {
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
 
   if (!crName) {
-    return <EmptyContent color="error">Missing resource name</EmptyContent>;
+    return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
   }
 
   return <MachineDetailContent crName={crName} namespace={namespace} crdName={Machine.crdName} />;
@@ -76,6 +78,7 @@ interface MachineDetailContentPropsWithVersion extends MachineDetailContentProps
  * @param props - Component properties including the versioned class and detected version.
  */
 function MachineDetailContentWithData(props: MachineDetailContentPropsWithVersion) {
+  const { t } = useTranslation();
   const { crName, namespace, crdName, VersionedMachine, apiVersion } = props;
   const [crd, crdError] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedMachine.useGet(crName, namespace ?? undefined);
@@ -83,24 +86,27 @@ function MachineDetailContentWithData(props: MachineDetailContentPropsWithVersio
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading Machine {crName}: {itemError?.message}
+        {t('Error loading Machine {{name}}: {{message}}', {
+          name: crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
 
   if (!item) {
-    return <Loader title="Loading Machine details" />;
+    return <Loader title={t('Loading Machine details')} />;
   }
   const extraInfo = (() => {
     const info: NameValueTableRow[] = [
       {
-        name: 'Role',
-        value: getMachineRole(item),
+        name: t('Role'),
+        value: getMachineRole(item, t),
       },
     ];
     if (crd) {
       info.unshift({
-        name: 'Definition',
+        name: t('Definition'),
         value: (
           <Link routeName="crd" params={{ name: crdName }}>
             {crdName}
@@ -112,8 +118,8 @@ function MachineDetailContentWithData(props: MachineDetailContentPropsWithVersio
       );
     } else if (crdError) {
       info.push({
-        name: 'Additional info',
-        value: 'Some extra details could not be loaded.',
+        name: t('Additional info'),
+        value: t('Some extra details could not be loaded.'),
       });
     }
     return info;
@@ -133,7 +139,7 @@ function MachineDetailContentWithData(props: MachineDetailContentPropsWithVersio
           {
             id: 'cluster-api.machine-template',
             section: (
-              <SectionBox title="Machine Template">
+              <SectionBox title={t('Machine Template')}>
                 <TemplateSection item={machine} />
               </SectionBox>
             ),
@@ -157,15 +163,15 @@ function MachineDetailContentWithData(props: MachineDetailContentPropsWithVersio
                 {
                   id: 'cluster-api.machine-addresses',
                   section: (
-                    <SectionBox title="Addresses">
+                    <SectionBox title={t('Addresses')}>
                       <SimpleTable
                         columns={[
                           {
-                            label: 'Type',
+                            label: t('Type'),
                             getter: (row: { type: string; address: string }) => row.type,
                           },
                           {
-                            label: 'Address',
+                            label: t('Address'),
                             getter: (row: { type: string; address: string }) => row.address,
                           },
                         ]}
@@ -182,45 +188,48 @@ function MachineDetailContentWithData(props: MachineDetailContentPropsWithVersio
                 {
                   id: 'cluster-api.machine-node-info',
                   section: (
-                    <SectionBox title="Node Info">
+                    <SectionBox title={t('Node Info')}>
                       <SimpleTable
                         columns={[
                           {
-                            label: 'Field',
+                            label: t('Field'),
                             getter: (row: { field: string; value: string }) => row.field,
                           },
                           {
-                            label: 'Value',
+                            label: t('Value'),
                             getter: (row: { field: string; value: string }) => row.value,
                           },
                         ]}
                         data={[
-                          { field: 'OS Image', value: machineStatus.nodeInfo.osImage },
+                          { field: t('OS Image'), value: machineStatus.nodeInfo.osImage },
                           {
-                            field: 'Operating System',
+                            field: t('Operating System'),
                             value: machineStatus.nodeInfo.operatingSystem,
                           },
-                          { field: 'Architecture', value: machineStatus.nodeInfo.architecture },
-                          { field: 'Kernel Version', value: machineStatus.nodeInfo.kernelVersion },
+                          { field: t('Architecture'), value: machineStatus.nodeInfo.architecture },
                           {
-                            field: 'Container Runtime',
+                            field: t('Kernel Version'),
+                            value: machineStatus.nodeInfo.kernelVersion,
+                          },
+                          {
+                            field: t('Container Runtime'),
                             value: machineStatus.nodeInfo.containerRuntimeVersion,
                           },
                           {
-                            field: 'Kubelet Version',
+                            field: t('Kubelet Version'),
                             value: machineStatus.nodeInfo.kubeletVersion,
                           },
                           {
-                            field: 'Kube Proxy Version',
+                            field: t('Kube Proxy Version'),
                             value: machineStatus.nodeInfo.kubeProxyVersion,
                           },
-                          { field: 'Machine ID', value: machineStatus.nodeInfo.machineID },
-                          { field: 'System UUID', value: machineStatus.nodeInfo.systemUUID },
-                          { field: 'Boot ID', value: machineStatus.nodeInfo.bootID },
+                          { field: t('Machine ID'), value: machineStatus.nodeInfo.machineID },
+                          { field: t('System UUID'), value: machineStatus.nodeInfo.systemUUID },
+                          { field: t('Boot ID'), value: machineStatus.nodeInfo.bootID },
                           ...(machineStatus.nodeInfo.swap?.capacity !== undefined
                             ? [
                                 {
-                                  field: 'Swap Capacity',
+                                  field: t('Swap Capacity'),
                                   value: String(machineStatus.nodeInfo.swap.capacity),
                                 },
                               ]
@@ -244,6 +253,7 @@ function MachineDetailContentWithData(props: MachineDetailContentPropsWithVersio
  * @param props - Component identification props.
  */
 function MachineDetailContent(props: MachineDetailContentProps) {
+  const { t } = useTranslation();
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedMachine = useMemo(
@@ -252,7 +262,7 @@ function MachineDetailContent(props: MachineDetailContentProps) {
   );
 
   if (!apiVersion) {
-    return <Loader title="Detecting Cluster API version" />;
+    return <Loader title={t('Detecting Cluster API version')} />;
   }
   return (
     <MachineDetailContentWithData
