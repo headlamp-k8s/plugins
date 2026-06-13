@@ -25,6 +25,7 @@ type CommonColumnType =
   | 'revision';
 
 interface TableCol {
+  id?: string;
   header: string;
   accessorKey?: string;
   accessorFn?: (item: any) => React.ReactNode;
@@ -78,11 +79,15 @@ export function Table(props: TableProps) {
   const { t } = useTranslation();
 
   const processedColumns = React.useMemo(() => {
-    return columns.map(column => {
+    const seenIds = new Set<string>();
+
+    return columns.map((column, index) => {
+      let colObj: any;
       if (typeof column === 'string') {
         switch (column) {
           case 'namespace':
-            return {
+            colObj = {
+              id: 'namespace',
               header: t('Namespace'),
               accessorKey: 'metadata.namespace',
               Cell: ({ row: { original: item } }) => (
@@ -96,16 +101,23 @@ export function Table(props: TableProps) {
                 </Link>
               ),
             };
+            break;
           case 'name':
-            return prepareNameColumn(undefined, t);
+            colObj = {
+              id: 'name',
+              ...prepareNameColumn(undefined, t),
+            };
+            break;
           case 'lastUpdated':
-            return {
+            colObj = {
+              id: 'lastUpdated',
               header: t('Last Updated'),
               accessorFn: item => prepareLastUpdated(item),
               Cell: ({ cell }: any) => <DateLabel format="mini" date={cell.getValue()} />,
             };
+            break;
           case 'age':
-            return {
+            colObj = {
               id: 'age',
               header: t('Age'),
               gridTemplate: 'min-content',
@@ -120,8 +132,10 @@ export function Table(props: TableProps) {
                   <DateLabel date={row.original.metadata.creationTimestamp} format="mini" />
                 ),
             };
+            break;
           case 'source':
-            return {
+            colObj = {
+              id: 'source',
               header: t('Source'),
               accessorFn: item => {
                 const { name } = getSourceNameAndPluralKind(item);
@@ -143,14 +157,18 @@ export function Table(props: TableProps) {
                 );
               },
             };
+            break;
           case 'status':
-            return {
+            colObj = {
+              id: 'status',
               header: t('Status'),
               accessorFn: item => t(getStatusText(item)),
               Cell: ({ row: { original: item } }: any) => <StatusLabel item={item} />,
             };
+            break;
           case 'revision':
-            return {
+            colObj = {
+              id: 'revision',
               header: t('Revision'),
               accessorFn: item => {
                 const reference = item.jsonData.status?.lastAttemptedRevision;
@@ -161,8 +179,10 @@ export function Table(props: TableProps) {
                 );
               },
             };
+            break;
           case 'message':
-            return {
+            colObj = {
+              id: 'message',
               header: t('Message'),
               accessorFn: item => {
                 const message = item.jsonData.status?.conditions?.find(
@@ -175,16 +195,29 @@ export function Table(props: TableProps) {
                 );
               },
             };
+            break;
           default:
-            return column;
+            colObj = { id: column, header: column };
         }
+      } else if ((column as NameColumn).extends === 'name') {
+        colObj = prepareNameColumn(column as NameColumn, t);
+      } else {
+        colObj = { ...column };
       }
 
-      if ((column as NameColumn).extends === 'name') {
-        return prepareNameColumn(column as NameColumn, t);
-      }
+      const baseId =
+        colObj.id || colObj.accessorKey || (colObj.key ? `${colObj.key}_${index}` : `col_${index}`);
 
-      return column;
+      let finalId = String(baseId);
+      let counter = 1;
+      while (seenIds.has(finalId)) {
+        finalId = `${baseId}_${counter}`;
+        counter++;
+      }
+      seenIds.add(finalId);
+      colObj.id = finalId;
+
+      return colObj;
     });
   }, [columns, t]);
 
