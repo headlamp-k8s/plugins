@@ -25,6 +25,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@langchain/core": "^1.1.49",
+    "jszip": "^3.10.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
