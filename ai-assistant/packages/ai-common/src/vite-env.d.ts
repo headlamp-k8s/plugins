@@ -12,3 +12,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// desktopApi is injected by @kinvolk/headlamp-plugin in the Electron renderer.
+// Modules in ai-common may read from it optionally; declaring it here keeps
+// ai-common independent of that package.
+interface Window {
+  desktopApi?: Record<string, any>;
+}

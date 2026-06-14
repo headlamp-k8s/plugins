@@ -17,7 +17,8 @@
       "@headlamp-k8s"
     ],
     "rules": {
-      "indent": "off"
+      "indent": "off",
+      "max-len": "off"
     }
   },
   "license": "Apache-2.0",
