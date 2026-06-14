@@ -19,11 +19,14 @@
     "rules": {
       "indent": "off",
       "max-len": "off",
-      "newline-per-chained-call": "off"
+      "newline-per-chained-call": "off",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "off"
     }
   },
   "license": "Apache-2.0",
   "dependencies": {
+    "@ag-ui/client": "^0.0.57",
     "@langchain/core": "^1.1.49",
     "jszip": "^3.10.1",
     "zod": "^4.4.3"
