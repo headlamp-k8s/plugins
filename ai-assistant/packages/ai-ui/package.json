@@ -3,7 +3,9 @@
   "version": "0.1.0-alpha",
   "description": "Browser-only AI UI code for Headlamp",
   "type": "module",
-  "exports": {},
+  "exports": {
+    "./i18n": "./src/i18n.ts"
+  },
   "scripts": {
     "test": "vitest run --passWithNoTests",
     "coverage": "vitest run --coverage",
@@ -71,6 +73,7 @@
   "devDependencies": {
     "@headlamp-k8s/eslint-config": "^0.6.0",
     "@vitest/coverage-v8": "4.1.8",
+    "axe-core": "^4.12.1",
     "eslint": "^8.57.1",
     "prettier": "^2.8.8",
     "typescript": "^5.6.2",
