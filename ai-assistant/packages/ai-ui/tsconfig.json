@@ -8,5 +8,6 @@
     "jsx": "react-jsx",
     "skipLibCheck": true
   },
-  "include": ["./src/**/*", "./vitest.config.ts"]
+  "include": ["./src/**/*", "./vitest.config.ts"],
+  "exclude": ["node_modules", "**/*.stories.tsx", "**/*.stories.ts"]
 }
