@@ -1,0 +1,58 @@
+{
+  "name": "@headlamp-k8s/ai-ui",
+  "version": "0.1.0-alpha",
+  "description": "Browser-only AI UI code for Headlamp",
+  "type": "module",
+  "exports": {},
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "tsc": "tsc --noEmit",
+    "format": "prettier --check \"**/*.{ts,tsx}\" --ignore-path .gitignore",
+    "lint": "eslint --max-warnings 0 --no-error-on-unmatched-pattern \"src/**/*.{ts,tsx}\"",
+    "check": "npm run format && npm run lint && npm run tsc && npm run test"
+  },
+  "eslintConfig": {
+    "root": true,
+    "extends": ["@headlamp-k8s"],
+    "rules": {
+      "indent": "off",
+      "max-len": "off",
+      "newline-per-chained-call": "off",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "off"
+    }
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@headlamp-k8s/ai-common": "file:../ai-common",
+    "i18next": "^23.15.1",
+    "react-i18next": "^15.0.2"
+  },
+  "peerDependencies": {
+    "@iconify/react": "^4.0.0",
+    "@monaco-editor/react": "^4.0.0",
+    "@mui/material": "^5.0.0",
+    "js-yaml": "^4.0.0",
+    "react": "^18.0.0",
+    "react-markdown": "^8.0.0 || ^9.0.0",
+    "react-syntax-highlighter": "^15.0.0 || ^16.0.0",
+    "remark-gfm": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "@mui/material": { "optional": true },
+    "@iconify/react": { "optional": true },
+    "@monaco-editor/react": { "optional": true },
+    "js-yaml": { "optional": true },
+    "react-markdown": { "optional": true },
+    "react-syntax-highlighter": { "optional": true },
+    "remark-gfm": { "optional": true }
+  },
+  "devDependencies": {
+    "@headlamp-k8s/eslint-config": "^0.6.0",
+    "eslint": "^8.57.1",
+    "prettier": "^2.8.8",
+    "typescript": "^5.6.2",
+    "vitest": "^4.1.7"
+  }
+}
