@@ -18,11 +18,15 @@
     ],
     "rules": {
       "indent": "off",
-      "max-len": "off"
+      "max-len": "off",
+      "newline-per-chained-call": "off"
     }
   },
   "license": "Apache-2.0",
-  "dependencies": {},
+  "dependencies": {
+    "@langchain/core": "^1.1.49",
+    "zod": "^4.4.3"
+  },
   "devDependencies": {
     "@headlamp-k8s/eslint-config": "^0.6.0",
     "eslint": "^8.57.1",
