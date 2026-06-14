@@ -36,8 +36,12 @@ export function makeNodeCommandRunner(): CommandRunner {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
       return { stdout, exitCode: 0 };
-    } catch (err: any) {
-      return { stdout: err.stdout ? String(err.stdout) : '', exitCode: err.status ?? 1 };
+    } catch (err: unknown) {
+      const commandError = err as { stdout?: unknown; status?: number };
+      return {
+        stdout: commandError.stdout ? String(commandError.stdout) : '',
+        exitCode: commandError.status ?? 1,
+      };
     }
   };
 }

@@ -15,6 +15,9 @@
  */
 
 import LangChainAssistantSession from '@headlamp-k8s/ai-common/assistant/LangChainAssistantSession';
+import { createMockSkillManager } from '@headlamp-k8s/ai-common/skills/testing/MockSkillManager';
+import { createMockKubernetesToolManager } from '@headlamp-k8s/ai-common/tools/testing/MockToolManager';
+import { DEFAULT_SKILLS_CONFIG } from '@headlamp-k8s/ai-common/skills/config';
 import * as readline from 'readline';
 import { createKubectlTool } from './kubectl.js';
 import { loadSkillsFromUrls } from './skills.js';
@@ -28,15 +31,29 @@ import { loadSkillsFromUrls } from './skills.js';
  *
  * @param allowMutations When false (default), the kubectl tool only permits GET.
  * @param skillSources  Git URLs for skill sources (e.g. https://github.com/microsoft/azure-skills).
+ * @param mockSkills    When true, inject a built-in mock skill set (no network needed).
+ * @param mockTools     When true, inject mock Kubernetes tool results (no cluster needed).
  */
 export async function createManager(
   providerId: string,
   config: Record<string, any>,
-  options: { allowMutations?: boolean; skillSources?: string[] } = {}
+  options: { allowMutations?: boolean; skillSources?: string[]; mockSkills?: boolean; mockTools?: boolean } = {}
 ): Promise<LangChainAssistantSession> {
-  const manager = new LangChainAssistantSession(providerId, config);
+  const toolManager = options.mockTools ? createMockKubernetesToolManager() : undefined;
+  const manager = new LangChainAssistantSession(
+    providerId,
+    config,
+    [],
+    toolManager ? { toolManager } : undefined
+  );
   const kubectlTool = createKubectlTool({ readOnly: !options.allowMutations });
   await manager.enableDirectToolCalling([kubectlTool]);
+
+  // Inject mock skills when requested (no network needed — good for demos and tests)
+  if (options.mockSkills) {
+    manager.setSkillManager(createMockSkillManager() as any, DEFAULT_SKILLS_CONFIG);
+    console.error('Using built-in mock skill set (--mock-skills).');
+  }
 
   // Load skills from Git repos if any were specified
   if (options.skillSources && options.skillSources.length > 0) {
@@ -85,8 +102,9 @@ export async function interactiveMode(manager: LangChainAssistantSession): Promi
       try {
         const resp = await query(manager, trimmed);
         console.log(`\nAssistant: ${resp}\n`);
-      } catch (err: any) {
-        console.error(`\nError: ${err.message}\n`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`\nError: ${message}\n`);
       }
       ask();
     });
