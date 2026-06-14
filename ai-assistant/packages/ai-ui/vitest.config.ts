@@ -5,5 +5,6 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
     passWithNoTests: true,
+    setupFiles: ['./src/testing/i18nTestSetup.ts'],
   },
 });
