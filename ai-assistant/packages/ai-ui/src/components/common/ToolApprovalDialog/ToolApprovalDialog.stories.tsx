@@ -1,0 +1,134 @@
+/*
+ * Copyright 2025 The Kubernetes Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Meta, StoryFn } from '@storybook/react';
+import React from 'react';
+import ToolApprovalDialog from './ToolApprovalDialog';
+
+export default {
+  title: 'AI UI/ToolApprovalDialog',
+  component: ToolApprovalDialog,
+} as Meta;
+
+const Template: StoryFn<React.ComponentProps<typeof ToolApprovalDialog>> = args => (
+  <ToolApprovalDialog {...args} />
+);
+
+export const SingleKubernetesTool = Template.bind({});
+SingleKubernetesTool.args = {
+  open: true,
+  toolCalls: [
+    {
+      id: 'call_1',
+      name: 'kubernetes_api_request',
+      description: 'Executes Kubernetes API operations',
+      arguments: {
+        url: '/api/v1/namespaces/default/pods',
+        method: 'GET',
+      },
+      type: 'regular',
+    },
+  ],
+  onApprove: (ids: string[]) => console.log('Approved:', ids),
+  onDeny: () => console.log('Denied'),
+  onClose: () => console.log('Closed'),
+  loading: false,
+};
+
+export const MultipleMixedTools = Template.bind({});
+MultipleMixedTools.args = {
+  open: true,
+  toolCalls: [
+    {
+      id: 'call_1',
+      name: 'kubernetes_api_request',
+      description: 'Get pods from Kubernetes API',
+      arguments: {
+        url: '/api/v1/namespaces/default/pods',
+        method: 'GET',
+      },
+      type: 'regular',
+    },
+    {
+      id: 'call_2',
+      name: 'flux_get_helmreleases',
+      description: 'Check Flux Helm releases',
+      arguments: {
+        namespace: 'flux-system',
+        name: '',
+        output: 'json',
+      },
+      type: 'mcp',
+    },
+  ],
+  onApprove: (ids: string[]) => console.log('Approved:', ids),
+  onDeny: () => console.log('Denied'),
+  onClose: () => console.log('Closed'),
+  loading: false,
+};
+
+export const LoadingState = Template.bind({});
+LoadingState.args = {
+  open: true,
+  toolCalls: [
+    {
+      id: 'call_1',
+      name: 'kubernetes_api_request',
+      description: 'Executes Kubernetes API operations',
+      arguments: {
+        url: '/api/v1/namespaces/default/pods',
+        method: 'GET',
+      },
+      type: 'regular',
+    },
+  ],
+  onApprove: () => {},
+  onDeny: () => {},
+  onClose: () => {},
+  loading: true,
+};
+
+export const MCPOnlyTools = Template.bind({});
+MCPOnlyTools.args = {
+  open: true,
+  toolCalls: [
+    {
+      id: 'call_1',
+      name: 'flux_get_resources',
+      description: 'Get Flux resources from the cluster',
+      arguments: {
+        namespace: 'flux-system',
+        resourceType: 'helmreleases',
+      },
+      type: 'mcp',
+    },
+    {
+      id: 'call_2',
+      name: 'gadget_trace_network',
+      description: 'Trace network activity using Inspektor Gadget',
+      arguments: {
+        namespace: 'default',
+        pod: 'nginx-deployment-abc123',
+        duration: '30s',
+      },
+      type: 'mcp',
+    },
+  ],
+  onApprove: (ids: string[]) => console.log('Approved:', ids),
+  onDeny: () => console.log('Denied'),
+  onClose: () => console.log('Closed'),
+  loading: false,
+};
