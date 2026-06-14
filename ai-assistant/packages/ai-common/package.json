@@ -1,0 +1,27 @@
+{
+  "name": "@headlamp-k8s/ai-common",
+  "version": "0.1.0-alpha",
+  "description": "Shared AI assistant, MCP, and LangChain library for Headlamp",
+  "type": "module",
+  "exports": {},
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "tsc": "tsc --noEmit",
+    "format": "prettier --check \"**/*.ts\" --ignore-path .gitignore",
+    "lint": "eslint --max-warnings 0 --no-error-on-unmatched-pattern \"src/**/*.ts\"",
+    "check": "npm run format && npm run lint && npm run tsc && npm run test"
+  },
+  "eslintConfig": {
+    "root": true,
+    "extends": ["@headlamp-k8s"]
+  },
+  "license": "Apache-2.0",
+  "dependencies": {},
+  "devDependencies": {
+    "@headlamp-k8s/eslint-config": "^0.6.0",
+    "eslint": "^8.57.1",
+    "prettier": "^2.8.8",
+    "typescript": "^5.6.2",
+    "vitest": "^3.2.4"
+  }
+}
