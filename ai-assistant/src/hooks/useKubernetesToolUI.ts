@@ -1,8 +1,25 @@
+import {
+  type KubernetesToolUICallbacks,
+  type KubernetesToolUIState,
+} from '@headlamp-k8s/ai-common/tools/kubernetes/context';
 import { useMemo, useState } from 'react';
-import { handleActualApiRequest } from '../helper/apihelper';
-import { KubernetesToolUICallbacks, KubernetesToolUIState } from '../langchain/tools/kubernetes';
 
-export function useKubernetesToolUI(updateHistory?: () => void): {
+type TranslationFunction = (key: string, options?: Record<string, unknown>) => string;
+import { handleActualApiRequest } from '../api/clusterActions';
+
+/**
+ * React hook that manages the UI state and callbacks for Kubernetes API tool
+ * operations. Provides state for showing confirmation dialogs, tracking
+ * request/response status, and wrapping API calls with history updates.
+ *
+ * @param updateHistory - Optional callback invoked after API success or failure to refresh chat history.
+ * @param t - Optional translation function for i18n support.
+ * @returns An object containing the current UI state and callback functions.
+ */
+export function useKubernetesToolUI(
+  updateHistory?: () => void,
+  t?: TranslationFunction
+): {
   state: KubernetesToolUIState;
   callbacks: KubernetesToolUICallbacks;
 } {
@@ -68,10 +85,11 @@ export function useKubernetesToolUI(updateHistory?: () => void): {
         resourceInfo,
         targetCluster,
         wrappedOnFailure,
-        wrappedOnSuccess
+        wrappedOnSuccess,
+        t
       );
     };
-  }, [updateHistory]);
+  }, [t, updateHistory]);
 
   const callbacks: KubernetesToolUICallbacks = useMemo(
     () => ({
