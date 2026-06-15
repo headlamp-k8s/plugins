@@ -1,12 +1,12 @@
-import { clusterAction } from '@kinvolk/headlamp-plugin/lib';
+import { clusterAction, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { apply } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import Editor from '@monaco-editor/react';
 import { Box, Button, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
+import jsYaml from 'js-yaml';
 import { useSnackbar } from 'notistack';
 import React, { useEffect, useState } from 'react';
-import YAML from 'yaml';
 
 type EditorDialogProps = {
   open: boolean;
@@ -31,6 +31,7 @@ export default function EditorDialog({
 }: EditorDialogProps) {
   const [content, setContent] = useState(yamlContent);
   const { enqueueSnackbar } = useSnackbar();
+  const { t } = useTranslation();
   const themeName = localStorage.getItem('headlampThemePreference');
 
   // Reset content when yamlContent prop changes (e.g. when dialog is opened with new content)
@@ -51,13 +52,14 @@ export default function EditorDialog({
     try {
       const cluster = getCluster();
       if (!cluster) {
-        throw new Error('No cluster selected');
+        throw new Error(t('No cluster selected'));
       }
 
       // Use the current content from state, which contains user edits
-      const resource = YAML.parse(content);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resource = jsYaml.load(content) as any;
       if (!resource) {
-        throw new Error('Invalid YAML content');
+        throw new Error(t('Invalid YAML content'));
       }
 
       // Ensure we have the resourceType from the YAML content if not already set
@@ -86,17 +88,31 @@ export default function EditorDialog({
           }
         },
         {
-          startMessage: `Applying ${displayResourceType} to cluster ${cluster}...`,
-          cancelledMessage: `Cancelled applying ${displayResourceType} to cluster.`,
-          successMessage: `${displayResourceType} applied successfully.`,
-          errorMessage: `Failed to apply ${displayResourceType}.`,
+          startMessage: t('Applying {{resourceType}} to cluster {{cluster}}...', {
+            resourceType: displayResourceType,
+            cluster,
+          }),
+          cancelledMessage: t('Cancelled applying {{resourceType}} to cluster.', {
+            resourceType: displayResourceType,
+          }),
+          successMessage: t('{{resourceType}} applied successfully.', {
+            resourceType: displayResourceType,
+          }),
+          errorMessage: t('Failed to apply {{resourceType}}.', {
+            resourceType: displayResourceType,
+          }),
         }
       );
     } catch (error) {
       console.error('Error applying resource:', error);
-      enqueueSnackbar(`Error applying resource: ${error.message}`, {
-        variant: 'error',
-      });
+      enqueueSnackbar(
+        t('Error applying resource: {{message}}', {
+          message: error instanceof Error ? error.message : String(error),
+        }),
+        {
+          variant: 'error',
+        }
+      );
     }
   };
 
@@ -134,12 +150,12 @@ export default function EditorDialog({
         <Box mr={2} display="flex">
           <Box mr={1}>
             <Button variant="outlined" color="primary" onClick={onClose}>
-              Cancel
+              {t('Cancel')}
             </Button>
           </Box>
           <Box>
             <Button variant="contained" color="primary" onClick={handleApply}>
-              Apply to Cluster
+              {t('Apply to Cluster')}
             </Button>
           </Box>
         </Box>
