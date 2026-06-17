@@ -10,6 +10,7 @@ import { Workflow } from '../../resources/workflow';
 import { WorkflowRuleSet } from '../../resources/workflowRuleSet';
 import { renderStatus } from '../common/listHelpers';
 
+/** Tinkerbell v0.23.0 CRDs checked by the CRD status page. */
 const TINKERBELL_CRDS = [
   { name: Hardware.crdName, kind: Hardware.kind, group: 'tinkerbell.org' },
   { name: Template.crdName, kind: Template.kind, group: 'tinkerbell.org' },
@@ -20,6 +21,9 @@ const TINKERBELL_CRDS = [
   { name: BmcTask.crdName, kind: BmcTask.kind, group: 'bmc.tinkerbell.org' },
 ];
 
+/**
+ * Renders a read-only status table for Tinkerbell CRD availability.
+ */
 export function CrdList() {
   const [hardwareCrd, hardwareError] = CustomResourceDefinition.useGet(Hardware.crdName);
   const [templateCrd, templateError] = CustomResourceDefinition.useGet(Template.crdName);

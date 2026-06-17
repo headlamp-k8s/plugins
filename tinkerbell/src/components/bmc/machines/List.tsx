@@ -6,6 +6,9 @@ import {
 import { BmcMachine } from '../../../resources/bmcMachine';
 import { fallback, renderStatus } from '../../common/listHelpers';
 
+/**
+ * Renders the Tinkerbell BMC Machine list view.
+ */
 export function BmcMachineList() {
   const columns: (ColumnType | ResourceTableColumn<BmcMachine>)[] = [
     'name',

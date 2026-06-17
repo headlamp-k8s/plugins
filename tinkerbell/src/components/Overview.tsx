@@ -1,5 +1,8 @@
 import { PlaceholderPage } from './PlaceholderPage';
 
+/**
+ * Renders the Tinkerbell overview placeholder page.
+ */
 export function TinkerbellOverview() {
   return (
     <PlaceholderPage

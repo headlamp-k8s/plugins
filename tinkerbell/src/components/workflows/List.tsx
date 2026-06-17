@@ -13,6 +13,9 @@ import {
   renderStatus,
 } from '../common/listHelpers';
 
+/**
+ * Renders the Tinkerbell Workflow list view.
+ */
 export function WorkflowList() {
   const columns: (ColumnType | ResourceTableColumn<Workflow>)[] = [
     'name',

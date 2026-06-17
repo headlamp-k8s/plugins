@@ -7,6 +7,12 @@ import { normalizeState } from '../../resources/common';
 import { Template } from '../../resources/template';
 import { fallback, renderStatus } from '../common/listHelpers';
 
+/**
+ * Counts top-level task steps from a Tinkerbell template body.
+ *
+ * @param data - Template YAML text stored in `spec.data`.
+ * @returns The number of top-level tasks, or undefined when tasks are absent.
+ */
 function countTemplateSteps(data: string | undefined): number | undefined {
   if (!data) {
     return undefined;
@@ -40,6 +46,9 @@ function countTemplateSteps(data: string | undefined): number | undefined {
   return taskNameIndents.filter(indent => indent === topLevelTaskIndent).length;
 }
 
+/**
+ * Renders the Tinkerbell Template list view.
+ */
 export function TemplateList() {
   const columns: (ColumnType | ResourceTableColumn<Template>)[] = [
     'name',

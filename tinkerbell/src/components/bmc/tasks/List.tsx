@@ -6,6 +6,9 @@ import {
 import { BmcTask } from '../../../resources/bmcTask';
 import { fallback, renderStatus } from '../../common/listHelpers';
 
+/**
+ * Renders the Tinkerbell BMC Task list view.
+ */
 export function BmcTaskList() {
   const columns: (ColumnType | ResourceTableColumn<BmcTask>)[] = [
     'name',

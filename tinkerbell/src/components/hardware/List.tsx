@@ -13,6 +13,9 @@ import {
   renderStatus,
 } from '../common/listHelpers';
 
+/**
+ * Renders the Tinkerbell Hardware list view.
+ */
 export function HardwareList() {
   const columns: (ColumnType | ResourceTableColumn<Hardware>)[] = [
     'name',

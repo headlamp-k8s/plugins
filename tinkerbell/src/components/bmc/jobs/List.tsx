@@ -6,6 +6,9 @@ import {
 import { BmcJob } from '../../../resources/bmcJob';
 import { countLabel, fallback, renderStatus } from '../../common/listHelpers';
 
+/**
+ * Renders the Tinkerbell BMC Job list view.
+ */
 export function BmcJobList() {
   const columns: (ColumnType | ResourceTableColumn<BmcJob>)[] = [
     'name',

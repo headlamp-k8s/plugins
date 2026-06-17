@@ -6,6 +6,9 @@ import {
 import { WorkflowRuleSet } from '../../resources/workflowRuleSet';
 import { countLabel, fallback } from '../common/listHelpers';
 
+/**
+ * Renders the Tinkerbell WorkflowRuleSet list view.
+ */
 export function WorkflowRuleSetList() {
   const columns: (ColumnType | ResourceTableColumn<WorkflowRuleSet>)[] = [
     'name',
