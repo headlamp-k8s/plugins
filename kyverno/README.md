@@ -1,15 +1,33 @@
-# kyverno
+# Kyverno
 
-This is the default template README for [Headlamp Plugins](https://github.com/kubernetes-sigs/headlamp).
+The Kyverno plugin for Headlamp adds a new item (Kyverno) to the sidebar to give
+users a way to view Kyverno policies, reports, and policy violations directly in
+Headlamp.
 
-- The description of your plugin should go here.
-- You should also edit the package.json file meta data (like name and description).
+[Kyverno](https://kyverno.io/) is a policy engine for Kubernetes. This plugin
+discovers the Kyverno CRDs present in your cluster and only shows the views that
+apply, so it works whether you run the legacy (`kyverno.io/v1`) policy types, the
+newer CEL-based policy types, or both.
 
-## Developing Headlamp plugins
+## Features
 
-For more information on developing Headlamp plugins, please refer to:
+- **Overview** dashboard summarizing policies and their compliance at a glance.
+- **Compliance badge** in the app bar showing overall pass/fail status.
+- **Policies** views for the full set of Kyverno policy types:
+  - Cluster Policies and Policies (`kyverno.io/v1`)
+  - Validating, Mutating, Generating, Deleting, and Image Validating Policies
+    (CEL-based)
+  - Cluster Cleanup Policies and Cleanup Policies
+- **Reports** views:
+  - Policy Reports and Cluster Policy Reports (`wgpolicyk8s.io/v1alpha2`)
+  - Admission, Background Scan, and Ephemeral Reports, including their
+    cluster-scoped variants
+- **Violations** view aggregating failing results across reports.
+- **Exceptions** view for Policy Exceptions.
 
-- [Getting Started](https://headlamp.dev/docs/latest/development/plugins/), How to create a new Headlamp plugin.
-- [API Reference](https://headlamp.dev/docs/latest/development/api/), API documentation for what you can do
-- [UI Component Storybook](https://headlamp.dev/docs/latest/development/frontend/#storybook), pre-existing components you can use when creating your plugin.
-- [Plugin Examples](https://github.com/kubernetes-sigs/headlamp/tree/main/plugins/examples), Example plugins you can look at to see how it's done.
+Views for resource types whose CRDs are not installed are hidden automatically.
+
+## Prerequisites
+
+- A Kubernetes cluster with [Kyverno](https://kyverno.io/docs/installation/)
+  installed.
