@@ -1,5 +1,5 @@
 {
-  "name": "kyverno",
+  "name": "@headlamp-k8s/kyverno",
   "version": "0.1.0",
   "description": "A UI for viewing Kyverno policies and reports in Headlamp.",
   "scripts": {
