@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
@@ -32,6 +33,7 @@ import {
   Tabs,
   Typography,
 } from '@mui/material';
+import type { TFunction } from 'i18next';
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useRadiusResourceTypeDetail } from '../models/radius';
@@ -78,12 +80,13 @@ function TabPanel(props: TabPanelProps) {
 function renderPropertiesTable(
   properties: SchemaProperties,
   requiredFields: string[],
-  title: string
+  title: string,
+  t: TFunction
 ) {
   if (!properties || Object.keys(properties).length === 0) {
     return (
       <Typography color="textSecondary" sx={{ py: 2 }}>
-        No {title.toLowerCase()} defined
+        {t('No {{title}} defined', { title: title.toLowerCase() })}
       </Typography>
     );
   }
@@ -95,22 +98,22 @@ function renderPropertiesTable(
           <TableRow>
             <TableCell>
               <Typography variant="body2" fontWeight="bold">
-                Property
+                {t('Property')}
               </Typography>
             </TableCell>
             <TableCell>
               <Typography variant="body2" fontWeight="bold">
-                Type
+                {t('Type')}
               </Typography>
             </TableCell>
             <TableCell>
               <Typography variant="body2" fontWeight="bold">
-                Description
+                {t('Description')}
               </Typography>
             </TableCell>
             <TableCell>
               <Typography variant="body2" fontWeight="bold">
-                Required
+                {t('Required')}
               </Typography>
             </TableCell>
           </TableRow>
@@ -148,7 +151,7 @@ function renderPropertiesTable(
                   {propValue.enum && (
                     <Box sx={{ mt: 0.5 }}>
                       <Typography variant="caption" color="textSecondary">
-                        Enum: {propValue.enum.join(', ')}
+                        {t('Enum: {{values}}', { values: propValue.enum.join(', ') })}
                       </Typography>
                     </Box>
                   )}
@@ -157,7 +160,7 @@ function renderPropertiesTable(
                   <Typography variant="body2">{propValue.description || '-'}</Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">{isRequired ? 'Yes' : 'No'}</Typography>
+                  <Typography variant="body2">{isRequired ? t('Yes') : t('No')}</Typography>
                 </TableCell>
               </TableRow>
             );
@@ -172,6 +175,7 @@ function renderPropertiesTable(
  * ResourceTypeDetailView displays detailed information about a specific resource type
  */
 export default function ResourceTypeDetailView() {
+  const { t } = useTranslation();
   const { resourceTypeName } = useParams<RouteParams>();
   const decodedName = decodeURIComponent(resourceTypeName || '');
 
@@ -204,7 +208,7 @@ export default function ResourceTypeDetailView() {
     return (
       <SectionBox sx={{ p: 3 }}>
         <Typography color="error" variant="h6">
-          Error loading Resource Type Details
+          {t('Error loading Resource Type Details')}
         </Typography>
         <Typography color="error">{error.message}</Typography>
       </SectionBox>
@@ -215,17 +219,17 @@ export default function ResourceTypeDetailView() {
     return (
       <SectionBox sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Resource Type Not Found
+          {t('Resource Type Not Found')}
         </Typography>
         <Typography color="textSecondary" gutterBottom>
-          The resource type "{decodedName}" could not be found.
+          {t('The resource type "{{decodedName}}" could not be found.', { decodedName })}
         </Typography>
         <Button
           onClick={() => window.history.back()}
           startIcon={<Icon icon="mdi:arrow-left" />}
           sx={{ mt: 2 }}
         >
-          Back
+          {t('Back')}
         </Button>
       </SectionBox>
     );
@@ -242,7 +246,7 @@ export default function ResourceTypeDetailView() {
         startIcon={<Icon icon="mdi:arrow-left" />}
         sx={{ mb: 2 }}
       >
-        Back
+        {t('Back')}
       </Button>
       <SectionBox sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -258,17 +262,17 @@ export default function ResourceTypeDetailView() {
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={activeTab} onChange={handleTabChange} aria-label="resource type tabs">
-          <Tab label="Overview" id="resource-type-tab-0" />
-          <Tab label="Properties" id="resource-type-tab-1" />
-          <Tab label="Output Properties" id="resource-type-tab-2" />
-          <Tab label="Details" id="resource-type-tab-3" />
+        <Tabs value={activeTab} onChange={handleTabChange} aria-label={t('resource type tabs')}>
+          <Tab label={t('Overview')} id="resource-type-tab-0" />
+          <Tab label={t('Properties')} id="resource-type-tab-1" />
+          <Tab label={t('Output Properties')} id="resource-type-tab-2" />
+          <Tab label={t('Details')} id="resource-type-tab-3" />
         </Tabs>
       </Box>
 
       {/* Overview Tab */}
       <TabPanel value={activeTab} index={0}>
-        <SectionBox title="Description">
+        <SectionBox title={t('Description')}>
           {resourceType.description ? (
             <Box>
               {resourceType.description.split(/(```[\s\S]*?```|`[^`]+`)/).map((part, idx) => {
@@ -336,12 +340,12 @@ export default function ResourceTypeDetailView() {
               })}
             </Box>
           ) : (
-            <Typography color="textSecondary">No description available</Typography>
+            <Typography color="textSecondary">{t('No description available')}</Typography>
           )}
         </SectionBox>
 
         {resourceType.capabilities && resourceType.capabilities.length > 0 && (
-          <SectionBox title="Capabilities" sx={{ mt: 3 }}>
+          <SectionBox title={t('Capabilities')} sx={{ mt: 3 }}>
             <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
               {resourceType.capabilities.map((capability, idx) => (
                 <Chip key={idx} label={capability} size="small" />
@@ -365,13 +369,17 @@ export default function ResourceTypeDetailView() {
           const requiredFields = schema?.required || [];
 
           return (
-            <SectionBox key={version} title={`API Version: ${version}`} sx={{ mb: 3 }}>
-              {renderPropertiesTable(inputProperties, requiredFields, 'Properties')}
+            <SectionBox
+              key={version}
+              title={t('API Version: {{version}}', { version })}
+              sx={{ mb: 3 }}
+            >
+              {renderPropertiesTable(inputProperties, requiredFields, t('Properties'), t)}
             </SectionBox>
           );
         })}
         {apiVersions.length === 0 && (
-          <Typography color="textSecondary">No API versions available</Typography>
+          <Typography color="textSecondary">{t('No API versions available')}</Typography>
         )}
       </TabPanel>
 
@@ -389,19 +397,23 @@ export default function ResourceTypeDetailView() {
           const requiredFields = schema?.required || [];
 
           return (
-            <SectionBox key={version} title={`API Version: ${version}`} sx={{ mb: 3 }}>
-              {renderPropertiesTable(outputProperties, requiredFields, 'Output Properties')}
+            <SectionBox
+              key={version}
+              title={t('API Version: {{version}}', { version })}
+              sx={{ mb: 3 }}
+            >
+              {renderPropertiesTable(outputProperties, requiredFields, t('Output Properties'), t)}
             </SectionBox>
           );
         })}
         {apiVersions.length === 0 && (
-          <Typography color="textSecondary">No API versions available</Typography>
+          <Typography color="textSecondary">{t('No API versions available')}</Typography>
         )}
       </TabPanel>
 
       {/* Details Tab */}
       <TabPanel value={activeTab} index={3}>
-        <SectionBox title="Resource Type JSON">
+        <SectionBox title={t('Resource Type JSON')}>
           <Box
             component="pre"
             sx={{

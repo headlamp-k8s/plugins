@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   SectionBox,
@@ -67,6 +68,7 @@ interface RouteParams {
  * Shows detailed information about a specific Radius environment
  */
 export default function EnvironmentDetailView() {
+  const { t } = useTranslation();
   const { environmentName } = useParams<RouteParams>();
   const [environments, error, loading] = useRadiusEnvironments();
   const [applications, appsError] = useRadiusApplications();
@@ -97,7 +99,7 @@ export default function EnvironmentDetailView() {
     return (
       <SectionBox sx={{ p: 3 }}>
         <Typography color="error" variant="h6">
-          Error loading environment
+          {t('Error loading environment')}
         </Typography>
         <Typography color="error">{error.message}</Typography>
       </SectionBox>
@@ -114,17 +116,17 @@ export default function EnvironmentDetailView() {
     return (
       <SectionBox sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Environment Not Found
+          {t('Environment Not Found')}
         </Typography>
         <Typography color="textSecondary" gutterBottom>
-          The environment "{environmentName}" could not be found.
+          {t('The environment "{{environmentName}}" could not be found.', { environmentName })}
         </Typography>
         <Button
           onClick={() => window.history.back()}
           startIcon={<Icon icon="mdi:arrow-left" />}
           sx={{ mt: 2 }}
         >
-          Back
+          {t('Back')}
         </Button>
       </SectionBox>
     );
@@ -172,7 +174,7 @@ export default function EnvironmentDetailView() {
           startIcon={<Icon icon="mdi:arrow-left" />}
           sx={{ mb: 2 }}
         >
-          Back
+          {t('Back')}
         </Button>
         <Typography variant="h4" gutterBottom>
           {environment.name}
@@ -185,9 +187,9 @@ export default function EnvironmentDetailView() {
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="Overview" />
-          <Tab label={`Recipes (${recipeCount})`} />
-          <Tab label={`Resources (${environmentApps.length})`} />
+          <Tab label={t('Overview')} />
+          <Tab label={t('Recipes ({{count}})', { count: recipeCount })} />
+          <Tab label={t('Resources ({{count}})', { count: environmentApps.length })} />
         </Tabs>
       </Box>
 
@@ -195,32 +197,32 @@ export default function EnvironmentDetailView() {
       <TabPanel value={tabValue} index={0}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <SectionBox title="General Information">
+            <SectionBox title={t('General Information')}>
               <Box display="flex" flexDirection="column" gap={2}>
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Name
+                    {t('Name')}
                   </Typography>
                   <Typography variant="body1">{environment.name}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Type
+                    {t('Type')}
                   </Typography>
                   <Typography variant="body1">{environment.type}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Location
+                    {t('Location')}
                   </Typography>
                   <Typography variant="body1">{environment.location}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Provisioning State
+                    {t('Provisioning State')}
                   </Typography>
                   <RadiusStatusLabel
-                    status={environment.properties.provisioningState || 'Unknown'}
+                    status={environment.properties.provisioningState || t('Unknown')}
                   />
                 </Box>
               </Box>
@@ -228,11 +230,11 @@ export default function EnvironmentDetailView() {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <SectionBox title="Compute">
+            <SectionBox title={t('Compute')}>
               <Box display="flex" flexDirection="column" gap={2}>
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Kind
+                    {t('Kind')}
                   </Typography>
                   <Typography variant="body1">
                     {environment.properties.compute?.kind || 'N/A'}
@@ -241,7 +243,7 @@ export default function EnvironmentDetailView() {
                 {environment.properties.compute?.namespace && (
                   <Box>
                     <Typography variant="subtitle2" color="textSecondary">
-                      Namespace
+                      {t('Namespace')}
                     </Typography>
                     <Typography variant="body1">
                       {environment.properties.compute.namespace}
@@ -251,7 +253,7 @@ export default function EnvironmentDetailView() {
                 {environment.properties.compute?.resourceId && (
                   <Box>
                     <Typography variant="subtitle2" color="textSecondary">
-                      Resource ID
+                      {t('Resource ID')}
                     </Typography>
                     <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
                       {environment.properties.compute.resourceId}
@@ -265,7 +267,7 @@ export default function EnvironmentDetailView() {
           {environment.properties.providers &&
             Object.keys(environment.properties.providers).length > 0 && (
               <Grid item xs={12}>
-                <SectionBox title="Providers">
+                <SectionBox title={t('Providers')}>
                   <Box display="flex" flexWrap="wrap" gap={1}>
                     {Object.keys(environment.properties.providers).map(providerName => (
                       <Chip
@@ -282,12 +284,12 @@ export default function EnvironmentDetailView() {
 
           {environment.systemData && (
             <Grid item xs={12}>
-              <SectionBox title="System Information">
+              <SectionBox title={t('System Information')}>
                 <Grid container spacing={2}>
                   {environment.systemData.createdAt && (
                     <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="textSecondary">
-                        Created At
+                        {t('Created At')}
                       </Typography>
                       <Typography variant="body2">
                         {new Date(environment.systemData.createdAt).toLocaleString()}
@@ -297,7 +299,7 @@ export default function EnvironmentDetailView() {
                   {environment.systemData.createdBy && (
                     <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="textSecondary">
-                        Created By
+                        {t('Created By')}
                       </Typography>
                       <Typography variant="body2">{environment.systemData.createdBy}</Typography>
                     </Grid>
@@ -305,7 +307,7 @@ export default function EnvironmentDetailView() {
                   {environment.systemData.lastModifiedAt && (
                     <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="textSecondary">
-                        Last Modified
+                        {t('Last Modified')}
                       </Typography>
                       <Typography variant="body2">
                         {new Date(environment.systemData.lastModifiedAt).toLocaleString()}
@@ -315,7 +317,7 @@ export default function EnvironmentDetailView() {
                   {environment.systemData.lastModifiedBy && (
                     <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="textSecondary">
-                        Last Modified By
+                        {t('Last Modified By')}
                       </Typography>
                       <Typography variant="body2">
                         {environment.systemData.lastModifiedBy}
@@ -332,24 +334,24 @@ export default function EnvironmentDetailView() {
       {/* Recipes Tab */}
       <TabPanel value={tabValue} index={1}>
         {recipeCount === 0 ? (
-          <Typography>No recipes registered for this environment</Typography>
+          <Typography>{t('No recipes registered for this environment')}</Typography>
         ) : (
           <HeadlampTable
             data={recipeTableData}
             columns={[
               {
-                header: 'Resource Type',
+                header: t('Resource Type'),
                 accessorKey: 'resourceType',
               },
               {
-                header: 'Recipe Kind',
+                header: t('Recipe Kind'),
                 accessorKey: 'templateKind',
                 Cell: ({ row }: { row: RecipeTableRow }) => (
                   <Chip label={row.original.templateKind} size="small" />
                 ),
               },
               {
-                header: 'Recipe Location',
+                header: t('Recipe Location'),
                 accessorKey: 'templatePath',
               },
             ]}
@@ -360,22 +362,24 @@ export default function EnvironmentDetailView() {
       {/* Resources Tab */}
       <TabPanel value={tabValue} index={2}>
         {appsError ? (
-          <Typography color="error">Error loading resources: {appsError.message}</Typography>
+          <Typography color="error">
+            {t('Error loading resources: {{message}}', { message: appsError.message })}
+          </Typography>
         ) : null}
 
         {!appsError && environmentApps.length === 0 ? (
-          <Typography>No resources found for this environment</Typography>
+          <Typography>{t('No resources found for this environment')}</Typography>
         ) : null}
 
         {!appsError && environmentApps.length > 0 ? (
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Namespace</TableCell>
-                <TableCell>Provisioning State</TableCell>
-                <TableCell>Created</TableCell>
+                <TableCell>{t('Name')}</TableCell>
+                <TableCell>{t('Type')}</TableCell>
+                <TableCell>{t('Namespace')}</TableCell>
+                <TableCell>{t('Provisioning State')}</TableCell>
+                <TableCell>{t('Created')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -395,7 +399,7 @@ export default function EnvironmentDetailView() {
                     <TableCell>{app.type}</TableCell>
                     <TableCell>{namespace}</TableCell>
                     <TableCell>
-                      <RadiusStatusLabel status={app.properties.provisioningState || 'Unknown'} />
+                      <RadiusStatusLabel status={app.properties.provisioningState || t('Unknown')} />
                     </TableCell>
                     <TableCell>{createdAt}</TableCell>
                   </TableRow>
