@@ -1,0 +1,14 @@
+version: 0.1.0
+name: headlamp_kyverno
+displayName: Kyverno
+createdAt: "2026-06-19T15:26:22.137Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kyverno/logo.svg"
+description: A UI for viewing Kyverno policies and policy reports in Headlamp.
+changes:
+  - kind: added
+    description: "Initial release"
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/kyverno-0.1.0/headlamp-k8s-kyverno-0.1.0.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:eb6d99eed8e2e4187e5d5e007c116b9e10224cd403d83f8aa87780fafcf6e059"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
