@@ -24,13 +24,17 @@ type Story = StoryObj<typeof Toast>;
 
 export const Success: Story = {
   render: () => (
-    <ToastHarness toast={{ message: 'Topic created successfully', type: 'success', duration: 60000 }} />
+    <ToastHarness
+      toast={{ message: 'Topic created successfully', type: 'success', duration: 60000 }}
+    />
   ),
 };
 
 export const Error: Story = {
   render: () => (
-    <ToastHarness toast={{ message: 'Failed to connect to the cluster', type: 'error', duration: 60000 }} />
+    <ToastHarness
+      toast={{ message: 'Failed to connect to the cluster', type: 'error', duration: 60000 }}
+    />
   ),
 };
 

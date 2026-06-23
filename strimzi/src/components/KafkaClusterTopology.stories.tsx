@@ -14,8 +14,8 @@ function TopologyNote() {
         <strong>KafkaTopologyModal</strong> in the real app.
       </Alert>
       <Typography variant="body2" color="text.secondary" paragraph>
-        Open <strong>Strimzi → Kafka Clusters</strong> in Headlamp and click <strong>View</strong> in the Topology
-        column to see pods, StrimziPodSets, and zoom controls (React Flow).
+        Open <strong>Strimzi → Kafka Clusters</strong> in Headlamp and click <strong>View</strong>{' '}
+        in the Topology column to see pods, StrimziPodSets, and zoom controls (React Flow).
       </Typography>
       <Typography variant="body2" color="text.secondary">
         For a modal shell-only preview in Storybook, see <code>strimzi/KafkaTopologyModal</code>.

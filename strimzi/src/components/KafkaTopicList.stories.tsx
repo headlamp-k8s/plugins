@@ -72,10 +72,21 @@ export function PureKafkaTopicList({ items, onEdit, onDelete }: PureKafkaTopicLi
             label: 'Actions',
             getter: (row: KafkaTopicInterface) => (
               <>
-                <Button size="small" variant="contained" color="primary" sx={{ mr: 1 }} onClick={() => onEdit?.(row)}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  sx={{ mr: 1 }}
+                  onClick={() => onEdit?.(row)}
+                >
                   Edit
                 </Button>
-                <Button size="small" variant="contained" color="error" onClick={() => onDelete?.(row)}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="error"
+                  onClick={() => onDelete?.(row)}
+                >
                   Delete
                 </Button>
               </>

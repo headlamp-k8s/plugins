@@ -47,7 +47,7 @@ function KafkaTopologyModalShell({ clusterName, namespace, onClose }: ModalShell
             ? '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3)'
             : '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         <div
           style={{
@@ -62,7 +62,14 @@ function KafkaTopologyModalShell({ clusterName, namespace, onClose }: ModalShell
             <div style={{ fontSize: '20px', fontWeight: 700, color: theme.palette.text.primary }}>
               {clusterName}
             </div>
-            <div style={{ fontSize: '14px', fontWeight: 400, color: theme.palette.text.secondary, marginTop: '4px' }}>
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 400,
+                color: theme.palette.text.secondary,
+                marginTop: '4px',
+              }}
+            >
               {namespace} • Cluster Topology
             </div>
           </div>

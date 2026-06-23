@@ -44,7 +44,7 @@ export function SearchFilter({
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={e => onSearchChange(e.target.value)}
             placeholder={placeholder}
             style={{
               width: '100%',
@@ -57,10 +57,10 @@ export function SearchFilter({
               outline: 'none',
               transition: 'border-color 0.2s',
             }}
-            onFocus={(e) => {
+            onFocus={e => {
               e.target.style.borderColor = '#1976d2';
             }}
-            onBlur={(e) => {
+            onBlur={e => {
               e.target.style.borderColor = colors.inputBorder;
             }}
           />
@@ -109,12 +109,12 @@ export function SearchFilter({
               transition: 'all 0.2s',
               whiteSpace: 'nowrap',
             }}
-            onMouseEnter={(e) => {
+            onMouseEnter={e => {
               if (!showFilters) {
                 e.currentTarget.style.backgroundColor = colors.chipBg;
               }
             }}
-            onMouseLeave={(e) => {
+            onMouseLeave={e => {
               if (!showFilters) {
                 e.currentTarget.style.backgroundColor = colors.inputBg;
               }
@@ -198,7 +198,7 @@ export function FilterSelect({ value, onChange, options }: FilterSelectProps) {
   return (
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={e => onChange(e.target.value)}
       style={{
         width: '100%',
         padding: '8px',
@@ -210,7 +210,7 @@ export function FilterSelect({ value, onChange, options }: FilterSelectProps) {
         cursor: 'pointer',
       }}
     >
-      {options.map((opt) => (
+      {options.map(opt => (
         <option key={opt.value} value={opt.value}>
           {opt.label}
         </option>
@@ -244,7 +244,7 @@ export function FilterNumberRange({
       <input
         type="number"
         value={minValue}
-        onChange={(e) => onMinChange(e.target.value === '' ? '' : Number(e.target.value))}
+        onChange={e => onMinChange(e.target.value === '' ? '' : Number(e.target.value))}
         placeholder={minPlaceholder}
         style={{
           flex: 1,
@@ -260,7 +260,7 @@ export function FilterNumberRange({
       <input
         type="number"
         value={maxValue}
-        onChange={(e) => onMaxChange(e.target.value === '' ? '' : Number(e.target.value))}
+        onChange={e => onMaxChange(e.target.value === '' ? '' : Number(e.target.value))}
         placeholder={maxPlaceholder}
         style={{
           flex: 1,

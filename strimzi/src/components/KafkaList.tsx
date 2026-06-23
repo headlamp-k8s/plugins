@@ -65,11 +65,7 @@ export function KafkaList() {
 
   return (
     <>
-      <ResourceListView
-        title="Kafka Clusters"
-        resourceClass={KafkaClass}
-        columns={columns}
-      />
+      <ResourceListView title="Kafka Clusters" resourceClass={KafkaClass} columns={columns} />
       <KafkaTopologyModal
         kafka={selectedKafka}
         open={isTopologyModalOpen}
