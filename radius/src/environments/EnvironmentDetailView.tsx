@@ -399,7 +399,9 @@ export default function EnvironmentDetailView() {
                     <TableCell>{app.type}</TableCell>
                     <TableCell>{namespace}</TableCell>
                     <TableCell>
-                      <RadiusStatusLabel status={app.properties.provisioningState || t('Unknown')} />
+                      <RadiusStatusLabel
+                        status={app.properties.provisioningState || t('Unknown')}
+                      />
                     </TableCell>
                     <TableCell>{createdAt}</TableCell>
                   </TableRow>

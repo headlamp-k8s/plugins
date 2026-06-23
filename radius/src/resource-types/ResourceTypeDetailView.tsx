@@ -86,7 +86,7 @@ function renderPropertiesTable(
   if (!properties || Object.keys(properties).length === 0) {
     return (
       <Typography color="textSecondary" sx={{ py: 2 }}>
-        {t('No {{title}} defined', { title: title.toLowerCase() })}
+        {t('No {{title}} defined', { title })}
       </Typography>
     );
   }
