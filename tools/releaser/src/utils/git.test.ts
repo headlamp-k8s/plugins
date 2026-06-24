@@ -21,11 +21,13 @@ import {
 
 vi.mock('child_process', () => ({
   execFileSync: vi.fn(),
+  execSync: vi.fn(),
 }));
 vi.mock('fs');
 
 describe('git utilities', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 

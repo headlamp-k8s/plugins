@@ -11,6 +11,7 @@ describe('plugin utilities', () => {
   const mockRepoRoot = '/mock/repo/root';
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.mocked(gitUtils.getRepoRoot).mockReturnValue(mockRepoRoot);
   });
