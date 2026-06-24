@@ -1,0 +1,28 @@
+# Sample Argo CD Application resource for local development testing.
+#
+# Prerequisites: The Application CRD must be installed first (see crd.yaml),
+# and the "argocd" namespace must exist.
+#
+# Usage:
+#   kubectl create namespace argocd
+#   kubectl apply -f test-files/deploy/crd.yaml
+#   kubectl apply -f test-files/deploy/application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: guestbook
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+status:
+  health:
+    status: Healthy
+  sync:
+    status: Synced
