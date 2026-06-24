@@ -15,36 +15,27 @@
  */
 
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
-
-// Below are some imports you may want to use.
-//   See README.md for links to plugin development documentation.
-// import { Headlamp, K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
-// import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-// import { K8s } from '@kinvolk/headlamp-plugin/lib/K8s';
-// import { Typography } from '@mui/material';
-
-function ArgoCDDashboard() {
-  return <div>Argo CD Dashboard (Coming Soon)</div>;
-}
+import ApplicationList from './components/applications/List';
 
 registerRoute({
-  path: '/argocd',
-  sidebar: 'argocd',
-  name: 'argocd',
+  path: '/argocd/applications',
+  sidebar: 'argocd-applications',
+  name: 'argocd-applications-list',
   exact: true,
-  component: () => <ArgoCDDashboard />,
+  component: () => <ApplicationList />,
 });
 
 registerSidebarEntry({
   parent: null,
   name: 'argocd',
   label: 'Argo CD',
-  url: '/argocd',
+  url: '/argocd/applications',
   icon: 'mdi:application-cog',
 });
 
-// Example of using i18n (internationalization):
-// function MyComponent() {
-//   const { t } = useTranslation();
-//   return <div>{t('translation_key')}</div>;
-// }
+registerSidebarEntry({
+  parent: 'argocd',
+  name: 'argocd-applications',
+  label: 'Applications',
+  url: '/argocd/applications',
+});
