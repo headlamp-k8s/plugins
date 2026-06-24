@@ -24,6 +24,21 @@ const { mockRegisterRoute, mockRegisterSidebarEntry } = vi.hoisted(() => ({
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   registerRoute: mockRegisterRoute,
   registerSidebarEntry: mockRegisterSidebarEntry,
+  K8s: {
+    cluster: {
+      KubeObject: class KubeObject {
+        jsonData: any;
+        constructor(jsonData: any) {
+          this.jsonData = jsonData;
+        }
+      },
+    },
+  },
+}));
+
+vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
+  ResourceListView: () => null,
+  StatusLabel: () => null,
 }));
 
 // Static import triggers the module's top-level registration calls.
@@ -31,12 +46,12 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
 import './index';
 
 describe('argocd plugin', () => {
-  it('should register the /argocd route and sidebar entry', () => {
+  it('should register the /argocd/applications route and sidebar entries', () => {
     expect(mockRegisterRoute).toHaveBeenCalledWith(
       expect.objectContaining({
-        path: '/argocd',
-        name: 'argocd',
-        sidebar: 'argocd',
+        path: '/argocd/applications',
+        name: 'argocd-applications-list',
+        sidebar: 'argocd-applications',
         exact: true,
       })
     );
@@ -45,8 +60,17 @@ describe('argocd plugin', () => {
       expect.objectContaining({
         name: 'argocd',
         label: 'Argo CD',
-        url: '/argocd',
+        url: '/argocd/applications',
         parent: null,
+      })
+    );
+
+    expect(mockRegisterSidebarEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'argocd-applications',
+        label: 'Applications',
+        url: '/argocd/applications',
+        parent: 'argocd',
       })
     );
   });

@@ -1,0 +1,28 @@
+# Argo CD Application CRD (Custom Resource Definition)
+#
+# Apply this CRD first to register the Application resource type with Kubernetes.
+# After the CRD is established, apply application.yaml to create sample data.
+#
+# Usage:
+#   kubectl apply -f test-files/deploy/crd.yaml
+#   kubectl apply -f test-files/deploy/application.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: applications.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: Application
+    listKind: ApplicationList
+    plural: applications
+    singular: application
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    served: true
+    storage: true
