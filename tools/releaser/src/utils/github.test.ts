@@ -29,6 +29,7 @@ describe('github utilities', () => {
   };
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.mocked(Octokit).mockReturnValue(mockOctokit as any);
     vi.stubEnv('GITHUB_TOKEN', 'mock-token');
