@@ -148,7 +148,7 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
       </Typography>
       {isEmpty && (
         <Typography variant="caption" display="block" color="text.secondary">
-          No resources detected
+          No resources in this category
         </Typography>
       )}
       {status.success > 0 && (
