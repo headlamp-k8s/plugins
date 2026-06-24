@@ -235,8 +235,12 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
         item => item.cluster === cluster && item.metadata.name === 'config-network'
       );
       const raw =
-        cm && cm.data && typeof cm.data['ingress.class'] === 'string'
-          ? cm.data['ingress.class']
+        cm && cm.data
+          ? typeof cm.data['ingress-class'] === 'string'
+            ? cm.data['ingress-class']
+            : typeof cm.data['ingress.class'] === 'string'
+            ? cm.data['ingress.class']
+            : null
           : null;
       const trimmed = raw?.trim();
       result.push({

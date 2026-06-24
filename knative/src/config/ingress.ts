@@ -17,7 +17,7 @@
 /**
  * Ingress class constants for Knative networking configuration.
  *
- * These values correspond to the ingress.class setting in the config-network ConfigMap.
+ * These values correspond to the ingress-class (or legacy ingress.class) setting in the config-network ConfigMap.
  */
 
 const INGRESS_CLASS_SUFFIX = '.ingress.networking.knative.dev';
