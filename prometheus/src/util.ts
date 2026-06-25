@@ -335,6 +335,9 @@ export function createDataProcessor(
  * formatBytes(1234567) // Returns "1.18MB"
  */
 export function formatBytes(bytes: number) {
+  if (bytes < 0 || !Number.isFinite(bytes)) {
+    return '0.00B';
+  }
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = bytes === 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024));
   return (bytes / Math.pow(1024, i)).toFixed(2) + units[i];
