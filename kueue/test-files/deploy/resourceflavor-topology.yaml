@@ -1,0 +1,8 @@
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: topology-aware-flavor
+spec:
+  nodeLabels:
+    topology.kubernetes.io/region: us-east-1
+  topologyName: default

@@ -21,6 +21,20 @@ kubectl get crd resourceflavors.kueue.x-k8s.io
 kubectl get resourceflavors
 ```
 
+## Test Files
+
+Sample `ResourceFlavor` manifests are available in `test-files/deploy/`.
+
+Apply them to a cluster with Kueue installed:
+
+```bash
+kubectl apply -f test-files/deploy/resourceflavor-default.yaml
+kubectl apply -f test-files/deploy/resourceflavor-spot.yaml
+kubectl apply -f test-files/deploy/resourceflavor-topology.yaml
+```
+
+After applying the examples, open `Kueue` > `ResourceFlavors` in Headlamp.
+
 ## Development
 
 ```bash
