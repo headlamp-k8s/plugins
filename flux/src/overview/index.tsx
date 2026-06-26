@@ -155,12 +155,16 @@ function useFluxHealth(
       }
     }
 
-    // Check controller pod status.
+    // Check controller deployment readiness.
     if (controllers && controllers.length > 0) {
-      const notRunning = controllers.filter(c => c.jsonData?.status?.phase !== 'Running');
-      if (notRunning.length > 0) {
+      const notReady = controllers.filter(c => {
+        const desired = c.jsonData?.spec?.replicas ?? 1;
+        const ready = c.jsonData?.status?.readyReplicas ?? 0;
+        return ready !== desired;
+      });
+      if (notReady.length > 0) {
         healthy = false;
-        details.push(t('{{count}} controller(s) not running', { count: notRunning.length }));
+        details.push(t('{{count}} controller(s) not ready', { count: notReady.length }));
       }
     }
 
@@ -215,7 +219,7 @@ export function FluxOverview() {
     () => store.get()?.overviewShowFilter ?? 'configured'
   );
   const fluxCheck = useFluxCheck();
-  const namespace = fluxCheck.namespace;
+  const namespace = fluxCheck.namespace || 'flux-system';
 
   const [kustomizations] = Kustomization.useList({ namespace });
   const [helmReleases] = HelmRelease.useList({ namespace });
@@ -233,38 +237,16 @@ export function FluxOverview() {
   const [imageRepositories] = ImageRepository.useList({ namespace });
   const [terraforms] = Terraform.useList({ namespace });
 
-  const [pods] = K8s.ResourceClasses.Pod.useList({
-    namespace: fluxCheck.namespace,
-  });
+  const [deployments] = K8s.ResourceClasses.Deployment.useList({ namespace });
 
   const controllers = React.useMemo(() => {
-    const helmController = pods?.filter(pod => pod.metadata.labels?.['app'] === 'helm-controller');
-    const kustomizeController = pods?.filter(
-      pod => pod.metadata.labels?.['app'] === 'kustomize-controller'
+    return (
+      deployments?.filter(
+        deploy =>
+          deploy.metadata.name.includes('controller') || deploy.metadata.name.includes('watcher')
+      ) ?? null
     );
-    const notificationController = pods?.filter(
-      pod => pod.metadata.labels?.['app'] === 'notification-controller'
-    );
-    const sourceController = pods?.filter(
-      pod => pod.metadata.labels?.['app'] === 'source-controller'
-    );
-    const imageReflectorController = pods?.filter(
-      pod => pod.metadata.labels?.['app'] === 'image-reflector-controller'
-    );
-    const imageAutomationController = pods?.filter(
-      pod => pod.metadata.labels?.['app'] === 'image-automation-controller'
-    );
-    const sourceWatcher = pods?.filter(pod => pod.metadata.labels?.['app'] === 'source-watcher');
-
-    return helmController?.concat(
-      kustomizeController,
-      notificationController,
-      sourceController,
-      imageReflectorController,
-      imageAutomationController,
-      sourceWatcher
-    );
-  }, [pods]);
+  }, [deployments]);
 
   const allResources = React.useMemo(
     () => [
@@ -518,7 +500,11 @@ export function FluxOverview() {
             <Box p={1}>
               <Box>{t('Controllers')}</Box>
               {controllers?.length > 0 &&
-                (controllers?.every(controller => controller.status?.phase === 'Running') ? (
+                (controllers?.every(controller => {
+                  const desired = controller.jsonData?.spec?.replicas ?? 1;
+                  const ready = controller.jsonData?.status?.readyReplicas ?? 0;
+                  return ready === desired;
+                }) ? (
                   <StatusLabel status="success">
                     <Box display="flex" alignItems="center">
                       <Box mt={0.2} mr={0.1}>
@@ -819,7 +805,7 @@ function Controllers({ controllers }) {
       columns={[
         {
           extends: 'name',
-          routeName: 'pod',
+          routeName: 'deployment',
         },
         {
           header: t('Namespace'),
@@ -831,12 +817,18 @@ function Controllers({ controllers }) {
           ),
         },
         {
-          header: t('Status'),
-          accessorFn: item => item?.status.phase,
+          header: t('Ready'),
+          accessorFn: item => {
+            const desired = item.jsonData?.spec?.replicas ?? 1;
+            const ready = item.jsonData?.status?.readyReplicas ?? 0;
+            return `${ready}/${desired}`;
+          },
         },
         {
           header: t('Image'),
-          accessorFn: item => <SourceLink url={item.spec.containers[0].image} />,
+          accessorFn: item => (
+            <SourceLink url={item.jsonData?.spec?.template?.spec?.containers?.[0]?.image} />
+          ),
         },
       ]}
     />
