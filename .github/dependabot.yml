@@ -1,0 +1,217 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/ai-assistant"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/app-catalog"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/argocd"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/backstage"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/cert-manager"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/cluster-api"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/flux"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/karpenter"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/keda"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/kmesh"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/knative"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/kompose"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/kubeflow"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/kyverno"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/minikube"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/opencost"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/plugin-catalog"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/prometheus"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/radius"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/strimzi"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/tinkerbell"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/tools/releaser"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/volcano"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
