@@ -36,11 +36,11 @@ Managing Cluster API resources via CLI can be complex and error-prone. This plug
 
 ### Dashboard View
 
-![Main Plugin Dashboard](https://github.com/user-attachments/assets/3ab4b887-67de-4a9b-a29a-99e5446487e0)
+![Main Plugin Dashboard](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/cluster-api/docs/dashboard.png)
 
 ### Map View Visualization
 
-![Map View](https://github.com/user-attachments/assets/f659e62e-c89c-4c6e-a1da-17bf352f437c)
+![Map View](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/cluster-api/docs/map-view.png)
 
 ---
 
