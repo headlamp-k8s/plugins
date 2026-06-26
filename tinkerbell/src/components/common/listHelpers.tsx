@@ -1,4 +1,5 @@
-import { Chip, Typography } from '@mui/material';
+import { StatusLabel, StatusLabelProps } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Typography } from '@mui/material';
 
 /** Display value used when a list column has no data to show. */
 export const EMPTY_VALUE = '-';
@@ -77,27 +78,27 @@ export function renderFallback(value: unknown) {
 }
 
 /**
- * Renders a status-like value as a small color-coded chip.
+ * Renders a status-like value using Headlamp's standard status label.
  *
  * @param value - Status, state, or phase value read from a resource.
- * @returns A Material UI chip suitable for use in list tables.
+ * @returns A Headlamp status label suitable for use in list tables.
  */
 export function renderStatus(value: unknown) {
   const label = fallback(value);
   const normalized = label.toLowerCase();
 
-  let color: 'default' | 'success' | 'warning' | 'error' | 'info' = 'default';
+  let status: StatusLabelProps['status'] = '';
   if (['ready', 'running', 'success', 'succeeded', 'completed', 'on'].includes(normalized)) {
-    color = 'success';
+    status = 'success';
   } else if (['pending', 'unknown', EMPTY_VALUE.toLowerCase()].includes(normalized)) {
-    color = 'default';
+    status = '';
   } else if (['failed', 'failure', 'error', 'timed out', 'timeout', 'off'].includes(normalized)) {
-    color = 'error';
+    status = 'error';
   } else if (['warning', 'disabled'].includes(normalized)) {
-    color = 'warning';
+    status = 'warning';
   } else {
-    color = 'info';
+    status = '';
   }
 
-  return <Chip label={label} color={color} size="small" variant="outlined" />;
+  return <StatusLabel status={status}>{label}</StatusLabel>;
 }
