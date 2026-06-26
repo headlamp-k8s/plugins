@@ -11,6 +11,8 @@ import { fallback, renderUnknownValue } from '../../common/detailHelpers';
 
 /**
  * Renders the Tinkerbell BMC Job detail view.
+ *
+ * @returns BMC Job detail page with machine reference, tasks, and timing.
  */
 export function BmcJobDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();

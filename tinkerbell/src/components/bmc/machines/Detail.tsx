@@ -10,6 +10,8 @@ import { fallback, renderRecordSection, statusValue } from '../../common/detailH
 
 /**
  * Renders the Tinkerbell BMC Machine detail view.
+ *
+ * @returns BMC Machine detail page with power, connection, and conditions.
  */
 export function BmcMachineDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();

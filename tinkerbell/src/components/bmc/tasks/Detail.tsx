@@ -10,6 +10,8 @@ import { fallback, renderRecordSection, renderUnknownValue } from '../../common/
 
 /**
  * Renders the Tinkerbell BMC Task detail view.
+ *
+ * @returns BMC Task detail page with operation, connection, and timing.
  */
 export function BmcTaskDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();

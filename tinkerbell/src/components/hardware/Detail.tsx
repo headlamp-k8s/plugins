@@ -17,6 +17,8 @@ import {
 
 /**
  * Renders the Tinkerbell Hardware detail view.
+ *
+ * @returns Hardware detail page with interfaces, disks, references, and data sections.
  */
 export function HardwareDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();

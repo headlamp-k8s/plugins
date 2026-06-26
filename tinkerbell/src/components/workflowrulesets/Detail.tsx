@@ -10,6 +10,8 @@ import { fallback, renderRecordSection, renderUnknownValue } from '../common/det
 
 /**
  * Renders the Tinkerbell WorkflowRuleSet detail view.
+ *
+ * @returns WorkflowRuleSet detail page with rules and workflow config.
  */
 export function WorkflowRuleSetDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();

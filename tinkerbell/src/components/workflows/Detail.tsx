@@ -12,6 +12,8 @@ import { booleanValue, fallback, renderRecordSection, statusValue } from '../com
 
 /**
  * Renders the Tinkerbell Workflow detail view.
+ *
+ * @returns Workflow detail page with references, status, tasks, and actions.
  */
 export function WorkflowDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();

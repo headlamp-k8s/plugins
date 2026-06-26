@@ -9,24 +9,39 @@ import { normalizeState } from '../../resources/common';
 import { Template } from '../../resources/template';
 import { fallback, renderTextSection, statusValue } from '../common/detailHelpers';
 
+/** Parsed summary for one task in a Tinkerbell template. */
 interface ParsedTemplateTask {
+  /** Task name from the template data. */
   name: string;
+  /** Worker selector or worker value used by the task. */
   worker?: string;
+  /** Number of actions parsed for this task. */
   actionCount: number;
+  /** Number of volume entries parsed for this task. */
   volumeCount: number;
 }
 
+/** Parsed summary for one action in a Tinkerbell template task. */
 interface ParsedTemplateAction {
+  /** Name of the parent task that contains this action. */
   taskName: string;
+  /** Action name from the template data. */
   name: string;
+  /** Container image used by the action, when present. */
   image?: string;
+  /** Action timeout value, when present. */
   timeout?: string;
 }
 
+/** Best-effort parsed summary of template YAML stored in `spec.data`. */
 interface ParsedTemplate {
+  /** Template name from the embedded template YAML. */
   name?: string;
+  /** Global timeout from the embedded template YAML. */
   globalTimeout?: string;
+  /** Parsed task summaries. */
   tasks: ParsedTemplateTask[];
+  /** Parsed action summaries across all tasks. */
   actions: ParsedTemplateAction[];
 }
 
@@ -127,6 +142,8 @@ function parseTemplateData(data: string | undefined): ParsedTemplate {
 
 /**
  * Renders the Tinkerbell Template detail view.
+ *
+ * @returns Template detail page with summary, parsed tasks, actions, and raw data.
  */
 export function TemplateDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
