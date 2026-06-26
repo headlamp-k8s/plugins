@@ -21,9 +21,12 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
   const isDark = theme.palette.mode === 'dark';
   const [editTarget, setEditTarget] = React.useState<EditTarget | null>(null);
 
-  const handleEditResource = useCallback((resourceUrl: string, resourceName: string, resourceKind: string) => {
-    setEditTarget({ resourceUrl, resourceName, resourceKind });
-  }, []);
+  const handleEditResource = useCallback(
+    (resourceUrl: string, resourceName: string, resourceKind: string) => {
+      setEditTarget({ resourceUrl, resourceName, resourceKind });
+    },
+    []
+  );
 
   if (!kafka || !open) return null;
 
@@ -58,7 +61,7 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
               ? '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3)'
               : '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
           }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         >
           {/* Header */}
           <div
@@ -74,7 +77,14 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
               <div style={{ fontSize: '20px', fontWeight: 700, color: theme.palette.text.primary }}>
                 {kafka.metadata.name}
               </div>
-              <div style={{ fontSize: '14px', fontWeight: 400, color: theme.palette.text.secondary, marginTop: '4px' }}>
+              <div
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 400,
+                  color: theme.palette.text.secondary,
+                  marginTop: '4px',
+                }}
+              >
                 {kafka.metadata.namespace} • Cluster Topology
               </div>
             </div>
@@ -94,11 +104,11 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
                 justifyContent: 'center',
                 transition: 'all 0.2s',
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={e => {
                 e.currentTarget.style.backgroundColor = isDark ? '#475569' : '#cbd5e1';
                 e.currentTarget.style.color = theme.palette.text.primary;
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={e => {
                 e.currentTarget.style.backgroundColor = isDark ? '#334155' : '#e2e8f0';
                 e.currentTarget.style.color = theme.palette.text.secondary;
               }}
@@ -116,10 +126,7 @@ export function KafkaTopologyModal({ kafka, open, onClose }: KafkaTopologyModalP
               backgroundColor: theme.palette.background.default,
             }}
           >
-            <KafkaClusterTopology
-              kafka={kafka}
-              onEditResource={handleEditResource}
-            />
+            <KafkaClusterTopology kafka={kafka} onEditResource={handleEditResource} />
           </div>
         </div>
       </div>

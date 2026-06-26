@@ -7,10 +7,7 @@ import {
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Meta, StoryObj } from '@storybook/react';
-import type {
-  KafkaConnectorInterface,
-  KafkaConnectorState,
-} from '../resources/kafkaConnector';
+import type { KafkaConnectorInterface, KafkaConnectorState } from '../resources/kafkaConnector';
 import { getConnectorDesiredState } from '../crds-helpers';
 import { mockKafkaConnectors } from '../storybookMocks/strimziMocks';
 
@@ -120,8 +117,7 @@ export function PureKafkaConnectorList({ items, onTogglePause }: PureKafkaConnec
           },
           {
             label: 'Runtime state',
-            getter: row =>
-              row.status?.connectorStatus?.connector?.state?.toLowerCase() ?? '-',
+            getter: row => row.status?.connectorStatus?.connector?.state?.toLowerCase() ?? '-',
           },
           { label: 'Status', getter: statusChip },
           { label: 'Actions', getter: action },

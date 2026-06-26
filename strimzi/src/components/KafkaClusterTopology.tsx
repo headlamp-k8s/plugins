@@ -79,9 +79,9 @@ const LAYOUT = {
   NAMESPACE_BG_OPACITY: 0.25,
 
   // Progressive opacity for nested blocks
-  CLUSTER_BG_OPACITY: 0.30,
+  CLUSTER_BG_OPACITY: 0.3,
   GROUP_BG_OPACITY: 0.35,
-  POD_BG_OPACITY: 0.40,
+  POD_BG_OPACITY: 0.4,
 
   // Icon sizes for labels
   NAMESPACE_ICON_SIZE: 40,
@@ -152,8 +152,8 @@ function calculatePodDimensions(params: {
   const calculatedWidth =
     LAYOUT.POD_ICON_SIZE + // Icon
     20 + // Gap between icon and text
-    (maxTextLength * LAYOUT.POD_CONTENT_CHAR_WIDTH) + // Text content
-    (LAYOUT.POD_NODE_PADDING * 3); // Padding
+    maxTextLength * LAYOUT.POD_CONTENT_CHAR_WIDTH + // Text content
+    LAYOUT.POD_NODE_PADDING * 3; // Padding
 
   const width = Math.max(LAYOUT.POD_NODE_MIN_WIDTH, calculatedWidth);
   const height = LAYOUT.POD_NODE_BASE_HEIGHT;
@@ -244,9 +244,8 @@ function GraphControlButton({
     backgroundColor: theme.palette.background.paper,
     color: theme.palette.text.primary,
     border: 'none',
-    boxShadow: theme.palette.mode === 'dark'
-      ? '0 2px 4px rgba(0,0,0,0.3)'
-      : '0 2px 4px rgba(0,0,0,0.1)',
+    boxShadow:
+      theme.palette.mode === 'dark' ? '0 2px 4px rgba(0,0,0,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
     '&:hover': {
       backgroundColor: theme.palette.action.hover,
     },
@@ -257,13 +256,7 @@ function GraphControlButton({
   };
 
   return (
-    <Button
-      disabled={disabled}
-      sx={sx}
-      variant="contained"
-      title={title}
-      onClick={onClick}
-    >
+    <Button disabled={disabled} sx={sx} variant="contained" title={title} onClick={onClick}>
       {children}
     </Button>
   );
@@ -285,18 +278,10 @@ function GraphControls({ children }: { children?: React.ReactNode }) {
         orientation="vertical"
         variant="contained"
       >
-        <GraphControlButton
-          disabled={maxZoomReached}
-          title="Zoom in"
-          onClick={() => zoomIn()}
-        >
+        <GraphControlButton disabled={maxZoomReached} title="Zoom in" onClick={() => zoomIn()}>
           <Icon icon="mdi:plus" />
         </GraphControlButton>
-        <GraphControlButton
-          disabled={minZoomReached}
-          title="Zoom out"
-          onClick={() => zoomOut()}
-        >
+        <GraphControlButton disabled={minZoomReached} title="Zoom out" onClick={() => zoomOut()}>
           <Icon icon="mdi:minus" />
         </GraphControlButton>
       </ButtonGroup>
@@ -347,7 +332,15 @@ function createPodNode(params: {
     position,
     data: {
       label: (
-        <div style={{ padding: '6px', width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{
+            padding: '6px',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <div
             style={{
               fontSize: theme.typography.fontSize.large,
@@ -363,7 +356,14 @@ function createPodNode(params: {
             }}
           >
             <ResourceIcon icon="mdi:cube" color="#00ACC1" size={`${LAYOUT.POD_ICON_SIZE}px`} />
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                lineHeight: '1.3',
+                alignItems: 'flex-start',
+              }}
+            >
               <span
                 style={{
                   fontSize: theme.typography.fontSize.large,
@@ -430,12 +430,7 @@ function createPodNode(params: {
 }
 
 // Status badge component for consistent styling
-function StatusBadge({
-  ready,
-}: {
-  ready: boolean;
-  theme?: ReturnType<typeof useTopologyTheme>;
-}) {
+function StatusBadge({ ready }: { ready: boolean; theme?: ReturnType<typeof useTopologyTheme> }) {
   const muiTheme = useTheme();
   const isDark = muiTheme.palette.mode === 'dark';
 
@@ -447,16 +442,18 @@ function StatusBadge({
       color={ready ? 'success' : 'warning'}
       sx={{
         borderRadius: '4px',
-        ...(isDark && ready && {
-          borderColor: '#34d399',
-          color: '#34d399',
-          backgroundColor: 'rgba(52, 211, 153, 0.15)',
-        }),
-        ...(isDark && !ready && {
-          borderColor: '#f87171',
-          color: '#f87171',
-          backgroundColor: 'rgba(248, 113, 113, 0.15)',
-        }),
+        ...(isDark &&
+          ready && {
+            borderColor: '#34d399',
+            color: '#34d399',
+            backgroundColor: 'rgba(52, 211, 153, 0.15)',
+          }),
+        ...(isDark &&
+          !ready && {
+            borderColor: '#f87171',
+            color: '#f87171',
+            backgroundColor: 'rgba(248, 113, 113, 0.15)',
+          }),
       }}
     />
   );
@@ -501,9 +498,28 @@ function createGroupLabel(params: {
     position: { x: 20, y: 20 },
     data: {
       label: (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: editInfo ? 'pointer' : 'default' }}>
-          <ResourceIcon icon={iconConfig.icon} color={iconConfig.color} size={`${LAYOUT.GROUP_ICON_SIZE}px`} />
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start', flex: 1 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            cursor: editInfo ? 'pointer' : 'default',
+          }}
+        >
+          <ResourceIcon
+            icon={iconConfig.icon}
+            color={iconConfig.color}
+            size={`${LAYOUT.GROUP_ICON_SIZE}px`}
+          />
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              lineHeight: '1.3',
+              alignItems: 'flex-start',
+              flex: 1,
+            }}
+          >
             <span
               style={{
                 fontSize: theme.typography.fontSize.large,
@@ -557,7 +573,12 @@ function createGroupLabel(params: {
                 marginTop: '2px',
               }}
             >
-              <Icon icon="mdi:pencil-outline" width="16px" height="16px" style={{ color: iconConfig.color }} />
+              <Icon
+                icon="mdi:pencil-outline"
+                width="16px"
+                height="16px"
+                style={{ color: iconConfig.color }}
+              />
             </div>
           )}
         </div>
@@ -607,7 +628,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
         ([nodePoolData, podSetData, podData]: [
           { items?: KafkaNodePool[] },
           { items?: StrimziPodSet[] },
-          { items?: Pod[] }
+          { items?: Pod[] },
         ]) => {
           if (nodePoolData?.items) {
             const pools = nodePoolData.items.filter(
@@ -631,7 +652,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
           setLoading(false);
         }
       )
-      .catch((err) => {
+      .catch(err => {
         console.error('Failed to fetch Kafka topology data:', err);
         setLoading(false);
       });
@@ -647,14 +668,30 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
 
     // PHASE 1: Calculate ALL pod dimensions first (based on real data)
     // This ensures cluster/namespace dimensions are accurate
-    let allPoolDimensions: Array<{ poolName: string; podDimensions: PodDimensions[]; dimensions: NodePoolDimensions }> = [];
-    let kraftLegacyDimensions: { podDimensions: PodDimensions[]; groupWidth: number; groupHeight: number } | null = null;
-    let zkDimensions: { podDimensions: PodDimensions[]; groupWidth: number; groupHeight: number } | null = null;
-    let zkBrokerDimensions: { podDimensions: PodDimensions[]; groupWidth: number; groupHeight: number } | null = null;
+    let allPoolDimensions: Array<{
+      poolName: string;
+      podDimensions: PodDimensions[];
+      dimensions: NodePoolDimensions;
+    }> = [];
+    let kraftLegacyDimensions: {
+      podDimensions: PodDimensions[];
+      groupWidth: number;
+      groupHeight: number;
+    } | null = null;
+    let zkDimensions: {
+      podDimensions: PodDimensions[];
+      groupWidth: number;
+      groupHeight: number;
+    } | null = null;
+    let zkBrokerDimensions: {
+      podDimensions: PodDimensions[];
+      groupWidth: number;
+      groupHeight: number;
+    } | null = null;
 
     if (nodePools.length > 0) {
       // Calculate dimensions for all NodePools
-      allPoolDimensions = nodePools.map((pool) => {
+      allPoolDimensions = nodePools.map(pool => {
         const poolName = pool.metadata.name;
         const roles = pool.spec.roles || [];
         const replicas = pool.spec.replicas;
@@ -663,7 +700,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
         const isBroker = roles.includes('broker');
         const isDual = isController && isBroker;
 
-        const podDimensions = nodeIds.map((nodeId) => {
+        const podDimensions = nodeIds.map(nodeId => {
           const podName = `${clusterName}-${poolName}-${nodeId}`;
           const pod = pods.find(p => p.metadata?.name === podName);
           return calculatePodDimensions({
@@ -678,7 +715,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
         return {
           poolName,
           podDimensions,
-          dimensions: calculateNodePoolDimensions(podDimensions)
+          dimensions: calculateNodePoolDimensions(podDimensions),
         };
       });
     } else if (isKRaft) {
@@ -782,12 +819,26 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
         totalPoolHeight += dimensions.poolHeight + LAYOUT.GROUP_SPACING;
       });
 
-      clusterWidth = Math.max(maxPoolWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
-      clusterHeight = LAYOUT.CLUSTER_LABEL_HEIGHT + LAYOUT.CLUSTER_VERTICAL_MARGIN_START + totalPoolHeight + LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
+      clusterWidth = Math.max(
+        maxPoolWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN,
+        LAYOUT.CLUSTER_MIN_WIDTH
+      );
+      clusterHeight =
+        LAYOUT.CLUSTER_LABEL_HEIGHT +
+        LAYOUT.CLUSTER_VERTICAL_MARGIN_START +
+        totalPoolHeight +
+        LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
     } else if (isKRaft && kraftLegacyDimensions) {
       // KRaft legacy
-      clusterWidth = Math.max(kraftLegacyDimensions.groupWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
-      clusterHeight = LAYOUT.CLUSTER_LABEL_HEIGHT + LAYOUT.CLUSTER_VERTICAL_MARGIN_LEGACY + kraftLegacyDimensions.groupHeight + LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
+      clusterWidth = Math.max(
+        kraftLegacyDimensions.groupWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN,
+        LAYOUT.CLUSTER_MIN_WIDTH
+      );
+      clusterHeight =
+        LAYOUT.CLUSTER_LABEL_HEIGHT +
+        LAYOUT.CLUSTER_VERTICAL_MARGIN_LEGACY +
+        kraftLegacyDimensions.groupHeight +
+        LAYOUT.CLUSTER_VERTICAL_MARGIN_END;
     } else {
       // ZooKeeper mode - use pre-calculated dimensions
       const zkGroupWidth = zkDimensions?.groupWidth || 0;
@@ -796,7 +847,10 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
       const brokerGroupHeight = zkBrokerDimensions?.groupHeight || 0;
 
       maxPodSetWidth = Math.max(zkGroupWidth, brokerGroupWidth);
-      clusterWidth = Math.max(maxPodSetWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN, LAYOUT.CLUSTER_MIN_WIDTH);
+      clusterWidth = Math.max(
+        maxPodSetWidth + LAYOUT.CLUSTER_HORIZONTAL_MARGIN,
+        LAYOUT.CLUSTER_MIN_WIDTH
+      );
       clusterHeight =
         LAYOUT.CLUSTER_LABEL_HEIGHT +
         LAYOUT.CLUSTER_VERTICAL_MARGIN_START +
@@ -807,7 +861,8 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
 
     // Namespace dimensions
     const namespaceWidth = clusterWidth + LAYOUT.NAMESPACE_PADDING * 2;
-    const namespaceHeight = clusterHeight + LAYOUT.NAMESPACE_PADDING * 2 + LAYOUT.NAMESPACE_LABEL_HEIGHT + 10;
+    const namespaceHeight =
+      clusterHeight + LAYOUT.NAMESPACE_PADDING * 2 + LAYOUT.NAMESPACE_LABEL_HEIGHT + 10;
 
     // Namespace node (root)
     generatedNodes.push({
@@ -833,8 +888,19 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
       data: {
         label: (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <ResourceIcon icon="mdi:square-rounded-outline" color="#0baf9e" size={`${LAYOUT.NAMESPACE_ICON_SIZE}px`} />
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start' }}>
+            <ResourceIcon
+              icon="mdi:square-rounded-outline"
+              color="#0baf9e"
+              size={`${LAYOUT.NAMESPACE_ICON_SIZE}px`}
+            />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                lineHeight: '1.3',
+                alignItems: 'flex-start',
+              }}
+            >
               <span
                 style={{
                   fontSize: theme.typography.fontSize.large,
@@ -902,8 +968,20 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
       data: {
         label: (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <ResourceIcon icon="mdi:apache-kafka" color="#0baf9e" size={`${LAYOUT.CLUSTER_ICON_SIZE}px`} />
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.3', alignItems: 'flex-start', flex: 1 }}>
+            <ResourceIcon
+              icon="mdi:apache-kafka"
+              color="#0baf9e"
+              size={`${LAYOUT.CLUSTER_ICON_SIZE}px`}
+            />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                lineHeight: '1.3',
+                alignItems: 'flex-start',
+                flex: 1,
+              }}
+            >
               <span
                 style={{
                   fontSize: theme.typography.fontSize.large,
@@ -962,16 +1040,23 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
                   marginTop: '2px',
                 }}
               >
-                <Icon icon="mdi:pencil-outline" width="16px" height="16px" style={{ color: '#0baf9e' }} />
+                <Icon
+                  icon="mdi:pencil-outline"
+                  width="16px"
+                  height="16px"
+                  style={{ color: '#0baf9e' }}
+                />
               </div>
             )}
           </div>
         ),
-        editInfo: onEditResource ? {
-          resourceUrl: `/apis/kafka.strimzi.io/${kafkaVersion}/namespaces/${namespace}/kafkas/${clusterName}`,
-          resourceName: clusterName,
-          resourceKind: 'Kafka',
-        } : undefined,
+        editInfo: onEditResource
+          ? {
+              resourceUrl: `/apis/kafka.strimzi.io/${kafkaVersion}/namespaces/${namespace}/kafkas/${clusterName}`,
+              resourceName: clusterName,
+              resourceKind: 'Kafka',
+            }
+          : undefined,
       },
       style: {
         background: 'transparent',
@@ -1060,11 +1145,13 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
             theme,
             resourceType: 'KafkaNodePool',
             replicaInfo: `Replicas: ${replicas}`,
-            editInfo: onEditResource ? {
-              resourceUrl: `/apis/kafka.strimzi.io/${kafkaVersion}/namespaces/${namespace}/kafkanodepools/${poolName}`,
-              resourceName: poolName,
-              resourceKind: 'KafkaNodePool',
-            } : undefined,
+            editInfo: onEditResource
+              ? {
+                  resourceUrl: `/apis/kafka.strimzi.io/${kafkaVersion}/namespaces/${namespace}/kafkanodepools/${poolName}`,
+                  resourceName: poolName,
+                  resourceKind: 'KafkaNodePool',
+                }
+              : undefined,
           })
         );
 
@@ -1102,11 +1189,13 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
               theme,
               resourceType: 'StrimziPodSet',
               replicaInfo: `Ready Pods: ${readyPodsCount}/${nodeIds.length}`,
-              editInfo: onEditResource ? {
-                resourceUrl: `/apis/core.strimzi.io/${coreVersion}/namespaces/${namespace}/strimzipodsets/${podSet.metadata.name}`,
-                resourceName: podSet.metadata.name,
-                resourceKind: 'StrimziPodSet',
-              } : undefined,
+              editInfo: onEditResource
+                ? {
+                    resourceUrl: `/apis/core.strimzi.io/${coreVersion}/namespaces/${namespace}/strimzipodsets/${podSet.metadata.name}`,
+                    resourceName: podSet.metadata.name,
+                    resourceKind: 'StrimziPodSet',
+                  }
+                : undefined,
             })
           );
 
@@ -1185,11 +1274,13 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
             theme,
             resourceType: 'StrimziPodSet',
             replicaInfo: `Ready Pods: ${readyPodsCount}/${brokerCount}`,
-            editInfo: onEditResource ? {
-              resourceUrl: `/apis/core.strimzi.io/${coreVersion}/namespaces/${namespace}/strimzipodsets/${kafkaPodSet.metadata.name}`,
-              resourceName: kafkaPodSet.metadata.name,
-              resourceKind: 'StrimziPodSet',
-            } : undefined,
+            editInfo: onEditResource
+              ? {
+                  resourceUrl: `/apis/core.strimzi.io/${coreVersion}/namespaces/${namespace}/strimzipodsets/${kafkaPodSet.metadata.name}`,
+                  resourceName: kafkaPodSet.metadata.name,
+                  resourceKind: 'StrimziPodSet',
+                }
+              : undefined,
           })
         );
 
@@ -1270,11 +1361,13 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
             theme,
             resourceType: 'StrimziPodSet',
             replicaInfo: `Ready Pods: ${zkReadyPodsCount}/${zkCount}`,
-            editInfo: onEditResource ? {
-              resourceUrl: `/apis/core.strimzi.io/${coreVersion}/namespaces/${namespace}/strimzipodsets/${zkPodSet.metadata.name}`,
-              resourceName: zkPodSet.metadata.name,
-              resourceKind: 'StrimziPodSet',
-            } : undefined,
+            editInfo: onEditResource
+              ? {
+                  resourceUrl: `/apis/core.strimzi.io/${coreVersion}/namespaces/${namespace}/strimzipodsets/${zkPodSet.metadata.name}`,
+                  resourceName: zkPodSet.metadata.name,
+                  resourceKind: 'StrimziPodSet',
+                }
+              : undefined,
           })
         );
 
@@ -1311,7 +1404,8 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
       // Kafka StrimziPodSet (below ZK)
       if (kafkaPodSet && zkBrokerDimensions) {
         // Use pre-calculated dimensions
-        const { podDimensions: brokerPodDimensions, groupHeight: brokerGroupHeight } = zkBrokerDimensions;
+        const { podDimensions: brokerPodDimensions, groupHeight: brokerGroupHeight } =
+          zkBrokerDimensions;
         const brokerGroupX = (clusterWidth - maxPodSetWidth) / 2;
 
         generatedNodes.push({
@@ -1347,11 +1441,13 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
             theme,
             resourceType: 'StrimziPodSet',
             replicaInfo: `Ready Pods: ${kafkaReadyPodsCount}/${brokerCount}`,
-            editInfo: onEditResource ? {
-              resourceUrl: `/apis/core.strimzi.io/${coreVersion}/namespaces/${namespace}/strimzipodsets/${kafkaPodSet.metadata.name}`,
-              resourceName: kafkaPodSet.metadata.name,
-              resourceKind: 'StrimziPodSet',
-            } : undefined,
+            editInfo: onEditResource
+              ? {
+                  resourceUrl: `/apis/core.strimzi.io/${coreVersion}/namespaces/${namespace}/strimzipodsets/${kafkaPodSet.metadata.name}`,
+                  resourceName: kafkaPodSet.metadata.name,
+                  resourceKind: 'StrimziPodSet',
+                }
+              : undefined,
           })
         );
 

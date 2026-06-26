@@ -67,6 +67,8 @@ export const WithFiltersPanel: Story = {
 export const EmptySearch: Story = {
   render: () => {
     const [term, setTerm] = React.useState('');
-    return <SearchFilter searchTerm={term} onSearchChange={setTerm} placeholder="Type to search…" />;
+    return (
+      <SearchFilter searchTerm={term} onSearchChange={setTerm} placeholder="Type to search…" />
+    );
   },
 };

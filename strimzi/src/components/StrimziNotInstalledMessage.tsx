@@ -12,16 +12,11 @@ export function StrimziNotInstalledMessage() {
     <SectionBox title="Strimzi not detected">
       <Box sx={{ p: 2 }}>
         <Typography variant="body1" gutterBottom>
-          The Strimzi operator was not found on this cluster. Install Strimzi to
-          use this plugin.
+          The Strimzi operator was not found on this cluster. Install Strimzi to use this plugin.
         </Typography>
         <Typography variant="body2" color="text.secondary">
           See the{' '}
-          <Link
-            href="https://strimzi.io/quickstarts/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <Link href="https://strimzi.io/quickstarts/" target="_blank" rel="noopener noreferrer">
             Strimzi quick-start guide
           </Link>{' '}
           for installation instructions.

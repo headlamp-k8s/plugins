@@ -157,10 +157,10 @@ export function Toast({ toast, onClose }: ToastProps) {
             transition: 'opacity 0.2s',
             flexShrink: 0,
           }}
-          onMouseEnter={(e) => {
+          onMouseEnter={e => {
             e.currentTarget.style.opacity = '1';
           }}
-          onMouseLeave={(e) => {
+          onMouseLeave={e => {
             e.currentTarget.style.opacity = '0.8';
           }}
           aria-label="Close notification"
