@@ -17,10 +17,107 @@
 import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import {
+  DateLabel,
+  SectionHeader,
+  SimpleTable,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, Link as MuiLink, Typography } from '@mui/material';
 import { usePolicyResultCounts } from '../hooks/usePolicyResultCounts';
 import { KyvernoPolicy } from '../resources/kyvernoPolicy';
 import { PolicyViewer } from './PolicyViewer';
+
+// ── Pure component for Storybook (no API calls, accepts props directly) ───
+export interface PolicyRow {
+  name: string;
+  namespace?: string;
+  ready: boolean;
+  validationFailureAction: string;
+  background: boolean;
+  ruleTypes: string[];
+  ruleCount: number;
+  creationTimestamp?: string;
+  results?: { fail: number; total: number } | null;
+}
+
+export function PurePolicyTable({
+  items,
+  onNameClick,
+}: {
+  items: PolicyRow[];
+  onNameClick?: (item: PolicyRow) => void;
+}) {
+  return (
+    <Box>
+      <SectionHeader title="Policies" />
+      <SimpleTable
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: PolicyRow) =>
+              onNameClick ? (
+                <MuiLink
+                  component="button"
+                  onClick={() => onNameClick(row)}
+                  sx={{ textAlign: 'left' }}
+                >
+                  {row.name}
+                </MuiLink>
+              ) : (
+                row.name
+              ),
+          },
+          { label: 'Namespace', getter: (row: PolicyRow) => row.namespace ?? '—' },
+          {
+            label: 'Ready',
+            getter: (row: PolicyRow) => (
+              <Chip
+                label={row.ready ? 'True' : 'False'}
+                color={row.ready ? 'success' : 'error'}
+                size="small"
+              />
+            ),
+          },
+          { label: 'Action', getter: (row: PolicyRow) => row.validationFailureAction },
+          { label: 'Background', getter: (row: PolicyRow) => (row.background ? 'True' : 'False') },
+          {
+            label: 'Rule Types',
+            getter: (row: PolicyRow) => (
+              <Box sx={{ display: 'inline-flex', gap: 0.5 }}>
+                {row.ruleTypes.map(t => (
+                  <Chip key={t} label={t} size="small" variant="outlined" />
+                ))}
+              </Box>
+            ),
+          },
+          { label: 'Rules', getter: (row: PolicyRow) => row.ruleCount },
+          {
+            label: 'Results',
+            getter: (row: PolicyRow) => {
+              if (!row.results) return <Typography variant="body2">—</Typography>;
+              return (
+                <Typography variant="body2" color={row.results.fail > 0 ? 'error' : 'text.primary'}>
+                  {row.results.fail} / {row.results.total} failed
+                </Typography>
+              );
+            },
+          },
+          {
+            label: 'Age',
+            getter: (row: PolicyRow) =>
+              row.creationTimestamp ? (
+                <DateLabel date={row.creationTimestamp} format="mini" />
+              ) : (
+                '—'
+              ),
+          },
+        ]}
+        data={items}
+        emptyMessage="No policies found"
+      />
+    </Box>
+  );
+}
 
 function openPolicyActivity(item: KyvernoPolicy) {
   Activity.launch({
@@ -40,6 +137,7 @@ function openPolicyActivity(item: KyvernoPolicy) {
 export function PolicyList() {
   const { t } = useTranslation();
   const counts = usePolicyResultCounts();
+
   return (
     <ResourceListView
       title={t('Policies')}
