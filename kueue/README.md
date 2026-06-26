@@ -12,7 +12,7 @@ Kueue resources such as `ClusterQueue`, `LocalQueue`, `Workload`, and additional
 
 ## Prerequisites
 
-Kueue CRDs must be installed in the cluster before the plugin can list resources.
+Kueue CRDs must be installed in the cluster before the plugin can list resources. See the [Kueue installation guide](https://kueue.sigs.k8s.io/docs/getting-started/installation/) for installation instructions.
 
 You can check for the `ResourceFlavor` CRD and resources with:
 
