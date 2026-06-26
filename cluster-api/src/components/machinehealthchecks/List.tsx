@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, Loader, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
 import { MachineHealthCheck } from '../../resources/machinehealthcheck';
@@ -16,16 +17,17 @@ interface MachineHealthChecksListWithDataProps {
 function MachineHealthChecksListWithData({
   MachineHealthCheckClass,
 }: MachineHealthChecksListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Machine Health Checks"
+      title={t('Machine Health Checks')}
       resourceClass={MachineHealthCheckClass}
       columns={[
         'name',
         'namespace',
         {
           id: 'cluster',
-          label: 'Cluster',
+          label: t('Cluster'),
           getValue: mhc => mhc.metadata?.labels?.['cluster.x-k8s.io/cluster-name'],
           render: mhc => (
             <Link
@@ -41,17 +43,17 @@ function MachineHealthChecksListWithData({
         },
         {
           id: 'expectedMachines',
-          label: 'Expected Machines',
+          label: t('Expected Machines'),
           getValue: mhc => mhc.status?.expectedMachines,
         },
         {
           id: 'maxUnhealthy',
-          label: 'Max Unhealthy',
+          label: t('Max Unhealthy'),
           getValue: mhc => mhc.spec?.maxUnhealthy,
         },
         {
           id: 'currentHealthy',
-          label: 'Current Healthy',
+          label: t('Current Healthy'),
           getValue: mhc => mhc.status?.currentHealthy,
         },
         'age',
@@ -65,11 +67,12 @@ function MachineHealthChecksListWithData({
  * Detects the CAPI version and renders the list with the correct resource class.
  */
 export function MachineHealthChecksList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(MachineHealthCheck.crdName, 'v1beta1');
   const VersionedMachineHealthCheck = useMemo(
     () => (version ? MachineHealthCheck.withApiVersion(version) : MachineHealthCheck),
     [version]
   );
-  if (!version) return <Loader title="Detecting MachineHealthCheck version" />;
+  if (!version) return <Loader title={t('Detecting MachineHealthCheck version')} />;
   return <MachineHealthChecksListWithData MachineHealthCheckClass={VersionedMachineHealthCheck} />;
 }

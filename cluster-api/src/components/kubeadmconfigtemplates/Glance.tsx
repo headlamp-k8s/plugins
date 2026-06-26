@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import { Box } from '@mui/system';
 import { getCondition } from '../../resources/common';
@@ -12,6 +13,7 @@ import { renderConditionStatus } from '../common/util';
  * @param props.node - The map node containing the resource.
  */
 export function KubeadmConfigTemplateGlance({ node }: { node: GraphNode }) {
+  const { t } = useTranslation();
   const kubeObject = node?.kubeObject;
   if (!kubeObject || kubeObject.kind !== KubeadmConfigTemplate.kind || !kubeObject.jsonData) {
     return null;
@@ -24,8 +26,8 @@ export function KubeadmConfigTemplateGlance({ node }: { node: GraphNode }) {
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="kct-glance">
       {renderConditionStatus(undefined, readyCondition, {
-        trueLabel: 'Ready',
-        falseLabel: 'Not Ready',
+        trueLabel: t('Ready'),
+        falseLabel: t('Not Ready'),
         trueStatus: 'success',
         falseStatus: 'error',
       })}
