@@ -55,10 +55,13 @@ export function BmcJobDetail() {
                   <SectionBox title="Tasks">
                     <SimpleTable
                       columns={[
-                        { label: 'Index', getter: (_row, index) => fallback(index + 1) },
-                        { label: 'Task', getter: row => renderUnknownValue(row) },
+                        { label: 'Index', getter: row => fallback(row.index) },
+                        { label: 'Task', getter: row => renderUnknownValue(row.task) },
                       ]}
-                      data={item.spec?.tasks ?? []}
+                      data={(item.spec?.tasks ?? []).map((task, index) => ({
+                        index: index + 1,
+                        task,
+                      }))}
                     />
                   </SectionBox>
                 ),
