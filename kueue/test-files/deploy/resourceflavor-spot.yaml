@@ -1,0 +1,16 @@
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: spot-flavor
+spec:
+  nodeLabels:
+    cloud.provider.com/capacity-type: spot
+  nodeTaints:
+    - key: cloud.provider.com/preemptible
+      value: 'true'
+      effect: NoSchedule
+  tolerations:
+    - key: cloud.provider.com/preemptible
+      operator: Equal
+      value: 'true'
+      effect: NoSchedule
