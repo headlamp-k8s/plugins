@@ -19,14 +19,21 @@ import {
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
+import { BmcJobDetail } from './components/bmc/jobs/Detail';
 import { BmcJobList } from './components/bmc/jobs/List';
+import { BmcMachineDetail } from './components/bmc/machines/Detail';
 import { BmcMachineList } from './components/bmc/machines/List';
+import { BmcTaskDetail } from './components/bmc/tasks/Detail';
 import { BmcTaskList } from './components/bmc/tasks/List';
 import { TinkerbellRouteWrapper } from './components/common/TinkerbellRouteWrapper';
 import { CrdList } from './components/crds/List';
+import { HardwareDetail } from './components/hardware/Detail';
 import { HardwareList } from './components/hardware/List';
+import { TemplateDetail } from './components/templates/Detail';
 import { TemplateList } from './components/templates/List';
+import { WorkflowRuleSetDetail } from './components/workflowrulesets/Detail';
 import { WorkflowRuleSetList } from './components/workflowrulesets/List';
+import { WorkflowDetail } from './components/workflows/Detail';
 import { WorkflowList } from './components/workflows/List';
 import { BmcJob } from './resources/bmcJob';
 import { BmcMachine } from './resources/bmcMachine';
@@ -70,6 +77,18 @@ registerRoute({
   name: 'tinkerbell-hardware',
 });
 
+registerRoute({
+  path: '/tinkerbell/hardware/:namespace/:name',
+  sidebar: 'tinkerbell-hardware',
+  component: () => (
+    <TinkerbellRouteWrapper requiredCrds={[Hardware.crdName]}>
+      <HardwareDetail />
+    </TinkerbellRouteWrapper>
+  ),
+  exact: true,
+  name: 'tinkerbell-hardware-detail',
+});
+
 registerSidebarEntry({
   parent: 'tinkerbell',
   name: 'tinkerbell-templates',
@@ -87,6 +106,18 @@ registerRoute({
   ),
   exact: true,
   name: 'tinkerbell-templates',
+});
+
+registerRoute({
+  path: '/tinkerbell/templates/:namespace/:name',
+  sidebar: 'tinkerbell-templates',
+  component: () => (
+    <TinkerbellRouteWrapper requiredCrds={[Template.crdName]}>
+      <TemplateDetail />
+    </TinkerbellRouteWrapper>
+  ),
+  exact: true,
+  name: 'tinkerbell-template-detail',
 });
 
 registerSidebarEntry({
@@ -108,6 +139,18 @@ registerRoute({
   name: 'tinkerbell-workflows',
 });
 
+registerRoute({
+  path: '/tinkerbell/workflows/:namespace/:name',
+  sidebar: 'tinkerbell-workflows',
+  component: () => (
+    <TinkerbellRouteWrapper requiredCrds={[Workflow.crdName]}>
+      <WorkflowDetail />
+    </TinkerbellRouteWrapper>
+  ),
+  exact: true,
+  name: 'tinkerbell-workflow-detail',
+});
+
 registerSidebarEntry({
   parent: 'tinkerbell',
   name: 'tinkerbell-workflow-rulesets',
@@ -125,6 +168,18 @@ registerRoute({
   ),
   exact: true,
   name: 'tinkerbell-workflow-rulesets',
+});
+
+registerRoute({
+  path: '/tinkerbell/workflows/rulesets/:namespace/:name',
+  sidebar: 'tinkerbell-workflow-rulesets',
+  component: () => (
+    <TinkerbellRouteWrapper requiredCrds={[WorkflowRuleSet.crdName]}>
+      <WorkflowRuleSetDetail />
+    </TinkerbellRouteWrapper>
+  ),
+  exact: true,
+  name: 'tinkerbell-workflow-ruleset-detail',
 });
 
 registerSidebarEntry({
@@ -153,6 +208,18 @@ registerRoute({
   name: 'tinkerbell-bmc-machines',
 });
 
+registerRoute({
+  path: '/tinkerbell/bmc/machines/:namespace/:name',
+  sidebar: 'tinkerbell-bmc-machines',
+  component: () => (
+    <TinkerbellRouteWrapper requiredCrds={[BmcMachine.crdName]}>
+      <BmcMachineDetail />
+    </TinkerbellRouteWrapper>
+  ),
+  exact: true,
+  name: 'tinkerbell-bmc-machine-detail',
+});
+
 registerSidebarEntry({
   parent: 'tinkerbell-bmc',
   name: 'tinkerbell-bmc-jobs',
@@ -172,6 +239,18 @@ registerRoute({
   name: 'tinkerbell-bmc-jobs',
 });
 
+registerRoute({
+  path: '/tinkerbell/bmc/jobs/:namespace/:name',
+  sidebar: 'tinkerbell-bmc-jobs',
+  component: () => (
+    <TinkerbellRouteWrapper requiredCrds={[BmcJob.crdName]}>
+      <BmcJobDetail />
+    </TinkerbellRouteWrapper>
+  ),
+  exact: true,
+  name: 'tinkerbell-bmc-job-detail',
+});
+
 registerSidebarEntry({
   parent: 'tinkerbell-bmc',
   name: 'tinkerbell-bmc-tasks',
@@ -189,6 +268,18 @@ registerRoute({
   ),
   exact: true,
   name: 'tinkerbell-bmc-tasks',
+});
+
+registerRoute({
+  path: '/tinkerbell/bmc/tasks/:namespace/:name',
+  sidebar: 'tinkerbell-bmc-tasks',
+  component: () => (
+    <TinkerbellRouteWrapper requiredCrds={[BmcTask.crdName]}>
+      <BmcTaskDetail />
+    </TinkerbellRouteWrapper>
+  ),
+  exact: true,
+  name: 'tinkerbell-bmc-task-detail',
 });
 
 registerSidebarEntry({
