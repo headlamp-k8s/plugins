@@ -463,6 +463,10 @@ export default function ModelSelector({
         return false;
       }
 
+      if (config1.baseUrl !== config2.baseUrl) {
+        return false;
+      }
+
       // For API keys, also check model and deploymentName if they exist
       // to distinguish between different configurations using the same key
       if (config1.model && config2.model && config1.model !== config2.model) {
