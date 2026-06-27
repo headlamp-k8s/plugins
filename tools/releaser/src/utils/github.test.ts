@@ -134,4 +134,14 @@ describe('github utilities', () => {
       }));
     });
   });
+
+  describe('createTag', () => {
+    it('should create a git tag and return the tag name', async () => {
+      const gitUtils = await import('./git.js');
+      vi.mocked(gitUtils.createReleaseTag).mockReturnValue('my-plugin-1.2.3');
+      const { createTag } = await import('./github.js');
+      expect(createTag('my-plugin', '1.2.3')).toBe('my-plugin-1.2.3');
+      expect(gitUtils.createReleaseTag).toHaveBeenCalledWith('my-plugin', '1.2.3');
+    });
+  });
 });

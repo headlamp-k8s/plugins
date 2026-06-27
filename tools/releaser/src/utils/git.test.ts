@@ -87,6 +87,7 @@ describe('git utilities', () => {
 
     it('should fallback to latest package.json change if exact match not found', () => {
       vi.mocked(child_process.execFileSync)
+        .mockReturnValueOnce('/repo/root\n') // repo root
         .mockReturnValueOnce('') // No -S match
         .mockReturnValueOnce('fallbacksha\n'); // Latest change
         
@@ -120,8 +121,9 @@ describe('git utilities', () => {
 
     it('should return false if merge-base fails', () => {
       vi.mocked(child_process.execFileSync)
+        .mockReturnValueOnce('/repo/root\n') // repo root
         .mockReturnValueOnce('') // cat-file success
-        .mockImplementationOnce(() => { throw new Error('not an ancestor'); });
+        .mockImplementationOnce(() => { throw new Error('not an ancestor'); }); // merge-base
       expect(isCommitPushedToRemote('sha')).toBe(false);
     });
   });
