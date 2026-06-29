@@ -234,14 +234,14 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       const cm = configMaps.find(
         item => item.cluster === cluster && item.metadata.name === 'config-network'
       );
-      const raw =
-        cm && cm.data
-          ? typeof cm.data['ingress-class'] === 'string'
-            ? cm.data['ingress-class']
-            : typeof cm.data['ingress.class'] === 'string'
-            ? cm.data['ingress.class']
-            : null
-          : null;
+      let raw: string | null = null;
+      if (cm?.data) {
+        if (typeof cm.data['ingress-class'] === 'string') {
+          raw = cm.data['ingress-class'];
+        } else if (typeof cm.data['ingress.class'] === 'string') {
+          raw = cm.data['ingress.class'];
+        }
+      }
       const trimmed = raw?.trim();
       result.push({
         cluster,
