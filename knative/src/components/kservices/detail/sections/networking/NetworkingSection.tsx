@@ -43,7 +43,7 @@ function useIngressClassForCluster(cluster: string): IngressClassHookResult {
 
   if (networkConfig?.data) {
     const data = networkConfig.data as Record<string, string | undefined>;
-    const raw = data['ingress.class'];
+    const raw = data['ingress-class'] ?? data['ingress.class'];
     const trimmed = raw?.trim();
 
     if (trimmed && trimmed !== '') {
