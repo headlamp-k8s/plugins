@@ -1,4 +1,4 @@
-import { PluginManager, Router } from '@kinvolk/headlamp-plugin/lib';
+import { PluginManager, Router, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   Link as HeadlampLink,
@@ -121,7 +121,7 @@ export interface PurePluginDetailProps {
   onAlertClose: () => void;
 }
 
-const pluginSnackbarAction = (closeCallback: () => void) => {
+const pluginSnackbarAction = (closeCallback: () => void, t: (key: string) => string) => {
   return (
     <>
       <Button
@@ -130,10 +130,10 @@ const pluginSnackbarAction = (closeCallback: () => void) => {
           window.location.reload();
         }}
       >
-        Reload Now
+        {t('Reload Now')}
       </Button>
       <Button color="inherit" onClick={closeCallback}>
-        Close
+        {t('Close')}
       </Button>
     </>
   );
@@ -154,6 +154,7 @@ export function PurePluginDetail({
   onCancel,
   onAlertClose,
 }: PurePluginDetailProps) {
+  const { t } = useTranslation();
   const [repoUrl, orgUrl] = React.useMemo(() => {
     const artifactHubURLBase = 'https://artifacthub.io/packages/search?sort=relevance&page=1';
     if (!pluginDetail) {
@@ -205,7 +206,7 @@ export function PurePluginDetail({
           </Tooltip>
         }
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        action={pluginSnackbarAction(onAlertClose)}
+        action={pluginSnackbarAction(onAlertClose, t)}
       />
       <SectionBox
         title={
@@ -229,16 +230,16 @@ export function PurePluginDetail({
                 pluginDetail ? (
                   pluginDetail.isInstalled ? (
                     <>
-                      <HeadlampLink routeName="plugins">Settings</HeadlampLink>
+                      <HeadlampLink routeName="plugins">{t('Settings')}</HeadlampLink>
                       {pluginDetail.updateAvailable && (
                         <ActionButton
-                          description="Update"
+                          description={t('Update')}
                           onClick={() => onUpdate(pluginDetail.packageName)}
                           icon="mdi:arrow-up-bold"
                         />
                       )}
                       <ActionButton
-                        description="Uninstall"
+                        description={t('Uninstall')}
                         onClick={() => onUninstall(pluginDetail.packageName)}
                         icon="mdi:delete"
                       />
@@ -255,7 +256,7 @@ export function PurePluginDetail({
                       }}
                       onClick={() => onInstall(selectedVersion)}
                     >
-                      Install
+                      {t('Install')}
                     </Button>
                   )
                 ) : null
@@ -277,10 +278,10 @@ export function PurePluginDetail({
         <>
           <NameValueTable
             rows={[
-              { name: 'Name', value: pluginDetail.display_name },
-              { name: 'Description', value: pluginDetail.description },
+              { name: t('Name'), value: pluginDetail.display_name },
+              { name: t('Description'), value: pluginDetail.description },
               {
-                name: 'Available Version',
+                name: t('Available Version'),
                 value: showVersionSelector ? (
                   <FormControl size="small" sx={{ minWidth: 160 }}>
                     <Select
@@ -291,7 +292,9 @@ export function PurePluginDetail({
                       {sortedVersions.map(availableVersion => (
                         <MenuItem key={availableVersion.version} value={availableVersion.version}>
                           {availableVersion.version}
-                          {availableVersion.version === pluginDetail.version ? ' (latest)' : ''}
+                          {availableVersion.version === pluginDetail.version
+                            ? ` ${t('(latest)')}`
+                            : ''}
                         </MenuItem>
                       ))}
                     </Select>
@@ -301,12 +304,12 @@ export function PurePluginDetail({
                 ),
               },
               {
-                name: 'Installed Version',
+                name: t('Installed Version'),
                 value: pluginDetail.currentVersion,
                 hide: !pluginDetail.isInstalled,
               },
               {
-                name: 'Repository',
+                name: t('Repository'),
                 value: repoUrl && (
                   <Link href={repoUrl} target="_blank">
                     {pluginDetail.repository.display_name}
@@ -314,7 +317,7 @@ export function PurePluginDetail({
                 ),
               },
               {
-                name: 'Author',
+                name: t('Author'),
                 value: orgUrl && (
                   <Link href={orgUrl} target="_blank">
                     {pluginDetail.repository.organization_display_name}
@@ -390,6 +393,7 @@ export function PluginDetail() {
   // Tracks the most recent version-readme request so out-of-order responses are ignored.
   const latestReadmeRequest = React.useRef<string>('');
   const url = `https://artifacthub.io/packages/headlamp/${repoName}/${pluginName}`;
+  const { t } = useTranslation();
 
   const fetchStatus = async () => {
     try {
@@ -412,8 +416,8 @@ export function PluginDetail() {
           // Set alert message
           setAlertMessage(
             status.type === 'success'
-              ? `${currentAction} completed successfully.`
-              : `Error: ${status.message}`
+              ? t('{{action}} completed successfully.', { action: t(currentAction ?? '') })
+              : t('Error: {{message}}', { message: status.message })
           );
 
           break;
@@ -432,7 +436,7 @@ export function PluginDetail() {
       setCurrentActionState(null);
       setCurrentActionMessage(null);
       setCurrentActionProgress(0);
-      setAlertMessage(`An unexpected error occurred: ${error}`);
+      setAlertMessage(t('An unexpected error occurred: {{error}}', { error: String(error) }));
       console.error('Error:', error);
     }
   };
@@ -486,7 +490,9 @@ export function PluginDetail() {
       setPluginDetail(prev => (prev ? { ...prev, readme: versionDetail.readme } : prev));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      setAlertMessage(`Failed to load details for version ${version}: ${message}`);
+      setAlertMessage(
+        t('Failed to load details for version {{version}}: {{message}}', { version, message })
+      );
     }
   };
 

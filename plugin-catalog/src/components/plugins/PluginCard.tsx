@@ -1,4 +1,5 @@
 import { Icon, InlineIcon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link as HeadlampRouterLink } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
@@ -20,6 +21,7 @@ export interface PluginCardProps {
 
 export function PluginCard(props: PluginCardProps) {
   const { plugin } = props;
+  const { t } = useTranslation();
 
   return (
     <Box maxWidth="30%" width="400px" m={1}>
@@ -57,7 +59,7 @@ export function PluginCard(props: PluginCardProps) {
           )}
           <Box display="flex" alignItems="center" justifyContent="space-around" marginRight="10px">
             {(plugin.official || plugin.repository.official) && (
-              <Tooltip title="Official Chart">
+              <Tooltip title={t('Official Chart')}>
                 <Icon
                   icon="mdi:star-circle"
                   style={{
@@ -68,7 +70,7 @@ export function PluginCard(props: PluginCardProps) {
               </Tooltip>
             )}
             {plugin.repository.verified_publisher && (
-              <Tooltip title="Verified Publisher">
+              <Tooltip title={t('Verified Publisher')}>
                 <Icon
                   icon="mdi:check-decagram"
                   style={{
@@ -185,7 +187,9 @@ export function PluginCard(props: PluginCardProps) {
         >
           <span></span>
           {plugin.isInstalled && (
-            <Typography>{plugin.isUpdateAvailable ? 'Update available' : 'Installed'}</Typography>
+            <Typography>
+              {plugin.isUpdateAvailable ? t('Update available') : t('Installed')}
+            </Typography>
           )}
         </CardActions>
       </Card>

@@ -1,6 +1,6 @@
 // src/components/PluginInstalledList.tsx
 
-import { PluginManager } from '@kinvolk/headlamp-plugin/lib';
+import { PluginManager, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link as MuiLink, Typography } from '@mui/material';
 import { Box } from '@mui/material';
@@ -36,18 +36,19 @@ export function PurePluginInstalledList({
   nonCatalogPlugins,
   error,
 }: PurePluginInstalledListProps) {
+  const { t } = useTranslation();
   return (
     <SectionBox
-      title="Installed"
+      title={t('Installed')}
       paddingTop={2}
       headerProps={{
         noPadding: false,
         headerStyle: 'subsection',
-        actions: [<Link routeName="plugins">Go to all installed plugins</Link>],
+        actions: [<Link routeName="plugins">{t('Go to all installed plugins')}</Link>],
       }}
     >
       {error ? (
-        <Typography>{`Error loading Installed plugins: ${error}`}</Typography>
+        <Typography>{t('Error loading Installed plugins: {{error}}', { error })}</Typography>
       ) : (
         <>
           <Box
@@ -59,12 +60,12 @@ export function PurePluginInstalledList({
           >
             <Box>
               <Typography variant="h6" component="h2">
-                From the Plugin Catalog
+                {t('From the Plugin Catalog')}
               </Typography>
               <SimpleTable
                 columns={[
                   {
-                    label: 'Name',
+                    label: t('Name'),
                     getter: plugin => (
                       <Box>
                         <Link
@@ -77,28 +78,28 @@ export function PurePluginInstalledList({
                     ),
                   },
                   {
-                    label: 'Version',
+                    label: t('Version'),
                     getter: plugin => plugin.pluginVersion,
                   },
                   {
-                    label: 'Repository',
+                    label: t('Repository'),
                     getter: plugin => plugin.repoName,
                   },
                 ]}
-                emptyMessage="No plugins installed from the Plugin Catalog"
+                emptyMessage={t('No plugins installed from the Plugin Catalog')}
                 data={catalogPlugins || []}
               />
             </Box>
 
             <Box>
               <Typography variant="h6" component="h2">
-                Other Plugins
+                {t('Other Plugins')}
               </Typography>
 
               <SimpleTable
                 columns={[
                   {
-                    label: 'Name',
+                    label: t('Name'),
                     getter: otherInstalledPlugins => (
                       <Box>
                         <Link
@@ -111,11 +112,11 @@ export function PurePluginInstalledList({
                     ),
                   },
                   {
-                    label: 'Version',
+                    label: t('Version'),
                     getter: otherInstalledPlugins => otherInstalledPlugins.version,
                   },
                   {
-                    label: 'Author',
+                    label: t('Author'),
                     getter: plugin => {
                       const url = plugin?.homepage || plugin?.repository?.url;
                       return plugin?.origin ? (
@@ -125,12 +126,12 @@ export function PurePluginInstalledList({
                           plugin?.origin
                         )
                       ) : (
-                        'Unknown'
+                        t('Unknown')
                       );
                     },
                   },
                 ]}
-                emptyMessage="No plugins installed"
+                emptyMessage={t('No plugins installed')}
                 data={nonCatalogPlugins || []}
               />
             </Box>
@@ -142,6 +143,7 @@ export function PurePluginInstalledList({
 }
 
 export function PluginInstalledList() {
+  const { t } = useTranslation();
   const [catalogPlugins, setCatalogPlugins] = useState<Plugin[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const allInstalledPlugins = useSelector((state: any) => state.plugins.pluginSettings);
@@ -157,7 +159,7 @@ export function PluginInstalledList() {
       return {
         ...plugin,
         displayName: name ?? plugin.name,
-        origin: plugin.origin ?? author?.substring(1) ?? 'Unknown',
+        origin: plugin.origin ?? author?.substring(1) ?? t('Unknown'),
       };
     });
   }, [allInstalledPlugins]);
