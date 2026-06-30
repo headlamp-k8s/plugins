@@ -191,7 +191,9 @@ function OfficialSwitch(props: OfficialSwitchProps) {
   return (
     <>
       <FormControlLabel
-        control={<Switch defaultChecked size="small" />}
+        control={
+          <Switch defaultChecked size="small" inputProps={{ 'aria-label': t('Only Official') }} />
+        }
         label={<Typography>{t('Only Official')}</Typography>}
         checked={isChecked}
         onChange={() => {
