@@ -19,13 +19,14 @@ const LoadingButton = (props: LoadingButtonProps) => {
     <Button
       variant="contained"
       disabled
+      aria-label="Loading"
       sx={{
         backgroundColor: '#000',
         color: 'white',
         textTransform: 'none',
       }}
     >
-      <CircularProgress color="primary" value={props.progress} size={20} />
+      <CircularProgress color="primary" value={props.progress} size={20} aria-label="Loading" />
     </Button>
   );
   if (props.progress > 0 && props.progress < 100) {
@@ -33,6 +34,7 @@ const LoadingButton = (props: LoadingButtonProps) => {
       <Button
         variant="contained"
         onClick={() => props.onCancel()}
+        aria-label="Cancel"
         sx={{
           backgroundColor: '#000',
           color: 'white',
@@ -50,6 +52,7 @@ const LoadingButton = (props: LoadingButtonProps) => {
             variant="determinate"
             value={props.progress}
             size={20}
+            aria-label="Installation progress"
           />
           <Box
             sx={{
