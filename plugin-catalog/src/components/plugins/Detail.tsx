@@ -309,16 +309,16 @@ export function PurePluginDetail({
               },
               {
                 name: 'Repository',
-                value: repoUrl && (
-                  <Link href={repoUrl} target="_blank">
+                value: pluginDetail.repository.display_name && (
+                  <Link href={repoUrl} target="_blank" rel="noopener noreferrer">
                     {pluginDetail.repository.display_name}
                   </Link>
                 ),
               },
               {
                 name: 'Author',
-                value: orgUrl && (
-                  <Link href={orgUrl} target="_blank">
+                value: pluginDetail.repository.organization_display_name && (
+                  <Link href={orgUrl} target="_blank" rel="noopener noreferrer">
                     {pluginDetail.repository.organization_display_name}
                   </Link>
                 ),
