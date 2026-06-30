@@ -46,6 +46,7 @@ export function PluginCard(props: PluginCardProps) {
                 alignSelf: 'flex-start',
               }}
               component="img"
+              alt={`${plugin.display_name || plugin.name} logo`}
             />
           ) : (
             <PluginIcon

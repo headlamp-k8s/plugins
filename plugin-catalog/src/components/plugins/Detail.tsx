@@ -222,6 +222,7 @@ export function PurePluginDetail({
                     alignSelf: 'flex-start',
                   }}
                   component="img"
+                  alt={`${pluginDetail.display_name || pluginDetail.name} logo`}
                 />
               ),
             ]}
