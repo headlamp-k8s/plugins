@@ -99,7 +99,7 @@ export function PluginCard(props: PluginCardProps) {
             }}
           >
             <Typography
-              component="h5"
+              component="div"
               variant="h5"
               sx={{
                 overflow: 'hidden',
