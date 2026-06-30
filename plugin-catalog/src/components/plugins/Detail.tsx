@@ -288,6 +288,7 @@ export function PurePluginDetail({
                       value={selectedVersion}
                       onChange={(event: SelectChangeEvent) => onVersionChange(event.target.value)}
                       disabled={currentAction !== null}
+                      inputProps={{ 'aria-label': 'Available version' }}
                     >
                       {sortedVersions.map(availableVersion => (
                         <MenuItem key={availableVersion.version} value={availableVersion.version}>
