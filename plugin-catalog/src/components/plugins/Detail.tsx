@@ -312,17 +312,18 @@ export function PurePluginDetail({
               },
               {
                 name: t('Repository'),
-                value: repoUrl && (
-                  <Link href={repoUrl} target="_blank">
-                    {pluginDetail.repository.display_name}
+                value: (
+                  <Link href={repoUrl} target="_blank" rel="noopener noreferrer">
+                    {pluginDetail.repository.display_name || pluginDetail.repository.name}
                   </Link>
                 ),
               },
               {
                 name: t('Author'),
-                value: orgUrl && (
-                  <Link href={orgUrl} target="_blank">
-                    {pluginDetail.repository.organization_display_name}
+                value: pluginDetail.repository.organization_name && (
+                  <Link href={orgUrl} target="_blank" rel="noopener noreferrer">
+                    {pluginDetail.repository.organization_display_name ||
+                      pluginDetail.repository.organization_name}
                   </Link>
                 ),
               },

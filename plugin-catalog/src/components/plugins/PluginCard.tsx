@@ -136,7 +136,7 @@ export function PluginCard(props: PluginCardProps) {
               {plugin?.repository && (
                 <>
                   <InlineIcon icon="mdi:building" />{' '}
-                  <Link href={plugin.repository.url} target="_blank">
+                  <Link href={plugin.repository.url} target="_blank" rel="noopener noreferrer">
                     {plugin.repository.organization_name || plugin.repository.name}
                   </Link>
                 </>
