@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box } from '@mui/material';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -15,17 +16,24 @@ export interface LoadingButtonProps {
 }
 
 const LoadingButton = (props: LoadingButtonProps) => {
+  const { t } = useTranslation();
   let button = (
     <Button
       variant="contained"
       disabled
+      aria-label={t('Loading')}
       sx={{
         backgroundColor: '#000',
         color: 'white',
         textTransform: 'none',
       }}
     >
-      <CircularProgress color="primary" value={props.progress} size={20} />
+      <CircularProgress
+        color="primary"
+        value={props.progress}
+        size={20}
+        aria-label={t('Loading')}
+      />
     </Button>
   );
   if (props.progress > 0 && props.progress < 100) {
@@ -33,6 +41,7 @@ const LoadingButton = (props: LoadingButtonProps) => {
       <Button
         variant="contained"
         onClick={() => props.onCancel()}
+        aria-label={t('Cancel')}
         sx={{
           backgroundColor: '#000',
           color: 'white',
@@ -50,6 +59,7 @@ const LoadingButton = (props: LoadingButtonProps) => {
             variant="determinate"
             value={props.progress}
             size={20}
+            aria-label={t('Installation progress')}
           />
           <Box
             sx={{
