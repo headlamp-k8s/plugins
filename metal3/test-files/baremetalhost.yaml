@@ -1,0 +1,31 @@
+# Sample BareMetalHost for trying out the Metal3 plugin locally.
+#
+#   kubectl apply -f metal3/test-files/baremetalhost.yaml
+#
+# The host appears under Metal3 > Bare Metal Hosts. Status fields (operational
+# status, provisioning state) are populated by the baremetal-operator as it
+# reconciles the host; without an operator running the host still lists, with
+# an empty status.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sample-bmc-credentials
+  namespace: default
+type: Opaque
+stringData:
+  # Placeholder BMC credentials — replace before applying against a real host.
+  username: REPLACE_ME
+  password: REPLACE_ME
+---
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: sample-host
+  namespace: default
+spec:
+  online: true
+  bootMACAddress: "00:1a:2b:3c:4d:01"
+  bootMode: UEFI
+  bmc:
+    address: redfish-virtualmedia+http://192.168.1.10:8000/redfish/v1/Systems/1
+    credentialsName: sample-bmc-credentials
