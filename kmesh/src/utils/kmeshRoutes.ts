@@ -4,6 +4,7 @@
 export const kmeshRouteNames = {
   waypointsList: 'kmesh-waypoints-list',
   waypointDetail: 'kmesh-waypoint-detail',
+  healthDashboard: 'kmesh-health-dashboard',
 } as const;
 
 /**
@@ -12,4 +13,5 @@ export const kmeshRouteNames = {
 export const kmeshRoutePaths = {
   waypointsList: '/kmesh/waypoints',
   waypointDetail: '/kmesh/waypoints/:namespace/:name',
+  healthDashboard: '/kmesh/health',
 } as const;

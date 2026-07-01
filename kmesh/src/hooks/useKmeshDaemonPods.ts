@@ -77,10 +77,22 @@ export function useKmeshDaemonPods(): UseKmeshDaemonPodsResult {
           `?labelSelector=${encodeURIComponent(KMESH_DAEMON_LABEL_SELECTOR)}`;
 
         type PodCondition = { type?: string; status?: string };
+        type ContainerStateWaiting = { reason?: string };
+        type ContainerStateTerminated = { reason?: string };
+        type ContainerState = {
+          waiting?: ContainerStateWaiting;
+          terminated?: ContainerStateTerminated;
+        };
+        type ContainerStatus = { state?: ContainerState };
         type PodItem = {
           metadata?: { name?: string; namespace?: string };
           spec?: { nodeName?: string };
-          status?: { phase?: string; podIP?: string; conditions?: PodCondition[] };
+          status?: {
+            phase?: string;
+            podIP?: string;
+            conditions?: PodCondition[];
+            containerStatuses?: ContainerStatus[];
+          };
         };
         type PodListResponse = { items?: PodItem[] };
 
@@ -92,11 +104,23 @@ export function useKmeshDaemonPods(): UseKmeshDaemonPodsResult {
             c => c.type === 'Ready' && c.status === 'True'
           );
 
+          let phase = item.status?.phase ?? 'Unknown';
+          const containerStatuses = item.status?.containerStatuses ?? [];
+          for (const status of containerStatuses) {
+            if (status.state?.waiting?.reason) {
+              phase = status.state.waiting.reason;
+              break;
+            } else if (status.state?.terminated?.reason) {
+              phase = status.state.terminated.reason;
+              break;
+            }
+          }
+
           return {
             name: item.metadata?.name ?? '',
             namespace: item.metadata?.namespace ?? KMESH_NAMESPACE,
             nodeName: item.spec?.nodeName ?? '',
-            phase: item.status?.phase ?? 'Unknown',
+            phase,
             ready,
             podIP: item.status?.podIP ?? '',
           };

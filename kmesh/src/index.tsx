@@ -1,5 +1,6 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import type { ComponentType } from 'react';
+import HealthDashboard from './components/daemon/HealthDashboard';
 import WaypointDetail from './components/waypoints/Detail';
 import WaypointList from './components/waypoints/List';
 import { kmeshRouteNames, kmeshRoutePaths } from './utils/kmeshRoutes';
@@ -85,3 +86,19 @@ const kmeshResources: KmeshResourceRegistration[] = [
 ];
 
 kmeshResources.forEach(registerKmeshResource);
+
+// Health Dashboard (Single Route)
+registerSidebarEntry({
+  parent: 'kmesh',
+  name: 'kmesh-health',
+  label: 'Daemon Health',
+  url: kmeshRoutePaths.healthDashboard,
+});
+
+registerRoute({
+  path: kmeshRoutePaths.healthDashboard,
+  sidebar: 'kmesh-health',
+  name: kmeshRouteNames.healthDashboard,
+  exact: true,
+  component: () => <HealthDashboard />,
+});
