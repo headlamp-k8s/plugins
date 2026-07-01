@@ -11,6 +11,7 @@
     "lint-fix": "headlamp-plugin lint --fix",
     "package": "headlamp-plugin package",
     "tsc": "headlamp-plugin tsc",
+    "check": "npm run format -- --check && npm run lint && npm run tsc && node_modules/.bin/vitest run --config node_modules/@kinvolk/headlamp-plugin/config/vite.config.mjs --exclude '**/packages/**' --exclude '**/node_modules/**'",
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
     "test": "headlamp-plugin test",
