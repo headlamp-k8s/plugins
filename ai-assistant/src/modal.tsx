@@ -1,38 +1,69 @@
+/*
+ * Copyright 2025 The Kubernetes Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { getHolmesProxyBaseUrl, HolmesAgent } from '@headlamp-k8s/ai-common/agent/holmesClient';
+import { MockHolmesAgent } from '@headlamp-k8s/ai-common/agent/MockHolmesAgent';
+import AIManager, { Prompt } from '@headlamp-k8s/ai-common/ai/manager';
+import { inlineToolApprovalManager } from '@headlamp-k8s/ai-common/approval/InlineToolApprovalManager';
+import { getProviderById } from '@headlamp-k8s/ai-common/config/modelConfig';
+import LangChainManager from '@headlamp-k8s/ai-common/langchain/LangChainManager';
+import {
+  createFetchHttpClient,
+  createJSZipExtractor,
+  createNoopFileSystem,
+} from '@headlamp-k8s/ai-common/skills/BrowserSkillAdapters';
+import { getSkillsConfig } from '@headlamp-k8s/ai-common/skills/SkillConfigManager';
+import { SkillManager } from '@headlamp-k8s/ai-common/skills/SkillManager';
+import AIAssistantHeader from '@headlamp-k8s/ai-ui/components/assistant/AIAssistantHeader';
+import type { ChatMode } from '@headlamp-k8s/ai-ui/components/assistant/AllInputSection';
+import { PromptSuggestions } from '@headlamp-k8s/ai-ui/components/assistant/PromptSuggestions';
+import ApiConfirmationDialog from '@headlamp-k8s/ai-ui/components/common/ApiConfirmationDialog';
+import {
+  getProviderModels,
+  parseSuggestionsFromResponse,
+} from '@headlamp-k8s/ai-ui/providers/modelProviders';
+import { isTestModeCheck } from '@headlamp-k8s/ai-ui/testing/testMode';
 import { Icon } from '@iconify/react';
+import { runCommand, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+
+// pluginRunCommand is injected as a scope variable by Headlamp's plugin runner.
+declare const pluginRunCommand: typeof runCommand;
+import ProactiveDiagnosisSection from '@headlamp-k8s/ai-ui/components/assistant/ProactiveDiagnosisSection';
+import {
+  type DiagnosisStepCallback,
+  ProactiveDiagnosisManager,
+  proactiveDiagnosisManager,
+} from '@headlamp-k8s/ai-ui/diagnosis/ProactiveDiagnosisManager';
+import { useProactiveDiagnosis } from '@headlamp-k8s/ai-ui/hooks/useProactiveDiagnosis';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button, Grid, Typography } from '@mui/material';
 import { isEqual } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { getHolmesProxyBaseUrl, HolmesAgent } from './agent/holmesClient';
-import AIManager, { Prompt } from './ai/manager';
-import {
-  AIAssistantHeader,
-  AIChatContent,
-  AIInputSection,
-  ApiConfirmationDialog,
-  PromptSuggestions,
-} from './components';
-import { getProviderById } from './config/modelConfig';
+import AIChatContent from './components/assistant/AIChatContent';
+import { AIInputSection } from './components/assistant/AllInputSection';
+import ContentRenderer from './ContentRenderer';
+import { generateContextDescription } from './context/contextGenerator';
 import EditorDialog from './editordialog';
-import { isTestModeCheck } from './helper';
+import { checkHolmesAgentHealth } from './holmesClient';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
-import LangChainManager from './langchain/LangChainManager';
-import { getSettingsURL, useGlobalState } from './utils';
-import { generateContextDescription } from './utils/contextGenerator';
-import {
-  /* [PROACTIVE_DIAGNOSIS_DISABLED] fetchWarningEventsForClusters, */ fetchClusterWarnings,
-} from './utils/EventFetcher';
-import { inlineToolApprovalManager } from './utils/InlineToolApprovalManager';
-import { getProviderModels, parseSuggestionsFromResponse } from './utils/modalUtils';
-// [PROACTIVE_DIAGNOSIS_DISABLED]
-// import {
-//   DiagnosisStepCallback,
-//   proactiveDiagnosisManager,
-//   ProactiveDiagnosisManager,
-// } from './utils/ProactiveDiagnosisManager';
-import { useDynamicPrompts } from './utils/promptGenerator';
+import { fetchClusterWarnings, fetchWarningEventsForClusters } from './kubernetes/EventFetcher';
+import { getSettingsURL, useGlobalState } from './pluginState';
+import { useDynamicPrompts } from './prompts/promptGenerator';
 
 // Operation type constants for translation
 const OPERATION_TYPES = {
@@ -41,24 +72,46 @@ const OPERATION_TYPES = {
   DELETION: 'deletion',
   GENERIC: 'operation',
 } as const;
-import { usePromptWidth } from './contexts/PromptWidthContext';
 import {
   getActiveConfig,
   getSavedConfigurations,
+  isSameStoredConfig,
   StoredProviderConfig,
-} from './utils/ProviderConfigManager';
-import { getEnabledToolIds } from './utils/ToolConfigManager';
+} from '@headlamp-k8s/ai-common/managers/ProviderConfigManager';
+import { getEnabledToolIds } from '@headlamp-k8s/ai-common/managers/ToolConfigManager';
+import {
+  AZ_CLI_AUTH_SENTINEL,
+  type CommandRunner,
+  GH_CLI_AUTH_SENTINEL,
+  refreshAzureOpenAIKey,
+  refreshGitHubToken,
+} from '@headlamp-k8s/ai-common/providers/providerAutoDetect';
+import { usePromptWidth } from '@headlamp-k8s/ai-ui/contexts/PromptWidthContext';
 
 export default function AIPrompt(props: {
   openPopup: boolean;
   setOpenPopup: (...args) => void;
   pluginSettings: any;
-  width: string;
+  width?: string;
 }) {
   const { openPopup, setOpenPopup, pluginSettings, width } = props;
   const history = useHistory();
   const location = useLocation();
   const rootRef = React.useRef(null);
+  // Command runner for CLI-based provider detection (wired to pluginRunCommand if available)
+  const commandRunnerRef = React.useRef<CommandRunner | null>(null);
+  React.useEffect(() => {
+    if (typeof pluginRunCommand !== 'undefined') {
+      commandRunnerRef.current = (command: string, args: string[]) =>
+        new Promise<{ stdout: string; exitCode: number }>(resolve => {
+          // @ts-ignore
+          const proc = pluginRunCommand(command as any, args, {});
+          let out = '';
+          proc.stdout.on('data', (d: any) => (out += String(d)));
+          proc.on('exit', (code: number | null) => resolve({ stdout: out, exitCode: code ?? -1 }));
+        });
+    }
+  }, []);
   const [promptVal, setPromptVal] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [apiError, setApiError] = React.useState(null);
@@ -73,10 +126,21 @@ export default function AIPrompt(props: {
   const clusters = useClustersConf() || {};
   const dynamicPrompts = useDynamicPrompts();
   const prompWidthContext = usePromptWidth();
+  const { t } = useTranslation();
+
+  // Proactive diagnosis UI state
+  const { diagnoses, isCycleRunning, scrollToEventUid, clearScrollTarget } =
+    useProactiveDiagnosis();
+
+  // Chat/agent mode state
+  const [chatMode, setChatMode] = React.useState<ChatMode>('chat');
 
   useEffect(() => {
-    prompWidthContext.setPromptWidth(width);
+    if (width) {
+      prompWidthContext.setPromptWidth(width);
+    }
   }, [width]);
+
   // Get cluster names for warning lookup - use selected clusters or current cluster only
   const clusterNames = useMemo(() => {
     const currentCluster = getCluster();
@@ -104,15 +168,12 @@ export default function AIPrompt(props: {
   const clusterWarningsRef = useRef<Record<string, { warnings: any[]; error?: Error | null }>>({});
 
   // ─── Proactive Diagnosis ────────────────────────────────────────────
-  // [PROACTIVE_DIAGNOSIS_DISABLED] — entire proactive diagnosis block commented out.
-  // To re-enable, uncomment the code below and the import above.
-  /*
   // Wire the proactive diagnosis manager to the agent or AI manager.
-  // It runs a diagnosis cycle on-demand (with a 1-hour cooldown) on the
+  // It runs a diagnosis cycle on-demand (with a 20-min cooldown) on the
   // top 3 warning/error events fetched via a one-shot API call.
   const proactiveDiagIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Dedicated HolmesAgent for proactive diagnosis — one instance, reused sequentially.
-  const diagnosisAgentRef = useRef<HolmesAgent | null>(null);
+  const diagnosisAgentRef = useRef<HolmesAgent | MockHolmesAgent | null>(null);
 
   // Build a stable diagnose function that uses the current agent or AI manager.
   // This function is passed to the proactive diagnosis manager so it can call
@@ -216,9 +277,6 @@ export default function AIPrompt(props: {
       proactiveDiagnosisManager.removeListener('cycle-end', handleCycleEnd);
     };
   }, [diagnoseFnReady]); // runProactiveCycle is now stable, no need in deps
-  */
-  // Stub: proactive diagnosis disabled — isDiagnosisRunning is always false
-  const isDiagnosisRunning = false;
   // ─── End Proactive Diagnosis Setup ──────────────────────────────────
 
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
@@ -227,13 +285,14 @@ export default function AIPrompt(props: {
   // Test mode detection
   const isTestMode = isTestModeCheck();
 
-  // Agent mode state – default to agent mode so users can start immediately
-  const [isAgentMode, setIsAgentMode] = React.useState(true);
+  // Agent mode state — default to chat mode; agent mode is only enabled
+  // explicitly by the user or when Holmes is confirmed available.
+  const [isAgentMode, setIsAgentMode] = React.useState(false);
 
   const [agentModeStatus, setAgentModeStatus] = React.useState<
     'idle' | 'checking' | 'found' | 'not-found'
   >('idle');
-  const holmesAgentRef = React.useRef<HolmesAgent | null>(null);
+  const holmesAgentRef = React.useRef<HolmesAgent | MockHolmesAgent | null>(null);
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -259,11 +318,11 @@ export default function AIPrompt(props: {
         !finalTitle.toLowerCase().startsWith('view') &&
         !finalTitle.toLowerCase().startsWith('sample')
       ) {
-        finalTitle = `View ${title}`;
+        finalTitle = t('View {{title}}', { title });
       } else if (actualDelete) {
-        finalTitle = `Delete ${type}`;
+        finalTitle = t('Delete {{kind}}', { kind: type });
       } else if (!isSampleYaml && !actualDelete) {
-        finalTitle = `Apply ${type}`;
+        finalTitle = t('Apply {{resourceType}}', { resourceType: type });
       }
 
       setEditorContent(yaml);
@@ -272,7 +331,7 @@ export default function AIPrompt(props: {
       setIsDelete(actualDelete);
       setShowEditor(true);
     },
-    []
+    [t]
   );
 
   // Initialize active configuration from plugin settings
@@ -311,10 +370,7 @@ export default function AIPrompt(props: {
 
     // Check if the current active config still exists
     if (activeConfig) {
-      const stillExists = newProviders.find(
-        p =>
-          p.providerId === activeConfig.providerId && p.config.apiKey === activeConfig.config.apiKey
-      );
+      const stillExists = newProviders.find(p => isSameStoredConfig(p, activeConfig));
 
       if (!stillExists) {
         // Active provider was deleted, switch to a new one or clear
@@ -348,7 +404,9 @@ export default function AIPrompt(props: {
             setPromptHistory([
               {
                 role: 'system',
-                content: `Previous provider was removed. Switched to ${providerName}.`,
+                content: t('Previous provider was removed. Switched to {{providerName}}.', {
+                  providerName,
+                }),
               },
             ]);
           }, 100);
@@ -393,8 +451,7 @@ export default function AIPrompt(props: {
 
     if (
       !activeConfig ||
-      activeConfig.providerId !== config.providerId ||
-      activeConfig.config.apiKey !== config.config.apiKey ||
+      !isSameStoredConfig(activeConfig, config) ||
       JSON.stringify(activeConfig.config) !== JSON.stringify(config.config) ||
       selectedModel !== resolvedModel
     ) {
@@ -412,7 +469,10 @@ export default function AIPrompt(props: {
             ...prev,
             {
               role: 'system',
-              content: `Switched to ${providerName}${resolvedModel ? ' / ' + resolvedModel : ''}.`,
+              content: t('Switched to {{providerName}}{{modelSuffix}}.', {
+                providerName,
+                modelSuffix: resolvedModel ? ` / ${resolvedModel}` : '',
+              }),
             },
           ]);
         }, 100);
@@ -423,7 +483,10 @@ export default function AIPrompt(props: {
           ...prev,
           {
             role: 'system',
-            content: `Using ${providerName}${resolvedModel ? ' / ' + resolvedModel : ''}.`,
+            content: t('Using {{providerName}}{{modelSuffix}}.', {
+              providerName,
+              modelSuffix: resolvedModel ? ` / ${resolvedModel}` : '',
+            }),
           },
         ]);
       }
@@ -442,25 +505,82 @@ export default function AIPrompt(props: {
   React.useEffect(() => {
     // Recreate the manager whenever pluginSettings change (including tool settings)
     // or when activeConfig/selectedModel/mcpConfig changes
-    if (activeConfig) {
+    let isCurrent = true;
+
+    if (!activeConfig)
+      return () => {
+        isCurrent = false;
+      };
+
+    async function initManager() {
       try {
         // Create config with selected model
-        const configWithModel = {
-          ...activeConfig.config,
+        const configWithModel: any = {
+          ...activeConfig!.config,
           model: selectedModel,
         };
+
+        // Refresh sentinel tokens before creating the model
+        if (configWithModel.apiKey === GH_CLI_AUTH_SENTINEL && commandRunnerRef.current) {
+          const freshToken = await refreshGitHubToken(commandRunnerRef.current);
+          if (freshToken) {
+            configWithModel.apiKey = freshToken;
+          }
+        }
+        if (configWithModel.apiKey === AZ_CLI_AUTH_SENTINEL && commandRunnerRef.current) {
+          const rg = configWithModel.azResourceGroup;
+          const acct = configWithModel.azAccountName;
+          if (rg && acct) {
+            const freshKey = await refreshAzureOpenAIKey(rg, acct, commandRunnerRef.current);
+            if (freshKey) {
+              configWithModel.apiKey = freshKey;
+            }
+          }
+        }
+
+        if (!isCurrent) return;
+
         const newManager = new LangChainManager(
-          activeConfig.providerId,
+          activeConfig!.providerId,
           configWithModel,
           enabledTools
         );
         setAiManager(newManager);
-        return;
       } catch (error) {
-        setApiError(`Failed to initialize AI model: ${error.message}`);
+        if (isCurrent) {
+          setApiError(`Failed to initialize AI model: ${error.message}`);
+        }
       }
     }
+
+    initManager();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [enabledTools, activeConfig, selectedModel, mcpConfigKey]);
+
+  // ─── Wire up SkillManager for prompt skill injection ──────────────────────
+  // Creates a SkillManager with browser-compatible adapters (fetch + JSZip).
+  // Works in both browser and desktop/CLI: browser uses fetch for GitHub repos,
+  // desktop can also load from local filesystem directories.
+  const skillManagerRef = React.useRef<SkillManager | null>(null);
+  React.useEffect(() => {
+    if (!aiManager || !(aiManager instanceof LangChainManager)) return;
+
+    const skillsConfig = getSkillsConfig(pluginSettings);
+    if (!skillsConfig.sources || skillsConfig.sources.length === 0) return;
+
+    // Reuse existing SkillManager instance to preserve its in-memory cache
+    if (!skillManagerRef.current) {
+      skillManagerRef.current = new SkillManager(
+        createNoopFileSystem(),
+        createFetchHttpClient(),
+        createJSZipExtractor()
+      );
+    }
+    (aiManager as LangChainManager).setSkillManager(skillManagerRef.current, skillsConfig);
+  }, [aiManager, pluginSettings]);
 
   React.useEffect(() => {
     // Only set if different
@@ -473,15 +593,16 @@ export default function AIPrompt(props: {
     });
   }, [pluginSettings]);
 
-  // [PROACTIVE_DIAGNOSIS_DISABLED] — LangChain fallback diagnosis connection
-  /*
   // ─── Connect AI manager to proactive diagnosis (fallback for non-agent mode) ──
   // When NOT in agent mode but an AI config is available, use LangChainManager as fallback.
   // In agent mode, the diagnoseFn is already set by handleToggleAgentMode above.
   useEffect(() => {
     // Only set the LangChain fallback if agent mode is NOT active
     if (!isAgentMode && activeConfig) {
-      const diagnoseFn = async (prompt: string, onStep?: DiagnosisStepCallback): Promise<string> => {
+      const diagnoseFn = async (
+        prompt: string,
+        onStep?: DiagnosisStepCallback
+      ): Promise<string> => {
         try {
           const configWithModel = {
             ...activeConfig.config,
@@ -524,7 +645,6 @@ export default function AIPrompt(props: {
     }
     // If isAgentMode is true, diagnoseFn is managed by handleToggleAgentMode — don't touch it.
   }, [isAgentMode, activeConfig, selectedModel, enabledTools]);
-  */
   // ─── End proactive diagnosis connection ─────────────────────────────
 
   const updateHistory = React.useCallback(() => {
@@ -555,8 +675,10 @@ export default function AIPrompt(props: {
   }, [aiManager?.history]);
 
   // Use the Kubernetes tool UI hook (must be after updateHistory is defined)
-  const { state: kubernetesUI, callbacks: kubernetesCallbacks } =
-    useKubernetesToolUI(updateHistory);
+  const { state: kubernetesUI, callbacks: kubernetesCallbacks } = useKubernetesToolUI(
+    updateHistory,
+    t
+  );
 
   // Set up event listeners for tool confirmation events
   React.useEffect(() => {
@@ -612,26 +734,29 @@ export default function AIPrompt(props: {
       }
 
       // Extract error details
-      const errorMessage = error?.message || error?.error || 'Unknown error occurred';
+      const errorMessage = error?.message || error?.error || t('Unknown error occurred');
       const statusCode = error?.status || error?.statusCode;
 
       // Build error content
-      let errorContent = `Resource ${operation} failed: ${errorMessage}`;
+      let errorContent = t('Resource {{operation}} failed: {{errorMessage}}', {
+        operation: t(operation),
+        errorMessage,
+      });
 
       if (resourceInfo) {
-        errorContent += `\n\nResource Details: ${JSON.stringify(
+        errorContent += `\n\n${t('Resource Details:')} ${JSON.stringify(
           {
             kind: resourceInfo.kind,
             name: resourceInfo.name,
             namespace: resourceInfo.namespace,
-            status: 'Failed',
+            status: t('Failed'),
             ...(statusCode && { statusCode }),
           },
           null,
           2
         )}`;
       } else if (statusCode) {
-        errorContent += `\n\nStatus Code: ${statusCode}`;
+        errorContent += `\n\n${t('Status Code: {{statusCode}}', { statusCode })}`;
       }
 
       const toolPrompt: Prompt = {
@@ -647,7 +772,7 @@ export default function AIPrompt(props: {
         updateHistory();
       }
     },
-    [aiManager, updateHistory]
+    [aiManager, t, updateHistory]
   );
 
   // Function to handle test mode responses
@@ -721,7 +846,9 @@ export default function AIPrompt(props: {
         // Add the error as an assistant message in the history
         const errorPrompt: Prompt = {
           role: 'assistant',
-          content: `Error: ${error.message || 'An unknown error occurred'}`,
+          content: t('Error: {{message}}', {
+            message: error.message || t('An unknown error occurred'),
+          }),
           error: true,
         };
 
@@ -807,13 +934,22 @@ export default function AIPrompt(props: {
         setAgentModeStatus('found');
         setIsAgentMode(true);
 
-        // Create the HolmesAgent routing through K8s service proxy
-        const cluster = getCluster();
-        if (!cluster) {
-          console.error('[AgentMode] No cluster available');
-          return;
+        // Use MockHolmesAgent when the developer option is enabled
+        const useMockAgent = pluginSettings?.devOptions?.enableMockAgent === true;
+
+        let agent: HolmesAgent | MockHolmesAgent;
+        if (useMockAgent) {
+          agent = new MockHolmesAgent();
+          console.log('[AgentMode] Using MockHolmesAgent');
+        } else {
+          // Create the HolmesAgent routing through K8s service proxy
+          const cluster = getCluster();
+          if (!cluster) {
+            console.error('[AgentMode] No cluster available');
+            return;
+          }
+          agent = new HolmesAgent(getHolmesProxyBaseUrl(cluster, pluginSettings));
         }
-        const agent = new HolmesAgent(getHolmesProxyBaseUrl(cluster, pluginSettings));
         agent.subscribe({
           onEvent: ({ event }) => {
             console.log('[AgentMode] onEvent:', event.type, event);
@@ -877,7 +1013,7 @@ export default function AIPrompt(props: {
               ...prev,
               {
                 role: 'assistant',
-                content: `Agent error: ${event.message}`,
+                content: t('Agent error: {{message}}', { message: event.message }),
                 error: true,
               },
             ]);
@@ -969,7 +1105,9 @@ export default function AIPrompt(props: {
                   const steps = [...(updated[i].agentThinkingSteps || [])];
                   steps.push({
                     id: `tool-${event.toolCallId || event.toolCallName}-${Date.now()}`,
-                    content: `Calling tool: ${event.toolCallName}`,
+                    content: t('Calling tool: {{toolCallName}}', {
+                      toolCallName: event.toolCallName,
+                    }),
                     type: 'tool-start',
                     timestamp: Date.now(),
                   });
@@ -994,7 +1132,9 @@ export default function AIPrompt(props: {
                   const steps = [...(updated[i].agentThinkingSteps || [])];
                   steps.push({
                     id: `tool-end-${toolCallName}-${Date.now()}`,
-                    content: `Tool ${toolCallName} completed`,
+                    content: t('Tool {{toolCallName}} completed', {
+                      toolCallName,
+                    }),
                     type: 'tool-result',
                     timestamp: Date.now(),
                   });
@@ -1008,16 +1148,19 @@ export default function AIPrompt(props: {
         });
         holmesAgentRef.current = agent;
 
-        // [PROACTIVE_DIAGNOSIS_DISABLED] — agent diagnosis setup
-        /*
         // ─── Set up proactive diagnosis via dedicated HolmesAgent ──────
         // One HolmesAgent instance, reused sequentially for all diagnoses.
         // Between each diagnosis we resetThread() to get a fresh conversation.
         // Chat is blocked (loading=true) while diagnosis runs.
-        const diagAgent = new HolmesAgent(getHolmesProxyBaseUrl(cluster, pluginSettings));
+        const diagAgent = useMockAgent
+          ? new MockHolmesAgent()
+          : new HolmesAgent(getHolmesProxyBaseUrl(getCluster()!, pluginSettings));
         diagnosisAgentRef.current = diagAgent;
 
-        const agentDiagnoseFn = async (prompt: string, onStep?: DiagnosisStepCallback): Promise<string> => {
+        const agentDiagnoseFn = async (
+          prompt: string,
+          onStep?: DiagnosisStepCallback
+        ): Promise<string> => {
           // Reset thread for a fresh conversation — no leftover history
           diagAgent.resetThread();
 
@@ -1089,7 +1232,9 @@ export default function AIPrompt(props: {
             await diagAgent.runAgent({
               runId: `diag-run-${uniqueId}`,
             });
-            console.log(`[ProactiveDiagnosis] runAgent completed (${uniqueId}), length=${responseText.length}`);
+            console.log(
+              `[ProactiveDiagnosis] runAgent completed (${uniqueId}), length=${responseText.length}`
+            );
 
             return sanitizeAgentContent(responseText) || 'No diagnosis available.';
           } catch (err: any) {
@@ -1105,38 +1250,59 @@ export default function AIPrompt(props: {
         setDiagnoseFnReady(true);
         console.log('[ProactiveDiagnosis] Agent diagnose function ready');
         // ─── End proactive diagnosis agent setup ────────────────────
-        */
 
         setPromptHistory(prev => [
           ...prev,
           {
             role: 'system',
-            content: `Agent mode active. Connected to Holmes ag-ui server at ${agent.connectionLabel}.`,
+            content: t(
+              'Agent mode active. Connected to Holmes ag-ui server at {{connectionLabel}}.',
+              {
+                connectionLabel: agent.connectionLabel,
+              }
+            ),
           },
         ]);
       } else {
         setIsAgentMode(false);
         setAgentModeStatus('idle');
         holmesAgentRef.current = null;
-        // [PROACTIVE_DIAGNOSIS_DISABLED] — Clean up proactive diagnosis
-        // diagnoseFnRef.current = null;
-        // diagnosisAgentRef.current = null;
-        // proactiveDiagnosisManager.setDiagnoseFn(null);
-        // setDiagnoseFnReady(false);
+        diagnoseFnRef.current = null;
+        diagnosisAgentRef.current = null;
+        proactiveDiagnosisManager.setDiagnoseFn(null);
+        setDiagnoseFnReady(false);
         setPromptHistory(prev => [
           ...prev,
-          { role: 'system', content: 'Switched back to AI Chat mode.' },
+          { role: 'system', content: t('Switched back to AI Chat mode.') },
         ]);
       }
     },
-    [pluginSettings]
+    [pluginSettings, t]
   );
 
-  // Auto-initialize agent mode on first mount (agent is default mode)
+  // Auto-initialize agent mode on first mount if Holmes is reachable
+  // or if mock agent is enabled.
+  // Holmes takes priority over chat mode: if Holmes is available, always
+  // default to it regardless of whether a chat provider is also configured.
+  // Fall back to chat mode only when Holmes is not reachable.
   React.useEffect(() => {
-    if (isAgentMode && !holmesAgentRef.current) {
+    if (isAgentMode || holmesAgentRef.current) return;
+
+    // If mock agent is enabled, skip health check and go straight to agent mode
+    if (pluginSettings?.devOptions?.enableMockAgent) {
       handleToggleAgentMode(true);
+      return;
     }
+
+    const cluster = getCluster();
+    if (!cluster) return;
+    checkHolmesAgentHealth(cluster, pluginSettings)
+      .then(available => {
+        if (available) handleToggleAgentMode(true);
+      })
+      .catch(() => {
+        /* Holmes not reachable — stay in chat mode */
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1171,7 +1337,9 @@ export default function AIPrompt(props: {
           ...prev,
           {
             role: 'assistant',
-            content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            content: t('Error: {{message}}', {
+              message: error instanceof Error ? error.message : t('Unknown error'),
+            }),
             error: true,
           },
         ]);
@@ -1179,7 +1347,7 @@ export default function AIPrompt(props: {
         setLoading(false);
       }
     },
-    [setOpenPopup]
+    [setOpenPopup, t]
   );
 
   // Function to handle tool retry
@@ -1225,9 +1393,9 @@ export default function AIPrompt(props: {
           role: 'tool',
           content: JSON.stringify({
             error: true,
-            message: `Failed to retry tool: ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }`,
+            message: t('Failed to retry tool: {{message}}', {
+              message: error instanceof Error ? error.message : t('Unknown error'),
+            }),
             toolName,
           }),
           toolCallId: `retry-error-${Date.now()}`,
@@ -1239,7 +1407,7 @@ export default function AIPrompt(props: {
         updateHistory();
       }
     },
-    [aiManager, updateHistory]
+    [aiManager, t, updateHistory]
   );
 
   // Function to stop the current request
@@ -1400,10 +1568,12 @@ export default function AIPrompt(props: {
   const getGreetingMessage = React.useMemo(() => {
     return {
       role: 'assistant' as const,
-      content: `Hello! I'm your AI Assistant, ready to help you with Kubernetes operations. How can I assist you today?`,
+      content: t(
+        "Hello! I'm your AI Assistant, ready to help you with Kubernetes operations. How can I assist you today?"
+      ),
       isDisplayOnly: true, // Mark this as display-only so it doesn't get sent to LLM
     };
-  }, []);
+  }, [t]);
 
   // If panel is not open, don't render
   if (!openPopup) return null;
@@ -1441,7 +1611,7 @@ export default function AIPrompt(props: {
   }, [shouldShowGreeting, getGreetingMessage, promptHistory]);
 
   // If no valid configuration AND NOT in agent mode, show setup message
-  if (!hasValidConfig && !isAgentMode) {
+  if (!hasValidConfig && !isAgentMode && chatMode !== 'agent') {
     return (
       <Box
         sx={{
@@ -1455,11 +1625,13 @@ export default function AIPrompt(props: {
         }}
       >
         <Typography variant="h6" gutterBottom>
-          AI Assistant Setup Required
+          {t('AI Assistant Setup Required')}
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
-          To use the AI Assistant, please configure your AI provider credentials in the settings
-          page. Or switch to Holmes Agent mode.
+          {t(
+            'To use the AI Assistant, please configure your AI provider credentials in the settings page.'
+          )}{' '}
+          {t('Or switch to Holmes Agent mode.')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
@@ -1470,7 +1642,7 @@ export default function AIPrompt(props: {
               setOpenPopup(false);
             }}
           >
-            Go to Settings
+            {t('Go to Settings')}
           </Button>
           <Button
             variant="outlined"
@@ -1479,7 +1651,7 @@ export default function AIPrompt(props: {
               handleToggleAgentMode(true);
             }}
           >
-            Use Holmes Agent
+            {t('Use Holmes Agent')}
           </Button>
         </Box>
       </Box>
@@ -1506,6 +1678,7 @@ export default function AIPrompt(props: {
           isTestMode={isTestMode}
           disableSettingsButton={disableSettingsButton}
           onClose={() => setOpenPopup(false)}
+          onSettings={() => history.push(getSettingsURL())}
         />
 
         <Grid
@@ -1535,6 +1708,14 @@ export default function AIPrompt(props: {
               minWidth: 0,
             }}
           >
+            <ProactiveDiagnosisSection
+              diagnoses={diagnoses}
+              scrollToEventUid={scrollToEventUid}
+              onScrollComplete={clearScrollTarget}
+              isCycleRunning={isCycleRunning}
+              onYamlAction={handleYamlAction}
+              ContentRendererSlot={ContentRenderer}
+            />
             <AIChatContent
               history={memoizedHistory}
               isLoading={loading}
@@ -1615,6 +1796,12 @@ export default function AIPrompt(props: {
                 setEnabledTools(newEnabledTools);
                 // Recreate AI manager with new tools
                 handleChangeConfig(activeConfig, selectedModel);
+              }}
+              chatMode={chatMode}
+              onChatModeChange={mode => {
+                setChatMode(mode);
+                setPromptHistory([]);
+                setApiError(null);
               }}
             />
           </Grid>

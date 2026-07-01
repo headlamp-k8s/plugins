@@ -5,8 +5,15 @@ import React from 'react';
 const isElectron = !!(window as any)?.desktopApi;
 
 /**
- * Hook that monitors cluster changes and notifies the Electron main process
- * This enables MCP servers to restart when cluster context changes
+ * React hook that monitors the active Kubernetes cluster and notifies the
+ * Electron main process when the cluster changes. This enables MCP servers
+ * to restart with the new cluster context.
+ *
+ * Polls `getCluster()` every second. When running in Electron, sends a
+ * `notifyClusterChange` IPC message on cluster transitions (skipping the
+ * initial load).
+ *
+ * @returns The current cluster name, or null if no cluster is active.
  */
 export function useClusterChangeNotifier() {
   const [currentCluster, setCurrentCluster] = React.useState<string | null>(null);
@@ -54,8 +61,11 @@ export function useClusterChangeNotifier() {
 }
 
 /**
- * Component that automatically monitors cluster changes and notifies Electron
- * This component should be included once in the app root to enable MCP server restart functionality
+ * Renderless component that monitors cluster changes and notifies Electron.
+ * Include once in the app root to enable automatic MCP server restart on
+ * cluster context switches.
+ *
+ * @returns Always returns null (renders nothing).
  */
 export function ClusterChangeNotifier(): null {
   useClusterChangeNotifier();
