@@ -75,7 +75,9 @@ describe('git utilities', () => {
 
   describe('getVersionBumpCommit', () => {
     it('should find commit SHA for version bump', () => {
-      vi.mocked(child_process.execFileSync).mockReturnValue('abc123commitsha\n');
+      vi.mocked(child_process.execFileSync)
+        .mockReturnValueOnce('/repo/root\n') // repo root
+        .mockReturnValueOnce('abc123commitsha\n'); // -S match
       const sha = getVersionBumpCommit('my-plugin', '1.2.3');
       expect(sha).toBe('abc123commitsha');
       expect(child_process.execFileSync).toHaveBeenCalledWith(
