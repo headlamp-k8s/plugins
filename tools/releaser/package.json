@@ -8,7 +8,7 @@
     "plugin-releaser": "./dist/index.js"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "^20.19.0 || >=22.13.0"
   },
   "scripts": {
     "build": "tsc",
