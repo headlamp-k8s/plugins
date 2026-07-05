@@ -1,7 +1,7 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import type { ComponentType } from 'react';
-import XdsConfigDump from './components/daemon/XdsConfigDump';
 import HealthDashboard from './components/daemon/HealthDashboard';
+import XdsConfigDump from './components/daemon/XdsConfigDump';
 import WaypointDetail from './components/waypoints/Detail';
 import WaypointList from './components/waypoints/List';
 import { kmeshRouteNames, kmeshRoutePaths } from './utils/kmeshRoutes';

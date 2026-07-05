@@ -22,9 +22,20 @@ import { type KmeshDaemonPod, useKmeshDaemonPods } from '../../hooks/useKmeshDae
  * @returns A React component rendering the version string or an error state
  */
 function DaemonVersionCell({ pod }: { pod: KmeshDaemonPod }) {
-  // Only query the daemon once the pod is Running+Ready to avoid noisy errors and extra load.
-  const podName = pod.phase === 'Running' && pod.ready ? pod.name : null;
-  const { status, data: version, error } = useKmeshVersion(pod.namespace, podName);
+  const versionState = useKmeshVersion(
+    pod.namespace,
+    pod.phase === 'Running' && pod.ready ? pod.name : null
+  );
+
+  if (pod.phase !== 'Running' || !pod.ready) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        -
+      </Typography>
+    );
+  }
+
+  const { status, data: version, error } = versionState;
 
   if (status === 'loading') {
     return <CircularProgress size={16} />;
@@ -33,7 +44,7 @@ function DaemonVersionCell({ pod }: { pod: KmeshDaemonPod }) {
   if (status === 'error') {
     return (
       <Typography color="error" variant="body2">
-        Error: {error as string}
+        Error: {error ?? 'Unknown error'}
       </Typography>
     );
   }
@@ -41,13 +52,14 @@ function DaemonVersionCell({ pod }: { pod: KmeshDaemonPod }) {
   if (version) {
     return (
       <Typography variant="body2">
-        {version.gitVersion} ({version.gitCommit?.substring(0, 7) || 'unknown'})
+        {version.gitVersion ?? version.version ?? 'unknown'} (
+        {(version.gitCommit ?? version.gitRevision ?? '').substring(0, 7) || 'unknown'})
       </Typography>
     );
   }
 
   return (
-    <Typography variant="body2" color="textSecondary">
+    <Typography variant="body2" color="text.secondary">
       -
     </Typography>
   );
@@ -66,7 +78,7 @@ export default function HealthDashboard() {
   if (error) {
     return (
       <SectionBox title="Kmesh Daemon Health">
-        <Typography color="error">Error loading pods: {error as string}</Typography>
+        <Typography color="error">Error loading pods: {error ?? 'Unknown error'}</Typography>
       </SectionBox>
     );
   }
@@ -96,12 +108,15 @@ export default function HealthDashboard() {
             },
             {
               label: 'Status',
-              getter: (pod: KmeshDaemonPod) => (
-                <StatusLabel status={pod.phase === 'Running' && pod.ready ? 'success' : 'error'}>
-                  {`${pod.phase}${!pod.ready ? ' (Not Ready)' : ''}`}
-                </StatusLabel>
-              ),
-              sort: (pod: KmeshDaemonPod) => pod.phase,
+              getter: (pod: KmeshDaemonPod) => {
+                const displayStatus = pod.statusReason ?? pod.phase;
+                return (
+                  <StatusLabel status={pod.phase === 'Running' && pod.ready ? 'success' : 'error'}>
+                    {`${displayStatus}${!pod.ready ? ' (Not Ready)' : ''}`}
+                  </StatusLabel>
+                );
+              },
+              sort: (pod: KmeshDaemonPod) => pod.statusReason ?? pod.phase,
             },
             {
               label: 'Daemon Version (Proxy)',
