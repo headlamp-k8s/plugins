@@ -6,6 +6,7 @@ export const kmeshRouteNames = {
   waypointDetail: 'kmesh-waypoint-detail',
   /** xDS Config Dump viewer (kernel-native / ADS mode) */
   xdsConfigDump: 'kmesh-xds-config-dump',
+  healthDashboard: 'kmesh-health-dashboard',
 } as const;
 
 /**
@@ -17,4 +18,5 @@ export const kmeshRoutePaths = {
   /** xDS Config Dump viewer — surfaces clusters, listeners, and routes from
    *  the kernel-native (ADS) daemon config dump endpoint. */
   xdsConfigDump: '/kmesh/xds-config',
+  healthDashboard: '/kmesh/health',
 } as const;
