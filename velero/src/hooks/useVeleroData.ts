@@ -28,15 +28,24 @@ function toBackupInput(backup: VeleroBackup): BackupCoverageInput {
   };
 }
 
+/** Velero schedules and backups loaded from the cluster, plus coverage helpers. */
 export interface VeleroDataState {
+  /** True while Schedule or Backup lists are still loading. */
   loading: boolean;
+  /** Set when either list request fails (for example missing RBAC). */
   error: Error | null;
   schedules: ScheduleCoverageInput[];
   backups: BackupCoverageInput[];
+  /** Schedules whose template covers the workload, with last-backup metadata. */
   getCoverageForWorkload: (target: WorkloadTarget) => ScheduleCoverageResult[];
+  /** Schedules that include the namespace in their template. */
   getSchedulesForNamespace: (namespace: string) => ScheduleCoverageResult[];
 }
 
+/**
+ * Loads Velero Schedule and Backup CRs from the configured Velero namespace
+ * and exposes helpers to compute coverage for workloads and namespaces.
+ */
 export function useVeleroData(): VeleroDataState {
   const veleroNamespace = useVeleroNamespace();
   const [schedules, schedulesError] = VeleroSchedule.useList({ namespace: veleroNamespace });
