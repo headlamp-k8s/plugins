@@ -23,15 +23,26 @@
  */
 
 import { AIMessage, AIMessageChunk, ToolMessage } from '@langchain/core/messages';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { inlineToolApprovalManager } from '../approval/InlineToolApprovalManager';
 import LangChainManager from './LangChainManager';
+
+// Track managers created in each test so we can dispose them and avoid
+// EventEmitter MaxListeners warnings from the singleton approval manager.
+const managers: LangChainManager[] = [];
+afterEach(() => {
+  for (const m of managers) m.dispose();
+  managers.length = 0;
+});
 
 /**
  * Construct a LangChainManager using the built-in mock-testing-model
  * so no real API keys or network access are needed.
  */
 function createTestManager(): LangChainManager {
-  return new LangChainManager('mock-testing-model', {});
+  const m = new LangChainManager('mock-testing-model', {});
+  managers.push(m);
+  return m;
 }
 
 /**

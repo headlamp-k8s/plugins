@@ -132,7 +132,7 @@ export class MCPClientCore {
    */
   private async initializeClient(): Promise<void> {
     if (DEBUG) {
-      console.log('MCPClientCore: initializeClient:', {
+      console.debug('MCPClientCore: initializeClient:', {
         isClientInitialized: this.isClientInitialized,
         initializationPromise: this.initializationPromise,
       });
@@ -146,7 +146,7 @@ export class MCPClientCore {
     }
 
     if (DEBUG) {
-      console.log('MCPClientCore: initializeClient: Starting doInitialize()...');
+      console.debug('MCPClientCore: initializeClient: Starting doInitialize()...');
     }
 
     this.initializationPromise = this.doInitializeClient();
@@ -163,13 +163,13 @@ export class MCPClientCore {
 
       if (Object.keys(mcpServers).length === 0) {
         if (DEBUG) {
-          console.log('MCPClientCore: doInitialize: No enabled MCP servers found');
+          console.debug('MCPClientCore: doInitialize: No enabled MCP servers found');
         }
         this.isClientInitialized = true;
         return;
       }
       if (DEBUG) {
-        console.log(
+        console.debug(
           'MCPClientCore: doInitialize: Initializing with servers:',
           Object.keys(mcpServers)
         );
@@ -187,7 +187,7 @@ export class MCPClientCore {
 
       this.isClientInitialized = true;
       if (DEBUG) {
-        console.log(
+        console.debug(
           'MCPClientCore: doInitialize: initialized with',
           this.clientTools.length,
           'tools'
@@ -240,7 +240,7 @@ export class MCPClientCore {
 
     const mcpSettings = this.settingsProvider.loadMCPSettings();
     if (!hasClusterDependentServers(mcpSettings)) {
-      console.log('No cluster-dependent MCP servers found, skipping restart');
+      console.debug('No cluster-dependent MCP servers found, skipping restart');
       return;
     }
 
@@ -248,7 +248,7 @@ export class MCPClientCore {
       await this.closeAndReset();
       this.clusters = newClusters || [];
       await this.initializeClient();
-      console.log('MCP client restarted for new cluster:', newClusters);
+      console.debug('MCP client restarted for new cluster:', newClusters);
     } catch (error) {
       console.error('Error restarting MCP client for cluster change:', error);
       this.currentClusters = oldClusters;
@@ -286,9 +286,9 @@ export class MCPClientCore {
       if (!validation.valid) {
         throw new Error(`Parameter validation failed: ${validation.error}`);
       }
-      console.log(`Executing MCP tool: ${toolName} with args:`, args);
+      console.debug(`Executing MCP tool: ${toolName} with args:`, args);
       const result = await tool.invoke(args);
-      console.log(`MCP tool ${toolName} executed successfully`);
+      console.debug(`MCP tool ${toolName} executed successfully`);
       this.mcpToolState.recordToolUsage(serverName, actualToolName);
       return { success: true, result, toolCallId };
     } catch (error) {
@@ -350,7 +350,7 @@ export class MCPClientCore {
       await this.closeAndReset();
       await this.initializeClient();
 
-      console.log('MCP configuration updated successfully');
+      console.debug('MCP configuration updated successfully');
       return { success: true };
     } catch (error) {
       console.error('Error updating MCP configuration:', error);

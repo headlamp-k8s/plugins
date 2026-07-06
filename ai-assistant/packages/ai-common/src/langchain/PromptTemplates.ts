@@ -26,8 +26,11 @@ import {
  */
 
 /** Base system prompt used across Kubernetes assistant interactions. */
-// @ts-ignore - Complex inferred type cannot be named in declaration
-/** Base system prompt used across Kubernetes assistant interactions. */
+// LangChain's deeply-nested generic return type from fromTemplate() references
+// private properties and non-portable module paths, making it impossible to
+// infer or annotate without @ts-ignore.  Typed as `any` intentionally —
+// callers only use .format() / pipe() which are unaffected.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const baseSystemPromptTemplate: any = SystemMessagePromptTemplate.fromTemplate(`
 You are an AI assistant specialized in Kubernetes management through a web dashboard.
 You help users manage their Kubernetes clusters using web UI actions and API tools.

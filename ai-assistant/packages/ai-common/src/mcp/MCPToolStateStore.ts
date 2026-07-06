@@ -368,7 +368,7 @@ export class MCPToolStateStore {
     clientTools: Array<{ name: string; schema?: any; inputSchema?: any; description?: string }>
   ): void {
     if (!clientTools || clientTools.length === 0) {
-      console.log('No tools available for configuration initialization');
+      console.debug('No tools available for configuration initialization');
       // Clear the config if no tools are available
       this.replaceConfig({});
       return;
@@ -390,7 +390,7 @@ export class MCPToolStateStore {
 
       // Extract schema from the tool (LangChain tools use .schema property)
       const toolSchema = tool.schema || (tool as any).inputSchema || null;
-      console.log(
+      console.debug(
         `Processing tool: ${toolName}, has inputSchema: ${!!toolSchema}, description: "${
           tool.description
         }"`
@@ -407,7 +407,7 @@ export class MCPToolStateStore {
       });
     }
 
-    console.log('Tools grouped by server:', Object.keys(toolsByServer));
+    console.debug('Tools grouped by server:', Object.keys(toolsByServer));
 
     // Replace the entire configuration with current tools
     this.replaceToolsConfig(toolsByServer);

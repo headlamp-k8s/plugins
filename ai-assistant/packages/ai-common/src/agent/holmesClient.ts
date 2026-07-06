@@ -214,7 +214,7 @@ export class HolmesAgent {
 
   private createAgent(): HttpAgent {
     const url = `${this.baseUrl}/api/agui/chat`;
-    console.log('[HolmesAgent] Creating HttpAgent with URL:', url);
+    console.debug('[HolmesAgent] Creating HttpAgent with URL:', url);
     return new HttpAgent({
       url,
       threadId: this.threadId,

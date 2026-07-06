@@ -717,9 +717,9 @@ export class ToolManager {
         return model;
       }
 
-      // @todo: need to fix return type of this bindToModel method.
-      // @ts-ignore
-      return model.bindTools(langChainTools);
+      // bindTools returns Runnable which is a supertype; the bound instance
+      // still satisfies BaseChatModel at runtime.
+      return model.bindTools!(langChainTools) as unknown as BaseChatModel;
     } catch (error) {
       console.error(`Error binding tools to ${providerId} model:`, error);
       this.boundModel = model;

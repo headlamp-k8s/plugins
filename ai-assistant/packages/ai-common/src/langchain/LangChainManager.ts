@@ -168,6 +168,8 @@ export default class LangChainManager extends AIManager {
   private useDirectToolCalling: boolean = false;
   /** Extra LangChain tools provided externally (e.g. kubectl for CLI). */
   private extraTools: Map<string, any> = new Map();
+  /** Stored listener references for cleanup (prevents EventEmitter memory leaks). */
+  private confirmationListeners: { event: string; fn: (...args: any[]) => void }[] = [];
 
   // Skills system
   private skillManager: SkillManager | null = null;
@@ -185,7 +187,7 @@ export default class LangChainManager extends AIManager {
     super();
     this.providerId = providerId;
     const enabledToolIds = enabledTools ?? [];
-    console.log(
+    console.debug(
       'AI Assistant: Initializing with enabled tools:',
       enabledToolIds || 'all tools enabled'
     );
@@ -247,15 +249,31 @@ export default class LangChainManager extends AIManager {
 
   // Set up event listeners for tool confirmation events
   private setupToolConfirmationListeners() {
-    inlineToolApprovalManager.on('request-confirmation', (data: any) => {
-      // Add the tool confirmation message to chat history
+    const onRequest = (data: any) => {
       this.addToolConfirmationMessage('', data.toolConfirmation);
-    });
-
-    inlineToolApprovalManager.on('update-confirmation', (data: any) => {
-      // Update the specific tool confirmation message with new state (e.g., loading)
+    };
+    const onUpdate = (data: any) => {
       this.updateToolConfirmationMessage(data.requestId, data.toolConfirmation);
-    });
+    };
+
+    inlineToolApprovalManager.on('request-confirmation', onRequest);
+    inlineToolApprovalManager.on('update-confirmation', onUpdate);
+
+    this.confirmationListeners = [
+      { event: 'request-confirmation', fn: onRequest },
+      { event: 'update-confirmation', fn: onUpdate },
+    ];
+  }
+
+  /**
+   * Removes event listeners registered on the shared approval manager.
+   * Call this before discarding a LangChainManager instance to prevent leaks.
+   */
+  dispose(): void {
+    for (const { event, fn } of this.confirmationListeners) {
+      inlineToolApprovalManager.removeListener(event, fn);
+    }
+    this.confirmationListeners = [];
   }
 
   // Helper method to extract text content from different response formats
@@ -499,8 +517,11 @@ export default class LangChainManager extends AIManager {
       const builtinTools = this.toolManager.getLangChainTools();
       const allTools = [...builtinTools, ...(extraTools ?? [])];
       if (allTools.length > 0) {
-        // @ts-ignore - bindTools return type mismatch
-        this.boundModel = this.model.bindTools(allTools);
+        // bindTools returns Runnable which is a supertype; the bound instance
+        // still satisfies BaseChatModel at runtime.
+        // Non-null: guarded by canUseDirectToolCalling() which only allows
+        // providers whose models implement bindTools.
+        this.boundModel = this.model.bindTools!(allTools) as unknown as BaseChatModel;
       } else {
         this.boundModel = this.model;
       }
@@ -2470,14 +2491,11 @@ Format your response to make the errors prominent and actionable.`,
 
   // Create a specialized chain for tool response processing
   private createToolResponseChain() {
-    //TODO: not sure which we should use now...
-
-    // // Use the bound model (with tools) so the LLM can make follow-up tool calls
-    // // (e.g., fetching logs after retrieving pod details).
-    // const modelToUse = this.boundModel || this.model;
-
-    // Use the UNBOUND model (no tools) to force the LLM to produce a text summary
-    // instead of making additional tool calls
+    // Design decision: use the UNBOUND model (no tools attached) so that the
+    // LLM is forced to synthesize a human-readable summary from the tool
+    // results rather than triggering further tool calls.  Multi-step tool
+    // workflows (e.g. "get pods → then get logs") are handled at a higher
+    // level by the ToolOrchestrator, not by re-arming tools here.
     const model = this.model;
 
     // Create a runnable sequence for tool response processing
@@ -2881,7 +2899,7 @@ Format your response to make the errors prominent and actionable.`,
     for (const requiredField of required) {
       const value = args[requiredField];
       if (value === undefined || value === null || value === '') {
-        console.log(`[ArgCheck] Missing or empty required field: ${requiredField}`);
+        console.debug(`[ArgCheck] Missing or empty required field: ${requiredField}`);
         return false; // Need LLM to fill in required field
       }
 
@@ -2893,7 +2911,7 @@ Format your response to make the errors prominent and actionable.`,
           value.toLowerCase() === 'tbd' ||
           value.toLowerCase() === 'not specified'
         ) {
-          console.log(`[ArgCheck] Found placeholder in ${requiredField}: "${value}"`);
+          console.debug(`[ArgCheck] Found placeholder in ${requiredField}: "${value}"`);
           return false; // Need LLM to fix placeholder
         }
       }
@@ -2907,7 +2925,7 @@ Format your response to make the errors prominent and actionable.`,
           value.includes('optional:') ||
           value.toLowerCase() === 'tbd'
         ) {
-          console.log(`[ArgCheck] Found placeholder in optional field ${key}: "${value}"`);
+          console.debug(`[ArgCheck] Found placeholder in optional field ${key}: "${value}"`);
           return false; // Need LLM to fix placeholder
         }
       }
@@ -2917,14 +2935,14 @@ Format your response to make the errors prominent and actionable.`,
       if (fieldSchema?.type === 'number' && typeof value === 'string') {
         // Allow numeric strings that can be parsed
         if (!/^-?\d+(\.\d+)?$/.test(value)) {
-          console.log(`[ArgCheck] Type mismatch in ${key}: expected number, got string "${value}"`);
+          console.debug(`[ArgCheck] Type mismatch in ${key}: expected number, got string "${value}"`);
           return false; // Need LLM to fix type
         }
       }
     }
 
     // All checks passed - arguments look good!
-    console.log('[ArgCheck] Arguments look complete, skipping LLM enhancement');
+    console.debug('[ArgCheck] Arguments look complete, skipping LLM enhancement');
     return true;
   }
 
@@ -3163,7 +3181,7 @@ Return the complete arguments object:`;
             key.toLowerCase().includes('max'))
         ) {
           sanitized[key] = parseFloat(value);
-          console.log(
+          console.debug(
             `[ArgSanitize] Converted ${key} from string "${value}" to number ${sanitized[key]}`
           );
           continue;
