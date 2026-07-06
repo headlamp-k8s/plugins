@@ -1,18 +1,21 @@
 import { formatNextScheduledRun } from './cron';
 import type { VeleroBackupTemplate } from './resources/velero';
 
+/** A Headlamp workload whose Velero schedule coverage should be evaluated. */
 export interface WorkloadTarget {
   namespace: string;
   labels: Record<string, string>;
   resourceKind: 'deployments' | 'statefulsets' | 'persistentvolumeclaims';
 }
 
+/** Normalized Velero Schedule fields used for coverage matching. */
 export interface ScheduleCoverageInput {
   name: string;
   template: VeleroBackupTemplate;
   cronSchedule?: string;
 }
 
+/** Normalized Velero Backup fields joined onto schedule coverage results. */
 export interface BackupCoverageInput {
   name: string;
   scheduleName?: string;
@@ -21,6 +24,7 @@ export interface BackupCoverageInput {
   completionTimestamp?: string;
 }
 
+/** Schedule coverage shown in the backup coverage panel. */
 export interface ScheduleCoverageResult {
   scheduleName: string;
   cronSchedule?: string;
@@ -90,6 +94,10 @@ function labelsMatch(template: VeleroBackupTemplate, labels: Record<string, stri
   return Object.entries(matchLabels).every(([key, value]) => labels[key] === value);
 }
 
+/**
+ * Returns whether a Velero schedule template covers the given workload.
+ * Matches included/excluded namespaces and resources, then label selectors.
+ */
 export function scheduleCoversWorkload(
   schedule: ScheduleCoverageInput,
   target: WorkloadTarget
@@ -102,6 +110,7 @@ export function scheduleCoversWorkload(
   );
 }
 
+/** Returns the most recent backup created by the given schedule, if any. */
 export function getLatestBackupForSchedule(
   backups: BackupCoverageInput[],
   scheduleName: string
@@ -128,6 +137,7 @@ function toScheduleCoverageResult(
   };
 }
 
+/** Returns schedules that cover a workload, each with cron and last-backup metadata. */
 export function getCoveringSchedules(
   schedules: ScheduleCoverageInput[],
   backups: BackupCoverageInput[],
@@ -138,6 +148,7 @@ export function getCoveringSchedules(
     .map(schedule => toScheduleCoverageResult(schedule, backups));
 }
 
+/** Returns schedules whose template includes the namespace, with last-backup metadata. */
 export function getSchedulesForNamespace(
   schedules: ScheduleCoverageInput[],
   backups: BackupCoverageInput[],

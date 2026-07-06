@@ -9,6 +9,19 @@ kubectl apply -f plugins/velero/test-files/matching-cases.yaml
 
 Then enable the plugin in Headlamp and verify the Velero section on each resource.
 
+## Automated tests
+
+```bash
+cd plugins/velero
+npm test
+```
+
+Coverage matching rules exercised in `src/coverage.test.ts` mirror the fixtures below.
+
+## Local verification
+
+Manually verified on **minikube** with Velero installed: applied these fixtures, opened the resources in Headlamp, and confirmed covered vs not-covered panels (see screenshots in `../screenshots/`).
+
 ## Quick demo
 
 | Open in Headlamp                                    | Expected                                 |
