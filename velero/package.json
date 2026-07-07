@@ -1,7 +1,7 @@
 {
   "name": "@headlamp-k8s/velero",
   "version": "0.1.0",
-  "description": "Velero backup coverage panels for Headlamp",
+  "description": "Headlamp plugin for Velero — shows whether workloads and namespaces are covered by Velero backup schedules on Kubernetes resource detail views (read-only)",
   "scripts": {
     "start": "headlamp-plugin start",
     "build": "headlamp-plugin build",
