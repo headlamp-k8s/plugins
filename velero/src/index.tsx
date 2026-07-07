@@ -1,3 +1,7 @@
+/**
+ * Velero plugin entry point — registers settings and backup coverage panels on
+ * Deployment, StatefulSet, PVC, and Namespace detail views.
+ */
 import {
   registerDetailsViewSectionsProcessor,
   registerPluginSettings,
