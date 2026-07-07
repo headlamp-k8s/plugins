@@ -1,5 +1,6 @@
 import { CronExpressionParser } from 'cron-parser';
 
+/** Returns the next UTC run time for a Velero cron schedule, or undefined when invalid. */
 export function getNextScheduledRun(
   cronSchedule: string | undefined,
   from: Date = new Date()
@@ -21,6 +22,7 @@ export function getNextScheduledRun(
   }
 }
 
+/** Locale-formatted next run time for display in the coverage panel. */
 export function formatNextScheduledRun(
   cronSchedule: string | undefined,
   from: Date = new Date()

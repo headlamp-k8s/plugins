@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import { DEFAULT_VELERO_NAMESPACE } from './config';
 
+/** Headlamp plugin settings UI for the Velero namespace. */
 export function Settings(props: {
   data?: { veleroNamespace?: string };
   onDataChange: (data: { veleroNamespace?: string }) => void;
