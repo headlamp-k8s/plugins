@@ -15,7 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
-import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Badge, Box, IconButton, Link, Menu, Tooltip, Typography } from '@mui/material';
 import { useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -24,8 +24,8 @@ import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resour
 
 // App-bar actions render on every page, so the badge has to gate itself.
 // We only render when we're in a cluster context AND Kyverno is actually
-// installed (engine + PolicyReport CRDs). The data-fetching content lives in
-// a separate component so its useList hooks don't run when hidden.
+// installed (engine + PolicyReport CRDs). Wraps the data-fetching content
+// in a separate component so its useList hooks don't run when hidden.
 export function ComplianceBadge() {
   const cluster = K8s.useCluster();
   const crds = useKyvernoCRDs();
@@ -39,22 +39,10 @@ export function ComplianceBadge() {
 }
 
 function ComplianceBadgeContent() {
-  const { t } = useTranslation();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const history = useHistory();
   const cluster = K8s.useCluster();
-
-  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
 
   // Hide the badge until BOTH streams arrive — otherwise we'd briefly show a misleading
   // "100% compliant" while only one list has resolved.
@@ -90,21 +78,54 @@ function ComplianceBadgeContent() {
     return result;
   }, [policyReports, clusterPolicyReports]);
 
+  return (
+    <PureComplianceBadge
+      counts={counts}
+      isLoading={isLoading}
+      onViewViolations={() => {
+        const violationsPath = cluster ? `/c/${cluster}/kyverno/violations` : '/kyverno/violations';
+        history.push(violationsPath);
+      }}
+    />
+  );
+}
+
+export interface PureComplianceBadgeProps {
+  counts: Record<PolicyResultStatus, number>;
+  isLoading?: boolean;
+  onViewViolations?: () => void;
+}
+
+export function PureComplianceBadge({
+  counts,
+  isLoading,
+  onViewViolations,
+}: PureComplianceBadgeProps) {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
+
   if (isLoading) {
     return null;
   }
 
   const violationCount = counts.fail + counts.error + counts.warn;
   const total = counts.pass + counts.fail + counts.warn + counts.error + counts.skip;
-  // No data → don't fake a "100% compliant" score; let the menu say so explicitly.
-  const hasData = total > 0;
-  const compliancePct = hasData ? Math.round((counts.pass / total) * 100) : 0;
+  const compliancePct = total > 0 ? Math.round((counts.pass / total) * 100) : 100;
 
   const badgeColor = violationCount > 0 ? 'error' : 'success';
 
   return (
     <>
-      <Tooltip title={t('Kyverno Compliance')}>
+      <Tooltip title="Kyverno Compliance">
         <IconButton onClick={handleOpen} size="small" sx={{ color: 'inherit' }}>
           <Badge badgeContent={violationCount || undefined} color={badgeColor} max={999}>
             <Icon icon="kyverno:logo" width="24" />
@@ -122,53 +143,44 @@ function ComplianceBadgeContent() {
         }}
       >
         <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
-          {t('Kyverno Compliance')}
+          Kyverno Compliance
         </Typography>
-        {!hasData ? (
-          <Typography variant="body2" color="text.secondary">
-            {t('No policy reports yet.')}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography
+            variant="body2"
+            color={
+              compliancePct >= 90
+                ? 'success.main'
+                : compliancePct >= 70
+                ? 'warning.main'
+                : 'error.main'
+            }
+          >
+            {compliancePct}% compliant
           </Typography>
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Typography
-              variant="body2"
-              color={
-                compliancePct >= 90
-                  ? 'success.main'
-                  : compliancePct >= 70
-                  ? 'warning.main'
-                  : 'error.main'
-              }
-            >
-              {t('{{pct}}% compliant', { pct: compliancePct })}
-            </Typography>
-            <Typography variant="body2">{t('Pass: {{count}}', { count: counts.pass })}</Typography>
-            <Typography variant="body2" color={counts.fail > 0 ? 'error.main' : 'text.secondary'}>
-              {t('Fail: {{count}}', { count: counts.fail })}
-            </Typography>
-            <Typography variant="body2" color={counts.warn > 0 ? 'warning.main' : 'text.secondary'}>
-              {t('Warn: {{count}}', { count: counts.warn })}
-            </Typography>
-            <Typography variant="body2" color={counts.error > 0 ? 'error.main' : 'text.secondary'}>
-              {t('Error: {{count}}', { count: counts.error })}
-            </Typography>
-            <Typography variant="body2">{t('Skip: {{count}}', { count: counts.skip })}</Typography>
-          </Box>
-        )}
+          <Typography variant="body2">Pass: {counts.pass}</Typography>
+          <Typography variant="body2" color={counts.fail > 0 ? 'error.main' : 'text.secondary'}>
+            Fail: {counts.fail}
+          </Typography>
+          <Typography variant="body2" color={counts.warn > 0 ? 'warning.main' : 'text.secondary'}>
+            Warn: {counts.warn}
+          </Typography>
+          <Typography variant="body2" color={counts.error > 0 ? 'error.main' : 'text.secondary'}>
+            Error: {counts.error}
+          </Typography>
+          <Typography variant="body2">Skip: {counts.skip}</Typography>
+        </Box>
         <Box sx={{ mt: 1.5 }}>
           <Link
             component="button"
             onClick={() => {
               handleClose();
-              const violationsPath = cluster
-                ? `/c/${cluster}/kyverno/violations`
-                : '/kyverno/violations';
-              history.push(violationsPath);
+              onViewViolations?.();
             }}
             underline="hover"
             variant="body2"
           >
-            {t('View all violations')}
+            View all violations
           </Link>
         </Box>
       </Menu>
