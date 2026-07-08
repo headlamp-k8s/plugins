@@ -108,7 +108,13 @@ export class ArgoApplication extends KubeObject<KubeArgoApplication> {
   static apiVersion = argocdApiVersion;
   static isNamespaced = true;
 
-  // No custom detailsRoute yet; rely on Headlamp defaults until a detail view is implemented.
+  /**
+   * Route the Application name links to. Must match the detail route
+   * registered in index.tsx, otherwise the link falls back to Home.
+   */
+  static get detailsRoute() {
+    return '/argocd/applications/:namespace/:name';
+  }
 
   /** Returns the application's desired state specification. */
   get spec(): ArgoApplicationSpec {
