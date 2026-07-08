@@ -24,6 +24,7 @@ const { mockRegisterRoute, mockRegisterSidebarEntry } = vi.hoisted(() => ({
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   registerRoute: mockRegisterRoute,
   registerSidebarEntry: mockRegisterSidebarEntry,
+  ApiProxy: { request: vi.fn() },
   K8s: {
     cluster: {
       KubeObject: class KubeObject {
@@ -37,8 +38,22 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
+  ActionButton: () => null,
+  DetailsGrid: () => null,
   ResourceListView: () => null,
   StatusLabel: () => null,
+}));
+
+vi.mock('@iconify/react', () => ({
+  addIcon: vi.fn(),
+}));
+
+vi.mock('notistack', () => ({
+  useSnackbar: () => ({ enqueueSnackbar: vi.fn() }),
+}));
+
+vi.mock('react-router-dom', () => ({
+  useParams: () => ({ namespace: 'argocd', name: 'test-app' }),
 }));
 
 // Static import triggers the module's top-level registration calls.
@@ -46,7 +61,7 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
 import './index';
 
 describe('argocd plugin', () => {
-  it('should register the /argocd/applications route and sidebar entries', () => {
+  it('should register the list and detail routes', () => {
     expect(mockRegisterRoute).toHaveBeenCalledWith(
       expect.objectContaining({
         path: '/argocd/applications',
@@ -56,11 +71,23 @@ describe('argocd plugin', () => {
       })
     );
 
+    expect(mockRegisterRoute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/argocd/applications/:namespace/:name',
+        name: 'argocd-application-detail',
+        sidebar: 'argocd-applications',
+        exact: true,
+      })
+    );
+  });
+
+  it('should register sidebar entries with the Argo CD icon', () => {
     expect(mockRegisterSidebarEntry).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'argocd',
         label: 'Argo CD',
         url: '/argocd/applications',
+        icon: 'simple-icons:argo',
         parent: null,
       })
     );
