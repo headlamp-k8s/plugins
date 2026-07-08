@@ -4,6 +4,30 @@ This is a Headlamp plugin created for the LFX Mentorship project to integrate Ar
 
 To learn more about Argo CD, see the [Argo CD Getting Started Guide](https://argo-cd.readthedocs.io/en/stable/getting_started/).
 
+## Features
+
+- **Application List View** — Lists all Argo CD `Application` resources in the cluster with columns for project, source repo, target revision, sync status, and health status (rendered as color-coded badges).
+- **Application Detail View** — Displays detailed metadata for a single Application: project, source, destination, sync status, health status, and Kubernetes events.
+- **Sync Action** — Triggers a sync by patching the Application's `.operation` field via the Kubernetes API. The Argo CD application-controller picks this up exactly as it would from the Argo CD UI.
+- **Refresh Action** — Requests a refresh by setting the `argocd.argoproj.io/refresh` annotation (supports `normal` and `hard` refresh types).
+- **Argo CD Sidebar Icon** — Registers the official Argo CD octopus logo as an offline Iconify icon (CSP-safe, no external fetch).
+
+### Why the Kubernetes API instead of the Argo CD REST API?
+
+Headlamp routes all plugin API calls through the Kubernetes apiserver service proxy. The apiserver consumes the `Authorization: Bearer` header for its own auth, so the Argo CD session token can never reach `argocd-server`. The browser also strips the `Cookie` header (a forbidden header in fetch). This makes the Argo CD REST API unreachable from a Headlamp plugin.
+
+Instead, this plugin drives Argo CD the **Kubernetes-native way** — by writing directly to the `Application` custom resource. No Argo CD API token is needed; only standard Kubernetes RBAC permissions apply.
+
+### Behavioral differences from the Argo CD UI
+
+| Behavior | Argo CD UI | This plugin |
+|---|---|---|
+| **Auth** | Argo CD session token (JWT or cookie) | Kubernetes RBAC (same kubeconfig as Headlamp) |
+| **Sync** | REST API `POST /api/v1/applications/{name}/sync` | K8s PATCH on `.operation.sync` field |
+| **Refresh** | REST API `GET` with `?refresh=normal` | K8s PATCH setting `argocd.argoproj.io/refresh` annotation |
+| **Refresh annotation cleanup** | Controller removes the annotation after reconciliation | Same — the controller handles cleanup |
+| **`.operation` field cleanup** | Controller clears `.operation` and writes `.status.operationState` | Same — this is controller-managed |
+
 ## Prerequisites
 
 - Node.js (v20.11.1 or later)
@@ -11,12 +35,22 @@ To learn more about Argo CD, see the [Argo CD Getting Started Guide](https://arg
 - Headlamp running locally (desktop or in-cluster)
 - A local Kubernetes cluster with Argo CD installed
 
-## Goal
+## Required RBAC Permissions
 
-Extend the Projects view to include Argo CD context per project, showing associated Applications with:
-- Sync Status
-- Health Status
-- Current Revision
+The user's Kubernetes role must allow `patch` on `applications.argoproj.io` in the namespace where Argo CD Applications live (usually `argocd`). Example ClusterRole:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-headlamp-plugin
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    verbs: ["get", "list", "watch", "patch"]
+```
+
+If the user lacks `patch` permission, the plugin shows a clear error message explaining which RBAC permission is missing.
 
 ## Development
 
