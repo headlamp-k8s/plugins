@@ -122,20 +122,17 @@ export function removeMockModelProvider(
   savedConfigs: SavedConfigurations | null | undefined
 ): SavedConfigurations {
   const configs: SavedConfigurations = savedConfigs || { providers: [] };
-  const providers = (configs.providers || []).filter(p => p.providerId !== MOCK_MODEL_PROVIDER_ID);
-
-  let defaultIndex = configs.defaultProviderIndex ?? 0;
-  // If the removed provider was before or at the default index, adjust
   const oldProviders = configs.providers || [];
-  const removedIndex = oldProviders.findIndex(p => p.providerId === MOCK_MODEL_PROVIDER_ID);
-  if (removedIndex >= 0 && removedIndex <= defaultIndex) {
-    defaultIndex = Math.max(0, defaultIndex - 1);
-  }
-  // If the default was the mock model, pick the first remaining
+  const providers = oldProviders.filter(p => p.providerId !== MOCK_MODEL_PROVIDER_ID);
+  const oldDefaultIndex = configs.defaultProviderIndex ?? 0;
   const activeConfig = getActiveConfig(configs);
-  if (activeConfig?.providerId === MOCK_MODEL_PROVIDER_ID) {
-    defaultIndex = 0;
-  }
+  const removedBeforeDefault = oldProviders
+    .slice(0, oldDefaultIndex)
+    .filter(provider => provider.providerId === MOCK_MODEL_PROVIDER_ID).length;
+  const defaultIndex =
+    activeConfig?.providerId === MOCK_MODEL_PROVIDER_ID
+      ? 0
+      : Math.max(0, oldDefaultIndex - removedBeforeDefault);
 
   return {
     ...configs,
@@ -173,9 +170,7 @@ export function DeveloperSettings({
    * @returns No value.
    */
   const handleToggleMockModel = (enabled: boolean): void => {
-    onDevOptionsChange({ ...devOptions, enableMockModel: enabled });
-
-    // Also add/remove the mock-testing-model provider from saved configs
+    // Persist the provider collection before exposing the matching option state.
     if (onConfigsChange) {
       if (enabled) {
         onConfigsChange(addMockModelProvider(savedConfigs));
@@ -183,6 +178,8 @@ export function DeveloperSettings({
         onConfigsChange(removeMockModelProvider(savedConfigs));
       }
     }
+
+    onDevOptionsChange({ ...devOptions, enableMockModel: enabled });
   };
 
   /**

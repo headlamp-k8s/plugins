@@ -125,6 +125,20 @@ describe('DeveloperSettings helpers', () => {
     expect(result.defaultProviderIndex).toBe(1);
   });
 
+  it('preserves a later default when removing multiple preceding mock providers', () => {
+    const result = removeMockModelProvider({
+      providers: [
+        { providerId: 'mock-testing-model', config: {} },
+        { providerId: 'mock-testing-model', config: {} },
+        { providerId: 'openai', config: { apiKey: 'key' } },
+      ],
+      defaultProviderIndex: 2,
+    });
+
+    expect(result.providers?.map(provider => provider.providerId)).toEqual(['openai']);
+    expect(result.defaultProviderIndex).toBe(0);
+  });
+
   it('preserves the default when no mock provider exists', () => {
     const result = removeMockModelProvider(configsWithoutMock);
 
@@ -228,7 +242,14 @@ describe('DeveloperSettings component', () => {
 
   it('removes the mock provider when disabling the mock-only story', () => {
     const onConfigsChange = vi.fn();
-    render(<DeveloperSettings {...mockModelOnlyArgs} onConfigsChange={onConfigsChange} />);
+    const onDevOptionsChange = vi.fn();
+    render(
+      <DeveloperSettings
+        {...mockModelOnlyArgs}
+        onConfigsChange={onConfigsChange}
+        onDevOptionsChange={onDevOptionsChange}
+      />
+    );
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Mock Testing Model' }));
 
@@ -237,6 +258,11 @@ describe('DeveloperSettings component', () => {
         providers: [expect.objectContaining({ providerId: 'openai' })],
         defaultProviderIndex: 0,
       })
+    );
+    expect(onDevOptionsChange).toHaveBeenCalledOnce();
+    expect(onDevOptionsChange).toHaveBeenCalledWith({ enableMockModel: false });
+    expect(onConfigsChange.mock.invocationCallOrder[0]).toBeLessThan(
+      onDevOptionsChange.mock.invocationCallOrder[0]
     );
   });
 
