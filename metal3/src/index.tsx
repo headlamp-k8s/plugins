@@ -17,7 +17,13 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import { BareMetalHostDetail } from './BareMetalHost/Details';
 import { BareMetalHosts } from './BareMetalHost/List';
+import { Metal3MachineDetail } from './Metal3Machine/Details';
+import { Metal3Machines } from './Metal3Machine/List';
+import { Metal3MachineTemplateDetail } from './Metal3MachineTemplate/Details';
+import { Metal3MachineTemplates } from './Metal3MachineTemplate/List';
 
+// Parent Metal3 group. Its url points at the first child's list so the group
+// header is itself navigable.
 registerSidebarEntry({
   parent: null,
   name: 'metal3',
@@ -26,10 +32,17 @@ registerSidebarEntry({
   url: '/metal3/baremetalhosts',
 });
 
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'baremetalhosts',
+  label: 'Bare Metal Hosts',
+  url: '/metal3/baremetalhosts',
+});
+
 // List route. Marked exact so it does not also match the detail path below.
 registerRoute({
   path: '/metal3/baremetalhosts',
-  sidebar: 'metal3',
+  sidebar: 'baremetalhosts',
   component: BareMetalHosts,
   name: 'baremetalhosts-list',
   exact: true,
@@ -39,7 +52,51 @@ registerRoute({
 // are populated from the resource's metadata.
 registerRoute({
   path: '/metal3/baremetalhosts/:namespace/:name',
-  sidebar: 'metal3',
+  sidebar: 'baremetalhosts',
   component: () => <BareMetalHostDetail />,
   name: 'baremetalhost-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3machines',
+  label: 'Metal3 Machines',
+  url: '/metal3/metal3machines',
+});
+
+registerRoute({
+  path: '/metal3/metal3machines',
+  sidebar: 'metal3machines',
+  component: Metal3Machines,
+  name: 'metal3machines-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3machines/:namespace/:name',
+  sidebar: 'metal3machines',
+  component: () => <Metal3MachineDetail />,
+  name: 'metal3machine-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3machinetemplates',
+  label: 'Metal3 Machine Templates',
+  url: '/metal3/metal3machinetemplates',
+});
+
+registerRoute({
+  path: '/metal3/metal3machinetemplates',
+  sidebar: 'metal3machinetemplates',
+  component: Metal3MachineTemplates,
+  name: 'metal3machinetemplates-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3machinetemplates/:namespace/:name',
+  sidebar: 'metal3machinetemplates',
+  component: () => <Metal3MachineTemplateDetail />,
+  name: 'metal3machinetemplate-detail',
 });
