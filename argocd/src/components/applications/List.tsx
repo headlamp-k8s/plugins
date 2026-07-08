@@ -14,51 +14,16 @@
  * limitations under the License.
  */
 
-import { ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import {
+  ActionButton,
+  ResourceListView,
+  StatusLabel,
+} from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { useSnackbar } from 'notistack';
+import { useState } from 'react';
+import { refreshApplication, syncApplication } from '../../api/argoClient';
 import { ArgoApplication } from '../../resources/application';
-
-/**
- * Maps an Argo CD health status string to a Headlamp StatusLabel severity.
- *
- * @param health - The health status string from the Application resource
- *   (e.g., "Healthy", "Degraded", "Progressing", "Suspended", "Missing").
- * @returns A StatusLabel status string: "success", "warning", "info", "error",
- *   or "" for unknown values.
- */
-function getHealthStatus(health: string): string {
-  switch (health.toLowerCase()) {
-    case 'healthy':
-      return 'success';
-    case 'suspended':
-      return 'warning';
-    case 'progressing':
-      return 'info';
-    case 'degraded':
-    case 'missing':
-      return 'error';
-    default:
-      return '';
-  }
-}
-
-/**
- * Maps an Argo CD sync status string to a Headlamp StatusLabel severity.
- *
- * @param sync - The sync status string from the Application resource
- *   (e.g., "Synced", "OutOfSync").
- * @returns A StatusLabel status string: "success", "warning",
- *   or "" for unknown values.
- */
-function getSyncStatus(sync: string): string {
-  switch (sync.toLowerCase()) {
-    case 'synced':
-      return 'success';
-    case 'outofsync':
-      return 'warning';
-    default:
-      return '';
-  }
-}
+import { getHealthStatus, getSyncStatus } from './statusHelpers';
 
 /**
  * Renders a table of all Argo CD Application resources in the current cluster.
@@ -71,10 +36,95 @@ function getSyncStatus(sync: string): string {
  * @returns The Application list view React element.
  */
 export default function ApplicationList() {
+  const { enqueueSnackbar } = useSnackbar();
+  const [loadingApps, setLoadingApps] = useState<Record<string, 'sync' | 'refresh'>>({});
+
+  /** Triggers a Kubernetes-native sync of the given application. */
+  const handleSync = async (app: ArgoApplication) => {
+    const key = `${app.metadata.namespace}/${app.metadata.name}`;
+    if (loadingApps[key]) return;
+    setLoadingApps(prev => ({ ...prev, [key]: 'sync' }));
+    try {
+      await syncApplication(app.metadata.name, app.metadata.namespace);
+      enqueueSnackbar(`Sync triggered for ${app.metadata.name}`, { variant: 'success' });
+    } catch (error) {
+      console.error(`Failed to sync ${app.metadata.name}:`, error);
+      enqueueSnackbar(
+        `Failed to sync ${app.metadata.name}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+        { variant: 'error' }
+      );
+    } finally {
+      setLoadingApps(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+
+  /** Requests a Kubernetes-native refresh of the given application. */
+  const handleRefresh = async (app: ArgoApplication) => {
+    const key = `${app.metadata.namespace}/${app.metadata.name}`;
+    if (loadingApps[key]) return;
+    setLoadingApps(prev => ({ ...prev, [key]: 'refresh' }));
+    try {
+      await refreshApplication(app.metadata.name, app.metadata.namespace);
+      enqueueSnackbar(`Refresh requested for ${app.metadata.name}`, { variant: 'success' });
+    } catch (error) {
+      console.error(`Failed to refresh ${app.metadata.name}:`, error);
+      enqueueSnackbar(
+        `Failed to refresh ${app.metadata.name}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+        { variant: 'error' }
+      );
+    } finally {
+      setLoadingApps(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+
   return (
     <ResourceListView
       title="Argo CD Applications"
       resourceClass={ArgoApplication}
+      actions={[
+        {
+          id: 'argocd-sync',
+          action: ({ item }: { item: ArgoApplication }) => {
+            const key = `${item.metadata.namespace}/${item.metadata.name}`;
+            const isLoading = loadingApps[key] === 'sync';
+            return (
+              <ActionButton
+                description={isLoading ? 'Syncing…' : 'Sync'}
+                icon={isLoading ? 'mdi:loading' : 'mdi:sync'}
+                onClick={() => handleSync(item)}
+                iconButtonProps={{ disabled: !!loadingApps[key] }}
+              />
+            );
+          },
+        },
+        {
+          id: 'argocd-refresh',
+          action: ({ item }: { item: ArgoApplication }) => {
+            const key = `${item.metadata.namespace}/${item.metadata.name}`;
+            const isLoading = loadingApps[key] === 'refresh';
+            return (
+              <ActionButton
+                description={isLoading ? 'Refreshing…' : 'Refresh'}
+                icon={isLoading ? 'mdi:loading' : 'mdi:refresh'}
+                onClick={() => handleRefresh(item)}
+                iconButtonProps={{ disabled: !!loadingApps[key] }}
+              />
+            );
+          },
+        },
+      ]}
       columns={[
         'name',
         'namespace',
