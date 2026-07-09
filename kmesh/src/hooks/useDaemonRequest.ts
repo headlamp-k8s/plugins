@@ -208,17 +208,16 @@ export function useKmeshLoggerLevel(namespace: string, podName: string | null, l
  * const { status, data: clusters, error } = useXdsClusters('kmesh-system', readyPod?.name ?? null);
  * ```
  */
-export function useXdsClusters(namespace: string, podName: string | null) {
+export function useXdsClusters(
+  namespace: string,
+  podName: string | null
+): DaemonRequestState<XdsCluster[]> {
   const raw = useDaemonRequest<ConfigDump>(namespace, podName, DAEMON_ENDPOINTS.CONFIG_DUMP_ADS);
 
-  // Project only the clusters array so callers don't have to drill into dynamicResources.
-  const data: XdsCluster[] | null =
-    raw.status === 'success' ? raw.data?.dynamicResources?.clusterConfigs ?? [] : null;
-
-  return { ...raw, data } as {
-    status: typeof raw.status;
-    data: XdsCluster[] | null;
-    error: string | null;
+  return {
+    status: raw.status,
+    error: raw.error,
+    data: raw.status === 'success' ? raw.data?.dynamicResources?.clusterConfigs ?? [] : null,
   };
 }
 
@@ -232,16 +231,16 @@ export function useXdsClusters(namespace: string, podName: string | null) {
  * const { status, data: listeners } = useXdsListeners('kmesh-system', readyPod?.name ?? null);
  * ```
  */
-export function useXdsListeners(namespace: string, podName: string | null) {
+export function useXdsListeners(
+  namespace: string,
+  podName: string | null
+): DaemonRequestState<XdsListener[]> {
   const raw = useDaemonRequest<ConfigDump>(namespace, podName, DAEMON_ENDPOINTS.CONFIG_DUMP_ADS);
 
-  const data: XdsListener[] | null =
-    raw.status === 'success' ? raw.data?.dynamicResources?.listenerConfigs ?? [] : null;
-
-  return { ...raw, data } as {
-    status: typeof raw.status;
-    data: XdsListener[] | null;
-    error: string | null;
+  return {
+    status: raw.status,
+    error: raw.error,
+    data: raw.status === 'success' ? raw.data?.dynamicResources?.listenerConfigs ?? [] : null,
   };
 }
 
@@ -255,15 +254,15 @@ export function useXdsListeners(namespace: string, podName: string | null) {
  * const { status, data: routes } = useXdsRoutes('kmesh-system', readyPod?.name ?? null);
  * ```
  */
-export function useXdsRoutes(namespace: string, podName: string | null) {
+export function useXdsRoutes(
+  namespace: string,
+  podName: string | null
+): DaemonRequestState<XdsRouteConfiguration[]> {
   const raw = useDaemonRequest<ConfigDump>(namespace, podName, DAEMON_ENDPOINTS.CONFIG_DUMP_ADS);
 
-  const data: XdsRouteConfiguration[] | null =
-    raw.status === 'success' ? raw.data?.dynamicResources?.routeConfigs ?? [] : null;
-
-  return { ...raw, data } as {
-    status: typeof raw.status;
-    data: XdsRouteConfiguration[] | null;
-    error: string | null;
+  return {
+    status: raw.status,
+    error: raw.error,
+    data: raw.status === 'success' ? raw.data?.dynamicResources?.routeConfigs ?? [] : null,
   };
 }
