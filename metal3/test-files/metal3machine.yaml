@@ -1,0 +1,45 @@
+# Sample Metal3Machine and Metal3MachineTemplate for trying out the Metal3 plugin locally.
+#
+#   kubectl apply -f metal3/test-files/metal3machine.yaml
+#
+# They appear under Metal3 > Metal3 Machines and Metal3 > Metal3 Machine Templates.
+# A Metal3Machine is the CAPM3 infra object bound to a BareMetalHost; a
+# Metal3MachineTemplate is the blueprint machines are stamped from. The provisioned
+# status is set by the CAPM3 controller as it reconciles; without a controller
+# running they still list, with an empty status. The annotation ties the machine to
+# the sample-host from baremetalhost.yaml.
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: Metal3Machine
+metadata:
+  name: sample-machine
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: sample-cluster
+  annotations:
+    metal3.io/BareMetalHost: default/sample-host
+spec:
+  image:
+    url: http://192.168.1.5/ubuntu-22.04.img
+    checksum: http://192.168.1.5/ubuntu-22.04.img.sha256sum
+  providerID: metal3://default/sample-host/sample-machine
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: Metal3MachineTemplate
+metadata:
+  name: sample-machinetemplate
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: sample-cluster
+spec:
+  nodeReuse: false
+  template:
+    spec:
+      automatedCleaningMode: metadata
+      hostSelector:
+        matchLabels:
+          node-role: control-plane
+      image:
+        url: http://192.168.1.5/ubuntu-22.04.img
+        checksum: http://192.168.1.5/ubuntu-22.04.img.sha256sum
+      dataTemplate:
+        name: sample-metadata
