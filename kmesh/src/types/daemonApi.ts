@@ -253,18 +253,112 @@ export interface WorkloadBpfDump {
 
 // ---------------------------------------------------------------------------
 // /debug/config_dump/kernel-native  (ADS / kernel-native mode)
+//
+// The daemon serialises its internal xDS cache using protojson.Format() on
+// Kmesh-specific proto types defined in api/v2/admin/config_dump.proto.
+//
+// Key fact: clusterConfigs / listenerConfigs / routeConfigs are arrays of
+// RAW proto objects — there is NO envelope wrapper with versionInfo /
+// lastUpdated.  Each element is directly a Cluster, Listener, or
+// RouteConfiguration proto serialised to proto-JSON.
+//
+// Field names below are derived from the actual Go proto getters in:
+//   api/v2/cluster/cluster.pb.go        → Cluster: name, connectTimeout, lbPolicy, apiStatus
+//   api/v2/listener/listener.pb.go      → Listener: name, address, filterChains, apiStatus
+//   api/v2/core/address.pb.go           → SocketAddress: ipv4 (uint32), port, protocol
+//   api/v2/route/route.pb.go            → RouteConfiguration: name, virtualHosts, apiStatus
+//   api/v2/route/route_components.pb.go → VirtualHost: name, domains, routes
 // ---------------------------------------------------------------------------
 
-/** Opaque xDS resource — proto-JSON encoded */
-export type XdsResource = Record<string, unknown>;
+/**
+ * A single Cluster proto entry from GET /debug/config_dump/kernel-native.
+ *
+ * Serialised via protojson.Format() from api/v2/cluster/cluster.pb.go.
+ *
+ * Note: connectTimeout is a uint32 (seconds), NOT an Envoy duration string.
+ */
+export interface XdsCluster {
+  /** Cluster name */
+  name?: string;
+  /** Connection timeout in seconds (uint32 proto field) */
+  connectTimeout?: number;
+  /** Load-balancing policy enum string (e.g. "ROUND_ROBIN") */
+  lbPolicy?: string;
+  /** Internal API reconciliation status */
+  apiStatus?: string;
+  /** Remaining proto fields — opaque catch-all */
+  [key: string]: unknown;
+}
 
+/**
+ * SocketAddress proto from api/v2/core/address.pb.go.
+ *
+ * Note: the IPv4 address is stored as a raw uint32 (network byte order),
+ * NOT a dotted-decimal string.  Use a helper to render it as "a.b.c.d:port".
+ */
+export interface XdsSocketAddress {
+  /** IPv4 address encoded as uint32 */
+  ipv4?: number;
+  /** Port number */
+  port?: number;
+  /** Protocol enum string ("TCP" / "UDP") */
+  protocol?: string;
+}
+
+/**
+ * A single Listener proto entry from GET /debug/config_dump/kernel-native.
+ * Serialised via protojson.Format() from api/v2/listener/listener.pb.go.
+ */
+export interface XdsListener {
+  /** Listener name */
+  name?: string;
+  /** Bound address (IPv4 uint32 + port) */
+  address?: XdsSocketAddress;
+  /** Filter chains (opaque proto objects) */
+  filterChains?: Record<string, unknown>[];
+  /** Internal API reconciliation status */
+  apiStatus?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * VirtualHost proto from api/v2/route/route_components.pb.go.
+ */
+export interface XdsVirtualHost {
+  /** Virtual host name */
+  name?: string;
+  /** Domain patterns this virtual host responds to */
+  domains?: string[];
+  /** Route entries (opaque proto objects) */
+  routes?: Record<string, unknown>[];
+  [key: string]: unknown;
+}
+
+/**
+ * A single RouteConfiguration proto entry from GET /debug/config_dump/kernel-native.
+ * Serialised via protojson.Format() from api/v2/route/route.pb.go.
+ */
+export interface XdsRouteConfiguration {
+  /** RouteConfiguration name */
+  name?: string;
+  /** List of virtual hosts */
+  virtualHosts?: XdsVirtualHost[];
+  /** Internal API reconciliation status */
+  apiStatus?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Dynamic resources section of GET /debug/config_dump/kernel-native.
+ * Each array holds raw proto objects — no envelope wrapping.
+ */
 export interface ConfigResources {
-  /** Dump of all dynamic cluster configurations */
-  clusterConfigs?: XdsResource[];
-  /** Dump of all dynamic listener configurations */
-  listenerConfigs?: XdsResource[];
-  /** Dump of all dynamic route configurations */
-  routeConfigs?: XdsResource[];
+  /** Raw Cluster proto objects (api/v2/cluster/cluster.pb.go) */
+  clusterConfigs?: XdsCluster[];
+  /** Raw Listener proto objects (api/v2/listener/listener.pb.go) */
+  listenerConfigs?: XdsListener[];
+  /** Raw RouteConfiguration proto objects (api/v2/route/route.pb.go) */
+  routeConfigs?: XdsRouteConfiguration[];
 }
 
 /** Response shape for GET /debug/config_dump/kernel-native */
