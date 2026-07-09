@@ -10,6 +10,18 @@ export const WORKFLOW_CRD_NAME = 'workflows.tinkerbell.org';
  * @see https://github.com/tinkerbell/tinkerbell/blob/v0.23.0/crd/bases/tinkerbell.org_workflows.yaml
  */
 export interface WorkflowBootOptions {
+  /** Whether workflow creation should toggle hardware netboot on. */
+  toggleAllowNetboot?: boolean;
+
+  /** Observed allowNetboot toggle status. */
+  allowNetboot?: {
+    /** Whether allowNetboot was toggled to false. */
+    toggledFalse?: boolean;
+
+    /** Whether allowNetboot was toggled to true. */
+    toggledTrue?: boolean;
+  };
+
   /** Whether ISO boot is enabled. */
   isoboot?: boolean;
 
@@ -53,6 +65,15 @@ export interface WorkflowActionStatus {
   /** Action start timestamp. */
   startedAt?: string;
 
+  /** Action start timestamp reported by v0.23.0 workflows. */
+  executionStart?: string;
+
+  /** Action stop timestamp reported by v0.23.0 workflows. */
+  executionStop?: string;
+
+  /** Human-readable execution duration reported by v0.23.0 workflows. */
+  executionDuration?: string;
+
   /** Number of seconds spent executing this action. */
   seconds?: number;
 
@@ -87,10 +108,28 @@ export interface WorkflowStatus {
   conditions?: TinkerbellCondition[];
 
   /** Current state reported by the workflow engine. */
-  currentState?: string;
+  currentState?: {
+    /** Current action identifier. */
+    actionID?: string;
 
-  /** Whether a global execution stop has been requested. */
-  globalExecutionStop?: boolean;
+    /** Current action name. */
+    actionName?: string;
+
+    /** Agent identifier currently running the workflow. */
+    agentID?: string;
+
+    /** Current action state. */
+    state?: string;
+
+    /** Current task identifier. */
+    taskID?: string;
+
+    /** Current task name. */
+    taskName?: string;
+  };
+
+  /** Time when global execution stops or stopped. */
+  globalExecutionStop?: string;
 
   /** Workflow timeout in seconds. */
   globalTimeout?: number;

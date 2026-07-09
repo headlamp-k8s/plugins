@@ -10,27 +10,23 @@ import {
   fallback,
   getFirstDefined,
   renderFallback,
-  renderStatus,
 } from '../common/listHelpers';
+import { getHardwareAgentID } from './helpers';
 
 /**
  * Renders the Tinkerbell Hardware list view.
+ *
+ * @returns Hardware list view with network and provisioning columns.
  */
 export function HardwareList() {
   const columns: (ColumnType | ResourceTableColumn<Hardware>)[] = [
     'name',
     'namespace',
     {
-      id: 'status',
-      label: 'Status',
-      getValue: item => fallback(item.status?.state),
-      render: item => renderStatus(item.status?.state),
-    },
-    {
       id: 'agentID',
       label: 'Agent ID',
-      getValue: item => fallback(item.spec?.agentID),
-      render: item => renderFallback(item.spec?.agentID),
+      getValue: item => getHardwareAgentID(item),
+      render: item => renderFallback(getHardwareAgentID(item)),
     },
     {
       id: 'mac',

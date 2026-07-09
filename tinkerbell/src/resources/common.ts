@@ -82,8 +82,8 @@ export interface NamespacedObjectReference {
  * @param state - Raw state value from a Tinkerbell resource.
  * @returns A human-readable state label, or "Unknown" when absent.
  */
-export function normalizeState(state: string | undefined): string {
-  if (!state) {
+export function normalizeState(state: unknown): string {
+  if (typeof state !== 'string' || !state) {
     return 'Unknown';
   }
 
