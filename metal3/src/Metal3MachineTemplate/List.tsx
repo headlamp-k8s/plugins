@@ -18,6 +18,7 @@ import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents'
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { CRDGuard } from '../common/CRDGuard';
+import { formatHostSelector } from './hostSelector';
 
 /** Defines the Metal3MachineTemplate custom resource (group/version/kind) for the plugin. */
 export function metal3MachineTemplateClass() {
@@ -64,6 +65,13 @@ export function Metal3MachineTemplates() {
             id: 'image',
             label: 'Image',
             getValue: (t: KubeObject) => t.jsonData.spec?.template?.spec?.image?.url || '-',
+          },
+          {
+            // hostSelector chooses which BareMetalHosts a stamped machine may land on.
+            id: 'hostSelector',
+            label: 'Host Selector',
+            getValue: (t: KubeObject) =>
+              formatHostSelector(t.jsonData.spec?.template?.spec?.hostSelector),
           },
           'age',
         ]}

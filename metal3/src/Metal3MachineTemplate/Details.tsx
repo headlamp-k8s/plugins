@@ -17,6 +17,7 @@
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useParams } from 'react-router-dom';
 import { CRDGuard } from '../common/CRDGuard';
+import { formatHostSelector } from './hostSelector';
 import { metal3MachineTemplateClass } from './List';
 
 /**
@@ -46,6 +47,10 @@ export function Metal3MachineTemplateDetail(props: { name?: string; namespace?: 
         withEvents
         extraInfo={(item: any) =>
           item && [
+            {
+              name: 'Host Selector',
+              value: formatHostSelector(item.jsonData.spec?.template?.spec?.hostSelector),
+            },
             {
               name: 'Node Reuse',
               value: item.jsonData.spec?.nodeReuse ? 'Yes' : 'No',
