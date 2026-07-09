@@ -34,6 +34,9 @@ import type {
   LoggerInfo,
   WorkloadBpfDump,
   WorkloadDump,
+  XdsCluster,
+  XdsListener,
+  XdsRouteConfiguration,
 } from '../types/daemonApi';
 import { DAEMON_ENDPOINTS, type DaemonEndpoint } from '../utils/kmeshDaemonApi';
 import {
@@ -183,4 +186,84 @@ export function useKmeshLoggerLevel(namespace: string, podName: string | null, l
   return useDaemonRequest<LoggerInfo>(namespace, podName, DAEMON_ENDPOINTS.LOGGERS, {
     queryParams: { name: loggerName },
   });
+}
+
+// ---------------------------------------------------------------------------
+// xDS Config Dump convenience hooks (kernel-native / ADS mode)
+//
+// The full ADS config dump (`useAdsConfigDump`) is a large payload. These
+// three specialised hooks slice out the resource type callers actually need,
+// avoiding prop-drilling `data?.dynamicResources?.clusterConfigs` everywhere.
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches the full ADS config dump and returns only the dynamic cluster list.
+ *
+ * Returns 400 (error state) if the daemon is in dual-engine / workload mode
+ * — the component should show a graceful fallback in that case.
+ *
+ * @example
+ * ```tsx
+ * const { readyPod } = useKmeshDaemonPods();
+ * const { status, data: clusters, error } = useXdsClusters('kmesh-system', readyPod?.name ?? null);
+ * ```
+ */
+export function useXdsClusters(namespace: string, podName: string | null) {
+  const raw = useDaemonRequest<ConfigDump>(namespace, podName, DAEMON_ENDPOINTS.CONFIG_DUMP_ADS);
+
+  // Project only the clusters array so callers don't have to drill into dynamicResources.
+  const data: XdsCluster[] | null =
+    raw.status === 'success' ? raw.data?.dynamicResources?.clusterConfigs ?? [] : null;
+
+  return { ...raw, data } as {
+    status: typeof raw.status;
+    data: XdsCluster[] | null;
+    error: string | null;
+  };
+}
+
+/**
+ * Fetches the full ADS config dump and returns only the dynamic listener list.
+ *
+ * Returns 400 (error state) if the daemon is in dual-engine / workload mode.
+ *
+ * @example
+ * ```tsx
+ * const { status, data: listeners } = useXdsListeners('kmesh-system', readyPod?.name ?? null);
+ * ```
+ */
+export function useXdsListeners(namespace: string, podName: string | null) {
+  const raw = useDaemonRequest<ConfigDump>(namespace, podName, DAEMON_ENDPOINTS.CONFIG_DUMP_ADS);
+
+  const data: XdsListener[] | null =
+    raw.status === 'success' ? raw.data?.dynamicResources?.listenerConfigs ?? [] : null;
+
+  return { ...raw, data } as {
+    status: typeof raw.status;
+    data: XdsListener[] | null;
+    error: string | null;
+  };
+}
+
+/**
+ * Fetches the full ADS config dump and returns only the dynamic route list.
+ *
+ * Returns 400 (error state) if the daemon is in dual-engine / workload mode.
+ *
+ * @example
+ * ```tsx
+ * const { status, data: routes } = useXdsRoutes('kmesh-system', readyPod?.name ?? null);
+ * ```
+ */
+export function useXdsRoutes(namespace: string, podName: string | null) {
+  const raw = useDaemonRequest<ConfigDump>(namespace, podName, DAEMON_ENDPOINTS.CONFIG_DUMP_ADS);
+
+  const data: XdsRouteConfiguration[] | null =
+    raw.status === 'success' ? raw.data?.dynamicResources?.routeConfigs ?? [] : null;
+
+  return { ...raw, data } as {
+    status: typeof raw.status;
+    data: XdsRouteConfiguration[] | null;
+    error: string | null;
+  };
 }
