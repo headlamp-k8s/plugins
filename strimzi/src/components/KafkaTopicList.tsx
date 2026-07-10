@@ -14,6 +14,7 @@ import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 import { Toast, ToastMessage } from './Toast';
 import { TopicFormModal, type TopicFormData } from './TopicFormModal';
+import { getAvailableNamespaces, getFilteredClusterNames } from '../utils/clusterHelpers';
 
 export function KafkaTopicList() {
   const theme = useTheme();
@@ -40,15 +41,11 @@ export function KafkaTopicList() {
   const [loading, setLoading] = React.useState(false);
 
   const availableNamespacesForCreate = React.useMemo(() => {
-    return [...new Set(kafkaClusters.map(k => k.metadata.namespace))].sort();
+    return getAvailableNamespaces(kafkaClusters);
   }, [kafkaClusters]);
 
   const filteredClusterNames = React.useMemo(() => {
-    if (!formData.namespace) return [];
-    return kafkaClusters
-      .filter(k => k.metadata.namespace === formData.namespace)
-      .map(k => k.metadata.name)
-      .sort();
+    return getFilteredClusterNames(kafkaClusters, formData.namespace);
   }, [kafkaClusters, formData.namespace]);
 
   const handleCreate = async () => {
@@ -183,13 +180,8 @@ export function KafkaTopicList() {
 
   const openCreateDialog = () => {
     const firstNs = availableNamespacesForCreate[0] ?? '';
-    const firstCluster =
-      firstNs && kafkaClusters.length > 0
-        ? kafkaClusters
-            .filter(k => k.metadata.namespace === firstNs)
-            .map(k => k.metadata.name)
-            .sort()[0] ?? ''
-        : '';
+    const clustersInNs = getFilteredClusterNames(kafkaClusters, firstNs);
+    const firstCluster = clustersInNs[0] ?? '';
     setFormData({
       name: '',
       namespace: firstNs,
@@ -278,7 +270,7 @@ export function KafkaTopicList() {
         loading={loading}
         formData={formData}
         setFormData={setFormData}
-        kafkaClusters={kafkaClusters}
+        kafkaClusters={kafkaClusters || []}
         availableNamespacesForCreate={availableNamespacesForCreate}
         filteredClusterNames={filteredClusterNames}
         onCancel={() => {

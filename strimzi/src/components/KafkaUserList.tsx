@@ -15,6 +15,7 @@ import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 import { SecureSecretDisplay } from './SecureSecretDisplay';
 import { Toast, ToastMessage } from './Toast';
 import { KafkaUserCreateFormModal, type UserFormData } from './KafkaUserCreateFormModal';
+import { getAvailableNamespaces, getFilteredClusterNames } from '../utils/clusterHelpers';
 
 export function KafkaUserList() {
   const theme = useTheme();
@@ -43,15 +44,11 @@ export function KafkaUserList() {
   const [loading, setLoading] = React.useState(false);
 
   const availableNamespacesForCreate = React.useMemo(() => {
-    return [...new Set(kafkaClusters.map(k => k.metadata.namespace))].sort();
+    return getAvailableNamespaces(kafkaClusters);
   }, [kafkaClusters]);
 
   const filteredClusterNames = React.useMemo(() => {
-    if (!formData.namespace) return [];
-    return kafkaClusters
-      .filter(k => k.metadata.namespace === formData.namespace)
-      .map(k => k.metadata.name)
-      .sort();
+    return getFilteredClusterNames(kafkaClusters, formData.namespace);
   }, [kafkaClusters, formData.namespace]);
 
   const fetchUserSecret = async (user: KafkaUserInterface) => {
@@ -174,13 +171,8 @@ export function KafkaUserList() {
 
   const openCreateDialog = () => {
     const firstNs = availableNamespacesForCreate[0] ?? '';
-    const firstCluster =
-      firstNs && kafkaClusters.length > 0
-        ? kafkaClusters
-            .filter(k => k.metadata.namespace === firstNs)
-            .map(k => k.metadata.name)
-            .sort()[0] ?? ''
-        : '';
+    const clustersInNs = getFilteredClusterNames(kafkaClusters, firstNs);
+    const firstCluster = clustersInNs[0] ?? '';
     setFormData({
       name: '',
       namespace: firstNs,
@@ -293,7 +285,7 @@ export function KafkaUserList() {
         loading={loading}
         formData={formData}
         setFormData={setFormData}
-        kafkaClusters={kafkaClusters}
+        kafkaClusters={kafkaClusters || []}
         availableNamespacesForCreate={availableNamespacesForCreate}
         filteredClusterNames={filteredClusterNames}
         onCancel={() => {
