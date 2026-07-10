@@ -9,6 +9,18 @@ estate without dropping to `kubectl`.
 
 > Status: early / in progress. See [Current scope](#current-scope) and [Limitations](#limitations).
 
+## Screenshots
+
+The BareMetalHost list, with the composite Status column showing operational status, provisioning
+state, and error type together:
+
+![BareMetalHost list view](screenshots/baremetalhost-list.png)
+
+The BareMetalHost detail view, showing the four status axes, the consumer, power state, and BMC
+address:
+
+![BareMetalHost detail view](screenshots/baremetalhost-detail.png)
+
 ## Current scope
 
 - **BareMetalHost**
