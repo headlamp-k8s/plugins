@@ -12,4 +12,9 @@ describe('Kueue API constants', () => {
     expect(kueueRoutePaths.resourceFlavorsList).toBe('/kueue/resourceflavors');
     expect(kueueRoutePaths.resourceFlavorDetail).toBe('/kueue/resourceflavors/:name');
   });
+
+  it('defines ClusterQueue list and detail routes', () => {
+    expect(kueueRoutePaths.clusterQueuesList).toBe('/kueue/clusterqueues');
+    expect(kueueRoutePaths.clusterQueueDetail).toBe('/kueue/clusterqueues/:name');
+  });
 });
