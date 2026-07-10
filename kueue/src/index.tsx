@@ -1,14 +1,43 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import ClusterQueueDetail from './components/clusterqueues/Detail';
+import ClusterQueueList from './components/clusterqueues/List';
+import LocalQueueDetail from './components/localqueues/Detail';
+import LocalQueueList from './components/localqueues/List';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
+import WorkloadDetail from './components/workloads/Detail';
+import WorkloadList from './components/workloads/List';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
 
+// Main Sidebar Entry
 registerSidebarEntry({
   parent: null,
   name: 'kueue',
   label: 'Kueue',
   icon: 'mdi:queue-first-in-last-out',
-  url: kueueRoutePaths.resourceFlavorsList,
+  url: kueueRoutePaths.clusterQueuesList,
+});
+
+// Sidebar Sub-entries
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-clusterqueues',
+  label: 'ClusterQueues',
+  url: kueueRoutePaths.clusterQueuesList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-localqueues',
+  label: 'LocalQueues',
+  url: kueueRoutePaths.localQueuesList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-workloads',
+  label: 'Workloads',
+  url: kueueRoutePaths.workloadsList,
 });
 
 registerSidebarEntry({
@@ -18,6 +47,58 @@ registerSidebarEntry({
   url: kueueRoutePaths.resourceFlavorsList,
 });
 
+// ClusterQueue Routes
+registerRoute({
+  path: kueueRoutePaths.clusterQueuesList,
+  sidebar: 'kueue-clusterqueues',
+  name: kueueRouteNames.clusterQueuesList,
+  exact: true,
+  component: () => <ClusterQueueList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.clusterQueueDetail,
+  sidebar: 'kueue-clusterqueues',
+  name: kueueRouteNames.clusterQueueDetail,
+  exact: true,
+  component: () => <ClusterQueueDetail />,
+});
+
+// LocalQueue Routes
+registerRoute({
+  path: kueueRoutePaths.localQueuesList,
+  sidebar: 'kueue-localqueues',
+  name: kueueRouteNames.localQueuesList,
+  exact: true,
+  component: () => <LocalQueueList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.localQueueDetail,
+  sidebar: 'kueue-localqueues',
+  name: kueueRouteNames.localQueueDetail,
+  exact: true,
+  component: () => <LocalQueueDetail />,
+});
+
+// Workload Routes
+registerRoute({
+  path: kueueRoutePaths.workloadsList,
+  sidebar: 'kueue-workloads',
+  name: kueueRouteNames.workloadsList,
+  exact: true,
+  component: () => <WorkloadList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.workloadDetail,
+  sidebar: 'kueue-workloads',
+  name: kueueRouteNames.workloadDetail,
+  exact: true,
+  component: () => <WorkloadDetail />,
+});
+
+// ResourceFlavor Routes
 registerRoute({
   path: kueueRoutePaths.resourceFlavorsList,
   sidebar: 'kueue-resourceflavors',
@@ -33,3 +114,4 @@ registerRoute({
   exact: true,
   component: () => <ResourceFlavorDetail />,
 });
+
