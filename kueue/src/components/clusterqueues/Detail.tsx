@@ -13,6 +13,7 @@ import {
   ResourceQuota,
 } from '../../resources/clusterQueue';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
+import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 /** Flattened row rendered in the ClusterQueue resource groups table. */
 interface ResourceGroupRow {
@@ -285,91 +286,93 @@ export default function ClusterQueueDetail() {
   const { name } = useParams<{ name: string }>();
 
   return (
-    <DetailsGrid
-      resourceType={ClusterQueue}
-      name={name}
-      withEvents
-      extraInfo={clusterQueue =>
-        clusterQueue
-          ? [
-              {
-                name: 'Cohort',
-                value: clusterQueue.cohortName,
-              },
-              {
-                name: 'Queueing Strategy',
-                value: clusterQueue.queueingStrategy,
-              },
-              {
-                name: 'Stop Policy',
-                value: clusterQueue.stopPolicy,
-              },
-              {
-                name: 'Namespace Selector',
-                value: clusterQueue.namespaceSelectorDisplay,
-              },
-              {
-                name: 'Pending Workloads',
-                value: clusterQueue.pendingWorkloads,
-              },
-              {
-                name: 'Admitted Workloads',
-                value: clusterQueue.admittedWorkloads,
-              },
-              {
-                name: 'Reserving Workloads',
-                value: clusterQueue.reservingWorkloads,
-              },
-              {
-                name: 'Status',
-                value: clusterQueue.statusDisplay,
-              },
-              {
-                name: 'Referenced ResourceFlavors',
-                value: clusterQueue.referencedFlavorNamesDisplay,
-              },
-              {
-                name: 'Preemption',
-                value: clusterQueue.preemptionDisplay,
-              },
-              {
-                name: 'Flavor Fungibility',
-                value: clusterQueue.flavorFungibilityDisplay,
-              },
-              {
-                name: 'Fair Sharing',
-                value: clusterQueue.fairSharingDisplay,
-              },
-              {
-                name: 'Admission Scope',
-                value: clusterQueue.admissionScopeDisplay,
-              },
-              {
-                name: 'Concurrent Admission',
-                value: clusterQueue.concurrentAdmissionPolicyDisplay,
-              },
-            ]
-          : []
-      }
-      extraSections={clusterQueue =>
-        clusterQueue
-          ? [
-              getConditionsSection(clusterQueue),
-              getResourceGroupsSection(clusterQueue),
-              getAdmissionChecksSection(clusterQueue),
-              getFlavorUsageSection(
-                'Flavor Reservations',
-                'flavor-reservations',
-                clusterQueue.status.flavorsReservation
-              ),
-              getFlavorUsageSection(
-                'Flavor Usage',
-                'flavor-usage',
-                clusterQueue.status.flavorsUsage
-              ),
-            ].filter(Boolean)
-          : []
-      }
-    />
+    <KueueAdminResourceAccess resourceClass={ClusterQueue} resourceLabel="ClusterQueues" verb="get">
+      <DetailsGrid
+        resourceType={ClusterQueue}
+        name={name}
+        withEvents
+        extraInfo={clusterQueue =>
+          clusterQueue
+            ? [
+                {
+                  name: 'Cohort',
+                  value: clusterQueue.cohortName,
+                },
+                {
+                  name: 'Queueing Strategy',
+                  value: clusterQueue.queueingStrategy,
+                },
+                {
+                  name: 'Stop Policy',
+                  value: clusterQueue.stopPolicy,
+                },
+                {
+                  name: 'Namespace Selector',
+                  value: clusterQueue.namespaceSelectorDisplay,
+                },
+                {
+                  name: 'Pending Workloads',
+                  value: clusterQueue.pendingWorkloads,
+                },
+                {
+                  name: 'Admitted Workloads',
+                  value: clusterQueue.admittedWorkloads,
+                },
+                {
+                  name: 'Reserving Workloads',
+                  value: clusterQueue.reservingWorkloads,
+                },
+                {
+                  name: 'Status',
+                  value: clusterQueue.statusDisplay,
+                },
+                {
+                  name: 'Referenced ResourceFlavors',
+                  value: clusterQueue.referencedFlavorNamesDisplay,
+                },
+                {
+                  name: 'Preemption',
+                  value: clusterQueue.preemptionDisplay,
+                },
+                {
+                  name: 'Flavor Fungibility',
+                  value: clusterQueue.flavorFungibilityDisplay,
+                },
+                {
+                  name: 'Fair Sharing',
+                  value: clusterQueue.fairSharingDisplay,
+                },
+                {
+                  name: 'Admission Scope',
+                  value: clusterQueue.admissionScopeDisplay,
+                },
+                {
+                  name: 'Concurrent Admission',
+                  value: clusterQueue.concurrentAdmissionPolicyDisplay,
+                },
+              ]
+            : []
+        }
+        extraSections={clusterQueue =>
+          clusterQueue
+            ? [
+                getConditionsSection(clusterQueue),
+                getResourceGroupsSection(clusterQueue),
+                getAdmissionChecksSection(clusterQueue),
+                getFlavorUsageSection(
+                  'Flavor Reservations',
+                  'flavor-reservations',
+                  clusterQueue.status.flavorsReservation
+                ),
+                getFlavorUsageSection(
+                  'Flavor Usage',
+                  'flavor-usage',
+                  clusterQueue.status.flavorsUsage
+                ),
+              ].filter(Boolean)
+            : []
+        }
+      />
+    </KueueAdminResourceAccess>
   );
 }
