@@ -19,6 +19,16 @@
  */
 
 /**
+ * Stores the persisted MCP feature configuration.
+ */
+export interface MCPSettings {
+  /** Whether MCP integrations are globally enabled. */
+  enabled: boolean;
+  /** Configured MCP servers available to the client. */
+  servers: MCPServer[];
+}
+
+/**
  * Describes a single MCP server process.
  */
 export interface MCPServer {
@@ -34,4 +44,43 @@ export interface MCPServer {
   autoApprove?: boolean;
   /** Optional environment variables added to the server process. */
   env?: Record<string, string>;
+}
+
+/**
+ * Tracks persisted state for a single MCP tool.
+ */
+export interface MCPToolState {
+  /**
+   * Whether the tool is currently enabled.
+   *
+   * Optional rather than required because persisted configs written by older
+   * versions of this package may omit the field. All callers must treat a
+   * missing value as `true` (default-enabled). Use `enabled !== false` instead
+   * of `!!enabled` for correct semantics.
+   */
+  enabled?: boolean;
+  /** Timestamp of the most recent tool execution (ISO-8601 string). */
+  lastUsed?: string;
+  /** Number of recorded executions for the tool. */
+  usageCount?: number;
+  /** JSON schema used to validate tool input arguments. */
+  inputSchema?: Record<string, unknown> | null;
+  /** Human-readable description returned by the MCP server. */
+  description?: string;
+}
+
+/**
+ * Groups tool state for one MCP server.
+ */
+export interface MCPServerToolState {
+  /** Tool state keyed by tool name. */
+  [toolName: string]: MCPToolState;
+}
+
+/**
+ * Groups tool state for all configured MCP servers.
+ */
+export interface MCPToolsConfig {
+  /** Server tool state keyed by server name. */
+  [serverName: string]: MCPServerToolState;
 }
