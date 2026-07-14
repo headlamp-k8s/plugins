@@ -16,5 +16,50 @@
 
 import type { AssistantRequestContext } from '../../conversation/context';
 
+/** Persisted MCP tool metadata consumed by argument processing. */
+export interface ProcessorToolConfig {
+  description?: string;
+  inputSchema?: Record<string, unknown> | null;
+}
+
+/** Tool metadata grouped by server and tool name. */
+export interface ProcessorToolsConfig {
+  [serverName: string]: Record<string, ProcessorToolConfig>;
+}
+
+/** JSON Schema fields used when validating and suggesting MCP arguments. */
+export interface JSONSchemaProperty {
+  type?: string;
+  description?: string;
+  default?: unknown;
+  minimum?: number;
+  enum?: unknown[];
+  properties?: Record<string, JSONSchemaProperty>;
+}
+
+/** Tool argument values keyed by JSON Schema property name. */
+export type ArgumentMap = Record<string, unknown>;
+
+/** Describes the subset of MCP tool schema data used for argument processing. */
+export interface MCPToolSchema {
+  name: string;
+  description?: string;
+  inputSchema?: {
+    type: string;
+    properties?: Record<string, JSONSchemaProperty>;
+    required?: string[];
+  };
+}
+
 /** Supplies conversational context used to suggest or fill MCP arguments. */
 export type UserContext = AssistantRequestContext;
+
+/** Captures the result of validating and enriching tool arguments. */
+export interface ProcessedArguments {
+  original: ArgumentMap;
+  processed: ArgumentMap;
+  schema: MCPToolSchema | null;
+  suggestions: ArgumentMap;
+  errors: string[];
+  intelligentFills: Record<string, { value: unknown; reason: string; confidence: number }>;
+}
