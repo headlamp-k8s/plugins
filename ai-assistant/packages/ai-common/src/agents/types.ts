@@ -14,6 +14,20 @@
  * limitations under the License.
  */
 
+// ag-ui types for Holmes agent communication.
+// Event types and protocol types are provided by @ag-ui/client and @ag-ui/core.
+// This file only defines types specific to the Headlamp–Holmes integration.
+
+/** Identifies the Holmes service endpoint that the agent should contact. */
+export interface HolmesServiceInfo {
+  /** Kubernetes namespace where the Holmes service runs. */
+  namespace: string;
+  /** Service name used to reach the Holmes backend. */
+  service: string;
+  /** Network port exposed by the Holmes service. */
+  port: number;
+}
+
 /** A single thinking step shown to the user while the agent is working. */
 export interface AgentThinkingStep {
   /** Monotonic identifier for the thinking step. */
