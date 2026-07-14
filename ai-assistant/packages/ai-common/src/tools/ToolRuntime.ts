@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 
+import type { ConversationMessage } from '../conversation/types';
+
+/** Model-independent metadata for one available tool. */
+export interface RuntimeToolInfo {
+  name: string;
+  description?: string;
+}
+
 /** Structured result returned after a tool executes. */
 export interface ToolExecutionResult {
   content: string;
@@ -26,4 +34,19 @@ export interface ToolExecutionResult {
   data?: unknown;
   success?: boolean;
   [key: string]: unknown;
+}
+
+/** Framework-neutral tool inventory, execution, and lifecycle contract. */
+export interface ToolRuntime {
+  getToolNames(): string[];
+  getMCPTools(): RuntimeToolInfo[];
+  waitForMCPToolsInitialization(): Promise<void>;
+  configureKubernetesContext(context: unknown): void;
+  refreshMCPTools(): Promise<void>;
+  executeTool(
+    toolName: string,
+    args: Record<string, unknown>,
+    toolCallId?: string,
+    pendingPrompt?: ConversationMessage
+  ): Promise<ToolExecutionResult>;
 }
