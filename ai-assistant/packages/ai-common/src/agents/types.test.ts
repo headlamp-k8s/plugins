@@ -15,9 +15,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { AgentProgressCallback, AgentThinkingStep } from './types';
+import type { AgentProgressCallback, AgentThinkingStep, HolmesServiceInfo } from './types';
 
 describe('agentTypes', () => {
+  it('HolmesServiceInfo holds namespace, service, and port', () => {
+    const info: HolmesServiceInfo = { namespace: 'default', service: 'holmes', port: 8080 };
+    expect(info.namespace).toBe('default');
+    expect(info.service).toBe('holmes');
+    expect(info.port).toBe(8080);
+  });
+
   it('AgentThinkingStep has expected phases and statuses', () => {
     const step: AgentThinkingStep = {
       id: 1,
