@@ -93,7 +93,12 @@ function normalizeProviderSettings(value: Record<string, unknown>): ProviderSett
 
 /** Normalizes one persisted provider and backfills its stable ID when necessary. */
 function normalizeStoredProvider(value: unknown, index: number): StoredProviderConfig | null {
-  if (!isRecord(value) || typeof value.providerId !== 'string' || !isRecord(value.config)) {
+  if (
+    !isRecord(value) ||
+    typeof value.providerId !== 'string' ||
+    !value.providerId.trim() ||
+    !isRecord(value.config)
+  ) {
     return null;
   }
   return {
@@ -129,6 +134,7 @@ export interface SavedConfigurations {
  * @returns Whether provider identity and account-defining fields match.
  */
 export function isSameStoredConfig(a: StoredProviderConfig, b: StoredProviderConfig): boolean {
+  if (a === b) return true;
   if (a.id && b.id) return a.id === b.id;
   if (a.providerId !== b.providerId) return false;
   if (a.providerId === 'azure' && (a.config.azAccountName || b.config.azAccountName)) {

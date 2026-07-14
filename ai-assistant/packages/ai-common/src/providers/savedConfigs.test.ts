@@ -63,6 +63,21 @@ describe('ProviderConfigManager', () => {
       expect(result.providers?.[0].config).toEqual({ customFlag: true });
     });
 
+    it('filters providers with blank identifiers', () => {
+      const result = getSavedConfigurations({
+        providers: [
+          { providerId: '', config: {} },
+          { providerId: '   ', config: {} },
+          { providerId: 'openai', config: {} },
+        ],
+        defaultProviderIndex: 2,
+      });
+      expect(result.providers).toEqual([
+        { id: 'legacy-openai-2', providerId: 'openai', config: {} },
+      ]);
+      expect(result.defaultProviderIndex).toBe(0);
+    });
+
     it('backfills stable IDs so legacy records can be edited and deleted without duplication', () => {
       const legacy = {
         providers: [
@@ -449,6 +464,17 @@ describe('ProviderConfigManager', () => {
   });
 
   describe('isSameStoredConfig', () => {
+    it('matches the same credential-free config object', () => {
+      const config = { providerId: 'mock-testing-model', config: {} };
+      expect(isSameStoredConfig(config, config)).toBe(true);
+    });
+
+    it('does not match distinct credential-free config objects', () => {
+      const first = { providerId: 'mock-testing-model', config: {} };
+      const second = { providerId: 'mock-testing-model', config: {} };
+      expect(isSameStoredConfig(first, second)).toBe(false);
+    });
+
     it('matches configs with same provider and API key', () => {
       const a = { providerId: 'openai', config: { apiKey: 'sk-123', model: 'gpt-4o' } };
       const b = { providerId: 'openai', config: { apiKey: 'sk-123', model: 'gpt-4o' } };
