@@ -1,0 +1,29 @@
+# Sample Metal3Remediation and Metal3RemediationTemplate for trying out the plugin locally.
+#
+#   kubectl apply -f metal3/test-files/metal3remediation.yaml
+#
+# They appear under Metal3 > Metal3 Remediations and Metal3 Remediation Templates.
+# A Metal3RemediationTemplate is the blueprint remediations are stamped from; a
+# Metal3Remediation drives the repair of an unhealthy machine per its strategy.
+# The phase and retry count are set by the CAPM3 controller as it reconciles.
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: Metal3RemediationTemplate
+metadata:
+  name: sample-remediationtemplate
+  namespace: default
+spec:
+  template:
+    spec:
+      strategy:
+        type: Reboot
+        retryLimit: 3
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: Metal3Remediation
+metadata:
+  name: sample-remediation
+  namespace: default
+spec:
+  strategy:
+    type: Reboot
+    retryLimit: 3
