@@ -14,6 +14,16 @@
  * limitations under the License.
  */
 
+import type { ConversationMessage } from '../conversation/types';
+
+/** Model-independent metadata for one available tool. */
+export interface RuntimeToolInfo {
+  /** Stable tool identifier used for lookup and execution. */
+  name: string;
+  /** Human-readable explanation of the tool's behavior. */
+  description?: string;
+}
+
 /** Structured result returned after a tool executes. */
 export interface ToolExecutionResult {
   /** Text content produced by the tool. */
@@ -36,4 +46,59 @@ export interface ToolExecutionResult {
   success?: boolean;
   /** Additional tool-specific result fields. */
   [key: string]: unknown;
+}
+
+/** Framework-neutral tool inventory, execution, and lifecycle contract. */
+export interface ToolRuntime {
+  /**
+   * Lists the identifiers of all available tools.
+   *
+   * @returns Available tool identifiers.
+   */
+  getToolNames(): string[];
+
+  /**
+   * Lists metadata for available MCP tools.
+   *
+   * @returns Available MCP tool metadata.
+   */
+  getMCPTools(): RuntimeToolInfo[];
+
+  /**
+   * Waits until MCP tool discovery has completed.
+   *
+   * @returns A promise that resolves when MCP tools are ready.
+   */
+  waitForMCPToolsInitialization(): Promise<void>;
+
+  /**
+   * Applies Kubernetes context to tools that need cluster state.
+   *
+   * @param context - Kubernetes context supplied by the host.
+   * @returns No value.
+   */
+  configureKubernetesContext(context: unknown): void;
+
+  /**
+   * Refreshes the available MCP tool inventory.
+   *
+   * @returns A promise that resolves after the inventory is refreshed.
+   */
+  refreshMCPTools(): Promise<void>;
+
+  /**
+   * Executes a tool with normalized arguments and optional request context.
+   *
+   * @param toolName - Identifier of the tool to execute.
+   * @param args - Arguments supplied to the tool.
+   * @param toolCallId - Optional model-generated tool-call identifier.
+   * @param pendingPrompt - Optional conversation message awaiting the result.
+   * @returns The structured tool execution result.
+   */
+  executeTool(
+    toolName: string,
+    args: Record<string, unknown>,
+    toolCallId?: string,
+    pendingPrompt?: ConversationMessage
+  ): Promise<ToolExecutionResult>;
 }
