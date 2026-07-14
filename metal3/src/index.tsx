@@ -31,6 +31,10 @@ import { Metal3MachineDetail } from './Metal3Machine/Details';
 import { Metal3Machines } from './Metal3Machine/List';
 import { Metal3MachineTemplateDetail } from './Metal3MachineTemplate/Details';
 import { Metal3MachineTemplates } from './Metal3MachineTemplate/List';
+import { Metal3RemediationDetail } from './Metal3Remediation/Details';
+import { Metal3Remediations } from './Metal3Remediation/List';
+import { Metal3RemediationTemplateDetail } from './Metal3RemediationTemplate/Details';
+import { Metal3RemediationTemplates } from './Metal3RemediationTemplate/List';
 
 // Parent Metal3 group. Its url points at the first child's list so the group
 // header is itself navigable.
@@ -219,4 +223,48 @@ registerRoute({
   sidebar: 'metal3datatemplates',
   component: () => <Metal3DataTemplateDetail />,
   name: 'metal3datatemplate-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3remediations',
+  label: 'Metal3 Remediations',
+  url: '/metal3/metal3remediations',
+});
+
+registerRoute({
+  path: '/metal3/metal3remediations',
+  sidebar: 'metal3remediations',
+  component: Metal3Remediations,
+  name: 'metal3remediations-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3remediations/:namespace/:name',
+  sidebar: 'metal3remediations',
+  component: () => <Metal3RemediationDetail />,
+  name: 'metal3remediation-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3remediationtemplates',
+  label: 'Metal3 Remediation Templates',
+  url: '/metal3/metal3remediationtemplates',
+});
+
+registerRoute({
+  path: '/metal3/metal3remediationtemplates',
+  sidebar: 'metal3remediationtemplates',
+  component: Metal3RemediationTemplates,
+  name: 'metal3remediationtemplates-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3remediationtemplates/:namespace/:name',
+  sidebar: 'metal3remediationtemplates',
+  component: () => <Metal3RemediationTemplateDetail />,
+  name: 'metal3remediationtemplate-detail',
 });
