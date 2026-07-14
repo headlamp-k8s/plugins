@@ -21,6 +21,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [kueue](./kueue) | A UI for viewing and managing Kueue batch queueing resources. | Initial skeleton. | |
 | [knative](./knative) | A UI for viewing and managing Knative. | | [@kahirokunn](https://github.com/kahirokunn), [@mudit06mah](https://github.com/mudit06mah) |
 | [kompose](./kompose) | Translates docker-compose manifests to Kubernetes's. | Runs kompose in a job in the cluster for now. | [@joaquimrocha](https://github.com/joaquimrocha) |
+| [kyverno](./kyverno) | A UI for viewing and managing Kyverno policies and reports. | | [@joaquimrocha](https://github.com/joaquimrocha), [@itvi-1234](https://github.com/itvi-1234) |
 | [minikube](./minikube) | A UI for minikube, for running Kubernetes locally. | | [@illume](https://github.com/illume) |
 | [opencost](./opencost) | See the costs of your workloads in Headlamp. | | [@yolossn](https://github.com/yolossn) |
 | [plugin-catalog](./plugin-catalog) | Install Headlamp plugins with one click. | Shipped with Headlamp desktop builds by default. |[@yolossn](https://github.com/yolossn) |
@@ -39,7 +40,6 @@ Please see [headlamp plugins on Artifact Hub](https://artifacthub.io/packages/se
 | ---------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | [inspektor-gadget](https://github.com/inspektor-gadget/headlamp-plugin/) | This is a Headlamp plugin exposing and show-casing IG gadgets. |  | [@ashu8912](https://github.com/ashu8912) |
 | [Trivy](https://github.com/kubebeam/trivy-headlamp-plugin) | Trivy compliance and vulnerabilities in Headlamp. |   | [@mgalesloot](https://github.com/mgalesloot) |
-| [Kyverno](https://github.com/kubebeam/kyverno-headlamp-plugin) | The Kyverno Headlamp plugin provides views in Headlamp for Policies and Reports. | Archived.  | [@mgalesloot](https://github.com/mgalesloot) |
 | [Kubescape](https://github.com/kubescape/headlamp-plugin) | The Kubescape Headlamp plugin provides views in Headlamp for configuration and vulnerabilities scanning, based on information delivered by the Kubescape operator. |  | [@mgalesloot](https://github.com/mgalesloot) |
 | [KubeVirt](https://github.com/buttahtoast/headlamp-plugins/tree/main/kubevirt) | A plugin for managing KubeVirt virtual machines within a Kubernetes cluster. |   | [@buttahtoast](https://github.com/buttahtoast) |
 | [Gatekeeper](https://github.com/sozercan/gatekeeper-headlamp-plugin) | A Headlamp plugin for managing [Gatekeeper](https://open-policy-agent.github.io/gatekeeper/) policies, violations, and a library of community-sourced policies. | | [@sozercan](https://github.com/sozercan) |
