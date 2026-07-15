@@ -265,6 +265,38 @@ export const modelProviders: ModelProvider[] = [
     ],
   },
   {
+    id: 'openai-compatible',
+    name: 'OpenAI Compatible',
+    icon: 'ai-providers:local',
+    description: 'Any OpenAI-compatible backend: LiteLLM, LocalAI, Jan, Ollama (/v1), and others.',
+    fields: [
+      {
+        name: 'apiKey',
+        label: 'API Key',
+        type: 'text',
+        required: false,
+        placeholder: 'sk-noop (leave blank if not required)',
+      },
+      {
+        name: 'baseUrl',
+        label: 'Base URL',
+        type: 'text',
+        required: true,
+        placeholder: 'http://localhost:4000/v1',
+        description:
+          'Base URL for the /v1/chat/completions endpoint, e.g. http://localhost:4000/v1',
+      },
+      {
+        name: 'model',
+        label: 'Model',
+        type: 'text',
+        required: true,
+        placeholder: 'gpt-4o',
+        description: 'Model name as expected by the backend',
+      },
+    ],
+  },
+  {
     id: 'local',
     name: 'Local Models',
     icon: 'ai-providers:local',
