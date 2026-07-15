@@ -1,5 +1,6 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import type { ComponentType } from 'react';
+import XdsConfigDump from './components/daemon/XdsConfigDump';
 import WaypointDetail from './components/waypoints/Detail';
 import WaypointList from './components/waypoints/List';
 import { kmeshRouteNames, kmeshRoutePaths } from './utils/kmeshRoutes';
@@ -85,3 +86,19 @@ const kmeshResources: KmeshResourceRegistration[] = [
 ];
 
 kmeshResources.forEach(registerKmeshResource);
+
+// xDS Config Dump viewer (Single Route — tabs are internal to the component)
+registerSidebarEntry({
+  parent: 'kmesh',
+  name: 'kmesh-xds-config',
+  label: 'xDS Config Dump',
+  url: kmeshRoutePaths.xdsConfigDump,
+});
+
+registerRoute({
+  path: kmeshRoutePaths.xdsConfigDump,
+  sidebar: 'kmesh-xds-config',
+  name: kmeshRouteNames.xdsConfigDump,
+  exact: true,
+  component: () => <XdsConfigDump />,
+});
