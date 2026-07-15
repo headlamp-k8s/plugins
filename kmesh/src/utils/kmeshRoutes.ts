@@ -8,6 +8,7 @@ export const kmeshRouteNames = {
   xdsConfigDump: 'kmesh-xds-config-dump',
   healthDashboard: 'kmesh-health-dashboard',
   observability: 'kmesh-observability',
+  authzPolicies: 'kmesh-authz-policies',
 } as const;
 
 /**
@@ -21,4 +22,5 @@ export const kmeshRoutePaths = {
   xdsConfigDump: '/kmesh/xds-config',
   healthDashboard: '/kmesh/health',
   observability: '/kmesh/observability',
+  authzPolicies: '/kmesh/authz-policies',
 } as const;

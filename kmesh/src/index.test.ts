@@ -17,4 +17,9 @@ describe('Kmesh Routes', () => {
     expect(kmeshRoutePaths.observability).toBe('/kmesh/observability');
     expect(kmeshRouteNames.observability).toBe('kmesh-observability');
   });
+
+  it('should define the authz policies route correctly', () => {
+    expect(kmeshRoutePaths.authzPolicies).toBe('/kmesh/authz-policies');
+    expect(kmeshRouteNames.authzPolicies).toBe('kmesh-authz-policies');
+  });
 });
