@@ -115,11 +115,26 @@ export function Settings(props: SettingsProps) {
         subPath = '/' + subPath;
       }
 
-      const proxyUrl = `/clusters/${selectedCluster}/api/v1/namespaces/${namespace}/services/${service}:${port}/proxy${subPath}/-/healthy`;
-      await request(proxyUrl, {
+      // Standard Prometheus servers return a plain-text body from /-/healthy
+      // (e.g. "Prometheus Server is Healthy."), which isn't valid JSON. Some
+      // setups also return non-JSON error pages for other statuses. Testing
+      // against the query API instead gets us a real JSON response either
+      // way, and it verifies the query engine actually works, not just that
+      // something is listening on the port.
+      const normalizedSubPath = subPath.replace(/\/+$/, '');
+      const queryParams = new URLSearchParams({ query: '1' });
+      const proxyUrl = `/clusters/${selectedCluster}/api/v1/namespaces/${namespace}/services/${service}:${port}/proxy${normalizedSubPath}/api/v1/query?${queryParams.toString()}`;
+      const response = await request(proxyUrl, {
         method: 'GET',
-        isJSON: false,
       });
+
+      if (response?.status !== 'success') {
+        const detail =
+          typeof (response as any)?.error === 'string' && (response as any).error.trim()
+            ? (response as any).error.trim()
+            : response?.status ?? 'unknown';
+        throw new Error(t('Unexpected response from Prometheus: {{ detail }}', { detail }));
+      }
 
       setTestStatus('success');
       setTestMessage(t('Connection successful!'));
