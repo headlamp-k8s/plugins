@@ -61,7 +61,6 @@ export const withProviderArgs: SettingsPageProps = {
   previewEnabled: true,
   onPreviewChange: enabled => console.log('Preview:', enabled),
   onHolmesConfigChange: patch => console.log('Holmes:', patch),
-  aksDocUrl: 'https://learn.microsoft.com/en-us/azure/aks/install',
 };
 export const WithProvider = Template.bind({});
 WithProvider.args = withProviderArgs;
@@ -113,7 +112,6 @@ export const fullSettingsArgs: SettingsPageProps = {
   defaultHolmesNamespace: 'default',
   defaultHolmesServiceName: 'holmesgpt-holmes',
   defaultHolmesPort: 80,
-  aksDocUrl: 'https://learn.microsoft.com/en-us/azure/aks/install',
   commandRunner: null,
   dismissedProviders: [],
   onDismissProviders: keys => console.log('Dismissed:', keys),

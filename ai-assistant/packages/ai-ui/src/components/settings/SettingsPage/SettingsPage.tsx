@@ -46,7 +46,7 @@ import {
   type ProviderSettings,
   type SavedConfigurations,
 } from '@headlamp-k8s/ai-common/providers/savedConfigs';
-import { Box, Button, Divider, FormControlLabel, Link, Switch, Typography } from '@mui/material';
+import { Box, Button, Divider, FormControlLabel, Switch, Typography } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { AIToolsSettings, type ToolInfo } from '../AIToolsSettings/AIToolsSettings';
@@ -144,10 +144,6 @@ export interface SettingsPageProps {
   /** Callback when developer options change. */
   onDevOptionsChange?: (options: DeveloperOptionsConfig) => void;
 
-  // --- AKS Agent ---
-
-  /** URL to AKS Agent installation documentation. */
-  aksDocUrl?: string;
 }
 
 /** Active provider settings displayed and edited by the model selector. */
@@ -221,7 +217,6 @@ export function SettingsPage({
   onResetPopover,
   devOptions,
   onDevOptionsChange,
-  aksDocUrl,
 }: SettingsPageProps) {
   const { t } = useTranslation();
   const normalizedSavedConfigs = React.useMemo(
@@ -468,31 +463,6 @@ export function SettingsPage({
             defaultServiceName={defaultHolmesServiceName}
             defaultPort={defaultHolmesPort}
           />
-        </>
-      )}
-
-      {/* AKS Agent Section */}
-      {aksDocUrl && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            {t('AKS Agent')}
-          </Typography>
-          <Box sx={{ ml: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {t(
-                'The AKS Agent provides AI-powered troubleshooting for Azure Kubernetes Service clusters. When installed in your cluster, it enables an agent mode in the AI assistant that can diagnose and help resolve cluster issues.'
-              )}
-            </Typography>
-            <Link
-              href={aksDocUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ fontSize: '0.875rem' }}
-            >
-              {t('Learn how to install the AKS Agent →')}
-            </Link>
-          </Box>
         </>
       )}
 

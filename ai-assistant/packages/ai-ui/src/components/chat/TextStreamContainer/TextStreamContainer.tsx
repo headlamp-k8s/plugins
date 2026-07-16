@@ -609,7 +609,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
               last?.agentThinkingSteps &&
               last.agentThinkingSteps.length > 0 &&
               !last.agentThinkingDone;
-            // Also hide when AKS agent thinking steps are being streamed
+            // Also hide when thinking steps are being streamed
             if (agentThinking || (agentThinkingSteps && agentThinkingSteps.length > 0)) return null;
             return (
               <Box

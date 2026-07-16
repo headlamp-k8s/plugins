@@ -405,16 +405,13 @@ describe('SettingsPage optional sections', () => {
     expect(screen.queryByRole('region', { name: 'AI Tools' })).toBeNull();
   });
 
-  it('renders Holmes and AKS sections and forwards Holmes changes', () => {
+  it('renders the Holmes section and forwards Holmes changes', () => {
     const onHolmesConfigChange = vi.fn();
     renderSettings(withProviderArgs, { onHolmesConfigChange });
 
     fireEvent.click(screen.getByRole('button', { name: 'Change Holmes' }));
 
     expect(onHolmesConfigChange).toHaveBeenCalledWith({ holmesPort: 8080 });
-    expect(screen.getByRole('link', { name: /Learn how to install/ }).getAttribute('href')).toBe(
-      withProviderArgs.aksDocUrl
-    );
   });
 
   it('renders developer settings and forwards both callbacks', () => {
