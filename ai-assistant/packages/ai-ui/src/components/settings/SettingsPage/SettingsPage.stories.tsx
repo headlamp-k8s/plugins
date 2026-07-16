@@ -65,7 +65,7 @@ export const withProviderArgs: SettingsPageProps = {
 export const WithProvider = Template.bind({});
 WithProvider.args = withProviderArgs;
 
-/** With auto-detect button (no command runner). */
+/** With auto-detect button in the desktop app after the command runner is ready. */
 export const WithAutoDetect = Template.bind({});
 WithAutoDetect.args = {
   savedConfigs: { providers: [] },
@@ -74,7 +74,8 @@ WithAutoDetect.args = {
   tools: sampleSettingsTools,
   isToolEnabled: () => false,
   onToolToggle: id => console.log('Toggle:', id),
-  commandRunner: null,
+  isRunningAsApp: true,
+  commandRunner: async () => ({ stdout: '', exitCode: 0 }),
   dismissedProviders: [],
   onDismissProviders: keys => console.log('Dismissed:', keys),
 };

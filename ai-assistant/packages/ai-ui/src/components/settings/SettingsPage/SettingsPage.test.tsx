@@ -33,6 +33,8 @@ vi.mock('../ModelSelector/ModelSelector', () => ({
       <span data-testid="active-config-id">{props.selectedConfigId}</span>
       <span data-testid="active-name">{props.configName}</span>
       <span data-testid="saved-count">{props.savedConfigs.providers?.length ?? 0}</span>
+      <span data-testid="auto-detect-enabled">{String(Boolean(props.onAutoDetect))}</span>
+      <span data-testid="command-runner-enabled">{String(Boolean(props.commandRunner))}</span>
       <button
         type="button"
         onClick={() =>
@@ -489,6 +491,34 @@ describe('SettingsPage auto-detect wiring', () => {
     );
 
     expect(screen.getByTestId('active-provider').textContent).toBe('local');
+  });
+
+  it('enables CLI auto-detect only when the desktop command runner is ready', () => {
+    const commandRunner = vi.fn(async () => ({ stdout: '', exitCode: 0 }));
+    const { rerender } = renderSettings(emptySettingsArgs, {
+      isRunningAsApp: false,
+      commandRunner,
+    });
+    expect(screen.queryByRole('region', { name: 'Auto Detect Results' })).toBeNull();
+    expect(screen.getByTestId('auto-detect-enabled').textContent).toBe('false');
+    expect(screen.getByTestId('command-runner-enabled').textContent).toBe('false');
+
+    rerender(
+      <main>
+        <SettingsPage {...emptySettingsArgs} isRunningAsApp commandRunner={null} />
+      </main>
+    );
+    expect(screen.queryByRole('region', { name: 'Auto Detect Results' })).toBeNull();
+    expect(screen.getByTestId('auto-detect-enabled').textContent).toBe('false');
+
+    rerender(
+      <main>
+        <SettingsPage {...emptySettingsArgs} isRunningAsApp commandRunner={commandRunner} />
+      </main>
+    );
+    expect(screen.getByRole('region', { name: 'Auto Detect Results' })).toBeTruthy();
+    expect(screen.getByTestId('auto-detect-enabled').textContent).toBe('true');
+    expect(screen.getByTestId('command-runner-enabled').textContent).toBe('true');
   });
 });
 

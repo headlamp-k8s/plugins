@@ -143,7 +143,6 @@ export interface SettingsPageProps {
   devOptions?: DeveloperOptionsConfig;
   /** Callback when developer options change. */
   onDevOptionsChange?: (options: DeveloperOptionsConfig) => void;
-
 }
 
 /** Active provider settings displayed and edited by the model selector. */
@@ -186,7 +185,6 @@ function resolveActiveConfiguration(
  * skills, Holmes, and optional sections into a single settings view.
  *
  * @param props - Settings page configuration and host callbacks.
-  const pendingLocalConfigId = React.useRef<string | undefined>();
  * @returns Composed AI Assistant settings UI.
  */
 export function SettingsPage({
@@ -265,6 +263,12 @@ export function SettingsPage({
         : resolveActiveConfiguration(normalizedSavedConfigs);
     });
   }, [normalizedSavedConfigs]);
+
+  // CLI-based provider auto-detection relies on running local `gh`/`az`
+  // commands via runCommand, which only works in the desktop app. Hide the
+  // auto-detect button and results dialog unless the desktop runner is ready.
+  const cliDetectionEnabled =
+    isRunningAsApp && commandRunner !== null && commandRunner !== undefined;
 
   // Auto-detect hook
   const autoDetect = useAutoDetect({
@@ -412,17 +416,19 @@ export function SettingsPage({
         isConfigView
         onChange={handleModelSelectorChange}
         onTermsAccept={onTermsAccept ?? onConfigsChange}
-        onAutoDetect={autoDetect.handleAutoDetect}
+        onAutoDetect={cliDetectionEnabled ? autoDetect.handleAutoDetect : undefined}
         autoDetecting={autoDetect.autoDetecting}
-        commandRunner={commandRunner ?? undefined}
+        commandRunner={cliDetectionEnabled ? commandRunner ?? undefined : undefined}
       />
-      <AutoDetectProvider
-        detectedProviders={autoDetect.detectedProviders}
-        showDetectedDialog={autoDetect.showDetectedDialog}
-        setShowDetectedDialog={autoDetect.setShowDetectedDialog}
-        handleAddDetectedProviders={autoDetect.handleAddDetectedProviders}
-        handleDismissDetectedProviders={autoDetect.handleDismissDetectedProviders}
-      />
+      {cliDetectionEnabled && (
+        <AutoDetectProvider
+          detectedProviders={autoDetect.detectedProviders}
+          showDetectedDialog={autoDetect.showDetectedDialog}
+          setShowDetectedDialog={autoDetect.setShowDetectedDialog}
+          handleAddDetectedProviders={autoDetect.handleAddDetectedProviders}
+          handleDismissDetectedProviders={autoDetect.handleDismissDetectedProviders}
+        />
+      )}
 
       {/* AI Tools Section */}
       {tools && isToolEnabledFn && onToolToggle && (
