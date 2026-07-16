@@ -1,0 +1,135 @@
+{
+  "name": "@headlamp-k8s/ai-ui",
+  "version": "0.1.0-alpha",
+  "description": "Browser-only AI UI code for Headlamp",
+  "type": "module",
+  "exports": {
+    "./components/agent/AgentThinkingSteps": "./src/components/agent/AgentThinkingSteps/AgentThinkingSteps.tsx",
+    "./components/appbar/AIAssistantToggle": "./src/components/appbar/AIAssistantToggle/AIAssistantToggle.tsx",
+    "./components/assistant/AgentThinkingBlock": "./src/components/assistant/AgentThinkingBlock/AgentThinkingBlock.tsx",
+    "./components/assistant/AIChatContent": "./src/components/assistant/AIChatContent/AIChatContent.tsx",
+    "./components/assistant/AIAssistantHeader": "./src/components/assistant/AIAssistantHeader/AIAssistantHeader.tsx",
+    "./components/assistant/AllInputSection": "./src/components/assistant/AllInputSection/AllInputSection.tsx",
+    "./components/assistant/HolmesSetupGuide": "./src/components/assistant/HolmesSetupGuide/HolmesSetupGuide.tsx",
+    "./components/assistant/ProactiveDiagnosisSection": "./src/components/assistant/ProactiveDiagnosisSection/ProactiveDiagnosisSection.tsx",
+    "./components/assistant/PromptSuggestions": "./src/components/assistant/PromptSuggestions/PromptSuggestions.tsx",
+    "./components/assistant/TestModeInput": "./src/components/assistant/TestModeInput/TestModeInput.tsx",
+    "./components/assistant/ToolsDialog": "./src/components/assistant/ToolsDialog/ToolsDialog.tsx",
+    "./components/chat/ContentRenderer": "./src/components/chat/ContentRenderer/ContentRenderer.tsx",
+    "./components/chat/TextStreamContainer": "./src/components/chat/TextStreamContainer/TextStreamContainer.tsx",
+    "./components/chat/MCPFormattedMessage": "./src/components/chat/MCPFormattedMessage/MCPFormattedMessage.tsx",
+    "./components/common/ApiConfirmationDialog": "./src/components/common/ApiConfirmationDialog/ApiConfirmationDialog.tsx",
+    "./components/common/LogsButton": "./src/components/common/LogsButton/LogsButton.tsx",
+    "./components/common/LogsDialog": "./src/components/common/LogsDialog/LogsDialog.tsx",
+    "./components/common/InlineToolConfirmation": "./src/components/common/InlineToolConfirmation/InlineToolConfirmation.tsx",
+    "./components/common/ToolApprovalDialog": "./src/components/common/ToolApprovalDialog/ToolApprovalDialog.tsx",
+    "./components/common/YamlDisplay": "./src/components/common/YamlDisplay/YamlDisplay.tsx",
+    "./components/mcpOutput/MCPOutputDisplay": "./src/components/mcpOutput/MCPOutputDisplay/MCPOutputDisplay.tsx",
+    "./components/defaults/DefaultSlots": "./src/components/defaults/DefaultSlots/DefaultSlots.tsx",
+    "./components/settings/HolmesAgentSettings": "./src/components/settings/HolmesAgentSettings/HolmesAgentSettings.tsx",
+    "./components/settings/MCPConfigEditorDialog": "./src/components/settings/MCPConfigEditorDialog/MCPConfigEditorDialog.tsx",
+    "./components/settings/MCPServerEditor": "./src/components/settings/MCPServerEditor/MCPServerEditor.tsx",
+    "./components/settings/MCPSettings": "./src/components/settings/MCPSettings/MCPSettings.tsx",
+    "./components/settings/ModelSelector": "./src/components/settings/ModelSelector/ModelSelector.tsx",
+    "./components/settings/SkillSettings": "./src/components/settings/SkillSettings/SkillSettings.tsx",
+    "./components/settings/SkillSourceEditorDialog": "./src/components/settings/SkillSourceEditorDialog/SkillSourceEditorDialog.tsx",
+    "./components/settings/TermsDialog": "./src/components/settings/TermsDialog/TermsDialog.tsx",
+    "./components/settings/AIToolsSettings": "./src/components/settings/AIToolsSettings/AIToolsSettings.tsx",
+    "./components/settings/AutoDetectProvider": "./src/components/settings/AutoDetectProvider/AutoDetectProvider.tsx",
+    "./components/settings/DetectedProvidersDialog": "./src/components/settings/DetectedProvidersDialog/DetectedProvidersDialog.tsx",
+    "./components/settings/DeveloperSettings": "./src/components/settings/DeveloperSettings/DeveloperSettings.tsx",
+    "./components/settings/SettingsPage": "./src/components/settings/SettingsPage/SettingsPage.tsx",
+    "./components/panel/AIPanelComponent": "./src/components/panel/AIPanelComponent/AIPanelComponent.tsx",
+    "./contexts/PromptWidthContext": "./src/contexts/PromptWidthContext/PromptWidthContext.tsx",
+    "./hooks/useProactiveDiagnosis": "./src/diagnosis/useProactiveDiagnosis.ts",
+    "./hooks/useToolApproval": "./src/hooks/useToolApproval.ts",
+    "./diagnosis/ProactiveDiagnosisManager": "./src/diagnosis/ProactiveDiagnosisManager.ts",
+    "./diagnosis/diagnosisHelpers": "./src/diagnosis/diagnosisHelpers.ts",
+    "./icons/iconBundles": "./src/icons/iconBundles.ts",
+    "./providers/modelProviders": "./src/providers/modelProviders.ts",
+    "./formatting/stringFormatting": "./src/formatting/stringFormatting.ts",
+    "./formatting/logFormatting": "./src/formatting/logFormatting.ts",
+    "./testing/testMode": "./src/testing/testMode.ts",
+    "./parsing/urlParsing": "./src/parsing/urlParsing.ts",
+    "./parsing/yamlParser": "./src/parsing/yamlParser.ts",
+    "./mcp/electron-client": "./src/mcp/electron-client.ts",
+    "./types/electron": "./src/types/electron.d.ts",
+    "./testing/i18nTestSetup": "./src/testing/i18nTestSetup.ts",
+    "./i18n": "./src/i18n.ts"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "coverage": "vitest run --coverage",
+    "coverage:html": "vitest run --coverage && open coverage/index.html",
+    "tsc": "tsc --noEmit",
+    "format": "prettier --check \"**/*.{ts,tsx}\" --ignore-path .gitignore",
+    "lint": "eslint --max-warnings 0 --no-error-on-unmatched-pattern \"src/**/*.{ts,tsx}\"",
+    "check": "npm run format && npm run lint && npm run tsc && npm run test"
+  },
+  "eslintConfig": {
+    "root": true,
+    "extends": [
+      "@headlamp-k8s"
+    ],
+    "rules": {
+      "indent": "off",
+      "max-len": "off",
+      "newline-per-chained-call": "off",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "react/jsx-indent": "off",
+      "react/jsx-indent-props": "off"
+    }
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@headlamp-k8s/ai-common": "file:../ai-common",
+    "i18next": "^23.15.1",
+    "react-i18next": "^15.0.2"
+  },
+  "peerDependencies": {
+    "@iconify/react": "^4.0.0",
+    "@monaco-editor/react": "^4.0.0",
+    "@mui/material": "^5.0.0",
+    "js-yaml": "^4.0.0",
+    "react": "^18.0.0",
+    "react-markdown": "^8.0.0 || ^9.0.0",
+    "react-syntax-highlighter": "^15.0.0 || ^16.0.0",
+    "remark-gfm": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "@mui/material": {
+      "optional": true
+    },
+    "@iconify/react": {
+      "optional": true
+    },
+    "@monaco-editor/react": {
+      "optional": true
+    },
+    "js-yaml": {
+      "optional": true
+    },
+    "react-markdown": {
+      "optional": true
+    },
+    "react-syntax-highlighter": {
+      "optional": true
+    },
+    "remark-gfm": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@headlamp-k8s/eslint-config": "^0.6.0",
+    "@vitest/coverage-v8": "4.1.8",
+    "axe-core": "^4.12.1",
+    "eslint": "^8.57.1",
+    "prettier": "^2.8.8",
+    "typescript": "^5.6.2",
+    "vitest": "^4.1.7"
+  }
+}

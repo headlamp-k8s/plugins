@@ -1,0 +1,32 @@
+version: 0.3.0-alpha
+name: headlamp_ai_assistant
+displayName: AI Assistant
+createdAt: '2026-07-16T13:30:17Z'
+logoURL: 'https://raw.githubusercontent.com/headlamp-k8s/plugins/main/ai-assistant/logo.png'
+description: 'The AI Assistant plugin for Headlamp provides an AI-powered assistant to help users interact with their Kubernetes clusters more efficiently.'
+changes:
+  - kind: added
+    description: 'Add configurable GitHub-hosted skills with inspection, keyword or embedding routing, and prompt injection.'
+  - kind: added
+    description: 'Add GitHub Copilot support and desktop auto-detection for Copilot, Azure OpenAI, and Ollama providers.'
+  - kind: added
+    description: 'Add an opt-in Proactive Diagnosis preview for investigating critical Kubernetes events.'
+  - kind: added
+    description: 'Add fixture-backed models, scripted agents, mock tools, and a standalone headlamp-ai CLI for offline development and testing.'
+  - kind: changed
+    description: 'Check HolmesGPT health before agent mode and preserve pending prompts while presenting setup, settings, and retry guidance.'
+  - kind: changed
+    description: 'Restart desktop MCP servers that use HEADLAMP_CURRENT_CLUSTER when the active cluster changes.'
+  - kind: changed
+    description: 'Internationalize the production UI and improve keyboard operation, screen-reader context, dialog semantics, and dark-theme code readability.'
+  - kind: changed
+    description: 'Extract shared runtime and UI behavior into typed ai-common and ai-ui packages with broader automated test coverage.'
+  - kind: fixed
+    description: 'Redact common credentials from tool output, harden tool approvals and MCP imports, and restrict provider detection and skill loading.'
+  - kind: fixed
+    description: 'Improve streaming, cancellation, scroll handling, saved-provider identity, legacy settings normalization, and structured output rendering.'
+annotations:
+  headlamp/plugin/archive-url: https://github.com/headlamp-k8s/plugins/releases/download/ai-assistant-0.3.0-alpha/headlamp-k8s-ai-assistant-0.3.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: 'SHA256:e025a313a6ff1c4c1788b3a7529939e5133c302c22dffcfde2e928de5a8fa240'
+  headlamp/plugin/version-compat: '>=0.22'
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

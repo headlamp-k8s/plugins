@@ -1,0 +1,50 @@
+{
+  "name": "@headlamp-k8s/ai-cli",
+  "version": "0.1.0-alpha",
+  "description": "CLI entrypoint for Headlamp AI",
+  "type": "module",
+  "exports": {
+    ".": "./src/cli.ts"
+  },
+  "bin": {
+    "headlamp-ai": "./src/cli.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "tsc": "tsc --noEmit",
+    "lint": "eslint --max-warnings 0 --no-error-on-unmatched-pattern \"src/**/*.ts\"",
+    "format": "prettier --check \"**/*.ts\" --ignore-path .gitignore",
+    "check": "npm run format && npm run lint && npm run tsc && npm run test"
+  },
+  "eslintConfig": {
+    "root": true,
+    "extends": ["@headlamp-k8s"],
+    "rules": {
+      "indent": "off",
+      "max-len": "off",
+      "newline-per-chained-call": "off",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "off"
+    }
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@headlamp-k8s/ai-common": "file:../ai-common",
+    "@langchain/anthropic": "~1.4.0",
+    "@langchain/core": "^1.1.20",
+    "@langchain/deepseek": "^1.0.27",
+    "@langchain/google-genai": "^2.1.16",
+    "@langchain/mcp-adapters": "^1.1.3",
+    "@langchain/mistralai": "^1.0.4",
+    "@langchain/ollama": "^1.2.2",
+    "@langchain/openai": "^1.2.6"
+  },
+  "devDependencies": {
+    "@headlamp-k8s/eslint-config": "^0.6.0",
+    "eslint": "^8.57.1",
+    "prettier": "^2.8.8",
+    "tsx": "^4.22.4",
+    "typescript": "^5.6.2",
+    "vitest": "^3.2.4"
+  }
+}

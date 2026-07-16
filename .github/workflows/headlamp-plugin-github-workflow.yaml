@@ -37,7 +37,7 @@ jobs:
           # If .github/ changed, run all plugins
           if echo "$changed_dirs" | tr ' ' '\n' | grep -q '^\.github$'; then
             echo "Changes detected in .github/ directory, running all plugins."
-            changed_dirs=$(grep -lR 'headlamp-plugin' ./*/package.json | xargs -n1 dirname | sort -u)
+            changed_dirs=$(grep -lR 'headlamp-plugin' ./*/package.json | xargs -n1 dirname | sed 's|^\./||' | sort -u)
             echo "Changed directories: $changed_dirs"
           fi
 
@@ -102,3 +102,38 @@ jobs:
 
       - name: Test ${{ matrix.dir }}
         run: npm run test
+
+  ai-assistant-e2e:
+    needs: find_changed_plugin_dirs
+    if: contains(fromJson(needs.find_changed_plugin_dirs.outputs.dirs), 'ai-assistant')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ./ai-assistant
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
+        with:
+          node-version: 22.x
+          cache: "npm"
+          cache-dependency-path: ai-assistant/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Linux AMD64 kwokctl
+        env:
+          KWOK_VERSION: v0.8.0
+          KWOKCTL_SHA256: d5743166c657283d6e827c7c4c20cacfd9009fd94830f06718ca7b2c7099461f
+        run: |
+          curl -fsSLo /tmp/kwokctl "https://github.com/kubernetes-sigs/kwok/releases/download/${KWOK_VERSION}/kwokctl-linux-amd64"
+          echo "${KWOKCTL_SHA256}  /tmp/kwokctl" | sha256sum --check
+          sudo install /tmp/kwokctl /usr/local/bin/kwokctl
+
+      - name: Install Chromium dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Run AI Assistant KWOK E2E tests
+        run: npm run e2e
