@@ -15,7 +15,7 @@
  */
 
 import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { sanitizeToolAlignment } from '../history';
 import type { ConversationMessage as Prompt } from '../types';
 import { convertPromptsToMessages } from './messages';
@@ -65,6 +65,7 @@ describe('convertPromptsToMessages', () => {
   });
 
   it('Bug fix: malformed arguments JSON does not throw — falls back to {}', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     // Previously JSON.parse(malformed) would crash the entire message preparation.
     const prompts: Prompt[] = [
       {
@@ -81,6 +82,9 @@ describe('convertPromptsToMessages', () => {
     expect(() => convertPromptsToMessages(prompts)).not.toThrow();
     const msg = convertPromptsToMessages(prompts)[0] as AIMessage;
     expect(msg.tool_calls![0].args).toEqual({});
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to parse tool call arguments for "my_tool"')
+    );
   });
 
   it('converts tool prompts to ToolMessage', () => {

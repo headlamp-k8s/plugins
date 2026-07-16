@@ -114,6 +114,7 @@ export class MCPClient {
   private clusters: string[] = [];
   private currentClusters: string[] | null = null;
   private initialized = false;
+  private initializePromise: Promise<void> | null = null;
 
   /**
    * Creates a platform-agnostic MCP client core.
@@ -160,12 +161,27 @@ export class MCPClient {
     if (this.initialized) {
       return;
     }
-    this.mcpToolState = new ToolStateStore(new FileStorage(this.configPath));
-    await this.initializeClient();
-    this.initialized = true;
+    // Deduplicate concurrent initialize() calls so a single attempt is shared;
+    // otherwise racing callers would each construct a ToolStateStore and start
+    // a separate client initialization. A failed attempt is cleared so callers
+    // may retry.
+    if (this.initializePromise) {
+      return this.initializePromise;
+    }
+    this.initializePromise = (async () => {
+      this.mcpToolState = new ToolStateStore(new FileStorage(this.configPath));
+      await this.initializeClient();
+      this.initialized = true;
 
-    if (DEBUG) {
-      console.info('MCPClient: initialized');
+      if (DEBUG) {
+        console.info('MCPClient: initialized');
+      }
+    })();
+    try {
+      await this.initializePromise;
+    } catch (error) {
+      this.initializePromise = null;
+      throw error;
     }
   }
 
@@ -262,10 +278,19 @@ export class MCPClient {
    * @returns No value.
    */
   async cleanup(): Promise<void> {
-    if (!this.initialized) {
+    const pendingInitialization = this.initializePromise;
+    if (!this.initialized && !pendingInitialization) {
       return;
     }
+    if (pendingInitialization) {
+      try {
+        await pendingInitialization;
+      } catch {
+        // Initialization already reset its state; cleanup still clears remnants.
+      }
+    }
     this.initialized = false;
+    this.initializePromise = null;
 
     await this.closeAndReset();
     this.clientTools = [];

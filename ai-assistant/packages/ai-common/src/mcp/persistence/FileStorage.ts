@@ -22,6 +22,7 @@
  * `Storage` implementation (e.g. localStorage or IPC-backed).
  */
 
+import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import type { Storage } from './Storage';
 
@@ -53,20 +54,54 @@ export class FileStorage implements Storage {
   /**
    * Writes UTF-8 data to the configured file asynchronously.
    *
+   * The write is atomic: data is written to a temporary sibling file which is
+   * then renamed over the target. This prevents readers (or a crash mid-write)
+   * from observing a truncated or partially written file.
+   *
    * @param data - Serialized JSON data to write.
    * @returns A promise that resolves when the write completes.
    */
-  write(data: string): Promise<void> {
-    return fs.promises.writeFile(this.path, data, 'utf-8');
+  async write(data: string): Promise<void> {
+    const tmpPath = this.tempPath();
+    try {
+      await fs.promises.writeFile(tmpPath, data, 'utf-8');
+      await fs.promises.rename(tmpPath, this.path);
+    } catch (error) {
+      await fs.promises.rm(tmpPath, { force: true }).catch(() => {});
+      throw error;
+    }
   }
 
   /**
    * Writes UTF-8 data to the configured file synchronously.
    *
+   * Uses the same write-to-temp-then-rename strategy as {@link write} so the
+   * target file is never left partially written.
+   *
    * @param data - Serialized JSON data to write.
    * @returns No value.
    */
   writeSync(data: string): void {
-    fs.writeFileSync(this.path, data, 'utf-8');
+    const tmpPath = this.tempPath();
+    try {
+      fs.writeFileSync(tmpPath, data, 'utf-8');
+      fs.renameSync(tmpPath, this.path);
+    } catch (error) {
+      try {
+        fs.rmSync(tmpPath, { force: true });
+      } catch {
+        /* ignore cleanup failure */
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Builds a unique temporary sibling path for atomic writes.
+   *
+   * @returns A temporary file path adjacent to the target file.
+   */
+  private tempPath(): string {
+    return `${this.path}.${process.pid}.${randomUUID()}.tmp`;
   }
 }

@@ -50,6 +50,11 @@ export function convertPromptsToMessages(messages: ConversationMessage[]): BaseM
                   : call.function.arguments ?? {};
             } catch {
               // Keep malformed model arguments from aborting message conversion.
+              // Surface the failure so lost tool arguments are diagnosable rather
+              // than silently degraded to an empty object.
+              console.warn(
+                `Failed to parse tool call arguments for "${call.function.name}" (id: ${call.id}); using empty arguments.`
+              );
             }
             return { id: call.id, name: call.function.name, args, type: 'tool_call' as const };
           });

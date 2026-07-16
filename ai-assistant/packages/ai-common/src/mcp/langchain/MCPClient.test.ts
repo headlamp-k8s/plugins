@@ -700,6 +700,36 @@ describe('MCPClient — error paths', () => {
     expect(client.getStatus().isInitialized).toBe(true);
   });
 
+  it('cleanup waits for in-flight initialization and closes the created client', async () => {
+    let resolveGetTools!: (tools: CoreToolDouble[]) => void;
+    const getToolsPromise = new Promise<CoreToolDouble[]>(resolve => {
+      resolveGetTools = resolve;
+    });
+    const close = vi.fn().mockResolvedValue(undefined);
+    vi.doMock('@langchain/mcp-adapters', () => ({
+      MultiServerMCPClient: vi.fn().mockImplementation(() => ({
+        getTools: vi.fn().mockReturnValue(getToolsPromise),
+        close,
+      })),
+    }));
+
+    const { MCPClient: MCPClient } = await import('./MCPClient');
+    const client = new MCPClient(
+      cfgPath,
+      makeSettingsProvider({
+        enabled: true,
+        servers: [{ name: 'srv', command: 'cmd', args: [], enabled: true }],
+      })
+    );
+    const initialize = client.initialize();
+    const cleanup = client.cleanup();
+    resolveGetTools([]);
+
+    await Promise.all([initialize, cleanup]);
+    expect(close).toHaveBeenCalledOnce();
+    expect(client.getStatus()).toEqual({ isInitialized: false, hasClient: false });
+  });
+
   // ── executeTool when client is null after initialization ──────────────────
 
   it('executeTool throws when client is null after init (no servers)', async () => {
