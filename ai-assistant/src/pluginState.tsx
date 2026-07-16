@@ -174,7 +174,7 @@ export type HeadlampEventPayload =
     };
 
 /** Persistent configuration state for the AI assistant plugin. */
-interface PluginConfig extends SavedConfigurations {
+export interface PluginConfig extends SavedConfigurations {
   /** Is the AI Assistant UI panel open? */
   isUIPanelOpen?: boolean;
   /** Is the config popover shown? */

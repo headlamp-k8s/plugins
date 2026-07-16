@@ -63,9 +63,10 @@ import ContentRenderer from './ContentRenderer';
 import { generateContextDescription } from './context/contextGenerator';
 import EditorDialog from './editordialog';
 import { checkHolmesAgentHealth } from './holmesClient';
+import { HolmesHealthRequestGate } from './holmesHealthRequestGate';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import { fetchClusterWarnings, fetchWarningEventsForClusters } from './kubernetes/EventFetcher';
-import { getSettingsURL, useGlobalState } from './pluginState';
+import { getSettingsURL, type PluginConfig, useGlobalState } from './pluginState';
 import { useDynamicPrompts } from './prompts/promptGenerator';
 
 // Operation type constants for translation
@@ -86,15 +87,46 @@ import {
   getActiveConfig,
   getSavedConfigurations,
   isSameStoredConfig,
+  type ProviderSettings,
   StoredProviderConfig,
 } from '@headlamp-k8s/ai-common/providers/savedConfigs';
 import { getEnabledToolIds } from '@headlamp-k8s/ai-common/tools/settings/enabledTools';
 import { usePromptWidth } from '@headlamp-k8s/ai-ui/contexts/PromptWidthContext';
 
+interface CommandProcess {
+  /** Standard output stream emitted by the injected command. */
+  stdout: {
+    /** Registers a listener for command output chunks. */
+    on: (event: 'data', listener: (chunk: unknown) => void) => void;
+  };
+  /** Registers a listener for process exit. */
+  on: (event: 'exit', listener: (code: number | null) => void) => void;
+}
+
+interface HolmesTextEvent {
+  /** Streamed message identifier. */
+  messageId?: string;
+  /** Streamed text delta. */
+  delta?: string;
+}
+
+interface HolmesToolEvent {
+  /** Tool call identifier. */
+  toolCallId?: string;
+  /** Tool display name. */
+  toolCallName?: string;
+}
+
+type PluginCommandRunner = (
+  command: string,
+  args: string[],
+  options: Record<string, unknown>
+) => CommandProcess;
+
 export default function AIPrompt(props: {
   openPopup: boolean;
-  setOpenPopup: (...args) => void;
-  pluginSettings: any;
+  setOpenPopup: (open: boolean) => void;
+  pluginSettings: PluginConfig;
   width?: string;
 }) {
   const { openPopup, setOpenPopup, pluginSettings, width } = props;
@@ -107,10 +139,9 @@ export default function AIPrompt(props: {
     if (typeof pluginRunCommand !== 'undefined') {
       commandRunnerRef.current = (command: string, args: string[]) =>
         new Promise<{ stdout: string; exitCode: number }>(resolve => {
-          // @ts-ignore
-          const proc = pluginRunCommand(command as any, args, {});
+          const proc = (pluginRunCommand as unknown as PluginCommandRunner)(command, args, {});
           let out = '';
-          proc.stdout.on('data', (d: any) => (out += String(d)));
+          proc.stdout.on('data', chunk => (out += String(chunk)));
           proc.on('exit', (code: number | null) => resolve({ stdout: out, exitCode: code ?? -1 }));
         });
     }
@@ -300,6 +331,8 @@ export default function AIPrompt(props: {
   // When the user opts into Holmes but it is not reachable, show setup guidance
   // instead of silently failing.
   const [showHolmesSetup, setShowHolmesSetup] = React.useState(false);
+  const [isHolmesRetrying, setIsHolmesRetrying] = React.useState(false);
+  const holmesHealthRequestGateRef = React.useRef(new HolmesHealthRequestGate());
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -522,7 +555,7 @@ export default function AIPrompt(props: {
     async function initManager() {
       try {
         // Create config with selected model
-        const configWithModel: any = {
+        const configWithModel: ProviderSettings = {
           ...activeConfig!.config,
           model: selectedModel,
         };
@@ -537,7 +570,7 @@ export default function AIPrompt(props: {
         if (configWithModel.apiKey === AZ_CLI_AUTH_SENTINEL && commandRunnerRef.current) {
           const rg = configWithModel.azResourceGroup;
           const acct = configWithModel.azAccountName;
-          if (rg && acct) {
+          if (typeof rg === 'string' && typeof acct === 'string' && rg && acct) {
             const freshKey = await refreshAzureOpenAIKey(rg, acct, commandRunnerRef.current);
             if (freshKey) {
               configWithModel.apiKey = freshKey;
@@ -568,7 +601,13 @@ export default function AIPrompt(props: {
     return () => {
       isCurrent = false;
     };
-  }, [enabledTools, activeConfig, selectedModel, mcpConfigKey]);
+  }, [
+    enabledTools,
+    activeConfig,
+    selectedModel,
+    mcpConfigKey,
+    pluginSettings?.devOptions?.enableMockTools,
+  ]);
 
   // ─── Wire up SkillManager for prompt skill injection ──────────────────────
   // Creates a SkillManager with browser-compatible adapters (fetch + JSZip).
@@ -629,19 +668,19 @@ export default function AIPrompt(props: {
           // LangChain doesn't stream intermediate events, so just report start/end
           onStep?.({
             id: `lc-start-${Date.now()}`,
-            content: 'Sending diagnosis request…',
+            content: t('Sending diagnosis request…'),
             type: 'intermediate-text',
             timestamp: Date.now(),
           });
           const response = await isolatedManager.userSend(prompt);
           onStep?.({
             id: `lc-done-${Date.now()}`,
-            content: 'Diagnosis response received',
+            content: t('Diagnosis response received'),
             type: 'tool-result',
             timestamp: Date.now(),
           });
-          return response.content || 'No diagnosis available.';
-        } catch (err: any) {
+          return response.content || t('No diagnosis available.');
+        } catch (err: unknown) {
           console.error('[ProactiveDiagnosis] diagnoseFn error:', err);
           throw err;
         }
@@ -656,7 +695,7 @@ export default function AIPrompt(props: {
       setDiagnoseFnReady(false);
     }
     // If isAgentMode is true, diagnoseFn is managed by handleToggleAgentMode — don't touch it.
-  }, [isAgentMode, activeConfig, selectedModel, enabledTools]);
+  }, [isAgentMode, activeConfig, selectedModel, enabledTools, pluginSettings, t]);
   // ─── End proactive diagnosis connection ─────────────────────────────
 
   const updateHistory = React.useCallback(() => {
@@ -738,9 +777,13 @@ export default function AIPrompt(props: {
   }, [pluginSettings?.devOptions?.enableAutoApproval]);
 
   const handleOperationFailure = React.useCallback(
-    (error: any, operationType: string, resourceInfo?: any) => {
+    (
+      error: unknown,
+      operationType: string,
+      resourceInfo?: { kind?: string; name?: string; namespace?: string }
+    ) => {
       // Determine the operation type from the error or method
-      let operation: string;
+      let operation: string = OPERATION_TYPES.GENERIC;
       if (operationType) {
         switch (operationType.toLowerCase()) {
           case 'post':
@@ -759,8 +802,13 @@ export default function AIPrompt(props: {
       }
 
       // Extract error details
-      const errorMessage = error?.message || error?.error || t('Unknown error occurred');
-      const statusCode = error?.status || error?.statusCode;
+      const errorRecord =
+        error && typeof error === 'object' ? (error as Record<string, unknown>) : {};
+      const errorMessage =
+        (typeof errorRecord.message === 'string' && errorRecord.message) ||
+        (typeof errorRecord.error === 'string' && errorRecord.error) ||
+        t('Unknown error occurred');
+      const statusCode = errorRecord.status ?? errorRecord.statusCode;
 
       // Build error content
       let errorContent = t('Resource {{operation}} failed: {{errorMessage}}', {
@@ -810,13 +858,14 @@ export default function AIPrompt(props: {
 
     // Handle tool confirmation objects
     if (typeof content === 'object' && content && 'toolConfirmation' in content) {
+      const confirmation = content as Partial<ConversationMessage>;
       newPrompt = {
         role: type,
-        content: (content as any).content || '',
+        content: confirmation.content || '',
         error: hasError || false,
-        toolConfirmation: (content as any).toolConfirmation,
-        isDisplayOnly: (content as any).isDisplayOnly,
-        requestId: (content as any).requestId,
+        toolConfirmation: confirmation.toolConfirmation,
+        isDisplayOnly: confirmation.isDisplayOnly,
+        requestId: confirmation.requestId,
         ...(hasError && { contentFilterError: true }),
       };
     } else {
@@ -836,6 +885,12 @@ export default function AIPrompt(props: {
   async function AnalyzeResourceBasedOnPrompt(prompt: string) {
     setOpenPopup(true);
 
+    if (!aiManager && !isTestMode) {
+      setPromptVal(prompt);
+      setApiError(t('The AI model is still initializing. Please try again.'));
+      return;
+    }
+
     // Always add user message to promptHistory immediately so it shows up right away
     const userPrompt: ConversationMessage = {
       role: 'user',
@@ -850,7 +905,7 @@ export default function AIPrompt(props: {
 
     setLoading(true);
     try {
-      const promptResponse = await aiManager.userSend(prompt);
+      const promptResponse = await aiManager!.userSend(prompt);
       if (promptResponse.error) {
         // Clear the global API error since errors are now handled at the prompt level
         setApiError(null);
@@ -878,7 +933,7 @@ export default function AIPrompt(props: {
         };
 
         // Add to history so it appears with the specific request
-        aiManager.history.push(errorPrompt);
+        aiManager!.history.push(errorPrompt);
         setAiManager(aiManager);
         updateHistory();
       }
@@ -956,9 +1011,6 @@ export default function AIPrompt(props: {
   const handleToggleAgentMode = React.useCallback(
     async (enabled: boolean) => {
       if (enabled) {
-        setAgentModeStatus('found');
-        setIsAgentMode(true);
-
         // Use MockHolmesAgent when the developer option is enabled
         const useMockAgent = pluginSettings?.devOptions?.enableMockAgent === true;
 
@@ -971,10 +1023,15 @@ export default function AIPrompt(props: {
           const cluster = getCluster();
           if (!cluster) {
             console.error('[AgentMode] No cluster available');
+            setAgentModeStatus('not-found');
+            setIsAgentMode(false);
+            setShowHolmesSetup(true);
             return;
           }
           agent = new HolmesAgent(getHolmesProxyBaseUrl(cluster, pluginSettings));
         }
+        setAgentModeStatus('found');
+        setIsAgentMode(true);
         agent.subscribe({
           onEvent: ({ event }) => {
             console.log('[AgentMode] onEvent:', event.type, event);
@@ -1195,11 +1252,11 @@ export default function AIPrompt(props: {
 
           // Subscribe to collect text AND forward intermediate events
           const sub = diagAgent.subscribe({
-            onTextMessageStartEvent: ({ event }: any) => {
+            onTextMessageStartEvent: ({ event }: { event?: HolmesTextEvent }) => {
               textMsgBuffer = '';
               textMsgId = event?.messageId || `msg-${Date.now()}`;
             },
-            onTextMessageContentEvent: ({ event }: any) => {
+            onTextMessageContentEvent: ({ event }: { event?: HolmesTextEvent }) => {
               if (event?.delta) {
                 textMsgBuffer += event.delta;
               }
@@ -1226,18 +1283,22 @@ export default function AIPrompt(props: {
               textMsgBuffer = '';
               textMsgId = '';
             },
-            onToolCallStartEvent: ({ event }: any) => {
+            onToolCallStartEvent: ({ event }: { event?: HolmesToolEvent }) => {
               onStep?.({
                 id: `diag-tool-start-${event?.toolCallId || event?.toolCallName}-${Date.now()}`,
-                content: `Calling tool: ${event?.toolCallName || 'unknown'}`,
+                content: t('Calling tool: {{toolName}}', {
+                  toolName: event?.toolCallName || t('unknown'),
+                }),
                 type: 'tool-start',
                 timestamp: Date.now(),
               });
             },
-            onToolCallEndEvent: ({ toolCallName }: any) => {
+            onToolCallEndEvent: ({ toolCallName }: { toolCallName?: string }) => {
               onStep?.({
                 id: `diag-tool-end-${toolCallName}-${Date.now()}`,
-                content: `Tool ${toolCallName || 'unknown'} completed`,
+                content: t('Tool {{toolName}} completed', {
+                  toolName: toolCallName || t('unknown'),
+                }),
                 type: 'tool-result',
                 timestamp: Date.now(),
               });
@@ -1261,8 +1322,8 @@ export default function AIPrompt(props: {
               `[ProactiveDiagnosis] runAgent completed (${uniqueId}), length=${responseText.length}`
             );
 
-            return sanitizeAgentContent(responseText) || 'No diagnosis available.';
-          } catch (err: any) {
+            return sanitizeAgentContent(responseText) || t('No diagnosis available.');
+          } catch (err: unknown) {
             console.error('[ProactiveDiagnosis] runAgent error:', err);
             throw err;
           } finally {
@@ -1309,10 +1370,12 @@ export default function AIPrompt(props: {
   // cluster before switching. When it is not, show setup guidance (Holmes is
   // cluster-scoped and must be installed in the cluster) instead of failing.
   const handleUseHolmes = React.useCallback(async () => {
+    const requestId = holmesHealthRequestGateRef.current.begin();
     // Mock agent bypasses the health check.
     if (pluginSettings?.devOptions?.enableMockAgent) {
+      setIsHolmesRetrying(false);
       setShowHolmesSetup(false);
-      handleToggleAgentMode(true);
+      await handleToggleAgentMode(true);
       return;
     }
 
@@ -1320,24 +1383,47 @@ export default function AIPrompt(props: {
     if (!cluster) {
       setAgentModeStatus('not-found');
       setShowHolmesSetup(true);
+      setIsHolmesRetrying(false);
       return;
     }
 
     setAgentModeStatus('checking');
+    setIsHolmesRetrying(true);
     try {
       const available = await checkHolmesAgentHealth(cluster, pluginSettings);
+      if (!holmesHealthRequestGateRef.current.isCurrent(requestId)) return;
       if (available) {
         setShowHolmesSetup(false);
-        handleToggleAgentMode(true);
+        await handleToggleAgentMode(true);
       } else {
         setAgentModeStatus('not-found');
         setShowHolmesSetup(true);
       }
     } catch {
+      if (!holmesHealthRequestGateRef.current.isCurrent(requestId)) return;
       setAgentModeStatus('not-found');
       setShowHolmesSetup(true);
+    } finally {
+      if (holmesHealthRequestGateRef.current.isCurrent(requestId)) setIsHolmesRetrying(false);
     }
   }, [pluginSettings, handleToggleAgentMode]);
+
+  // In-chat "agent mode" toggle. Enabling verifies Holmes is reachable first
+  // (via handleUseHolmes) so users never land in a dead agent mode; disabling
+  // returns to chat and clears any setup guidance.
+  const handleToggleAgentModeRequest = React.useCallback(
+    (enabled: boolean) => {
+      if (enabled) {
+        void handleUseHolmes();
+      } else {
+        holmesHealthRequestGateRef.current.invalidate();
+        setIsHolmesRetrying(false);
+        setShowHolmesSetup(false);
+        void handleToggleAgentMode(false);
+      }
+    },
+    [handleUseHolmes, handleToggleAgentMode]
+  );
 
   // Auto-initialize agent mode on first mount if Holmes is reachable
   // or if mock agent is enabled.
@@ -1349,21 +1435,28 @@ export default function AIPrompt(props: {
 
     // If mock agent is enabled, skip health check and go straight to agent mode
     if (pluginSettings?.devOptions?.enableMockAgent) {
-      handleToggleAgentMode(true);
+      void handleToggleAgentMode(true);
       return;
     }
 
     const cluster = getCluster();
     if (!cluster) return;
-    checkHolmesAgentHealth(cluster, pluginSettings)
+    const requestId = holmesHealthRequestGateRef.current.begin();
+    void checkHolmesAgentHealth(cluster, pluginSettings)
       .then(available => {
-        if (available) handleToggleAgentMode(true);
+        if (holmesHealthRequestGateRef.current.isCurrent(requestId) && available) {
+          void handleToggleAgentMode(true);
+        }
       })
       .catch(() => {
         /* Holmes not reachable — stay in chat mode */
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => {
+      if (holmesHealthRequestGateRef.current.isCurrent(requestId)) {
+        holmesHealthRequestGateRef.current.invalidate();
+      }
+    };
+  }, [handleToggleAgentMode, isAgentMode, pluginSettings]);
 
   // Agent mode: send a message to Holmes via the ag-ui HolmesAgent.
   // Events (text streaming, tool calls, errors) are handled by the subscriber
@@ -1371,7 +1464,15 @@ export default function AIPrompt(props: {
   const handleAgentSend = React.useCallback(
     async (prompt: string) => {
       const agent = holmesAgentRef.current;
-      if (!agent) return;
+      if (!agent) {
+        // Holmes agent isn't available (not installed / unreachable in this
+        // cluster). Surface the setup guide instead of silently dropping the
+        // prompt with no feedback.
+        setIsAgentMode(false);
+        setPromptVal(prompt);
+        setShowHolmesSetup(true);
+        return;
+      }
 
       setOpenPopup(true);
       setPromptHistory(prev => [...prev, { role: 'user', content: prompt }]);
@@ -1669,24 +1770,34 @@ export default function AIPrompt(props: {
     return promptHistory;
   }, [shouldShowGreeting, getGreetingMessage, promptHistory]);
 
+  // Holmes was requested but is not reachable — guide the user to install it in
+  // their cluster and configure the connection in Settings. Shown regardless of
+  // provider config or agent-mode state so users are never stuck in a dead
+  // agent mode.
+  if (showHolmesSetup) {
+    return (
+      <HolmesSetupGuide
+        onOpenSettings={() => {
+          history.push(getSettingsURL());
+          setOpenPopup(false);
+        }}
+        onRetry={handleUseHolmes}
+        isRetrying={isHolmesRetrying}
+        onDismiss={() => {
+          holmesHealthRequestGateRef.current.invalidate();
+          setIsHolmesRetrying(false);
+          setShowHolmesSetup(false);
+          setChatMode('chat');
+        }}
+        namespace={pluginSettings?.holmesNamespace}
+        serviceName={pluginSettings?.holmesServiceName}
+        port={pluginSettings?.holmesPort}
+      />
+    );
+  }
+
   // If no valid configuration AND NOT in agent mode, show setup message
   if (!hasValidConfig && !isAgentMode && chatMode !== 'agent') {
-    // Holmes was requested but is not reachable — guide the user to install it
-    // in their cluster and configure the connection in Settings.
-    if (showHolmesSetup) {
-      return (
-        <HolmesSetupGuide
-          onOpenSettings={() => {
-            history.push(getSettingsURL());
-            setOpenPopup(false);
-          }}
-          onRetry={handleUseHolmes}
-          namespace={pluginSettings?.holmesNamespace}
-          serviceName={pluginSettings?.holmesServiceName}
-          port={pluginSettings?.holmesPort}
-        />
-      );
-    }
     return (
       <Box
         sx={{
@@ -1727,9 +1838,7 @@ export default function AIPrompt(props: {
               handleUseHolmes();
             }}
           >
-            {agentModeStatus === 'checking'
-              ? t('Checking for Holmes…')
-              : t('Use Holmes Agent')}
+            {agentModeStatus === 'checking' ? t('Checking for Holmes…') : t('Use Holmes Agent')}
           </Button>
         </Box>
       </Box>
@@ -1869,7 +1978,7 @@ export default function AIPrompt(props: {
                 handleChangeConfig(config, model);
               }}
               onTestModeResponse={handleTestModeResponse}
-              onToggleAgentMode={handleToggleAgentMode}
+              onToggleAgentMode={handleToggleAgentModeRequest}
               onToolsChange={newEnabledTools => {
                 setEnabledTools(newEnabledTools);
                 // Recreate AI manager with new tools

@@ -29,6 +29,10 @@ export interface HolmesSetupGuideProps {
   onOpenSettings: () => void;
   /** Optional: re-checks whether Holmes has become reachable. */
   onRetry?: () => void;
+  /** Whether a retry health check is currently running. */
+  isRetrying?: boolean;
+  /** Optional: dismisses the guide (e.g. to go back to AI Chat mode). */
+  onDismiss?: () => void;
   /** Documentation URL for installing HolmesGPT. */
   docsUrl?: string;
   /** Namespace the plugin currently looks for the Holmes service in. */
@@ -52,12 +56,20 @@ export interface HolmesSetupGuideProps {
 export function HolmesSetupGuide({
   onOpenSettings,
   onRetry,
+  isRetrying = false,
+  onDismiss,
   docsUrl = DEFAULT_HOLMES_DOCS_URL,
   namespace,
   serviceName,
   port,
 }: HolmesSetupGuideProps): React.ReactElement {
   const { t } = useTranslation();
+  const headingId = React.useId();
+  const headingRef = React.useRef<HTMLHeadingElement>(null);
+
+  React.useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
 
   const hasTarget = Boolean(namespace || serviceName || port);
 
@@ -73,6 +85,9 @@ export function HolmesSetupGuide({
       }}
     >
       <Paper
+        component="section"
+        role="region"
+        aria-labelledby={headingId}
         variant="outlined"
         sx={{ p: 3, maxWidth: 560, width: '100%', textAlign: 'center' }}
       >
@@ -83,7 +98,14 @@ export function HolmesSetupGuide({
           aria-hidden="true"
           style={{ opacity: 0.8 }}
         />
-        <Typography variant="h6" component="h2" sx={{ mt: 1, mb: 1 }}>
+        <Typography
+          ref={headingRef}
+          id={headingId}
+          tabIndex={-1}
+          variant="h6"
+          component="h2"
+          sx={{ mt: 1, mb: 1 }}
+        >
           {t('Set up HolmesGPT in your cluster')}
         </Typography>
 
@@ -100,9 +122,7 @@ export function HolmesSetupGuide({
         </Typography>
 
         {hasTarget && (
-          <Box
-            sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1, mb: 2 }}
-          >
+          <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1, mb: 2 }}>
             {serviceName && (
               <Chip
                 size="small"
@@ -118,11 +138,7 @@ export function HolmesSetupGuide({
               />
             )}
             {port ? (
-              <Chip
-                size="small"
-                variant="outlined"
-                label={t('Port: {{port}}', { port })}
-              />
+              <Chip size="small" variant="outlined" label={t('Port: {{port}}', { port })} />
             ) : null}
           </Box>
         )}
@@ -150,11 +166,21 @@ export function HolmesSetupGuide({
               variant="text"
               startIcon={<Icon icon="mdi:refresh" aria-hidden="true" />}
               onClick={onRetry}
+              disabled={isRetrying}
+              aria-busy={isRetrying}
             >
-              {t('Retry')}
+              {isRetrying ? t('Retrying…') : t('Retry')}
             </Button>
           )}
         </Box>
+
+        {onDismiss && (
+          <Box sx={{ mt: 1.5 }}>
+            <Button variant="text" size="small" color="inherit" onClick={onDismiss}>
+              {t('Back to AI Chat')}
+            </Button>
+          </Box>
+        )}
       </Paper>
     </Box>
   );
