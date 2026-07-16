@@ -24,6 +24,8 @@ import {
   loadAppConfig,
   loadAppMCPSettings,
   loadConfigFile,
+  replaceFileSync,
+  saveHeadlampAIConfig,
 } from './config.js';
 
 describe('getHeadlampDataDir', () => {
@@ -62,6 +64,42 @@ describe('loadAppConfig', () => {
 
   it('returns null when the config file does not exist', () => {
     expect(loadAppConfig()).toBeNull();
+  });
+
+  it('saves config atomically with owner-only permissions', () => {
+    const config = { provider: 'openai', config: { apiKey: 'secret' } };
+    const configPath = saveHeadlampAIConfig(config);
+
+    expect(JSON.parse(fs.readFileSync(configPath, 'utf-8'))).toEqual(config);
+    if (process.platform !== 'win32') {
+      expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
+      fs.chmodSync(configPath, 0o644);
+      saveHeadlampAIConfig(config);
+      expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
+    }
+    expect(fs.readdirSync(tmpDir).filter(name => name.endsWith('.tmp'))).toEqual([]);
+  });
+
+  it('uses the rollback-safe fallback when rename-over-existing is unavailable', () => {
+    const temporaryPath = path.join(tmpDir, 'headlamp-ai.json.tmp');
+    const configPath = path.join(tmpDir, 'headlamp-ai.json');
+    const renameSync = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        const error = new Error('destination exists') as NodeJS.ErrnoException;
+        error.code = 'EPERM';
+        throw error;
+      })
+      .mockImplementation(() => {});
+    const existsSync = vi.fn((candidate: fs.PathLike) => candidate === configPath);
+    const rmSync = vi.fn();
+
+    replaceFileSync(temporaryPath, configPath, { existsSync, renameSync, rmSync });
+
+    expect(renameSync).toHaveBeenCalledTimes(3);
+    expect(renameSync.mock.calls[1][0]).toBe(configPath);
+    expect(renameSync.mock.calls[2]).toEqual([temporaryPath, configPath]);
+    expect(rmSync).toHaveBeenCalledWith(expect.stringContaining('.bak'), { force: true });
   });
 });
 

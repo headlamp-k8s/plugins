@@ -15,6 +15,8 @@
  */
 
 import type { MCPSettings } from '@headlamp-k8s/ai-common/mcp/types';
+import type { ProviderSettings } from '@headlamp-k8s/ai-common/providers/savedConfigs';
+import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -22,7 +24,7 @@ import * as path from 'path';
 /** Config shape for headlamp-ai.json. Compatible with the ai-assistant plugin. */
 export interface CLIConfig {
   provider: string;
-  config: Record<string, any>;
+  config: ProviderSettings;
   mcp?: MCPSettings;
   systemPrompt?: string;
 }
@@ -76,11 +78,66 @@ export function loadConfigFile(configPath: string): CLIConfig {
   return JSON.parse(fs.readFileSync(path.resolve(configPath), 'utf-8')) as CLIConfig;
 }
 
-/** Saves a CLIConfig to headlamp-ai.json in the Headlamp data directory. */
+/**
+ * Atomically replaces a file where supported, with a rollback-safe Windows fallback.
+ *
+ * @param temporaryPath - Fully written sibling file to install.
+ * @param destinationPath - Existing or new destination path.
+ * @param fileSystem - File operations, injectable for platform-specific tests.
+ * @returns No value after replacement succeeds.
+ */
+export function replaceFileSync(
+  temporaryPath: string,
+  destinationPath: string,
+  fileSystem: Pick<typeof fs, 'existsSync' | 'renameSync' | 'rmSync'> = fs
+): void {
+  try {
+    fileSystem.renameSync(temporaryPath, destinationPath);
+    return;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (!fileSystem.existsSync(destinationPath) || (code !== 'EEXIST' && code !== 'EPERM')) {
+      throw error;
+    }
+  }
+
+  // Windows does not consistently allow rename-over-existing. Move the old
+  // file aside, install the new one, and restore the old file if that fails.
+  const backupPath = `${destinationPath}.${process.pid}.${randomUUID()}.bak`;
+  fileSystem.renameSync(destinationPath, backupPath);
+  try {
+    fileSystem.renameSync(temporaryPath, destinationPath);
+    fileSystem.rmSync(backupPath, { force: true });
+  } catch (error) {
+    if (fileSystem.existsSync(backupPath)) fileSystem.renameSync(backupPath, destinationPath);
+    throw error;
+  }
+}
+
+/**
+ * Saves a CLIConfig to headlamp-ai.json in the Headlamp data directory.
+ *
+ * POSIX systems enforce owner-only file permissions. On Windows, Node's
+ * standard file API cannot set ACLs, so confidentiality relies on the ACL of
+ * the current user's AppData directory (or the caller-provided data directory).
+ */
 export function saveHeadlampAIConfig(config: CLIConfig): string {
-  const configPath = path.join(getHeadlampDataDir(), 'headlamp-ai.json');
-  fs.mkdirSync(getHeadlampDataDir(), { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+  const dataDirectory = getHeadlampDataDir();
+  const configPath = path.join(dataDirectory, 'headlamp-ai.json');
+  fs.mkdirSync(dataDirectory, { recursive: true, mode: 0o700 });
+  const temporaryPath = `${configPath}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(temporaryPath, JSON.stringify(config, null, 2), {
+      encoding: 'utf-8',
+      mode: 0o600,
+      flag: 'wx',
+    });
+    replaceFileSync(temporaryPath, configPath);
+    if (process.platform !== 'win32') fs.chmodSync(configPath, 0o600);
+  } catch (error) {
+    fs.rmSync(temporaryPath, { force: true });
+    throw error;
+  }
   return configPath;
 }
 
