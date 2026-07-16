@@ -120,6 +120,25 @@ namespace: default`);
     expect(out).toContain('[REDACTED]');
   });
 
+  it('redacts temporary AWS credentials and named credential fields', () => {
+    const temporaryKey = `ASIA${'A'.repeat(16)}`;
+    const input = [
+      `AWS_ACCESS_KEY_ID=${temporaryKey}`,
+      'AWS_SECRET_ACCESS_KEY=very-secret-value',
+      'AWS_SESSION_TOKEN=temporary-session-token',
+    ].join('\n');
+    const out = redactSecrets(input);
+    expect(out).not.toContain(temporaryKey);
+    expect(out).not.toContain('very-secret-value');
+    expect(out).not.toContain('temporary-session-token');
+
+    const json = redactSecrets(
+      JSON.stringify({ AWS_SECRET_ACCESS_KEY: 'json-secret', AWS_SESSION_TOKEN: 'json-token' })
+    );
+    expect(json).not.toContain('json-secret');
+    expect(json).not.toContain('json-token');
+  });
+
   it('preserves non-secret content surrounding secrets', () => {
     const input = `pod: nginx
 token: supersecret
@@ -179,5 +198,94 @@ namespace: default`;
     // "password: [REDACTED]" into "password: [REDACTED" again.
     const alreadyRedacted = 'password: [REDACTED]';
     expect(redactSecrets(alreadyRedacted)).toBe(alreadyRedacted);
+  });
+
+  it('redacts all data values of a YAML Kubernetes Secret, including non-obvious keys', () => {
+    const secret = [
+      'apiVersion: v1',
+      'kind: Secret',
+      'metadata:',
+      '  name: db',
+      'data:',
+      '  password: aHVudGVyMg==',
+      '  DATABASE_URL: cG9zdGdyZXM6Ly8=',
+      '  session: YWJjMTIz',
+      'type: Opaque',
+    ].join('\n');
+    const out = redactSecrets(secret);
+    expect(out).not.toContain('aHVudGVyMg==');
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).not.toContain('YWJjMTIz');
+    expect(out).toContain('password: [REDACTED]');
+    expect(out).toContain('DATABASE_URL: [REDACTED]');
+    expect(out).toContain('session: [REDACTED]');
+    // Non-data fields are preserved.
+    expect(out).toContain('type: Opaque');
+    expect(out).toContain('name: db');
+  });
+
+  it('redacts YAML Secret data that appears before kind and removes block scalar payloads', () => {
+    const secret = [
+      'apiVersion: v1',
+      'data:',
+      '  DATABASE_URL: |',
+      '    postgres://user:password@example.test/db',
+      '  quoted-key: c2VjcmV0',
+      'kind: Secret',
+      'metadata:',
+      '  name: db',
+    ].join('\n');
+    const out = redactSecrets(secret);
+    expect(out).not.toContain('postgres://');
+    expect(out).not.toContain('c2VjcmV0');
+    expect(out).toContain('DATABASE_URL: [REDACTED]');
+    expect(out).toContain('quoted-key: [REDACTED]');
+    expect(out).toContain('name: db');
+  });
+
+  it('redacts Kubernetes Secret JSON embedded in a fenced Markdown block', () => {
+    const input = `Result:\n\`\`\`json\n${JSON.stringify({
+      kind: 'Secret',
+      data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' },
+    })}\n\`\`\``;
+    const out = redactSecrets(input);
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).toContain('[REDACTED]');
+  });
+
+  it('redacts all data values of a JSON Kubernetes Secret and List responses', () => {
+    const secret = JSON.stringify({
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: { name: 'db' },
+      data: { password: 'aHVudGVyMg==', TOKEN_XYZ: 'c2VjcmV0' },
+      type: 'Opaque',
+    });
+    const out = redactSecrets(secret);
+    expect(out).not.toContain('aHVudGVyMg==');
+    expect(out).not.toContain('c2VjcmV0');
+    expect(out).toContain('[REDACTED]');
+    expect(out).toContain('"name": "db"');
+
+    const list = JSON.stringify({
+      kind: 'List',
+      items: [{ kind: 'Secret', data: { a: 'YWJj' } }],
+    });
+    expect(redactSecrets(list)).not.toContain('YWJj');
+  });
+
+  it('does not over-redact ConfigMap data', () => {
+    const cm = ['kind: ConfigMap', 'data:', '  app.conf: hello-world'].join('\n');
+    expect(redactSecrets(cm)).toContain('app.conf: hello-world');
+  });
+
+  it('redacts high-confidence provider token formats', () => {
+    expect(redactSecrets('ghp_0123456789abcdefghijABCDEFGHIJ0123')).not.toContain('ghp_0123');
+    expect(redactSecrets(`key AIza${'a'.repeat(35)} end`)).not.toContain('AIza');
+    expect(redactSecrets('token xoxb-123456789012-abcdefABCDEF end')).not.toContain('xoxb-');
+    expect(redactSecrets('OPENAI=sk-proj-abcdefghijklmnopqrstuvwxyz01')).not.toContain('sk-proj-');
+    expect(
+      redactSecrets('DefaultEndpointsProtocol=https;AccountKey=abc123DEF456==;Rest=1')
+    ).toContain('AccountKey=[REDACTED]');
   });
 });

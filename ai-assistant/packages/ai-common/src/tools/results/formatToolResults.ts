@@ -3,6 +3,8 @@
  * suitable for display or as LLM context.
  */
 
+import { redactSecrets, redactSecretsInValue } from '../../security/redactSecrets';
+
 export interface ToolResult {
   /** Truthy when the tool failed. */
   error?: boolean | string;
@@ -39,13 +41,23 @@ export function aggregateToolResults(results: Record<string, ToolResult>): strin
       aggregation += `**Error**: ${result.message}\n\n`;
     } else if (result.success) {
       aggregation += '**Status**: Successfully executed\n';
-      aggregation += `**Data**:\n\`\`\`json\n${JSON.stringify(result.data, null, 2)}\n\`\`\`\n\n`;
+      aggregation += `**Data**:\n\`\`\`json\n${JSON.stringify(
+        redactSecretsInValue(result.data),
+        null,
+        2
+      )}\n\`\`\`\n\n`;
     } else {
-      aggregation += `**Result**:\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\`\n\n`;
+      aggregation += `**Result**:\n\`\`\`json\n${JSON.stringify(
+        redactSecretsInValue(result),
+        null,
+        2
+      )}\n\`\`\`\n\n`;
     }
   }
 
-  return aggregation;
+  // Redact secret material (e.g. Kubernetes Secret values) before this text is
+  // shown in the UI or sent to the LLM provider.
+  return redactSecrets(aggregation);
 }
 
 /**
@@ -74,18 +86,19 @@ export function formatToolResultsForLLM(results: Record<string, ToolResult>): st
       if (result.data !== undefined) {
         formatted += '**Data**:\n';
         formatted += '```json\n';
-        formatted += JSON.stringify(result.data, null, 2);
+        formatted += JSON.stringify(redactSecretsInValue(result.data), null, 2);
         formatted += '\n```\n\n';
       } else if (result.content !== undefined) {
         formatted += `**Data**:\n${result.content}\n\n`;
       } else {
         formatted += '**Result**:\n';
         formatted += '```json\n';
-        formatted += JSON.stringify(result, null, 2);
+        formatted += JSON.stringify(redactSecretsInValue(result), null, 2);
         formatted += '\n```\n\n';
       }
     }
   }
 
-  return formatted;
+  // Redact secret material before this text is sent to the LLM provider.
+  return redactSecrets(formatted);
 }

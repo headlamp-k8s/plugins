@@ -34,6 +34,17 @@ describe('aggregateToolResults', () => {
     const out = aggregateToolResults({});
     expect(out).toContain('## Tool Execution Results');
   });
+
+  it('redacts structured Kubernetes Secret data before Markdown serialization', () => {
+    const out = aggregateToolResults({
+      kubernetes: {
+        success: true,
+        data: { kind: 'Secret', data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' } },
+      },
+    });
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).toContain('[REDACTED]');
+  });
 });
 
 describe('formatToolResultsForLLM', () => {
@@ -92,5 +103,18 @@ describe('formatToolResultsForLLM', () => {
   it('includes the header even for an empty map', () => {
     const out = formatToolResultsForLLM({});
     expect(out).toContain('## Tool Execution Results');
+  });
+
+  it('redacts Secret data nested in structured LLM results', () => {
+    const out = formatToolResultsForLLM({
+      kubernetes: {
+        data: {
+          kind: 'List',
+          items: [{ kind: 'Secret', stringData: { password: 'hunter2' } }],
+        },
+      },
+    });
+    expect(out).not.toContain('hunter2');
+    expect(out).toContain('[REDACTED]');
   });
 });

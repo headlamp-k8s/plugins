@@ -54,3 +54,36 @@ export function getAllAvailableTools(): ToolInfo[] {
 export function isBuiltInTool(toolName: string): boolean {
   return AVAILABLE_TOOLS.some(tool => tool.id === toolName);
 }
+
+/**
+ * Determines whether a built-in tool call touches sensitive resources and must
+ * not be silently auto-approved.
+ *
+ * Built-in tool calls are normally auto-approved for a smooth read experience,
+ * but access to Kubernetes `Secret` objects can expose credential material to
+ * the model provider, so those calls are routed through the human approval gate
+ * as defense-in-depth (secret values are also redacted before reaching the LLM).
+ *
+ * @param toolName - Tool identifier being invoked.
+ * @param args - Arguments the model supplied for the call.
+ * @returns Whether the call should require explicit approval.
+ */
+export function isSensitiveBuiltInToolCall(toolName: string, args: unknown): boolean {
+  if (toolName !== 'kubernetes_api_request') {
+    return false;
+  }
+  const url = (args as { url?: unknown } | null | undefined)?.url;
+  if (typeof url !== 'string') {
+    return false;
+  }
+  try {
+    const parsed = new URL(url, 'https://kubernetes.invalid');
+    const segments = parsed.pathname
+      .split('/')
+      .filter(Boolean)
+      .map(segment => decodeURIComponent(segment).toLowerCase());
+    return segments.includes('secrets');
+  } catch {
+    return true;
+  }
+}

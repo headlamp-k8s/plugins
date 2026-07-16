@@ -43,6 +43,7 @@ import {
 } from '../prompts/langchain/errorPrompts';
 import { canUseDirectToolCalling, createChatModel } from '../providers/createChatModel';
 import { ProviderSettings } from '../providers/savedConfigs';
+import { redactSecrets } from '../security/redactSecrets';
 import { DEFAULT_SKILLS_CONFIG, SkillsConfig } from '../skills/config';
 import { SkillManager } from '../skills/SkillManager';
 import {
@@ -62,7 +63,7 @@ import {
   shouldProcessToolFollowUp,
 } from '../tools/calls/processToolCalls';
 import { getToolDescription } from '../tools/catalog/getToolDescription';
-import { isBuiltInTool } from '../tools/catalog/toolDefinitions';
+import { isBuiltInTool, isSensitiveBuiltInToolCall } from '../tools/catalog/toolDefinitions';
 import type { KubernetesToolContext } from '../tools/kubernetes/context';
 import { containsKubectlSuggestion } from '../tools/kubernetes/detectCliSuggestion';
 import { LangChainToolManager } from '../tools/langchain/LangChainToolManager';
@@ -1223,20 +1224,29 @@ export default class LangChainAssistantSession extends AssistantSession {
       const builtInToolsForApproval = toolsForApproval.filter(tool => isBuiltInTool(tool.name));
       const mcpToolsForApproval = toolsForApproval.filter(tool => !isBuiltInTool(tool.name));
 
-      // Auto-approve all built-in tools (no user interaction needed)
-      approvedToolIds.push(...builtInToolsForApproval.map(tool => tool.id));
+      // Auto-approve built-in tools for a smooth read experience, EXCEPT calls
+      // that touch sensitive resources (e.g. Secrets), which are routed through
+      // the approval gate as defense-in-depth.
+      const autoApprovedBuiltIns = builtInToolsForApproval.filter(
+        tool => !isSensitiveBuiltInToolCall(tool.name, tool.arguments)
+      );
+      const sensitiveBuiltIns = builtInToolsForApproval.filter(tool =>
+        isSensitiveBuiltInToolCall(tool.name, tool.arguments)
+      );
+      approvedToolIds.push(...autoApprovedBuiltIns.map(tool => tool.id));
 
-      // Only request approval for MCP tools
-      if (mcpToolsForApproval.length > 0) {
+      // Request approval for MCP tools and sensitive built-in tools.
+      const toolsNeedingApproval = [...mcpToolsForApproval, ...sensitiveBuiltIns];
+      if (toolsNeedingApproval.length > 0) {
         try {
           const approvedMCPToolIds = await inlineToolApprovalManager.requestApproval(
-            mcpToolsForApproval,
+            toolsNeedingApproval,
             this
           );
           approvedToolIds.push(...approvedMCPToolIds);
         } catch (approvalError) {
-          // If user denied MCP tools but built-in tools were approved, continue with built-in only
-          if (builtInToolsForApproval.length === 0) {
+          // If user denied the tools and nothing was auto-approved, stop here.
+          if (autoApprovedBuiltIns.length === 0) {
             const denialPrompt: ConversationMessage = {
               role: 'assistant',
               content:
@@ -1412,10 +1422,11 @@ Please analyze this data and provide a specific, detailed response that directly
             // Extract the meaningful content from a ToolResponse object rather than
             // serialising internal fields (shouldAddToHistory, shouldProcessFollowUp…)
             // that users should never see.
-            const display =
+            const display = redactSecrets(
               result && typeof result === 'object' && typeof result.content === 'string'
                 ? result.content
-                : JSON.stringify(result, null, 2);
+                : JSON.stringify(result, null, 2)
+            );
             return `**${name}**: ${display}`;
           })
           .join('\n\n')}`,
@@ -1553,14 +1564,21 @@ Please analyze this data and provide a specific, detailed response that directly
 
       const approvedToolIds: string[] = [];
 
-      // Auto-approve all built-in tools (no user interaction needed)
-      const builtInToolIds = builtInTools.map(tool => tool.id);
-      approvedToolIds.push(...builtInToolIds);
+      // Auto-approve built-in tools, except sensitive ones (e.g. Secret access),
+      // which are routed through the approval gate as defense-in-depth.
+      const autoApprovedBuiltIns = builtInTools.filter(
+        tool => !isSensitiveBuiltInToolCall(tool.name, tool.arguments)
+      );
+      const sensitiveBuiltIns = builtInTools.filter(tool =>
+        isSensitiveBuiltInToolCall(tool.name, tool.arguments)
+      );
+      approvedToolIds.push(...autoApprovedBuiltIns.map(tool => tool.id));
 
-      // Only request approval for MCP tools
-      if (mcpTools.length > 0) {
+      // Request approval for MCP tools and sensitive built-in tools.
+      const toolsNeedingApproval = [...mcpTools, ...sensitiveBuiltIns];
+      if (toolsNeedingApproval.length > 0) {
         const approvedMCPToolIds = await inlineToolApprovalManager.requestApproval(
-          mcpTools,
+          toolsNeedingApproval,
           this // Pass the AI manager instance
         );
         approvedToolIds.push(...approvedMCPToolIds);
@@ -1701,12 +1719,23 @@ Please analyze this data and provide a specific, detailed response that directly
 
       const approvedToolIds: string[] = [];
 
-      // Auto-approve built-in tools
-      approvedToolIds.push(...builtInTools.map(tool => tool.id));
+      // Auto-approve built-in tools, except sensitive ones (e.g. Secret access),
+      // which are routed through the approval gate as defense-in-depth.
+      const autoApprovedBuiltIns = builtInTools.filter(
+        tool => !isSensitiveBuiltInToolCall(tool.name, tool.arguments)
+      );
+      const sensitiveBuiltIns = builtInTools.filter(tool =>
+        isSensitiveBuiltInToolCall(tool.name, tool.arguments)
+      );
+      approvedToolIds.push(...autoApprovedBuiltIns.map(tool => tool.id));
 
-      // Request approval for MCP tools
-      if (mcpTools.length > 0) {
-        const approvedMCPToolIds = await inlineToolApprovalManager.requestApproval(mcpTools, this);
+      // Request approval for MCP tools and sensitive built-in tools.
+      const toolsNeedingApproval = [...mcpTools, ...sensitiveBuiltIns];
+      if (toolsNeedingApproval.length > 0) {
+        const approvedMCPToolIds = await inlineToolApprovalManager.requestApproval(
+          toolsNeedingApproval,
+          this
+        );
         approvedToolIds.push(...approvedMCPToolIds);
       }
 
@@ -1813,7 +1842,7 @@ Please analyze this data and provide a specific, detailed response that directly
         if (toolResponse.shouldAddToHistory) {
           this.history.push({
             role: 'tool',
-            content: toolResponse.content,
+            content: redactSecrets(toolResponse.content),
             toolCallId: toolCall.id,
             name: toolCall.function.name,
           });
@@ -1857,7 +1886,7 @@ Please analyze this data and provide a specific, detailed response that directly
         // Always add error responses to maintain alignment
         this.history.push({
           role: 'tool',
-          content: buildToolExecutionErrorJson(toolName, errorMessage, args),
+          content: redactSecrets(buildToolExecutionErrorJson(toolName, errorMessage, args)),
           toolCallId: toolCall.id,
           name: toolCall.function.name,
         });
