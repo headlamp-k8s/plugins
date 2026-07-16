@@ -10,6 +10,7 @@
     "./components/assistant/AIChatContent": "./src/components/assistant/AIChatContent/AIChatContent.tsx",
     "./components/assistant/AIAssistantHeader": "./src/components/assistant/AIAssistantHeader/AIAssistantHeader.tsx",
     "./components/assistant/AllInputSection": "./src/components/assistant/AllInputSection/AllInputSection.tsx",
+    "./components/assistant/HolmesSetupGuide": "./src/components/assistant/HolmesSetupGuide/HolmesSetupGuide.tsx",
     "./components/assistant/ProactiveDiagnosisSection": "./src/components/assistant/ProactiveDiagnosisSection/ProactiveDiagnosisSection.tsx",
     "./components/assistant/PromptSuggestions": "./src/components/assistant/PromptSuggestions/PromptSuggestions.tsx",
     "./components/assistant/TestModeInput": "./src/components/assistant/TestModeInput/TestModeInput.tsx",

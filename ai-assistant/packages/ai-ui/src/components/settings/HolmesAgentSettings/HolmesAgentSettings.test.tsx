@@ -103,19 +103,31 @@ it('reports trimmed namespace and service changes with configured fallbacks', ()
   expect(onConfigChange).toHaveBeenNthCalledWith(2, { holmesServiceName: 'holmes-proxy' });
 });
 
-it.each([
-  ['8082', 8082],
-  ['', 8081],
-  ['1.5', 8081],
-  ['0', 8081],
-  ['65536', 8081],
-] as const)('normalizes port input %s', (value, expected) => {
+it('persists a valid port on blur', () => {
   const onConfigChange = vi.fn();
   render(<HolmesAgentSettings {...customHolmesDefaultsArgs} onConfigChange={onConfigChange} />);
+  const port = screen.getByRole('spinbutton', { name: 'Port' });
 
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'Port' }), {
-    target: { value },
-  });
-
-  expect(onConfigChange).toHaveBeenCalledWith({ holmesPort: expected });
+  fireEvent.change(port, { target: { value: '8082' } });
+  expect(onConfigChange).not.toHaveBeenCalled();
+  fireEvent.blur(port);
+  expect(onConfigChange).toHaveBeenCalledWith({ holmesPort: 8082 });
 });
+
+it.each(['', '1.5', '0', '65536'] as const)(
+  'shows an accessible error for invalid port input %s and restores the default on blur',
+  value => {
+    const onConfigChange = vi.fn();
+    render(<HolmesAgentSettings {...customHolmesDefaultsArgs} onConfigChange={onConfigChange} />);
+    const port = screen.getByRole('spinbutton', { name: 'Port' });
+
+    fireEvent.change(port, { target: { value } });
+    expect(port.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Enter a whole-number port between 1 and 65535.')).toBeTruthy();
+    expect(onConfigChange).not.toHaveBeenCalled();
+
+    fireEvent.blur(port);
+    expect(onConfigChange).toHaveBeenCalledWith({ holmesPort: 8081 });
+    expectInputValue('spinbutton', 'Port', '8081');
+  }
+);

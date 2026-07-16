@@ -1,6 +1,7 @@
-import { Box, TextField, Typography } from '@mui/material';
+import { Box, Link, TextField, Typography } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_HOLMES_DOCS_URL } from '../../assistant/HolmesSetupGuide/HolmesSetupGuide';
 import { DefaultSectionWrapper } from '../../defaults/DefaultSlots/DefaultSlots';
 
 /** Default Holmes service namespace. */
@@ -101,6 +102,14 @@ export function HolmesAgentSettings({
   );
   const normalizedDefaultPort = normalizePortSetting(undefined, defaultPort);
   const holmesPort = normalizePortSetting(configRecord.holmesPort, normalizedDefaultPort);
+  const [portDraft, setPortDraft] = React.useState(String(holmesPort));
+  React.useEffect(() => setPortDraft(String(holmesPort)), [holmesPort]);
+  const parsedPort = Number(portDraft);
+  const portIsValid =
+    portDraft.trim() !== '' &&
+    Number.isInteger(parsedPort) &&
+    parsedPort >= 1 &&
+    parsedPort <= 65535;
 
   /** Updates the Holmes namespace. @param event - Namespace input event. @returns No value. */
   const handleNamespaceChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
@@ -116,27 +125,29 @@ export function HolmesAgentSettings({
     });
   };
 
-  /** Updates the Holmes service port. @param event - Port input event. @returns No value. */
+  /** Updates the editable Holmes service-port draft. @param event - Port input event. @returns No value. */
   const handlePortChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    const value = event.target.value.trim();
+    setPortDraft(event.target.value);
+  };
 
-    if (value === '') {
-      onConfigChange({ holmesPort: normalizedDefaultPort });
-      return;
-    }
-
-    const n = Number(value);
-    onConfigChange({
-      holmesPort: Number.isInteger(n) && n >= 1 && n <= 65535 ? n : normalizedDefaultPort,
-    });
+  /** Persists a valid Holmes service port or the configured default. @returns No value. */
+  const handlePortBlur = (): void => {
+    const committedPort = portIsValid ? parsedPort : normalizedDefaultPort;
+    setPortDraft(String(committedPort));
+    onConfigChange({ holmesPort: committedPort });
   };
 
   return (
     <SectionWrapper title={t('Holmes Agent')}>
-      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
         {t(
-          'Configure how the plugin reaches the HolmesGPT service through the Kubernetes API service proxy.'
+          'HolmesGPT is cluster-scoped: it must be installed and running inside your Kubernetes cluster. The plugin reaches the HolmesGPT service through the Kubernetes API service proxy.'
         )}
+      </Typography>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+        <Link href={DEFAULT_HOLMES_DOCS_URL} target="_blank" rel="noopener noreferrer">
+          {t('Learn how to install HolmesGPT in your cluster →')}
+        </Link>
       </Typography>
 
       <Box display="flex" flexDirection="column" gap={2} sx={{ ml: 1, maxWidth: 480 }}>
@@ -163,9 +174,15 @@ export function HolmesAgentSettings({
         <TextField
           label={t('Port')}
           type="number"
-          value={holmesPort}
-          helperText={t('Service port (default: {{port}})', { port: normalizedDefaultPort })}
+          value={portDraft}
+          error={!portIsValid}
+          helperText={
+            portIsValid
+              ? t('Service port (default: {{port}})', { port: normalizedDefaultPort })
+              : t('Enter a whole-number port between 1 and 65535.')
+          }
           onChange={handlePortChange}
+          onBlur={handlePortBlur}
           size="small"
           inputProps={{ min: 1, max: 65535 }}
         />

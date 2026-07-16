@@ -31,6 +31,7 @@ import { createMockApprovalManager } from '@headlamp-k8s/ai-common/tools/approva
 import { createMockKubernetesToolManager } from '@headlamp-k8s/ai-common/tools/testing/MockToolManager';
 import AIAssistantHeader from '@headlamp-k8s/ai-ui/components/assistant/AIAssistantHeader';
 import type { ChatMode } from '@headlamp-k8s/ai-ui/components/assistant/AllInputSection';
+import HolmesSetupGuide from '@headlamp-k8s/ai-ui/components/assistant/HolmesSetupGuide';
 import { PromptSuggestions } from '@headlamp-k8s/ai-ui/components/assistant/PromptSuggestions';
 import ApiConfirmationDialog from '@headlamp-k8s/ai-ui/components/common/ApiConfirmationDialog';
 import {
@@ -295,6 +296,10 @@ export default function AIPrompt(props: {
     'idle' | 'checking' | 'found' | 'not-found'
   >('idle');
   const holmesAgentRef = React.useRef<HolmesAgent | MockHolmesAgent | null>(null);
+
+  // When the user opts into Holmes but it is not reachable, show setup guidance
+  // instead of silently failing.
+  const [showHolmesSetup, setShowHolmesSetup] = React.useState(false);
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -1300,6 +1305,40 @@ export default function AIPrompt(props: {
     [pluginSettings, t]
   );
 
+  // Explicit "Use Holmes Agent" action: verify Holmes is reachable in the
+  // cluster before switching. When it is not, show setup guidance (Holmes is
+  // cluster-scoped and must be installed in the cluster) instead of failing.
+  const handleUseHolmes = React.useCallback(async () => {
+    // Mock agent bypasses the health check.
+    if (pluginSettings?.devOptions?.enableMockAgent) {
+      setShowHolmesSetup(false);
+      handleToggleAgentMode(true);
+      return;
+    }
+
+    const cluster = getCluster();
+    if (!cluster) {
+      setAgentModeStatus('not-found');
+      setShowHolmesSetup(true);
+      return;
+    }
+
+    setAgentModeStatus('checking');
+    try {
+      const available = await checkHolmesAgentHealth(cluster, pluginSettings);
+      if (available) {
+        setShowHolmesSetup(false);
+        handleToggleAgentMode(true);
+      } else {
+        setAgentModeStatus('not-found');
+        setShowHolmesSetup(true);
+      }
+    } catch {
+      setAgentModeStatus('not-found');
+      setShowHolmesSetup(true);
+    }
+  }, [pluginSettings, handleToggleAgentMode]);
+
   // Auto-initialize agent mode on first mount if Holmes is reachable
   // or if mock agent is enabled.
   // Holmes takes priority over chat mode: if Holmes is available, always
@@ -1632,6 +1671,22 @@ export default function AIPrompt(props: {
 
   // If no valid configuration AND NOT in agent mode, show setup message
   if (!hasValidConfig && !isAgentMode && chatMode !== 'agent') {
+    // Holmes was requested but is not reachable — guide the user to install it
+    // in their cluster and configure the connection in Settings.
+    if (showHolmesSetup) {
+      return (
+        <HolmesSetupGuide
+          onOpenSettings={() => {
+            history.push(getSettingsURL());
+            setOpenPopup(false);
+          }}
+          onRetry={handleUseHolmes}
+          namespace={pluginSettings?.holmesNamespace}
+          serviceName={pluginSettings?.holmesServiceName}
+          port={pluginSettings?.holmesPort}
+        />
+      );
+    }
     return (
       <Box
         sx={{
@@ -1667,11 +1722,14 @@ export default function AIPrompt(props: {
           <Button
             variant="outlined"
             startIcon={<Icon icon="mdi:robot" />}
+            disabled={agentModeStatus === 'checking'}
             onClick={() => {
-              handleToggleAgentMode(true);
+              handleUseHolmes();
             }}
           >
-            {t('Use Holmes Agent')}
+            {agentModeStatus === 'checking'
+              ? t('Checking for Holmes…')
+              : t('Use Holmes Agent')}
           </Button>
         </Box>
       </Box>
