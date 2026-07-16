@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: kwok-worker
+  annotations:
+    kwok.x-k8s.io/node: fake
+  labels:
+    kubernetes.io/arch: amd64
+    kubernetes.io/hostname: kwok-worker
+    kubernetes.io/os: linux
+    node-role.kubernetes.io/worker: ''
+status:
+  allocatable:
+    cpu: '32'
+    memory: 128Gi
+    pods: '110'
+  capacity:
+    cpu: '32'
+    memory: 128Gi
+    pods: '110'
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: headlamp-e2e
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: default
+  namespace: demo
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp
+  namespace: headlamp-e2e
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-e2e-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: headlamp
+    namespace: headlamp-e2e
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: kwok-worker
+      containers:
+        - name: web
+          image: nginx:1.29
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: checkout-crashloop
+  namespace: demo
+  labels:
+    app: checkout
+status:
+  phase: Running
+spec:
+  nodeName: kwok-worker
+  containers:
+    - name: checkout
+      image: example.invalid/checkout:broken
+---
+apiVersion: v1
+kind: Event
+metadata:
+  name: checkout-crashloop-backoff
+  namespace: demo
+type: Warning
+reason: BackOff
+message: Back-off restarting failed container checkout
+involvedObject:
+  apiVersion: v1
+  kind: Pod
+  name: checkout-crashloop
+  namespace: demo
+source:
+  component: kubelet
+  host: kwok-worker
+firstTimestamp: '2026-07-15T08:00:00Z'
+lastTimestamp: '2026-07-15T08:05:00Z'
+count: 4

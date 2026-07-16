@@ -11,10 +11,12 @@
     "lint-fix": "headlamp-plugin lint --fix",
     "package": "headlamp-plugin package",
     "tsc": "headlamp-plugin tsc",
-    "check": "npm run format -- --check && npm run lint && npm run tsc && npx vitest run --config node_modules/@kinvolk/headlamp-plugin/config/vite.config.mjs --exclude \"**/packages/**\" --exclude \"**/node_modules/**\" && npm --prefix packages/ai-common run check --if-present",
+    "check": "npm run format -- --check && npm run lint && npm run tsc && npm run test && npm --prefix packages/ai-common run check --if-present",
+    "e2e": "node e2e/run-ai-assistant-e2e.ts",
+    "e2e:playwright": "playwright test --config e2e/playwright.config.ts",
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
-    "test": "headlamp-plugin test",
+    "test": "vitest run --config node_modules/@kinvolk/headlamp-plugin/config/vite.config.mjs --exclude \"**/packages/**\" --exclude \"**/node_modules/**\" --exclude \"e2e/**\"",
     "i18n": "headlamp-plugin i18n"
   },
   "keywords": [
@@ -35,6 +37,7 @@
   },
   "devDependencies": {
     "@kinvolk/headlamp-plugin": "^0.14.0",
+    "@playwright/test": "1.61.1",
     "tsx": "^4.22.4"
   },
   "dependencies": {
