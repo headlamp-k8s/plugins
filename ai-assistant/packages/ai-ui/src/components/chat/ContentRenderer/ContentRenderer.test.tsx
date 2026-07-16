@@ -272,3 +272,18 @@ it('honors a custom link slot and memoizes unchanged content', () => {
   );
   expect(screen.getByRole('link', { name: 'Docs' }).hasAttribute('data-other')).toBe(true);
 });
+
+it('escapes raw HTML in markdown instead of executing it (XSS regression)', () => {
+  const { container } = render(
+    <main>
+      <ContentRenderer content={'<img src=x onerror="alert(1)"> <script>alert(2)</script> hello'} />
+    </main>
+  );
+  // Raw HTML must not be materialized into live DOM nodes.
+  expect(container.querySelector('img')).toBeNull();
+  expect(container.querySelector('script')).toBeNull();
+  // The dangerous markup should survive as inert, escaped text instead.
+  expect(container.textContent).toContain('onerror');
+  expect(container.textContent).toContain('alert(2)');
+  expect(screen.getByText(/hello/)).toBeTruthy();
+});

@@ -588,6 +588,14 @@ export default function ProactiveDiagnosisSection({
   }
 
   const completedCount = diagnoses.filter(d => !d.loading && !d.pending).length;
+  const latestDiagnosis = diagnoses.find(d => d.loading) ?? diagnoses[diagnoses.length - 1];
+  const announcement = latestDiagnosis
+    ? t('Diagnosis for {{kind}} {{name}}: {{status}}', {
+        kind: latestDiagnosis.event.objectKind,
+        name: latestDiagnosis.event.objectName,
+        status: t(getStatusLabel(latestDiagnosis)),
+      })
+    : t('Proactive diagnosis is running');
 
   return (
     <Box component="section" aria-labelledby={headingId} sx={{ mb: 2 }}>
@@ -635,87 +643,104 @@ export default function ProactiveDiagnosisSection({
         />
       </Box>
 
-      {/* Task list — one row per event with status icon */}
-      {diagnoses.map(d => (
-        <div
-          key={d.eventUid}
-          ref={el => {
-            itemRefs.current[d.eventUid] = el;
-          }}
-        >
-          {/* Status row */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              px: 1,
-              py: 0.5,
-              borderRadius: 1,
-              bgcolor: d.loading ? 'action.hover' : 'transparent',
-              transition: 'background-color 0.2s ease',
-              ...(scrollToEventUid === d.eventUid && {
-                borderLeft: '3px solid',
-                borderColor: 'primary.main',
-              }),
+      <Box
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        sx={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          clip: 'rect(0 0 0 0)',
+        }}
+      >
+        {announcement}
+      </Box>
+
+      {/* Task list — one interactive row per event with status icon. */}
+      <Box>
+        {diagnoses.map(d => (
+          <div
+            key={d.eventUid}
+            ref={el => {
+              itemRefs.current[d.eventUid] = el;
             }}
           >
-            <Typography aria-hidden="true" variant="body2" sx={{ flexShrink: 0, lineHeight: 1 }}>
-              {getStatusIcon(d)}
-            </Typography>
-            <Icon
-              icon={d.event.type === 'Error' ? 'mdi:alert-circle' : 'mdi:alert'}
-              color={
-                d.event.type === 'Error' ? theme.palette.error.main : theme.palette.warning.main
-              }
-              width={16}
-              style={{ flexShrink: 0 }}
-              aria-hidden="true"
-            />
-            <Typography
-              variant="body2"
+            {/* Status row */}
+            <Box
               sx={{
-                flex: 1,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontWeight: d.loading ? 600 : 400,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                bgcolor: d.loading ? 'action.hover' : 'transparent',
+                transition: 'background-color 0.2s ease',
+                ...(scrollToEventUid === d.eventUid && {
+                  borderLeft: '3px solid',
+                  borderColor: 'primary.main',
+                }),
               }}
             >
-              {d.event.objectKind}/{d.event.objectName}
-              {d.event.objectNamespace ? ` (${d.event.objectNamespace})` : ''}
-            </Typography>
-            <Chip
-              label={d.event.reason}
-              size="small"
-              color={d.event.type === 'Error' ? 'error' : 'warning'}
-              sx={{ fontSize: '0.6rem', height: 18, flexShrink: 0 }}
-            />
-            <Typography
-              variant="caption"
-              sx={{ color: 'text.secondary', flexShrink: 0, minWidth: 70, textAlign: 'right' }}
-            >
-              {t(getStatusLabel(d))}
-            </Typography>
-          </Box>
-
-          {/* Thinking block — only for the currently-processing event */}
-          {d.loading && (
-            <Box sx={{ ml: 3 }}>
-              <DiagnosisThinkingBlock event={d.event} steps={d.thinkingSteps || []} isActive />
+              <Typography aria-hidden="true" variant="body2" sx={{ flexShrink: 0, lineHeight: 1 }}>
+                {getStatusIcon(d)}
+              </Typography>
+              <Icon
+                icon={d.event.type === 'Error' ? 'mdi:alert-circle' : 'mdi:alert'}
+                color={
+                  d.event.type === 'Error' ? theme.palette.error.main : theme.palette.warning.main
+                }
+                width={16}
+                style={{ flexShrink: 0 }}
+                aria-hidden="true"
+              />
+              <Typography
+                variant="body2"
+                sx={{
+                  flex: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontWeight: d.loading ? 600 : 400,
+                }}
+              >
+                {d.event.objectKind}/{d.event.objectName}
+                {d.event.objectNamespace ? ` (${d.event.objectNamespace})` : ''}
+              </Typography>
+              <Chip
+                label={d.event.reason}
+                size="small"
+                color={d.event.type === 'Error' ? 'error' : 'warning'}
+                sx={{ fontSize: '0.6rem', height: 18, flexShrink: 0 }}
+              />
+              <Typography
+                variant="caption"
+                sx={{ color: 'text.secondary', flexShrink: 0, minWidth: 70, textAlign: 'right' }}
+              >
+                {t(getStatusLabel(d))}
+              </Typography>
             </Box>
-          )}
 
-          {/* Result block — for completed / errored events */}
-          {!d.loading && !d.pending && (d.diagnosis || d.error) && (
-            <DiagnosisResultBlock
-              diagnosis={d}
-              onYamlAction={onYamlAction}
-              ContentRendererSlot={ContentRendererSlot}
-            />
-          )}
-        </div>
-      ))}
+            {/* Thinking block — only for the currently-processing event */}
+            {d.loading && (
+              <Box sx={{ ml: 3 }}>
+                <DiagnosisThinkingBlock event={d.event} steps={d.thinkingSteps || []} isActive />
+              </Box>
+            )}
+
+            {/* Result block — for completed / errored events */}
+            {!d.loading && !d.pending && (d.diagnosis || d.error) && (
+              <DiagnosisResultBlock
+                diagnosis={d}
+                onYamlAction={onYamlAction}
+                ContentRendererSlot={ContentRendererSlot}
+              />
+            )}
+          </div>
+        ))}
+      </Box>
 
       {/* Separator between proactive diagnoses and regular chat */}
       {diagnoses.length > 0 && (

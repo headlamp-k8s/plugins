@@ -58,7 +58,30 @@ it('renders a labeled running section, progress, pending rows, and passes axe', 
   expect(screen.getByText('Diagnosing…')).toBeTruthy();
   expect(screen.getByText('Queued')).toBeTruthy();
   expect(screen.getByText('0/2 events')).toBeTruthy();
+  expect(screen.getByRole('status').textContent).toBe(
+    'Diagnosis for Pod nginx-7b6c9f5d4d-rx2jm: Diagnosing…'
+  );
   await expect(runAxe()).resolves.toEqual([]);
+});
+
+it('announces concise diagnosis status changes without wrapping interactive rows', () => {
+  const { rerender } = render(
+    <ProactiveDiagnosisSection
+      {...baseDiagnosisArgs}
+      diagnoses={[createDiagnosis({ loading: true })]}
+      isCycleRunning
+    />
+  );
+  expect(screen.getByRole('status').textContent).toContain('Diagnosing…');
+
+  rerender(
+    <ProactiveDiagnosisSection
+      {...baseDiagnosisArgs}
+      diagnoses={[createDiagnosis({ loading: false, diagnosis: 'Resolved' })]}
+    />
+  );
+  expect(screen.getByRole('status').textContent).toContain('Completed');
+  expect(screen.getByRole('status').querySelector('button')).toBeNull();
 });
 
 it('expands active thinking, labels progress, and renders all step types', () => {
