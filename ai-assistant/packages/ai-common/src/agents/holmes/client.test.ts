@@ -16,7 +16,10 @@ import {
 /** Private HolmesAgent state exercised by delegation and reset tests. */
 interface HolmesAgentTestHarness {
   agent: HttpAgent;
-  subscriberList: AgentSubscriber[];
+  subscriberList: Array<{
+    subscriber: AgentSubscriber;
+    unsubscribe: () => void;
+  }>;
   toolArgsBuffers: Map<string, string>;
   toolNames: Map<string, string>;
 }
@@ -105,6 +108,29 @@ describe('holmesClient', () => {
       expect(result).toBe(true);
     });
 
+    it('returns false on 404 when the Service does not exist (Holmes not installed)', async () => {
+      const mockRequest: ClusterRequestFn = vi.fn().mockRejectedValue({
+        status: 404,
+        message: 'services "holmesgpt-holmes" not found',
+      });
+      const result = await checkHolmesAgentHealth(mockRequest, 'test-cluster');
+      expect(result).toBe(false);
+    });
+
+    it('returns false on 404 with a Kubernetes Status not-found body', async () => {
+      const mockRequest: ClusterRequestFn = vi.fn().mockRejectedValue({
+        status: 404,
+        message: JSON.stringify({
+          kind: 'Status',
+          reason: 'NotFound',
+          details: { name: 'holmesgpt-holmes', kind: 'services' },
+          code: 404,
+        }),
+      });
+      const result = await checkHolmesAgentHealth(mockRequest, 'test-cluster');
+      expect(result).toBe(false);
+    });
+
     it('returns true on 405 (pod reachable but method not allowed)', async () => {
       const mockRequest: ClusterRequestFn = vi.fn().mockRejectedValue({ status: 405 });
       const result = await checkHolmesAgentHealth(mockRequest, 'test-cluster');
@@ -137,6 +163,18 @@ describe('holmesClient', () => {
         expect.stringContaining('custom-ns'),
         expect.any(Object)
       );
+    });
+
+    it('returns false when the configured namespace is missing', async () => {
+      const mockRequest: ClusterRequestFn = vi.fn().mockRejectedValue({
+        status: 404,
+        body: JSON.stringify({
+          kind: 'Status',
+          details: { kind: 'namespaces', name: 'custom-ns' },
+          message: 'namespaces "custom-ns" not found',
+        }),
+      });
+      await expect(checkHolmesAgentHealth(mockRequest, 'test-cluster')).resolves.toBe(false);
     });
   });
 
@@ -227,7 +265,20 @@ describe('holmesClient', () => {
       // Since subscribe was already called in resetThread, spy won't see it,
       // but we can verify the subscriberList still contains the subscriber
       const list = privateAgent(agent).subscriberList;
-      expect(list).toContain(subscriber);
+      expect(list.some(item => item.subscriber === subscriber)).toBe(true);
+    });
+
+    it('unsubscribe after reset detaches the current inner subscription', () => {
+      const agent = new HolmesAgent();
+      const unsubscribeCurrent = vi.fn();
+      const subscriber = { onRunStartedEvent: vi.fn() };
+      const handle = agent.subscribe(subscriber);
+      agent.resetThread();
+      privateAgent(agent).subscriberList[0].unsubscribe = unsubscribeCurrent;
+
+      handle.unsubscribe();
+      expect(unsubscribeCurrent).toHaveBeenCalledOnce();
+      expect(privateAgent(agent).subscriberList).toEqual([]);
     });
 
     it('resetThread clears toolArgsBuffers and toolNames', () => {
