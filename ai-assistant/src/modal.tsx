@@ -68,6 +68,7 @@ import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import { fetchClusterWarnings, fetchWarningEventsForClusters } from './kubernetes/EventFetcher';
 import { getSettingsURL, type PluginConfig, useGlobalState } from './pluginState';
 import { useDynamicPrompts } from './prompts/promptGenerator';
+import { resolveRuntimeProviderConfig } from './resolveRuntimeProviderConfig';
 
 // Operation type constants for translation
 const OPERATION_TYPES = {
@@ -77,9 +78,7 @@ const OPERATION_TYPES = {
   GENERIC: 'operation',
 } as const;
 import {
-  AZ_CLI_AUTH_SENTINEL,
   type CommandRunner,
-  GH_CLI_AUTH_SENTINEL,
   refreshAzureOpenAIKey,
   refreshGitHubToken,
 } from '@headlamp-k8s/ai-common/providers/detectProvider';
@@ -146,6 +145,17 @@ export default function AIPrompt(props: {
         });
     }
   }, []);
+
+  const resolveCliSentinels = React.useCallback(
+    (config: Readonly<ProviderSettings>): Promise<ProviderSettings> =>
+      resolveRuntimeProviderConfig(config, {
+        commandRunner: commandRunnerRef.current,
+        refreshGitHubToken,
+        refreshAzureOpenAIKey,
+      }),
+    []
+  );
+
   const [promptVal, setPromptVal] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [apiError, setApiError] = React.useState(null);
@@ -554,29 +564,12 @@ export default function AIPrompt(props: {
 
     async function initManager() {
       try {
-        // Create config with selected model
-        const configWithModel: ProviderSettings = {
+        // Create config with selected model, resolving any CLI sentinel tokens
+        // to real credentials before the model is created.
+        const configWithModel = await resolveCliSentinels({
           ...activeConfig!.config,
           model: selectedModel,
-        };
-
-        // Refresh sentinel tokens before creating the model
-        if (configWithModel.apiKey === GH_CLI_AUTH_SENTINEL && commandRunnerRef.current) {
-          const freshToken = await refreshGitHubToken(commandRunnerRef.current);
-          if (freshToken) {
-            configWithModel.apiKey = freshToken;
-          }
-        }
-        if (configWithModel.apiKey === AZ_CLI_AUTH_SENTINEL && commandRunnerRef.current) {
-          const rg = configWithModel.azResourceGroup;
-          const acct = configWithModel.azAccountName;
-          if (typeof rg === 'string' && typeof acct === 'string' && rg && acct) {
-            const freshKey = await refreshAzureOpenAIKey(rg, acct, commandRunnerRef.current);
-            if (freshKey) {
-              configWithModel.apiKey = freshKey;
-            }
-          }
-        }
+        });
 
         if (!isCurrent) return;
 
@@ -589,9 +582,10 @@ export default function AIPrompt(props: {
             : undefined
         );
         setAiManager(newManager);
-      } catch (error) {
+      } catch (error: unknown) {
         if (isCurrent) {
-          setApiError(`Failed to initialize AI model: ${error.message}`);
+          const message = error instanceof Error ? error.message : String(error);
+          setApiError(`Failed to initialize AI model: ${message}`);
         }
       }
     }
@@ -645,17 +639,22 @@ export default function AIPrompt(props: {
   // When not in agent mode but an AI config is available, use a LangChain session as fallback.
   // In agent mode, the diagnoseFn is already set by handleToggleAgentMode above.
   useEffect(() => {
+    let diagnosisGeneration = 0;
     // Only set the LangChain fallback if agent mode is NOT active
     if (!isAgentMode && activeConfig) {
+      const generation = ++diagnosisGeneration;
       const diagnoseFn = async (
         prompt: string,
         onStep?: DiagnosisStepCallback
       ): Promise<string> => {
         try {
-          const configWithModel = {
+          const configWithModel = await resolveCliSentinels({
             ...activeConfig.config,
             model: selectedModel,
-          };
+          });
+          if (generation !== diagnosisGeneration) {
+            throw new Error('Diagnosis provider configuration changed during credential refresh.');
+          }
           // Create an isolated manager instance for this single diagnosis
           const isolatedManager = new LangChainAssistantSession(
             activeConfig.providerId,
@@ -695,6 +694,9 @@ export default function AIPrompt(props: {
       setDiagnoseFnReady(false);
     }
     // If isAgentMode is true, diagnoseFn is managed by handleToggleAgentMode — don't touch it.
+    return () => {
+      diagnosisGeneration += 1;
+    };
   }, [isAgentMode, activeConfig, selectedModel, enabledTools, pluginSettings, t]);
   // ─── End proactive diagnosis connection ─────────────────────────────
 
