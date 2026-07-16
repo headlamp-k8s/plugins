@@ -60,6 +60,8 @@ export const withProviderArgs: SettingsPageProps = {
   isRunningAsApp: true,
   previewEnabled: true,
   onPreviewChange: enabled => console.log('Preview:', enabled),
+  proactiveDiagnosisEnabled: false,
+  onProactiveDiagnosisChange: enabled => console.log('Proactive diagnosis:', enabled),
   onHolmesConfigChange: patch => console.log('Holmes:', patch),
 };
 export const WithProvider = Template.bind({});

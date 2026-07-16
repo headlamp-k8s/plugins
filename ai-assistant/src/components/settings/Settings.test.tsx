@@ -113,6 +113,12 @@ describe('Settings', () => {
     expect(capturedProps[0].isTestMode).toBe(true);
   });
 
+  it('defaults proactive diagnosis to disabled', () => {
+    capturedProps.length = 0;
+    render(React.createElement(Settings));
+    expect(capturedProps[0].proactiveDiagnosisEnabled).toBe(false);
+  });
+
   it('loads one exact source identity without configuring ZIP extraction', async () => {
     capturedProps.length = 0;
     skillManagerMock.constructorArgs.length = 0;

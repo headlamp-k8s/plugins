@@ -111,6 +111,9 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    */
   setDiagnoseFn(fn: DiagnoseFn | null): void {
     this.diagnoseFn = fn;
+    if (fn && !this.running) {
+      this._drainSingleEventQueue();
+    }
   }
 
   /**
@@ -137,6 +140,15 @@ export class ProactiveDiagnosisManager extends EventEmitter {
   stop(): void {
     this.enabled = false;
     this.emit('status-change', { enabled: false });
+  }
+
+  /**
+   * Reports whether proactive diagnosis is enabled.
+   *
+   * @returns Whether batch and manual diagnosis requests may execute.
+   */
+  isEnabled(): boolean {
+    return this.enabled;
   }
 
   /**
@@ -210,6 +222,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    * one at a time (same pattern as normal chat).
    */
   async diagnoseEvents(events: EventDigest[]): Promise<void> {
+    if (!this.enabled) return;
     if (this.running) return;
     if (!this.diagnoseFn) return;
 
@@ -319,18 +332,30 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    * after the current cycle completes.
    */
   async diagnoseSingleEvent(event: EventDigest): Promise<DiagnosisResult> {
+    if (!this.enabled) {
+      throw new Error('Proactive diagnosis is disabled');
+    }
     // Return cached result if available
     const cached = this.cache.get(event.uid);
     if (cached && !cached.loading && !cached.pending && !cached.error) {
       return cached;
     }
 
-    if (!this.diagnoseFn) {
-      throw new Error('Diagnosis function not available');
-    }
-
-    // If a cycle is already running, queue this request
-    if (this.running) {
+    // Opening the panel wires the diagnosis function asynchronously. Queue
+    // manual requests made while that setup is pending or a cycle is running.
+    if (!this.diagnoseFn || this.running) {
+      if (!this.diagnoseFn) {
+        const pendingResult: DiagnosisResult = {
+          eventUid: event.uid,
+          event,
+          diagnosis: '',
+          diagnosedAt: Date.now(),
+          loading: false,
+          pending: true,
+        };
+        this.cache.set(event.uid, pendingResult);
+        this.emit('diagnosis-update', pendingResult);
+      }
       return new Promise<DiagnosisResult>((resolve, reject) => {
         this.singleEventQueue.push({ event, resolve, reject });
       });
@@ -418,7 +443,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    * Process queued single-event diagnosis requests one by one.
    */
   private _drainSingleEventQueue(): void {
-    if (this.singleEventQueue.length === 0) return;
+    if (!this.diagnoseFn || this.running || this.singleEventQueue.length === 0) return;
     const next = this.singleEventQueue.shift();
     if (!next) return;
     const cached = this.cache.get(next.event.uid);

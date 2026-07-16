@@ -7,10 +7,9 @@ The scenarios cover:
 - viewing the KWOK-backed cluster in Headlamp;
 - changing and persisting preview, Kubernetes tool, and Holmes service settings;
 - adding and removing the built-in mock testing model;
-- chatting with the fixture-backed model; and
+- chatting with the fixture-backed model;
 - troubleshooting a pod with the scripted agent;
-- exploring cluster workloads with the scripted agent; and
-- opening a proactive diagnosis from a warning event on the overview page.
+- exploring cluster workloads with the scripted agent.
 
 ## Run
 

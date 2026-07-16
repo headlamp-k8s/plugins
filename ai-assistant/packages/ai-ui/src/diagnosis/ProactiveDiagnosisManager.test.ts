@@ -37,9 +37,11 @@ describe('ProactiveDiagnosisManager', () => {
 
   beforeEach(() => {
     manager = new ProactiveDiagnosisManager();
+    manager.start();
   });
 
   it('start and stop emit status-change events', () => {
+    manager.stop();
     const statuses: Array<{ enabled: boolean }> = [];
     manager.on('status-change', status => statuses.push(status));
 
@@ -48,6 +50,19 @@ describe('ProactiveDiagnosisManager', () => {
     manager.stop();
 
     expect(statuses).toEqual([{ enabled: true }, { enabled: false }]);
+  });
+
+  it('rejects manual diagnosis and skips cycles while disabled', async () => {
+    manager.stop();
+    const diagnose = vi.fn(async () => 'diagnosis');
+    manager.setDiagnoseFn(diagnose);
+
+    await expect(manager.diagnoseSingleEvent(createEvent())).rejects.toThrow(
+      'Proactive diagnosis is disabled'
+    );
+    await manager.diagnoseEvents([createEvent()]);
+    expect(diagnose).not.toHaveBeenCalled();
+    expect(manager.isEnabled()).toBe(false);
   });
 
   it('getAllDiagnoses returns results sorted by diagnosedAt', async () => {
@@ -75,6 +90,21 @@ describe('ProactiveDiagnosisManager', () => {
 
     expect(manager.getDiagnosis(event.uid)).toBe(result);
     expect(manager.getDiagnosis('missing')).toBeUndefined();
+  });
+
+  it('queues manual diagnosis until the diagnosis function is available', async () => {
+    const event = createEvent();
+    const diagnose = vi.fn(async () => 'diagnosis');
+
+    const resultPromise = manager.diagnoseSingleEvent(event);
+
+    expect(manager.getDiagnosis(event.uid)).toMatchObject({ pending: true });
+    expect(diagnose).not.toHaveBeenCalled();
+
+    manager.setDiagnoseFn(diagnose);
+
+    await expect(resultPromise).resolves.toMatchObject({ diagnosis: 'diagnosis', pending: false });
+    expect(diagnose).toHaveBeenCalledTimes(1);
   });
 
   it('hasDiagnosis is true only for successful diagnoses', async () => {
@@ -183,12 +213,6 @@ describe('ProactiveDiagnosisManager', () => {
         type: 'Warning',
       }),
     ]);
-  });
-
-  it('diagnoseSingleEvent throws when no diagnose function is configured', async () => {
-    await expect(manager.diagnoseSingleEvent(createEvent())).rejects.toThrow(
-      'Diagnosis function not available'
-    );
   });
 
   it('diagnoseSingleEvent returns a diagnosis result from diagnoseFn', async () => {

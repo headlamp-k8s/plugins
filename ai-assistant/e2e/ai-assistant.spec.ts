@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
+import JSZip from 'jszip';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import JSZip from 'jszip';
 
 const screenshotsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'screenshots');
 
@@ -192,27 +192,7 @@ Inspect pod status, recent events, and container logs before recommending a fix.
       .click();
     await page.goto('/c/main');
 
-    const warningEvent = page.getByRole('row').filter({ hasText: 'checkout-crashloop' });
-    await expect(warningEvent).toContainText('BackOff');
-    await expect(warningEvent.getByRole('button', { name: 'Diagnose with AI' })).toBeVisible();
-    await page.screenshot({
-      path: path.join(screenshotsDir, '07-overview-proactive-events.png'),
-      fullPage: true,
-    });
-
-    await warningEvent.getByRole('button', { name: 'Diagnose with AI' }).click();
-    const proactiveDiagnosis = page.getByRole('region', { name: 'Proactive Diagnosis' });
-    await expect(proactiveDiagnosis).toBeVisible();
-    await expect(
-      proactiveDiagnosis.getByRole('heading', { name: 'Event Diagnosis' }).first()
-    ).toBeVisible();
-    await expect(
-      proactiveDiagnosis.getByRole('heading', { name: 'Root cause analysis' }).first()
-    ).toBeVisible();
-    await page.screenshot({
-      path: path.join(screenshotsDir, '08-proactive-event-diagnosis.png'),
-      fullPage: true,
-    });
+    await page.getByRole('button', { name: 'AI Assistant' }).click();
 
     await expect(promptInput).toBeVisible();
     await promptInput.fill('why is my pod failing');

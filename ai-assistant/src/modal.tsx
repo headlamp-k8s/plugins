@@ -171,6 +171,7 @@ export default function AIPrompt(props: {
   const dynamicPrompts = useDynamicPrompts();
   const prompWidthContext = usePromptWidth();
   const { t } = useTranslation();
+  const proactiveDiagnosisEnabled = pluginSettings.proactiveDiagnosisEnabled === true;
 
   // Proactive diagnosis UI state
   const { diagnoses, isCycleRunning, scrollToEventUid, clearScrollTarget } =
@@ -251,8 +252,11 @@ export default function AIPrompt(props: {
   loadingRef.current = loading;
   const isDiagnosisRunningRef = useRef(isDiagnosisRunning);
   isDiagnosisRunningRef.current = isDiagnosisRunning;
+  const proactiveDiagnosisEnabledRef = useRef(proactiveDiagnosisEnabled);
+  proactiveDiagnosisEnabledRef.current = proactiveDiagnosisEnabled;
 
   const runProactiveCycle = useCallback(async () => {
+    if (!proactiveDiagnosisEnabledRef.current) return;
     if (!diagnoseFnRef.current) return; // Don't run if no AI is available yet
     if (loadingRef.current || isDiagnosisRunningRef.current) return; // Don't run while user is chatting or another diagnosis is running
 
@@ -262,6 +266,7 @@ export default function AIPrompt(props: {
 
     try {
       const allWarningEvents = await fetchWarningEventsForClusters(clusters);
+      if (!proactiveDiagnosisEnabledRef.current) return;
       if (allWarningEvents.length === 0) return;
 
       const topEvents = ProactiveDiagnosisManager.extractTopEvents(allWarningEvents, 3);
@@ -280,6 +285,22 @@ export default function AIPrompt(props: {
   const DIAGNOSIS_COOLDOWN_MS = 20 * 60 * 1000; // 20 minutes
 
   useEffect(() => {
+    if (!proactiveDiagnosisEnabled) {
+      proactiveDiagnosisManager.stop();
+      proactiveDiagnosisManager.setDiagnoseFn(null);
+      proactiveDiagnosisManager.clearCache();
+      diagnoseFnRef.current = null;
+      setDiagnoseFnReady(false);
+      initialCycleRanRef.current = false;
+      if (proactiveDiagIntervalRef.current) {
+        clearInterval(proactiveDiagIntervalRef.current);
+        proactiveDiagIntervalRef.current = null;
+      }
+      return;
+    }
+
+    proactiveDiagnosisManager.start();
+
     // Don't start until the diagnose function is available
     if (!diagnoseFnReady) return;
 
@@ -320,7 +341,7 @@ export default function AIPrompt(props: {
       }
       proactiveDiagnosisManager.removeListener('cycle-end', handleCycleEnd);
     };
-  }, [diagnoseFnReady]); // runProactiveCycle is now stable, no need in deps
+  }, [diagnoseFnReady, proactiveDiagnosisEnabled, runProactiveCycle]);
   // ─── End Proactive Diagnosis Setup ──────────────────────────────────
 
   const [activeConfig, setActiveConfig] = useState<StoredProviderConfig | null>(null);
@@ -641,7 +662,7 @@ export default function AIPrompt(props: {
   useEffect(() => {
     let diagnosisGeneration = 0;
     // Only set the LangChain fallback if agent mode is NOT active
-    if (!isAgentMode && activeConfig) {
+    if (proactiveDiagnosisEnabled && !isAgentMode && activeConfig) {
       const generation = ++diagnosisGeneration;
       const diagnoseFn = async (
         prompt: string,
@@ -697,7 +718,15 @@ export default function AIPrompt(props: {
     return () => {
       diagnosisGeneration += 1;
     };
-  }, [isAgentMode, activeConfig, selectedModel, enabledTools, pluginSettings, t]);
+  }, [
+    proactiveDiagnosisEnabled,
+    isAgentMode,
+    activeConfig,
+    selectedModel,
+    enabledTools,
+    pluginSettings,
+    t,
+  ]);
   // ─── End proactive diagnosis connection ─────────────────────────────
 
   const updateHistory = React.useCallback(() => {
@@ -1333,10 +1362,12 @@ export default function AIPrompt(props: {
           }
         };
 
-        diagnoseFnRef.current = agentDiagnoseFn;
-        proactiveDiagnosisManager.setDiagnoseFn(agentDiagnoseFn);
-        setDiagnoseFnReady(true);
-        console.log('[ProactiveDiagnosis] Agent diagnose function ready');
+        if (proactiveDiagnosisEnabled) {
+          diagnoseFnRef.current = agentDiagnoseFn;
+          proactiveDiagnosisManager.setDiagnoseFn(agentDiagnoseFn);
+          setDiagnoseFnReady(true);
+          console.log('[ProactiveDiagnosis] Agent diagnose function ready');
+        }
         // ─── End proactive diagnosis agent setup ────────────────────
 
         setPromptHistory(prev => [
@@ -1897,14 +1928,16 @@ export default function AIPrompt(props: {
               minWidth: 0,
             }}
           >
-            <ProactiveDiagnosisSection
-              diagnoses={diagnoses}
-              scrollToEventUid={scrollToEventUid}
-              onScrollComplete={clearScrollTarget}
-              isCycleRunning={isCycleRunning}
-              onYamlAction={handleYamlAction}
-              ContentRendererSlot={ContentRenderer}
-            />
+            {proactiveDiagnosisEnabled && (
+              <ProactiveDiagnosisSection
+                diagnoses={diagnoses}
+                scrollToEventUid={scrollToEventUid}
+                onScrollComplete={clearScrollTarget}
+                isCycleRunning={isCycleRunning}
+                onYamlAction={handleYamlAction}
+                ContentRendererSlot={ContentRenderer}
+              />
+            )}
             <AIChatContent
               history={memoizedHistory}
               isLoading={loading}

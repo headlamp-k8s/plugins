@@ -356,6 +356,30 @@ describe('SettingsPage optional sections', () => {
     ).toBe(true);
   });
 
+  it('defaults proactive diagnosis to disabled and reports changes', () => {
+    const onProactiveDiagnosisChange = vi.fn();
+    renderSettings(emptySettingsArgs, { onProactiveDiagnosisChange });
+    const toggle = screen.getByRole<HTMLInputElement>('checkbox', {
+      name: /Proactive Diagnosis \(preview\)/,
+    });
+
+    expect(toggle.checked).toBe(false);
+    fireEvent.click(toggle);
+    expect(onProactiveDiagnosisChange).toHaveBeenCalledWith(true);
+  });
+
+  it('renders proactive diagnosis as enabled when persisted', () => {
+    renderSettings(emptySettingsArgs, {
+      proactiveDiagnosisEnabled: true,
+      onProactiveDiagnosisChange: vi.fn(),
+    });
+    expect(
+      screen.getByRole<HTMLInputElement>('checkbox', {
+        name: /Proactive Diagnosis \(preview\)/,
+      }).checked
+    ).toBe(true);
+  });
+
   it('renders test mode, toggles it, and resets a shown popover', () => {
     const onTestModeChange = vi.fn();
     const onResetPopover = vi.fn();

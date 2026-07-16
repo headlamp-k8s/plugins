@@ -128,6 +128,10 @@ export interface SettingsPageProps {
   previewEnabled?: boolean;
   /** Callback when preview toggle changes. */
   onPreviewChange?: (enabled: boolean) => void;
+  /** Whether scheduled proactive diagnosis is enabled. */
+  proactiveDiagnosisEnabled?: boolean;
+  /** Callback when the proactive diagnosis toggle changes. */
+  onProactiveDiagnosisChange?: (enabled: boolean) => void;
   /** Whether test mode is active. */
   isTestMode?: boolean;
   /** Callback when test mode toggle changes. */
@@ -209,6 +213,8 @@ export function SettingsPage({
   defaultHolmesPort,
   previewEnabled,
   onPreviewChange,
+  proactiveDiagnosisEnabled = false,
+  onProactiveDiagnosisChange,
   isTestMode,
   onTestModeChange,
   hasShownConfigPopover,
@@ -341,6 +347,34 @@ export function SettingsPage({
                   <Typography variant="body1">{t('Preview Features')}</Typography>
                   <Typography variant="caption" color="text.secondary">
                     {t('Enable preview features including the AI assistant button in the app bar')}
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
+        </>
+      )}
+
+      {/* Proactive Diagnosis Toggle */}
+      {onProactiveDiagnosisChange && (
+        <>
+          <Divider sx={{ my: 3 }} />
+          <Box sx={{ mb: 3, ml: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={proactiveDiagnosisEnabled}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    onProactiveDiagnosisChange(event.target.checked)
+                  }
+                  color="primary"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body1">{t('Proactive Diagnosis (preview)')}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('Periodically diagnose warning and error events with AI')}
                   </Typography>
                 </Box>
               }

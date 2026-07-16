@@ -207,6 +207,11 @@ export default function Settings() {
         const current = pluginStore.get() || {};
         pluginStore.update({ ...current, previewEnabled: enabled });
       }}
+      proactiveDiagnosisEnabled={savedConfigs?.proactiveDiagnosisEnabled ?? false}
+      onProactiveDiagnosisChange={enabled => {
+        const current = pluginStore.get() || {};
+        pluginStore.update({ ...current, proactiveDiagnosisEnabled: enabled });
+      }}
       isTestMode={isTestMode}
       onTestModeChange={enabled => {
         const current = pluginStore.get() || {};
