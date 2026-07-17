@@ -5,9 +5,8 @@ import {
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
-import { normalizeState } from '../../resources/common';
 import { Template } from '../../resources/template';
-import { fallback, renderTextSection, statusValue } from '../common/detailHelpers';
+import { fallback, renderTextSection } from '../common/detailHelpers';
 
 /** Parsed summary for one task in a Tinkerbell template. */
 interface ParsedTemplateTask {
@@ -27,6 +26,10 @@ interface ParsedTemplateAction {
   taskName: string;
   /** Action name from the template data. */
   name: string;
+  /** Alternative action names controlled by template conditionals. */
+  alternatives?: string[];
+  /** Template conditional expression that chooses the alternatives. */
+  condition?: string;
   /** Container image used by the action, when present. */
   image?: string;
   /** Action timeout value, when present. */
@@ -43,6 +46,186 @@ interface ParsedTemplate {
   tasks: ParsedTemplateTask[];
   /** Parsed action summaries across all tasks. */
   actions: ParsedTemplateAction[];
+}
+
+/** Parsed template control-flow marker. */
+interface TemplateMarker {
+  /** Marker keyword such as if, else, or end. */
+  keyword: 'if' | 'else' | 'end';
+  /** Marker expression following the keyword, when present. */
+  expression?: string;
+}
+
+/**
+ * Gets an action name from a template line.
+ *
+ * @param line - One line from `spec.data`.
+ * @returns Parsed action name or undefined.
+ */
+function getActionName(line: string): string | undefined {
+  return line.match(/^\s*-\s+name:\s*"?([^"]+)"?/)?.[1];
+}
+
+/**
+ * Gets a Go template control-flow marker from a line.
+ *
+ * @param line - One line from `spec.data`.
+ * @returns Parsed marker or undefined.
+ */
+function getTemplateMarker(line: string): TemplateMarker | undefined {
+  const match = line.match(/^\s*\{\{-?\s*(if|else|end)\b(.*?)\s*-?}}\s*$/);
+  if (!match) {
+    return undefined;
+  }
+
+  return {
+    keyword: match[1] as TemplateMarker['keyword'],
+    expression: match[2]?.trim(),
+  };
+}
+
+/**
+ * Finds the end of a simple Go template conditional block.
+ *
+ * @param lines - Task lines to search.
+ * @param startIndex - Index of the opening `if` marker.
+ * @returns Indexes for the optional `else` marker and required `end` marker.
+ */
+function findConditionalBounds(
+  lines: string[],
+  startIndex: number
+): { elseIndex?: number; endIndex?: number } {
+  let depth = 0;
+  let elseIndex: number | undefined;
+
+  for (let index = startIndex; index < lines.length; index++) {
+    const marker = getTemplateMarker(lines[index]);
+    if (!marker) {
+      continue;
+    }
+
+    if (marker.keyword === 'if') {
+      depth += 1;
+      continue;
+    }
+
+    if (marker.keyword === 'else' && depth === 1) {
+      elseIndex = index;
+      continue;
+    }
+
+    if (marker.keyword === 'end') {
+      depth -= 1;
+      if (depth === 0) {
+        return { elseIndex, endIndex: index };
+      }
+    }
+  }
+
+  return { elseIndex };
+}
+
+/**
+ * Finds the first action name between two indexes.
+ *
+ * @param lines - Task lines to search.
+ * @param startIndex - Inclusive start index.
+ * @param endIndex - Exclusive end index.
+ * @returns Parsed action name or undefined.
+ */
+function findActionNameBetween(
+  lines: string[],
+  startIndex: number,
+  endIndex: number | undefined
+): string | undefined {
+  for (const line of lines.slice(startIndex, endIndex)) {
+    const actionName = getActionName(line);
+    if (actionName) {
+      return actionName;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Reads common action details near an action definition.
+ *
+ * @param lines - Lines that belong to the action.
+ * @returns Image and timeout summary fields.
+ */
+function getActionDetails(lines: string[]): Pick<ParsedTemplateAction, 'image' | 'timeout'> {
+  return {
+    image: lines
+      .find(nextLine => /^\s*image:\s*/.test(nextLine))
+      ?.split(/image:\s*/)[1]
+      ?.trim(),
+    timeout: lines
+      .find(nextLine => /^\s*timeout:\s*/.test(nextLine))
+      ?.split(/timeout:\s*/)[1]
+      ?.trim(),
+  };
+}
+
+/**
+ * Parses action rows from one template task.
+ *
+ * Conditional action alternatives are shown as one executable action slot
+ * because only one branch is rendered into a Workflow.
+ *
+ * @param taskName - Name of the parent task.
+ * @param taskLines - Lines that belong to the task.
+ * @returns Parsed action rows.
+ */
+function parseTaskActions(taskName: string, taskLines: string[]): ParsedTemplateAction[] {
+  const actions: ParsedTemplateAction[] = [];
+
+  for (let lineIndex = 1; lineIndex < taskLines.length; lineIndex++) {
+    const marker = getTemplateMarker(taskLines[lineIndex]);
+
+    if (marker?.keyword === 'if') {
+      const { elseIndex, endIndex } = findConditionalBounds(taskLines, lineIndex);
+      if (endIndex) {
+        const firstBranchName = findActionNameBetween(
+          taskLines,
+          lineIndex + 1,
+          elseIndex ?? endIndex
+        );
+        const secondBranchName =
+          elseIndex !== undefined
+            ? findActionNameBetween(taskLines, elseIndex + 1, endIndex)
+            : undefined;
+        const alternatives = [firstBranchName, secondBranchName].filter(Boolean) as string[];
+
+        if (alternatives.length > 0) {
+          actions.push({
+            taskName,
+            name: alternatives.join(' / '),
+            alternatives,
+            condition: marker.expression,
+            ...getActionDetails(taskLines.slice(lineIndex, endIndex + 10)),
+          });
+        }
+
+        lineIndex = endIndex;
+      }
+
+      continue;
+    }
+
+    const actionName = getActionName(taskLines[lineIndex]);
+    if (!actionName) {
+      continue;
+    }
+
+    actions.push({
+      taskName,
+      name: actionName,
+      ...getActionDetails(taskLines.slice(lineIndex, lineIndex + 8)),
+    });
+  }
+
+  return actions;
 }
 
 /**
@@ -104,7 +287,7 @@ function parseTemplateData(data: string | undefined): ParsedTemplate {
     return {
       name: task.name,
       worker,
-      actionCount: taskLines.filter(line => /^\s*-\s+name:/.test(line)).length - 1,
+      actionCount: parseTaskActions(task.name, taskLines).length,
       volumeCount: taskLines.filter(line => /^\s*-\s+[^:]+:[^/]*\//.test(line)).length,
     };
   });
@@ -113,28 +296,7 @@ function parseTemplateData(data: string | undefined): ParsedTemplate {
     const nextTask = topLevelTasks[index + 1];
     const taskLines = lines.slice(task.lineIndex, nextTask?.lineIndex);
 
-    return taskLines.reduce<ParsedTemplateAction[]>((actions, line, lineIndex) => {
-      const actionName = line.match(/^\s*-\s+name:\s*"?([^"]+)"?/)?.[1];
-      if (!actionName || lineIndex === 0) {
-        return actions;
-      }
-
-      const followingLines = taskLines.slice(lineIndex, lineIndex + 8);
-      actions.push({
-        taskName: task.name,
-        name: actionName,
-        image: followingLines
-          .find(nextLine => /^\s*image:\s*/.test(nextLine))
-          ?.split(/image:\s*/)[1]
-          ?.trim(),
-        timeout: followingLines
-          .find(nextLine => /^\s*timeout:\s*/.test(nextLine))
-          ?.split(/timeout:\s*/)[1]
-          ?.trim(),
-      });
-
-      return actions;
-    }, []);
+    return parseTaskActions(task.name, taskLines);
   });
 
   return { name: templateName, globalTimeout, tasks, actions };
@@ -159,11 +321,10 @@ export function TemplateDetail() {
 
         return item
           ? [
-              { name: 'Status', value: statusValue(normalizeState(item.status?.state)) },
               { name: 'Template Name', value: fallback(parsedTemplate.name) },
               { name: 'Global Timeout', value: fallback(parsedTemplate.globalTimeout) },
               { name: 'Tasks', value: fallback(parsedTemplate.tasks.length) },
-              { name: 'Actions', value: fallback(parsedTemplate.actions.length) },
+              { name: 'Action Slots', value: fallback(parsedTemplate.actions.length) },
               { name: 'Template Data Size', value: fallback(`${item.data?.length ?? 0} chars`) },
             ]
           : [];
@@ -182,7 +343,7 @@ export function TemplateDetail() {
                         { name: 'Name', value: fallback(parsedTemplate.name) },
                         { name: 'Global Timeout', value: fallback(parsedTemplate.globalTimeout) },
                         { name: 'Tasks', value: fallback(parsedTemplate.tasks.length) },
-                        { name: 'Actions', value: fallback(parsedTemplate.actions.length) },
+                        { name: 'Action Slots', value: fallback(parsedTemplate.actions.length) },
                       ]}
                     />
                   </SectionBox>
@@ -196,7 +357,7 @@ export function TemplateDetail() {
                       columns={[
                         { label: 'Name', getter: row => row.name },
                         { label: 'Worker', getter: row => fallback(row.worker) },
-                        { label: 'Actions', getter: row => fallback(row.actionCount) },
+                        { label: 'Action Slots', getter: row => fallback(row.actionCount) },
                         { label: 'Volumes', getter: row => fallback(row.volumeCount) },
                       ]}
                       data={parsedTemplate.tasks}
@@ -212,6 +373,12 @@ export function TemplateDetail() {
                       columns={[
                         { label: 'Task', getter: row => row.taskName },
                         { label: 'Action', getter: row => row.name },
+                        {
+                          label: 'Type',
+                          getter: row =>
+                            fallback(row.alternatives?.length ? 'Conditional' : 'Direct'),
+                        },
+                        { label: 'Condition', getter: row => fallback(row.condition) },
                         { label: 'Image', getter: row => fallback(row.image) },
                         { label: 'Timeout', getter: row => fallback(row.timeout) },
                       ]}

@@ -4,17 +4,44 @@ import {
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { normalizeState } from '../../resources/common';
-import { Workflow } from '../../resources/workflow';
-import {
-  booleanLabel,
-  countLabel,
-  fallback,
-  getFirstDefined,
-  renderStatus,
-} from '../common/listHelpers';
+import { Workflow, WorkflowTaskStatus } from '../../resources/workflow';
+import { booleanLabel, countLabel, fallback, renderStatus } from '../common/listHelpers';
+
+/**
+ * Gets a user-facing workflow state from the current v0.23.0 status shape.
+ *
+ * @param item - Workflow resource to inspect.
+ * @returns Normalized workflow state.
+ */
+function getWorkflowState(item: Workflow): string {
+  return normalizeState(item.status?.state ?? item.status?.currentState?.state);
+}
+
+/**
+ * Gets the best currently relevant action name for a workflow.
+ *
+ * @param item - Workflow resource to inspect.
+ * @returns Current action, latest action, or fallback.
+ */
+function getCurrentAction(item: Workflow): string {
+  const actions = item.status?.tasks?.flatMap(task => task.actions ?? []) ?? [];
+  return fallback(item.status?.currentState?.actionName ?? actions.at(-1)?.name);
+}
+
+/**
+ * Gets a task count label using workflow status tasks.
+ *
+ * @param tasks - Workflow task status entries.
+ * @returns Count label for workflow tasks.
+ */
+function getTaskCount(tasks: WorkflowTaskStatus[] | undefined) {
+  return countLabel(tasks?.length, 'task');
+}
 
 /**
  * Renders the Tinkerbell Workflow list view.
+ *
+ * @returns Workflow list view with live provisioning summary columns.
  */
 export function WorkflowList() {
   const columns: (ColumnType | ResourceTableColumn<Workflow>)[] = [
@@ -23,12 +50,8 @@ export function WorkflowList() {
     {
       id: 'status',
       label: 'Status',
-      getValue: item =>
-        normalizeState(getFirstDefined(item.status?.state, item.status?.currentState)),
-      render: item =>
-        renderStatus(
-          normalizeState(getFirstDefined(item.status?.state, item.status?.currentState))
-        ),
+      getValue: item => getWorkflowState(item),
+      render: item => renderStatus(getWorkflowState(item)),
     },
     {
       id: 'hardware',
@@ -48,15 +71,12 @@ export function WorkflowList() {
     {
       id: 'tasks',
       label: 'Tasks',
-      getValue: item => countLabel(item.status?.tasks?.length, 'task'),
+      getValue: item => getTaskCount(item.status?.tasks),
     },
     {
       id: 'lastAction',
-      label: 'Last Action',
-      getValue: item => {
-        const actions = item.status?.tasks?.flatMap(task => task.actions ?? []) ?? [];
-        return fallback(actions.at(-1)?.name ?? item.status?.currentState);
-      },
+      label: 'Current Action',
+      getValue: item => getCurrentAction(item),
     },
     'age',
   ];

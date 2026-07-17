@@ -5,6 +5,10 @@ describe('normalizeState', () => {
     expect(normalizeState(undefined)).toBe('Unknown');
   });
 
+  it('returns Unknown when state is not a string', () => {
+    expect(normalizeState({ state: 'SUCCESS' })).toBe('Unknown');
+  });
+
   it('humanizes Tinkerbell workflow state constants', () => {
     expect(normalizeState('STATE_RUNNING')).toBe('Running');
     expect(normalizeState('STATE_TIMED_OUT')).toBe('Timed Out');

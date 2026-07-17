@@ -3,9 +3,8 @@ import {
   ResourceListView,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { normalizeState } from '../../resources/common';
 import { Template } from '../../resources/template';
-import { fallback, renderStatus } from '../common/listHelpers';
+import { fallback } from '../common/listHelpers';
 
 /**
  * Counts top-level task steps from a Tinkerbell template body.
@@ -53,12 +52,6 @@ export function TemplateList() {
   const columns: (ColumnType | ResourceTableColumn<Template>)[] = [
     'name',
     'namespace',
-    {
-      id: 'status',
-      label: 'Status',
-      getValue: item => normalizeState(item.status?.state),
-      render: item => renderStatus(normalizeState(item.status?.state)),
-    },
     {
       id: 'steps',
       label: 'Steps',
