@@ -33,11 +33,11 @@ watches.
 
 | ResourceGraphDefinitions | RGD detail |
 | --- | --- |
-| ![RGD list](./docs/rgd-list.png) | ![RGD detail](./docs/rgd-detail.png) |
+| ![RGD list](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/rgd-list.png) | ![RGD detail](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/rgd-detail.png) |
 
 | Instance sub-resources (resolved storageClass) | Map view |
 | --- | --- |
-| ![Instance sub-resources](./docs/instance-subresources.png) | ![Map](./docs/map.png) |
+| ![Instance sub-resources](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/instance-subresources.png) | ![Map](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/map.png) |
 
 ## Installation
 
