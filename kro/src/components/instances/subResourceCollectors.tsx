@@ -1,6 +1,6 @@
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   instanceSubResourceSelector,
   KroInstance,
@@ -95,36 +95,37 @@ function KindCollectorList(props: {
     labelSelector,
   });
 
+  // Report after every render, not keyed on array identity: watch
+  // updates may mutate the underlying objects in place, so identity
+  // checks can miss changes. The parent dedupes via resourceVersion
+  // signatures.
   useEffect(() => {
     onItems(kindKey, items ?? []);
-  }, [items, kindKey, onItems]);
+  });
 
   return null;
 }
 
 /**
- * State holder for items collected per kind. Ignores updates that do not
- * change any item's uid or resourceVersion to avoid render loops.
+ * State holder for items collected per kind. Updates are deduplicated
+ * with uid/resourceVersion signatures captured as strings at report
+ * time — comparing live object references would miss watch events that
+ * mutate objects in place — and each accepted update stores a fresh
+ * array so downstream memos recompute.
  */
 export function useCollectedSubResources() {
   const [itemsByKind, setItemsByKind] = useState<Record<string, KubeObject<any>[]>>({});
+  const signaturesByKind = useRef<Record<string, string>>({});
 
   const onItems = useCallback((key: string, items: KubeObject<any>[]) => {
-    setItemsByKind(previous => {
-      const previousItems = previous[key];
-      if (
-        previousItems &&
-        previousItems.length === items.length &&
-        previousItems.every(
-          (item, index) =>
-            item.metadata.uid === items[index].metadata.uid &&
-            item.metadata.resourceVersion === items[index].metadata.resourceVersion
-        )
-      ) {
-        return previous;
-      }
-      return { ...previous, [key]: items };
-    });
+    const signature = items
+      .map(item => `${item.metadata.uid}:${item.metadata.resourceVersion}`)
+      .join('|');
+    if (signaturesByKind.current[key] === signature) {
+      return;
+    }
+    signaturesByKind.current[key] = signature;
+    setItemsByKind(previous => ({ ...previous, [key]: [...items] }));
   }, []);
 
   const items = useMemo(() => Object.values(itemsByKind).flat(), [itemsByKind]);
