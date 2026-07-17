@@ -13,6 +13,7 @@ import {
   getComposedResources,
 } from '../../resources/rgdGraph';
 import InstancesSection from '../instances/InstancesSection';
+import NewInstanceButton from '../instances/NewInstanceButton';
 import { KroStateLabel } from './common';
 
 function getComposedResourcesSection(rgd: ResourceGraphDefinition) {
@@ -99,6 +100,9 @@ export default function ResourceGraphDefinitionDetail() {
       resourceType={ResourceGraphDefinition}
       name={name}
       withEvents
+      actions={(rgd: ResourceGraphDefinition | null) =>
+        rgd ? [<NewInstanceButton key="kro-new-instance" rgd={rgd} />] : []
+      }
       extraInfo={(rgd: ResourceGraphDefinition | null) =>
         rgd && [
           {
