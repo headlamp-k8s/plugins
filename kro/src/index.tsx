@@ -1,5 +1,6 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
-import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import ResourceGraphDefinitionDetail from './components/resourcegraphdefinitions/Detail';
+import ResourceGraphDefinitionList from './components/resourcegraphdefinitions/List';
 import { kroRouteNames, kroRoutePaths } from './utils/kroRoutes';
 
 registerSidebarEntry({
@@ -22,5 +23,13 @@ registerRoute({
   sidebar: 'kro-resourcegraphdefinitions',
   name: kroRouteNames.resourceGraphDefinitionsList,
   exact: true,
-  component: () => <SectionBox title="Resource Graph Definitions" />,
+  component: () => <ResourceGraphDefinitionList />,
+});
+
+registerRoute({
+  path: kroRoutePaths.resourceGraphDefinitionDetail,
+  sidebar: 'kro-resourcegraphdefinitions',
+  name: kroRouteNames.resourceGraphDefinitionDetail,
+  exact: true,
+  component: () => <ResourceGraphDefinitionDetail />,
 });
