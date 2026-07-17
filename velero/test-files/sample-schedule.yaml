@@ -1,0 +1,15 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: default-deployments-daily
+  namespace: velero
+spec:
+  schedule: '0 7 * * *'
+  template:
+    includedNamespaces:
+      - default
+    includedResources:
+      - deployments
+    labelSelector:
+      matchLabels:
+        backup: enabled

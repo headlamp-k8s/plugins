@@ -28,6 +28,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [prometheus](./prometheus) | Provides a Prometheus-powered chart in the details views of workloads. | Needs Prometheus installed in the cluster for the chart to be shown. Shipped with Headlamp desktop and CI builds by default. | [@yolossn](https://github.com/yolossn) |
 | [radius](./radius) | Visualize and manage Radius applications. |  | [@filipevrevez](https://github.com/filipevrevez) |
 | [strimzi](./strimzi) | The Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources. | [Demo](https://www.youtube.com/watch?v=MNt28s6b5d8) | [@cesaroangelo](https://github.com/cesaroangelo), [@krrish-sehgal](https://github.com/krrish-sehgal) |
+| [velero](./velero) | Shows Velero backup schedule coverage on workload and namespace detail views. | Read-only Phase 1. Tracks [kubernetes-sigs/headlamp#5198](https://github.com/kubernetes-sigs/headlamp/issues/5198). | |
 | [volcano](./volcano) | Visualize and manage Volcano jobs. |  | [@mahmoudmagdy1-1](https://github.com/mahmoudmagdy1-1) |
 
 ## External plugins
