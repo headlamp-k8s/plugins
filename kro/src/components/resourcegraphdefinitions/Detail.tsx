@@ -11,6 +11,7 @@ import {
   flattenSimpleSchema,
   getComposedResources,
 } from '../../resources/rgdGraph';
+import InstancesSection from '../instances/InstancesSection';
 import { KroStateLabel } from './common';
 
 function getComposedResourcesSection(rgd: ResourceGraphDefinition) {
@@ -117,6 +118,10 @@ export default function ResourceGraphDefinitionDetail() {
         rgd
           ? [
               getConditionsSection(rgd),
+              {
+                id: 'kro-instances',
+                section: <InstancesSection rgd={rgd} />,
+              },
               getComposedResourcesSection(rgd),
               getSchemaSection(rgd),
             ].filter(Boolean)
