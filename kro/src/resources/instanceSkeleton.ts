@@ -1,4 +1,5 @@
-import { kroApiGroup, KubeResourceGraphDefinition } from './resourceGraphDefinition';
+import { kroApiGroup } from './kroApi';
+import type { KubeResourceGraphDefinition } from './resourceGraphDefinition';
 
 /**
  * Placeholder for one SimpleSchema leaf, e.g. "integer | default=1".

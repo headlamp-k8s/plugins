@@ -1,4 +1,4 @@
-import { KubeResourceGraphDefinition } from './resourceGraphDefinition';
+import type { KubeResourceGraphDefinition } from './resourceGraphDefinition';
 
 /** A composed resource of an RGD, merged from spec.resources and status. */
 export interface ComposedResource {

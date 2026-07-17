@@ -1,8 +1,8 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { kroRoutePaths } from '../utils/kroRoutes';
+import { kroApiGroup, kroApiVersion } from './kroApi';
 
-export const kroApiGroup = 'kro.run';
-export const kroApiVersion = 'v1alpha1';
+export { kroApiGroup, kroApiVersion } from './kroApi';
 
 /** A dependency edge published by kro's static analysis. */
 export interface RGDDependency {
