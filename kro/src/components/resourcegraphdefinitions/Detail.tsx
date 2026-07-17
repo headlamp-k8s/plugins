@@ -5,6 +5,7 @@ import {
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
+import ViewInMapLink from '../../map/ViewInMapLink';
 import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition';
 import {
   ComposedResource,
@@ -111,6 +112,10 @@ export default function ResourceGraphDefinitionDetail() {
           {
             name: 'Generated API Version',
             value: rgd.generatedApiVersion,
+          },
+          {
+            name: 'Map',
+            value: <ViewInMapLink nodeId={rgd.metadata.uid} />,
           },
         ]
       }

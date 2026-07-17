@@ -8,6 +8,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { useParams } from 'react-router-dom';
+import ViewInMapLink from '../../map/ViewInMapLink';
 import { KroInstance, useInstanceClass } from '../../resources/instance';
 import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition';
 import { flattenSimpleSchema } from '../../resources/rgdGraph';
@@ -95,6 +96,10 @@ export default function InstanceDetail() {
           {
             name: 'API',
             value: instanceClass.apiVersion,
+          },
+          {
+            name: 'Map',
+            value: <ViewInMapLink nodeId={instance.metadata.uid} />,
           },
           ...getStatusInfoRows(instance),
         ]

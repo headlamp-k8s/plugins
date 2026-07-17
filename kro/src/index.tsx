@@ -1,8 +1,15 @@
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerMapSource,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
 import InstanceDetail from './components/instances/Detail';
 import ResourceGraphDefinitionDetail from './components/resourcegraphdefinitions/Detail';
 import ResourceGraphDefinitionList from './components/resourcegraphdefinitions/List';
+import { kroMapSource } from './map/globalMapSource';
 import { kroRouteNames, kroRoutePaths } from './utils/kroRoutes';
+
+registerMapSource(kroMapSource);
 
 registerSidebarEntry({
   parent: null,
