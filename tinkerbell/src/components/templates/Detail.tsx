@@ -46,6 +46,8 @@ interface ParsedTemplate {
   tasks: ParsedTemplateTask[];
   /** Parsed action summaries across all tasks. */
   actions: ParsedTemplateAction[];
+  /** Unique container images referenced by parsed actions. */
+  images: string[];
 }
 
 /** Parsed template control-flow marker. */
@@ -236,7 +238,7 @@ function parseTaskActions(taskName: string, taskLines: string[]): ParsedTemplate
  */
 function parseTemplateData(data: string | undefined): ParsedTemplate {
   if (!data) {
-    return { tasks: [], actions: [] };
+    return { tasks: [], actions: [], images: [] };
   }
 
   const lines = data.split('\n');
@@ -251,7 +253,7 @@ function parseTemplateData(data: string | undefined): ParsedTemplate {
   const tasksIndex = lines.findIndex(line => /^\s*tasks:\s*$/.test(line));
 
   if (tasksIndex === -1) {
-    return { name: templateName, globalTimeout, tasks: [], actions: [] };
+    return { name: templateName, globalTimeout, tasks: [], actions: [], images: [] };
   }
 
   const tasksIndent = lines[tasksIndex].search(/\S/);
@@ -299,7 +301,11 @@ function parseTemplateData(data: string | undefined): ParsedTemplate {
     return parseTaskActions(task.name, taskLines);
   });
 
-  return { name: templateName, globalTimeout, tasks, actions };
+  const images = Array.from(
+    new Set(actions.map(action => action.image).filter(Boolean) as string[])
+  );
+
+  return { name: templateName, globalTimeout, tasks, actions, images };
 }
 
 /**
@@ -383,6 +389,24 @@ export function TemplateDetail() {
                         { label: 'Timeout', getter: row => fallback(row.timeout) },
                       ]}
                       data={parsedTemplate.actions}
+                    />
+                  </SectionBox>
+                ),
+              },
+              parsedTemplate.images.length > 0 && {
+                id: 'tinkerbell.template-images',
+                section: (
+                  <SectionBox title="Images Used">
+                    <SimpleTable
+                      columns={[
+                        { label: 'Image', getter: row => row.image },
+                        { label: 'Actions', getter: row => fallback(row.actionCount) },
+                      ]}
+                      data={parsedTemplate.images.map(image => ({
+                        image,
+                        actionCount: parsedTemplate.actions.filter(action => action.image === image)
+                          .length,
+                      }))}
                     />
                   </SectionBox>
                 ),
