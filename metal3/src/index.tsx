@@ -14,9 +14,14 @@
  * limitations under the License.
  */
 
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerMapSource,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
 import { BareMetalHostDetail } from './BareMetalHost/Details';
 import { BareMetalHosts } from './BareMetalHost/List';
+import { metal3Source } from './mapView';
 import { Metal3MachineDetail } from './Metal3Machine/Details';
 import { Metal3Machines } from './Metal3Machine/List';
 import { Metal3MachineTemplateDetail } from './Metal3MachineTemplate/Details';
@@ -100,3 +105,7 @@ registerRoute({
   component: () => <Metal3MachineTemplateDetail />,
   name: 'metal3machinetemplate-detail',
 });
+
+// Map source. Draws the Metal3Machine to BareMetalHost link and the Cluster API
+// Machine to Metal3Machine link, neither of which Headlamp derives on its own.
+registerMapSource(metal3Source);
