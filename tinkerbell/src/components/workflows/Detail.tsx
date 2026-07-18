@@ -7,38 +7,14 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { normalizeState } from '../../resources/common';
-import { Workflow, WorkflowActionStatus, WorkflowTaskStatus } from '../../resources/workflow';
+import { Workflow, WorkflowActionStatus } from '../../resources/workflow';
 import { booleanValue, fallback, renderRecordSection, statusValue } from '../common/detailHelpers';
+import { getTaskState } from './helpers';
 
 /** Workflow action row enriched with its parent task name. */
 interface WorkflowActionRow extends WorkflowActionStatus {
   /** Name of the task containing this action. */
   taskName?: string;
-}
-
-/**
- * Gets a task state from its actions when the task has no direct state field.
- *
- * @param task - Workflow task status entry.
- * @returns Normalized task state.
- */
-function getTaskState(task: WorkflowTaskStatus): string {
-  if (task.state) {
-    return normalizeState(task.state);
-  }
-
-  const actionStates = task.actions?.map(action => action.state).filter(Boolean) ?? [];
-  if (actionStates.some(state => state === 'RUNNING')) {
-    return normalizeState('RUNNING');
-  }
-  if (actionStates.some(state => state === 'FAILED')) {
-    return normalizeState('FAILED');
-  }
-  if (actionStates.length && actionStates.every(state => state === 'SUCCESS')) {
-    return normalizeState('SUCCESS');
-  }
-
-  return normalizeState(undefined);
 }
 
 /**
@@ -262,7 +238,7 @@ export function WorkflowDetail() {
                 <SimpleTable
                   columns={[
                     { label: 'Task', getter: row => fallback(row.taskName) },
-                    { label: 'Action', getter: row => fallback(row.name) },
+                    { label: 'Name', getter: row => fallback(row.name) },
                     { label: 'State', getter: row => statusValue(normalizeState(row.state)) },
                     { label: 'Message', getter: row => fallback(row.message) },
                     { label: 'Started', getter: row => getActionStart(row) },
@@ -299,7 +275,7 @@ export function WorkflowDetail() {
                 <SimpleTable
                   columns={[
                     { label: 'Task', getter: row => fallback(row.taskName) },
-                    { label: 'Action', getter: row => fallback(row.name) },
+                    { label: 'Name', getter: row => fallback(row.name) },
                     { label: 'State', getter: row => statusValue(normalizeState(row.state)) },
                     { label: 'Message', getter: row => fallback(row.message) },
                     { label: 'Started', getter: row => getActionStart(row) },
