@@ -16,6 +16,7 @@
 
 import {
   registerDetailsViewHeaderAction,
+  registerMapSource,
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
@@ -24,6 +25,7 @@ import { BareMetalHostDetail } from './BareMetalHost/Details';
 import { BareMetalHosts } from './BareMetalHost/List';
 import { PowerActionButton } from './BareMetalHost/PowerActionButton';
 import { RebootActionButton } from './BareMetalHost/RebootActionButton';
+import { metal3Source } from './mapView';
 import { Metal3ClusterDetail } from './Metal3Cluster/Details';
 import { Metal3Clusters } from './Metal3Cluster/List';
 import { Metal3ClusterTemplateDetail } from './Metal3ClusterTemplate/Details';
@@ -275,6 +277,9 @@ registerRoute({
   component: () => <Metal3RemediationTemplateDetail />,
   name: 'metal3remediationtemplate-detail',
 });
+// Map source. Draws the Metal3Machine to BareMetalHost link and the Cluster API
+// Machine to Metal3Machine link, neither of which Headlamp derives on its own.
+registerMapSource(metal3Source);
 
 // Power on/off action on the BareMetalHost detail view. Toggles spec.online.
 registerDetailsViewHeaderAction(PowerActionButton);
