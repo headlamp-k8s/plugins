@@ -1,0 +1,34 @@
+# Sample Metal3Cluster and Metal3ClusterTemplate for trying out the Metal3 plugin locally.
+#
+#   kubectl apply -f metal3/test-files/metal3cluster.yaml
+#
+# They appear under Metal3 > Metal3 Clusters and Metal3 > Metal3 Cluster Templates.
+# A Metal3Cluster is the Metal3 (infrastructure) side of a Cluster API Cluster and
+# carries the control plane endpoint; a Metal3ClusterTemplate is the blueprint
+# clusters are stamped from. The provisioned status is set by the CAPM3 controller
+# as it reconciles; without a controller running they still list, with an empty
+# status shown as Unknown.
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: Metal3Cluster
+metadata:
+  name: sample-cluster
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: sample-cluster
+spec:
+  controlPlaneEndpoint:
+    host: 192.168.1.100
+    port: 6443
+  cloudProviderEnabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: Metal3ClusterTemplate
+metadata:
+  name: sample-clustertemplate
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: sample-cluster
+spec:
+  template:
+    spec:
+      cloudProviderEnabled: false

@@ -17,6 +17,10 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import { BareMetalHostDetail } from './BareMetalHost/Details';
 import { BareMetalHosts } from './BareMetalHost/List';
+import { Metal3ClusterDetail } from './Metal3Cluster/Details';
+import { Metal3Clusters } from './Metal3Cluster/List';
+import { Metal3ClusterTemplateDetail } from './Metal3ClusterTemplate/Details';
+import { Metal3ClusterTemplates } from './Metal3ClusterTemplate/List';
 import { Metal3MachineDetail } from './Metal3Machine/Details';
 import { Metal3Machines } from './Metal3Machine/List';
 import { Metal3MachineTemplateDetail } from './Metal3MachineTemplate/Details';
@@ -99,4 +103,48 @@ registerRoute({
   sidebar: 'metal3machinetemplates',
   component: () => <Metal3MachineTemplateDetail />,
   name: 'metal3machinetemplate-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3clusters',
+  label: 'Metal3 Clusters',
+  url: '/metal3/metal3clusters',
+});
+
+registerRoute({
+  path: '/metal3/metal3clusters',
+  sidebar: 'metal3clusters',
+  component: Metal3Clusters,
+  name: 'metal3clusters-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3clusters/:namespace/:name',
+  sidebar: 'metal3clusters',
+  component: () => <Metal3ClusterDetail />,
+  name: 'metal3cluster-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3clustertemplates',
+  label: 'Metal3 Cluster Templates',
+  url: '/metal3/metal3clustertemplates',
+});
+
+registerRoute({
+  path: '/metal3/metal3clustertemplates',
+  sidebar: 'metal3clustertemplates',
+  component: Metal3ClusterTemplates,
+  name: 'metal3clustertemplates-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3clustertemplates/:namespace/:name',
+  sidebar: 'metal3clustertemplates',
+  component: () => <Metal3ClusterTemplateDetail />,
+  name: 'metal3clustertemplate-detail',
 });
