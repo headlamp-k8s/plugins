@@ -1,5 +1,4 @@
-import { PluginManager } from '@kinvolk/headlamp-plugin/lib';
-import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
+import { ConfigStore, PluginManager, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ConfirmDialog, SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Pagination, TextField } from '@mui/material';
@@ -187,12 +186,13 @@ interface OfficialSwitchProps {
 
 function OfficialSwitch(props: OfficialSwitchProps) {
   const { onChange: onOfficialSwitchChange, isChecked } = props;
+  const { t } = useTranslation();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   return (
     <>
       <FormControlLabel
         control={<Switch defaultChecked size="small" />}
-        label={<Typography>Only Official</Typography>}
+        label={<Typography>{t('Only Official')}</Typography>}
         checked={isChecked}
         onChange={() => {
           if (isChecked) {
@@ -205,8 +205,10 @@ function OfficialSwitch(props: OfficialSwitchProps) {
       <ConfirmDialog
         // @ts-ignore
         open={isConfirmOpen}
-        title="Do you want to show non-official plugins?"
-        description="Important: Non-official plugins may not be published by the actual projects they are related to, nor by Headlamp's maintainers. Are you sure you want to show them?"
+        title={t('Do you want to show non-official plugins?')}
+        description={t(
+          "Important: Non-official plugins may not be published by the actual projects they are related to, nor by Headlamp's maintainers. Are you sure you want to show them?"
+        )}
         handleClose={() => setIsConfirmOpen(false)}
         onConfirm={() => {
           onOfficialSwitchChange(false);
@@ -226,10 +228,11 @@ export function PurePluginList({
   isOfficialSwitchChecked,
   onOfficialSwitchChange,
 }: PurePluginListProps) {
+  const { t } = useTranslation();
   return (
     <>
       <SectionHeader
-        title="Plugins"
+        title={t('Plugins')}
         titleSideActions={[
           <Box pl={2}>
             <OfficialSwitch isChecked={isOfficialSwitchChecked} onChange={onOfficialSwitchChange} />
@@ -240,7 +243,7 @@ export function PurePluginList({
             key="search"
             sx={{ width: '20vw', margin: '0 1rem' }}
             id="outlined-basic"
-            label="Search"
+            label={t('Search')}
             value={search}
             onChange={onSearchChange}
           />,
@@ -258,12 +261,12 @@ export function PurePluginList({
             plugins.map(plugin => <PluginCard key={plugin.package_id} plugin={plugin} />)
           ) : (
             <Box textAlign="center" paddingTop={2} sx={{ width: '100%' }}>
-              <Typography align="center">No plugins found</Typography>
+              <Typography align="center">{t('No plugins found')}</Typography>
             </Box>
           )
         ) : (
           <Box mt={2} mx="auto" maxWidth="max-content">
-            <Loader title="Loading" />
+            <Loader title={t('Loading')} />
           </Box>
         )}
       </Box>
