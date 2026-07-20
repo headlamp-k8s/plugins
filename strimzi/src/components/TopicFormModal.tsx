@@ -3,6 +3,7 @@ import { Button } from '@mui/material';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useThemeColors } from '../utils/theme';
+import type { KafkaClusterRef } from '../utils/clusters';
 
 /** Form state for creating or editing a KafkaTopic resource. */
 export interface TopicFormData {
@@ -23,8 +24,6 @@ export interface TopicFormData {
   /** Optional minimum number of in-sync replicas (min.insync.replicas). */
   minInSyncReplicas?: number;
 }
-
-export type KafkaClusterRef = { metadata: { namespace?: string; name: string } };
 
 export interface TopicFormModalProps {
   open: boolean;

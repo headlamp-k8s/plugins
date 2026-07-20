@@ -3,6 +3,7 @@ import { Button } from '@mui/material';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useThemeColors } from '../utils/theme';
+import type { KafkaClusterRef } from '../utils/clusters';
 
 /** Single ACL rule attached to a KafkaUser. */
 export interface UserFormAcl {
@@ -36,8 +37,6 @@ export interface UserFormData {
   /** ACL rules (only used when authorizationType is 'simple'). */
   acls: UserFormAcl[];
 }
-
-export type KafkaClusterRef = { metadata: { namespace?: string; name: string } };
 
 export interface KafkaUserCreateFormModalProps {
   open: boolean;
