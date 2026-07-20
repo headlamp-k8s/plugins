@@ -1,7 +1,10 @@
 import type { KueueCondition } from './clusterQueue';
 
 /** Minimal LocalQueue condition shape needed to summarize queue readiness. */
-export type LocalQueueConditionLike = Pick<KueueCondition, 'type' | 'status' | 'reason' | 'message'>;
+export type LocalQueueConditionLike = Pick<
+  KueueCondition,
+  'type' | 'status' | 'reason' | 'message'
+>;
 
 /** Render the ClusterQueue reference for LocalQueue list and detail views. */
 export function renderClusterQueueName(clusterQueue?: string) {
