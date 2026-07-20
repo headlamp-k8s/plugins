@@ -52,7 +52,7 @@ export function SecureSecretDisplay({
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
       })
-      .catch((error) => {
+      .catch(error => {
         console.error('Failed to copy secret to clipboard:', error);
       });
   };
@@ -90,7 +90,7 @@ export function SecureSecretDisplay({
             maxWidth: '500px',
             border: `2px solid #ff9800`,
           }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         >
           {/* Warning Header */}
           <div
@@ -199,7 +199,7 @@ export function SecureSecretDisplay({
           overflow: 'auto',
           border: `2px solid #f44336`,
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         {/* Header with warning badge */}
         <div
@@ -303,13 +303,18 @@ export function SecureSecretDisplay({
             color: '#856404',
           }}
         >
-          <strong>⚠️ Remember:</strong> Close this window immediately after use. Do not share
-          these credentials via insecure channels.
+          <strong>⚠️ Remember:</strong> Close this window immediately after use. Do not share these
+          credentials via insecure channels.
         </div>
 
         {/* Close Button */}
         <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-          <Button variant="contained" color="primary" onClick={handleClose} sx={{ fontWeight: 600 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleClose}
+            sx={{ fontWeight: 600 }}
+          >
             Close
           </Button>
         </div>

@@ -104,7 +104,12 @@ export function PureKafkaUserList({ items, onViewSecret, onDelete }: PureKafkaUs
                 >
                   View Secret
                 </Button>
-                <Button size="small" variant="contained" color="error" onClick={() => onDelete?.(row)}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="error"
+                  onClick={() => onDelete?.(row)}
+                >
                   Delete
                 </Button>
               </>

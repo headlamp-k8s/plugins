@@ -166,7 +166,16 @@ export function KafkaUserCreateFormModal({
         </Typography>
 
         <Box sx={{ mb: 2 }}>
-          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Name</label>
+          <label
+            style={{
+              display: 'block',
+              marginBottom: '4px',
+              fontWeight: 'bold',
+              color: colors.text,
+            }}
+          >
+            Name
+          </label>
           <input
             type="text"
             value={formData.name}
@@ -176,12 +185,21 @@ export function KafkaUserCreateFormModal({
         </Box>
 
         <Box sx={{ mb: 2 }}>
-          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Namespace</label>
+          <label
+            style={{
+              display: 'block',
+              marginBottom: '4px',
+              fontWeight: 'bold',
+              color: colors.text,
+            }}
+          >
+            Namespace
+          </label>
           <select
             value={formData.namespace}
             onChange={e => {
               const newNamespace = e.target.value;
-              const clustersInNamespace = kafkaClusters
+              const clustersInNamespace = (kafkaClusters || [])
                 .filter(k => k.metadata.namespace === newNamespace)
                 .map(k => k.metadata.name)
                 .sort();
@@ -206,7 +224,16 @@ export function KafkaUserCreateFormModal({
         </Box>
 
         <Box sx={{ mb: 2 }}>
-          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Cluster</label>
+          <label
+            style={{
+              display: 'block',
+              marginBottom: '4px',
+              fontWeight: 'bold',
+              color: colors.text,
+            }}
+          >
+            Cluster
+          </label>
           <select
             value={formData.cluster}
             onChange={e => setFormData({ ...formData, cluster: e.target.value })}
@@ -225,10 +252,24 @@ export function KafkaUserCreateFormModal({
         </Box>
 
         <Box sx={{ mb: 2 }}>
-          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Authentication Type</label>
+          <label
+            style={{
+              display: 'block',
+              marginBottom: '4px',
+              fontWeight: 'bold',
+              color: colors.text,
+            }}
+          >
+            Authentication Type
+          </label>
           <select
             value={formData.authenticationType}
-            onChange={e => setFormData({ ...formData, authenticationType: e.target.value as 'tls' | 'scram-sha-512' })}
+            onChange={e =>
+              setFormData({
+                ...formData,
+                authenticationType: e.target.value as 'tls' | 'scram-sha-512',
+              })
+            }
             style={inputSx}
           >
             <option value="scram-sha-512">SCRAM-SHA-512</option>
@@ -237,10 +278,21 @@ export function KafkaUserCreateFormModal({
         </Box>
 
         <Box sx={{ mb: 2 }}>
-          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', color: colors.text }}>Authorization Type</label>
+          <label
+            style={{
+              display: 'block',
+              marginBottom: '4px',
+              fontWeight: 'bold',
+              color: colors.text,
+            }}
+          >
+            Authorization Type
+          </label>
           <select
             value={formData.authorizationType}
-            onChange={e => setFormData({ ...formData, authorizationType: e.target.value as 'simple' | 'none' })}
+            onChange={e =>
+              setFormData({ ...formData, authorizationType: e.target.value as 'simple' | 'none' })
+            }
             style={inputSx}
           >
             <option value="simple">Simple</option>
@@ -250,7 +302,9 @@ export function KafkaUserCreateFormModal({
 
         {formData.authorizationType === 'simple' && (
           <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Box
+              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}
+            >
               <label style={{ fontWeight: 'bold', color: colors.text }}>ACLs</label>
               <Button variant="contained" size="small" color="success" onClick={addACL}>
                 + Add ACL
@@ -270,14 +324,28 @@ export function KafkaUserCreateFormModal({
               >
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <strong style={{ color: colors.text }}>ACL {index + 1}</strong>
-                  <Button variant="contained" size="small" color="error" onClick={() => removeACL(index)}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    color="error"
+                    onClick={() => removeACL(index)}
+                  >
                     Remove
                   </Button>
                 </Box>
 
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                   <Box>
-                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px', color: colors.text }}>Resource Type</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: '12px',
+                        marginBottom: '2px',
+                        color: colors.text,
+                      }}
+                    >
+                      Resource Type
+                    </label>
                     <select
                       value={acl.resource.type}
                       onChange={e => updateACL(index, 'resource.type', e.target.value)}
@@ -290,7 +358,16 @@ export function KafkaUserCreateFormModal({
                   </Box>
 
                   <Box>
-                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px', color: colors.text }}>Resource Name</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: '12px',
+                        marginBottom: '2px',
+                        color: colors.text,
+                      }}
+                    >
+                      Resource Name
+                    </label>
                     <input
                       type="text"
                       value={acl.resource.name}
@@ -300,7 +377,16 @@ export function KafkaUserCreateFormModal({
                   </Box>
 
                   <Box>
-                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px', color: colors.text }}>Pattern Type</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: '12px',
+                        marginBottom: '2px',
+                        color: colors.text,
+                      }}
+                    >
+                      Pattern Type
+                    </label>
                     <select
                       value={acl.resource.patternType}
                       onChange={e => updateACL(index, 'resource.patternType', e.target.value)}
@@ -312,11 +398,26 @@ export function KafkaUserCreateFormModal({
                   </Box>
 
                   <Box>
-                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '2px', color: colors.text }}>Operations (comma-separated)</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: '12px',
+                        marginBottom: '2px',
+                        color: colors.text,
+                      }}
+                    >
+                      Operations (comma-separated)
+                    </label>
                     <input
                       type="text"
                       value={acl.operations.join(',')}
-                      onChange={e => updateACL(index, 'operations', e.target.value.split(',').map(s => s.trim()))}
+                      onChange={e =>
+                        updateACL(
+                          index,
+                          'operations',
+                          e.target.value.split(',').map(s => s.trim())
+                        )
+                      }
                       placeholder="e.g., Read,Write,Describe"
                       style={smallInputSx}
                     />
@@ -331,7 +432,12 @@ export function KafkaUserCreateFormModal({
           <Button variant="outlined" onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
-          <Button variant="contained" color="primary" onClick={onSubmit} disabled={loading || !formData.name}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={onSubmit}
+            disabled={loading || !formData.name}
+          >
             {loading ? 'Creating...' : 'Create'}
           </Button>
         </Box>

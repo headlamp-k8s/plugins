@@ -149,9 +149,7 @@ export function KafkaConnectorList() {
               size="small"
               variant="contained"
               color="primary"
-              onClick={() =>
-                setPendingState({ connector: item.jsonData, targetState: 'running' })
-              }
+              onClick={() => setPendingState({ connector: item.jsonData, targetState: 'running' })}
             >
               Resume
             </Button>
@@ -163,9 +161,7 @@ export function KafkaConnectorList() {
               size="small"
               variant="contained"
               color="warning"
-              onClick={() =>
-                setPendingState({ connector: item.jsonData, targetState: 'paused' })
-              }
+              onClick={() => setPendingState({ connector: item.jsonData, targetState: 'paused' })}
             >
               Pause
             </Button>
@@ -176,9 +172,7 @@ export function KafkaConnectorList() {
             size="small"
             variant="contained"
             color="primary"
-            onClick={() =>
-              setPendingState({ connector: item.jsonData, targetState: 'running' })
-            }
+            onClick={() => setPendingState({ connector: item.jsonData, targetState: 'running' })}
           >
             Start
           </Button>
@@ -190,7 +184,11 @@ export function KafkaConnectorList() {
 
   return (
     <>
-      <ResourceListView title="Kafka Connectors" resourceClass={KafkaConnectorClass} columns={columns} />
+      <ResourceListView
+        title="Kafka Connectors"
+        resourceClass={KafkaConnectorClass}
+        columns={columns}
+      />
       <Dialog
         open={pendingState !== null}
         onClose={() => setPendingState(null)}
@@ -200,8 +198,7 @@ export function KafkaConnectorList() {
         <DialogTitle id="connector-state-dialog-title">Change connector state</DialogTitle>
         <DialogContent>
           <DialogContentText id="connector-state-dialog-description">
-            Set connector{' '}
-            <strong>{pendingState?.connector.metadata.name}</strong> to{' '}
+            Set connector <strong>{pendingState?.connector.metadata.name}</strong> to{' '}
             <strong>{pendingState?.targetState}</strong>?
           </DialogContentText>
         </DialogContent>

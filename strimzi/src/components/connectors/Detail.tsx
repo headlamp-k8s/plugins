@@ -16,7 +16,8 @@ import {
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
-import { KafkaConnector } from '../../resources/kafkaConnector';
+import { KafkaConnector, KafkaConnectorV1 } from '../../resources/kafkaConnector';
+import { useStrimziApiVersions } from '../../hooks/useStrimziApiVersions';
 import { isSecretLikeKey } from '../../utils/secretKeys';
 
 const MASK = '••••••••';
@@ -87,6 +88,8 @@ function ConfigValue({
 export function KafkaConnectorDetail(props: { namespace?: string; name?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
+  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const KafkaConnectorClass = kafkaVersion === 'v1' ? KafkaConnectorV1 : KafkaConnector;
 
   const [acknowledged, setAcknowledged] = React.useState(false);
   const [revealed, setRevealed] = React.useState<Set<string>>(new Set());
@@ -127,7 +130,7 @@ export function KafkaConnectorDetail(props: { namespace?: string; name?: string 
   return (
     <>
       <DetailsGrid
-        resourceType={KafkaConnector}
+        resourceType={KafkaConnectorClass}
         name={name}
         namespace={namespace}
         withEvents
@@ -221,12 +224,12 @@ export function KafkaConnectorDetail(props: { namespace?: string; name?: string 
         <DialogContent>
           <DialogContentText id="connector-config-reveal-description">
             <Box component="span" sx={{ display: 'block', mb: 1 }}>
-              The value of <strong>{pendingKey}</strong> may contain credentials
-              (passwords, tokens, API keys). Show it on this page anyway?
+              The value of <strong>{pendingKey}</strong> may contain credentials (passwords, tokens,
+              API keys). Show it on this page anyway?
             </Box>
             <Box component="span" sx={{ display: 'block', fontSize: 13 }}>
-              Once acknowledged, other masked values on this page can be revealed
-              without re-prompting. Navigate away to reset.
+              Once acknowledged, other masked values on this page can be revealed without
+              re-prompting. Navigate away to reset.
             </Box>
           </DialogContentText>
         </DialogContent>

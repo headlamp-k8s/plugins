@@ -12,7 +12,13 @@ interface ResourceEditorProps {
   resourceKind: string;
 }
 
-export function ResourceEditor({ open, onClose, resourceUrl, resourceName, resourceKind }: ResourceEditorProps) {
+export function ResourceEditor({
+  open,
+  onClose,
+  resourceUrl,
+  resourceName,
+  resourceKind,
+}: ResourceEditorProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const [content, setContent] = React.useState('');
@@ -40,11 +46,15 @@ export function ResourceEditor({ open, onClose, resourceUrl, resourceName, resou
           setLoading(false);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [open, resourceUrl]);
 
   React.useEffect(() => {
-    return () => { clearTimeout(timeoutRef.current); };
+    return () => {
+      clearTimeout(timeoutRef.current);
+    };
   }, []);
 
   const handleSave = () => {
@@ -106,7 +116,7 @@ export function ResourceEditor({ open, onClose, resourceUrl, resourceName, resou
             : '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
           overflow: 'hidden',
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div
@@ -122,7 +132,9 @@ export function ResourceEditor({ open, onClose, resourceUrl, resourceName, resou
             <div style={{ fontSize: '16px', fontWeight: 700, color: theme.palette.text.primary }}>
               Edit {resourceKind}
             </div>
-            <div style={{ fontSize: '13px', color: theme.palette.text.secondary, marginTop: '2px' }}>
+            <div
+              style={{ fontSize: '13px', color: theme.palette.text.secondary, marginTop: '2px' }}
+            >
               {resourceName}
             </div>
           </div>
@@ -134,7 +146,13 @@ export function ResourceEditor({ open, onClose, resourceUrl, resourceName, resou
                 padding: '6px 16px',
                 borderRadius: '6px',
                 border: 'none',
-                backgroundColor: saving ? (isDark ? '#1e3a5f' : '#93c5fd') : (isDark ? '#2563eb' : '#3b82f6'),
+                backgroundColor: saving
+                  ? isDark
+                    ? '#1e3a5f'
+                    : '#93c5fd'
+                  : isDark
+                    ? '#2563eb'
+                    : '#3b82f6',
                 color: '#fff',
                 cursor: saving || loading ? 'not-allowed' : 'pointer',
                 fontSize: '13px',

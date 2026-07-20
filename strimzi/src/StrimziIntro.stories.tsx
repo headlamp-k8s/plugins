@@ -14,8 +14,8 @@ function StrimziIntro() {
           Strimzi Headlamp Plugin
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
-          This Storybook is for the Strimzi plugin. Here you can develop and review UI
-          (Kafka list, topics, users, topology) with mock data—no cluster required.
+          This Storybook is for the Strimzi plugin. Here you can develop and review UI (Kafka list,
+          topics, users, topology) with mock data—no cluster required.
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Add more <code>*.stories.tsx</code> next to your components to see them here.

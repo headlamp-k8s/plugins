@@ -151,13 +151,9 @@ export function useTopologyTheme(): TopologyTheme {
       // Dark mode: use theme default
       nodeText: isDark ? muiTheme.palette.text.primary : '#374151',
       nodeTextSecondary: isDark ? muiTheme.palette.text.secondary : '#6b7280',
-      nodeHover: isDark
-        ? 'rgba(255, 255, 255, 0.08)'
-        : 'rgba(0, 0, 0, 0.04)',
+      nodeHover: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
       nodeSelected: muiTheme.palette.primary.main,
-      nodeShadow: isDark
-        ? '0 4px 6px rgba(0, 0, 0, 0.4)'
-        : '0 4px 6px rgba(0, 0, 0, 0.1)',
+      nodeShadow: isDark ? '0 4px 6px rgba(0, 0, 0, 0.4)' : '0 4px 6px rgba(0, 0, 0, 0.1)',
 
       // Edges
       edgeStroke: muiTheme.palette.divider,
@@ -176,12 +172,8 @@ export function useTopologyTheme(): TopologyTheme {
       // Status colors
       statusReady: isDark ? '#34d399' : '#059669',
       statusNotReady: isDark ? '#f87171' : '#dc2626',
-      statusReadyBg: isDark
-        ? 'rgba(16, 185, 129, 0.25)'
-        : 'rgba(16, 185, 129, 0.15)',
-      statusNotReadyBg: isDark
-        ? 'rgba(239, 68, 68, 0.25)'
-        : 'rgba(239, 68, 68, 0.15)',
+      statusReadyBg: isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.15)',
+      statusNotReadyBg: isDark ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.15)',
 
       // UI elements
       controlsBg: isDark ? '#334155' : '#f1f5f9',
@@ -189,9 +181,7 @@ export function useTopologyTheme(): TopologyTheme {
       // Light mode: dark grey text for better readability
       controlsText: isDark ? muiTheme.palette.text.primary : '#374151',
       controlsHover: isDark ? '#475569' : '#e2e8f0',
-      overlay: isDark
-        ? 'rgba(0, 0, 0, 0.6)'
-        : 'rgba(255, 255, 255, 0.6)',
+      overlay: isDark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.6)',
       highlight: muiTheme.palette.primary.light,
     };
 

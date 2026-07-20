@@ -142,7 +142,11 @@ export const mockKafkaConnects: KafkaConnectInterface[] = [
       url: 'http://analytics-connect-connect-api.default.svc:8083',
       replicas: 3,
       connectorPlugins: [
-        { class: 'io.debezium.connector.postgresql.PostgresConnector', type: 'source', version: '2.5.0' },
+        {
+          class: 'io.debezium.connector.postgresql.PostgresConnector',
+          type: 'source',
+          version: '2.5.0',
+        },
         { class: 'io.confluent.connect.s3.S3SinkConnector', type: 'sink', version: '10.5.0' },
       ],
     },
@@ -214,7 +218,7 @@ export const mockKafkaConnectors: KafkaConnectorInterface[] = [
       tasksMax: 2,
       state: 'paused',
       config: {
-        'topics': 'audit-events',
+        topics: 'audit-events',
         's3.bucket.name': 'audit-events-prod',
       },
     },

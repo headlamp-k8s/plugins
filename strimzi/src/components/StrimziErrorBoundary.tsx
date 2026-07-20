@@ -15,18 +15,14 @@ interface State {
  * never propagate up to Headlamp's root. Without this, a render crash
  * inside the plugin can blank the entire Headlamp UI.
  */
-export class StrimziErrorBoundary extends React.Component<
-  React.PropsWithChildren<unknown>,
-  State
-> {
+export class StrimziErrorBoundary extends React.Component<React.PropsWithChildren<unknown>, State> {
   constructor(props: React.PropsWithChildren<unknown>) {
     super(props);
     this.state = { hasError: false, message: '' };
   }
 
   static getDerivedStateFromError(error: unknown): State {
-    const message =
-      error instanceof Error ? error.message : 'An unexpected error occurred.';
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return { hasError: true, message };
   }
 
@@ -42,7 +38,12 @@ export class StrimziErrorBoundary extends React.Component<
             <Typography variant="body1" gutterBottom>
               Something went wrong while rendering this view.
             </Typography>
-            <Typography variant="body2" color="text.secondary" component="pre" sx={{ whiteSpace: 'pre-wrap' }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              component="pre"
+              sx={{ whiteSpace: 'pre-wrap' }}
+            >
               {this.state.message}
             </Typography>
           </Box>

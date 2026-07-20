@@ -7,7 +7,8 @@ import {
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
-import { KafkaConnect } from '../../resources/kafkaConnect';
+import { KafkaConnect, KafkaConnectV1 } from '../../resources/kafkaConnect';
+import { useStrimziApiVersions } from '../../hooks/useStrimziApiVersions';
 
 /**
  * Detail page for a single `KafkaConnect` resource.
@@ -19,10 +20,12 @@ import { KafkaConnect } from '../../resources/kafkaConnect';
 export function KafkaConnectDetail(props: { namespace?: string; name?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
+  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const KafkaConnectClass = kafkaVersion === 'v1' ? KafkaConnectV1 : KafkaConnect;
 
   return (
     <DetailsGrid
-      resourceType={KafkaConnect}
+      resourceType={KafkaConnectClass}
       name={name}
       namespace={namespace}
       withEvents

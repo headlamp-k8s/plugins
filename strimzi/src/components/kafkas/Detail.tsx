@@ -6,15 +6,18 @@ import {
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
-import { Kafka } from '../../resources/kafka';
+import { Kafka, KafkaV1 } from '../../resources/kafka';
+import { useStrimziApiVersions } from '../../hooks/useStrimziApiVersions';
 
 export function KafkaDetail(props: { namespace?: string; name?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
   const { namespace = params.namespace, name = params.name } = props;
+  const { kafka: kafkaVersion } = useStrimziApiVersions();
+  const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
 
   return (
     <DetailsGrid
-      resourceType={Kafka}
+      resourceType={KafkaClass}
       name={name}
       namespace={namespace}
       withEvents

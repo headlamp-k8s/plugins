@@ -46,9 +46,7 @@ describe('resolveStrimziApiVersions', () => {
   });
 
   it('falls back to v1beta2 when only v1beta2 is served', async () => {
-    mockRequest.mockResolvedValue(
-      makeGroupList(['kafka.strimzi.io', 'core.strimzi.io'])
-    );
+    mockRequest.mockResolvedValue(makeGroupList(['kafka.strimzi.io', 'core.strimzi.io']));
 
     const result = await resolveStrimziApiVersions();
     expect(result.installed).toBe(true);
