@@ -27,6 +27,8 @@ export interface KmeshDaemonPod {
   nodeName: string;
   /** Pod phase (Running / Pending / …). */
   phase: string;
+  /** Detailed reason for the pod's current state (e.g. CrashLoopBackOff) */
+  statusReason?: string;
   /** True if the PodReady condition is met. */
   ready: boolean;
   /** Pod IP — informational. */
@@ -77,10 +79,23 @@ export function useKmeshDaemonPods(): UseKmeshDaemonPodsResult {
           `?labelSelector=${encodeURIComponent(KMESH_DAEMON_LABEL_SELECTOR)}`;
 
         type PodCondition = { type?: string; status?: string };
+        type ContainerStateWaiting = { reason?: string };
+        type ContainerStateTerminated = { reason?: string };
+        type ContainerState = {
+          waiting?: ContainerStateWaiting;
+          terminated?: ContainerStateTerminated;
+        };
+        type ContainerStatus = { state?: ContainerState };
         type PodItem = {
           metadata?: { name?: string; namespace?: string };
           spec?: { nodeName?: string };
-          status?: { phase?: string; podIP?: string; conditions?: PodCondition[] };
+          status?: {
+            phase?: string;
+            reason?: string;
+            podIP?: string;
+            conditions?: PodCondition[];
+            containerStatuses?: ContainerStatus[];
+          };
         };
         type PodListResponse = { items?: PodItem[] };
 
@@ -92,17 +107,34 @@ export function useKmeshDaemonPods(): UseKmeshDaemonPodsResult {
             c => c.type === 'Ready' && c.status === 'True'
           );
 
+          const phase = item.status?.phase ?? 'Unknown';
+          let statusReason: string | undefined = item.status?.reason;
+          const containerStatuses = item.status?.containerStatuses ?? [];
+          if (!statusReason) {
+            for (const status of containerStatuses) {
+              if (status.state?.waiting?.reason) {
+                statusReason = status.state.waiting.reason;
+                break;
+              } else if (status.state?.terminated?.reason) {
+                statusReason = status.state.terminated.reason;
+                break;
+              }
+            }
+          }
+
           return {
             name: item.metadata?.name ?? '',
             namespace: item.metadata?.namespace ?? KMESH_NAMESPACE,
             nodeName: item.spec?.nodeName ?? '',
-            phase: item.status?.phase ?? 'Unknown',
+            phase,
+            statusReason,
             ready,
             podIP: item.status?.podIP ?? '',
           };
         });
 
         setPods(items);
+        setError(null);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to list Kmesh daemon pods');
@@ -112,9 +144,18 @@ export function useKmeshDaemonPods(): UseKmeshDaemonPodsResult {
       }
     }
 
-    fetchPods();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const poll = async () => {
+      await fetchPods();
+      if (!cancelled) timeoutId = setTimeout(poll, 5000);
+    };
+
+    poll();
+
     return () => {
       cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [cluster]);
 

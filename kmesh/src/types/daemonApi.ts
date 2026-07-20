@@ -26,10 +26,14 @@
 // ---------------------------------------------------------------------------
 
 export interface KmeshVersion {
-  /** The semantic version of the Kmesh daemon */
-  version: string;
+  /** Version string of the Kmesh daemon build (as reported in `gitVersion`). */
+  gitVersion?: string;
   /** Git commit hash of the build */
-  gitRevision: string;
+  gitCommit?: string;
+  /** Legacy: The semantic version of the Kmesh daemon */
+  version?: string;
+  /** Legacy: Git commit hash of the build */
+  gitRevision?: string;
   /** Git branch of the build */
   gitBranch: string;
   /** Timestamp when the daemon was built */
