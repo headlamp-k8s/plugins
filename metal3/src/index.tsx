@@ -21,10 +21,20 @@ import { Metal3ClusterDetail } from './Metal3Cluster/Details';
 import { Metal3Clusters } from './Metal3Cluster/List';
 import { Metal3ClusterTemplateDetail } from './Metal3ClusterTemplate/Details';
 import { Metal3ClusterTemplates } from './Metal3ClusterTemplate/List';
+import { Metal3DataDetail } from './Metal3Data/Details';
+import { Metal3Datas } from './Metal3Data/List';
+import { Metal3DataClaimDetail } from './Metal3DataClaim/Details';
+import { Metal3DataClaims } from './Metal3DataClaim/List';
+import { Metal3DataTemplateDetail } from './Metal3DataTemplate/Details';
+import { Metal3DataTemplates } from './Metal3DataTemplate/List';
 import { Metal3MachineDetail } from './Metal3Machine/Details';
 import { Metal3Machines } from './Metal3Machine/List';
 import { Metal3MachineTemplateDetail } from './Metal3MachineTemplate/Details';
 import { Metal3MachineTemplates } from './Metal3MachineTemplate/List';
+import { Metal3RemediationDetail } from './Metal3Remediation/Details';
+import { Metal3Remediations } from './Metal3Remediation/List';
+import { Metal3RemediationTemplateDetail } from './Metal3RemediationTemplate/Details';
+import { Metal3RemediationTemplates } from './Metal3RemediationTemplate/List';
 
 // Parent Metal3 group. Its url points at the first child's list so the group
 // header is itself navigable.
@@ -147,4 +157,114 @@ registerRoute({
   sidebar: 'metal3clustertemplates',
   component: () => <Metal3ClusterTemplateDetail />,
   name: 'metal3clustertemplate-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3datas',
+  label: 'Metal3 Data',
+  url: '/metal3/metal3datas',
+});
+
+registerRoute({
+  path: '/metal3/metal3datas',
+  sidebar: 'metal3datas',
+  component: Metal3Datas,
+  name: 'metal3datas-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3datas/:namespace/:name',
+  sidebar: 'metal3datas',
+  component: () => <Metal3DataDetail />,
+  name: 'metal3data-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3dataclaims',
+  label: 'Metal3 Data Claims',
+  url: '/metal3/metal3dataclaims',
+});
+
+registerRoute({
+  path: '/metal3/metal3dataclaims',
+  sidebar: 'metal3dataclaims',
+  component: Metal3DataClaims,
+  name: 'metal3dataclaims-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3dataclaims/:namespace/:name',
+  sidebar: 'metal3dataclaims',
+  component: () => <Metal3DataClaimDetail />,
+  name: 'metal3dataclaim-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3datatemplates',
+  label: 'Metal3 Data Templates',
+  url: '/metal3/metal3datatemplates',
+});
+
+registerRoute({
+  path: '/metal3/metal3datatemplates',
+  sidebar: 'metal3datatemplates',
+  component: Metal3DataTemplates,
+  name: 'metal3datatemplates-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3datatemplates/:namespace/:name',
+  sidebar: 'metal3datatemplates',
+  component: () => <Metal3DataTemplateDetail />,
+  name: 'metal3datatemplate-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3remediations',
+  label: 'Metal3 Remediations',
+  url: '/metal3/metal3remediations',
+});
+
+registerRoute({
+  path: '/metal3/metal3remediations',
+  sidebar: 'metal3remediations',
+  component: Metal3Remediations,
+  name: 'metal3remediations-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3remediations/:namespace/:name',
+  sidebar: 'metal3remediations',
+  component: () => <Metal3RemediationDetail />,
+  name: 'metal3remediation-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3remediationtemplates',
+  label: 'Metal3 Remediation Templates',
+  url: '/metal3/metal3remediationtemplates',
+});
+
+registerRoute({
+  path: '/metal3/metal3remediationtemplates',
+  sidebar: 'metal3remediationtemplates',
+  component: Metal3RemediationTemplates,
+  name: 'metal3remediationtemplates-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3remediationtemplates/:namespace/:name',
+  sidebar: 'metal3remediationtemplates',
+  component: () => <Metal3RemediationTemplateDetail />,
+  name: 'metal3remediationtemplate-detail',
 });
