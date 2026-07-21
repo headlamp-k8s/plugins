@@ -69,8 +69,12 @@ export interface SkillsViewerDialogProps {
   /**
    * Async function that loads skills and returns them for display.
    * Receives an optional onProgress callback for real-time download/extract progress.
+   * The second argument is true only when the user explicitly requests a reload.
    */
-  loadSkills: (onProgress?: (progress: SkillLoadProgress) => void) => Promise<SkillDisplayInfo[]>;
+  loadSkills: (
+    onProgress?: (progress: SkillLoadProgress) => void,
+    forceReload?: boolean
+  ) => Promise<SkillDisplayInfo[]>;
   /** Component used to render dialog shells. */
   DialogSlot?: React.ElementType;
   /** Callback fired when loading completes (with count or error). */
@@ -201,39 +205,42 @@ export function SkillsViewerDialog({
     }
   }, []);
 
-  const doLoad = useCallback(async () => {
-    const requestId = ++loadRequestId.current;
-    setLoading(true);
-    setError(null);
-    setProgress({
-      phase: 'downloading',
-      bytesDownloaded: 0,
-      totalBytes: 0,
-      filesFound: 0,
-      totalFiles: 0,
-    });
-    try {
-      const loaded = await loadSkillsRef.current(onProgressThrottled);
-      if (loadRequestId.current !== requestId) return;
-      setProgress(null);
-      setSkills(loaded);
-      onLoadCompleteRef.current?.({ count: loaded.length });
-    } catch (loadError) {
-      if (loadRequestId.current !== requestId) return;
-      const message = loadError instanceof Error ? loadError.message : String(loadError);
-      setError(message);
-      setProgress(null);
-      onLoadCompleteRef.current?.({ count: 0, error: message });
-    } finally {
-      if (loadRequestId.current === requestId) {
-        setLoading(false);
+  const doLoad = useCallback(
+    async (forceReload = false) => {
+      const requestId = ++loadRequestId.current;
+      setLoading(true);
+      setError(null);
+      setProgress({
+        phase: 'downloading',
+        bytesDownloaded: 0,
+        totalBytes: 0,
+        filesFound: 0,
+        totalFiles: 0,
+      });
+      try {
+        const loaded = await loadSkillsRef.current(onProgressThrottled, forceReload);
+        if (loadRequestId.current !== requestId) return;
+        setProgress(null);
+        setSkills(loaded);
+        onLoadCompleteRef.current?.({ count: loaded.length });
+      } catch (loadError) {
+        if (loadRequestId.current !== requestId) return;
+        const message = loadError instanceof Error ? loadError.message : String(loadError);
+        setError(message);
+        setProgress(null);
+        onLoadCompleteRef.current?.({ count: 0, error: message });
+      } finally {
+        if (loadRequestId.current === requestId) {
+          setLoading(false);
+        }
       }
-    }
-  }, [onProgressThrottled]);
+    },
+    [onProgressThrottled]
+  );
 
   useEffect(() => {
     if (open) {
-      void doLoad();
+      void doLoad(false);
     }
     return () => {
       loadRequestId.current += 1;
@@ -504,7 +511,11 @@ export function SkillsViewerDialog({
       </DialogContent>
       <DialogActions>
         {!loading && skills.length > 0 && (
-          <Button onClick={doLoad} startIcon={<Icon aria-hidden icon="mdi:refresh" />} size="small">
+          <Button
+            onClick={() => void doLoad(true)}
+            startIcon={<Icon aria-hidden icon="mdi:refresh" />}
+            size="small"
+          >
             {t('Reload')}
           </Button>
         )}

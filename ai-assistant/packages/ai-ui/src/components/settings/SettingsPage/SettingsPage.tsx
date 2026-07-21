@@ -106,7 +106,8 @@ export interface SettingsPageProps {
   /** Async function that loads all skills and returns them for display. */
   loadSkills?: (
     onProgress?: (progress: SkillLoadProgress) => void,
-    sourceUrl?: string
+    sourceUrl?: string,
+    forceReload?: boolean
   ) => Promise<SkillDisplayInfo[]>;
   /** Callback fired when skill loading completes (for notifications). */
   onSkillsLoadComplete?: (result: { count: number; error?: string }) => void;

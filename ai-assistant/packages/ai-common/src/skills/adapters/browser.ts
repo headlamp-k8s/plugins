@@ -399,9 +399,9 @@ export class BrowserSkillCache {
   /**
    * Creates an IndexedDB-backed skill cache.
    *
-   * @param cacheTtlMs - How long cached skills remain valid (default: 1 hour).
+   * @param cacheTtlMs - How long cached skills remain valid (default: no expiry).
    */
-  constructor(cacheTtlMs: number = 60 * 60 * 1000) {
+  constructor(cacheTtlMs: number = Number.POSITIVE_INFINITY) {
     this.cacheTtlMs = cacheTtlMs;
   }
 
@@ -460,6 +460,27 @@ export class BrowserSkillCache {
           cachedAt: Date.now(),
         };
         const request = store.put(entry);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch {
+      // IndexedDB not available — skip silently
+    }
+  }
+
+  /**
+   * Removes cached skills for one source.
+   *
+   * @param key - Source cache key.
+   * @returns No value; IndexedDB failures are ignored.
+   */
+  async delete(key: string): Promise<void> {
+    try {
+      const db = await openSkillsDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.delete(key);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
       });

@@ -21,6 +21,7 @@ import LangChainAssistantSession from '@headlamp-k8s/ai-common/assistant/LangCha
 import type { ConversationMessage } from '@headlamp-k8s/ai-common/conversation/types';
 import { getProviderById } from '@headlamp-k8s/ai-common/providers/catalog';
 import {
+  BrowserSkillCache,
   createFetchHttpClient,
   createNoopFileSystem,
 } from '@headlamp-k8s/ai-common/skills/adapters/browser';
@@ -641,6 +642,7 @@ export default function AIPrompt(props: {
     // Reuse existing SkillManager instance to preserve its in-memory cache
     if (!skillManagerRef.current) {
       skillManagerRef.current = new SkillManager(createNoopFileSystem(), createFetchHttpClient());
+      skillManagerRef.current.setSkillCache(new BrowserSkillCache());
     }
     (aiManager as LangChainAssistantSession).setSkillManager(skillManagerRef.current, skillsConfig);
   }, [aiManager, pluginSettings]);

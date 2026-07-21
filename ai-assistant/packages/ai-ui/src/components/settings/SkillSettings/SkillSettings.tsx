@@ -206,7 +206,8 @@ export interface SkillSettingsProps {
    */
   loadSkills?: (
     onProgress?: (progress: SkillLoadProgress) => void,
-    sourceIdentity?: string
+    sourceIdentity?: string,
+    forceReload?: boolean
   ) => Promise<SkillDisplayInfo[]>;
   /** Callback fired when skill loading completes (for notifications). */
   onSkillsLoadComplete?: (result: { count: number; error?: string }) => void;
@@ -982,13 +983,13 @@ export function SkillSettings({
             setViewerOpen(false);
             setActiveRepoIdentity(null);
           }}
-          loadSkills={onProgress => {
+          loadSkills={(onProgress, forceReload) => {
             // Pass source identity so the host loads only this exact URL/path pair.
             // the progress bar from resetting between multiple enabled sources
             if (activeRepoIdentity) {
-              return loadSkills(onProgress, activeRepoIdentity);
+              return loadSkills(onProgress, activeRepoIdentity, forceReload);
             }
-            return loadSkills(onProgress);
+            return loadSkills(onProgress, undefined, forceReload);
           }}
           title={
             activeRepoIdentity
