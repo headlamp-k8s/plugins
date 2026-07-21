@@ -1840,11 +1840,13 @@ export default function AIPrompt(props: {
     return (
       <Box
         sx={{
-          height: '100vh',
+          height: '100%',
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
+          overflow: 'hidden',
           p: 3,
           textAlign: 'center',
         }}
@@ -1885,10 +1887,11 @@ export default function AIPrompt(props: {
   }
 
   return (
-    <div ref={rootRef}>
+    <div ref={rootRef} style={{ height: '100%', minHeight: 0 }}>
       <Box
         sx={{
-          height: '100vh',
+          height: '100%',
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden', // Prevent horizontal overflow
@@ -1913,7 +1916,8 @@ export default function AIPrompt(props: {
           justifyContent="flex-end"
           alignItems="stretch"
           sx={{
-            height: '100%',
+            flex: '1 1 0',
+            minHeight: 0,
             padding: 1,
             overflow: 'hidden', // Prevent overflow
             maxWidth: '100%',
@@ -1927,9 +1931,10 @@ export default function AIPrompt(props: {
             item
             xs
             sx={{
-              height: '100%',
-              overflowY: 'auto',
-              overflowX: 'auto', // Allow horizontal scrolling when needed
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
               maxWidth: '100%',
               minWidth: 0,
             }}
