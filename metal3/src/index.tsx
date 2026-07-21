@@ -14,9 +14,14 @@
  * limitations under the License.
  */
 
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerDetailsViewHeaderAction,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
 import { BareMetalHostDetail } from './BareMetalHost/Details';
 import { BareMetalHosts } from './BareMetalHost/List';
+import { PowerActionButton } from './BareMetalHost/PowerActionButton';
 import { Metal3ClusterDetail } from './Metal3Cluster/Details';
 import { Metal3Clusters } from './Metal3Cluster/List';
 import { Metal3ClusterTemplateDetail } from './Metal3ClusterTemplate/Details';
@@ -148,3 +153,6 @@ registerRoute({
   component: () => <Metal3ClusterTemplateDetail />,
   name: 'metal3clustertemplate-detail',
 });
+
+// Power on/off action on the BareMetalHost detail view. Toggles spec.online.
+registerDetailsViewHeaderAction(PowerActionButton);
