@@ -365,6 +365,7 @@ export default function AIPrompt(props: {
   const [showHolmesSetup, setShowHolmesSetup] = React.useState(false);
   const [isHolmesRetrying, setIsHolmesRetrying] = React.useState(false);
   const holmesHealthRequestGateRef = React.useRef(new HolmesHealthRequestGate());
+  const userSelectedChatRef = React.useRef(false);
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -1449,8 +1450,10 @@ export default function AIPrompt(props: {
   const handleToggleAgentModeRequest = React.useCallback(
     (enabled: boolean) => {
       if (enabled) {
+        userSelectedChatRef.current = false;
         void handleUseHolmes();
       } else {
+        userSelectedChatRef.current = true;
         holmesHealthRequestGateRef.current.invalidate();
         setIsHolmesRetrying(false);
         setShowHolmesSetup(false);
@@ -1466,7 +1469,7 @@ export default function AIPrompt(props: {
   // default to it regardless of whether a chat provider is also configured.
   // Fall back to chat mode only when Holmes is not reachable.
   React.useEffect(() => {
-    if (isAgentMode || holmesAgentRef.current) return;
+    if (userSelectedChatRef.current || isAgentMode || holmesAgentRef.current) return;
 
     // If mock agent is enabled, skip health check and go straight to agent mode
     if (pluginSettings?.devOptions?.enableMockAgent) {
@@ -1819,6 +1822,7 @@ export default function AIPrompt(props: {
         onRetry={handleUseHolmes}
         isRetrying={isHolmesRetrying}
         onDismiss={() => {
+          userSelectedChatRef.current = true;
           holmesHealthRequestGateRef.current.invalidate();
           setIsHolmesRetrying(false);
           setShowHolmesSetup(false);
