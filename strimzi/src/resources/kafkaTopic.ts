@@ -23,7 +23,7 @@ export interface KafkaTopicInterface extends KubeObjectInterface {
  * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaTopic-reference
  */
 export class KafkaTopic extends KubeObject<KafkaTopicInterface> {
-  static apiVersion = 'kafka.strimzi.io/v1beta2';
+  static apiVersion = ['kafka.strimzi.io/v1', 'kafka.strimzi.io/v1beta2'];
   static kind = 'KafkaTopic';
   static apiName = 'kafkatopics';
   static isNamespaced = true;
@@ -51,9 +51,4 @@ export class KafkaTopic extends KubeObject<KafkaTopicInterface> {
   get replicas(): number {
     return this.spec?.replicas ?? 0;
   }
-}
-
-/** KafkaTopic resource class targeting the `kafka.strimzi.io/v1` API (Strimzi 1.0.0+). */
-export class KafkaTopicV1 extends KafkaTopic {
-  static apiVersion = 'kafka.strimzi.io/v1';
 }
