@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- Crash on the Kafka Topics and Users pages when the Kafka cluster list was still loading
+
 ## [0.3.9] - 2026-03-07
 
 ### Added

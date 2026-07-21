@@ -10,6 +10,7 @@ import {
 import { Kafka, KafkaV1, KafkaUser, KafkaUserV1 } from '../resources';
 import type { CreateKafkaUserPayload, KafkaUserInterface } from '../resources';
 import { getErrorMessage } from '../utils/errors';
+import { clusterNamespaces, clusterNamesInNamespace } from '../utils/clusters';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 import { SecureSecretDisplay } from './SecureSecretDisplay';
@@ -24,7 +25,9 @@ export function KafkaUserList() {
   const kafkaApiPath = `/apis/kafka.strimzi.io/${kafkaVersion}`;
 
   // All hooks must be called before any early return (Rules of Hooks).
-  const { items: kafkaClusters } = KafkaClass.useList({});
+  // useList returns null while loading, so normalise to an array up front.
+  const { items } = KafkaClass.useList({});
+  const kafkaClusters = items ?? [];
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
@@ -42,17 +45,15 @@ export function KafkaUserList() {
   });
   const [loading, setLoading] = React.useState(false);
 
-  const availableNamespacesForCreate = React.useMemo(() => {
-    return [...new Set(kafkaClusters.map(k => k.metadata.namespace))].sort();
-  }, [kafkaClusters]);
+  const availableNamespacesForCreate = React.useMemo(
+    () => clusterNamespaces(kafkaClusters),
+    [kafkaClusters]
+  );
 
-  const filteredClusterNames = React.useMemo(() => {
-    if (!formData.namespace) return [];
-    return kafkaClusters
-      .filter(k => k.metadata.namespace === formData.namespace)
-      .map(k => k.metadata.name)
-      .sort();
-  }, [kafkaClusters, formData.namespace]);
+  const filteredClusterNames = React.useMemo(
+    () => clusterNamesInNamespace(kafkaClusters, formData.namespace),
+    [kafkaClusters, formData.namespace]
+  );
 
   const fetchUserSecret = async (user: KafkaUserInterface) => {
     try {
@@ -174,13 +175,7 @@ export function KafkaUserList() {
 
   const openCreateDialog = () => {
     const firstNs = availableNamespacesForCreate[0] ?? '';
-    const firstCluster =
-      firstNs && kafkaClusters.length > 0
-        ? kafkaClusters
-            .filter(k => k.metadata.namespace === firstNs)
-            .map(k => k.metadata.name)
-            .sort()[0] ?? ''
-        : '';
+    const firstCluster = clusterNamesInNamespace(kafkaClusters, firstNs)[0] ?? '';
     setFormData({
       name: '',
       namespace: firstNs,
