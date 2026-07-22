@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DetailsGrid,
   NameValueTable,
@@ -15,6 +16,7 @@ import {
 } from '../common/CommonComponents';
 
 export function OrderDetail() {
+  const { t } = useTranslation();
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
   const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
 
@@ -29,29 +31,29 @@ export function OrderDetail() {
           extraInfo={item =>
             item && [
               {
-                name: 'Common Name',
+                name: t('Common Name'),
                 value: item.spec?.commonName,
               },
               {
-                name: 'DNS Names',
+                name: t('DNS Names'),
                 value: <StringArray items={item.spec?.dnsNames} />,
               },
               {
-                name: 'IP Addresses',
+                name: t('IP Addresses'),
                 value: <StringArray items={item.spec?.ipAddresses} />,
               },
               {
-                name: 'Duration',
+                name: t('Duration'),
                 value: item.spec?.duration,
               },
               {
-                name: 'Issuer Ref',
+                name: t('Issuer Ref'),
                 value: item.spec.issuerRef && (
                   <IssuerRef issuerRef={item.spec.issuerRef} namespace={item.metadata?.namespace} />
                 ),
               },
               {
-                name: 'Request',
+                name: t('Request'),
                 value: <CopyToClipboard text={item.spec.request} />,
               },
             ]
@@ -61,30 +63,30 @@ export function OrderDetail() {
               {
                 id: 'Authorizations',
                 section: item.status?.authorizations && (
-                  <SectionBox title="Authorizations">
+                  <SectionBox title={t('Authorizations')}>
                     {item.status?.authorizations.map((auth, index) => (
                       <div key={index} style={{ marginBottom: '20px' }}>
                         <NameValueTable
                           rows={[
-                            { name: 'Identifier', value: auth.identifier },
-                            { name: 'Initial State', value: auth?.initialState },
-                            { name: 'URL', value: auth.url },
-                            { name: 'Wildcard', value: auth.wildcard.toString() },
+                            { name: t('Identifier'), value: auth.identifier },
+                            { name: t('Initial State'), value: auth?.initialState },
+                            { name: t('URL'), value: auth.url },
+                            { name: t('Wildcard'), value: auth.wildcard ? t('Yes') : t('No') },
                             {
-                              name: 'Challenges',
+                              name: t('Challenges'),
                               value: (
                                 <SimpleTable
                                   columns={[
                                     {
-                                      label: 'Type',
+                                      label: t('Type'),
                                       getter: challenge => challenge.type,
                                     },
                                     {
-                                      label: 'Token',
+                                      label: t('Token'),
                                       getter: challenge => challenge.token,
                                     },
                                     {
-                                      label: 'URL',
+                                      label: t('URL'),
                                       getter: challenge => challenge.url,
                                     },
                                   ]}
@@ -102,22 +104,22 @@ export function OrderDetail() {
               {
                 id: 'Status',
                 section: item.status && (
-                  <SectionBox title="Status">
+                  <SectionBox title={t('Status')}>
                     <NameValueTable
                       rows={[
-                        { name: 'State', value: item.status?.state },
-                        { name: 'URL', value: item.status?.url },
-                        { name: 'Finalize URL', value: item.status?.finalizeURL },
+                        { name: t('State'), value: item.status?.state },
+                        { name: t('URL'), value: item.status?.url },
+                        { name: t('Finalize URL'), value: item.status?.finalizeURL },
                         {
-                          name: 'Certificate',
+                          name: t('Certificate'),
                           value: item.status?.certificate ? (
                             <CopyToClipboard text={item.status?.certificate} />
                           ) : (
                             ''
                           ),
                         },
-                        { name: 'Failure Time', value: item.status?.failureTime },
-                        { name: 'Reason', value: item.status?.reason },
+                        { name: t('Failure Time'), value: item.status?.failureTime },
+                        { name: t('Reason'), value: item.status?.reason },
                       ]}
                     />
                   </SectionBox>

@@ -6,7 +6,11 @@ import {
   StringArray,
 } from './CommonComponents';
 
-export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): NameValueTableRow[] {
+export function processIssuerExtraInfo(
+  spec: IssuerSpec,
+  namespace: string | undefined,
+  t: (key: string) => string
+): NameValueTableRow[] {
   const extraInfo: NameValueTableRow[] = [];
 
   if (spec.acme) {
@@ -15,13 +19,21 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
       value: (
         <NameValueTable
           rows={[
-            { name: 'Email', value: spec.acme.email },
-            { name: 'Server', value: spec.acme.server },
-            { name: 'Preferred Chain', value: spec.acme.preferredChain },
-            { name: 'CA Bundle', value: spec.acme.caBundle },
-            { name: 'Skip TLS Verify', value: spec.acme.skipTLSVerify?.toString() },
+            { name: t('Email'), value: spec.acme.email },
+            { name: t('Server'), value: spec.acme.server },
+            { name: t('Preferred Chain'), value: spec.acme.preferredChain },
+            { name: t('CA Bundle'), value: spec.acme.caBundle },
             {
-              name: 'Private Key Secret Ref',
+              name: t('Skip TLS Verify'),
+              value:
+                spec.acme.skipTLSVerify === undefined
+                  ? undefined
+                  : spec.acme.skipTLSVerify
+                  ? t('Yes')
+                  : t('No'),
+            },
+            {
+              name: t('Private Key Secret Ref'),
               value: (
                 <SecretKeySelectorComponent
                   selector={spec.acme.privateKeySecretRef}
@@ -30,14 +42,17 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
               ),
             },
             {
-              name: 'External Account Binding',
+              name: t('External Account Binding'),
               value: spec.acme.externalAccountBinding && (
                 <NameValueTable
                   rows={[
-                    { name: 'Key ID', value: spec.acme.externalAccountBinding.keyID },
-                    { name: 'Key Algorithm', value: spec.acme.externalAccountBinding.keyAlgorithm },
+                    { name: t('Key ID'), value: spec.acme.externalAccountBinding.keyID },
                     {
-                      name: 'Key Secret Ref',
+                      name: t('Key Algorithm'),
+                      value: spec.acme.externalAccountBinding.keyAlgorithm,
+                    },
+                    {
+                      name: t('Key Secret Ref'),
                       value: (
                         <SecretKeySelectorComponent
                           selector={spec.acme.externalAccountBinding.keySecretRef}
@@ -50,15 +65,25 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
               ),
             },
             {
-              name: 'Disable Account Key Generation',
-              value: spec.acme.disableAccountKeyGeneration?.toString(),
+              name: t('Disable Account Key Generation'),
+              value:
+                spec.acme.disableAccountKeyGeneration === undefined
+                  ? undefined
+                  : spec.acme.disableAccountKeyGeneration
+                  ? t('Yes')
+                  : t('No'),
             },
             {
-              name: 'Enable Duration Feature',
-              value: spec.acme.enableDurationFeature?.toString(),
+              name: t('Enable Duration Feature'),
+              value:
+                spec.acme.enableDurationFeature === undefined
+                  ? undefined
+                  : spec.acme.enableDurationFeature
+                  ? t('Yes')
+                  : t('No'),
             },
             {
-              name: 'Solvers',
+              name: t('Solvers'),
               value: spec.acme.solvers?.map((solver, index) => (
                 <div key={index} style={{ marginBottom: '20px' }}>
                   <ACMEChallengeSolverComponent solver={solver} namespace={namespace} />
@@ -73,13 +98,13 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
 
   if (spec.ca) {
     extraInfo.push({
-      name: 'CA',
+      name: t('CA'),
       value: (
         <NameValueTable
           rows={[
-            { name: 'Secret Name', value: spec.ca.secretName },
+            { name: t('Secret Name'), value: spec.ca.secretName },
             {
-              name: 'CRL Distribution Points',
+              name: t('CRL Distribution Points'),
               value: <StringArray items={spec.ca.crlDistributionPoints} />,
             },
           ]}
@@ -94,17 +119,17 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
       value: (
         <NameValueTable
           rows={[
-            { name: 'Server', value: spec.vault.server },
-            { name: 'Path', value: spec.vault.path },
-            { name: 'CA Bundle', value: spec.vault.caBundle },
-            { name: 'Namespace', value: spec.vault.namespace },
+            { name: t('Server'), value: spec.vault.server },
+            { name: t('Path'), value: spec.vault.path },
+            { name: t('CA Bundle'), value: spec.vault.caBundle },
+            { name: t('Namespace'), value: spec.vault.namespace },
             {
-              name: 'Auth',
+              name: t('Auth'),
               value: spec.vault.auth && (
                 <NameValueTable
                   rows={[
                     {
-                      name: 'Token Secret Ref',
+                      name: t('Token Secret Ref'),
                       value: spec.vault.auth.tokenSecretRef && (
                         <SecretKeySelectorComponent
                           selector={spec.vault.auth.tokenSecretRef}
@@ -113,14 +138,14 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
                       ),
                     },
                     {
-                      name: 'App Role',
+                      name: t('App Role'),
                       value: spec.vault.auth.appRole && (
                         <NameValueTable
                           rows={[
-                            { name: 'Path', value: spec.vault.auth.appRole.path },
-                            { name: 'Role ID', value: spec.vault.auth.appRole.roleId },
+                            { name: t('Path'), value: spec.vault.auth.appRole.path },
+                            { name: t('Role ID'), value: spec.vault.auth.appRole.roleId },
                             {
-                              name: 'Secret Ref',
+                              name: t('Secret Ref'),
                               value: (
                                 <SecretKeySelectorComponent
                                   selector={spec.vault.auth.appRole.secretRef}
@@ -137,9 +162,9 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
                       value: spec.vault.auth.kubernetes && (
                         <NameValueTable
                           rows={[
-                            { name: 'Role', value: spec.vault.auth.kubernetes.role },
+                            { name: t('Role'), value: spec.vault.auth.kubernetes.role },
                             {
-                              name: 'Secret Ref',
+                              name: t('Secret Ref'),
                               value: (
                                 <SecretKeySelectorComponent
                                   selector={spec.vault.auth.kubernetes.secretRef}
@@ -147,7 +172,7 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
                                 />
                               ),
                             },
-                            { name: 'Mount Path', value: spec.vault.auth.kubernetes.mountPath },
+                            { name: t('Mount Path'), value: spec.vault.auth.kubernetes.mountPath },
                           ]}
                         />
                       ),
@@ -164,12 +189,12 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
 
   if (spec.selfSigned) {
     extraInfo.push({
-      name: 'Self Signed',
+      name: t('Self Signed'),
       value: (
         <NameValueTable
           rows={[
             {
-              name: 'CRL Distribution Points',
+              name: t('CRL Distribution Points'),
               value: <StringArray items={spec.selfSigned.crlDistributionPoints} />,
             },
           ]}
@@ -184,15 +209,15 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
       value: (
         <NameValueTable
           rows={[
-            { name: 'Zone', value: spec.venafi.zone },
+            { name: t('Zone'), value: spec.venafi.zone },
             {
               name: 'TPP',
               value: spec.venafi.tpp && (
                 <NameValueTable
                   rows={[
-                    { name: 'URL', value: spec.venafi.tpp.url },
+                    { name: t('URL'), value: spec.venafi.tpp.url },
                     {
-                      name: 'Credentials Ref',
+                      name: t('Credentials Ref'),
                       value: (
                         <SecretKeySelectorComponent
                           selector={spec.venafi.tpp.credentialsRef}
@@ -200,19 +225,19 @@ export function processIssuerExtraInfo(spec: IssuerSpec, namespace?: string): Na
                         />
                       ),
                     },
-                    { name: 'CA Bundle', value: spec.venafi.tpp.caBundle },
+                    { name: t('CA Bundle'), value: spec.venafi.tpp.caBundle },
                   ]}
                 />
               ),
             },
             {
-              name: 'Cloud',
+              name: t('Cloud'),
               value: spec.venafi.cloud && (
                 <NameValueTable
                   rows={[
-                    { name: 'URL', value: spec.venafi.cloud.url },
+                    { name: t('URL'), value: spec.venafi.cloud.url },
                     {
-                      name: 'API Token Secret Ref',
+                      name: t('API Token Secret Ref'),
                       value: (
                         <SecretKeySelectorComponent
                           selector={spec.venafi.cloud.apiTokenSecretRef}

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DetailsGrid,
   NameValueTable,
@@ -14,6 +15,7 @@ import {
 } from '../common/CommonComponents';
 
 export function ChallengeDetail() {
+  const { t } = useTranslation();
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
   const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
 
@@ -28,29 +30,29 @@ export function ChallengeDetail() {
           extraInfo={item =>
             item && [
               {
-                name: 'DNS Name',
+                name: t('DNS Name'),
                 value: item.spec.dnsName,
               },
               {
-                name: 'Authorization URL',
+                name: t('Authorization URL'),
                 value: item.spec.authorizationURL,
               },
               {
-                name: 'Type',
+                name: t('Type'),
                 value: item.spec.type,
               },
               {
-                name: 'Issuer Ref',
+                name: t('Issuer Ref'),
                 value: item.spec.issuerRef && (
                   <IssuerRef issuerRef={item.spec.issuerRef} namespace={item.metadata.namespace} />
                 ),
               },
               {
-                name: 'Key',
+                name: t('Key'),
                 value: <CopyToClipboard text={item.spec.key} />,
               },
               {
-                name: 'Solver',
+                name: t('Solver'),
                 value: (
                   <ACMEChallengeSolverComponent
                     solver={item.spec.solver}
@@ -59,16 +61,16 @@ export function ChallengeDetail() {
                 ),
               },
               {
-                name: 'Token',
+                name: t('Token'),
                 value: item.spec.token,
               },
               {
-                name: 'URL',
+                name: t('URL'),
                 value: item.spec.url,
               },
               {
-                name: 'Wildcard',
-                value: item.spec?.wildcard?.toString() || 'false',
+                name: t('Wildcard'),
+                value: item.spec?.wildcard ? t('Yes') : t('No'),
               },
             ]
           }
@@ -77,13 +79,19 @@ export function ChallengeDetail() {
               {
                 id: 'Status',
                 section: item?.status && (
-                  <SectionBox title="Status">
+                  <SectionBox title={t('Status')}>
                     <NameValueTable
                       rows={[
-                        { name: 'State', value: item.status?.state },
-                        { name: 'Presented', value: item.status.presented.toString() },
-                        { name: 'Processing', value: item.status.processing.toString() },
-                        { name: 'Reason', value: item.status?.reason },
+                        { name: t('State'), value: item.status?.state },
+                        {
+                          name: t('Presented'),
+                          value: item.status.presented ? t('Yes') : t('No'),
+                        },
+                        {
+                          name: t('Processing'),
+                          value: item.status.processing ? t('Yes') : t('No'),
+                        },
+                        { name: t('Reason'), value: item.status?.reason },
                       ]}
                     />
                   </SectionBox>

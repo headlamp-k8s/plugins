@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   LabelListItem,
@@ -12,6 +12,7 @@ import {
 import { Alert, IconButton, Snackbar, Tooltip } from '@mui/material';
 import { Box, CircularProgress, Grid, Link as MuiLink, Typography } from '@mui/material';
 import { useState } from 'react';
+import { Trans } from 'react-i18next';
 import {
   ACMEChallengeSolver,
   ACMEIssuerStatus,
@@ -26,6 +27,7 @@ interface CopyToClipboardProps {
 }
 
 export function CopyToClipboard({ text, maxDisplayLength = 30 }: CopyToClipboardProps) {
+  const { t } = useTranslation();
   const [showError, setShowError] = useState(false);
   const displayText =
     text.length > maxDisplayLength ? `${text.substring(0, maxDisplayLength)}...` : text;
@@ -51,7 +53,7 @@ export function CopyToClipboard({ text, maxDisplayLength = 30 }: CopyToClipboard
       </div>
       <Snackbar open={showError} autoHideDuration={6000} onClose={() => setShowError(false)}>
         <Alert onClose={() => setShowError(false)} severity="error">
-          Failed to copy to clipboard
+          {t('Failed to copy to clipboard')}
         </Alert>
       </Snackbar>
     </>
@@ -64,11 +66,12 @@ interface IssuerRefProps {
 }
 
 export function IssuerRef({ issuerRef, namespace }: IssuerRefProps) {
+  const { t } = useTranslation();
   return (
     <NameValueTable
       rows={[
         {
-          name: 'Name',
+          name: t('Name'),
           value: (
             <Link
               routeName={
@@ -90,7 +93,7 @@ export function IssuerRef({ issuerRef, namespace }: IssuerRefProps) {
           ),
         },
         {
-          name: 'Kind',
+          name: t('Kind'),
           value: issuerRef?.kind,
         },
       ]}
@@ -103,32 +106,33 @@ interface ConditionsTableProps {
 }
 
 export function ConditionsTable({ conditions }: ConditionsTableProps) {
+  const { t } = useTranslation();
   return (
-    <SectionBox title="Conditions">
+    <SectionBox title={t('Conditions')}>
       <SimpleTable
         columns={[
           {
-            label: 'Type',
+            label: t('Type'),
             getter: item => item.type,
           },
           {
-            label: 'Status',
+            label: t('Status'),
             getter: item => item.status,
           },
           {
-            label: 'Reason',
+            label: t('Reason'),
             getter: item => item.reason,
           },
           {
-            label: 'Observed Generation',
+            label: t('Observed Generation'),
             getter: item => item.observedGeneration,
           },
           {
-            label: 'Message',
+            label: t('Message'),
             getter: item => item.message,
           },
           {
-            label: 'Last Transition Time',
+            label: t('Last Transition Time'),
             getter: item => <DateLabel date={item.lastTransitionTime} />,
             sort: (a, b) =>
               new Date(a.lastTransitionTime).getTime() - new Date(b.lastTransitionTime).getTime(),
@@ -146,11 +150,12 @@ interface SecretKeySelectorProps {
 }
 
 export function SecretKeySelectorComponent({ selector, namespace }: SecretKeySelectorProps) {
+  const { t } = useTranslation();
   return (
     <NameValueTable
       rows={[
         {
-          name: 'Name',
+          name: t('Name'),
           value: namespace ? (
             <Link
               routeName={K8s.ResourceClasses.Secret.kind}
@@ -163,7 +168,7 @@ export function SecretKeySelectorComponent({ selector, namespace }: SecretKeySel
           ),
         },
         {
-          name: 'Key',
+          name: t('Key'),
           value: selector.key,
         },
       ]}
@@ -177,6 +182,7 @@ interface ACMEChallengeSolverProps {
 }
 
 export function ACMEChallengeSolverComponent({ solver, namespace }: ACMEChallengeSolverProps) {
+  const { t } = useTranslation();
   const cloudflareGetter = (item: any) => {
     const thisItem = item?.cloudflare;
 
@@ -188,14 +194,14 @@ export function ACMEChallengeSolverComponent({ solver, namespace }: ACMEChalleng
 
     if (thisItem.email) {
       rows.push({
-        name: 'Email',
+        name: t('Email'),
         value: thisItem.email,
       });
     }
 
     if (thisItem.apiKeySecretRef) {
       rows.push({
-        name: 'API Key Secret',
+        name: t('API Key Secret'),
         value: (
           <SecretKeySelectorComponent selector={thisItem.apiKeySecretRef} namespace={namespace} />
         ),
@@ -204,7 +210,7 @@ export function ACMEChallengeSolverComponent({ solver, namespace }: ACMEChalleng
 
     if (thisItem.apiTokenSecretRef) {
       rows.push({
-        name: 'API Token Secret',
+        name: t('API Token Secret'),
         value: (
           <SecretKeySelectorComponent selector={thisItem.apiTokenSecretRef} namespace={namespace} />
         ),
@@ -274,19 +280,20 @@ interface ACMEIssuerStatusProps {
 }
 
 export function ACMEIssuerStatusComponent({ status }: ACMEIssuerStatusProps) {
+  const { t } = useTranslation();
   return (
     <NameValueTable
       rows={[
         {
-          name: 'URI',
+          name: t('URI'),
           value: status.uri,
         },
         {
-          name: 'Last Registered Email',
+          name: t('Last Registered Email'),
           value: status.lastRegisteredEmail,
         },
         {
-          name: 'Last Private Key Hash',
+          name: t('Last Private Key Hash'),
           value: status.lastPrivateKeyHash,
         },
       ]}
@@ -299,9 +306,10 @@ interface StringArrayProps {
   emptyText?: string;
 }
 
-export function StringArray({ items, emptyText = 'None' }: StringArrayProps) {
+export function StringArray({ items, emptyText }: StringArrayProps) {
+  const { t } = useTranslation();
   if (!items?.length) {
-    return <span>{emptyText}</span>;
+    return <span>{emptyText ?? t('None')}</span>;
   }
 
   return (
@@ -320,6 +328,7 @@ interface NotInstalledBannerProps {
 }
 
 export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProps) {
+  const { t } = useTranslation();
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
@@ -333,21 +342,26 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
       <Grid container spacing={2} direction="column" justifyContent="center" alignItems="center">
         <Grid item>
           <Typography variant="h5">
-            cert-manager was not detected on your cluster. If you haven't already, please install
-            it.
+            {t(
+              "cert-manager was not detected on your cluster. If you haven't already, please install it."
+            )}
           </Typography>
         </Grid>
         <Grid item>
           <Typography>
-            Learn how to{' '}
-            <MuiLink
-              href="https://cert-manager.io/docs/installation/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              install
-            </MuiLink>{' '}
-            cert-manager
+            {/* Keep the sentence in one i18n unit so translators can position the link
+                anywhere in the translated string. <2> matches the MuiLink child. */}
+            <Trans>
+              Learn how to{' '}
+              <MuiLink
+                href="https://cert-manager.io/docs/installation/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                install
+              </MuiLink>{' '}
+              cert-manager
+            </Trans>
           </Typography>
         </Grid>
       </Grid>

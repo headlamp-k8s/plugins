@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DetailsGrid,
   NameValueTable,
@@ -9,6 +10,7 @@ import { Certificate } from '../../resources/certificate';
 import { IssuerRef, NotInstalledBanner, StringArray } from '../common/CommonComponents';
 
 export function CertificateDetail() {
+  const { t } = useTranslation();
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
   const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
 
@@ -23,55 +25,55 @@ export function CertificateDetail() {
           extraInfo={item =>
             item && [
               {
-                name: 'Ready',
-                value: item.ready ? 'Ready' : 'Not Ready',
+                name: t('Ready'),
+                value: item.ready ? t('Ready') : t('Not Ready'),
               },
               {
-                name: 'Common Name',
+                name: t('Common Name'),
                 value: item.spec?.commonName,
               },
               {
-                name: 'DNS Names',
+                name: t('DNS Names'),
                 value: <StringArray items={item.spec?.dnsNames} />,
               },
               {
-                name: 'Email Addresses',
+                name: t('Email Addresses'),
                 value: <StringArray items={item.spec?.emailAddresses} />,
               },
               {
-                name: 'IP Addresses',
+                name: t('IP Addresses'),
                 value: <StringArray items={item.spec?.ipAddresses} />,
               },
               {
-                name: 'URIs',
+                name: t('URIs'),
                 value: <StringArray items={item.spec?.uris} />,
               },
               {
-                name: 'Duration',
+                name: t('Duration'),
                 value: item.spec?.duration,
               },
               {
-                name: 'Renew Before',
+                name: t('Renew Before'),
                 value: item.spec?.renewBefore,
               },
               {
-                name: 'Is CA',
-                value: item.spec?.isCA ? 'Yes' : 'No',
+                name: t('Is CA'),
+                value: item.spec?.isCA ? t('Yes') : t('No'),
               },
               {
-                name: 'Usages',
+                name: t('Usages'),
                 value: <StringArray items={item.spec?.usages} />,
               },
               {
-                name: 'Revision History Limit',
+                name: t('Revision History Limit'),
                 value: item.spec?.revisionHistoryLimit?.toString(),
               },
               {
-                name: 'Secret Name',
+                name: t('Secret Name'),
                 value: item.spec.secretName,
               },
               {
-                name: 'Issuer Ref',
+                name: t('Issuer Ref'),
                 value: item.spec.issuerRef && (
                   <IssuerRef issuerRef={item.spec.issuerRef} namespace={item.metadata.namespace} />
                 ),
@@ -83,39 +85,39 @@ export function CertificateDetail() {
               {
                 id: 'Subject',
                 section: item.spec.subject && (
-                  <SectionBox title="Subject">
+                  <SectionBox title={t('Subject')}>
                     <NameValueTable
                       rows={[
                         {
-                          name: 'Organizations',
+                          name: t('Organizations'),
                           value: <StringArray items={item.spec.subject?.organizations} />,
                         },
                         {
-                          name: 'Countries',
+                          name: t('Countries'),
                           value: <StringArray items={item.spec.subject?.countries} />,
                         },
                         {
-                          name: 'Organizational Units',
+                          name: t('Organizational Units'),
                           value: <StringArray items={item.spec.subject?.organizationalUnits} />,
                         },
                         {
-                          name: 'Localities',
+                          name: t('Localities'),
                           value: <StringArray items={item.spec.subject?.localities} />,
                         },
                         {
-                          name: 'Provinces',
+                          name: t('Provinces'),
                           value: <StringArray items={item.spec.subject?.provinces} />,
                         },
                         {
-                          name: 'Street Addresses',
+                          name: t('Street Addresses'),
                           value: <StringArray items={item.spec.subject?.streetAddresses} />,
                         },
                         {
-                          name: 'Postal Codes',
+                          name: t('Postal Codes'),
                           value: <StringArray items={item.spec.subject?.postalCodes} />,
                         },
                         {
-                          name: 'Serial Number',
+                          name: t('Serial Number'),
                           value: item.spec?.subject?.serialNumber,
                         },
                       ]}
@@ -126,23 +128,23 @@ export function CertificateDetail() {
               {
                 id: 'Private Key',
                 section: item.spec.privateKey && (
-                  <SectionBox title="Private Key">
+                  <SectionBox title={t('Private Key')}>
                     <NameValueTable
                       rows={[
                         {
-                          name: 'Algorithm',
+                          name: t('Algorithm'),
                           value: item.spec.privateKey?.algorithm,
                         },
                         {
-                          name: 'Size',
+                          name: t('Size'),
                           value: item.spec.privateKey.size?.toString(),
                         },
                         {
-                          name: 'Encoding',
+                          name: t('Encoding'),
                           value: item.spec.privateKey?.encoding,
                         },
                         {
-                          name: 'Rotation Policy',
+                          name: t('Rotation Policy'),
                           value: item.spec.privateKey?.rotationPolicy,
                         },
                       ]}
@@ -153,7 +155,7 @@ export function CertificateDetail() {
               {
                 id: 'Keystores',
                 section: item.spec.keystores && (
-                  <SectionBox title="Keystores">
+                  <SectionBox title={t('Keystores')}>
                     <NameValueTable
                       rows={[
                         {
@@ -162,20 +164,20 @@ export function CertificateDetail() {
                             <NameValueTable
                               rows={[
                                 {
-                                  name: 'Create',
+                                  name: t('Create'),
                                   value: item.spec?.keystores?.jks?.create.toString(),
                                 },
                                 {
-                                  name: 'Password Secret Ref',
+                                  name: t('Password Secret Ref'),
                                   value: item.spec?.keystores?.jks?.passwordSecretRef && (
                                     <NameValueTable
                                       rows={[
                                         {
-                                          name: 'Name',
+                                          name: t('Name'),
                                           value: item.spec?.keystores?.jks?.passwordSecretRef?.name,
                                         },
                                         {
-                                          name: 'Key',
+                                          name: t('Key'),
                                           value: item.spec?.keystores?.jks?.passwordSecretRef?.key,
                                         },
                                       ]}
@@ -192,21 +194,21 @@ export function CertificateDetail() {
                             <NameValueTable
                               rows={[
                                 {
-                                  name: 'Create',
+                                  name: t('Create'),
                                   value: item.spec?.keystores?.pkcs12?.create.toString(),
                                 },
                                 {
-                                  name: 'Password Secret Ref',
+                                  name: t('Password Secret Ref'),
                                   value: item.spec?.keystores?.pkcs12?.passwordSecretRef && (
                                     <NameValueTable
                                       rows={[
                                         {
-                                          name: 'Name',
+                                          name: t('Name'),
                                           value:
                                             item.spec?.keystores?.pkcs12?.passwordSecretRef?.name,
                                         },
                                         {
-                                          name: 'Key',
+                                          name: t('Key'),
                                           value:
                                             item.spec?.keystores?.pkcs12?.passwordSecretRef?.key,
                                         },
@@ -226,27 +228,27 @@ export function CertificateDetail() {
               {
                 id: 'Status',
                 section: item.status && (
-                  <SectionBox title="Status">
+                  <SectionBox title={t('Status')}>
                     <NameValueTable
                       rows={[
                         {
-                          name: 'Not Before',
+                          name: t('Not Before'),
                           value: item.status?.notBefore,
                         },
                         {
-                          name: 'Not After',
+                          name: t('Not After'),
                           value: item.status?.notAfter,
                         },
                         {
-                          name: 'Renewal Time',
+                          name: t('Renewal Time'),
                           value: item.status?.renewalTime,
                         },
                         {
-                          name: 'Revision',
+                          name: t('Revision'),
                           value: item.status?.revision?.toString(),
                         },
                         {
-                          name: 'Next Private Key Secret',
+                          name: t('Next Private Key Secret'),
                           value: item.status?.nextPrivateKeySecretName,
                         },
                       ]}

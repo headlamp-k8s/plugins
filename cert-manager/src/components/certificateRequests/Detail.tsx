@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid, NameValueTable } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { useCertManagerInstalled } from '../../hooks/useCertManagerInstalled';
@@ -10,6 +11,7 @@ import {
 } from '../common/CommonComponents';
 
 export function CertificateRequestDetail() {
+  const { t } = useTranslation();
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
   const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
 
@@ -24,58 +26,58 @@ export function CertificateRequestDetail() {
           extraInfo={item =>
             item && [
               {
-                name: 'Ready',
-                value: item.ready ? 'Ready' : 'Not Ready',
+                name: t('Ready'),
+                value: item.ready ? t('Ready') : t('Not Ready'),
               },
               {
-                name: 'Approved',
-                value: item.approved === 'True' ? 'Yes' : 'No',
+                name: t('Approved'),
+                value: item.approved === 'True' ? t('Yes') : t('No'),
               },
               {
-                name: 'Denied',
-                value: item.denied === 'True' ? 'Yes' : 'No',
+                name: t('Denied'),
+                value: item.denied === 'True' ? t('Yes') : t('No'),
               },
               {
-                name: 'Duration',
+                name: t('Duration'),
                 value: item.spec?.duration,
               },
               {
-                name: 'Is CA',
-                value: item.spec?.isCA ? 'Yes' : 'No',
+                name: t('Is CA'),
+                value: item.spec?.isCA ? t('Yes') : t('No'),
               },
               {
-                name: 'Usages',
+                name: t('Usages'),
                 value: item.spec?.usages?.length && (
                   <NameValueTable
                     rows={item.spec?.usages?.map((usage, index) => ({
-                      name: `Usage ${index + 1}`,
+                      name: t('Usage {{index}}', { index: index + 1 }),
                       value: usage,
                     }))}
                   />
                 ),
               },
               {
-                name: 'Issuer Ref',
+                name: t('Issuer Ref'),
                 value: item.spec.issuerRef && (
                   <IssuerRef issuerRef={item.spec.issuerRef} namespace={item.metadata?.namespace} />
                 ),
               },
               {
-                name: 'Request',
+                name: t('Request'),
                 value: <CopyToClipboard text={item.spec.request} />,
               },
               {
-                name: 'Certificate',
+                name: t('Certificate'),
                 value: item.status?.certificate && (
                   <CopyToClipboard text={item.status.certificate} />
                 ),
               },
               {
-                name: 'CA',
+                name: t('CA'),
                 value: item.status?.ca && <CopyToClipboard text={item.status.ca} />,
               },
               {
-                name: 'Failure Time',
+                name: t('Failure Time'),
                 value: item.status?.failureTime,
               },
             ]

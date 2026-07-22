@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useParams } from 'react-router-dom';
@@ -11,6 +12,7 @@ import {
 import { processIssuerExtraInfo } from '../common/processIssuerExtraInfo';
 
 export function IssuerDetail() {
+  const { t } = useTranslation();
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
   const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
 
@@ -20,13 +22,15 @@ export function IssuerDetail() {
       name={name}
       namespace={namespace}
       withEvents
-      extraInfo={item => item?.spec && processIssuerExtraInfo(item.spec, item.metadata.namespace)}
+      extraInfo={item =>
+        item?.spec && processIssuerExtraInfo(item.spec, item.metadata.namespace, t)
+      }
       extraSections={item =>
         item && [
           {
             id: 'Status',
             section: item?.status && (
-              <SectionBox title="Status">
+              <SectionBox title={t('Status')}>
                 {item.status?.acme && <ACMEIssuerStatusComponent status={item.status?.acme} />}
               </SectionBox>
             ),

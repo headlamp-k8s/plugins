@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useParams } from 'react-router-dom';
@@ -11,6 +12,7 @@ import {
 import { processIssuerExtraInfo } from '../common/processIssuerExtraInfo';
 
 export function ClusterIssuerDetail() {
+  const { t } = useTranslation();
   const { name } = useParams<{ name: string }>();
   const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
 
@@ -19,13 +21,13 @@ export function ClusterIssuerDetail() {
       resourceType={ClusterIssuer}
       name={name}
       withEvents
-      extraInfo={item => item?.spec && processIssuerExtraInfo(item.spec)} // TODO: Discover namespace for cluster issuer secrets and pass
+      extraInfo={item => item?.spec && processIssuerExtraInfo(item.spec, undefined, t)} // TODO: Discover namespace for cluster issuer secrets and pass
       extraSections={item =>
         item && [
           {
             id: 'Status',
             section: item?.status && (
-              <SectionBox title="Status">
+              <SectionBox title={t('Status')}>
                 {item.status?.acme && <ACMEIssuerStatusComponent status={item.status?.acme} />}
               </SectionBox>
             ),
