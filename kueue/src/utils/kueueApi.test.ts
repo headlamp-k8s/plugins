@@ -17,4 +17,9 @@ describe('Kueue API constants', () => {
     expect(kueueRoutePaths.clusterQueuesList).toBe('/kueue/clusterqueues');
     expect(kueueRoutePaths.clusterQueueDetail).toBe('/kueue/clusterqueues/:name');
   });
+
+  it('defines Workload list and namespaced detail routes', () => {
+    expect(kueueRoutePaths.workloadsList).toBe('/kueue/workloads');
+    expect(kueueRoutePaths.workloadDetail).toBe('/kueue/workloads/:namespace/:name');
+  });
 });

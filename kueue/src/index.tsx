@@ -5,6 +5,8 @@ import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
+import WorkloadDetail from './components/workloads/Detail';
+import WorkloadList from './components/workloads/List';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
 
 registerSidebarEntry({
@@ -34,6 +36,13 @@ registerSidebarEntry({
   name: 'kueue-resourceflavors',
   label: 'ResourceFlavors',
   url: kueueRoutePaths.resourceFlavorsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-workloads',
+  label: 'Workloads',
+  url: kueueRoutePaths.workloadsList,
 });
 
 registerRoute({
@@ -82,4 +91,20 @@ registerRoute({
   name: kueueRouteNames.resourceFlavorDetail,
   exact: true,
   component: () => <ResourceFlavorDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.workloadsList,
+  sidebar: 'kueue-workloads',
+  name: kueueRouteNames.workloadsList,
+  exact: true,
+  component: () => <WorkloadList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.workloadDetail,
+  sidebar: 'kueue-workloads',
+  name: kueueRouteNames.workloadDetail,
+  exact: true,
+  component: () => <WorkloadDetail />,
 });
