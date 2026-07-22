@@ -121,7 +121,7 @@ function CanaryDetailsRenderer({ resource }) {
         actions={[<SuspendAction resource={cr} />, <ResumeAction resource={cr} />]}
       />
 
-      <SectionBox title="Conditions">
+      <SectionBox title={t('Conditions')}>
         <ConditionsTable resource={cr?.jsonData} />
       </SectionBox>
 
@@ -131,8 +131,9 @@ function CanaryDetailsRenderer({ resource }) {
 }
 
 function MetricsSection({ metrics }) {
+  const { t } = useTranslation();
   if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
-    return <Typography color="text.secondary">No metrics configured</Typography>;
+    return <Typography color="text.secondary">{t('No metrics configured')}</Typography>;
   }
 
   return (
@@ -143,40 +144,42 @@ function MetricsSection({ metrics }) {
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" color="primary" gutterBottom>
-                  {metric?.name || `Metric ${index + 1}`}
+                  {metric?.name || t('Metric {{number}}', { number: index + 1 })}
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary">
-                  Interval: {metric?.interval || 'Not specified'}
+                  {t('Interval')}: {metric?.interval || t('Not specified')}
                 </Typography>
 
                 {metric?.thresholdRange && (
                   <Box mt={1}>
                     <Typography variant="body2" color="text.secondary">
-                      Threshold Range
+                      {t('Threshold Range')}
                     </Typography>
                     <Box display="flex" alignItems="center" mt={0.5}>
-                      <Tooltip title="Minimum">
+                      <Tooltip title={t('Minimum')}>
                         <Chip
                           size="small"
-                          label={`Min: ${
-                            metric.thresholdRange.min !== undefined
-                              ? metric.thresholdRange.min
-                              : 'N/A'
-                          }`}
+                          label={t('Min: {{value}}', {
+                            value:
+                              metric.thresholdRange.min !== undefined
+                                ? metric.thresholdRange.min
+                                : 'N/A',
+                          })}
                           color="primary"
                           variant="outlined"
                         />
                       </Tooltip>
                       <Box mx={1}>-</Box>
-                      <Tooltip title="Maximum">
+                      <Tooltip title={t('Maximum')}>
                         <Chip
                           size="small"
-                          label={`Max: ${
-                            metric.thresholdRange.max !== undefined
-                              ? metric.thresholdRange.max
-                              : 'N/A'
-                          }`}
+                          label={t('Max: {{value}}', {
+                            value:
+                              metric.thresholdRange.max !== undefined
+                                ? metric.thresholdRange.max
+                                : 'N/A',
+                          })}
                           color="secondary"
                           variant="outlined"
                         />
@@ -194,8 +197,9 @@ function MetricsSection({ metrics }) {
 }
 
 function AnalysisSection({ analysis }) {
+  const { t } = useTranslation();
   if (!analysis) {
-    return <Typography color="text.secondary">No analysis configuration found</Typography>;
+    return <Typography color="text.secondary">{t('No analysis configuration found')}</Typography>;
   }
 
   return (
@@ -204,17 +208,17 @@ function AnalysisSection({ analysis }) {
         <Grid item xs={12} md={6}>
           <Box mb={1}>
             <Typography variant="subtitle2" color="text.secondary">
-              Interval
+              {t('Interval')}
             </Typography>
-            <Typography variant="body1">{analysis.interval || 'Not specified'}</Typography>
+            <Typography variant="body1">{analysis.interval || t('Not specified')}</Typography>
           </Box>
 
           <Box mb={1}>
             <Typography variant="subtitle2" color="text.secondary">
-              Threshold
+              {t('Threshold')}
             </Typography>
             <Typography variant="body1">
-              {analysis.threshold !== undefined ? analysis.threshold : 'Not specified'}
+              {analysis.threshold !== undefined ? analysis.threshold : t('Not specified')}
             </Typography>
           </Box>
         </Grid>
@@ -222,10 +226,10 @@ function AnalysisSection({ analysis }) {
         <Grid item xs={12} md={6}>
           <Box mb={1}>
             <Typography variant="subtitle2" color="text.secondary">
-              Max Weight
+              {t('Max Weight')}
             </Typography>
             {analysis.maxWeight !== undefined ? (
-              <Tooltip title="Maximum traffic percentage for canary">
+              <Tooltip title={t('Maximum traffic percentage for canary')}>
                 <Box display="flex" alignItems="center">
                   <Typography variant="body1">{analysis.maxWeight}%</Typography>
                   <LinearProgress
@@ -237,16 +241,16 @@ function AnalysisSection({ analysis }) {
                 </Box>
               </Tooltip>
             ) : (
-              <Typography variant="body1">Not specified</Typography>
+              <Typography variant="body1">{t('Not specified')}</Typography>
             )}
           </Box>
 
           {analysis.stepWeight !== undefined && (
             <Box mb={1}>
               <Typography variant="subtitle2" color="text.secondary">
-                Step Weight
+                {t('Step Weight')}
               </Typography>
-              <Tooltip title="Percentage increment per iteration">
+              <Tooltip title={t('Percentage increment per iteration')}>
                 <Typography variant="body1">{analysis.stepWeight}%</Typography>
               </Tooltip>
             </Box>
@@ -258,7 +262,7 @@ function AnalysisSection({ analysis }) {
           analysis.stepWeights.length > 0 && (
             <Grid item xs={12}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Step Weights
+                {t('Step Weights')}
               </Typography>
               <Box display="flex" gap={1} flexWrap="wrap">
                 {analysis.stepWeights.map((weight, index) => (
@@ -276,10 +280,14 @@ function AnalysisSection({ analysis }) {
 
         <Grid item xs={12}>
           <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-            {analysis.mirror && <Chip label="Mirror Traffic" color="info" size="small" />}
+            {analysis.mirror && <Chip label={t('Mirror Traffic')} color="info" size="small" />}
 
             {analysis.iterations !== undefined && (
-              <Chip label={`${analysis.iterations} Iterations`} color="secondary" size="small" />
+              <Chip
+                label={t('{{count}} Iterations', { count: analysis.iterations })}
+                color="secondary"
+                size="small"
+              />
             )}
           </Box>
         </Grid>
@@ -289,8 +297,9 @@ function AnalysisSection({ analysis }) {
 }
 
 function WebhooksSection({ webhooks }) {
+  const { t } = useTranslation();
   if (!webhooks || !Array.isArray(webhooks) || webhooks.length === 0) {
-    return <Typography color="text.secondary">No webhooks configured</Typography>;
+    return <Typography color="text.secondary">{t('No webhooks configured')}</Typography>;
   }
 
   return (
@@ -300,10 +309,10 @@ function WebhooksSection({ webhooks }) {
           <Paper key={index} variant="outlined" sx={{ p: 2 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
               <Typography variant="h6" color="primary">
-                {webhook?.name || `Webhook ${index + 1}`}
+                {webhook?.name || t('Webhook {{number}}', { number: index + 1 })}
               </Typography>
               <Chip
-                label={webhook?.type || 'Unknown'}
+                label={webhook?.type || t('Unknown')}
                 color={
                   webhook?.type === 'pre-rollout'
                     ? 'warning'
@@ -318,16 +327,16 @@ function WebhooksSection({ webhooks }) {
             <Divider sx={{ my: 1 }} />
 
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              URL
+              {t('URL')}
             </Typography>
             <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
-              {webhook?.url || 'Not specified'}
+              {webhook?.url || t('Not specified')}
             </Typography>
 
             {webhook?.timeout && (
               <Box mt={1}>
                 <Typography variant="body2" color="text.secondary">
-                  Timeout: {webhook.timeout}
+                  {t('Timeout')}: {webhook.timeout}
                 </Typography>
               </Box>
             )}
@@ -335,7 +344,7 @@ function WebhooksSection({ webhooks }) {
             {webhook?.metadata && Object.keys(webhook.metadata).length > 0 && (
               <Box mt={2}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Metadata
+                  {t('Metadata')}
                 </Typography>
                 <Paper
                   variant="outlined"

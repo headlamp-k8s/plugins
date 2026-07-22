@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, ConfirmDialog } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useSnackbar } from 'notistack';
@@ -5,6 +6,7 @@ import React from 'react';
 import { useSource } from '../sources/Source';
 
 function ForceReconciliationAction(props) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const [open, setOpen] = React.useState<boolean>(false);
   const { resource } = props;
@@ -14,8 +16,8 @@ function ForceReconciliationAction(props) {
       <ActionButton
         description={
           resource.jsonData.spec.force
-            ? `Disable force reconciliation for ${resource.metadata.name}`
-            : `Enable force reconciliation for ${resource.metadata.name}`
+            ? t('Disable force reconciliation for {{name}}', { name: resource.metadata.name })
+            : t('Enable force reconciliation for {{name}}', { name: resource.metadata.name })
         }
         icon={resource.jsonData.spec.force ? 'mdi:invoice-text-remove' : 'mdi:invoice-text-new'}
         onClick={() => {
@@ -41,31 +43,40 @@ function ForceReconciliationAction(props) {
             .then(response => {
               enqueueSnackbar(
                 response.spec.force
-                  ? `Successfully Enabled force reconciliation for ${resource.metadata.name}`
-                  : `Successfully Disabled force reconciliation for ${resource.metadata.name}`,
+                  ? t('Successfully enabled force reconciliation for {{name}}', {
+                      name: resource.metadata.name,
+                    })
+                  : t('Successfully disabled force reconciliation for {{name}}', {
+                      name: resource.metadata.name,
+                    }),
                 { variant: 'success' }
               );
             })
             .catch(error => {
-              enqueueSnackbar(`error ${error}`, { variant: 'error' });
+              enqueueSnackbar(t('Error: {{error}}', { error }), { variant: 'error' });
             });
         }}
         title={
           resource.jsonData.spec.force
-            ? 'Disable Force Reconciliation'
-            : 'Enable Force Reconciliation'
+            ? t('Disable Force Reconciliation')
+            : t('Enable Force Reconciliation')
         }
-        description={`${
+        description={
           resource.jsonData.spec.force
-            ? 'Are you sure you want to disable force reconciliation for '
-            : 'Are you sure you want to enable force reconciliation for '
-        }${resource.metadata.name}?`}
+            ? t('Are you sure you want to disable force reconciliation for {{name}}?', {
+                name: resource.metadata.name,
+              })
+            : t('Are you sure you want to enable force reconciliation for {{name}}?', {
+                name: resource.metadata.name,
+              })
+        }
       />
     </>
   );
 }
 
 function SuspendAction(props) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const { resource } = props;
   const [open, setOpen] = React.useState<boolean>(false);
@@ -76,7 +87,7 @@ function SuspendAction(props) {
   return (
     <>
       <ActionButton
-        description="Suspend"
+        description={t('Suspend')}
         icon={'mdi:pause'}
         onClick={() => {
           setOpen(true);
@@ -101,30 +112,43 @@ function SuspendAction(props) {
             .then(response => {
               if (response.spec.suspend) {
                 enqueueSnackbar(
-                  `Successfully suspended reconciliation for ${resource.metadata.name}`,
+                  t('Successfully suspended reconciliation for {{name}}', {
+                    name: resource.metadata.name,
+                  }),
                   { variant: 'success' }
                 );
               } else {
-                enqueueSnackbar(`Failed to suspend reconciliation for ${resource.metadata.name}`, {
-                  variant: 'error',
-                });
+                enqueueSnackbar(
+                  t('Failed to suspend reconciliation for {{name}}', {
+                    name: resource.metadata.name,
+                  }),
+                  {
+                    variant: 'error',
+                  }
+                );
               }
             })
             .catch(error => {
               enqueueSnackbar(
-                `Failed to suspend reconciliation for ${resource.metadata.name} error ${error}`,
+                t('Failed to suspend reconciliation for {{name}}: {{error}}', {
+                  name: resource.metadata.name,
+                  error,
+                }),
                 { variant: 'error' }
               );
             });
         }}
-        title={'Suspend Reconciliation'}
-        description={`Are you sure you want to suspend reconciliation for ${resource?.jsonData.metadata.name}?`}
+        title={t('Suspend Reconciliation')}
+        description={t('Are you sure you want to suspend reconciliation for {{name}}?', {
+          name: resource?.jsonData.metadata.name,
+        })}
       />
     </>
   );
 }
 
 function ResumeAction(props) {
+  const { t } = useTranslation();
   const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
   if (!resource.jsonData.spec.suspend) {
@@ -132,7 +156,7 @@ function ResumeAction(props) {
   }
   return (
     <ActionButton
-      description="Resume"
+      description={t('Resume')}
       icon={'mdi:play'}
       onClick={() => {
         const patch = resource.constructor.apiEndpoint.patch;
@@ -147,18 +171,31 @@ function ResumeAction(props) {
         )
           .then(response => {
             if (!response.spec.suspend) {
-              enqueueSnackbar(`Successfully resumed reconciliation for ${response.metadata.name}`, {
-                variant: 'success',
-              });
+              enqueueSnackbar(
+                t('Successfully resumed reconciliation for {{name}}', {
+                  name: response.metadata.name,
+                }),
+                {
+                  variant: 'success',
+                }
+              );
             } else {
-              enqueueSnackbar(`Failed to resume reconciliation for ${response.metadata.name}`, {
-                variant: 'error',
-              });
+              enqueueSnackbar(
+                t('Failed to resume reconciliation for {{name}}', {
+                  name: response.metadata.name,
+                }),
+                {
+                  variant: 'error',
+                }
+              );
             }
           })
           .catch(error => {
             enqueueSnackbar(
-              `Failed to resume reconciliation for ${resource.metadata.name} error ${error}`,
+              t('Failed to resume reconciliation for {{name}}: {{error}}', {
+                name: resource.metadata.name,
+                error,
+              }),
               { variant: 'error' }
             );
           });
@@ -186,30 +223,36 @@ function syncRequest(resource: KubeObject, enqueueSnackbar, date) {
 }
 
 function SyncAction(props) {
+  const { t } = useTranslation();
   const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
 
   return (
     <ActionButton
-      description="Sync"
+      description={t('Sync')}
       icon={'mdi:sync'}
       onClick={() => {
         const date = new Date().toISOString();
-        enqueueSnackbar(`Starting sync for ${resource.metadata.name}`, { variant: 'info' });
+        enqueueSnackbar(t('Starting sync for {{name}}', { name: resource.metadata.name }), {
+          variant: 'info',
+        });
         syncRequest(resource, enqueueSnackbar, date).then(() => {
           const get = resource.constructor.apiEndpoint.get;
           let isResourceSynced = false;
           get(resource.metadata.namespace, resource.metadata.name, newResource => {
             if (newResource.status.lastHandledReconcileAt === date && !isResourceSynced) {
-              enqueueSnackbar(`Successfully synced ${resource.metadata.name}`, {
+              enqueueSnackbar(t('Successfully synced {{name}}', { name: resource.metadata.name }), {
                 variant: 'success',
               });
               isResourceSynced = true;
             }
           }).catch(error => {
-            enqueueSnackbar(`Failed to sync ${resource.metadata.name} error ${error}`, {
-              variant: 'error',
-            });
+            enqueueSnackbar(
+              t('Failed to sync {{name}}: {{error}}', { name: resource.metadata.name, error }),
+              {
+                variant: 'error',
+              }
+            );
           });
         });
       }}
@@ -218,6 +261,7 @@ function SyncAction(props) {
 }
 
 function SyncWithSourceAction(props) {
+  const { t } = useTranslation();
   const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
   const source = useSource(resource);
@@ -226,39 +270,56 @@ function SyncWithSourceAction(props) {
 
   return (
     <ActionButton
-      description="Sync with source"
+      description={t('Sync with source')}
       onClick={() => {
-        enqueueSnackbar(`Starting sync for source ${source.metadata.name}`, { variant: 'info' });
+        enqueueSnackbar(t('Starting sync for source {{name}}', { name: source.metadata.name }), {
+          variant: 'info',
+        });
         const date = new Date().toISOString();
         syncRequest(source, enqueueSnackbar, date).then(() => {
           const get = (source.constructor as any).apiEndpoint.get;
           let isSourceSynced = false;
           get(source.metadata.namespace, source.metadata.name, newSource => {
             if (newSource.status.lastHandledReconcileAt === date && !isSourceSynced) {
-              enqueueSnackbar(`Successfully synced source ${source.metadata.name}`, {
-                variant: 'success',
-              });
+              enqueueSnackbar(
+                t('Successfully synced source {{name}}', { name: source.metadata.name }),
+                {
+                  variant: 'success',
+                }
+              );
               isSourceSynced = true;
-              enqueueSnackbar(`Now starting sync for ${resource.metadata.name}`, {
-                variant: 'info',
-              });
+              enqueueSnackbar(
+                t('Now starting sync for {{name}}', { name: resource.metadata.name }),
+                {
+                  variant: 'info',
+                }
+              );
               syncRequest(resource, enqueueSnackbar, date).then(() => {
                 const getResource = resource.constructor.apiEndpoint.get;
                 let isResourceSynced = false;
                 getResource(resource.metadata.namespace, resource.metadata.name, newResource => {
                   if (newResource.status.lastHandledReconcileAt === date && !isResourceSynced) {
-                    enqueueSnackbar(`Successfully synced ${resource.metadata.name}`, {
-                      variant: 'success',
-                    });
+                    enqueueSnackbar(
+                      t('Successfully synced {{name}}', { name: resource.metadata.name }),
+                      {
+                        variant: 'success',
+                      }
+                    );
                     isResourceSynced = true;
                   }
                 });
               });
             }
           }).catch(error => {
-            enqueueSnackbar(`Failed to sync source ${source.metadata.name} error ${error}`, {
-              variant: 'error',
-            });
+            enqueueSnackbar(
+              t('Failed to sync source {{name}}: {{error}}', {
+                name: source.metadata.name,
+                error,
+              }),
+              {
+                variant: 'error',
+              }
+            );
           });
         });
       }}
@@ -268,30 +329,39 @@ function SyncWithSourceAction(props) {
 }
 
 function SyncWithoutSourceAction(props) {
+  const { t } = useTranslation();
   const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
   return (
     <ActionButton
-      description="Sync without source"
+      description={t('Sync without source')}
       onClick={() => {
         const date = new Date().toISOString();
         syncRequest(resource, enqueueSnackbar, date).then(() => {
           const date = new Date().toISOString();
-          enqueueSnackbar(`Starting sync for ${resource.metadata.name}`, { variant: 'info' });
+          enqueueSnackbar(t('Starting sync for {{name}}', { name: resource.metadata.name }), {
+            variant: 'info',
+          });
           syncRequest(resource, enqueueSnackbar, date).then(() => {
             const get = resource.constructor.apiEndpoint.get;
             let isResourceSynced = false;
             get(resource.metadata.namespace, resource.metadata.name, newResource => {
               if (newResource.status.lastHandledReconcileAt === date && !isResourceSynced) {
-                enqueueSnackbar(`Successfully synced ${resource.metadata.name}`, {
-                  variant: 'success',
-                });
+                enqueueSnackbar(
+                  t('Successfully synced {{name}}', { name: resource.metadata.name }),
+                  {
+                    variant: 'success',
+                  }
+                );
                 isResourceSynced = true;
               }
             }).catch(error => {
-              enqueueSnackbar(`Failed to sync ${resource.metadata.name} error ${error}`, {
-                variant: 'error',
-              });
+              enqueueSnackbar(
+                t('Failed to sync {{name}}: {{error}}', { name: resource.metadata.name, error }),
+                {
+                  variant: 'error',
+                }
+              );
             });
           });
         });

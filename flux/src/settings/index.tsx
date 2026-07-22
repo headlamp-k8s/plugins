@@ -1,4 +1,4 @@
-import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
+import { ConfigStore, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
@@ -65,6 +65,7 @@ const DEFAULT_CONFIG: PluginConfig = {
 export const store = new ConfigStore<PluginConfig>('@headlamp-k8s/flux');
 
 export function FluxSettings() {
+  const { t } = useTranslation();
   const [currentConfig, setCurrentConfig] = useState<PluginConfig>(() => ({
     ...DEFAULT_CONFIG,
     ...store.get(),
@@ -78,7 +79,7 @@ export function FluxSettings() {
 
   const settingsRows = [
     {
-      name: 'Link HelmReleases to Kustomizations instead of HelmRepositories',
+      name: t('Link HelmReleases to Kustomizations instead of HelmRepositories'),
       value: (
         <AutoSaveSwitch
           settingKey="linkHRelToKs"
@@ -91,7 +92,7 @@ export function FluxSettings() {
 
   return (
     <Box style={{ paddingTop: '8vh' }}>
-      <Typography variant="h6">Map settings</Typography>
+      <Typography variant="h6">{t('Map settings')}</Typography>
       <NameValueTable rows={settingsRows} />
     </Box>
   );
