@@ -20,7 +20,7 @@ export interface ExternalSecretDataFrom {
     };
     tags?: Record<string, string>;
   };
-  sourceRef?: object;
+  sourceRef?: Record<string, unknown>;
 }
 
 export interface SecretStoreRef {

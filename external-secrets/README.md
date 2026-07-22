@@ -15,7 +15,9 @@ Manager, HashiCorp Vault, Google Secret Manager, and many more) into Kubernetes 
 ## Prerequisites
 
 - External Secrets Operator installed in the cluster, serving `external-secrets.io/v1`
-  (ESO v0.17 and later). Clusters that only serve `v1beta1` are not supported yet.
+  (ESO v0.17 and later). Clusters that only serve `v1beta1` are not supported yet. If you have
+  not installed it yet, see the ESO
+  [getting started guide](https://external-secrets.io/latest/introduction/getting-started/).
 
 ## Development
 
