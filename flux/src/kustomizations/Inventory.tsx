@@ -129,7 +129,7 @@ export function GetResourcesFromInventory(
   );
 }
 
-function inventoryNameLink(item: KubeObject) {
+export function inventoryNameLink(item: KubeObject) {
   // return the name and not a link if we could not query the resource
   if (!item.metadata.creationTimestamp) {
     return item.metadata.name;
@@ -181,7 +181,9 @@ function inventoryNameLink(item: KubeObject) {
   const resourceKind = K8s.ResourceClasses[kind];
   if (resourceKind) {
     const resource = new resourceKind(item);
-    if (resource?.getDetailsLink && resource.getDetailsLink()) {
+    // skip namespaced details link when cluster scoped resource has no namespace
+    const canBuildLink = !(resource.isNamespaced && !item.metadata.namespace);
+    if (canBuildLink && resource?.getDetailsLink && resource.getDetailsLink()) {
       return <Link kubeObject={resource}>{item.metadata.name}</Link>;
     }
     return item.metadata.name;
