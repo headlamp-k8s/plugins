@@ -1,6 +1,7 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import type { ComponentType } from 'react';
 import HealthDashboard from './components/daemon/HealthDashboard';
+import ObservabilityPanel from './components/daemon/ObservabilityPanel';
 import XdsConfigDump from './components/daemon/XdsConfigDump';
 import WaypointDetail from './components/waypoints/Detail';
 import WaypointList from './components/waypoints/List';
@@ -118,4 +119,20 @@ registerRoute({
   name: kmeshRouteNames.healthDashboard,
   exact: true,
   component: () => <HealthDashboard />,
+});
+
+// Observability Panel
+registerSidebarEntry({
+  parent: 'kmesh',
+  name: 'kmesh-observability',
+  label: 'Observability',
+  url: kmeshRoutePaths.observability,
+});
+
+registerRoute({
+  path: kmeshRoutePaths.observability,
+  sidebar: 'kmesh-observability',
+  name: kmeshRouteNames.observability,
+  exact: true,
+  component: () => <ObservabilityPanel />,
 });
