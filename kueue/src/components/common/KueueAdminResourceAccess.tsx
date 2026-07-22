@@ -8,12 +8,14 @@ import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject
 import { ReactNode, useState } from 'react';
 
 interface KueueAdminResourceAccessProps {
-  /** Kueue admin resource class to check access for. */
+  /** Kueue resource class to check access for. */
   resourceClass: KubeObjectClass;
   /** Human-readable resource name shown in loading and denied messages. */
   resourceLabel: string;
   /** Kubernetes verb to verify before rendering the page. */
   verb: 'get' | 'list';
+  /** Optional sentence describing the resource scope in denied messages. */
+  accessDescription?: string;
   /** Page content to render after the user is authorized. */
   children: ReactNode;
 }
@@ -22,6 +24,7 @@ export default function KueueAdminResourceAccess({
   resourceClass,
   resourceLabel,
   verb,
+  accessDescription = `Kueue ${resourceLabel} are cluster-scoped admin resources.`,
   children,
 }: KueueAdminResourceAccessProps) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -32,7 +35,7 @@ export default function KueueAdminResourceAccess({
       {allowed === false && (
         <SectionBox title={`Kueue ${resourceLabel}`}>
           <EmptyContent color="text.secondary">
-            {`Kueue ${resourceLabel} are cluster-scoped admin resources. Your current Kubernetes credentials are not authorized to ${
+            {`${accessDescription} Your current Kubernetes credentials are not authorized to ${
               verb === 'get' ? 'view' : 'list'
             } this page.`}
           </EmptyContent>
