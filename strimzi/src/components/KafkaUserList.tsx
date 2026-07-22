@@ -7,7 +7,7 @@ import {
   type ColumnType,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Kafka, KafkaV1, KafkaUser, KafkaUserV1 } from '../resources';
+import { Kafka, KafkaUser } from '../resources';
 import type { CreateKafkaUserPayload, KafkaUserInterface } from '../resources';
 import { getErrorMessage } from '../utils/errors';
 import { clusterNamespaces, clusterNamesInNamespace } from '../utils/clusters';
@@ -20,13 +20,11 @@ import { KafkaUserCreateFormModal, type UserFormData } from './KafkaUserCreateFo
 export function KafkaUserList() {
   const theme = useTheme();
   const { ready, installed, kafka: kafkaVersion } = useStrimziApiVersions();
-  const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
-  const KafkaUserClass = kafkaVersion === 'v1' ? KafkaUserV1 : KafkaUser;
   const kafkaApiPath = `/apis/kafka.strimzi.io/${kafkaVersion}`;
 
   // All hooks must be called before any early return (Rules of Hooks).
   // useList returns null while loading, so normalise to an array up front.
-  const { items } = KafkaClass.useList({});
+  const { items } = Kafka.useList({});
   const kafkaClusters = items ?? [];
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -273,7 +271,7 @@ export function KafkaUserList() {
     <>
       <ResourceListView
         title="Kafka Users"
-        resourceClass={KafkaUserClass}
+        resourceClass={KafkaUser}
         columns={columns}
         headerProps={{
           titleSideActions: [

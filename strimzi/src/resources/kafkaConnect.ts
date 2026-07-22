@@ -74,7 +74,7 @@ export interface KafkaConnectInterface extends KubeObjectInterface {
  * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaConnect-reference
  */
 export class KafkaConnect extends KubeObject<KafkaConnectInterface> {
-  static apiVersion = 'kafka.strimzi.io/v1beta2';
+  static apiVersion = ['kafka.strimzi.io/v1', 'kafka.strimzi.io/v1beta2'];
   static kind = 'KafkaConnect';
   static apiName = 'kafkaconnects';
   static isNamespaced = true;
@@ -120,9 +120,4 @@ export class KafkaConnect extends KubeObject<KafkaConnectInterface> {
   get connectorPlugins(): ConnectorPlugin[] {
     return this.status?.connectorPlugins ?? [];
   }
-}
-
-/** KafkaConnect resource class targeting the `kafka.strimzi.io/v1` API (Strimzi 1.0.0+). */
-export class KafkaConnectV1 extends KafkaConnect {
-  static apiVersion = 'kafka.strimzi.io/v1';
 }

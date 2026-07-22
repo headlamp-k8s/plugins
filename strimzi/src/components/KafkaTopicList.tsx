@@ -7,7 +7,7 @@ import {
   type ColumnType,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Kafka, KafkaV1, KafkaTopic, KafkaTopicV1 } from '../resources';
+import { Kafka, KafkaTopic } from '../resources';
 import type { KafkaTopicInterface } from '../resources';
 import { getErrorMessage } from '../utils/errors';
 import { clusterNamespaces, clusterNamesInNamespace } from '../utils/clusters';
@@ -19,13 +19,11 @@ import { TopicFormModal, type TopicFormData } from './TopicFormModal';
 export function KafkaTopicList() {
   const theme = useTheme();
   const { ready, installed, kafka: kafkaVersion } = useStrimziApiVersions();
-  const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
-  const KafkaTopicClass = kafkaVersion === 'v1' ? KafkaTopicV1 : KafkaTopic;
   const kafkaApiPath = `/apis/kafka.strimzi.io/${kafkaVersion}`;
 
   // All hooks must be called before any early return (Rules of Hooks).
   // useList returns null while loading, so normalise to an array up front.
-  const { items } = KafkaClass.useList({});
+  const { items } = Kafka.useList({});
   const kafkaClusters = items ?? [];
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -257,7 +255,7 @@ export function KafkaTopicList() {
     <>
       <ResourceListView
         title="Kafka Topics"
-        resourceClass={KafkaTopicClass}
+        resourceClass={KafkaTopic}
         columns={columns}
         headerProps={{
           titleSideActions: [

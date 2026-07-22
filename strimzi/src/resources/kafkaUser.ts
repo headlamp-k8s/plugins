@@ -56,7 +56,7 @@ export interface CreateKafkaUserPayload {
  * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaUser-reference
  */
 export class KafkaUser extends KubeObject<KafkaUserInterface> {
-  static apiVersion = 'kafka.strimzi.io/v1beta2';
+  static apiVersion = ['kafka.strimzi.io/v1', 'kafka.strimzi.io/v1beta2'];
   static kind = 'KafkaUser';
   static apiName = 'kafkausers';
   static isNamespaced = true;
@@ -84,9 +84,4 @@ export class KafkaUser extends KubeObject<KafkaUserInterface> {
   get authorizationType(): string {
     return this.spec?.authorization?.type ?? 'None';
   }
-}
-
-/** KafkaUser resource class targeting the `kafka.strimzi.io/v1` API (Strimzi 1.0.0+). */
-export class KafkaUserV1 extends KafkaUser {
-  static apiVersion = 'kafka.strimzi.io/v1';
 }

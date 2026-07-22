@@ -76,7 +76,7 @@ export interface KafkaConnectorInterface extends KubeObjectInterface {
  * @see https://strimzi.io/docs/operators/latest/full/configuring.html#type-KafkaConnector-reference
  */
 export class KafkaConnector extends KubeObject<KafkaConnectorInterface> {
-  static apiVersion = 'kafka.strimzi.io/v1beta2';
+  static apiVersion = ['kafka.strimzi.io/v1', 'kafka.strimzi.io/v1beta2'];
   static kind = 'KafkaConnector';
   static apiName = 'kafkaconnectors';
   static isNamespaced = true;
@@ -108,7 +108,10 @@ export class KafkaConnector extends KubeObject<KafkaConnectorInterface> {
     return this.jsonData?.metadata?.labels?.['strimzi.io/cluster'] ?? '';
   }
 
-  /** Desired state from the spec, normalised to a `KafkaConnectorState`. */
+  /**
+   * Desired state from the spec, normalised to a `KafkaConnectorState`.
+   * `spec.pause` only exists in v1beta2; v1 resources never carry it.
+   */
   get desiredState(): KafkaConnectorState {
     if (this.spec?.state) return this.spec.state;
     if (this.spec?.pause) return 'paused';
@@ -123,18 +126,5 @@ export class KafkaConnector extends KubeObject<KafkaConnectorInterface> {
   /** Effective max tasks (status if reported by operator, else spec). */
   get tasksMax(): number | undefined {
     return this.status?.tasksMax ?? this.spec?.tasksMax;
-  }
-}
-
-/**
- * KafkaConnector resource class targeting the `kafka.strimzi.io/v1` API
- * (Strimzi 1.0.0+). In v1, `spec.pause` is removed; `spec.state` is the
- * only supported lifecycle field.
- */
-export class KafkaConnectorV1 extends KafkaConnector {
-  static apiVersion = 'kafka.strimzi.io/v1';
-
-  get desiredState(): KafkaConnectorState {
-    return this.spec?.state ?? 'running';
   }
 }

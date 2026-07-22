@@ -5,15 +5,14 @@ import {
   type ColumnType,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Kafka, KafkaV1 } from '../resources/kafka';
+import { Kafka } from '../resources/kafka';
 import { KafkaTopologyModal } from './KafkaTopologyModal';
 import type { KafkaInterface } from '../resources/kafka';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 
 export function KafkaList() {
-  const { ready, installed, kafka: kafkaVersion } = useStrimziApiVersions();
-  const KafkaClass = kafkaVersion === 'v1' ? KafkaV1 : Kafka;
+  const { ready, installed } = useStrimziApiVersions();
 
   if (ready && !installed) return <StrimziNotInstalledMessage />;
 
@@ -67,7 +66,7 @@ export function KafkaList() {
     <>
       <ResourceListView
         title="Kafka Clusters"
-        resourceClass={KafkaClass}
+        resourceClass={Kafka}
         columns={columns}
       />
       <KafkaTopologyModal
