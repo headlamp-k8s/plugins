@@ -1,6 +1,7 @@
 import {
   DetailsViewDefaultHeaderActions,
   registerDetailsViewHeaderActionsProcessor,
+  useTranslation,
 } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
@@ -29,11 +30,12 @@ const FLUX_MANAGED_ACTION_ID = 'flux-managed-indicator';
 const FLUX_VIEW_YAML_ACTION_ID = 'flux-view-yaml';
 
 function ViewYAMLButton({ item }: { item: KubeObject }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <ActionButton description="View YAML" icon="mdi:eye" onClick={() => setOpen(true)} />
+      <ActionButton description={t('View YAML')} icon="mdi:eye" onClick={() => setOpen(true)} />
       <EditorDialog
         item={item.jsonData}
         open={open}
@@ -49,6 +51,19 @@ function ViewYAMLButton({ item }: { item: KubeObject }) {
         }}
       />
     </>
+  );
+}
+
+function FluxManagedIndicator() {
+  const { t } = useTranslation();
+  return (
+    <Tooltip
+      title={t(
+        'This resource is managed by Flux. Some actions are hidden because changes would be reverted by Flux.'
+      )}
+    >
+      <Chip label={t('Flux managed')} size="small" variant="outlined" color="primary" />
+    </Tooltip>
   );
 }
 
@@ -80,11 +95,7 @@ export function registerFluxHeaderActionsProcessor() {
 
     const indicator = {
       id: FLUX_MANAGED_ACTION_ID,
-      action: (
-        <Tooltip title="This resource is managed by Flux. Some actions are hidden because changes would be reverted by Flux.">
-          <Chip label="Flux managed" size="small" variant="outlined" color="primary" />
-        </Tooltip>
-      ),
+      action: <FluxManagedIndicator />,
     };
 
     return [...filtered, viewAction, indicator];
