@@ -50,7 +50,7 @@ rules:
     verbs: ["get", "list", "watch", "patch"]
 ```
 
-If the user lacks `patch` permission, the plugin shows a clear error message explaining which RBAC permission is missing.
+If the user lacks `patch` permission, the Sync/Refresh buttons are hidden. If a patch request is still attempted and returns 403, the plugin shows a clear error message explaining which RBAC permission is missing.
 
 ## Development
 
