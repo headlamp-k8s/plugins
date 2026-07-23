@@ -14,6 +14,7 @@ export function Settings(props) {
         <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Switch
             checked={data?.displayOnlyOfficialPlugins ?? true}
+            inputProps={{ 'aria-label': t('Display only Official Plugins') }}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
               onDataChange({ ...data, displayOnlyOfficialPlugins: event.target.checked })
             }
@@ -27,6 +28,7 @@ export function Settings(props) {
         <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Switch
             checked={data?.displayOnlyVerifiedPlugins ?? true}
+            inputProps={{ 'aria-label': t('Display only Verified Plugins') }}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
               onDataChange({ ...data, displayOnlyVerifiedPlugins: event.target.checked })
             }
