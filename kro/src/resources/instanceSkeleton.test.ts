@@ -17,16 +17,34 @@ const genAiServiceRgd = {
   },
 };
 
+const genAiServiceApi = {
+  group: 'kro.run',
+  version: 'v1alpha1',
+  kind: 'GenAIService',
+  isNamespaced: true,
+};
+
 describe('buildInstanceSkeleton', () => {
-  it('builds apiVersion and kind from spec.schema with the kro.run group default', () => {
-    const skeleton = buildInstanceSkeleton(genAiServiceRgd, true);
+  it('builds apiVersion and kind from the discovered CRD info', () => {
+    const skeleton = buildInstanceSkeleton(genAiServiceRgd, genAiServiceApi);
     expect(skeleton.apiVersion).toBe('kro.run/v1alpha1');
     expect(skeleton.kind).toBe('GenAIService');
     expect(skeleton.metadata).toEqual({ name: 'example', namespace: 'default' });
   });
 
+  it('prefers the CRD storage version over the version in spec.schema', () => {
+    // The RGD's spec.schema says v1alpha1, but the generated CRD has
+    // advanced its storage version — instances must be created with the
+    // CRD's version.
+    const skeleton = buildInstanceSkeleton(genAiServiceRgd, {
+      ...genAiServiceApi,
+      version: 'v1alpha2',
+    });
+    expect(skeleton.apiVersion).toBe('kro.run/v1alpha2');
+  });
+
   it('includes only required fields — every field with a default is omitted', () => {
-    const skeleton = buildInstanceSkeleton(genAiServiceRgd, true);
+    const skeleton = buildInstanceSkeleton(genAiServiceRgd, genAiServiceApi);
     expect(skeleton.spec).toEqual({ name: 'example' });
   });
 
@@ -47,7 +65,7 @@ describe('buildInstanceSkeleton', () => {
           },
         },
       },
-      true
+      { group: 'kro.run', version: 'v1alpha1', kind: 'Widget', isNamespaced: true }
     );
     expect(skeleton.spec).toEqual({
       title: 'example',
@@ -72,7 +90,7 @@ describe('buildInstanceSkeleton', () => {
           },
         },
       },
-      true
+      { group: 'kro.run', version: 'v1alpha1', kind: 'Widget', isNamespaced: true }
     );
     expect(skeleton.spec).toEqual({ nested: { required: 'example' } });
   });
@@ -80,7 +98,7 @@ describe('buildInstanceSkeleton', () => {
   it('omits namespace for cluster-scoped APIs and honors a custom group', () => {
     const skeleton = buildInstanceSkeleton(
       { spec: { schema: { apiVersion: 'v1', kind: 'Thing', group: 'example.dev', spec: {} } } },
-      false
+      { group: 'example.dev', version: 'v1', kind: 'Thing', isNamespaced: false }
     );
     expect(skeleton.apiVersion).toBe('example.dev/v1');
     expect(skeleton.metadata).toEqual({ name: 'example' });

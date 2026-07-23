@@ -80,12 +80,10 @@ export function useGeneratedCrd(rgd: ResourceGraphDefinition | null) {
 export function useInstanceClass(rgd: ResourceGraphDefinition | null) {
   const { crd, error, isLoading } = useGeneratedCrd(rgd);
 
-  const instanceClass = useMemo(() => {
-    const info = instanceApiInfoFromCrdSpec(crd?.jsonData.spec);
-    return info ? makeInstanceClass(info) : null;
-  }, [crd]);
+  const apiInfo = useMemo(() => instanceApiInfoFromCrdSpec(crd?.jsonData.spec), [crd]);
+  const instanceClass = useMemo(() => (apiInfo ? makeInstanceClass(apiInfo) : null), [apiInfo]);
 
-  return { instanceClass, error, isLoading };
+  return { instanceClass, apiInfo, error, isLoading };
 }
 
 /** Label selector matching every resource kro created for an instance. */

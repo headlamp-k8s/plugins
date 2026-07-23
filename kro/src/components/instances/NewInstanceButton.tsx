@@ -14,13 +14,15 @@ import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition
 export default function NewInstanceButton(props: { rgd: ResourceGraphDefinition }) {
   const { rgd } = props;
   const [open, setOpen] = useState(false);
-  const { instanceClass } = useInstanceClass(rgd);
+  const { instanceClass, apiInfo } = useInstanceClass(rgd);
 
-  if (!instanceClass) {
+  if (!instanceClass || !apiInfo) {
     return null;
   }
 
-  const skeleton = buildInstanceSkeleton(rgd.jsonData, instanceClass.isNamespaced);
+  // The discovered CRD, not the RGD's spec.schema, is the source of
+  // truth for the apiVersion instances must be created with.
+  const skeleton = buildInstanceSkeleton(rgd.jsonData, apiInfo);
 
   return (
     <>
