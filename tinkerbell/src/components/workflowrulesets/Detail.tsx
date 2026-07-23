@@ -58,10 +58,13 @@ export function WorkflowRuleSetDetail() {
                   <SectionBox title="Rules">
                     <SimpleTable
                       columns={[
-                        { label: 'Name', getter: row => fallback(row.name) },
-                        { label: 'Rule', getter: row => renderUnknownValue(row) },
+                        { label: 'Index', getter: row => fallback(row.index) },
+                        { label: 'Rule', getter: row => renderUnknownValue(row.rule) },
                       ]}
-                      data={item.spec?.rules ?? []}
+                      data={(item.spec?.rules ?? []).map((rule, index) => ({
+                        index: index + 1,
+                        rule,
+                      }))}
                     />
                   </SectionBox>
                 ),
