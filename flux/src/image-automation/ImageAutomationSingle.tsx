@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsTable,
   Link as HeadlampLink,
@@ -18,6 +19,7 @@ import StatusLabel from '../common/StatusLabel';
 import { ObjectEvents } from '../helpers/index';
 
 export function FluxImageAutomationDetailView() {
+  const { t } = useTranslation();
   const { pluralName, namespace, name } = useParams<{
     pluralName: string;
     namespace: string;
@@ -38,7 +40,7 @@ export function FluxImageAutomationDetailView() {
   })();
 
   if (!resourceClass) {
-    return <Flux404 message={`Unknown type ${pluralName}`} />;
+    return <Flux404 message={t('Unknown type {{pluralName}}', { pluralName })} />;
   }
 
   return (
@@ -51,6 +53,7 @@ export function FluxImageAutomationDetailView() {
 
 function CustomResourceDetails(props) {
   const { name, namespace, resourceClass } = props;
+  const { t } = useTranslation();
 
   const themeName = localStorage.getItem('headlampThemePreference');
 
@@ -62,35 +65,35 @@ function CustomResourceDetails(props) {
     }
     const extraInfo: Array<{ name: string; value: ReactNode }> = [
       {
-        name: 'Status',
+        name: t('Status'),
         value: <StatusLabel item={resource} />,
       },
     ];
 
     if (resource.jsonData.kind === 'ImageRepository') {
       extraInfo.push({
-        name: 'Image',
+        name: t('Image'),
         value: <Link url={resource.jsonData.spec?.image} />,
       });
       extraInfo.push({
-        name: 'Provider',
-        value: resource.jsonData.spec?.provider || 'None',
+        name: t('Provider'),
+        value: resource.jsonData.spec?.provider || t('None'),
       });
       extraInfo.push({
-        name: 'Exclusion List',
+        name: t('Exclusion List'),
         value: resource.jsonData.spec?.exclusionList
           ? resource.jsonData.spec?.exclusionList.join(', ')
-          : 'None',
+          : t('None'),
       });
       extraInfo.push({
-        name: 'Canonical Image Name',
+        name: t('Canonical Image Name'),
         value: resource.jsonData?.status?.canonicalImageName || '-',
       });
     }
 
     if (resource.jsonData.kind === 'ImagePolicy') {
       extraInfo.push({
-        name: 'Image Repository',
+        name: t('Image Repository'),
         value: (
           <HeadlampLink
             routeName="image"
@@ -107,7 +110,7 @@ function CustomResourceDetails(props) {
         ),
       });
       extraInfo.push({
-        name: 'Policy',
+        name: t('Policy'),
         value: resource?.jsonData.spec?.policy && (
           <Editor
             theme={themeName === 'dark' ? 'vs-dark' : 'light'}
@@ -125,7 +128,7 @@ function CustomResourceDetails(props) {
 
     if (resource.jsonData.kind === 'ImageUpdateAutomation') {
       extraInfo.push({
-        name: 'Git',
+        name: t('Git'),
         value: resource.jsonData.spec?.git && (
           <Editor
             theme={themeName === 'dark' ? 'vs-dark' : 'light'}
@@ -143,19 +146,19 @@ function CustomResourceDetails(props) {
 
     if (resource.jsonData.kind !== 'ImagePolicy') {
       extraInfo.push({
-        name: 'Suspend',
-        value: resource.jsonData.spec?.suspend ? 'True' : 'False',
+        name: t('Suspend'),
+        value: resource.jsonData.spec?.suspend ? t('True') : t('False'),
       });
       if (resource.jsonData?.spec?.interval) {
         extraInfo.push({
-          name: 'Interval',
+          name: t('Interval'),
           value: resource.jsonData.spec.interval,
         });
       }
 
       if (!resource.jsonData.spec?.suspend) {
         extraInfo.push({
-          name: 'Next Reconciliation',
+          name: t('Next Reconciliation'),
           value: <RemainingTimeDisplay item={resource} />,
         });
       }
@@ -184,7 +187,7 @@ function CustomResourceDetails(props) {
       {resourceClass.pluralName === ImageUpdateAutomation.pluralName && (
         <Policies resource={resource?.jsonData} />
       )}
-      <SectionBox title="Conditions">
+      <SectionBox title={t('Conditions')}>
         <ConditionsTable resource={resource?.jsonData} />
       </SectionBox>
     </>
@@ -193,15 +196,16 @@ function CustomResourceDetails(props) {
 
 function TagList(props: { resource }) {
   const { resource } = props;
+  const { t } = useTranslation();
 
   return (
-    <SectionBox title="Tag List">
-      <p>{resource?.status?.lastScanResult?.tagCount} fetched tags</p>
+    <SectionBox title={t('Tag List')}>
+      <p>{t('{{count}} fetched tags', { count: resource?.status?.lastScanResult?.tagCount })}</p>
       <Table
         data={resource?.status?.lastScanResult?.latestTags}
         columns={[
           {
-            header: 'Tag',
+            header: t('Tag'),
             accessorFn: item => item,
           },
         ]}
@@ -212,16 +216,17 @@ function TagList(props: { resource }) {
 
 function Policies(props: { resource }) {
   const { resource } = props;
+  const { t } = useTranslation();
 
   const policies: any = Object.entries(resource?.status?.observedPolicies || {});
 
   return (
-    <SectionBox title="Policies">
+    <SectionBox title={t('Policies')}>
       <Table
         data={policies}
         columns={[
           {
-            header: 'Policy',
+            header: t('Policy'),
             accessorFn: item => item[0],
             Cell: ({ cell }) => (
               <HeadlampLink
@@ -237,11 +242,11 @@ function Policies(props: { resource }) {
             ),
           },
           {
-            header: 'Image',
+            header: t('Image'),
             accessorFn: item => item[1].name,
           },
           {
-            header: 'Tag',
+            header: t('Tag'),
             accessorFn: item => item[1].tag,
           },
         ]}

@@ -9,12 +9,13 @@ Get all pods and then from them get the controllers for flux
 6. image-automation-controller
 
 */
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import SourceLink from '../common/Link';
 import Table from '../common/Table';
 
 export function FluxRunTime() {
+  const { t } = useTranslation();
   const [pods] = K8s.ResourceClasses.Pod.useList();
   const [crds] = K8s.ResourceClasses.CustomResourceDefinition.useList();
   const helmController = pods?.filter(pod => pod.metadata.labels?.['app'] === 'helm-controller');
@@ -46,7 +47,7 @@ export function FluxRunTime() {
 
   return (
     <>
-      <SectionBox title="Controllers">
+      <SectionBox title={t('Controllers')}>
         <Table
           data={controllers}
           columns={[
@@ -55,7 +56,7 @@ export function FluxRunTime() {
               routeName: 'pod',
             },
             {
-              header: 'Namespace',
+              header: t('Namespace'),
               accessorKey: 'metadata.namespace',
               Cell: ({ row: { original: item } }) => (
                 <Link routeName="namespace" params={{ name: item.metadata.namespace }}>
@@ -64,17 +65,17 @@ export function FluxRunTime() {
               ),
             },
             {
-              header: 'Status',
+              header: t('Status'),
               accessorFn: item => item.status.phase,
             },
             {
-              header: 'Image',
+              header: t('Image'),
               accessorFn: item => <SourceLink url={item.spec.containers[0].image} />,
             },
           ]}
         />
       </SectionBox>
-      <SectionBox title="Custom Resource Definitions">
+      <SectionBox title={t('Custom Resource Definitions')}>
         <Table
           data={crds?.filter(crd => crd.metadata.name.includes('fluxcd.'))}
           columns={[
@@ -83,11 +84,11 @@ export function FluxRunTime() {
               routeName: 'crd',
             },
             {
-              header: 'Scope',
+              header: t('Scope'),
               accessorFn: item => item.spec.scope,
             },
             {
-              header: 'Stored Versions',
+              header: t('Stored Versions'),
               accessorFn: item => item?.status?.storedVersions.join(', '),
             },
           ]}

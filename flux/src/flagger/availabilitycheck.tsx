@@ -1,7 +1,8 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Link, Typography } from '@mui/material';
 export default function FlaggerAvailabilityCheck({ children }) {
+  const { t } = useTranslation();
   const [canary, error] = useCanary();
 
   if (canary === null && !error) {
@@ -11,7 +12,7 @@ export default function FlaggerAvailabilityCheck({ children }) {
   if (!canary || error) {
     return (
       <Box
-        title="Flagger Not Installed"
+        title={t('Flagger Not Installed')}
         sx={{
           padding: '1rem',
           alignItems: 'center',
@@ -19,16 +20,16 @@ export default function FlaggerAvailabilityCheck({ children }) {
           maxWidth: '600px',
         }}
       >
-        <h2>Flagger is not installed</h2>
+        <h2>{t('Flagger is not installed')}</h2>
         <Typography variant="body1">
-          Follow the{' '}
+          {t('Follow the')}{' '}
           <Link
             target="_blank"
             href="https://docs.flagger.app/install/flagger-install-on-kubernetes"
           >
-            installation guide
+            {t('installation guide')}
           </Link>{' '}
-          to install flagger on your cluster
+          {t('to install flagger on your cluster')}
         </Typography>
       </Box>
     );
