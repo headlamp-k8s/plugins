@@ -67,7 +67,12 @@ export function getSubResourceHealth(kind: string, resource: any): SubResourceHe
     case 'Pod': {
       const phase = resource?.status?.phase ?? 'Unknown';
       return {
-        status: phase === 'Running' || phase === 'Succeeded' ? 'success' : 'warning',
+        status:
+          phase === 'Running' || phase === 'Succeeded'
+            ? 'success'
+            : phase === 'Failed'
+            ? 'error'
+            : 'warning',
         label: phase,
       };
     }

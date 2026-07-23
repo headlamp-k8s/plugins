@@ -24,7 +24,7 @@ export default function SubResourcesSection(props: {
   instance: KubeObject<KroInstance>;
 }) {
   const { rgd, instance } = props;
-  const { items, onItems } = useCollectedSubResources();
+  const { items, errors, onItems } = useCollectedSubResources();
 
   const nodeOrder = useMemo(
     () =>
@@ -45,8 +45,15 @@ export default function SubResourcesSection(props: {
   return (
     <SectionBox title="Sub-resources">
       <SubResourceCollectors rgd={rgd} instance={instance} onItems={onItems} />
+      {errors.map(listError => (
+        <EmptyContent key={listError.kind}>
+          Unable to list {listError.kind}: {listError.message}
+        </EmptyContent>
+      ))}
       {rows.length === 0 ? (
-        <EmptyContent>No resources created for this instance yet.</EmptyContent>
+        errors.length === 0 && (
+          <EmptyContent>No resources created for this instance yet.</EmptyContent>
+        )
       ) : (
         <SimpleTable
           columns={[

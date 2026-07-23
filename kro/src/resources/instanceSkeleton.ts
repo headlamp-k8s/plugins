@@ -1,4 +1,4 @@
-import { kroApiGroup } from './kroApi';
+import type { InstanceApiInfo } from './instanceApi';
 import type { KubeResourceGraphDefinition } from './resourceGraphDefinition';
 
 /**
@@ -50,24 +50,24 @@ function requiredFieldsOf(schema: unknown): Record<string, unknown> {
 }
 
 /**
- * A minimal valid instance for an RGD's generated API: apiVersion/kind
- * from spec.schema, a placeholder name/namespace, and every required
+ * A minimal valid instance for an RGD's generated API: apiVersion and
+ * kind from the discovered CRD (the source of truth for the served
+ * storage version, which can differ from the version named in
+ * spec.schema), a placeholder name/namespace, and every required
  * (default-less) SimpleSchema field with a sensible placeholder value.
  */
 export function buildInstanceSkeleton(
   rgd: Pick<KubeResourceGraphDefinition, 'spec'>,
-  namespaced: boolean
+  api: Pick<InstanceApiInfo, 'group' | 'version' | 'kind' | 'isNamespaced'>
 ): Record<string, unknown> {
   const schema = rgd.spec?.schema ?? {};
-  const group = schema.group || kroApiGroup;
-  const version = schema.apiVersion || 'v1alpha1';
   const metadata: Record<string, unknown> = { name: 'example' };
-  if (namespaced) {
+  if (api.isNamespaced) {
     metadata.namespace = 'default';
   }
   return {
-    apiVersion: `${group}/${version}`,
-    kind: schema.kind ?? '',
+    apiVersion: `${api.group}/${api.version}`,
+    kind: api.kind,
     metadata,
     spec: requiredFieldsOf(schema.spec),
   };
