@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/argocd",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Headlamp plugin for Argo CD GitOps Application Management",
   "author": "Joshna Waikar",
   "scripts": {

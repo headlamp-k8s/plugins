@@ -14,51 +14,16 @@
  * limitations under the License.
  */
 
-import { ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import {
+  ActionButton,
+  AuthVisible,
+  ResourceListView,
+  StatusLabel,
+} from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { refreshApplication, syncApplication } from '../../api/argoClient';
+import { useArgoOperationMap } from '../../hooks/useArgoOperation';
 import { ArgoApplication } from '../../resources/application';
-
-/**
- * Maps an Argo CD health status string to a Headlamp StatusLabel severity.
- *
- * @param health - The health status string from the Application resource
- *   (e.g., "Healthy", "Degraded", "Progressing", "Suspended", "Missing").
- * @returns A StatusLabel status string: "success", "warning", "info", "error",
- *   or "" for unknown values.
- */
-function getHealthStatus(health: string): string {
-  switch (health.toLowerCase()) {
-    case 'healthy':
-      return 'success';
-    case 'suspended':
-      return 'warning';
-    case 'progressing':
-      return 'info';
-    case 'degraded':
-    case 'missing':
-      return 'error';
-    default:
-      return '';
-  }
-}
-
-/**
- * Maps an Argo CD sync status string to a Headlamp StatusLabel severity.
- *
- * @param sync - The sync status string from the Application resource
- *   (e.g., "Synced", "OutOfSync").
- * @returns A StatusLabel status string: "success", "warning",
- *   or "" for unknown values.
- */
-function getSyncStatus(sync: string): string {
-  switch (sync.toLowerCase()) {
-    case 'synced':
-      return 'success';
-    case 'outofsync':
-      return 'warning';
-    default:
-      return '';
-  }
-}
+import { getHealthStatus, getSyncStatus } from './statusHelpers';
 
 /**
  * Renders a table of all Argo CD Application resources in the current cluster.
@@ -71,10 +36,51 @@ function getSyncStatus(sync: string): string {
  * @returns The Application list view React element.
  */
 export default function ApplicationList() {
+  const sync = useArgoOperationMap(syncApplication, 'Sync');
+  const refresh = useArgoOperationMap(refreshApplication, 'Refresh');
+
   return (
     <ResourceListView
       title="Argo CD Applications"
       resourceClass={ArgoApplication}
+      actions={[
+        {
+          id: 'argocd-sync',
+          action: ({ item }: { item: ArgoApplication }) => {
+            const { name, namespace } = item.metadata;
+            const isLoadingSync = sync.isLoading(name, namespace);
+            const isLoadingAny = isLoadingSync || refresh.isLoading(name, namespace);
+            return (
+              <AuthVisible item={item} authVerb="patch">
+                <ActionButton
+                  description={isLoadingSync ? 'Syncing…' : 'Sync'}
+                  icon={isLoadingSync ? 'mdi:loading' : 'mdi:sync'}
+                  onClick={() => sync.execute(name, namespace)}
+                  iconButtonProps={{ disabled: isLoadingAny }}
+                />
+              </AuthVisible>
+            );
+          },
+        },
+        {
+          id: 'argocd-refresh',
+          action: ({ item }: { item: ArgoApplication }) => {
+            const { name, namespace } = item.metadata;
+            const isLoadingRefresh = refresh.isLoading(name, namespace);
+            const isLoadingAny = isLoadingRefresh || sync.isLoading(name, namespace);
+            return (
+              <AuthVisible item={item} authVerb="patch">
+                <ActionButton
+                  description={isLoadingRefresh ? 'Refreshing…' : 'Refresh'}
+                  icon={isLoadingRefresh ? 'mdi:loading' : 'mdi:refresh'}
+                  onClick={() => refresh.execute(name, namespace)}
+                  iconButtonProps={{ disabled: isLoadingAny }}
+                />
+              </AuthVisible>
+            );
+          },
+        },
+      ]}
       columns={[
         'name',
         'namespace',
@@ -86,7 +92,8 @@ export default function ApplicationList() {
         {
           id: 'source-repo',
           label: 'Source Repo',
-          getValue: (app: ArgoApplication) => app.repoURL,
+          getValue: (app: ArgoApplication) =>
+            app.isMultiSource ? `${app.sources.length} sources` : app.repoURL,
         },
         {
           id: 'target-revision',

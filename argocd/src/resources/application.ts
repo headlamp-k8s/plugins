@@ -30,6 +30,14 @@ export const argocdApiGroup = 'argoproj.io';
 /** The full API version string for Argo CD Application resources. */
 export const argocdApiVersion = 'argoproj.io/v1alpha1';
 
+/** A single Git or Helm source configuration. */
+export interface SourceSpec {
+  repoURL: string;
+  targetRevision?: string;
+  path?: string;
+  chart?: string;
+}
+
 /**
  * Represents the desired state (spec) of an Argo CD Application.
  *
@@ -39,16 +47,9 @@ export interface ArgoApplicationSpec {
   /** The Argo CD project this application belongs to (e.g., "default"). */
   project: string;
   /** The Git or Helm source configuration for the application manifests. */
-  source: {
-    /** The URL of the Git repository or Helm chart repository. */
-    repoURL: string;
-    /** The Git branch, tag, or commit SHA to track (e.g., "HEAD", "main"). */
-    targetRevision?: string;
-    /** The directory path within the repository containing the manifests. */
-    path?: string;
-    /** The Helm chart name, if using a Helm chart source instead of a Git path. */
-    chart?: string;
-  };
+  source?: SourceSpec;
+  /** Multiple sources for multi-source Applications (Argo CD 2.6+). */
+  sources?: SourceSpec[];
   /** The target Kubernetes cluster and namespace for deployment. */
   destination: {
     /** The API server URL of the destination cluster. */
@@ -58,6 +59,41 @@ export interface ArgoApplicationSpec {
     /** The target namespace in the destination cluster. */
     namespace?: string;
   };
+  /** Sync policy controlling automated sync, pruning, self-heal, and retries. */
+  syncPolicy?: {
+    automated?: {
+      prune?: boolean;
+      selfHeal?: boolean;
+    };
+    retry?: {
+      limit?: number;
+      backoff?: {
+        duration?: string;
+        factor?: number;
+        maxDuration?: string;
+      };
+    };
+    syncOptions?: string[];
+  };
+}
+
+/** A Kubernetes resource managed by an Argo CD Application. */
+export interface ManagedResource {
+  group?: string;
+  version: string;
+  kind: string;
+  namespace?: string;
+  name: string;
+  status?: string;
+  health?: { status: string; message?: string };
+}
+
+/** A condition set by the Argo CD controller on an Application. */
+export interface ArgoCondition {
+  type: string;
+  message?: string;
+  lastTransitionTime?: string;
+  status?: string;
 }
 
 /**
@@ -79,6 +115,10 @@ export interface ArgoApplicationStatus {
     /** The sync status string (e.g., "Synced", "OutOfSync"). */
     status: string;
   };
+  /** Kubernetes resources managed by this Application. */
+  resources?: ManagedResource[];
+  /** Warning and error conditions set by the controller. */
+  conditions?: ArgoCondition[];
 }
 
 /**
@@ -108,7 +148,13 @@ export class ArgoApplication extends KubeObject<KubeArgoApplication> {
   static apiVersion = argocdApiVersion;
   static isNamespaced = true;
 
-  // No custom detailsRoute yet; rely on Headlamp defaults until a detail view is implemented.
+  /**
+   * Route the Application name links to. Must match the detail route
+   * registered in index.tsx, otherwise the link falls back to Home.
+   */
+  static get detailsRoute() {
+    return '/argocd/applications/:namespace/:name';
+  }
 
   /** Returns the application's desired state specification. */
   get spec(): ArgoApplicationSpec {
@@ -125,19 +171,30 @@ export class ArgoApplication extends KubeObject<KubeArgoApplication> {
     return this.spec.project || 'default';
   }
 
+  /** Returns all sources, normalizing single-source and multi-source apps. */
+  get sources(): SourceSpec[] {
+    return this.spec.sources ?? (this.spec.source ? [this.spec.source] : []);
+  }
+
+  /** Whether this is a multi-source Application (Argo CD 2.6+). */
+  get isMultiSource(): boolean {
+    return (this.spec.sources?.length ?? 0) > 1;
+  }
+
   /** Returns the Git or Helm repository URL for the application source. */
   get repoURL(): string {
-    return this.spec.source?.repoURL || '';
+    return this.spec.source?.repoURL || this.spec.sources?.[0]?.repoURL || '';
   }
 
   /** Returns the target Git revision (branch, tag, or SHA). Defaults to "HEAD". */
   get targetRevision(): string {
-    return this.spec.source?.targetRevision || 'HEAD';
+    return this.spec.source?.targetRevision || this.spec.sources?.[0]?.targetRevision || 'HEAD';
   }
 
   /** Returns the manifest path within the repository, or the Helm chart name. */
   get path(): string {
-    return this.spec.source?.path || this.spec.source?.chart || '';
+    const src = this.spec.source || this.spec.sources?.[0];
+    return src?.path || src?.chart || '';
   }
 
   /** Returns the destination cluster API server URL or cluster name. */
@@ -158,5 +215,20 @@ export class ArgoApplication extends KubeObject<KubeArgoApplication> {
   /** Returns the sync status string (e.g., "Synced", "OutOfSync"). Defaults to "Unknown". */
   get syncStatus(): string {
     return this.status?.sync?.status || 'Unknown';
+  }
+
+  /** Returns the sync policy configuration, or undefined if not set. */
+  get syncPolicy(): ArgoApplicationSpec['syncPolicy'] {
+    return this.spec.syncPolicy;
+  }
+
+  /** Returns the list of managed Kubernetes resources. */
+  get managedResources(): ManagedResource[] {
+    return this.status?.resources ?? [];
+  }
+
+  /** Returns the list of conditions set by the controller. */
+  get conditions(): ArgoCondition[] {
+    return this.status?.conditions ?? [];
   }
 }
