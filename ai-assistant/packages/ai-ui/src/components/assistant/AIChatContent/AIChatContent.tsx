@@ -72,8 +72,10 @@ export default function AIChatContent({
     <Box
       sx={{
         height: '100%',
-        overflowY: 'auto',
-        overflowX: 'auto',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
         maxWidth: '100%',
         minWidth: 0,
         wordWrap: 'break-word',
@@ -92,16 +94,18 @@ export default function AIChatContent({
         </Alert>
       )}
 
-      <TextStreamSlot
-        history={history}
-        isLoading={isLoading}
-        apiError={apiError}
-        onOperationSuccess={onOperationSuccess}
-        onOperationFailure={onOperationFailure}
-        onYamlAction={onYamlAction}
-        onRetryTool={onRetryTool}
-        agentThinkingSteps={agentThinkingSteps}
-      />
+      <Box sx={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden' }}>
+        <TextStreamSlot
+          history={history}
+          isLoading={isLoading}
+          apiError={apiError}
+          onOperationSuccess={onOperationSuccess}
+          onOperationFailure={onOperationFailure}
+          onYamlAction={onYamlAction}
+          onRetryTool={onRetryTool}
+          agentThinkingSteps={agentThinkingSteps}
+        />
+      </Box>
     </Box>
   );
 }

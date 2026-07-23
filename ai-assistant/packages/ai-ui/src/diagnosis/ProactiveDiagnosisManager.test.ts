@@ -4,7 +4,11 @@ vi.mock('@headlamp-k8s/ai-common/prompts/baseAssistantPrompt', () => ({
   basePrompt: 'base prompt',
 }));
 
-import { type EventDigest, ProactiveDiagnosisManager } from './ProactiveDiagnosisManager';
+import {
+  type EventDigest,
+  ProactiveDiagnosisManager,
+  SINGLE_EVENT_QUEUE_TIMEOUT_MS,
+} from './ProactiveDiagnosisManager';
 
 const createEvent = (overrides: Partial<EventDigest> = {}): EventDigest => ({
   uid: 'uid-1',
@@ -105,6 +109,50 @@ describe('ProactiveDiagnosisManager', () => {
 
     await expect(resultPromise).resolves.toMatchObject({ diagnosis: 'diagnosis', pending: false });
     expect(diagnose).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs a table-triggered diagnosis after the closed panel initializes its mock function', async () => {
+    manager.stop();
+    manager.start();
+
+    const resultPromise = manager.diagnoseSingleEvent(createEvent());
+    expect(manager.getDiagnosis('uid-1')).toMatchObject({ pending: true });
+
+    manager.setDiagnoseFn(async () => 'Canned mock diagnosis for the failing Pod.');
+
+    await expect(resultPromise).resolves.toMatchObject({
+      diagnosis: 'Canned mock diagnosis for the failing Pod.',
+      pending: false,
+      loading: false,
+    });
+  });
+
+  it('rejects a queued table diagnosis when diagnosis is stopped', async () => {
+    const diagnose = vi.fn(async () => 'late diagnosis');
+    const resultPromise = manager.diagnoseSingleEvent(createEvent());
+
+    manager.stop();
+    await expect(resultPromise).rejects.toThrow('Proactive diagnosis was stopped');
+    manager.setDiagnoseFn(diagnose);
+
+    expect(diagnose).not.toHaveBeenCalled();
+    expect(manager.getDiagnosis('uid-1')).toMatchObject({
+      pending: false,
+      error: 'Proactive diagnosis was stopped',
+    });
+  });
+
+  it('times out a queued table diagnosis when setup never becomes ready', async () => {
+    vi.useFakeTimers();
+    const resultPromise = manager.diagnoseSingleEvent(createEvent());
+
+    vi.advanceTimersByTime(SINGLE_EVENT_QUEUE_TIMEOUT_MS);
+    await expect(resultPromise).rejects.toThrow('Diagnosis setup timed out');
+    expect(manager.getDiagnosis('uid-1')).toMatchObject({
+      pending: false,
+      error: 'Diagnosis setup timed out',
+    });
+    vi.useRealTimers();
   });
 
   it('hasDiagnosis is true only for successful diagnoses', async () => {
@@ -341,6 +389,7 @@ describe('ProactiveDiagnosisManager', () => {
   });
 
   it('queues single-event requests behind an active cycle and preserves thinking steps', async () => {
+    vi.useFakeTimers();
     const first = deferred<string>();
     const calls: string[] = [];
     manager.setDiagnoseFn(async (prompt, onStep) => {
@@ -352,7 +401,12 @@ describe('ProactiveDiagnosisManager', () => {
     const queued = manager.diagnoseSingleEvent(
       createEvent({ uid: 'queued', objectName: 'queued-app' })
     );
+    const queuedResolved = vi.fn();
+    void queued.then(queuedResolved);
     expect(manager.isRunning()).toBe(true);
+    vi.advanceTimersByTime(SINGLE_EVENT_QUEUE_TIMEOUT_MS);
+    await Promise.resolve();
+    expect(queuedResolved).not.toHaveBeenCalled();
     first.resolve('cycle diagnosis');
     await cycle;
     await expect(queued).resolves.toMatchObject({
@@ -361,6 +415,32 @@ describe('ProactiveDiagnosisManager', () => {
       thinkingSteps: [expect.objectContaining({ content: 'working' })],
     });
     expect(calls).toHaveLength(2);
+    vi.useRealTimers();
+  });
+
+  it('times out queued work when the provider is removed during an active cycle', async () => {
+    vi.useFakeTimers();
+    const first = deferred<string>();
+    const diagnoseFn = vi.fn(() => first.promise);
+    manager.setDiagnoseFn(diagnoseFn);
+    const cycle = manager.diagnoseEvents([createEvent()]);
+    const queued = manager.diagnoseSingleEvent(
+      createEvent({ uid: 'queued', objectName: 'queued-app' })
+    );
+    const rejection = expect(queued).rejects.toThrow('Diagnosis setup timed out');
+
+    manager.setDiagnoseFn(null);
+    first.resolve('cycle diagnosis');
+    await cycle;
+    vi.advanceTimersByTime(SINGLE_EVENT_QUEUE_TIMEOUT_MS);
+
+    await rejection;
+    expect(diagnoseFn).toHaveBeenCalledTimes(1);
+    expect(manager.getDiagnosis('queued')).toMatchObject({
+      pending: false,
+      error: 'Diagnosis setup timed out',
+    });
+    vi.useRealTimers();
   });
 
   it('waits for a pending batch event without diagnosing it twice', async () => {

@@ -79,6 +79,9 @@ function AIDiagnosisButton({ event }: { event: Event }) {
     };
 
     if (!proactiveDiagnosisManager.hasDiagnosis(eventUid)) {
+      // The panel owns the diagnosis function and may still be unmounted.
+      // Enable the manager now so this request queues until the panel opens.
+      proactiveDiagnosisManager.start();
       proactiveDiagnosisManager.diagnoseSingleEvent(eventDigest).catch(err => {
         console.error('[AIDiagnosisButton] Failed to diagnose event:', err);
       });

@@ -16,6 +16,7 @@
 
 import type { CommandRunner } from '@headlamp-k8s/ai-common/providers/detectProvider';
 import {
+  BrowserSkillCache,
   createFetchHttpClient,
   createNoopFileSystem,
 } from '@headlamp-k8s/ai-common/skills/adapters/browser';
@@ -77,13 +78,16 @@ export default function Settings() {
   const loadSkills = React.useCallback(
     async (
       onProgress?: (progress: any) => void,
-      sourceIdentity?: string
+      sourceIdentity?: string,
+      forceReload?: boolean
     ): Promise<SkillDisplayInfo[]> => {
       if (!skillManagerRef.current) {
         skillManagerRef.current = new SkillManager(createNoopFileSystem(), createFetchHttpClient());
+        skillManagerRef.current.setSkillCache(new BrowserSkillCache());
       }
-      // Invalidate cache to force fresh load
-      skillManagerRef.current.invalidateCache();
+      if (forceReload) {
+        skillManagerRef.current.invalidateCache();
+      }
       const config = getSkillsConfig(pluginStore.get());
 
       // When a source identity is given, load only that exact URL/path source.
@@ -104,7 +108,8 @@ export default function Settings() {
 
       const { skills, errors } = await skillManagerRef.current.loadAllSkillsWithErrors(
         filteredConfig,
-        onProgress ? (_url, p) => onProgress(p) : undefined
+        onProgress ? (_url, p) => onProgress(p) : undefined,
+        forceReload
       );
 
       // Surface per-source errors so the user knows what failed

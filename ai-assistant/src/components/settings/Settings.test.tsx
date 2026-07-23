@@ -20,6 +20,7 @@ import { describe, expect, it, vi } from 'vitest';
 const skillManagerMock = vi.hoisted(() => ({
   constructorArgs: [] as unknown[][],
   loadedConfigs: [] as unknown[],
+  invalidations: 0,
 }));
 
 vi.mock('@headlamp-k8s/ai-common/skills/config', async () => {
@@ -43,7 +44,10 @@ vi.mock('@headlamp-k8s/ai-common/skills/SkillManager', () => ({
     constructor(...args: unknown[]) {
       skillManagerMock.constructorArgs.push(args);
     }
-    invalidateCache() {}
+    invalidateCache() {
+      skillManagerMock.invalidations += 1;
+    }
+    setSkillCache() {}
     async loadAllSkillsWithErrors(config: unknown) {
       skillManagerMock.loadedConfigs.push(config);
       return { skills: [], errors: [] };
@@ -123,12 +127,21 @@ describe('Settings', () => {
     capturedProps.length = 0;
     skillManagerMock.constructorArgs.length = 0;
     skillManagerMock.loadedConfigs.length = 0;
+    skillManagerMock.invalidations = 0;
     render(React.createElement(Settings));
     const loadSkills = capturedProps[0].loadSkills as (
       onProgress?: unknown,
-      sourceIdentity?: string
+      sourceIdentity?: string,
+      forceReload?: boolean
     ) => Promise<unknown[]>;
     await loadSkills(undefined, JSON.stringify(['git', 'https://github.com/example/repo', 'two']));
+    expect(skillManagerMock.invalidations).toBe(0);
+    await loadSkills(
+      undefined,
+      JSON.stringify(['git', 'https://github.com/example/repo', 'two']),
+      true
+    );
+    expect(skillManagerMock.invalidations).toBe(1);
     expect(skillManagerMock.constructorArgs[0]).toHaveLength(2);
     expect(skillManagerMock.loadedConfigs[0]).toEqual(
       expect.objectContaining({

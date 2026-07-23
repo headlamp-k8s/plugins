@@ -70,6 +70,8 @@ export type DiagnosisStepCallback = (step: DiagnosisThinkingStep) => void;
 
 type DiagnoseFn = (prompt: string, onStep?: DiagnosisStepCallback) => Promise<string>;
 
+export const SINGLE_EVENT_QUEUE_TIMEOUT_MS = 30_000;
+
 export class ProactiveDiagnosisManager extends EventEmitter {
   /** uid → DiagnosisResult */
   private cache = new Map<string, DiagnosisResult>();
@@ -80,6 +82,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
     event: EventDigest;
     resolve: (r: DiagnosisResult) => void;
     reject: (error: unknown) => void;
+    timeout?: ReturnType<typeof setTimeout>;
   }> = [];
   /** The function to call to get a diagnosis from the AI */
   private diagnoseFn: DiagnoseFn | null = null;
@@ -111,8 +114,18 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    */
   setDiagnoseFn(fn: DiagnoseFn | null): void {
     this.diagnoseFn = fn;
-    if (fn && !this.running) {
-      this._drainSingleEventQueue();
+    if (fn) {
+      for (const request of this.singleEventQueue) {
+        if (request.timeout) clearTimeout(request.timeout);
+        request.timeout = undefined;
+      }
+      if (!this.running) {
+        this._drainSingleEventQueue();
+      }
+    } else {
+      for (const request of this.singleEventQueue) {
+        this._armQueuedRequestTimeout(request);
+      }
     }
   }
 
@@ -139,6 +152,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    */
   stop(): void {
     this.enabled = false;
+    this._rejectSingleEventQueue('Proactive diagnosis was stopped');
     this.emit('status-change', { enabled: false });
   }
 
@@ -357,7 +371,15 @@ export class ProactiveDiagnosisManager extends EventEmitter {
         this.emit('diagnosis-update', pendingResult);
       }
       return new Promise<DiagnosisResult>((resolve, reject) => {
-        this.singleEventQueue.push({ event, resolve, reject });
+        const queuedRequest: (typeof this.singleEventQueue)[number] = {
+          event,
+          resolve,
+          reject,
+        };
+        if (!this.diagnoseFn) {
+          this._armQueuedRequestTimeout(queuedRequest);
+        }
+        this.singleEventQueue.push(queuedRequest);
       });
     }
 
@@ -443,9 +465,11 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    * Process queued single-event diagnosis requests one by one.
    */
   private _drainSingleEventQueue(): void {
-    if (!this.diagnoseFn || this.running || this.singleEventQueue.length === 0) return;
+    if (!this.enabled || !this.diagnoseFn || this.running || this.singleEventQueue.length === 0)
+      return;
     const next = this.singleEventQueue.shift();
     if (!next) return;
+    if (next.timeout) clearTimeout(next.timeout);
     const cached = this.cache.get(next.event.uid);
     if (cached && !cached.loading && !cached.pending && !cached.error) {
       next.resolve(cached);
@@ -453,6 +477,42 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       return;
     }
     this._executeSingleDiagnosis(next.event).then(next.resolve).catch(next.reject);
+  }
+
+  private _rejectSingleEventQueue(message: string): void {
+    const queued = this.singleEventQueue.splice(0);
+    for (const request of queued) {
+      this._rejectQueuedRequest(request, message);
+    }
+  }
+
+  private _armQueuedRequestTimeout(request: (typeof this.singleEventQueue)[number]): void {
+    if (request.timeout) return;
+    request.timeout = setTimeout(() => {
+      const index = this.singleEventQueue.indexOf(request);
+      if (index < 0) return;
+      this.singleEventQueue.splice(index, 1);
+      this._rejectQueuedRequest(request, 'Diagnosis setup timed out');
+    }, SINGLE_EVENT_QUEUE_TIMEOUT_MS);
+  }
+
+  private _rejectQueuedRequest(
+    request: (typeof this.singleEventQueue)[number],
+    message: string
+  ): void {
+    if (request.timeout) clearTimeout(request.timeout);
+    const result: DiagnosisResult = {
+      eventUid: request.event.uid,
+      event: request.event,
+      diagnosis: '',
+      diagnosedAt: Date.now(),
+      loading: false,
+      pending: false,
+      error: message,
+    };
+    this.cache.set(request.event.uid, result);
+    this.emit('diagnosis-update', result);
+    request.reject(new Error(message));
   }
 
   /**

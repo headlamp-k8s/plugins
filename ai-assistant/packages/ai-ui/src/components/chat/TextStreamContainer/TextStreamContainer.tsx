@@ -120,6 +120,14 @@ function DefaultEditorDialogAdapter({
   );
 }
 
+function scrollElementTo(element: HTMLElement, top: number): void {
+  if (typeof element.scrollTo === 'function') {
+    element.scrollTo({ top, behavior: 'smooth' });
+  } else {
+    element.scrollTop = top;
+  }
+}
+
 const TextStreamContainer = React.memo(function TextStreamContainer({
   history,
   isLoading,
@@ -141,7 +149,6 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   const [isDelete, setIsDelete] = useState(false);
   const theme = useTheme();
   // Refs for controlling auto-scrolling
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const wasNearBottomRef = useRef(true);
@@ -187,13 +194,8 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   const scrollToBottom = useCallback(() => {
     wasNearBottomRef.current = true;
     markProgrammaticScroll();
-    if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Hide the button immediately after clicking it
-      setShowScrollButton(false);
-    } else if (containerRef.current) {
-      // Fallback scrolling method if the ref isn't available
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    if (containerRef.current) {
+      scrollElementTo(containerRef.current, containerRef.current.scrollHeight);
       setShowScrollButton(false);
     }
   }, [markProgrammaticScroll]);
@@ -215,8 +217,8 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         // Count non-user messages after the last user message
         const nonUserMessagesAfterUser = history.length - 1 - lastUserMessageIndex;
 
-        if (nonUserMessagesAfterUser === 1) {
-          // Only one non-user message after user - show the user message
+        if (nonUserMessagesAfterUser <= 1) {
+          // Keep the latest user message visible while its response begins.
           const messageElements = container.querySelectorAll('[data-message-index]');
           const userMessageElement = Array.from(messageElements).find(
             el => el.getAttribute('data-message-index') === lastUserMessageIndex.toString()
@@ -236,17 +238,11 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
               // If user message is larger than viewport, show the bottom of it
               const targetScrollPosition = messageTop + messageHeight - containerHeight;
               markProgrammaticScroll();
-              container.scrollTo({
-                top: Math.max(0, targetScrollPosition),
-                behavior: 'smooth',
-              });
+              scrollElementTo(container, Math.max(0, targetScrollPosition));
             } else {
               // Show the user message at the top of the viewport
               markProgrammaticScroll();
-              container.scrollTo({
-                top: Math.max(0, messageTop),
-                behavior: 'smooth',
-              });
+              scrollElementTo(container, Math.max(0, messageTop));
             }
           }
         } else {
@@ -259,10 +255,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
 
             // Scroll to show half of the last message
             markProgrammaticScroll();
-            container.scrollTo({
-              top: messageTop,
-              behavior: 'smooth',
-            });
+            scrollElementTo(container, messageTop);
           }
         }
       } else {
@@ -304,10 +297,10 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     lastUserMessageKeyRef.current = latestUserMessageKey;
 
     if (hasNewUserMessage) {
-      // Always scroll to bottom when there's a new user message
+      // Keep the newly submitted user message visible at the top of the log.
       timeouts.push(
         setTimeout(() => {
-          scrollToBottom();
+          scrollToShowNewMessage();
         }, 100)
       );
     } else if (wasNearBottomRef.current) {
@@ -322,7 +315,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       setShowScrollButton(true);
     }
     return () => timeouts.forEach(clearTimeout);
-  }, [history, scrollToBottom, scrollToShowNewMessage]);
+  }, [history, scrollToShowNewMessage]);
 
   // Auto-scroll only when loading starts (not when it finishes)
   useEffect(() => {
@@ -575,6 +568,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
           height: '100%',
           overflowY: 'auto',
           overflowX: 'auto', // Allow horizontal scrolling when needed
+          overscrollBehavior: 'contain',
           display: 'flex',
           flexDirection: 'column',
           maxWidth: '100%',
@@ -626,9 +620,6 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         {agentThinkingSteps && agentThinkingSteps.length > 0 && (
           <AgentThinkingSteps steps={agentThinkingSteps} isRunning={isLoading} />
         )}
-
-        {/* This is an invisible element that we'll scroll to */}
-        <div ref={messagesEndRef} />
       </Box>
 
       {showScrollButton && (
