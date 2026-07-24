@@ -386,8 +386,8 @@ function openSkillsDB(): Promise<IDBDatabase> {
  * IndexedDB-backed cache for parsed skills.
  *
  * Persists downloaded and parsed skills in the browser so they survive
- * page reloads. Each source is stored separately, keyed by
- * `{type}:{url}:{ref}:{path}`.
+ * page reloads. Each source is stored separately under an opaque key
+ * supplied by the caller.
  *
  * Falls back gracefully: if IndexedDB is unavailable (e.g. private
  * browsing in some browsers), all operations return null/resolve
