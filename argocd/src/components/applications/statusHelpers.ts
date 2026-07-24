@@ -38,14 +38,22 @@ export function getHealthStatus(health: string): string {
   }
 }
 
-/**
- * Maps an Argo CD sync status string to a Headlamp StatusLabel severity.
- *
- * @param sync - The sync status string from the Application resource
- *   (e.g., "Synced", "OutOfSync").
- * @returns A StatusLabel status string: "success", "warning",
- *   or "" for unknown values.
- */
+export function getHealthIcon(health: string): string {
+  switch (health.toLowerCase()) {
+    case 'healthy':
+      return 'mdi:heart-pulse';
+    case 'suspended':
+      return 'mdi:pause-circle';
+    case 'progressing':
+      return 'mdi:progress-clock';
+    case 'degraded':
+    case 'missing':
+      return 'mdi:heart-broken';
+    default:
+      return 'mdi:help-circle';
+  }
+}
+
 export function getSyncStatus(sync: string): string {
   switch (sync.toLowerCase()) {
     case 'synced':
@@ -54,5 +62,16 @@ export function getSyncStatus(sync: string): string {
       return 'warning';
     default:
       return '';
+  }
+}
+
+export function getSyncIcon(sync: string): string {
+  switch (sync.toLowerCase()) {
+    case 'synced':
+      return 'mdi:check-circle';
+    case 'outofsync':
+      return 'mdi:arrow-up-circle';
+    default:
+      return 'mdi:help-circle';
   }
 }
