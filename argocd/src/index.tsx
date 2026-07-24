@@ -16,16 +16,20 @@
 
 import { addIcon } from '@iconify/react';
 import {
+  DefaultDetailsViewSection,
   K8s,
+  registerDetailsViewSectionsProcessor,
   registerRoute,
   registerSidebarEntry,
   registerSidebarEntryFilter,
   Utils,
 } from '@kinvolk/headlamp-plugin/lib';
+import type { ReactNode } from 'react';
 import ApplicationDetail from './components/applications/Detail';
 import ApplicationList from './components/applications/List';
 import AppProjectDetail from './components/appprojects/Detail';
 import AppProjectList from './components/appprojects/List';
+import ArgoNamespaceInsights from './components/namespaces/ArgoNamespaceInsights';
 
 // ---------------------------------------------------------------------------
 // CRD Detection Guard — hide Argo CD sidebar entries on clusters without
@@ -79,6 +83,42 @@ registerSidebarEntryFilter(entry => {
   }
   return entry;
 });
+
+const NAMESPACE_GITOPS_INSIGHTS_SECTION_ID = 'argocd.namespace-gitops-insights';
+
+registerDetailsViewSectionsProcessor(function moveNamespaceGitOpsInsights(resource, sections) {
+  if (!resource || resource.kind !== 'Namespace') {
+    return sections;
+  }
+
+  const insightsIndex = sections.findIndex(
+    section => getDetailsSectionId(section) === NAMESPACE_GITOPS_INSIGHTS_SECTION_ID
+  );
+  if (insightsIndex !== -1) {
+    return sections;
+  }
+
+  const metadataIndex = sections.findIndex(
+    section => getDetailsSectionId(section) === DefaultDetailsViewSection.METADATA
+  );
+  if (metadataIndex === -1) {
+    return sections;
+  }
+
+  const reorderedSections = [...sections];
+  reorderedSections.splice(metadataIndex + 1, 0, {
+    id: NAMESPACE_GITOPS_INSIGHTS_SECTION_ID,
+    section: ArgoNamespaceInsights,
+  });
+  return reorderedSections;
+});
+
+function getDetailsSectionId(section: { id?: string } | ReactNode) {
+  if (typeof section === 'object' && section !== null && 'id' in section) {
+    return section.id;
+  }
+  return undefined;
+}
 
 // Register the official Argo CD logo as an offline Iconify icon (CSP-safe:
 // no external fetch). Sourced from the Simple Icons "argo" glyph.
