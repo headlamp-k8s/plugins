@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
 import {
   ActionButton,
   AuthVisible,
+  Link,
   ResourceListView,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box, Link as MuiLink, Tooltip, Typography } from '@mui/material';
 import { refreshApplication, syncApplication } from '../../api/argoClient';
 import { useArgoOperationMap } from '../../hooks/useArgoOperation';
 import { ArgoApplication } from '../../resources/application';
-import { getHealthStatus, getSyncStatus } from './statusHelpers';
+import { getHealthIcon, getHealthStatus, getSyncIcon, getSyncStatus } from './statusHelpers';
 
 /**
  * Renders a table of all Argo CD Application resources in the current cluster.
@@ -53,7 +56,7 @@ export default function ApplicationList() {
             return (
               <AuthVisible item={item} authVerb="patch">
                 <ActionButton
-                  description={isLoadingSync ? 'Syncing…' : 'Sync'}
+                  description={isLoadingSync ? 'Syncing...' : 'Sync'}
                   icon={isLoadingSync ? 'mdi:loading' : 'mdi:sync'}
                   onClick={() => sync.execute(name, namespace)}
                   iconButtonProps={{ disabled: isLoadingAny }}
@@ -71,7 +74,7 @@ export default function ApplicationList() {
             return (
               <AuthVisible item={item} authVerb="patch">
                 <ActionButton
-                  description={isLoadingRefresh ? 'Refreshing…' : 'Refresh'}
+                  description={isLoadingRefresh ? 'Refreshing...' : 'Refresh'}
                   icon={isLoadingRefresh ? 'mdi:loading' : 'mdi:refresh'}
                   onClick={() => refresh.execute(name, namespace)}
                   iconButtonProps={{ disabled: isLoadingAny }}
@@ -83,7 +86,6 @@ export default function ApplicationList() {
       ]}
       columns={[
         'name',
-        'namespace',
         {
           id: 'project',
           label: 'Project',
@@ -91,33 +93,155 @@ export default function ApplicationList() {
         },
         {
           id: 'source-repo',
-          label: 'Source Repo',
+          label: 'Source',
           getValue: (app: ArgoApplication) =>
-            app.isMultiSource ? `${app.sources.length} sources` : app.repoURL,
+            app.isMultiSource
+              ? `${app.sources.length} sources`
+              : `${getRepoDisplayName(app.repoURL)} ${app.targetRevision}`,
+          render: (app: ArgoApplication) => <SourceAndRevisionLabel app={app} />,
         },
         {
-          id: 'target-revision',
-          label: 'Target Revision',
-          getValue: (app: ArgoApplication) => app.targetRevision,
+          id: 'app-flow',
+          label: 'Namespaces',
+          getValue: (app: ArgoApplication) =>
+            `${app.metadata.namespace} -> ${getDestinationLabel(app)}`,
+          render: (app: ArgoApplication) => <ApplicationFlow app={app} />,
         },
         {
-          id: 'sync-status',
-          label: 'Sync Status',
-          getValue: (app: ArgoApplication) => app.syncStatus,
-          render: (app: ArgoApplication) => (
-            <StatusLabel status={getSyncStatus(app.syncStatus)}>{app.syncStatus}</StatusLabel>
-          ),
-        },
-        {
-          id: 'health-status',
-          label: 'Health Status',
-          getValue: (app: ArgoApplication) => app.healthStatus,
-          render: (app: ArgoApplication) => (
-            <StatusLabel status={getHealthStatus(app.healthStatus)}>{app.healthStatus}</StatusLabel>
-          ),
+          id: 'status',
+          label: 'Status',
+          getValue: (app: ArgoApplication) => `${app.syncStatus} ${app.healthStatus}`,
+          render: (app: ArgoApplication) => <ApplicationStatus app={app} />,
         },
         'age',
       ]}
     />
+  );
+}
+
+function ApplicationFlow(props: { app: ArgoApplication }) {
+  const app = props.app;
+  const destination = getDestinationLabel(app);
+  const shouldLinkDestination = isLocalDestination(app);
+
+  return (
+    <Tooltip
+      title={`Application namespace: ${app.metadata.namespace}\nDestination namespace: ${destination}`}
+    >
+      <Box sx={{ display: 'grid', gap: 0.25, minWidth: 0 }}>
+        <Typography component="span" variant="body2" sx={{ whiteSpace: 'nowrap' }}>
+          <Box component="span" color="text.secondary">
+            App:
+          </Box>{' '}
+          <Link routeName="namespace" params={{ name: app.metadata.namespace }}>
+            {app.metadata.namespace}
+          </Link>
+        </Typography>
+        <Typography component="span" variant="body2" sx={{ whiteSpace: 'nowrap' }}>
+          <Box component="span" color="text.secondary">
+            Dest:
+          </Box>{' '}
+          {shouldLinkDestination ? (
+            <Link routeName="namespace" params={{ name: app.destinationNamespace }}>
+              {app.destinationNamespace}
+            </Link>
+          ) : (
+            destination
+          )}
+        </Typography>
+      </Box>
+    </Tooltip>
+  );
+}
+
+function ApplicationStatus(props: { app: ArgoApplication }) {
+  const app = props.app;
+
+  return (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+      <StatusLabel status={getSyncStatus(app.syncStatus)}>
+        <Icon icon={getSyncIcon(app.syncStatus)} style={{ marginRight: '4px' }} />
+        {app.syncStatus}
+      </StatusLabel>
+      <StatusLabel status={getHealthStatus(app.healthStatus)}>
+        <Icon icon={getHealthIcon(app.healthStatus)} style={{ marginRight: '4px' }} />
+        {app.healthStatus}
+      </StatusLabel>
+    </Box>
+  );
+}
+
+function SourceAndRevisionLabel(props: { app: ArgoApplication }) {
+  const app = props.app;
+
+  if (app.isMultiSource) {
+    return (
+      <Tooltip
+        title={app.sources
+          .map(
+            (source, index) =>
+              `Source ${index + 1}: ${source.repoURL || '-'} @ ${source.targetRevision || 'HEAD'}`
+          )
+          .join('\n')}
+      >
+        <Box sx={{ display: 'grid', gap: 0.25, minWidth: 0 }}>
+          <Typography variant="body2">{app.sources.length} sources</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Multiple revisions
+          </Typography>
+        </Box>
+      </Tooltip>
+    );
+  }
+
+  if (!app.repoURL) {
+    return '-';
+  }
+
+  return (
+    <Tooltip title={app.repoURL}>
+      <Box sx={{ display: 'grid', gap: 0.25, minWidth: 0 }}>
+        <MuiLink
+          href={app.repoURL}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ overflowWrap: 'anywhere' }}
+        >
+          {getRepoDisplayName(app.repoURL)}
+        </MuiLink>
+        <Typography variant="caption" color="text.secondary">
+          Revision: {app.targetRevision}
+        </Typography>
+      </Box>
+    </Tooltip>
+  );
+}
+
+function getRepoDisplayName(repoURL: string) {
+  if (!repoURL) {
+    return '-';
+  }
+
+  const repoPath = repoURL.replace(/\/$/, '').split('/').pop() || repoURL;
+  return repoPath.replace(/\.git$/, '');
+}
+
+function getDestinationLabel(app: ArgoApplication) {
+  const namespace = app.destinationNamespace;
+  const cluster = app.spec.destination?.name;
+
+  if (cluster) {
+    return `${cluster} / ${namespace}`;
+  }
+
+  return namespace;
+}
+
+function isLocalDestination(app: ArgoApplication) {
+  const destination = app.spec.destination;
+
+  return (
+    !destination?.name &&
+    (!destination?.server || destination.server === 'https://kubernetes.default.svc')
   );
 }

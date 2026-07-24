@@ -39,6 +39,28 @@ export function getHealthStatus(health: string): string {
 }
 
 /**
+ * Maps an Argo CD health status string to an icon used beside the status badge.
+ *
+ * @param health - The health status string from the Application resource.
+ * @returns An Iconify icon name matching the Argo CD health state.
+ */
+export function getHealthIcon(health: string): string {
+  switch (health.toLowerCase()) {
+    case 'healthy':
+      return 'mdi:heart-pulse';
+    case 'suspended':
+      return 'mdi:pause-circle';
+    case 'progressing':
+      return 'mdi:progress-clock';
+    case 'degraded':
+    case 'missing':
+      return 'mdi:heart-broken';
+    default:
+      return 'mdi:help-circle';
+  }
+}
+
+/**
  * Maps an Argo CD sync status string to a Headlamp StatusLabel severity.
  *
  * @param sync - The sync status string from the Application resource
@@ -54,5 +76,22 @@ export function getSyncStatus(sync: string): string {
       return 'warning';
     default:
       return '';
+  }
+}
+
+/**
+ * Maps an Argo CD sync status string to an icon used beside the status badge.
+ *
+ * @param sync - The sync status string from the Application resource.
+ * @returns An Iconify icon name matching the Argo CD sync state.
+ */
+export function getSyncIcon(sync: string): string {
+  switch (sync.toLowerCase()) {
+    case 'synced':
+      return 'mdi:check-circle';
+    case 'outofsync':
+      return 'mdi:arrow-up-circle';
+    default:
+      return 'mdi:help-circle';
   }
 }
