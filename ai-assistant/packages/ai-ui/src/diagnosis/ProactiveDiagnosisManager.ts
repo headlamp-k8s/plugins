@@ -115,6 +115,10 @@ export class ProactiveDiagnosisManager extends EventEmitter {
   setDiagnoseFn(fn: DiagnoseFn | null): void {
     this.diagnoseFn = fn;
     if (fn) {
+      if (!this.enabled) {
+        this._rejectSingleEventQueue('Proactive diagnosis is disabled');
+        return;
+      }
       for (const request of this.singleEventQueue) {
         if (request.timeout) clearTimeout(request.timeout);
         request.timeout = undefined;

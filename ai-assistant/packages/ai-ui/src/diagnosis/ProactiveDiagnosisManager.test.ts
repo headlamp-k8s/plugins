@@ -111,6 +111,22 @@ describe('ProactiveDiagnosisManager', () => {
     expect(diagnose).toHaveBeenCalledTimes(1);
   });
 
+  it('rejects queued diagnosis if the function is installed while disabled', async () => {
+    const diagnose = vi.fn(async () => 'diagnosis');
+    const resultPromise = manager.diagnoseSingleEvent(createEvent());
+    const rejection = expect(resultPromise).rejects.toThrow('Proactive diagnosis is disabled');
+    Reflect.set(manager, 'enabled', false);
+
+    manager.setDiagnoseFn(diagnose);
+
+    await rejection;
+    expect(diagnose).not.toHaveBeenCalled();
+    expect(manager.getDiagnosis('uid-1')).toMatchObject({
+      pending: false,
+      error: 'Proactive diagnosis is disabled',
+    });
+  });
+
   it('runs a table-triggered diagnosis after the closed panel initializes its mock function', async () => {
     manager.stop();
     manager.start();
