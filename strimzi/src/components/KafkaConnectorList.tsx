@@ -139,7 +139,9 @@ export function KafkaConnectorList() {
     {
       id: 'actions',
       label: 'Actions',
-      getValue: () => '',
+      // The rendered button depends on the desired state, so the cell value has
+      // to change with it for the table to pick the new state up.
+      getValue: (item: KafkaConnector) => item.desiredState,
       render: (item: KafkaConnector) => {
         const desired = item.desiredState;
         if (desired === 'paused') {
