@@ -61,7 +61,7 @@ describe('createLangChainModel — validation errors', () => {
   });
 
   it('deepseek: throws when apiKey is missing', () => {
-    expect(() => createChatModel('deepseek', { model: 'deepseek-chat' })).toThrow(
+    expect(() => createChatModel('deepseek', { model: 'deepseek-v4-flash' })).toThrow(
       /API key is required for DeepSeek/
     );
   });
