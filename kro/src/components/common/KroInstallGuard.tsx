@@ -9,6 +9,9 @@ const KRO_INSTALL_DOCS = 'https://kro.run/docs/getting-started/Installation/';
  * Detects whether kro is installed by fetching its RGD CRD. Only a 404
  * counts as "not installed": on RBAC errors the check stays neutral so
  * pages can attempt to render and degrade on their own.
+ *
+ * @returns Flags: isInstalled (CRD found), notInstalled (404), and
+ *   isLoading (still fetching).
  */
 export function useKroInstalled() {
   const [crd, error] = CustomResourceDefinition.useGet('resourcegraphdefinitions.kro.run');
@@ -22,6 +25,9 @@ export function useKroInstalled() {
 /**
  * Renders children only when kro's CRDs exist; shows a friendly install
  * pointer otherwise. Never blocks on RBAC errors.
+ *
+ * @param props.children - Content to render when kro is present.
+ * @returns The children, a loader, or the install pointer.
  */
 export default function KroInstallGuard(props: { children: ReactNode }) {
   const { notInstalled, isLoading } = useKroInstalled();
@@ -36,7 +42,7 @@ export default function KroInstallGuard(props: { children: ReactNode }) {
           <>
             This cluster has no ResourceGraphDefinition API (resourcegraphdefinitions.kro.run).
             Install kro to define resource graphs — see the{' '}
-            <Link href={KRO_INSTALL_DOCS} target="_blank" rel="noreferrer">
+            <Link href={KRO_INSTALL_DOCS} target="_blank" rel="noopener noreferrer">
               kro installation guide
             </Link>
             .

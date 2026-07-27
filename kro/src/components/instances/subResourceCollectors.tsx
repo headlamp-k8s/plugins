@@ -11,28 +11,47 @@ import { InstanceApiInfo, instanceApiInfoFromCrdSpec } from '../../resources/ins
 import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition';
 import { getComposedResources } from '../../resources/rgdGraph';
 
+/** One apiVersion/kind from an RGD's templates to watch for sub-resources. */
 export interface KindToWatch {
   /** Stable key for this kind, e.g. "apps/v1:Deployment". */
   key: string;
+  /** apiVersion of the templates using this kind. */
   apiVersion: string;
+  /** The resource kind. */
   kind: string;
 }
 
 /** An error reported while listing one watched kind. */
 export interface SubResourceListError {
+  /** The kind whose list/watch failed. */
   kind: string;
+  /** The server's error message (e.g. an RBAC denial). */
   message: string;
 }
 
+/**
+ * Extract the group from an apiVersion string.
+ *
+ * @param apiVersion - "group/version", or bare "v1" for core.
+ * @returns The group, or '' for core-group resources.
+ */
 function apiGroupOf(apiVersion: string): string {
   return apiVersion.includes('/') ? apiVersion.split('/')[0] : '';
 }
 
 /**
- * Resolve a Headlamp resource class for an arbitrary apiVersion/kind:
- * a built-in class when the apiVersion matches, else the cluster's CRD
- * for that group+kind (the CRD is the source of truth for the plural
- * name and scope — never guessed). Unknown kinds are skipped.
+ * Resolve a Headlamp resource class for an arbitrary apiVersion/kind.
+ *
+ * Resolution order: a built-in class when its apiVersion matches
+ * exactly; else the cluster's CRD for that group+kind (the CRD is the
+ * source of truth for the plural name and scope — never guessed); else
+ * a built-in class with the same kind even if its apiVersion differs
+ * (tolerating version drift beats dropping the watch); else null, and
+ * the kind is skipped.
+ *
+ * @param kindToWatch - The apiVersion/kind to resolve.
+ * @param crdApiInfoByGroupKind - Cluster CRDs indexed by "group/Kind".
+ * @returns A watchable KubeObject class, or null for unknown kinds.
  */
 export function resolveResourceClass(
   kindToWatch: KindToWatch,
@@ -51,7 +70,14 @@ export function resolveResourceClass(
   return builtIn ?? null;
 }
 
-/** The unique template kinds of an RGD worth watching for sub-resources. */
+/**
+ * The unique template kinds of an RGD worth watching for
+ * sub-resources. External references are excluded — kro reads them but
+ * never creates them.
+ *
+ * @param rgd - The RGD whose templates to scan.
+ * @returns Deduplicated kinds in template order.
+ */
 export function getKindsToWatch(rgd: ResourceGraphDefinition): KindToWatch[] {
   const seen = new Map<string, KindToWatch>();
   for (const resource of getComposedResources(rgd.jsonData)) {
@@ -70,6 +96,13 @@ export function getKindsToWatch(rgd: ResourceGraphDefinition): KindToWatch[] {
  * Watches one kind with kro's instance labels and reports the matching
  * items up to the parent. Rendered as a component (not a hook loop) so
  * the number of hooks stays constant per kind even as RGDs change.
+ *
+ * @param props.kindToWatch - The kind this collector watches.
+ * @param props.crdApiInfoByGroupKind - Cluster CRDs for class resolution.
+ * @param props.namespace - Namespace to list in, for namespaced kinds.
+ * @param props.labelSelector - kro ownership selector for the instance.
+ * @param props.onItems - Callback receiving items and any list error.
+ * @returns null — this component only maintains a watch.
  */
 function KindCollector(props: {
   kindToWatch: KindToWatch;
@@ -99,6 +132,18 @@ function KindCollector(props: {
   );
 }
 
+/**
+ * The hook-bearing half of {@link KindCollector}: runs the actual
+ * useList watch for one resolved class and reports on every render.
+ *
+ * @param props.resourceClass - The class to list/watch.
+ * @param props.kindKey - Stable reporting key ("apiVersion:Kind").
+ * @param props.kind - Kind name used in error reports.
+ * @param props.namespace - Namespace to list in, for namespaced kinds.
+ * @param props.labelSelector - kro ownership selector for the instance.
+ * @param props.onItems - Callback receiving items and any list error.
+ * @returns null — this component only maintains a watch.
+ */
 function KindCollectorList(props: {
   resourceClass: typeof KubeObject<any>;
   kindKey: string;
@@ -133,6 +178,10 @@ function KindCollectorList(props: {
  * array so downstream memos recompute. List errors (e.g. RBAC denials)
  * are collected per kind so sections can degrade with the server's
  * message instead of showing an empty state.
+ *
+ * @returns `items` (all collected resources), `errors` (one per failing
+ *   kind), and the `onItems` callback to hand to
+ *   {@link SubResourceCollectors}.
  */
 export function useCollectedSubResources() {
   const [itemsByKind, setItemsByKind] = useState<Record<string, KubeObject<any>[]>>({});
@@ -173,6 +222,11 @@ export function useCollectedSubResources() {
 /**
  * Invisible watchers for every kind in the RGD's templates, matching the
  * resources kro created for this instance.
+ *
+ * @param props.rgd - The RGD defining which kinds to watch.
+ * @param props.instance - The owning instance (label selector source).
+ * @param props.onItems - Callback receiving per-kind items and errors.
+ * @returns Invisible collector components; renders no visible output.
  */
 export function SubResourceCollectors(props: {
   rgd: ResourceGraphDefinition;
@@ -180,7 +234,13 @@ export function SubResourceCollectors(props: {
   onItems: (key: string, items: KubeObject<any>[], error: SubResourceListError | null) => void;
 }) {
   const { rgd, instance, onItems } = props;
-  const kindsToWatch = useMemo(() => getKindsToWatch(rgd), [rgd]);
+  // Keyed on resourceVersion as well as identity: watch updates can
+  // mutate the RGD object in place, so identity alone can go stale.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const kindsToWatch = useMemo(
+    () => getKindsToWatch(rgd),
+    [rgd, rgd.metadata.uid, rgd.metadata.resourceVersion]
+  );
   const labelSelector = instanceSubResourceSelector(instance);
 
   // The CRD list backs plural/scope resolution for any non-built-in

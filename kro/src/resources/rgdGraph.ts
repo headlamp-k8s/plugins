@@ -1,9 +1,16 @@
 import type { KubeResourceGraphDefinition } from './resourceGraphDefinition';
 
-/** A composed resource of an RGD, merged from spec.resources and status. */
+/**
+ * A composed resource of an RGD, merged from spec.resources and status.
+ *
+ * @see https://kro.run/docs/concepts/rgd/overview
+ */
 export interface ComposedResource {
+  /** The resource's id inside the graph. */
   id: string;
+  /** Kind from the template or externalRef; "-" when unknown. */
   kind: string;
+  /** apiVersion from the template or externalRef; "-" when unknown. */
   apiVersion: string;
   /** True when the resource is a read-only externalRef rather than a template. */
   external: boolean;
@@ -23,6 +30,10 @@ export interface ComposedResource {
  * analysis; they are never re-derived here). Ordering follows
  * status.topologicalOrder when present and falls back to spec order,
  * so Inactive RGDs without status still render.
+ *
+ * @param rgd - RGD data (spec/status); tolerates null and partial data.
+ * @returns One entry per spec resource, in render order.
+ * @see https://kro.run/docs/concepts/rgd/dependencies-ordering
  */
 export function getComposedResources(
   rgd: Pick<KubeResourceGraphDefinition, 'spec' | 'status'> | null | undefined
@@ -40,6 +51,9 @@ export function getComposedResources(
       ])
   );
   const orderIndexById = new Map<string, number>(topologicalOrder.map((id, index) => [id, index]));
+  const specIndexById = new Map<string, number>(
+    specResources.filter(resource => !!resource?.id).map((resource, index) => [resource.id, index])
+  );
 
   return specResources
     .filter(resource => !!resource?.id)
@@ -52,15 +66,21 @@ export function getComposedResources(
       conditional: (resource.includeWhen ?? []).length > 0,
     }))
     .sort(
+      // Topological order first; ids the status does not cover (partial
+      // or missing topologicalOrder) sort after it in spec order, as a
+      // deterministic tie-breaker independent of sort stability.
       (a, b) =>
         (orderIndexById.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
-        (orderIndexById.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+          (orderIndexById.get(b.id) ?? Number.MAX_SAFE_INTEGER) ||
+        (specIndexById.get(a.id) ?? 0) - (specIndexById.get(b.id) ?? 0)
     );
 }
 
 /** A flattened SimpleSchema field, e.g. "replicas" -> "integer | default=1". */
 export interface SchemaField {
+  /** Dot path of the field, e.g. "resources.cpu". */
   path: string;
+  /** The SimpleSchema type string or CEL expression. */
   definition: string;
 }
 
@@ -69,6 +89,11 @@ export interface SchemaField {
  * into dot-path rows. Nested objects become "parent.child" paths; leaf
  * values are the SimpleSchema type strings (or CEL expressions for
  * status fields).
+ *
+ * @param schema - The SimpleSchema object; non-objects yield [].
+ * @param prefix - Internal recursion accumulator for the dot path.
+ * @returns Flattened rows in declaration order.
+ * @see https://kro.run/docs/concepts/rgd/schema
  */
 export function flattenSimpleSchema(schema: unknown, prefix = ''): SchemaField[] {
   if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {

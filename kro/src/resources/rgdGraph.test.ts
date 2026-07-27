@@ -59,6 +59,24 @@ describe('getComposedResources', () => {
     expect(byId.get('platformConfig')?.dependencies).toEqual([]);
   });
 
+  it('sorts ids missing from a partial topologicalOrder after it, in spec order', () => {
+    const partial: RgdData = {
+      spec: activeRgd.spec,
+      status: {
+        state: 'Active',
+        // Only two of the four resources are covered.
+        topologicalOrder: ['service', 'platformConfig'],
+      },
+    };
+    expect(getComposedResources(partial).map(resource => resource.id)).toEqual([
+      'service',
+      'platformConfig',
+      // Not in topologicalOrder: spec order (cache before deployment).
+      'cache',
+      'deployment',
+    ]);
+  });
+
   it('falls back to spec order when status is missing (Inactive RGD)', () => {
     const inactive: RgdData = { spec: activeRgd.spec, status: undefined };
     const resources = getComposedResources(inactive);

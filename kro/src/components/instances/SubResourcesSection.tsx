@@ -17,7 +17,12 @@ import { SubResourceCollectors, useCollectedSubResources } from './subResourceCo
 /**
  * The resources kro created for this instance, discovered via kro's
  * ownership labels (kro.run/owned + kro.run/instance-id) across every
- * kind that appears in the RGD's templates.
+ * kind that appears in the RGD's templates. Per-kind list errors
+ * (e.g. RBAC denials) render as messages instead of an empty state.
+ *
+ * @param props.rgd - The RGD defining the instance's resource graph.
+ * @param props.instance - The instance whose sub-resources to show.
+ * @returns The Sub-resources section.
  */
 export default function SubResourcesSection(props: {
   rgd: ResourceGraphDefinition;
@@ -26,10 +31,13 @@ export default function SubResourcesSection(props: {
   const { rgd, instance } = props;
   const { items, errors, onItems } = useCollectedSubResources();
 
+  // Keyed on resourceVersion as well as identity: watch updates can
+  // mutate the RGD object in place, so identity alone can go stale.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const nodeOrder = useMemo(
     () =>
       new Map(getComposedResources(rgd.jsonData).map((resource, index) => [resource.id, index])),
-    [rgd]
+    [rgd, rgd.metadata.uid, rgd.metadata.resourceVersion]
   );
 
   const rows = useMemo(
