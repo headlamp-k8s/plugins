@@ -55,8 +55,16 @@ state.
 
 ## Cleanup
 
+Delete instances before their RGDs: deleting an RGD first removes the
+controller for its API, leaving instances stuck on `kro.run/finalizer`
+(if that happens, clear the instance's finalizers manually).
+
 ```bash
-kubectl delete -f webapp-instance.yaml -f error-scenarios/ --ignore-not-found
-kubectl delete -f webapp-rgd.yaml -f webapp-platform-config.yaml --ignore-not-found
+kubectl delete -f webapp-instance.yaml \
+  -f error-scenarios/missing-externalref-instance.yaml --ignore-not-found
+kubectl delete -f webapp-rgd.yaml \
+  -f error-scenarios/invalid-cel-rgd.yaml \
+  -f error-scenarios/missing-externalref-rgd.yaml --ignore-not-found
+kubectl delete -f webapp-platform-config.yaml --ignore-not-found
 kubectl delete configmap does-not-exist --ignore-not-found
 ```
