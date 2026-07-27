@@ -7,7 +7,7 @@ export function TriggerAuthenticationsList() {
 
   return (
     <BaseKedaAuthenticationList
-      title={t('TriggerAuthentications')}
+      title={t('Trigger Authentications')}
       resourceType={TriggerAuthentication}
     />
   );

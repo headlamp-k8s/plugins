@@ -9,14 +9,14 @@ export function ScaledObjectsList() {
   return (
     <KedaInstallCheck>
       <ResourceListView
-        title={t('ScaledObjects')}
+        title={t('Scaled Objects')}
         resourceClass={ScaledObject}
         columns={[
           'name',
           'namespace',
           {
             id: 'scale-target',
-            label: t('ScaleTarget'),
+            label: t('Scale Target'),
             getValue: null,
             render: item => (
               <Link
@@ -29,7 +29,7 @@ export function ScaledObjectsList() {
           },
           {
             id: 'replica-count',
-            label: t('Min-Max'),
+            label: t('Replica Range'),
             getValue: item => `${item.minReplicaCount}-${item.maxReplicaCount}`,
           },
           {
