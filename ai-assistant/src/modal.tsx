@@ -70,13 +70,6 @@ import { getSettingsURL, type PluginConfig, useGlobalState } from './pluginState
 import { useDynamicPrompts } from './prompts/promptGenerator';
 import { resolveRuntimeProviderConfig } from './resolveRuntimeProviderConfig';
 
-// Operation type constants for translation
-const OPERATION_TYPES = {
-  CREATION: 'creation',
-  UPDATE: 'update',
-  DELETION: 'deletion',
-  GENERIC: 'operation',
-} as const;
 import {
   type CommandRunner,
   refreshAzureOpenAIKey,
@@ -814,21 +807,21 @@ export default function AIPrompt(props: {
       resourceInfo?: { kind?: string; name?: string; namespace?: string }
     ) => {
       // Determine the operation type from the error or method
-      let operation: string = OPERATION_TYPES.GENERIC;
+      let operation = t('operation');
       if (operationType) {
         switch (operationType.toLowerCase()) {
           case 'post':
-            operation = OPERATION_TYPES.CREATION;
+            operation = t('creation');
             break;
           case 'put':
           case 'patch':
-            operation = OPERATION_TYPES.UPDATE;
+            operation = t('update');
             break;
           case 'delete':
-            operation = OPERATION_TYPES.DELETION;
+            operation = t('deletion');
             break;
           default:
-            operation = OPERATION_TYPES.GENERIC;
+            operation = t('operation');
         }
       }
 
@@ -843,7 +836,7 @@ export default function AIPrompt(props: {
 
       // Build error content
       let errorContent = t('Resource {{operation}} failed: {{errorMessage}}', {
-        operation: t(operation),
+        operation,
         errorMessage,
       });
 

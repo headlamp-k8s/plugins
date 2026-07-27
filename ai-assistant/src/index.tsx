@@ -25,6 +25,7 @@ import {
   registerPluginSettings,
   registerResourceTableColumnsProcessor,
   registerUIPanel,
+  useTranslation,
 } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, ResourceTableColumn } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
@@ -57,6 +58,7 @@ registerPluginSettings(PLUGIN_NAME, Settings);
 function AIDiagnosisButton({ event }: { event: Event }) {
   const pluginState = useGlobalState();
   const pluginConfig = usePluginConfig();
+  const { t } = useTranslation();
 
   if (pluginConfig?.proactiveDiagnosisEnabled !== true) return null;
 
@@ -90,7 +92,7 @@ function AIDiagnosisButton({ event }: { event: Event }) {
 
   return (
     <ActionButton
-      description="Diagnose with AI"
+      description={t('Diagnose with AI')}
       icon="mdi:robot-outline"
       onClick={handleDiagnose}
     />
