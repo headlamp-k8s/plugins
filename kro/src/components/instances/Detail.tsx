@@ -15,6 +15,13 @@ import { flattenSimpleSchema } from '../../resources/rgdGraph';
 import { KroStateLabel } from '../resourcegraphdefinitions/common';
 import SubResourcesSection from './SubResourcesSection';
 
+/**
+ * Build the "Spec" section: the instance's spec flattened to dot-path
+ * rows.
+ *
+ * @param instance - The instance being displayed.
+ * @returns A DetailsGrid section, or null when the spec is empty.
+ */
 function getSpecSection(instance: KubeObject<KroInstance>) {
   const fields = flattenSimpleSchema(instance.jsonData.spec);
   if (fields.length === 0) {
@@ -32,6 +39,12 @@ function getSpecSection(instance: KubeObject<KroInstance>) {
   };
 }
 
+/**
+ * Build the conditions section from the instance's status conditions.
+ *
+ * @param instance - The instance being displayed.
+ * @returns A DetailsGrid section, or null when there are no conditions.
+ */
 function getConditionsSection(instance: KubeObject<KroInstance>) {
   if (!instance.jsonData.status?.conditions?.length) {
     return null;
@@ -42,6 +55,14 @@ function getConditionsSection(instance: KubeObject<KroInstance>) {
   };
 }
 
+/**
+ * Collect scalar status fields (the RGD's CEL-projected values, e.g.
+ * endpoint or readyReplicas) as name/value rows for the info card.
+ * Conditions and state are excluded — they render elsewhere.
+ *
+ * @param instance - The instance being displayed.
+ * @returns Name/value rows for MainInfoSection's extraInfo.
+ */
 function getStatusInfoRows(instance: KubeObject<KroInstance>) {
   const status = instance.jsonData.status ?? {};
   return Object.entries(status)
@@ -52,6 +73,14 @@ function getStatusInfoRows(instance: KubeObject<KroInstance>) {
     .map(([key, value]) => ({ name: key, value: String(value ?? '-') }));
 }
 
+/**
+ * Detail page for one instance of an RGD-generated API. Route params
+ * supply the RGD name plus the instance namespace/name; the instance
+ * class is discovered from the generated CRD, and the page degrades
+ * with a message when the RGD or CRD cannot be loaded.
+ *
+ * @returns The instance detail view.
+ */
 export default function InstanceDetail() {
   const { rgdName, namespace, name } = useParams<{
     rgdName: string;

@@ -31,7 +31,13 @@ const OWNED_KINDS = [
   'RoleBinding',
 ] as const;
 
-/** Side-panel details for a synthesized kro instance node. */
+/**
+ * Side-panel details for a synthesized kro instance node.
+ *
+ * @param props.node - The selected graph node; its data carries the
+ *   instance coordinates reconstructed from kro's labels.
+ * @returns A small info panel with a link to the instance view.
+ */
 function InstanceNodeDetails(props: { node: GraphNode }) {
   const data = props.node.data ?? {};
   return (
@@ -75,6 +81,11 @@ function InstanceNodeDetails(props: { node: GraphNode }) {
  * labels. Instances are custom resources of dynamically generated CRDs,
  * so they cannot be listed with a fixed set of hooks — but every owned
  * resource carries enough labels to reconstruct its owner node.
+ *
+ * @param item - A kro-managed resource.
+ * @returns Instance node + RGD->instance->item edges; empty when the
+ *   item lacks kro's instance labels.
+ * @see https://github.com/kubernetes-sigs/kro/blob/main/pkg/metadata/labels.go
  */
 function getOwnershipElements(item: KubeObject<any>): { nodes: GraphNode[]; edges: GraphEdge[] } {
   const labels = item.jsonData?.metadata?.labels ?? {};
@@ -116,6 +127,14 @@ function getOwnershipElements(item: KubeObject<any>): { nodes: GraphNode[]; edge
   return { nodes: [instanceNode], edges };
 }
 
+/**
+ * Build one Map sub-source that watches a single built-in kind with
+ * kro's ownership label and emits its nodes plus synthesized ownership
+ * elements.
+ *
+ * @param kind - The built-in kind to watch.
+ * @returns A GraphSource for Headlamp's Map registry.
+ */
 function makeOwnedKindSource(kind: (typeof OWNED_KINDS)[number]) {
   return {
     id: `kro-owned-${kind.toLowerCase()}`,

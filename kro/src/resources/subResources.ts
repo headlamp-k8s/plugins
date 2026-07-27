@@ -4,10 +4,14 @@
  * they stay testable and never throw on partial objects.
  */
 
+/** Health bucket for a sub-resource; '' means "no status to show". */
 export type HealthStatus = 'success' | 'error' | 'warning' | '';
 
+/** Health summary of one sub-resource. */
 export interface SubResourceHealth {
+  /** Status bucket driving badge color. */
   status: HealthStatus;
+  /** Short human-readable label, e.g. "2/2 ready" or "Bound". */
   label: string;
 }
 
@@ -16,6 +20,13 @@ interface KubeCondition {
   status?: string;
 }
 
+/**
+ * Find a status condition by type on a raw resource.
+ *
+ * @param resource - Raw jsonData of the resource; tolerates junk.
+ * @param type - Condition type, e.g. "Ready".
+ * @returns The condition, or undefined when absent/malformed.
+ */
 function findCondition(resource: any, type: string): KubeCondition | undefined {
   const conditions = resource?.status?.conditions;
   if (!Array.isArray(conditions)) {
@@ -24,6 +35,14 @@ function findCondition(resource: any, type: string): KubeCondition | undefined {
   return conditions.find((condition: KubeCondition) => condition?.type === type);
 }
 
+/**
+ * Compute a health summary for a sub-resource, per kind.
+ *
+ * @param kind - The resource kind, e.g. "Deployment".
+ * @param resource - Raw jsonData; tolerates partial or null data.
+ * @returns Health bucket and label; unknown kinds fall back to a Ready
+ *   condition when present, else "Created".
+ */
 export function getSubResourceHealth(kind: string, resource: any): SubResourceHealth {
   switch (kind) {
     case 'Deployment': {
@@ -95,6 +114,11 @@ export function getSubResourceHealth(kind: string, resource: any): SubResourceHe
  * The resolved, environment-specific values worth surfacing without a
  * click-through. This is the demo's portability proof: e.g. the same
  * instance YAML binds a different StorageClass per cloud.
+ *
+ * @param kind - The resource kind.
+ * @param resource - Raw jsonData; tolerates partial or null data.
+ * @returns A short comma-separated summary, or '' when the kind has
+ *   nothing worth surfacing.
  */
 export function getResolvedValues(kind: string, resource: any): string {
   switch (kind) {
@@ -135,7 +159,14 @@ export function getResolvedValues(kind: string, resource: any): string {
   }
 }
 
-/** The RGD graph node id kro stamps on every sub-resource it creates. */
+/**
+ * The RGD graph node id kro stamps on every sub-resource it creates
+ * (the kro.run/node-id label).
+ *
+ * @param resource - Raw jsonData of the resource.
+ * @returns The node id, or "-" when the label is missing.
+ * @see https://github.com/kubernetes-sigs/kro/blob/main/pkg/metadata/labels.go
+ */
 export function getNodeId(resource: any): string {
   return resource?.metadata?.labels?.['kro.run/node-id'] ?? '-';
 }

@@ -12,6 +12,13 @@ import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition
 import { kroRouteNames } from '../../utils/kroRoutes';
 import { KroStateLabel } from '../resourcegraphdefinitions/common';
 
+/**
+ * Live table of one generated API's instances.
+ *
+ * @param props.instanceClass - The discovered instance class to list.
+ * @param props.rgdName - RGD name used to build instance detail links.
+ * @returns The table, a loader, or an error/empty message.
+ */
 function InstancesTable(props: { instanceClass: InstanceClass; rgdName: string }) {
   const { instanceClass, rgdName } = props;
   const [instances, error] = instanceClass.useList();
@@ -91,6 +98,9 @@ function InstancesTable(props: { instanceClass: InstanceClass; rgdName: string }
  * Lists the instances of an RGD's generated API. Renders inside the RGD
  * detail page and degrades (rather than crashing) when the RGD is
  * Inactive, the CRD is missing, or CRDs cannot be listed.
+ *
+ * @param props.rgd - The RGD whose instances to list.
+ * @returns The Instances section.
  */
 export default function InstancesSection(props: { rgd: ResourceGraphDefinition }) {
   const { rgd } = props;

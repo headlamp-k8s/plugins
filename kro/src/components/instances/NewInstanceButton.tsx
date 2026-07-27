@@ -10,6 +10,10 @@ import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition
  * Opens Headlamp's YAML editor pre-filled with a minimal valid instance
  * of the RGD's generated API. Saving applies through the editor's
  * default apply logic — no custom form building.
+ *
+ * @param props.rgd - The RGD whose generated API the instance is for.
+ * @returns The button and its dialog, or null while the generated CRD
+ *   is unknown.
  */
 export default function NewInstanceButton(props: { rgd: ResourceGraphDefinition }) {
   const { rgd } = props;

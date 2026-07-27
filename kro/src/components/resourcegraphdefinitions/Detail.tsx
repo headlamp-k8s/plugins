@@ -16,6 +16,13 @@ import InstancesSection from '../instances/InstancesSection';
 import NewInstanceButton from '../instances/NewInstanceButton';
 import { KroStateLabel } from './common';
 
+/**
+ * Build the "Composed Resources" section: every resource in the graph
+ * with kind, dependencies, and external/conditional annotations.
+ *
+ * @param rgd - The RGD being displayed.
+ * @returns A DetailsGrid section, or null when the RGD has no resources.
+ */
 function getComposedResourcesSection(rgd: ResourceGraphDefinition) {
   const resources = getComposedResources(rgd.jsonData);
   if (resources.length === 0) {
@@ -56,6 +63,13 @@ function getComposedResourcesSection(rgd: ResourceGraphDefinition) {
   };
 }
 
+/**
+ * Build the "Schema" section: the flattened SimpleSchema spec and
+ * status fields.
+ *
+ * @param rgd - The RGD being displayed.
+ * @returns A DetailsGrid section, or null when the schema is empty.
+ */
 function getSchemaSection(rgd: ResourceGraphDefinition) {
   const specFields = flattenSimpleSchema(rgd.spec.schema?.spec);
   const statusFields = flattenSimpleSchema(rgd.spec.schema?.status);
@@ -82,6 +96,12 @@ function getSchemaSection(rgd: ResourceGraphDefinition) {
   };
 }
 
+/**
+ * Build the conditions section from the RGD's status conditions.
+ *
+ * @param rgd - The RGD being displayed.
+ * @returns A DetailsGrid section, or null when there are no conditions.
+ */
 function getConditionsSection(rgd: ResourceGraphDefinition) {
   if (!rgd.status.conditions?.length) {
     return null;
@@ -92,6 +112,13 @@ function getConditionsSection(rgd: ResourceGraphDefinition) {
   };
 }
 
+/**
+ * Detail page for one ResourceGraphDefinition: info card with the
+ * generated API, a New Instance action, conditions, instances,
+ * composed resources, and the SimpleSchema summary.
+ *
+ * @returns The RGD detail view.
+ */
 export default function ResourceGraphDefinitionDetail() {
   const { name } = useParams<{ name: string }>();
 

@@ -4,6 +4,10 @@ import type { KubeResourceGraphDefinition } from './resourceGraphDefinition';
 /**
  * Placeholder for one SimpleSchema leaf, e.g. "integer | default=1".
  * Only fields without a default are considered required.
+ *
+ * @param definition - The SimpleSchema type string of the field.
+ * @returns A typed placeholder value for the field's type.
+ * @see https://kro.run/docs/concepts/rgd/schema
  */
 function placeholderFor(definition: string): unknown {
   const type = definition.split('|')[0].trim();
@@ -28,6 +32,14 @@ function placeholderFor(definition: string): unknown {
   }
 }
 
+/**
+ * Collect the required (default-less) fields of a SimpleSchema object,
+ * recursing into nested objects.
+ *
+ * @param schema - A SimpleSchema spec object (or anything else, which
+ *   yields an empty result).
+ * @returns Required fields with typed placeholder values.
+ */
 function requiredFieldsOf(schema: unknown): Record<string, unknown> {
   if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
     return {};
@@ -55,6 +67,10 @@ function requiredFieldsOf(schema: unknown): Record<string, unknown> {
  * storage version, which can differ from the version named in
  * spec.schema), a placeholder name/namespace, and every required
  * (default-less) SimpleSchema field with a sensible placeholder value.
+ *
+ * @param rgd - The RGD whose SimpleSchema supplies the spec fields.
+ * @param api - API coordinates from the discovered CRD.
+ * @returns A plain object ready to open in Headlamp's YAML editor.
  */
 export function buildInstanceSkeleton(
   rgd: Pick<KubeResourceGraphDefinition, 'spec'>,

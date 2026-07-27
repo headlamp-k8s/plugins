@@ -7,6 +7,10 @@ import { Link as RouterLink } from 'react-router-dom';
  * Link to Headlamp's global Map view focused on one node. The kro map
  * source registers RGDs, instances, and kro-managed resources by uid,
  * so any of their uids can be targeted with the map's ?node= parameter.
+ *
+ * @param props.nodeId - uid of the node to focus in the Map.
+ * @param props.label - Button label; defaults to "View in Map".
+ * @returns A button linking into the global Map view.
  */
 export default function ViewInMapLink(props: { nodeId: string; label?: string }) {
   const { nodeId, label } = props;
