@@ -44,37 +44,37 @@ it('keeps selecting and sending as distinct accessible actions and passes axe', 
       />
     </main>
   );
-  const prompt = defaultPromptSuggestionsArgs.suggestions[0];
+  const suggestion = defaultPromptSuggestionsArgs.suggestions[0];
 
-  fireEvent.click(screen.getByRole('button', { name: prompt }));
-  fireEvent.click(screen.getByRole('button', { name: `Send suggestion: ${prompt}` }));
+  fireEvent.click(screen.getByRole('button', { name: suggestion.label }));
+  fireEvent.click(screen.getByRole('button', { name: `Send suggestion: ${suggestion.label}` }));
 
-  expect(onPromptSelect).toHaveBeenCalledWith(prompt);
-  expect(onPromptSend).toHaveBeenCalledWith(prompt);
+  expect(onPromptSelect).toHaveBeenCalledWith(suggestion);
+  expect(onPromptSend).toHaveBeenCalledWith(suggestion);
   expect(onErrorClear).not.toHaveBeenCalled();
   await expect(runAxe()).resolves.toEqual([]);
 });
 
 it('recognizes content-filter errors case-insensitively and clears before sending', () => {
   const calls: string[] = [];
-  const prompt = contentFilterErrorArgs.suggestions[1];
+  const suggestion = contentFilterErrorArgs.suggestions[1];
   render(
     <PromptSuggestions
       {...contentFilterErrorArgs}
       apiError="Blocked by Content Filter policy"
       onErrorClear={() => calls.push('clear')}
-      onPromptSend={selected => calls.push(`send:${selected}`)}
+      onPromptSend={selected => calls.push(`send:${selected.prompt}`)}
     />
   );
 
   expect(screen.getByText('Try one of these safe Kubernetes questions instead:')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: `Send suggestion: ${prompt}` }));
-  expect(calls).toEqual(['clear', `send:${prompt}`]);
+  fireEvent.click(screen.getByRole('button', { name: `Send suggestion: ${suggestion.label}` }));
+  expect(calls).toEqual(['clear', `send:${suggestion.prompt}`]);
 });
 
 it('does not show filter guidance or clear unrelated API errors', () => {
   const onErrorClear = vi.fn();
-  const prompt = defaultPromptSuggestionsArgs.suggestions[0];
+  const suggestion = defaultPromptSuggestionsArgs.suggestions[0];
   render(
     <PromptSuggestions
       {...defaultPromptSuggestionsArgs}
@@ -84,6 +84,6 @@ it('does not show filter guidance or clear unrelated API errors', () => {
   );
 
   expect(screen.queryByText('Try one of these safe Kubernetes questions instead:')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: `Send suggestion: ${prompt}` }));
+  fireEvent.click(screen.getByRole('button', { name: `Send suggestion: ${suggestion.label}` }));
   expect(onErrorClear).not.toHaveBeenCalled();
 });

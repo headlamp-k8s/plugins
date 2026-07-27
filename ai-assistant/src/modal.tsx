@@ -32,7 +32,10 @@ import { createMockKubernetesToolManager } from '@headlamp-k8s/ai-common/tools/t
 import AIAssistantHeader from '@headlamp-k8s/ai-ui/components/assistant/AIAssistantHeader';
 import type { ChatMode } from '@headlamp-k8s/ai-ui/components/assistant/AllInputSection';
 import HolmesSetupGuide from '@headlamp-k8s/ai-ui/components/assistant/HolmesSetupGuide';
-import { PromptSuggestions } from '@headlamp-k8s/ai-ui/components/assistant/PromptSuggestions';
+import {
+  type PromptSuggestion,
+  PromptSuggestions,
+} from '@headlamp-k8s/ai-ui/components/assistant/PromptSuggestions';
 import ApiConfirmationDialog from '@headlamp-k8s/ai-ui/components/common/ApiConfirmationDialog';
 import {
   getProviderModels,
@@ -158,7 +161,7 @@ export default function AIPrompt(props: {
   // const { enabledTools, setEnabledTools } = _pluginSetting;
   const [enabledTools, setEnabledTools] = React.useState<string[]>([]);
   const [promptHistory, setPromptHistory] = React.useState<ConversationMessage[]>([]);
-  const [suggestions, setSuggestions] = React.useState<string[]>([]);
+  const [suggestions, setSuggestions] = React.useState<PromptSuggestion[]>([]);
   const selectedClusters = useSelectedClusters();
   const clusters = useClustersConf() || {};
   const dynamicPrompts = useDynamicPrompts();
@@ -734,7 +737,7 @@ export default function AIPrompt(props: {
 
         // Update suggestions if this is the latest assistant response
         if (index === aiManager.history.length - 1 && suggestions.length > 0) {
-          setSuggestions(suggestions);
+          setSuggestions(suggestions.map(prompt => ({ label: prompt, prompt })));
         }
 
         // Return the prompt with cleaned content (without the SUGGESTIONS line)
@@ -1955,10 +1958,10 @@ export default function AIPrompt(props: {
               suggestions={suggestions}
               apiError={apiError}
               loading={loading || isDiagnosisRunning}
-              onPromptSelect={prompt => setPromptVal(prompt)}
-              onPromptSend={prompt => {
+              onPromptSelect={suggestion => setPromptVal(suggestion.prompt)}
+              onPromptSend={suggestion => {
                 if (isDiagnosisRunning) return;
-                AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
+                AnalyzeResourceBasedOnPrompt(suggestion.prompt).catch(error => {
                   setApiError(error.message);
                 });
               }}

@@ -3,18 +3,25 @@ import { Box, Chip, IconButton, Typography } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
+export interface PromptSuggestion {
+  /** Localized text displayed to the user. */
+  label: string;
+  /** Canonical prompt sent to the model. */
+  prompt: string;
+}
+
 /** Props for {@link PromptSuggestions}. */
 export interface PromptSuggestionsProps {
   /** Suggested prompts to show as chips. */
-  suggestions: string[];
+  suggestions: PromptSuggestion[];
   /** Current API error, if one should influence the suggestion UI. */
   apiError: string | null;
   /** Whether suggestions are still being fetched. */
   loading: boolean;
   /** Called when a suggestion is inserted into the prompt input. */
-  onPromptSelect: (prompt: string) => void;
+  onPromptSelect: (suggestion: PromptSuggestion) => void;
   /** Called when a suggestion is sent immediately. */
-  onPromptSend: (prompt: string) => void;
+  onPromptSend: (suggestion: PromptSuggestion) => void;
   /** Clears any displayed error before resending a prompt. */
   onErrorClear: () => void;
 }
@@ -50,14 +57,17 @@ export function PromptSuggestions({
 
       {/* Regular suggestions (used for both normal and content filter error cases) */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }} mb={1}>
-        {suggestions.map((prompt, index) => (
-          <Box key={`${prompt}-${index}`} sx={{ display: 'inline-flex', alignItems: 'center' }}>
+        {suggestions.map((suggestion, index) => (
+          <Box
+            key={`${suggestion.prompt}-${index}`}
+            sx={{ display: 'inline-flex', alignItems: 'center' }}
+          >
             <Chip
-              label={prompt}
+              label={suggestion.label}
               size="small"
               variant="outlined"
               color="primary"
-              onClick={() => onPromptSelect(prompt)}
+              onClick={() => onPromptSelect(suggestion)}
               sx={{
                 height: 'auto',
                 '& .MuiChip-label': {
@@ -73,10 +83,10 @@ export function PromptSuggestions({
             />
             <IconButton
               size="small"
-              aria-label={t('Send suggestion: {{prompt}}', { prompt })}
+              aria-label={t('Send suggestion: {{prompt}}', { prompt: suggestion.label })}
               onClick={() => {
                 if (hasContentFilterError) onErrorClear();
-                onPromptSend(prompt);
+                onPromptSend(suggestion);
               }}
             >
               <Icon icon="mdi:send" width="20px" aria-hidden="true" />
