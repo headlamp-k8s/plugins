@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-// Initialize the bundled react-i18next instance so that i18n interpolation
-// works in ai-ui components before plugin-specific translations are loaded.
-// The vite bundle ships its own react-i18next (not externalized) which is
-// separate from Headlamp's I18nextProvider; without init, t() returns keys
-// verbatim (e.g. "Configure {{provider}}") with no interpolation applied.
-import { initAiUiI18n } from '@headlamp-k8s/ai-ui/i18n';
+// Register provider icons for offline use
+import '@headlamp-k8s/ai-ui/icons/iconBundles';
+import { proactiveDiagnosisManager } from '@headlamp-k8s/ai-ui/diagnosis/ProactiveDiagnosisManager';
 import {
   registerAppBarAction,
   registerPluginSettings,
@@ -30,11 +27,6 @@ import {
 import { ActionButton, ResourceTableColumn } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import React from 'react';
-
-void initAiUiI18n();
-// Register provider icons for offline use
-import '@headlamp-k8s/ai-ui/icons/iconBundles';
-import { proactiveDiagnosisManager } from '@headlamp-k8s/ai-ui/diagnosis/ProactiveDiagnosisManager';
 import HeadlampAIPrompt from './components/appbar/HeadlampAIPrompt';
 import HeadlampEventHandler from './components/appbar/HeadlampEventHandler';
 import AIPanelComponent from './components/panel/AIPanelComponent';

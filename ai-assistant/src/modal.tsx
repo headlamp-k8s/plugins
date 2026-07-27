@@ -47,7 +47,21 @@ import { runCommand, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 
 // pluginRunCommand is injected as a scope variable by Headlamp's plugin runner.
 declare const pluginRunCommand: typeof runCommand;
+import {
+  type CommandRunner,
+  refreshAzureOpenAIKey,
+  refreshGitHubToken,
+} from '@headlamp-k8s/ai-common/providers/detectProvider';
+import {
+  getActiveConfig,
+  getSavedConfigurations,
+  isSameStoredConfig,
+  type ProviderSettings,
+  StoredProviderConfig,
+} from '@headlamp-k8s/ai-common/providers/savedConfigs';
+import { getEnabledToolIds } from '@headlamp-k8s/ai-common/tools/settings/enabledTools';
 import ProactiveDiagnosisSection from '@headlamp-k8s/ai-ui/components/assistant/ProactiveDiagnosisSection';
+import { usePromptWidth } from '@headlamp-k8s/ai-ui/contexts/PromptWidthContext';
 import {
   type DiagnosisStepCallback,
   ProactiveDiagnosisManager,
@@ -72,21 +86,6 @@ import { fetchClusterWarnings, fetchWarningEventsForClusters } from './kubernete
 import { getSettingsURL, type PluginConfig, useGlobalState } from './pluginState';
 import { useDynamicPrompts } from './prompts/promptGenerator';
 import { resolveRuntimeProviderConfig } from './resolveRuntimeProviderConfig';
-
-import {
-  type CommandRunner,
-  refreshAzureOpenAIKey,
-  refreshGitHubToken,
-} from '@headlamp-k8s/ai-common/providers/detectProvider';
-import {
-  getActiveConfig,
-  getSavedConfigurations,
-  isSameStoredConfig,
-  type ProviderSettings,
-  StoredProviderConfig,
-} from '@headlamp-k8s/ai-common/providers/savedConfigs';
-import { getEnabledToolIds } from '@headlamp-k8s/ai-common/tools/settings/enabledTools';
-import { usePromptWidth } from '@headlamp-k8s/ai-ui/contexts/PromptWidthContext';
 
 interface CommandProcess {
   /** Standard output stream emitted by the injected command. */

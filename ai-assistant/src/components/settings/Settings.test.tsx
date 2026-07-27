@@ -66,7 +66,7 @@ vi.mock('@headlamp-k8s/ai-ui/testing/testMode', () => ({
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   Headlamp: { isRunningAsApp: () => false },
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: (key: string) => key, i18n: {} }),
 }));
 
 vi.mock('../../pluginState', () => ({
