@@ -1,0 +1,9 @@
+# The external configuration the WebApp RGD reads (but never creates or
+# owns) via an externalRef. Apply this before creating WebApp instances.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webapp-platform-config
+  namespace: default
+data:
+  message: "hello from the platform team"

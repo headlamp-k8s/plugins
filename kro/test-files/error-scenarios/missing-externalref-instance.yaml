@@ -1,0 +1,11 @@
+# An instance of the MissingRef API (apply missing-externalref-rgd.yaml
+# first). It stays in an error/in-progress state because the RGD's
+# externalRef target does not exist. Create the ConfigMap
+# "does-not-exist" to watch it recover live.
+apiVersion: kro.run/v1alpha1
+kind: MissingRef
+metadata:
+  name: my-missingref
+  namespace: default
+spec:
+  name: my-missingref
