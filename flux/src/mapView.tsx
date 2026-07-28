@@ -9,7 +9,7 @@ import {
   OCIRepository,
 } from './common/Resources';
 import { FluxHelmReleaseDetailView } from './helm-releases/HelmReleaseSingle';
-import { useNamespaces } from './helpers';
+import { useFluxCheck, useNamespaces } from './helpers';
 import { FluxKustomizationDetailView } from './kustomizations/KustomizationSingle';
 import { store } from './settings';
 import { FluxSourceDetailView } from './sources/SourceSingle';
@@ -59,8 +59,10 @@ const gitRepositorySource: any = {
   label: 'Git Repository',
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
+    const { hasFluxCRDs, isFluxCheckLoaded } = useFluxCheck();
     const [repositories] = GitRepository.useList();
     return useMemo(() => {
+      if (isFluxCheckLoaded && !hasFluxCRDs) return { nodes: [], edges: [] };
       if (!repositories) return null;
 
       const nodes = repositories?.map(it => ({
@@ -75,7 +77,7 @@ const gitRepositorySource: any = {
         nodes,
         edges,
       };
-    }, [repositories]);
+    }, [repositories, hasFluxCRDs, isFluxCheckLoaded]);
   },
 };
 
@@ -84,6 +86,7 @@ const helmRepositorySource: any = {
   label: 'Helm Repository',
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
+    const { hasFluxCRDs, isFluxCheckLoaded } = useFluxCheck();
     const [repositories] = HelmRepository.useList();
     const [releases] = HelmRelease.useList();
 
@@ -91,6 +94,7 @@ const helmRepositorySource: any = {
     const config = useConf();
 
     return useMemo(() => {
+      if (isFluxCheckLoaded && !hasFluxCRDs) return { nodes: [], edges: [] };
       if (!repositories || !releases) return null;
 
       const nodes = repositories?.map(it => ({
@@ -121,7 +125,7 @@ const helmRepositorySource: any = {
         nodes,
         edges,
       };
-    }, [repositories, releases, config]);
+    }, [repositories, releases, config, hasFluxCRDs, isFluxCheckLoaded]);
   },
 };
 
@@ -130,10 +134,12 @@ const helmReleaseSource = {
   label: 'Helm Release',
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
+    const { hasFluxCRDs, isFluxCheckLoaded } = useFluxCheck();
     const [deployments] = Deployment.useList();
     const [releases] = HelmRelease.useList();
 
     return useMemo(() => {
+      if (isFluxCheckLoaded && !hasFluxCRDs) return { nodes: [], edges: [] };
       if (!deployments || !releases) return null;
       const nodes = releases?.map(it => ({
         id: it.metadata.uid,
@@ -161,7 +167,7 @@ const helmReleaseSource = {
         nodes,
         edges,
       };
-    }, [deployments, releases]);
+    }, [deployments, releases, hasFluxCRDs, isFluxCheckLoaded]);
   },
 };
 
@@ -170,6 +176,7 @@ const kustomizationSource = {
   label: 'Kustomizations',
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
+    const { hasFluxCRDs, isFluxCheckLoaded } = useFluxCheck();
     const [deployments] = Deployment.useList();
     const [gitRepositories] = GitRepository.useList();
     const [helmReleases] = HelmRelease.useList();
@@ -181,6 +188,7 @@ const kustomizationSource = {
     const config = useConf();
 
     return useMemo(() => {
+      if (isFluxCheckLoaded && !hasFluxCRDs) return { nodes: [], edges: [] };
       if (
         !deployments ||
         !gitRepositories ||
@@ -292,6 +300,8 @@ const kustomizationSource = {
       kustomizations,
       ociRepositories,
       config,
+      hasFluxCRDs,
+      isFluxCheckLoaded,
     ]);
   },
 };
@@ -301,10 +311,12 @@ const ociSource = {
   label: 'OCI Source',
   icon: <Icon icon="simple-icons:flux" width="100%" height="100%" color="rgb(50, 108, 229)" />,
   useData() {
+    const { hasFluxCRDs, isFluxCheckLoaded } = useFluxCheck();
     const [kustomizations] = Kustomization.useList();
     const [ocisources] = OCIRepository.useList();
 
     return useMemo(() => {
+      if (isFluxCheckLoaded && !hasFluxCRDs) return { nodes: [], edges: [] };
       if (!kustomizations || !ocisources) return null;
       const nodes = ocisources?.map(it => ({
         id: it.metadata.uid,
@@ -332,7 +344,7 @@ const ociSource = {
         nodes,
         edges,
       };
-    }, [kustomizations, ocisources]);
+    }, [kustomizations, ocisources, hasFluxCRDs, isFluxCheckLoaded]);
   },
 };
 
