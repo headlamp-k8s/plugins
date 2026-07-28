@@ -93,7 +93,7 @@
   "Unknown Scaler": "Unknown Scaler",
   "Scaler Instance": "Scaler Instance",
   "{{count}} metrics_one": "{{count}} metrics",
-  "{{count}} metrics_other": "{{count}} metrics",
+  "{{count}} metrics_other": "{{count}} metric",
   "Metric": "Metric",
   "Request Rate": "Request Rate",
   "Latency": "Latency",
