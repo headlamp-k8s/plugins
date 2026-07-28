@@ -38,6 +38,11 @@ export interface AIAssistantToggleProps {
   onConfigure: () => void;
   /** Iconify icon identifier displayed on the toggle button. */
   icon?: string;
+  /**
+   * Optional color override for the icon. When provided, takes precedence
+   * over the theme's default text color. Accepts any CSS color string.
+   */
+  iconColor?: string;
   /** Tooltip text for the toggle button. */
   tooltipTitle?: string;
 }
@@ -59,12 +64,14 @@ export default function AIAssistantToggle({
   onDismissPrompt,
   onConfigure,
   icon = 'mdi:assistant',
+  iconColor,
   tooltipTitle,
 }: AIAssistantToggleProps) {
   const { t } = useTranslation();
   const [popoverAnchor, setPopoverAnchor] = React.useState<HTMLElement | null>(null);
   const theme = useTheme();
   const effectiveTooltipTitle = tooltipTitle?.trim() || t('AI Assistant');
+  const effectiveIconColor = iconColor ?? theme.palette.text.primary;
   const handleToggleRef = React.useCallback((element: HTMLElement | null): void => {
     setPopoverAnchor(element);
   }, []);
@@ -80,7 +87,7 @@ export default function AIAssistantToggle({
           size="small"
           value="ai-assistant"
         >
-          <Icon icon={icon} width="24px" color={theme.palette.text.primary} aria-hidden="true" />
+          <Icon icon={icon} width="24px" color={effectiveIconColor} aria-hidden="true" />
         </ToggleButton>
       </Tooltip>
 

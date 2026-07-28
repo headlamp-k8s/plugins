@@ -2,6 +2,7 @@ import { getSavedConfigurations } from '@headlamp-k8s/ai-common/providers/savedC
 import AIAssistantToggle from '@headlamp-k8s/ai-ui/components/appbar/AIAssistantToggle';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { useTheme } from '@mui/material/styles';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { checkHolmesAgentHealth } from '../../holmesClient';
@@ -20,7 +21,15 @@ export default function HeadlampAIPrompt() {
   const savedConfigs = usePluginConfig();
   const { t } = useTranslation();
   const history = useHistory();
+  const theme = useTheme();
   const [showPopover, setShowPopover] = React.useState(false);
+
+  // Match the color the Headlamp AppBar uses for its own text/icons so the
+  // logo is legible on any navbar background (light or dark theme).
+  const navbarPalette = (theme.palette as { navbar?: { background?: string; color?: string } })
+    .navbar;
+  const navbarBackground = navbarPalette?.background ?? theme.palette.background.default;
+  const iconColor = navbarPalette?.color ?? theme.palette.getContrastText(navbarBackground);
 
   const hasShownPopover = savedConfigs?.configPopoverShown || false;
 
@@ -96,6 +105,7 @@ export default function HeadlampAIPrompt() {
       onDismissPrompt={handleClosePopover}
       onConfigure={handleConfigureClick}
       icon="ai-assistant:logo"
+      iconColor={iconColor}
       tooltipTitle={t('AI Assistant')}
     />
   );
