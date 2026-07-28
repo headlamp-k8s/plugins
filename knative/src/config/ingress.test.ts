@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from './ingress';
+import { formatIngressClass, getIngressClass, INGRESS_CLASS_GATEWAY_API } from './ingress';
 
 describe('formatIngressClass', () => {
   it('should return "(not set)" for null', () => {
@@ -39,5 +39,38 @@ describe('formatIngressClass', () => {
 
   it('should handle the INGRESS_CLASS_GATEWAY_API constant', () => {
     expect(formatIngressClass(INGRESS_CLASS_GATEWAY_API)).toBe('gateway-api');
+  });
+});
+
+describe('getIngressClass', () => {
+  it('should return null when neither key is present', () => {
+    expect(getIngressClass({})).toBeNull();
+    expect(getIngressClass(null)).toBeNull();
+    expect(getIngressClass(undefined)).toBeNull();
+  });
+
+  it('should read the legacy "ingress.class" key', () => {
+    expect(getIngressClass({ 'ingress.class': 'istio.ingress.networking.knative.dev' })).toBe(
+      'istio.ingress.networking.knative.dev'
+    );
+  });
+
+  it('should read the newer "ingress-class" key', () => {
+    expect(getIngressClass({ 'ingress-class': 'kourier.ingress.networking.knative.dev' })).toBe(
+      'kourier.ingress.networking.knative.dev'
+    );
+  });
+
+  it('should prefer "ingress-class" over "ingress.class" when both are present', () => {
+    expect(
+      getIngressClass({
+        'ingress.class': 'istio.ingress.networking.knative.dev',
+        'ingress-class': 'kourier.ingress.networking.knative.dev',
+      })
+    ).toBe('kourier.ingress.networking.knative.dev');
+  });
+
+  it('should treat a blank value as not set', () => {
+    expect(getIngressClass({ 'ingress-class': '  ', 'ingress.class': '' })).toBeNull();
   });
 });

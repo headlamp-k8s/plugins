@@ -25,7 +25,7 @@ import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
 import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Chip, Stack, Typography } from '@mui/material';
 import React, { useMemo } from 'react';
-import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
+import { formatIngressClass, getIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
 import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
@@ -234,14 +234,9 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       const cm = configMaps.find(
         item => item.cluster === cluster && item.metadata.name === 'config-network'
       );
-      const raw =
-        cm && cm.data && typeof cm.data['ingress.class'] === 'string'
-          ? cm.data['ingress.class']
-          : null;
-      const trimmed = raw?.trim();
       result.push({
         cluster,
-        ingressClass: trimmed && trimmed !== '' ? trimmed : null,
+        ingressClass: getIngressClass(cm?.data),
       });
     });
 

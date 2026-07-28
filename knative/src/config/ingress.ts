@@ -38,3 +38,16 @@ export function formatIngressClass(ingressClass: string | null): string {
     ? ingressClass.slice(0, -INGRESS_CLASS_SUFFIX.length)
     : ingressClass;
 }
+
+/**
+ * Reads the ingress class out of the config-network ConfigMap's data.
+ *
+ * Knative superseded the `ingress.class` key with `ingress-class`; the
+ * dashed key takes precedence when both are present.
+ * @see https://knative.dev/docs/serving/config-network-adapters/#ingress-configurations
+ */
+export function getIngressClass(data: Record<string, string | undefined> | null | undefined) {
+  const raw = data?.['ingress-class'] ?? data?.['ingress.class'] ?? null;
+  const trimmed = raw?.trim();
+  return trimmed && trimmed !== '' ? trimmed : null;
+}
