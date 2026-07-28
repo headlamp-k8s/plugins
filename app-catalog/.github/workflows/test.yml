@@ -1,0 +1,137 @@
+name: App Catalog Tests
+
+on:
+  pull_request:
+    paths:
+      - 'app-catalog/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'app-catalog/**'
+
+defaults:
+  run:
+    working-directory: app-catalog
+
+jobs:
+  unit-tests:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: app-catalog/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run linter
+        run: npm run lint
+      
+      - name: Run type check
+        run: npm run tsc
+      
+      - name: Run unit tests
+        run: npm test
+      
+      - name: Generate coverage report
+        run: npm run test:coverage
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./app-catalog/coverage/coverage-final.json
+          flags: app-catalog
+          name: app-catalog-coverage
+      
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        with:
+          lcov-file: ./app-catalog/coverage/lcov.info
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: app-catalog/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Setup test cluster (kind)
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: test-cluster
+          wait: 60s
+      
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+      
+      - name: Build plugin
+        run: npm run build
+      
+      - name: Start Headlamp in background
+        run: |
+          # This would start Headlamp with the plugin
+          # Adjust based on actual setup
+          echo "Start Headlamp server"
+          # npm run start:headlamp &
+          # sleep 30
+        
+      - name: Run E2E tests
+        run: npm run e2e
+        env:
+          HEADLAMP_URL: http://localhost:3000
+      
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: app-catalog/playwright-report/
+          retention-days: 30
+      
+      - name: Upload test videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-videos
+          path: app-catalog/test-results/
+          retention-days: 7
+
+  test-summary:
+    name: Test Summary
+    needs: [unit-tests, e2e-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check test results
+        run: |
+          if [[ "${{ needs.unit-tests.result }}" == "failure" ]] || [[ "${{ needs.e2e-tests.result }}" == "failure" ]]; then
+            echo "Tests failed"
+            exit 1
+          fi
+          echo "All tests passed"

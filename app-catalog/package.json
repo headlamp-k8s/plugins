@@ -10,7 +10,12 @@
     "lint-fix": "headlamp-plugin lint --fix",
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
-    "test": "headlamp-plugin test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
     "package": "headlamp-plugin package",
     "storybook-build": "headlamp-plugin storybook-build",
     "i18n": "headlamp-plugin i18n"
@@ -55,7 +60,22 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.14.0"
+    "@kinvolk/headlamp-plugin": "^0.14.0",
+    "@playwright/test": "^1.48.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/semver": "^7.5.8",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/ui": "^2.1.8",
+    "happy-dom": "^15.11.7",
+    "jsdom": "^25.0.1",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
   },
   "dependencies": {
     "react-syntax-highlighter": "^15.6.6",
