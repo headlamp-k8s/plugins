@@ -137,6 +137,27 @@ export function CapiChart(props: CapiChartProps) {
     return null;
   };
 
+  const translateChartLabel = (config: ChartConfig) => {
+    switch (config.key) {
+      case 'cache':
+        return t('Cluster Cache');
+      case 'reconcile':
+        return t('Reconcile Rate');
+      case 'duration':
+        return t('Reconcile Duration');
+      case 'workers':
+        return t('Workers');
+      case 'queue':
+        return t('Work Queue');
+      case 'ssa-cache':
+        return t('SSA Cache');
+      case 'webhook':
+        return t('Webhook Performance');
+      default:
+        return config.label;
+    }
+  };
+
   const currentChartConfig = props.chartConfigs.find(config => config.key === selectedChart);
   return (
     <SectionBox>
@@ -155,7 +176,7 @@ export function CapiChart(props: CapiChartProps) {
                   {props.chartConfigs.map(config => (
                     <CustomToggleButton
                       key={config.key}
-                      label={t(config.label)}
+                      label={translateChartLabel(config)}
                       value={config.key}
                       icon={config.icon}
                     />

@@ -204,6 +204,19 @@ export function VolcanoChart(props: VolcanoChartProps) {
     return null;
   };
 
+  const translateChartLabel = (config: ChartConfig) => {
+    switch (config.key) {
+      case 'cpu':
+        return t('CPU');
+      case 'memory':
+        return t('Memory');
+      case 'podgroups':
+        return t('PodGroups');
+      default:
+        return config.label;
+    }
+  };
+
   const currentChartConfig = props.chartConfigs.find(config => config.key === selectedChart);
 
   return (
@@ -223,7 +236,7 @@ export function VolcanoChart(props: VolcanoChartProps) {
                   {props.chartConfigs.map(config => (
                     <CustomToggleButton
                       key={config.key}
-                      label={t(config.label)}
+                      label={translateChartLabel(config)}
                       value={config.key}
                       icon={config.icon}
                     />

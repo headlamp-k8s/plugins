@@ -210,6 +210,40 @@ export function StrimziChart(props: StrimziChartProps) {
     setSelectedChart(event.currentTarget.value);
   };
 
+  const translateChartLabel = (config: KafkaChartConfig) => {
+    switch (config.key) {
+      case 'throughput':
+        return t('Throughput');
+      case 'messages':
+        return t('Messages');
+      case 'partitions':
+        return t('Partition health');
+      case 'lag':
+        return t('Consumer lag');
+      default:
+        return config.label;
+    }
+  };
+
+  const translatePlotName = (name: string) => {
+    switch (name) {
+      case 'Bytes in / sec':
+        return t('Bytes in / sec');
+      case 'Bytes out / sec':
+        return t('Bytes out / sec');
+      case 'Messages in / sec':
+        return t('Messages in / sec');
+      case 'Under-replicated partitions':
+        return t('Under-replicated partitions');
+      case 'Offline partitions':
+        return t('Offline partitions');
+      case 'Consumer group lag':
+        return t('Consumer group lag');
+      default:
+        return name;
+    }
+  };
+
   const currentChartConfig =
     props.chartConfigs.find(config => config.key === selectedChart) ?? props.chartConfigs[0];
 
@@ -255,7 +289,7 @@ export function StrimziChart(props: StrimziChartProps) {
                   {props.chartConfigs.map(config => (
                     <CustomToggleButton
                       key={config.key}
-                      label={config.label}
+                      label={translateChartLabel(config)}
                       value={config.key}
                       icon={config.icon}
                     />
@@ -336,7 +370,7 @@ export function StrimziChart(props: StrimziChartProps) {
               <Chart
                 plots={currentChartConfig.plots.map(plot => ({
                   query: plot.query,
-                  name: plot.name,
+                  name: translatePlotName(plot.name),
                   strokeColor: plot.strokeColor,
                   fillColor: plot.fillColor,
                   dataProcessor: dataProcessor,
