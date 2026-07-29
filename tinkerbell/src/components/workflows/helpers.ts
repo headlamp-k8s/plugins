@@ -12,15 +12,19 @@ export function getTaskState(task: WorkflowTaskStatus): string {
     return normalizeState(task.state);
   }
 
-  const actionStates = task.actions?.map(action => action.state).filter(Boolean) ?? [];
-  if (actionStates.some(state => state === 'RUNNING')) {
-    return normalizeState('RUNNING');
+  const actionStates = task.actions?.map(action => normalizeState(action.state)) ?? [];
+  const running = normalizeState('RUNNING');
+  const failed = normalizeState('FAILED');
+  const success = normalizeState('SUCCESS');
+
+  if (actionStates.includes(running)) {
+    return running;
   }
-  if (actionStates.some(state => state === 'FAILED')) {
-    return normalizeState('FAILED');
+  if (actionStates.includes(failed)) {
+    return failed;
   }
-  if (actionStates.length && actionStates.every(state => state === 'SUCCESS')) {
-    return normalizeState('SUCCESS');
+  if (actionStates.length && actionStates.every(state => state === success)) {
+    return success;
   }
 
   return normalizeState(undefined);

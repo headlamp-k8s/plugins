@@ -402,11 +402,22 @@ export function TemplateDetail() {
                         { label: 'Image', getter: row => row.image },
                         { label: 'Actions', getter: row => fallback(row.actionCount) },
                       ]}
-                      data={parsedTemplate.images.map(image => ({
-                        image,
-                        actionCount: parsedTemplate.actions.filter(action => action.image === image)
-                          .length,
-                      }))}
+                      data={(() => {
+                        const imageActionCounts = new Map<string, number>();
+                        parsedTemplate.actions.forEach(action => {
+                          if (action.image) {
+                            imageActionCounts.set(
+                              action.image,
+                              (imageActionCounts.get(action.image) ?? 0) + 1
+                            );
+                          }
+                        });
+
+                        return parsedTemplate.images.map(image => ({
+                          image,
+                          actionCount: imageActionCounts.get(image) ?? 0,
+                        }));
+                      })()}
                     />
                   </SectionBox>
                 ),

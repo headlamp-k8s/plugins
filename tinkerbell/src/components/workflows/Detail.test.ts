@@ -8,7 +8,7 @@ describe('getTaskState', () => {
 
   it('returns Running when any action is running', () => {
     const task: WorkflowTaskStatus = {
-      actions: [{ state: 'SUCCESS' }, { state: 'RUNNING' }],
+      actions: [{ state: 'STATE_SUCCESS' }, { state: 'STATE_RUNNING' }],
     };
 
     expect(getTaskState(task)).toBe('Running');
@@ -16,7 +16,7 @@ describe('getTaskState', () => {
 
   it('returns Failed when any action failed and none are running', () => {
     const task: WorkflowTaskStatus = {
-      actions: [{ state: 'SUCCESS' }, { state: 'FAILED' }],
+      actions: [{ state: 'STATE_SUCCESS' }, { state: 'STATE_FAILED' }],
     };
 
     expect(getTaskState(task)).toBe('Failed');
@@ -24,7 +24,7 @@ describe('getTaskState', () => {
 
   it('returns Success when all actions succeeded', () => {
     const task: WorkflowTaskStatus = {
-      actions: [{ state: 'SUCCESS' }, { state: 'SUCCESS' }],
+      actions: [{ state: 'STATE_SUCCESS' }, { state: 'SUCCESS' }],
     };
 
     expect(getTaskState(task)).toBe('Success');
