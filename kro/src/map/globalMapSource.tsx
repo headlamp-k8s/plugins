@@ -146,20 +146,35 @@ function makeOwnedKindSource(kind: (typeof OWNED_KINDS)[number]) {
         if (!items) {
           return null;
         }
-        const nodes: GraphNode[] = [];
-        const edges: GraphEdge[] = [];
+        // Ownership elements repeat per owned item (each resource of an
+        // instance synthesizes the same instance node and RGD edge), so
+        // dedupe by id here. The Map's aggregation would drop duplicate
+        // ids anyway (deduplicateGraphElements, first wins) — and still
+        // merges the same instance node across kind sub-sources — but
+        // emitting unique elements keeps this source self-contained and
+        // avoids redundant allocations per render.
+        const nodesById = new Map<string, GraphNode>();
+        const edgesById = new Map<string, GraphEdge>();
         for (const item of items) {
           const health = getSubResourceHealth(item.kind, item.jsonData);
-          nodes.push({
+          nodesById.set(item.metadata.uid, {
             id: item.metadata.uid,
             kubeObject: item,
             status: health.status === '' ? undefined : health.status,
           });
           const ownership = getOwnershipElements(item);
-          nodes.push(...ownership.nodes);
-          edges.push(...ownership.edges);
+          for (const node of ownership.nodes) {
+            if (!nodesById.has(node.id)) {
+              nodesById.set(node.id, node);
+            }
+          }
+          for (const edge of ownership.edges) {
+            if (!edgesById.has(edge.id)) {
+              edgesById.set(edge.id, edge);
+            }
+          }
         }
-        return { nodes, edges };
+        return { nodes: [...nodesById.values()], edges: [...edgesById.values()] };
       }, [items]);
     },
   };
