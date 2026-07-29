@@ -35,8 +35,18 @@ export function GetResourcesFromInventory(
 ) {
   const [resources, setResources] = React.useState<KubeObject[]>([]);
   const { t } = useTranslation();
+  const inventoryKey = React.useMemo(
+    () => props.inventory?.map(e => `${e.id}_${e.v}`).join(',') ?? '',
+    [props.inventory]
+  );
 
   React.useEffect(() => {
+    let cancelled = false;
+    setResources([]);
+
+    if (!props.inventory?.length) {
+      return;
+    }
     props.inventory?.forEach(item => {
       const parsedID = parseID(item.id);
       const { name, namespace, group, kind } = parsedID;
@@ -54,6 +64,9 @@ export function GetResourcesFromInventory(
 
       resourceClass.apiGet(
         data => {
+          if (cancelled) {
+            return;
+          }
           // add the resource if it does not exist yet, compare with uid.
           setResources(prevResources => {
             if (prevResources.find(r => r.metadata.uid === data.metadata.uid)) {
@@ -65,6 +78,9 @@ export function GetResourcesFromInventory(
         name,
         namespace,
         () /* on error */ => {
+          if (cancelled) {
+            return;
+          }
           const resource = { metadata: { name: name, namespace: namespace } };
           setResources(prevResources => {
             return [...prevResources, resource as KubeObject];
@@ -72,7 +88,10 @@ export function GetResourcesFromInventory(
         }
       )();
     });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [inventoryKey]);
 
   return (
     <Table
