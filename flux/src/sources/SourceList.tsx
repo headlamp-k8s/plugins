@@ -127,7 +127,9 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
             <Link
               routeName={'source'}
               params={{
-                namespace: item.jsonData.metadata.namespace,
+                namespace: 
+                item.jsonData.spec.sourceRef.namespace ??
+                item.jsonData.metadata.namespace,
                 pluralName: item.jsonData.spec.sourceRef.kind,
                 name: sourceName,
               }}
