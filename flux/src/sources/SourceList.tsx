@@ -126,15 +126,17 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
         if (sourceName) {
           return (
             <Link
-              routeName={'source'}
-              params={{
-                namespace: item.jsonData.metadata.namespace,
-                pluralName: PluralName(item.jsonData.spec.sourceRef.kind),
-                name: sourceName,
-              }}
-            >
-              {sourceName}
-            </Link>
+            routeName={'source'}
+            params={{
+              namespace:
+                item.jsonData.spec.sourceRef.namespace ??
+                item.jsonData.metadata.namespace,
+              pluralName: PluralName(item.jsonData.spec.sourceRef.kind),
+              name: sourceName,
+            }}
+          >
+            {sourceName}
+          </Link>
           );
         }
         return '-';
