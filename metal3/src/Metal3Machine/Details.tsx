@@ -15,15 +15,14 @@
  */
 
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { CRDGuard } from '../common/CRDGuard';
+import { HOST_ANNOTATION, parseHostAnnotation } from './hostAnnotation';
 import { metal3MachineClass } from './List';
 
 /** Label Cluster API stamps on a Metal3Machine to record its owning cluster. */
 const CLUSTER_NAME_LABEL = 'cluster.x-k8s.io/cluster-name';
-
-/** Annotation that links a Metal3Machine back to the BareMetalHost it claimed. */
-const HOST_ANNOTATION = 'metal3.io/BareMetalHost';
 
 /**
  * Detail view for a single Metal3Machine.
@@ -75,7 +74,22 @@ export function Metal3MachineDetail(props: { name?: string; namespace?: string }
             },
             {
               name: 'BareMetalHost',
-              value: item.jsonData.metadata?.annotations?.[HOST_ANNOTATION] || '-',
+              value: (() => {
+                const raw = item.jsonData.metadata?.annotations?.[HOST_ANNOTATION];
+                const host = parseHostAnnotation(raw);
+                // Link to the host's detail when the annotation is a well-formed
+                // namespace/name; otherwise fall back to the raw value or "-".
+                return host ? (
+                  <Link
+                    routeName="baremetalhost-detail"
+                    params={{ namespace: host.namespace, name: host.name }}
+                  >
+                    {host.name}
+                  </Link>
+                ) : (
+                  raw || '-'
+                );
+              })(),
             },
           ]
         }

@@ -15,6 +15,7 @@
  */
 
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { CRDGuard } from '../common/CRDGuard';
 import { bareMetalHostClass } from './List';
@@ -57,9 +58,25 @@ export function BareMetalHostDetail(props: { name?: string; namespace?: string }
             },
             {
               name: 'Consumer',
-              value: item.jsonData.spec?.consumerRef
-                ? `${item.jsonData.spec.consumerRef.name} (${item.jsonData.spec.consumerRef.kind})`
-                : '-',
+              value: (() => {
+                const ref = item.jsonData.spec?.consumerRef;
+                if (!ref) {
+                  return '-';
+                }
+                const label = `${ref.name} (${ref.kind})`;
+                // Link to the Metal3Machine detail when the consumer is one; other
+                // consumer kinds fall back to plain text.
+                return ref.kind === 'Metal3Machine' ? (
+                  <Link
+                    routeName="metal3machine-detail"
+                    params={{ namespace: ref.namespace || namespace, name: ref.name }}
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  label
+                );
+              })(),
             },
             {
               name: 'Power State',
