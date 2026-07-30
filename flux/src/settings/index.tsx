@@ -1,4 +1,4 @@
-import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
+import { ConfigStore, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
@@ -8,6 +8,7 @@ import { type ChangeEvent, type ReactNode, useEffect, useState } from 'react';
 
 interface AutoSaveSwitchProps {
   settingKey: keyof PluginConfig;
+  label: string;
   onSave: (key: keyof PluginConfig, value: boolean) => void;
   defaultValue?: boolean;
   helperText?: ReactNode;
@@ -15,6 +16,7 @@ interface AutoSaveSwitchProps {
 
 function AutoSaveSwitch({
   settingKey,
+  label,
   onSave,
   defaultValue,
   helperText = null,
@@ -44,7 +46,7 @@ function AutoSaveSwitch({
 
   return (
     <>
-      <Switch checked={value} onChange={handleChange} />
+      <Switch checked={value} inputProps={{ 'aria-label': label }} onChange={handleChange} />
       {helperText && <FormHelperText sx={{ ml: 1.75, mt: 0.5 }}>{helperText}</FormHelperText>}
     </>
   );
@@ -65,6 +67,8 @@ const DEFAULT_CONFIG: PluginConfig = {
 export const store = new ConfigStore<PluginConfig>('@headlamp-k8s/flux');
 
 export function FluxSettings() {
+  const { t } = useTranslation();
+  const linkHRelLabel = t('Link HelmReleases to Kustomizations instead of HelmRepositories');
   const [currentConfig, setCurrentConfig] = useState<PluginConfig>(() => ({
     ...DEFAULT_CONFIG,
     ...store.get(),
@@ -78,10 +82,11 @@ export function FluxSettings() {
 
   const settingsRows = [
     {
-      name: 'Link HelmReleases to Kustomizations instead of HelmRepositories',
+      name: linkHRelLabel,
       value: (
         <AutoSaveSwitch
           settingKey="linkHRelToKs"
+          label={linkHRelLabel}
           defaultValue={currentConfig?.linkHRelToKs}
           onSave={handleSave}
         />

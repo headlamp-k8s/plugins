@@ -52,6 +52,7 @@
   "Least Failed First": "Least Failed First",
   "Least Successful": "Least Successful",
   "Least Total Resources": "Least Total Resources",
+  "Link HelmReleases to Kustomizations instead of HelmRepositories": "Link HelmReleases to Kustomizations instead of HelmRepositories",
   "Logs": "Logs",
   "Message": "Message",
   "Metrics": "Metrics",

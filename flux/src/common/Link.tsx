@@ -34,7 +34,7 @@ export default function Link(props: { url: string; wrap?: boolean }) {
   }
 
   const LinkComponent = () => (
-    <MuiLink href={href} target="_blank">
+    <MuiLink href={href} target="_blank" rel="noopener noreferrer">
       {url}
     </MuiLink>
   );

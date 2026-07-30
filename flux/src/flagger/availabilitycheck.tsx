@@ -24,6 +24,7 @@ export default function FlaggerAvailabilityCheck({ children }) {
           Follow the{' '}
           <Link
             target="_blank"
+            rel="noopener noreferrer"
             href="https://docs.flagger.app/install/flagger-install-on-kubernetes"
           >
             installation guide
