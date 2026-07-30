@@ -24,6 +24,7 @@ import { BareMetalHostDetail } from './BareMetalHost/Details';
 import { BareMetalHosts } from './BareMetalHost/List';
 import { PowerActionButton } from './BareMetalHost/PowerActionButton';
 import { RebootActionButton } from './BareMetalHost/RebootActionButton';
+import { ReprovisionActionButton } from './BareMetalHost/ReprovisionActionButton';
 import { Metal3ClusterDetail } from './Metal3Cluster/Details';
 import { Metal3Clusters } from './Metal3Cluster/List';
 import { Metal3ClusterTemplateDetail } from './Metal3ClusterTemplate/Details';
@@ -236,3 +237,6 @@ registerDetailsViewHeaderAction(RebootActionButton);
 
 // Detach action on the BareMetalHost detail view (detached annotation; toggles attach).
 registerDetailsViewHeaderAction(DetachActionButton);
+
+// Reprovision action on the BareMetalHost detail view. Sets or clears spec.image.
+registerDetailsViewHeaderAction(ReprovisionActionButton);
