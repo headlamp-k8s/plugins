@@ -1,0 +1,39 @@
+# Sample Metal3DataTemplate, Metal3DataClaim, and Metal3Data for trying out the plugin locally.
+#
+#   kubectl apply -f metal3/test-files/metal3data.yaml
+#
+# They appear under Metal3 > Metal3 Data, Metal3 Data Claims, and Metal3 Data Templates.
+# A Metal3DataTemplate is the pattern for a node's metadata and network data; a
+# Metal3DataClaim requests rendered data from it; a Metal3Data is the rendered
+# result. The Ready flag and renderedData ref are set by the CAPM3 controller as it
+# reconciles; without a controller running they still list, Ready shown as Unknown.
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: Metal3DataTemplate
+metadata:
+  name: sample-datatemplate
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: sample-cluster
+spec:
+  clusterName: sample-cluster
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: Metal3DataClaim
+metadata:
+  name: sample-dataclaim
+  namespace: default
+spec:
+  template:
+    name: sample-datatemplate
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: Metal3Data
+metadata:
+  name: sample-data
+  namespace: default
+spec:
+  index: 0
+  template:
+    name: sample-datatemplate
+  claim:
+    name: sample-dataclaim
