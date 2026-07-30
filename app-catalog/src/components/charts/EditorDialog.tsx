@@ -1,17 +1,32 @@
 import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Dialog, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Editor from '@monaco-editor/react';
-import { Box, Button, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
+import {
+  Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Tab,
+  Tabs,
+  TextField,
+} from '@mui/material';
 import { Autocomplete } from '@mui/material';
 import _ from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 import { getCatalogConfig } from '../../api/catalogConfig';
-import { fetchChartDetailFromArtifact, fetchChartValues } from '../../api/charts';
+import {
+  fetchChartDetailFromArtifact,
+  fetchChartValues,
+  fetchChartValuesSchema,
+} from '../../api/charts';
 import { createRelease, getActionStatus } from '../../api/releases';
 import { addRepository } from '../../api/repository';
 import { APP_CATALOG_HELM_REPOSITORY } from '../../constants/catalog';
 import { jsonToYAML, yamlToJSON } from '../../helpers';
+import { flattenSchemaToFields, SchemaFormField } from '../../helpers/valuesSchema';
+import { ValuesForm } from './ValuesForm';
 
 type FieldType = {
   value: string;
@@ -41,6 +56,8 @@ export function EditorDialog(props: {
   const [selectedVersion, setSelectedVersion] = useState<FieldType>();
   const [selectedNamespace, setSelectedNamespace] = useState<FieldType>();
   const [releaseName, setReleaseName] = useState('');
+  const [schemaFields, setSchemaFields] = useState<SchemaFormField[]>([]);
+  const [valuesTab, setValuesTab] = useState<'form' | 'yaml'>('yaml');
   const namespaceNames = namespaces?.map(namespace => ({
     value: namespace.metadata.name,
     title: namespace.metadata.name,
@@ -57,6 +74,22 @@ export function EditorDialog(props: {
       setSelectedNamespace(namespaceNames[0]);
     }
   }, [selectedNamespace, namespaceNames]);
+
+  // Fetch the chart's values schema (if any) and derive the form fields from it.
+  // Charts without a schema simply fall back to the YAML-only editor.
+  function refreshValuesSchema(packageID: string, packageVersion: string) {
+    // The values schema endpoint is only available through the Artifact Hub API,
+    // which identifies packages by their package_id.
+    if (chartCfg.chartProfile === chartProfile) {
+      setSchemaFields([]);
+      return;
+    }
+    fetchChartValuesSchema(packageID, packageVersion).then(schema => {
+      const fields = flattenSchemaToFields(schema);
+      setSchemaFields(fields);
+      setValuesTab(fields.length > 0 ? 'form' : 'yaml');
+    });
+  }
 
   // Fetch chart values for a given package and version (when chart version changed in editor dialog)
   function refreshChartValue(packageID: string, packageVersion: string) {
@@ -76,6 +109,7 @@ export function EditorDialog(props: {
     const packageID = chartCfg.chartProfile === chartProfile ? chart.name : chart.package_id;
     const packageVersion = selectedVersion?.value ?? chart.version;
     setChartValuesLoading(true);
+    refreshValuesSchema(packageID, packageVersion);
     fetchChartValues(packageID, packageVersion)
       .then((response: any) => {
         setChartValuesLoading(false);
@@ -246,6 +280,25 @@ export function EditorDialog(props: {
     }
   }
 
+  // The form view needs the current values as an object. If the YAML in the
+  // editor is invalid (e.g. mid-edit), keep the user on the YAML view.
+  let parsedChartValues: Record<string, any> | null = null;
+  try {
+    parsedChartValues = yamlToJSON(chartValues) as Record<string, any>;
+  } catch {
+    parsedChartValues = null;
+  }
+
+  function handleValuesTabChange(newTab: 'form' | 'yaml') {
+    if (newTab === 'form' && parsedChartValues === null) {
+      enqueueSnackbar(t('Cannot switch to the form view: the YAML contains errors'), {
+        variant: 'warning',
+      });
+      return;
+    }
+    setValuesTab(newTab);
+  }
+
   return (
     <Dialog
       open={openEditor}
@@ -349,25 +402,47 @@ export function EditorDialog(props: {
           {chartValuesLoading ? (
             <Loader title="" />
           ) : (
-            <Editor
-              value={chartValues}
-              onChange={value => {
-                if (!value) {
-                  return;
-                }
-                setChartValues(value);
-              }}
-              onMount={editor => {
-                setInstallLoading(false);
-                editor.focus();
-              }}
-              language="yaml"
-              height="500px"
-              options={{
-                selectOnLineNumbers: true,
-              }}
-              theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-            />
+            <>
+              {schemaFields.length > 0 && (
+                <Tabs
+                  value={valuesTab}
+                  onChange={(event, newTab) => handleValuesTabChange(newTab)}
+                  sx={{ mb: 1 }}
+                >
+                  <Tab label={t('Form View')} value="form" />
+                  <Tab label={t('YAML View')} value="yaml" />
+                </Tabs>
+              )}
+              {valuesTab === 'form' && schemaFields.length > 0 ? (
+                <ValuesForm
+                  fields={schemaFields}
+                  values={parsedChartValues ?? {}}
+                  onValuesChange={newValues => {
+                    setChartValues(jsonToYAML(newValues));
+                  }}
+                />
+              ) : (
+                <Editor
+                  value={chartValues}
+                  onChange={value => {
+                    if (!value) {
+                      return;
+                    }
+                    setChartValues(value);
+                  }}
+                  onMount={editor => {
+                    setInstallLoading(false);
+                    editor.focus();
+                  }}
+                  language="yaml"
+                  height="500px"
+                  options={{
+                    selectOnLineNumbers: true,
+                  }}
+                  theme={themeName === 'dark' ? 'vs-dark' : 'light'}
+                />
+              )}
+            </>
           )}
         </Box>
       </DialogContent>
