@@ -1,0 +1,41 @@
+version: 0.7.0
+name: headlamp_flux
+displayName: Flux
+createdAt: "2026-07-30T10:33:17Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/flux/logo.png"
+description: A UI for viewing and managing Flux for Git Ops.
+changes:
+  - kind: added
+    description: "Add Terraform resources and reconciliation support"
+  - kind: added
+    description: "Show a health banner on the Flux overview"
+  - kind: added
+    description: "Protect Flux-managed resources from mutating actions and provide read-only YAML access"
+  - kind: added
+    description: "Add internationalization support for plugin strings"
+  - kind: added
+    description: "Support generic controllers in the flux-system namespace"
+  - kind: changed
+    description: "Hide Flux navigation and show an installation prompt when Flux is not installed"
+  - kind: changed
+    description: "Preserve cluster context when resolving plugin URLs"
+  - kind: changed
+    description: "Update headlamp-plugin to 0.14.0 and refresh dependencies"
+  - kind: fixed
+    description: "Fix Helm inventory loading when the inventory is empty"
+  - kind: fixed
+    description: "Show 100% health when no Flux resources exist"
+  - kind: fixed
+    description: "Fix canary views on older Headlamp versions"
+  - kind: fixed
+    description: "Fix invalid next reconciliation times"
+  - kind: fixed
+    description: "Fix force reconciliation dialog and notification text"
+  - kind: fixed
+    description: "Fix the map failing to load when Flux is not installed"
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/flux-0.7.0/headlamp-k8s-flux-0.7.0.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:837dc962a4ca485b86b010e5a3463d3ffc71c51778125394f006a210921b7c65
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
