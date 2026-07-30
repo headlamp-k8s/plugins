@@ -46,6 +46,7 @@ export function PluginCard(props: PluginCardProps) {
                 alignSelf: 'flex-start',
               }}
               component="img"
+              alt={`${plugin.display_name || plugin.name} logo`}
             />
           ) : (
             <PluginIcon
@@ -98,7 +99,7 @@ export function PluginCard(props: PluginCardProps) {
             }}
           >
             <Typography
-              component="h5"
+              component="div"
               variant="h5"
               sx={{
                 overflow: 'hidden',
@@ -135,7 +136,7 @@ export function PluginCard(props: PluginCardProps) {
               {plugin?.repository && (
                 <>
                   <InlineIcon icon="mdi:building" />{' '}
-                  <Link href={plugin.repository.url} target="_blank">
+                  <Link href={plugin.repository.url} target="_blank" rel="noopener noreferrer">
                     {plugin.repository.organization_name || plugin.repository.name}
                   </Link>
                 </>
