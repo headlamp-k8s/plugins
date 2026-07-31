@@ -1,5 +1,6 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import type { ComponentType } from 'react';
+import AuthzPolicies from './components/daemon/AuthzPolicies';
 import HealthDashboard from './components/daemon/HealthDashboard';
 import ObservabilityPanel from './components/daemon/ObservabilityPanel';
 import XdsConfigDump from './components/daemon/XdsConfigDump';
@@ -135,4 +136,20 @@ registerRoute({
   name: kmeshRouteNames.observability,
   exact: true,
   component: () => <ObservabilityPanel />,
+});
+
+// Authz Policies Viewer
+registerSidebarEntry({
+  parent: 'kmesh',
+  name: 'kmesh-authz-policies',
+  label: 'Auth Policies',
+  url: kmeshRoutePaths.authzPolicies,
+});
+
+registerRoute({
+  path: kmeshRoutePaths.authzPolicies,
+  sidebar: 'kmesh-authz-policies',
+  name: kmeshRouteNames.authzPolicies,
+  exact: true,
+  component: () => <AuthzPolicies />,
 });
