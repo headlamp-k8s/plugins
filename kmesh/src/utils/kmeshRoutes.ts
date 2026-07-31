@@ -11,6 +11,9 @@ export const kmeshRouteNames = {
   authzPolicies: 'kmesh-authz-policies',
   /** eBPF Map Viewer (dual-engine / workload mode) */
   ebpfMaps: 'kmesh-ebpf-maps',
+  /** KmeshNodeInfo CRD — per-node IPsec security state */
+  nodeInfoList: 'kmesh-nodeinfo-list',
+  nodeInfoDetail: 'kmesh-nodeinfo-detail',
 } as const;
 
 /**
@@ -28,4 +31,7 @@ export const kmeshRoutePaths = {
   /** eBPF Map Viewer — surfaces live kernel BPF maps (backends, frontends,
    *  services, endpoints, workload policies) from the dual-engine daemon. */
   ebpfMaps: '/kmesh/ebpf-maps',
+  /** KmeshNodeInfo CRD — per-node IPsec security state */
+  nodeInfoList: '/kmesh/node-security',
+  nodeInfoDetail: '/kmesh/node-security/:namespace/:name',
 } as const;
