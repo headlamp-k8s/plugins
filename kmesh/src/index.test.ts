@@ -12,4 +12,9 @@ describe('Kmesh Routes', () => {
     expect(kmeshRoutePaths.xdsConfigDump).toBe('/kmesh/xds-config');
     expect(kmeshRouteNames.xdsConfigDump).toBe('kmesh-xds-config-dump');
   });
+
+  it('should define the observability route correctly', () => {
+    expect(kmeshRoutePaths.observability).toBe('/kmesh/observability');
+    expect(kmeshRouteNames.observability).toBe('kmesh-observability');
+  });
 });
