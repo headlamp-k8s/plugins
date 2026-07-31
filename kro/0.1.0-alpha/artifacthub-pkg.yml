@@ -8,7 +8,8 @@ changes:
   - kind: added
     description: "First alpha release of the kro plugin for Headlamp."
 annotations:
-  headlamp/plugin/archive-url: "TBD - will be updated during release"
-  headlamp/plugin/archive-checksum: "TBD - will be updated during release"
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/kro-0.1.0-alpha/headlamp-k8s-kro-0.1.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:b2bdadf9eb6b28e7132b28afdcfb6a81fd1bee3585d02412843f6e8dc21fe549
   headlamp/plugin/version-compat: ">=0.22"
   headlamp/plugin/distro-compat: "in-cluster,web,docker-desktop,desktop"
