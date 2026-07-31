@@ -1,4 +1,6 @@
 import { MainInfoSection } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, CircularProgress, Typography } from '@mui/material';
+import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Waypoint } from '../../resources/waypoint';
 import { kmeshRoutePaths } from '../../utils/kmeshRoutes';
@@ -54,26 +56,39 @@ function WaypointDetailContent({
 }) {
   const [waypoint, error] = Waypoint.useGet(name, namespace, { cluster });
 
+  const extraInfo = useMemo(
+    () => [
+      {
+        name: 'Gateway Class',
+        value: waypoint?.spec?.gatewayClassName ?? '-',
+      },
+      {
+        name: 'Image',
+        value: waypoint?.image ?? '-',
+      },
+      {
+        name: 'Current Status',
+        value: waypoint?.currentStatus ?? '-',
+      },
+    ],
+    [waypoint]
+  );
+
+  if (waypoint === null && !error) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" p={4} minHeight="200px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <MainInfoSection
       resource={waypoint}
       error={error}
       title="Waypoint Details"
       backLink={kmeshRoutePaths.waypointsList}
-      extraInfo={[
-        {
-          name: 'Gateway Class',
-          value: waypoint?.spec?.gatewayClassName,
-        },
-        {
-          name: 'Image',
-          value: waypoint?.image,
-        },
-        {
-          name: 'Current Status',
-          value: waypoint?.currentStatus,
-        },
-      ]}
+      extraInfo={extraInfo}
     />
   );
 }
