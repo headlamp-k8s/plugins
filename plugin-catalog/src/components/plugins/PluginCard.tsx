@@ -18,6 +18,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { PluginPackage } from './List';
 import PluginIcon from './plugin-icon.svg';
+import { pollPluginManagerStatus } from './pluginManagerAction';
 
 export interface PluginCardProps {
   plugin: PluginPackage;
@@ -69,23 +70,27 @@ export function PluginCard(props: PluginCardProps) {
       }
 
       try {
-        let status = await PluginManager.getStatus(identifier);
-        while (!cancelled && status && currentAction) {
-          if (status.type === 'error' && status.message === 'No such operation in progress') {
-            setCurrentAction(null);
-            return;
-          }
-          if (status.type === 'error' || status.type === 'success') {
-            setCurrentAction(null);
-            setAlertMessage(
-              status.type === 'success'
-                ? t('{{action}} completed successfully.', { action: t(currentAction) })
-                : t('Error: {{message}}', { message: status.message })
-            );
-            return;
-          }
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          status = await PluginManager.getStatus(identifier);
+        const status = await pollPluginManagerStatus(identifier, {
+          isCancelled: () => cancelled,
+          shouldContinue: () => !!currentAction,
+        });
+
+        if (cancelled || !status) {
+          return;
+        }
+
+        if (status.type === 'error' && status.message === 'No such operation in progress') {
+          setCurrentAction(null);
+          return;
+        }
+
+        if (status.type === 'error' || status.type === 'success') {
+          setCurrentAction(null);
+          setAlertMessage(
+            status.type === 'success'
+              ? t('{{action}} completed successfully.', { action: t(currentAction) })
+              : t('Error: {{message}}', { message: status.message })
+          );
         }
       } catch (error) {
         if (!cancelled) {
@@ -109,18 +114,15 @@ export function PluginCard(props: PluginCardProps) {
     PluginManager.install(identifier, plugin.display_name || plugin.name, artifactHubURL);
   };
 
-  const handleUpdate = async (event: React.MouseEvent) => {
+  const handleUpdate = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
     setCurrentAction('Update');
-    try {
-      const data = (await PluginManager.list()) as { folderName?: string; pluginName?: string }[];
-      const installed = data.find(p => p.folderName === plugin.name);
-      PluginManager.update(identifier, installed?.pluginName || plugin.name);
-    } catch (error) {
-      setCurrentAction(null);
-      setAlertMessage(t('An unexpected error occurred: {{error}}', { error: String(error) }));
-    }
+    // Prefer the name from List's install scan so we do not call PluginManager.list() again.
+    PluginManager.update(
+      identifier,
+      plugin.installedPluginName || plugin.display_name || plugin.name
+    );
   };
 
   const handleCancel = (event: React.MouseEvent) => {
@@ -133,8 +135,14 @@ export function PluginCard(props: PluginCardProps) {
   let actionContent: React.ReactNode;
   if (currentAction) {
     actionContent = (
-      <Button variant="contained" onClick={handleCancel} sx={actionButtonSx} size="small">
-        <CircularProgress color="inherit" size={18} />
+      <Button
+        variant="contained"
+        onClick={handleCancel}
+        sx={actionButtonSx}
+        size="small"
+        aria-label={t('Cancel')}
+      >
+        <CircularProgress color="inherit" size={18} aria-hidden />
       </Button>
     );
   } else if (!plugin.isInstalled) {
@@ -176,6 +184,8 @@ export function PluginCard(props: PluginCardProps) {
       />
       <Card
         sx={{
+          display: 'flex',
+          flexDirection: 'column',
           height: '100%',
         }}
       >
@@ -237,6 +247,7 @@ export function PluginCard(props: PluginCardProps) {
             paddingTop: 0,
             paddingBottom: 0,
             marginBottom: 0,
+            flex: 1,
           }}
         >
           <Box
@@ -331,6 +342,7 @@ export function PluginCard(props: PluginCardProps) {
         <CardActions
           sx={{
             justifyContent: 'flex-end',
+            marginTop: 'auto',
             padding: '14px',
           }}
         >

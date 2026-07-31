@@ -50,6 +50,8 @@ export interface PluginPackage {
   };
   isInstalled?: boolean;
   isUpdateAvailable?: boolean;
+  /** Headlamp PluginManager display name when installed (for Update without re-listing). */
+  installedPluginName?: string;
 }
 
 async function fetchPlugins(offset: number, org?: string) {
@@ -128,12 +130,19 @@ async function processPlugins() {
   } catch (err) {
     console.log('plugin-catalog: Failed to list plugins', err);
   }
-  const installedVersions: Record<string, string> = pluginData.reduce((acc, plugin) => {
-    if (plugin.folderName && plugin.artifacthubVersion) {
-      acc[plugin.folderName] = plugin.artifacthubVersion;
-    }
-    return acc;
-  }, {});
+  const installedByFolder: Record<string, { version: string; pluginName: string }> =
+    pluginData.reduce(
+      (acc, plugin) => {
+        if (plugin.folderName && plugin.artifacthubVersion) {
+          acc[plugin.folderName] = {
+            version: plugin.artifacthubVersion,
+            pluginName: plugin.pluginName || plugin.folderName,
+          };
+        }
+        return acc;
+      },
+      {} as Record<string, { version: string; pluginName: string }>
+    );
 
   // Merge all plugins and org-specific plugins, removing duplicates
   const mergedPlugins = [...allPlugins, ...orgPlugins];
@@ -143,14 +152,16 @@ async function processPlugins() {
 
   const pluginsWithInstallStatus = uniquePlugins
     .map((pkg: PluginPackage) => {
-      const installedVersion = installedVersions[pkg.name];
+      const installed = installedByFolder[pkg.name];
       let isInstalled = false;
       let isUpdateAvailable = false;
+      let installedPluginName: string | undefined;
 
-      if (installedVersion) {
+      if (installed) {
         isInstalled = true;
-        if (semver.valid(pkg.version) && semver.valid(installedVersion)) {
-          isUpdateAvailable = semver.gt(pkg.version, installedVersion);
+        installedPluginName = installed.pluginName;
+        if (semver.valid(pkg.version) && semver.valid(installed.version)) {
+          isUpdateAvailable = semver.gt(pkg.version, installed.version);
         }
       }
 
@@ -158,6 +169,7 @@ async function processPlugins() {
         ...pkg,
         isInstalled,
         isUpdateAvailable,
+        installedPluginName,
       };
     })
     // Reorder so plugins with logos show first.
