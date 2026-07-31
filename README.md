@@ -21,6 +21,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [kueue](./kueue) | A UI for viewing and managing Kueue batch queueing resources. | Initial skeleton. | |
 | [knative](./knative) | A UI for viewing and managing Knative. | | [@kahirokunn](https://github.com/kahirokunn), [@mudit06mah](https://github.com/mudit06mah) |
 | [kompose](./kompose) | Translates docker-compose manifests to Kubernetes's. | Runs kompose in a job in the cluster for now. | [@joaquimrocha](https://github.com/joaquimrocha) |
+| [kro](./kro) | A UI for viewing kro (Kube Resource Orchestrator) ResourceGraphDefinitions and their instances. | Alpha. | [@danbruno101](https://github.com/danbruno101) |
 | [kyverno](./kyverno) | A UI for viewing and managing Kyverno policies and reports. | | [@joaquimrocha](https://github.com/joaquimrocha), [@itvi-1234](https://github.com/itvi-1234) |
 | [minikube](./minikube) | A UI for minikube, for running Kubernetes locally. | | [@illume](https://github.com/illume) |
 | [opencost](./opencost) | See the costs of your workloads in Headlamp. | | [@yolossn](https://github.com/yolossn) |

@@ -1,0 +1,11 @@
+# A WebApp instance. The WebApp API only exists after webapp-rgd.yaml
+# is applied and Active. Edit spec.replicas or spec.expose afterwards
+# to watch reconciliation live in the plugin.
+apiVersion: kro.run/v1alpha1
+kind: WebApp
+metadata:
+  name: my-webapp
+  namespace: default
+spec:
+  name: my-webapp
+  replicas: 2

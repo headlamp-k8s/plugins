@@ -1,0 +1,24 @@
+# An RGD with an invalid CEL reference (schema.spec has no "nosuchfield").
+# kro marks it Inactive with a GraphAccepted=False / InvalidResourceGraph
+# condition and never generates a CRD. The plugin should show the red
+# Inactive state, render the detail page from spec alone, and report
+# that the generated CRD was not found.
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: invalid-cel.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: InvalidCel
+    spec:
+      name: string
+  resources:
+    - id: cm
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.nosuchfield.oops}
+        data:
+          k: v

@@ -1,0 +1,29 @@
+# A valid RGD whose externalRef points at a ConfigMap that does not
+# exist. The RGD itself becomes Active (the graph is valid), but
+# instances cannot reconcile until the referenced object appears —
+# useful for exercising the plugin's instance error states.
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: missingref.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: MissingRef
+    spec:
+      name: string
+  resources:
+    - id: externalConfig
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: does-not-exist
+    - id: cm
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-cm
+        data:
+          MESSAGE: ${externalConfig.data.message}

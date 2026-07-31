@@ -1,0 +1,83 @@
+# A small self-contained ResourceGraphDefinition exercising the plugin's
+# features: an externalRef (read-only reference), cross-resource CEL
+# dependencies (platformConfig -> appConfig -> deployment), a
+# conditional resource (service, gated by includeWhen), and
+# CEL-projected status fields.
+#
+# Apply webapp-platform-config.yaml first (the externalRef target).
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: webapp.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: WebApp
+    spec:
+      name: string
+      image: string | default="nginx:1.27"
+      replicas: integer | default=1
+      expose: boolean | default=true
+    status:
+      readyReplicas: ${deployment.status.readyReplicas}
+  resources:
+    # Read-only external reference — renders dashed/annotated in the
+    # plugin's graph and composed-resources table.
+    - id: platformConfig
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: webapp-platform-config
+
+    # Depends on platformConfig via the CEL reference below.
+    - id: appConfig
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-config
+        data:
+          MESSAGE: ${platformConfig.data.message}
+
+    # Depends on appConfig via the envFrom reference below.
+    - id: deployment
+      template:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ${schema.spec.name}
+        spec:
+          replicas: ${schema.spec.replicas}
+          selector:
+            matchLabels:
+              app: ${schema.spec.name}
+          template:
+            metadata:
+              labels:
+                app: ${schema.spec.name}
+            spec:
+              containers:
+                - name: web
+                  image: ${schema.spec.image}
+                  ports:
+                    - containerPort: 80
+                  envFrom:
+                    - configMapRef:
+                        name: ${appConfig.metadata.name}
+
+    # Conditional resource: only created while spec.expose is true.
+    - id: service
+      includeWhen:
+        - ${schema.spec.expose}
+      template:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${schema.spec.name}
+        spec:
+          selector:
+            app: ${schema.spec.name}
+          ports:
+            - port: 80
+              targetPort: 80
