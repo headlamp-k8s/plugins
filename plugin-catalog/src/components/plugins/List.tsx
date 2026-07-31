@@ -131,18 +131,15 @@ async function processPlugins() {
     console.log('plugin-catalog: Failed to list plugins', err);
   }
   const installedByFolder: Record<string, { version: string; pluginName: string }> =
-    pluginData.reduce(
-      (acc, plugin) => {
-        if (plugin.folderName && plugin.artifacthubVersion) {
-          acc[plugin.folderName] = {
-            version: plugin.artifacthubVersion,
-            pluginName: plugin.pluginName || plugin.folderName,
-          };
-        }
-        return acc;
-      },
-      {} as Record<string, { version: string; pluginName: string }>
-    );
+    pluginData.reduce((acc, plugin) => {
+      if (plugin.folderName && plugin.artifacthubVersion) {
+        acc[plugin.folderName] = {
+          version: plugin.artifacthubVersion,
+          pluginName: plugin.pluginName || plugin.folderName,
+        };
+      }
+      return acc;
+    }, {} as Record<string, { version: string; pluginName: string }>);
 
   // Merge all plugins and org-specific plugins, removing duplicates
   const mergedPlugins = [...allPlugins, ...orgPlugins];

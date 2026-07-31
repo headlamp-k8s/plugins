@@ -31,7 +31,7 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <a href="#">{children}</a>,
+  Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 
 vi.mock('./plugin-icon.svg', () => ({
