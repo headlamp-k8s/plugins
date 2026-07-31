@@ -9,6 +9,9 @@ export const kmeshRouteNames = {
   healthDashboard: 'kmesh-health-dashboard',
   observability: 'kmesh-observability',
   authzPolicies: 'kmesh-authz-policies',
+  /** KmeshNodeInfo CRD — per-node IPsec security state */
+  nodeInfoList: 'kmesh-nodeinfo-list',
+  nodeInfoDetail: 'kmesh-nodeinfo-detail',
 } as const;
 
 /**
@@ -23,4 +26,7 @@ export const kmeshRoutePaths = {
   healthDashboard: '/kmesh/health',
   observability: '/kmesh/observability',
   authzPolicies: '/kmesh/authz-policies',
+  /** KmeshNodeInfo CRD — per-node IPsec security state */
+  nodeInfoList: '/kmesh/node-security',
+  nodeInfoDetail: '/kmesh/node-security/:namespace/:name',
 } as const;

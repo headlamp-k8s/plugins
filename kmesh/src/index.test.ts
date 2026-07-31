@@ -22,4 +22,11 @@ describe('Kmesh Routes', () => {
     expect(kmeshRoutePaths.authzPolicies).toBe('/kmesh/authz-policies');
     expect(kmeshRouteNames.authzPolicies).toBe('kmesh-authz-policies');
   });
+
+  it('should define the KmeshNodeInfo (Node Security) routes correctly', () => {
+    expect(kmeshRoutePaths.nodeInfoList).toBe('/kmesh/node-security');
+    expect(kmeshRoutePaths.nodeInfoDetail).toBe('/kmesh/node-security/:namespace/:name');
+    expect(kmeshRouteNames.nodeInfoList).toBe('kmesh-nodeinfo-list');
+    expect(kmeshRouteNames.nodeInfoDetail).toBe('kmesh-nodeinfo-detail');
+  });
 });
