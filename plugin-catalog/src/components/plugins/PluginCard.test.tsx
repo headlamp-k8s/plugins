@@ -119,7 +119,7 @@ describe('PluginCard install/update actions', () => {
   test('in-progress action shows an accessible Cancel control', async () => {
     const user = userEvent.setup();
     vi.mocked(PluginManager.getStatus).mockImplementation(
-      () => new Promise(() => undefined) as Promise<{ type: string; message?: string }>
+      () => new Promise(() => undefined) as ReturnType<typeof PluginManager.getStatus>
     );
 
     renderCard({ ...basePlugin, isInstalled: false });
