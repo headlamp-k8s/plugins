@@ -45,6 +45,9 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
   const [refresh, setRefresh] = useState<boolean>(true);
   const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
   const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
+  const [timespan, setTimespan] = useState('24h');
+  const [resolution, setResolution] = useState('medium');
+  const [subPath, setSubPath] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState<boolean>(false);
 
   useEffect(() => {
@@ -64,6 +67,13 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
         if (prefix) {
           setPrometheusPrefix(prefix);
           setState(prometheusState.INSTALLED);
+          
+          const loadedInterval = await getPrometheusInterval(cluster);
+          const loadedRes = await getPrometheusResolution(cluster);
+          const loadedSubPath = await getPrometheusSubPath(cluster);
+          setTimespan(loadedInterval ?? '1h');
+          setResolution(loadedRes ?? 'medium');
+          setSubPath(loadedSubPath);
         } else {
           setState(prometheusState.UNKNOWN);
         }
@@ -78,9 +88,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
     return null;
   }
 
-  const interval = getPrometheusInterval(cluster);
-  const resolution = getPrometheusResolution(cluster);
-  const subPath = getPrometheusSubPath(cluster);
+
   return (
     <SectionBox>
       <Box
@@ -123,7 +131,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
           <DiskChart
             usageQuery={props.usageQuery}
             capacityQuery={props.capacityQuery}
-            interval={interval}
+            interval={timespan}
             resolution={resolution}
             autoRefresh={refresh}
             prometheusPrefix={prometheusPrefix}

@@ -12,6 +12,7 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
+import type { ClusterData } from '../../../util';
 
 /**
  * Validates if the given address string is in the correct format.
@@ -66,37 +67,36 @@ export function Settings(props: SettingsProps) {
     }
   }, [clusters, selectedCluster]);
 
+  const [deploymentConfig, setDeploymentConfig] = useState<Partial<ClusterData>>({});
   useEffect(() => {
-    if (selectedCluster && !data?.[selectedCluster]) {
-      onDataChange({
-        ...data,
-        [selectedCluster]: {
-          isMetricsEnabled: true,
-          autoDetect: true,
-          defaultTimespan: '24h',
-          defaultResolution: 'medium',
-        },
-      });
-    }
-  }, [selectedCluster, data, onDataChange]);
+    import('../../../util').then(({ fetchDeploymentConfig }) => {
+      fetchDeploymentConfig(selectedCluster).then(setDeploymentConfig);
+    });
+  }, [selectedCluster]);
 
-  const selectedClusterData = data?.[selectedCluster] || {};
-  const isMetricsEnabled = selectedClusterData.isMetricsEnabled ?? true;
-  const isAutoDetectEnabled = isMetricsEnabled && (selectedClusterData.autoDetect ?? true);
+  const userClusterData = data?.[selectedCluster] || {};
+  
+  const isMetricsEnabled = userClusterData.isMetricsEnabled ?? deploymentConfig.isMetricsEnabled ?? true;
+  const isAutoDetectEnabled = isMetricsEnabled && (userClusterData.autoDetect ?? deploymentConfig.autoDetect ?? true);
   const isAddressFieldEnabled = isMetricsEnabled && !isAutoDetectEnabled;
+  
+  const effectiveAddress = userClusterData.address ?? deploymentConfig.address ?? '';
+  const effectiveSubPath = userClusterData.subPath ?? deploymentConfig.subPath ?? '';
+  const effectiveTimespan = userClusterData.defaultTimespan ?? deploymentConfig.defaultTimespan ?? '24h';
+  const effectiveResolution = userClusterData.defaultResolution ?? deploymentConfig.defaultResolution ?? 'medium';
 
   useEffect(() => {
-    if (selectedClusterData.address) {
-      setAddressError(!isValidAddress(selectedClusterData.address));
+    if (effectiveAddress) {
+      setAddressError(!isValidAddress(effectiveAddress));
       setTestStatus('idle');
       setTestMessage('');
     } else {
       setAddressError(false);
     }
-  }, [selectedClusterData.address]);
+  }, [effectiveAddress]);
 
   const handleTestConnection = async () => {
-    if (!selectedClusterData.address || !isValidAddress(selectedClusterData.address)) {
+    if (!effectiveAddress || !isValidAddress(effectiveAddress)) {
       setAddressError(true);
       setTestMessage(t('Invalid Address Format'));
       setTestStatus('error');
@@ -107,10 +107,10 @@ export function Settings(props: SettingsProps) {
     setTestMessage(t('Testing Connection'));
 
     try {
-      const [namespace, serviceAndPort] = selectedClusterData.address.split('/');
+      const [namespace, serviceAndPort] = effectiveAddress.split('/');
       const [service, port] = serviceAndPort.split(':');
 
-      let subPath = selectedClusterData.subPath || '';
+      let subPath = effectiveSubPath;
       if (subPath && !subPath.startsWith('/')) {
         subPath = '/' + subPath;
       }
@@ -142,9 +142,9 @@ export function Settings(props: SettingsProps) {
             onDataChange({
               ...(data || {}),
               [selectedCluster]: {
-                ...((data || {})[selectedCluster] || {}),
+                ...userClusterData,
                 isMetricsEnabled: newMetricsEnabled,
-                autoDetect: newMetricsEnabled ? data?.[selectedCluster]?.autoDetect ?? true : false,
+                autoDetect: newMetricsEnabled ? userClusterData.autoDetect ?? deploymentConfig.autoDetect ?? true : false,
               },
             });
           }}
@@ -161,7 +161,7 @@ export function Settings(props: SettingsProps) {
             onDataChange({
               ...(data || {}),
               [selectedCluster]: {
-                ...((data || {})[selectedCluster] || {}),
+                ...userClusterData,
                 autoDetect: e.target.checked,
               },
             })
@@ -180,17 +180,18 @@ export function Settings(props: SettingsProps) {
                 addressError
                   ? t('Invalid format. Use: namespace/service-name:port')
                   : t(
-                      'Address of the Prometheus Service, only used when auto-detection is disabled. Format: namespace/service-name:port'
+                      'Address of the Prometheus Service. If left blank, the deployment default is used.'
                     )
               }
               error={addressError}
-              value={selectedClusterData.address || ''}
+              value={userClusterData.address || ''}
+              placeholder={deploymentConfig.address || ''}
               onChange={e => {
                 const newAddress = e.target.value;
                 onDataChange({
                   ...(data || {}),
                   [selectedCluster]: {
-                    ...((data || {})[selectedCluster] || {}),
+                    ...userClusterData,
                     address: newAddress,
                   },
                 });
@@ -202,7 +203,7 @@ export function Settings(props: SettingsProps) {
               disabled={
                 !isAddressFieldEnabled ||
                 addressError ||
-                !selectedClusterData.address ||
+                !effectiveAddress ||
                 testStatus === 'testing'
               }
               onClick={handleTestConnection}
@@ -226,16 +227,17 @@ export function Settings(props: SettingsProps) {
       name: t('Prometheus Service Subpath'),
       value: (
         <TextField
-          value={selectedClusterData.subPath || ''}
+          value={userClusterData.subPath || ''}
+          placeholder={deploymentConfig.subPath || ''}
           disabled={!isAddressFieldEnabled}
           helperText={t(
-            "Optional subpath to the Prometheus Service endpoint. Only used when auto-detection is disabled. Examples: 'prometheus'."
+            "Optional subpath to the Prometheus Service endpoint. Examples: 'prometheus'. If left blank, the deployment default is used."
           )}
           onChange={e => {
             const newSubPath = e.target.value;
             onDataChange({
               ...(data || {}),
-              [selectedCluster]: { ...((data || {})[selectedCluster] || {}), subPath: newSubPath },
+              [selectedCluster]: { ...userClusterData, subPath: newSubPath },
             });
           }}
         />
@@ -246,12 +248,12 @@ export function Settings(props: SettingsProps) {
       value: (
         <Select
           disabled={!isMetricsEnabled}
-          value={data?.[selectedCluster]?.defaultTimespan || '24h'}
+          value={effectiveTimespan}
           onChange={e =>
             onDataChange({
               ...(data || {}),
               [selectedCluster]: {
-                ...((data || {})[selectedCluster] || {}),
+                ...userClusterData,
                 defaultTimespan: e.target.value,
               },
             })
@@ -279,12 +281,12 @@ export function Settings(props: SettingsProps) {
       value: (
         <Select
           disabled={!isMetricsEnabled}
-          value={data?.[selectedCluster]?.defaultResolution || 'medium'}
+          value={effectiveResolution}
           onChange={e =>
             onDataChange({
               ...(data || {}),
               [selectedCluster]: {
-                ...((data || {})[selectedCluster] || {}),
+                ...userClusterData,
                 defaultResolution: e.target.value,
               },
             })
