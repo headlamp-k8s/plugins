@@ -111,7 +111,7 @@ registerDetailsViewSectionsProcessor(function addNamespaceGitOpsInsightsSection(
   const reorderedSections = [...sections];
   reorderedSections.splice(metadataIndex + 1, 0, {
     id: NAMESPACE_GITOPS_INSIGHTS_SECTION_ID,
-    section: ArgoNamespaceInsights,
+    section: <ArgoNamespaceInsights resource={resource} />,
   });
   return reorderedSections;
 });

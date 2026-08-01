@@ -16,6 +16,7 @@
 
 import type * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import ArgoNamespaceInsights from './components/namespaces/ArgoNamespaceInsights';
 
 const {
   mockRegisterDetailsViewSectionsProcessor,
@@ -170,7 +171,8 @@ describe('argocd plugin', () => {
     expect(mockRegisterDetailsViewSectionsProcessor).toHaveBeenCalledWith(expect.any(Function));
 
     const processor = mockRegisterDetailsViewSectionsProcessor.mock.calls[0][0];
-    const processedSections = processor({ kind: 'Namespace' }, [
+    const namespace = { kind: 'Namespace', metadata: { name: 'argocd' } };
+    const processedSections = processor(namespace, [
       { id: 'MAIN_HEADER', section: null },
       { id: 'METADATA', section: null },
       { id: 'headlamp.namespace-owned-resourcequotas', section: null },
@@ -182,5 +184,11 @@ describe('argocd plugin', () => {
       'argocd.namespace-gitops-insights',
       'headlamp.namespace-owned-resourcequotas',
     ]);
+
+    const insightsSection = processedSections[2];
+    expect(insightsSection.section).toMatchObject({
+      type: ArgoNamespaceInsights,
+      props: { resource: namespace },
+    });
   });
 });
