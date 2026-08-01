@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from './ingress';
+import { formatIngressClass, getIngressClass, INGRESS_CLASS_GATEWAY_API } from './ingress';
 
 describe('formatIngressClass', () => {
   it('should return "(not set)" for null', () => {
@@ -39,5 +39,38 @@ describe('formatIngressClass', () => {
 
   it('should handle the INGRESS_CLASS_GATEWAY_API constant', () => {
     expect(formatIngressClass(INGRESS_CLASS_GATEWAY_API)).toBe('gateway-api');
+  });
+});
+
+describe('getIngressClass', () => {
+  it('returns null if the data object is empty or missing', () => {
+    expect(getIngressClass({})).toBeNull();
+    expect(getIngressClass(null)).toBeNull();
+    expect(getIngressClass(undefined)).toBeNull();
+  });
+
+  it('correctly extracts the value using the old dotted key format', () => {
+    expect(getIngressClass({ 'ingress.class': 'istio.ingress.networking.knative.dev' })).toBe(
+      'istio.ingress.networking.knative.dev'
+    );
+  });
+
+  it('correctly extracts the value using the modern dashed key format', () => {
+    expect(getIngressClass({ 'ingress-class': 'kourier.ingress.networking.knative.dev' })).toBe(
+      'kourier.ingress.networking.knative.dev'
+    );
+  });
+
+  it('gives priority to the modern dashed key if both formats exist', () => {
+    expect(
+      getIngressClass({
+        'ingress.class': 'istio.ingress.networking.knative.dev',
+        'ingress-class': 'kourier.ingress.networking.knative.dev',
+      })
+    ).toBe('kourier.ingress.networking.knative.dev');
+  });
+
+  it('ignores strings that contain only whitespace', () => {
+    expect(getIngressClass({ 'ingress-class': '  ', 'ingress.class': '' })).toBeNull();
   });
 });

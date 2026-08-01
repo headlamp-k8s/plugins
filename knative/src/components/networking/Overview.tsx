@@ -16,7 +16,7 @@
 
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
 import { Box, CircularProgress, Paper, Typography } from '@mui/material';
-import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
+import { formatIngressClass, getIngressClass, getIngressClassRaw, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
@@ -94,10 +94,8 @@ function useIngressClassForCluster(cluster: string): IngressClassHookResult {
     { cluster }
   );
 
-  const raw =
-    networkConfig?.data?.['ingress-class'] ?? networkConfig?.data?.['ingress.class'] ?? null;
-  const trimmed = raw?.trim();
-  const ingressClass = trimmed && trimmed !== '' ? trimmed : null;
+  const raw = getIngressClassRaw(networkConfig?.data);
+  const ingressClass = getIngressClass(networkConfig?.data);
 
   return {
     ingressClass,
