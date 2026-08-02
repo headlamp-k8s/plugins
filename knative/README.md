@@ -1,8 +1,66 @@
 # Knative
 
-A Headlamp plugin for visualizing and managing Knative Services. Knative is a Kubernetes-based platform for deploying and managing serverless workloads. It provides automatic scaling, traffic management, and simplified deployment workflows for containerized applications.
+A Headlamp plugin for operating Knative Serving workloads and inspecting the resources that
+Serving creates for them. Application owners can manage Services and traffic, while platform
+operators can follow a request from its Route and Ingress through to autoscaling and image
+resolution resources.
 
-This plugin adds a new item (Knative) to the sidebar and provides GUI functionality to list and view service details, edit traffic splitting, update concurrency settings, perform redeploy/restart operations.
+## Requirements
+
+| Requirement | Required condition | Why |
+|---|---|---|
+| Headlamp | 0.44.0 or later | The plugin targets the sidebar APIs available in Headlamp 0.44.0 and later. |
+| Knative | Knative Serving installed on the selected cluster | The plugin discovers Serving from its CustomResourceDefinitions. |
+
+## Serving Resource Views
+
+Headlamp adds the selected cluster to each route. For example, selecting a cluster named
+`development` and opening Routes navigates to `/c/development/knative/routes`.
+
+The sidebar uses non-clickable section headings to group the views into three sections:
+**Serving** for the resources application and domain owners manage, **Serving Internals** for
+internal resources, including the read-only resources Serving derives and manages itself, and
+**Configuration** for cluster-level Knative settings.
+
+### Serving
+
+| Who uses this view | Sidebar item | Registered URL | Example question it answers | Actions |
+|---|---|---|---|---|
+| Application owner | Services | `/knative/services` | Which URL serves `checkout`, and which revision receives its traffic? | Manage |
+| Application owner | Revisions | `/knative/revisions` | Is `checkout-00004` ready, and is it receiving traffic? | View & delete |
+| Domain operator | Domain Mappings | `/knative/domain-mappings` | Does `shop.example.com` point to a ready Service? | Manage |
+| Domain operator | Cluster Domain Claims | `/knative/cluster-domain-claims` | Has `shop.example.com` been claimed for cluster-wide use? | Manage |
+
+### Serving Internals
+
+| Who uses this view | Sidebar item | Registered URL | Example question it answers | Actions |
+|---|---|---|---|---|
+| Serving troubleshooter | Configurations | `/knative/configurations` | Which ready Revision did the `checkout` Configuration most recently create? | View only |
+| Serving troubleshooter | Routes | `/knative/routes` | What URL and traffic targets did Serving resolve for `checkout`? | View only |
+| Platform operator | Images | `/knative/images` | Which image and service account are being resolved for a Revision? | View only |
+| Platform operator | Pod Autoscalers | `/knative/pod-autoscalers` | Why does `checkout-00004` have a desired scale of 3 but an actual scale of 1? | View only |
+| Platform operator | Metrics | `/knative/metrics` | Which scrape target and stable/panic windows drive autoscaling? | View only |
+| Network operator | KIngresses | `/knative/ingresses` | Which hosts were generated for a Route, and is the Ingress ready? | View only |
+| Network operator | Serverless Services | `/knative/serverless-services` | Which public and private Kubernetes Services back a Revision? | View only |
+| Network operator | Certificates | `/knative/certificates` | Which Secret contains a host's certificate, and when does it expire? | View only |
+
+### Configuration
+
+| Who uses this view | Sidebar item | Registered URL | Example question it answers | Actions |
+|---|---|---|---|---|
+| Network operator | Networking | `/knative/networking` | Which ingress class and gateways are configured in `knative-serving/config-network` and `config-gateway`? | View only |
+
+The Networking view parses Knative's YAML-list values in `external-gateways` and
+`local-gateways`. It distinguishes controller defaults from malformed configuration and API
+access errors, and links configured Gateway and Kubernetes Service references to their Headlamp
+detail views.
+
+The generated Serving resources marked **View only** do not show create controls or row actions.
+Selecting their name opens Headlamp's standard Custom Resource detail view, where the default
+Edit, Delete, Scale, and Restart actions are hidden for controller-owned objects of those exact
+Knative resource kinds.
+Cluster Domain Claims remain actionable, so claims can be created manually on clusters where
+`autocreate-cluster-domain-claims` is disabled.
 
 ## Knative Installation
 
