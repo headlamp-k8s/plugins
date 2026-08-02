@@ -1,0 +1,22 @@
+version: 0.1.0-alpha
+name: "headlamp_kmesh"
+displayName: Kmesh
+createdAt: "2026-08-02T10:00:00Z"
+logoURL: "https://raw.githubusercontent.com/kmesh-net/kmesh/main/docs/pics/logo/KMESH-horizontal-colour.png"
+description: A Headlamp plugin for monitoring and debugging Kmesh (high-performance eBPF-based service mesh in Kubernetes).
+changes:
+  - kind: added
+    description: "Add Waypoints list and detail views with image and condition health tracking."
+  - kind: added
+    description: "Add Daemon Health Dashboard to monitor total vs. ready Kmesh pods across nodes."
+  - kind: added
+    description: "Add xDS Config Dump viewer to live-inspect kernel-native ADS clusters, listeners, and routing rules."
+  - kind: added
+    description: "Add Observability Panel to inspect BPF telemetry metrics and traffic stats directly from daemon pods."
+  - kind: added
+    description: "Add Authorization Policies viewer to track zero-trust L4 security rules in eBPF."
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/kmesh-0.1.0-alpha/headlamp-k8s-kmesh-0.1.0-alpha.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:1ac03a132ad4904109a616ce14f61f4da1ad9efb95028393c5b18b4ba6eafcdd"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
