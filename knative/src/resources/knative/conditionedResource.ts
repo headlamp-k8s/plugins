@@ -15,25 +15,20 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { Condition } from './common';
 import { KnativeCustomResource } from './customResource';
+import { findReadyCondition } from './resourceData';
 
-interface ClusterDomainClaimResource extends KubeObjectInterface {
-  spec: {
-    namespace: string;
-  };
-  status?: Record<string, unknown>;
-}
+export type ConditionedStatus = {
+  conditions?: Condition[];
+  observedGeneration?: number;
+  annotations?: Record<string, string>;
+};
 
-export class ClusterDomainClaim extends KnativeCustomResource<ClusterDomainClaimResource> {
-  static kind = 'ClusterDomainClaim';
-  static apiName = 'clusterdomainclaims';
-  static apiVersion = 'networking.internal.knative.dev/v1alpha1';
-  static isNamespaced = false;
-
-  /**
-   * The namespace that owns this domain.
-   */
-  get targetNamespace(): string {
-    return this.spec.namespace;
+export abstract class ConditionedKnativeCustomResource<
+  T extends KubeObjectInterface & { status?: ConditionedStatus }
+> extends KnativeCustomResource<T> {
+  get readyCondition(): Condition | undefined {
+    return findReadyCondition(this.status);
   }
 }
