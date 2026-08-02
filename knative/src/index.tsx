@@ -16,6 +16,7 @@
 
 import { Icon } from '@iconify/react';
 import {
+  registerDetailsViewHeaderActionsProcessor,
   registerKindIcon,
   registerKubeObjectGlance,
   registerMapSource,
@@ -44,8 +45,12 @@ import { ServerlessServicesList } from './components/serverlessservices/List';
 import { isKnativeInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
 import { knativePluginSource } from './mapView';
+import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
 
 registerKnativeIcon();
+registerDetailsViewHeaderActionsProcessor((resource, actions) =>
+  filterReadOnlyKnativeHeaderActions(resource, actions)
+);
 
 const queryClient = new QueryClient();
 
