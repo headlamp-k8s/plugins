@@ -17,7 +17,7 @@
 import { Box, Paper, Typography } from '@mui/material';
 import { Meta, StoryFn } from '@storybook/react';
 import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
-import { GatewayConfig, PureClusterNetworkingCardProps } from './Overview';
+import { GatewayConfig, PureClusterNetworkingCardProps } from './Configuration';
 
 function GatewaySection({ label, config }: { label: string; config: GatewayConfig | null }) {
   if (!config) {
@@ -111,7 +111,7 @@ function PureClusterNetworkingCard({
 }
 
 export default {
-  title: 'knative/Networking/ClusterNetworkingCard',
+  title: 'knative/Networking/ConfigurationCard',
   component: PureClusterNetworkingCard,
 } as Meta;
 

@@ -600,7 +600,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
   return (
     <ResourceListView
-      title="KServices"
+      title="Services"
       headerProps={headerProps}
       resourceClass={KService}
       columns={columns}
