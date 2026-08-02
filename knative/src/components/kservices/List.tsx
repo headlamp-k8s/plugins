@@ -125,11 +125,8 @@ function getServiceUrls(svc: KService, domainByServiceKey: Record<string, string
     return urls;
   }
 
-  if (svc.url) {
-    return [svc.url];
-  }
-
-  return [];
+  const serviceUrl = getSafeUrl(svc.url);
+  return serviceUrl ? [serviceUrl] : [];
 }
 
 type KServiceRowActionsProps = {
@@ -214,9 +211,8 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       if (!refName) continue;
       const svcNs = dm.spec.ref.namespace || dm.metadata.namespace!;
       const key = `${dm.cluster}/${svcNs}/${refName}`;
-      const isReady = dm.status?.conditions?.find(c => c.type === 'Ready')?.status === 'True';
-      const url = dm.status?.url || dm.status?.address?.url;
-      if (isReady && url) {
+      const url = getSafeUrl(dm.readyUrl);
+      if (url) {
         if (!domainMap[key]) domainMap[key] = [];
         if (!domainMap[key].includes(url)) domainMap[key].push(url);
       }
@@ -351,16 +347,6 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
                 {urls.map(url => (
                   <ExternalUrl key={url} url={url} />
                 ))}
-              </Stack>
-            );
-          }
-
-          if (svc.status?.url) {
-            return (
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <a href={svc.status.url} target="_blank" rel="noreferrer">
-                  {svc.status.url}
-                </a>
               </Stack>
             );
           }
