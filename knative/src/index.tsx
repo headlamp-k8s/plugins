@@ -16,6 +16,7 @@
 
 import { Icon } from '@iconify/react';
 import {
+  registerDetailsViewHeaderActionsProcessor,
   registerKindIcon,
   registerKubeObjectGlance,
   registerMapSource,
@@ -46,8 +47,12 @@ import { registerKnativeIcon } from './knativeIcon';
 import { knativePluginSource } from './mapView';
 import type { KnativeListRouteName } from './navigation';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
+import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
 
 registerKnativeIcon();
+registerDetailsViewHeaderActionsProcessor((resource, actions) =>
+  filterReadOnlyKnativeHeaderActions(resource, actions)
+);
 
 const queryClient = new QueryClient();
 
