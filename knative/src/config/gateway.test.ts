@@ -58,6 +58,25 @@ describe('parseGatewayConfigValue', () => {
     });
   });
 
+  it('treats an explicit null service as omitted', () => {
+    expect(
+      parseGatewayConfigValue(`
+- class: contour
+  gateway: projectcontour/contour
+  service:
+`)
+    ).toEqual({
+      state: 'configured',
+      config: {
+        class: 'contour',
+        gateway: { namespace: 'projectcontour', name: 'contour' },
+        service: undefined,
+        supportedFeatures: [],
+        proxyProtocolEnabled: false,
+      },
+    });
+  });
+
   it.each([undefined, null, '', '   ', '[]', 'null'])('%s uses controller defaults', value => {
     expect(parseGatewayConfigValue(value)).toEqual({ state: 'defaulted', config: null });
   });

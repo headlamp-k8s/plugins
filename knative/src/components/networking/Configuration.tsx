@@ -17,12 +17,19 @@
 import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
 import { Alert, Box, CircularProgress, Paper, Typography } from '@mui/material';
+import type { ReactNode } from 'react';
 import type { GatewayConfigEntryResult, GatewayConfigResult } from '../../config/gateway';
 import { parseGatewayConfigMap } from '../../config/gateway';
-import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
+import {
+  formatIngressClass,
+  INGRESS_CLASS_GATEWAY_API,
+  readIngressClass,
+} from '../../config/ingress';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
+import { getErrorMessage } from '../../utils/error';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
+import { GatewayReadinessStatus } from './GatewayReadiness';
 
 export type { GatewayConfig, GatewayConfigResult } from '../../config/gateway';
 
@@ -34,15 +41,10 @@ export interface ClusterNetworkingCardProps {
   gatewayConfig: GatewayConfigResult | null;
   ingressClassError?: string | null;
   gatewayConfigError?: string | null;
-}
-
-function getErrorMessage(error: unknown): string | null {
-  if (!error) return null;
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'object' && 'message' in error) {
-    return String((error as { message?: unknown }).message ?? 'Unknown API error');
-  }
-  return String(error);
+  gatewayStatusContent?: {
+    external?: ReactNode;
+    local?: ReactNode;
+  };
 }
 
 type IngressClassHookResult = {
@@ -59,15 +61,13 @@ function useIngressClassForCluster(cluster: string): IngressClassHookResult {
     isLoading: ingressClassLoading,
   } = ConfigMap.useGet('config-network', 'knative-serving', { cluster });
 
-  const raw = networkConfig?.data?.['ingress.class'] ?? null;
-  const trimmed = raw?.trim();
-  const ingressClass = trimmed ? trimmed : null;
+  const { raw, value: ingressClass } = readIngressClass(networkConfig?.data);
 
   return {
     ingressClass,
     ingressClassRaw: raw,
     ingressClassLoading,
-    ingressClassError: getErrorMessage(error),
+    ingressClassError: error ? getErrorMessage(error) : null,
   };
 }
 
@@ -87,7 +87,7 @@ function useGatewayConfigForCluster(cluster: string): GatewayConfigHookResult {
   return {
     gatewayConfig: gatewayConfigMap ? parseGatewayConfigMap(gatewayConfigMap.data) : null,
     gatewayConfigLoading,
-    gatewayConfigError: getErrorMessage(error),
+    gatewayConfigError: error ? getErrorMessage(error) : null,
   };
 }
 
@@ -95,10 +95,12 @@ function GatewaySection({
   label,
   result,
   cluster,
+  statusContent,
 }: {
   label: string;
   result: GatewayConfigEntryResult;
   cluster: string;
+  statusContent?: ReactNode;
 }) {
   if (result.state === 'defaulted') {
     return (
@@ -164,6 +166,7 @@ function GatewaySection({
         Supported features:{' '}
         {config.supportedFeatures.length > 0 ? config.supportedFeatures.join(', ') : '-'}
       </Typography>
+      {statusContent}
     </Box>
   );
 }
@@ -187,6 +190,19 @@ function ClusterNetworkingCardContainer({ cluster }: { cluster: string }) {
     );
   }
 
+  const gatewayStatusContent = gatewayConfig
+    ? {
+        external:
+          gatewayConfig.external.state === 'configured' ? (
+            <GatewayReadinessStatus config={gatewayConfig.external.config} cluster={cluster} />
+          ) : undefined,
+        local:
+          gatewayConfig.local.state === 'configured' ? (
+            <GatewayReadinessStatus config={gatewayConfig.local.config} cluster={cluster} />
+          ) : undefined,
+      }
+    : undefined;
+
   return (
     <ClusterNetworkingCard
       cluster={cluster}
@@ -195,6 +211,7 @@ function ClusterNetworkingCardContainer({ cluster }: { cluster: string }) {
       gatewayConfig={gatewayConfig}
       ingressClassError={ingressClassError}
       gatewayConfigError={gatewayConfigError}
+      gatewayStatusContent={gatewayStatusContent}
     />
   );
 }
@@ -206,6 +223,7 @@ export function ClusterNetworkingCard({
   gatewayConfig,
   ingressClassError,
   gatewayConfigError,
+  gatewayStatusContent,
 }: ClusterNetworkingCardProps) {
   const isGatewayApi = ingressClass === INGRESS_CLASS_GATEWAY_API;
 
@@ -251,11 +269,13 @@ export function ClusterNetworkingCard({
                   label="External gateway"
                   result={gatewayConfig.external}
                   cluster={cluster}
+                  statusContent={gatewayStatusContent?.external}
                 />
                 <GatewaySection
                   label="Local gateway (cluster-local)"
                   result={gatewayConfig.local}
                   cluster={cluster}
+                  statusContent={gatewayStatusContent?.local}
                 />
               </>
             ) : (

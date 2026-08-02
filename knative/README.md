@@ -53,7 +53,14 @@ internal resources, including the read-only resources Serving derives and manage
 The Networking view parses Knative's YAML-list values in `external-gateways` and
 `local-gateways`. It distinguishes controller defaults from malformed configuration and API
 access errors, and links configured Gateway and Kubernetes Service references to their Headlamp
-detail views.
+detail views. With Gateway API ingress, the view requires the Gateway's `Accepted` and `Programmed`
+conditions to be true and checks the address or port allocation promised by the referenced Service.
+
+| Referenced Service type | What the Networking view checks | Representative result |
+|---|---|---|
+| `LoadBalancer` | An address in `status.loadBalancer.ingress` or `spec.externalIPs` | An empty `status.loadBalancer` is **Not Ready** until an external address is assigned. |
+| `NodePort` | Every Service port has an assigned `nodePort` | `80:30080/TCP` is **Ready** without requiring a LoadBalancer address. |
+| `ClusterIP` | A non-headless `clusterIP` has been assigned | `clusterIP: 10.96.0.10` is **Ready** for cluster-local traffic. |
 
 The generated Serving resources marked **View only** do not show create controls or row actions.
 Selecting their name opens Headlamp's standard Custom Resource detail view, where the default

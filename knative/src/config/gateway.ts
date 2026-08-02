@@ -15,6 +15,7 @@
  */
 
 import { parse } from 'yaml';
+import { isNullable } from '../utils/nullable';
 
 export interface NamespacedName {
   namespace: string;
@@ -94,9 +95,7 @@ function parseEntry(entry: unknown): GatewayConfig {
     class: entry.class.trim(),
     gateway: parseNamespacedName(entry.gateway, 'gateway'),
     service:
-      typeof serviceValue === 'string' && !serviceValue.trim()
-        ? undefined
-        : serviceValue === undefined
+      isNullable(serviceValue) || (typeof serviceValue === 'string' && !serviceValue.trim())
         ? undefined
         : parseNamespacedName(serviceValue, 'service'),
     supportedFeatures:
