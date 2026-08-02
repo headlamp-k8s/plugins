@@ -33,6 +33,7 @@ import { KnativeDomainMapping, KService } from '../../resources/knative';
 import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
+import { ExternalUrl } from '../common/ResourceListCells';
 import { useKServiceActions } from './detail/hooks/useKServiceActions';
 
 type IngressClassWithCluster = {
@@ -347,10 +348,8 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
           if (urls.length > 0) {
             return (
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                {urls.map(u => (
-                  <a key={u} href={u} target="_blank" rel="noreferrer">
-                    {u}
-                  </a>
+                {urls.map(url => (
+                  <ExternalUrl key={url} url={url} />
                 ))}
               </Stack>
             );
@@ -375,7 +374,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'latestCreated',
-        label: 'LatestCreated',
+        label: 'Latest Created',
         gridTemplate: 'min-content',
         getValue: svc => {
           const revisionName = svc.status?.latestCreatedRevisionName;
@@ -393,15 +392,23 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
           const shortName = getRevisionShort(svc, revisionName);
           return (
-            <Typography variant="body2" title={revisionName}>
+            <Link
+              routeName="revisionDetails"
+              params={{
+                namespace: svc.metadata.namespace || 'default',
+                name: revisionName,
+              }}
+              activeCluster={svc.cluster}
+              title={revisionName}
+            >
               {shortName}
-            </Typography>
+            </Link>
           );
         },
       },
       {
         id: 'latestReady',
-        label: 'LatestReady',
+        label: 'Latest Ready',
         gridTemplate: 'min-content',
         getValue: svc => {
           const revisionName = svc.status?.latestReadyRevisionName;
@@ -419,9 +426,17 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
           const shortName = getRevisionShort(svc, revisionName);
           return (
-            <Typography variant="body2" title={revisionName}>
+            <Link
+              routeName="revisionDetails"
+              params={{
+                namespace: svc.metadata.namespace || 'default',
+                name: revisionName,
+              }}
+              activeCluster={svc.cluster}
+              title={revisionName}
+            >
               {shortName}
-            </Typography>
+            </Link>
           );
         },
       },
@@ -600,7 +615,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
   return (
     <ResourceListView
-      title="KServices"
+      title="Services"
       headerProps={headerProps}
       resourceClass={KService}
       columns={columns}
