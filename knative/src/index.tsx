@@ -44,7 +44,7 @@ import { RoutesList } from './components/routes/List';
 import { ServerlessServicesList } from './components/serverlessservices/List';
 import { isKnativeInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
-import { knativePluginSource } from './mapView';
+import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
 import type { KnativeListRouteName } from './navigation';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
@@ -215,4 +215,8 @@ registerKubeObjectGlance({ id: 'knative-domain-mapping-glance', component: Domai
 registerKubeObjectGlance({
   id: 'knative-cluster-domain-claim-glance',
   component: ClusterDomainClaimGlance,
+});
+registerKubeObjectGlance({
+  id: 'knative-serving-internal-resource-glance',
+  component: KnativeInternalResourceGlance,
 });

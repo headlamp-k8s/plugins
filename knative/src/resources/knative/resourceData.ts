@@ -44,7 +44,9 @@ export function collectIngressHosts(rules?: Array<{ hosts?: string[] }>): string
   return Array.from(new Set(rules?.flatMap(rule => rule.hosts || []) || []));
 }
 
-export function getFirstOwner(metadata: ResourceMetadata) {
+export function getFirstOwner<T extends Partial<KubeOwnerReference>>(metadata: {
+  ownerReferences?: T[];
+}): T | undefined {
   return (
     metadata.ownerReferences?.find(ownerReference => ownerReference.controller) ??
     metadata.ownerReferences?.[0]

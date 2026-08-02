@@ -50,6 +50,35 @@ internal resources, including the read-only resources Serving derives and manage
 |---|---|---|---|---|
 | Network operator | Networking | `/knative/networking` | Which ingress class and gateways are configured in `knative-serving/config-network` and `config-gateway`? | View only |
 
+## Resource Map
+
+Application owners and Serving troubleshooters use Headlamp's Map to see how a Service expands
+into routing, revision, autoscaling, and Kubernetes resources. Select a cluster and choose **Map**
+in the main Headlamp sidebar; for a cluster named `development`, the URL is
+`/c/development/map`.
+
+The Map source selector at the top of the page contains a **Knative** group with two sections:
+
+| Source section | Shown when Map opens | Resources | Example question it answers |
+|---|---|---|---|
+| Serving API | Yes | Services, Configurations, Revisions, Routes, Domain Mappings, Cluster Domain Claims | Which Configuration created `checkout-00004`, and which Route sends traffic to it? |
+| Serving Internals | No | Images, Pod Autoscalers, Metrics, KIngresses, Serverless Services, Certificates | Which autoscaler, scrape target, and networking resources back `checkout-00004`? |
+
+To investigate controller-generated resources, open the source selector, expand **Knative**, and
+enable **Serving Internals** or an individual resource type. Route-to-Revision edges show the
+resolved traffic percentage and tag, for example `100%` or `0% (candidate)`. Selecting a node
+opens its Ready condition and the same identifying fields used in the corresponding list view.
+
+Knative nodes also connect to Headlamp's standard Kubernetes Map sources when those sources are
+enabled:
+
+| Headlamp source | Knative relationship shown |
+|---|---|
+| Workloads | Revision and Pod Autoscaler to Deployment; Serverless Service to Deployment |
+| Network | Route-owned Services; KIngress backends; Metric scrape targets; Serverless Service public and private Services |
+| Security | Image to its Service Account, using `default` when the Image does not specify one |
+| Configuration | KIngress and Certificate to referenced Secrets |
+
 The Networking view parses Knative's YAML-list values in `external-gateways` and
 `local-gateways`. It distinguishes controller defaults from malformed configuration and API
 access errors, and links configured Gateway and Kubernetes Service references to their Headlamp
