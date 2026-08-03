@@ -243,6 +243,7 @@ export function VolcanoChart(props: VolcanoChartProps) {
                   {refresh ? t('Pause') : t('Resume')}
                 </Button>
                 <Select
+                  inputProps={{ 'aria-label': t('Timespan') }}
                   variant="outlined"
                   size="small"
                   name="Time"
@@ -265,6 +266,7 @@ export function VolcanoChart(props: VolcanoChartProps) {
                   <MenuItem value={'14d'}>{t('14 days')}</MenuItem>
                 </Select>
                 <Select
+                  inputProps={{ 'aria-label': t('Resolution') }}
                   variant="outlined"
                   size="small"
                   name="Resolution"

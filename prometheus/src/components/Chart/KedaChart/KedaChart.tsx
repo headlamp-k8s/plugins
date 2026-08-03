@@ -179,6 +179,7 @@ export function KedaChart(props: KedaChartProps) {
             </Button>
             <Box>
               <Select
+                inputProps={{ 'aria-label': t('Timespan') }}
                 variant="outlined"
                 size="small"
                 name="Time"
@@ -203,6 +204,7 @@ export function KedaChart(props: KedaChartProps) {
             </Box>
             <Box>
               <Select
+                inputProps={{ 'aria-label': t('Resolution') }}
                 variant="outlined"
                 size="small"
                 name="Time"

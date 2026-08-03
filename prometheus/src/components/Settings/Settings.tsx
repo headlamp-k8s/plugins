@@ -136,6 +136,7 @@ export function Settings(props: SettingsProps) {
       name: t('Enable Metrics'),
       value: (
         <Switch
+          inputProps={{ 'aria-label': t('Enable Metrics') }}
           checked={isMetricsEnabled}
           onChange={e => {
             const newMetricsEnabled = e.target.checked;
@@ -155,6 +156,7 @@ export function Settings(props: SettingsProps) {
       name: t('Auto detect'),
       value: (
         <Switch
+          inputProps={{ 'aria-label': t('Auto detect') }}
           disabled={!isMetricsEnabled}
           checked={isAutoDetectEnabled}
           onChange={e =>
@@ -175,6 +177,7 @@ export function Settings(props: SettingsProps) {
         <Box display="flex" flexDirection="column" width="100%">
           <Box display="flex" gap={2} alignItems="flex-start">
             <TextField
+              inputProps={{ 'aria-label': t('Prometheus Service Address') }}
               disabled={!isAddressFieldEnabled}
               helperText={
                 addressError
@@ -226,6 +229,7 @@ export function Settings(props: SettingsProps) {
       name: t('Prometheus Service Subpath'),
       value: (
         <TextField
+          inputProps={{ 'aria-label': t('Prometheus Service Subpath') }}
           value={selectedClusterData.subPath || ''}
           disabled={!isAddressFieldEnabled}
           helperText={t(
@@ -245,6 +249,7 @@ export function Settings(props: SettingsProps) {
       name: t('Default Timespan'),
       value: (
         <Select
+          inputProps={{ 'aria-label': t('Default Timespan') }}
           disabled={!isMetricsEnabled}
           value={data?.[selectedCluster]?.defaultTimespan || '24h'}
           onChange={e =>
@@ -278,6 +283,7 @@ export function Settings(props: SettingsProps) {
       name: t('Default Resolution'),
       value: (
         <Select
+          inputProps={{ 'aria-label': t('Default Resolution') }}
           disabled={!isMetricsEnabled}
           value={data?.[selectedCluster]?.defaultResolution || 'medium'}
           onChange={e =>
@@ -311,7 +317,11 @@ export function Settings(props: SettingsProps) {
     <Box width={'80%'}>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
         <Typography variant="h6">{t('Select Cluster')}</Typography>
-        <Select value={selectedCluster} onChange={e => setSelectedCluster(e.target.value)}>
+        <Select
+          inputProps={{ 'aria-label': t('Select Cluster') }}
+          value={selectedCluster}
+          onChange={e => setSelectedCluster(e.target.value)}
+        >
           {Object.keys(clusters).map(clusterName => (
             <MenuItem key={clusterName} value={clusterName}>
               {clusterName}
