@@ -51,7 +51,7 @@ export interface CheckFluxInstalledHandle {
   reset(): void;
 }
 
-const FLUX_CRD_NAME_PREFIX = 'fluxcd.';
+const FLUX_CRD_NAME_MARKER = 'fluxcd.';
 const CHECK_TTL_MS = 30 * 1000;
 
 /**
@@ -59,7 +59,7 @@ const CHECK_TTL_MS = 30 * 1000;
  * Defensive against missing fields — matches the previous check.
  */
 function hasFluxCrd(crds: ReadonlyArray<{ jsonData?: { metadata?: { name?: string } } }>): boolean {
-  return crds.some(crd => crd.jsonData?.metadata?.name?.includes(FLUX_CRD_NAME_PREFIX));
+  return crds.some(crd => crd.jsonData?.metadata?.name?.includes(FLUX_CRD_NAME_MARKER));
 }
 
 interface InternalState {
