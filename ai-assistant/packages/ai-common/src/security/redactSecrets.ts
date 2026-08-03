@@ -142,8 +142,10 @@ export function redactSecrets(input: string): string {
  * @returns The input with Secret data values replaced by `[REDACTED]`.
  */
 function redactKubernetesSecretValues(input: string): string {
-  // Cheap early-out: only act when the text mentions a Secret kind.
-  if (!/\bkind\b["\s]*:\s*["']?Secret\b/i.test(input)) {
+  // Cheap early-out: only act when the text mentions a Secret kind. Matches
+  // both the singular `Secret` kind and the apiserver's list kind
+  // `SecretList` (returned by e.g. `GET /api/v1/namespaces/{ns}/secrets`).
+  if (!/\bkind\b["\s]*:\s*["']?Secret(List)?\b/i.test(input)) {
     return input;
   }
 
@@ -196,13 +198,16 @@ function redactSecretsInParsedJson(value: unknown): boolean {
     const obj = value as Record<string, unknown>;
 
     if (obj.kind === 'Secret') {
-      for (const field of ['data', 'stringData'] as const) {
-        const bag = obj[field];
-        if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
-          for (const key of Object.keys(bag as Record<string, unknown>)) {
-            (bag as Record<string, unknown>)[key] = '[REDACTED]';
-            changed = true;
-          }
+      changed = redactSecretDataFields(obj) || changed;
+    }
+
+    // The apiserver's `SecretList` (e.g. `GET /api/v1/namespaces/{ns}/secrets`)
+    // nests bare Secret objects under `items` that omit their own `kind`,
+    // unlike `kubectl -o json`'s generic `List` wrapper used in tests below.
+    if (obj.kind === 'SecretList' && Array.isArray(obj.items)) {
+      for (const item of obj.items as unknown[]) {
+        if (item && typeof item === 'object') {
+          changed = redactSecretDataFields(item as Record<string, unknown>) || changed;
         }
       }
     }
@@ -212,6 +217,27 @@ function redactSecretsInParsedJson(value: unknown): boolean {
     }
   }
 
+  return changed;
+}
+
+/**
+ * Redacts the `data` / `stringData` fields of a single Secret-shaped object.
+ *
+ * @param obj - A parsed Secret object (or a `SecretList` item, which has the
+ *   same shape but omits its own `kind`).
+ * @returns Whether any redaction was applied.
+ */
+function redactSecretDataFields(obj: Record<string, unknown>): boolean {
+  let changed = false;
+  for (const field of ['data', 'stringData'] as const) {
+    const bag = obj[field];
+    if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
+      for (const key of Object.keys(bag as Record<string, unknown>)) {
+        (bag as Record<string, unknown>)[key] = '[REDACTED]';
+        changed = true;
+      }
+    }
+  }
   return changed;
 }
 
@@ -297,14 +323,34 @@ export function redactSecretsInValue(value: unknown): unknown {
     copy[key] = redactSecretsInValue(item);
   }
   if (copy.kind === 'Secret') {
-    for (const field of ['data', 'stringData'] as const) {
-      const bag = copy[field];
-      if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
-        copy[field] = Object.fromEntries(
-          Object.keys(bag as Record<string, unknown>).map(key => [key, '[REDACTED]'])
-        );
+    redactSecretDataFieldsInPlace(copy);
+  }
+  // The apiserver's `SecretList` nests bare Secret objects under `items` that
+  // omit their own `kind`, so they are not caught by the check above.
+  if (copy.kind === 'SecretList' && Array.isArray(copy.items)) {
+    for (const item of copy.items as unknown[]) {
+      if (item && typeof item === 'object') {
+        redactSecretDataFieldsInPlace(item as Record<string, unknown>);
       }
     }
   }
   return copy;
+}
+
+/**
+ * Replaces the `data` / `stringData` fields of a Secret-shaped object with
+ * `[REDACTED]` values, in place.
+ *
+ * @param obj - A Secret object (or a `SecretList` item, which has the same
+ *   shape but omits its own `kind`).
+ */
+function redactSecretDataFieldsInPlace(obj: Record<string, unknown>): void {
+  for (const field of ['data', 'stringData'] as const) {
+    const bag = obj[field];
+    if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
+      obj[field] = Object.fromEntries(
+        Object.keys(bag as Record<string, unknown>).map(key => [key, '[REDACTED]'])
+      );
+    }
+  }
 }

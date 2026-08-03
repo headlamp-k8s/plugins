@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { redactSecrets } from './redactSecrets';
+import { redactSecrets, redactSecretsInValue } from './redactSecrets';
 
 describe('redactSecrets', () => {
   it('returns the input unchanged when there are no secrets', () => {
@@ -274,6 +274,31 @@ namespace: default`;
     expect(redactSecrets(list)).not.toContain('YWJj');
   });
 
+  it('redacts a real apiserver SecretList response (items omit their own kind)', () => {
+    // This is the shape returned by `GET /api/v1/namespaces/{ns}/secrets`,
+    // as opposed to `kubectl -o json`'s generic `kind: List` wrapper above.
+    const secretList = JSON.stringify({
+      kind: 'SecretList',
+      apiVersion: 'v1',
+      metadata: { resourceVersion: '12345' },
+      items: [
+        {
+          metadata: { name: 'db-credentials', namespace: 'default' },
+          data: {
+            DATABASE_PASSWORD: 'aHVudGVyMg==',
+            session: 'czNjcjN0LXNlc3Npb24ta2V5',
+          },
+          type: 'Opaque',
+        },
+      ],
+    });
+    const out = redactSecrets(secretList);
+    expect(out).not.toContain('aHVudGVyMg==');
+    expect(out).not.toContain('czNjcjN0LXNlc3Npb24ta2V5');
+    expect(out).toContain('[REDACTED]');
+    expect(out).toContain('"name": "db-credentials"');
+  });
+
   it('does not over-redact ConfigMap data', () => {
     const cm = ['kind: ConfigMap', 'data:', '  app.conf: hello-world'].join('\n');
     expect(redactSecrets(cm)).toContain('app.conf: hello-world');
@@ -287,5 +312,34 @@ namespace: default`;
     expect(
       redactSecrets('DefaultEndpointsProtocol=https;AccountKey=abc123DEF456==;Rest=1')
     ).toContain('AccountKey=[REDACTED]');
+  });
+});
+
+describe('redactSecretsInValue', () => {
+  it('redacts data fields of a parsed Secret object', () => {
+    const value = {
+      kind: 'Secret',
+      metadata: { name: 'db-credentials' },
+      data: { DATABASE_PASSWORD: 'aHVudGVyMg==' },
+    };
+    const out = redactSecretsInValue(value) as any;
+    expect(out.data.DATABASE_PASSWORD).toBe('[REDACTED]');
+    expect(out.metadata.name).toBe('db-credentials');
+  });
+
+  it('redacts data fields of items in a parsed SecretList object', () => {
+    const value = {
+      kind: 'SecretList',
+      items: [
+        {
+          metadata: { name: 'db-credentials', namespace: 'default' },
+          data: { DATABASE_PASSWORD: 'aHVudGVyMg==', session: 'czNjcjN0LXNlc3Npb24ta2V5' },
+        },
+      ],
+    };
+    const out = redactSecretsInValue(value) as any;
+    expect(out.items[0].data.DATABASE_PASSWORD).toBe('[REDACTED]');
+    expect(out.items[0].data.session).toBe('[REDACTED]');
+    expect(out.items[0].metadata.name).toBe('db-credentials');
   });
 });
