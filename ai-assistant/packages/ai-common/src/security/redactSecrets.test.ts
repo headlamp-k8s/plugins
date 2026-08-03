@@ -299,6 +299,32 @@ namespace: default`;
     expect(out).toContain('"name": "db-credentials"');
   });
 
+  it('redacts a real apiserver SecretList response in YAML (`-o yaml` shape)', () => {
+    // Same SecretList shape as above but as the YAML `kubectl get secrets -o
+    // yaml` would render it: a single document, top-level `kind: SecretList`,
+    // with secrets nested under `items` (no `---` document separators).
+    const secretList = [
+      'apiVersion: v1',
+      'kind: SecretList',
+      'metadata:',
+      '  resourceVersion: "12345"',
+      'items:',
+      '- metadata:',
+      '    name: db-credentials',
+      '    namespace: default',
+      '  data:',
+      '    DATABASE_PASSWORD: aHVudGVyMg==',
+      '    session: czNjcjN0LXNlc3Npb24ta2V5',
+      '  type: Opaque',
+    ].join('\n');
+    const out = redactSecrets(secretList);
+    expect(out).not.toContain('aHVudGVyMg==');
+    expect(out).not.toContain('czNjcjN0LXNlc3Npb24ta2V5');
+    expect(out).toContain('DATABASE_PASSWORD: [REDACTED]');
+    expect(out).toContain('session: [REDACTED]');
+    expect(out).toContain('name: db-credentials');
+  });
+
   it('does not over-redact ConfigMap data', () => {
     const cm = ['kind: ConfigMap', 'data:', '  app.conf: hello-world'].join('\n');
     expect(redactSecrets(cm)).toContain('app.conf: hello-world');

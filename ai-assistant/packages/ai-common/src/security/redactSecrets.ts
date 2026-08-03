@@ -255,7 +255,13 @@ function redactKubernetesSecretValuesYaml(input: string): string {
     .map(document => {
       if (
         /^\s*---\s*$/.test(document) ||
-        !/^\s*(?:-\s*)?kind:\s*["']?Secret["']?\s*$/m.test(document)
+        // Matches both a single Secret document and a SecretList document
+        // (the `-o yaml` shape for `GET /api/.../secrets`, a single document
+        // with a top-level `kind: SecretList` and secrets nested under
+        // `items`). The line scanner below redacts `data`/`stringData`
+        // blocks wherever they appear, so no further List-specific handling
+        // is needed once the document passes this gate.
+        !/^\s*(?:-\s*)?kind:\s*["']?Secret(List)?["']?\s*$/m.test(document)
       ) {
         return document;
       }
