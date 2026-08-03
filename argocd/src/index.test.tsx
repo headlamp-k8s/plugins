@@ -16,16 +16,25 @@
 
 import type * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import ArgoNamespaceInsights from './components/namespaces/ArgoNamespaceInsights';
 
-const { mockRegisterRoute, mockRegisterSidebarEntry, mockRegisterSidebarEntryFilter } = vi.hoisted(
-  () => ({
-    mockRegisterRoute: vi.fn(),
-    mockRegisterSidebarEntry: vi.fn(),
-    mockRegisterSidebarEntryFilter: vi.fn(),
-  })
-);
+const {
+  mockRegisterDetailsViewSectionsProcessor,
+  mockRegisterRoute,
+  mockRegisterSidebarEntry,
+  mockRegisterSidebarEntryFilter,
+} = vi.hoisted(() => ({
+  mockRegisterDetailsViewSectionsProcessor: vi.fn(),
+  mockRegisterRoute: vi.fn(),
+  mockRegisterSidebarEntry: vi.fn(),
+  mockRegisterSidebarEntryFilter: vi.fn(),
+}));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
+  DefaultDetailsViewSection: {
+    METADATA: 'METADATA',
+  },
+  registerDetailsViewSectionsProcessor: mockRegisterDetailsViewSectionsProcessor,
   registerRoute: mockRegisterRoute,
   registerSidebarEntry: mockRegisterSidebarEntry,
   registerSidebarEntryFilter: mockRegisterSidebarEntryFilter,
@@ -54,6 +63,7 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
   ActionButton: () => null,
   AuthVisible: ({ children }: { children: React.ReactNode }) => children,
   DetailsGrid: () => null,
+  Link: ({ children }: { children: React.ReactNode }) => children,
   NameValueTable: () => null,
   ResourceListView: () => null,
   SectionBox: () => null,
@@ -67,6 +77,7 @@ vi.mock('@kinvolk/headlamp-plugin/lib/components/common', () => ({
 
 vi.mock('@iconify/react', () => ({
   addIcon: vi.fn(),
+  Icon: () => null,
 }));
 
 vi.mock('notistack', () => ({
@@ -154,5 +165,30 @@ describe('argocd plugin', () => {
 
   it('should register the CRD sidebar entry filter', () => {
     expect(mockRegisterSidebarEntryFilter).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('should register the namespace Argo CD insights details section', () => {
+    expect(mockRegisterDetailsViewSectionsProcessor).toHaveBeenCalledWith(expect.any(Function));
+
+    const processor = mockRegisterDetailsViewSectionsProcessor.mock.calls[0][0];
+    const namespace = { kind: 'Namespace', metadata: { name: 'argocd' } };
+    const processedSections = processor(namespace, [
+      { id: 'MAIN_HEADER', section: null },
+      { id: 'METADATA', section: null },
+      { id: 'headlamp.namespace-owned-resourcequotas', section: null },
+    ]);
+
+    expect(processedSections.map((section: { id: string }) => section.id)).toEqual([
+      'MAIN_HEADER',
+      'METADATA',
+      'argocd.namespace-gitops-insights',
+      'headlamp.namespace-owned-resourcequotas',
+    ]);
+
+    const insightsSection = processedSections[2];
+    expect(insightsSection.section).toMatchObject({
+      type: ArgoNamespaceInsights,
+      props: { resource: namespace },
+    });
   });
 });
