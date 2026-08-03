@@ -62,8 +62,10 @@ export interface ArgoApplicationSpec {
   /** Sync policy controlling automated sync, pruning, self-heal, and retries. */
   syncPolicy?: {
     automated?: {
+      enabled?: boolean | null;
       prune?: boolean;
       selfHeal?: boolean;
+      allowEmpty?: boolean;
     };
     retry?: {
       limit?: number;
@@ -86,6 +88,21 @@ export interface ManagedResource {
   name: string;
   status?: string;
   health?: { status: string; message?: string };
+}
+
+/** A previous Argo CD sync operation recorded on an Application. */
+export interface RevisionHistory {
+  id?: number;
+  revision?: string;
+  revisions?: string[];
+  deployedAt?: string;
+  deployStartedAt?: string;
+  source?: SourceSpec;
+  sources?: SourceSpec[];
+  initiatedBy?: {
+    username?: string;
+    automated?: boolean;
+  };
 }
 
 /** A condition set by the Argo CD controller on an Application. */
@@ -117,6 +134,8 @@ export interface ArgoApplicationStatus {
   };
   /** Kubernetes resources managed by this Application. */
   resources?: ManagedResource[];
+  /** Previous sync operations recorded by Argo CD. */
+  history?: RevisionHistory[];
   /** Warning and error conditions set by the controller. */
   conditions?: ArgoCondition[];
 }
@@ -225,6 +244,11 @@ export class ArgoApplication extends KubeObject<KubeArgoApplication> {
   /** Returns the list of managed Kubernetes resources. */
   get managedResources(): ManagedResource[] {
     return this.status?.resources ?? [];
+  }
+
+  /** Returns the sync history entries recorded by Argo CD. */
+  get syncHistory(): RevisionHistory[] {
+    return this.status?.history ?? [];
   }
 
   /** Returns the list of conditions set by the controller. */
