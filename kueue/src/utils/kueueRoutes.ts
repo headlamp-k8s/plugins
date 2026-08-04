@@ -1,4 +1,6 @@
 export const kueueRouteNames = {
+  cohortsList: 'kueue-cohorts-list',
+  cohortDetail: 'kueue-cohort-detail',
   clusterQueuesList: 'kueue-clusterqueues-list',
   clusterQueueDetail: 'kueue-clusterqueue-detail',
   localQueuesList: 'kueue-localqueues-list',
@@ -10,6 +12,8 @@ export const kueueRouteNames = {
 } as const;
 
 export const kueueRoutePaths = {
+  cohortsList: '/kueue/cohorts',
+  cohortDetail: '/kueue/cohorts/:name',
   clusterQueuesList: '/kueue/clusterqueues',
   clusterQueueDetail: '/kueue/clusterqueues/:name',
   localQueuesList: '/kueue/localqueues',
