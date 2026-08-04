@@ -29,6 +29,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [prometheus](./prometheus) | Provides a Prometheus-powered chart in the details views of workloads. | Needs Prometheus installed in the cluster for the chart to be shown. Shipped with Headlamp desktop and CI builds by default. | [@yolossn](https://github.com/yolossn) |
 | [radius](./radius) | Visualize and manage Radius applications. |  | [@filipevrevez](https://github.com/filipevrevez) |
 | [strimzi](./strimzi) | The Strimzi plugin for Headlamp, based on the [original](https://github.com/cesaroangelo/strimzi-headlamp) strimzi-headlamp project. | [Demo](https://www.youtube.com/watch?v=MNt28s6b5d8) | [@cesaroangelo](https://github.com/cesaroangelo), [@krrish-sehgal](https://github.com/krrish-sehgal) |
+| [velero](./velero) | A UI for viewing Velero backups, restores and schedules. | Initial skeleton. | |
 | [volcano](./volcano) | Visualize and manage Volcano jobs. |  | [@mahmoudmagdy1-1](https://github.com/mahmoudmagdy1-1) |
 
 ## External plugins
