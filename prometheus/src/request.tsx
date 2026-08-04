@@ -93,49 +93,111 @@ function createPrometheusEndpoint(
   };
 }
 
+export interface SearchStrategyStepResult {
+  sequence: number;
+  strategyName: string;
+  description: string;
+  resourceType: KubernetesType;
+  labelSelector: string;
+  matched: boolean;
+  matchedResource?: {
+    name: string;
+    namespace: string;
+    port: string;
+    endpointUrl: string;
+    reachable: boolean;
+  };
+  error?: string;
+}
+
+export interface DiscoveryIntrospectionResult {
+  steps: SearchStrategyStepResult[];
+  finalEndpoint?: PrometheusEndpoint;
+  error?: string;
+}
+
+export const PROMETHEUS_SEARCH_STRATEGIES = [
+  {
+    strategyName: 'Custom Pod Label Search',
+    description: 'Searches for Pods matching headlamp-prometheus=true label',
+    resourceType: KubernetesType.pods,
+    labelSelector: CUSTOM_HEADLAMP_LABEL,
+  },
+  {
+    strategyName: 'Custom Service Label Search',
+    description: 'Searches for Services matching headlamp-prometheus=true label',
+    resourceType: KubernetesType.services,
+    labelSelector: CUSTOM_HEADLAMP_LABEL,
+  },
+  {
+    strategyName: 'Standard Pod Label Search',
+    description: 'Searches for Pods matching app.kubernetes.io/name=prometheus label',
+    resourceType: KubernetesType.pods,
+    labelSelector: COMMON_PROMETHEUS_POD_LABEL,
+  },
+  {
+    strategyName: 'Standard Service Label Search',
+    description: 'Searches for Services matching app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server label',
+    resourceType: KubernetesType.services,
+    labelSelector: COMMON_PROMETHEUS_SERVICE_LABEL,
+  },
+];
+
 /**
  * Returns the first Prometheus pod or service that fits our search and is reachable.
  * @returns {Promise<PrometheusEndpoint>} - A promise that resolves to the first reachable Prometheus pod/service or none if none are reachable.
  */
 export async function isPrometheusInstalled(): Promise<PrometheusEndpoint> {
-  // Search by a custom label for a pod
-  const podSearchSpecificResponse = await searchKubernetesByLabel(
-    KubernetesType.pods,
-    CUSTOM_HEADLAMP_LABEL
-  );
-  if (podSearchSpecificResponse.type !== KubernetesType.none) {
-    return podSearchSpecificResponse;
+  const introspection = await inspectPrometheusDiscovery();
+  return introspection.finalEndpoint || createPrometheusEndpoint();
+}
+
+/**
+ * Runs all autodetection search strategies sequentially and returns the complete introspection log.
+ */
+export async function inspectPrometheusDiscovery(): Promise<DiscoveryIntrospectionResult> {
+  const steps: SearchStrategyStepResult[] = [];
+  let finalEndpoint: PrometheusEndpoint = createPrometheusEndpoint();
+
+  for (let i = 0; i < PROMETHEUS_SEARCH_STRATEGIES.length; i++) {
+    const strat = PROMETHEUS_SEARCH_STRATEGIES[i];
+    const stepResult: SearchStrategyStepResult = {
+      sequence: i + 1,
+      strategyName: strat.strategyName,
+      description: strat.description,
+      resourceType: strat.resourceType,
+      labelSelector: strat.labelSelector,
+      matched: false,
+    };
+
+    try {
+      const endpoint = await searchKubernetesByLabel(strat.resourceType, strat.labelSelector);
+      if (endpoint.type !== KubernetesType.none) {
+        stepResult.matched = true;
+        const endpointUrl = `${endpoint.namespace}/${endpoint.type}/${endpoint.name}:${endpoint.port}`;
+        stepResult.matchedResource = {
+          name: endpoint.name || '',
+          namespace: endpoint.namespace || '',
+          port: endpoint.port || '',
+          endpointUrl,
+          reachable: true,
+        };
+        steps.push(stepResult);
+        if (finalEndpoint.type === KubernetesType.none) {
+          finalEndpoint = endpoint;
+        }
+        break;
+      }
+    } catch (err: any) {
+      stepResult.error = err?.message || String(err);
+    }
+    steps.push(stepResult);
   }
 
-  // Search by a custom label for a service
-  const serviceSearchSpecificResponse = await searchKubernetesByLabel(
-    KubernetesType.services,
-    CUSTOM_HEADLAMP_LABEL
-  );
-  if (serviceSearchSpecificResponse.type !== KubernetesType.none) {
-    return serviceSearchSpecificResponse;
-  }
-
-  // Search by common label for a pod
-  const podSearchResponse = await searchKubernetesByLabel(
-    KubernetesType.pods,
-    COMMON_PROMETHEUS_POD_LABEL
-  );
-  if (podSearchResponse.type !== KubernetesType.none) {
-    return podSearchResponse;
-  }
-
-  // Search by common label for a service
-  const serviceSearchResponse = await searchKubernetesByLabel(
-    KubernetesType.services,
-    COMMON_PROMETHEUS_SERVICE_LABEL
-  );
-  if (serviceSearchResponse.type !== KubernetesType.none) {
-    return serviceSearchResponse;
-  }
-
-  // No Prometheus pod or service found
-  return createPrometheusEndpoint();
+  return {
+    steps,
+    finalEndpoint,
+  };
 }
 
 /**
