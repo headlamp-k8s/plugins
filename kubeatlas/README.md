@@ -38,6 +38,13 @@ KubeAtlas web UI, embedded in the cluster console you already use.
   pages, a "KubeAtlas Dependencies" section renders the one-hop
   neighbourhood graph for the resource you're looking at.
 
+- **OTel runtime overlay** — with a KubeAtlas server >= 1.5 running
+  Tier 2 with `otel.enabled`, overlay the observed runtime call graph
+  (`CALLS_AT_RUNTIME`) on the declared dependency graph, toggle
+  declared-vs-observed, and open a **TraceTimeline** that deep-links
+  spans out to your Jaeger or Tempo UI. When the server has no OTel
+  data the view shows a clear message instead of failing.
+
 - **Theme-aware** — palette follows Headlamp's light/dark mode
   (Parchment for light, Slate for dark) with WCAG AA contrast on
   every text surface.
@@ -72,9 +79,15 @@ stylesheet is a code-level port of the main repo's
 
 ## Compatibility matrix
 
-| Plugin | KubeAtlas server | Headlamp |
-|--------|------------------|----------|
-| 1.0.x  | >= 1.3           | >= 0.30  |
+| Plugin | KubeAtlas server | Headlamp | Notes |
+|--------|------------------|----------|-------|
+| 1.2.x  | >= 1.3           | >= 0.30  | Adds the **OTel Overlay** view (F-204), which requires KubeAtlas **>= 1.5** with `otel.enabled`; the **Policies** view requires **>= 1.4**. Core graph works from >= 1.3. |
+| 1.0.x  | >= 1.3           | >= 0.30  | Dependency graph + per-resource neighbourhood. |
+
+Feature availability is graceful: on an older or otherwise-configured
+server a view that needs a newer endpoint shows a clear message (e.g.
+"the overlay needs a Tier 2 KubeAtlas with otel.enabled") rather than a
+generic error.
 
 ## Install
 

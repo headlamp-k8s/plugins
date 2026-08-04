@@ -1,6 +1,6 @@
 {
   "name": "@lithastra/kubeatlas-headlamp-plugin",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Dependency graph plugin for Headlamp powered by KubeAtlas",
   "license": "Apache-2.0",
   "homepage": "https://github.com/lithastra/kubeatlas-headlamp-plugin",

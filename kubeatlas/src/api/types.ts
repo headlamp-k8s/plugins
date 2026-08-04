@@ -78,3 +78,78 @@ export interface ResourceNeighbors {
   incoming: Edge[];
   outgoing: Edge[];
 }
+
+// KubeAtlasResource is the subset of a graph resource the policy view
+// renders (the /affected endpoint embeds full resource objects).
+export interface KubeAtlasResource {
+  kind: string;
+  name: string;
+  namespace: string;
+}
+
+// PolicyConstraint summarises one admission-policy constraint. The body
+// of GET /api/v1/policy/constraints is a bare array of these.
+export interface PolicyConstraint {
+  name: string;
+  kind: string;
+  engine: string;
+  violations: number;
+}
+
+// AffectedResource is one resource a constraint enforces, with its
+// current violation status.
+export interface AffectedResource {
+  resource: KubeAtlasResource;
+  violated: boolean;
+  message?: string;
+}
+
+// ConstraintAffectedResponse is the body of
+// GET /api/v1/policy/constraints/{name}/affected.
+export interface ConstraintAffectedResponse {
+  constraint: string;
+  resources: AffectedResource[];
+  count: number;
+}
+
+// --- OTel runtime overlay (F-204, KubeAtlas v1.5) -------------------
+
+// OtelOverlayEdge is one observed runtime call. It is a graph.Edge with
+// type "CALLS_AT_RUNTIME"; the observed service names and call count
+// ride on its attributes (string-valued, as the server emits them).
+export interface OtelOverlayEdge {
+  from: string;
+  to: string;
+  type: string;
+  attributes?: {
+    from_service?: string;
+    to_service?: string;
+    call_count?: string;
+  };
+}
+
+// OtelOverlayResponse is the body of GET /api/v1/otel/overlay — the
+// observed runtime call edges for a namespace, layered over (never
+// merged into) the declarative graph.
+export interface OtelOverlayResponse {
+  namespace: string;
+  edges: OtelOverlayEdge[];
+  count: number;
+}
+
+// OtelTraceSummary is one trace condensed to a topology summary
+// (services touched, span count, wall-clock duration). KubeAtlas is not
+// a trace viewer — deep inspection lives in Jaeger/Tempo.
+export interface OtelTraceSummary {
+  traceId: string;
+  services: string[];
+  spanCount: number;
+  start: string;
+  durationNs: number;
+}
+
+// OtelTracesResponse is the body of GET /api/v1/otel/traces.
+export interface OtelTracesResponse {
+  traces: OtelTraceSummary[];
+  count: number;
+}
