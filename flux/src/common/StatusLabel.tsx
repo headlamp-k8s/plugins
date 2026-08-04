@@ -27,6 +27,13 @@ export default function StatusLabel(props: StatusLabelProps) {
   }
 
   const text = t(getStatusText(item));
+  const messageTooltip = (
+    <Tooltip title={ready.message ?? ''} describeChild>
+      <Typography component="span" tabIndex={ready.message ? 0 : undefined}>
+        {text}
+      </Typography>
+    </Tooltip>
+  );
 
   if (item?.jsonData?.spec?.suspend) {
     return <HLStatusLabel status="warning">{text}</HLStatusLabel>;
@@ -36,21 +43,9 @@ export default function StatusLabel(props: StatusLabelProps) {
   }
 
   if (ready.reason === 'DependencyNotReady') {
-    return (
-      <HLStatusLabel status={'warning'}>
-        <Tooltip title={ready.message}>
-          <Typography component="span">{text}</Typography>
-        </Tooltip>
-      </HLStatusLabel>
-    );
+    return <HLStatusLabel status={'warning'}>{messageTooltip}</HLStatusLabel>;
   }
 
   const isReady = ready.status === 'True';
-  return (
-    <HLStatusLabel status={isReady ? 'success' : 'error'}>
-      <Tooltip title={ready.message}>
-        <Typography component="span">{text}</Typography>
-      </Tooltip>
-    </HLStatusLabel>
-  );
+  return <HLStatusLabel status={isReady ? 'success' : 'error'}>{messageTooltip}</HLStatusLabel>;
 }

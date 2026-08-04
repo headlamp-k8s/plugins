@@ -9,6 +9,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeCRD } from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { Box } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import React from 'react';
 import FlaggerAvailabilityCheck, { useCanary } from './availabilitycheck';
 import { getCanaryResourceClass } from './canaryResourceClass';
@@ -33,6 +34,7 @@ export default function Canaries() {
 
 function CanaryList({ canaryResourceClass }) {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [canaries] = canaryResourceClass.useList();
   const [deployments] = K8s.ResourceClasses.Deployment.useList();
 
@@ -110,7 +112,7 @@ function CanaryList({ canaryResourceClass }) {
                 >
                   <Box alignItems="center" display="flex">
                     <Box mr={0.5}>{item.metadata.name}</Box>
-                    <Icon icon="mdi:bird" color="#fff200" width={'20'} />
+                    <Icon icon="mdi:bird" color="#fff200" width={'20'} aria-hidden="true" />
                   </Box>
                 </Link>
               );
@@ -165,11 +167,23 @@ function CanaryList({ canaryResourceClass }) {
             Cell: ({ row: { original: item } }) =>
               item?.hasAbTesting ? (
                 <Box display="flex" alignItems="center">
-                  <Icon icon="mdi:check" color="#4caf50" width="20" />
+                  <Icon
+                    icon="mdi:check"
+                    color={theme.palette.home.status.success}
+                    width="20"
+                    aria-hidden={false}
+                    aria-label={t('Enabled')}
+                  />
                 </Box>
               ) : (
                 <Box display="flex" alignItems="center">
-                  <Icon icon="mdi:close" color="#f44336" width="20" />
+                  <Icon
+                    icon="mdi:close"
+                    color={theme.palette.home.status.error}
+                    width="20"
+                    aria-hidden={false}
+                    aria-label={t('Disabled')}
+                  />
                 </Box>
               ),
           },

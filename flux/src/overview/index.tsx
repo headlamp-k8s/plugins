@@ -23,7 +23,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import SourceLink from '../common/Link';
+import SourceLink, { ExternalLink, visuallyHidden } from '../common/Link';
 import {
   AlertNotification,
   BucketRepository,
@@ -191,19 +191,29 @@ function FluxHealthBanner({
   }
 
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box sx={{ mb: 2 }} role="status">
       {health.healthy ? (
         <StatusLabel status="success">
           <Box display="flex" alignItems="center" gap={0.5}>
-            <Icon icon="mdi:check-circle" width={18} height={18} />
+            <Icon icon="mdi:check-circle" width={18} height={18} aria-hidden="true" />
             {t('All reconcilers healthy')}
           </Box>
         </StatusLabel>
       ) : (
         <StatusLabel status="error">
           <Box display="flex" alignItems="center" gap={0.5}>
-            <Icon icon="mdi:alert-circle" width={18} height={18} />
-            {health.details.join(' | ')}
+            <Icon icon="mdi:alert-circle" width={18} height={18} aria-hidden="true" />
+            {health.details.map((detail, idx) => (
+              <React.Fragment key={detail}>
+                {idx > 0 && <span aria-hidden="true"> | </span>}
+                <span>{detail}</span>
+                {idx < health.details.length - 1 && (
+                  <Box component="span" sx={visuallyHidden}>
+                    ;
+                  </Box>
+                )}
+              </React.Fragment>
+            ))}
           </Box>
         </StatusLabel>
       )}
@@ -379,17 +389,15 @@ export function FluxOverview() {
     return (
       <SectionBox title={t('Flux Overview')}>
         <Box p={3} display="flex" flexDirection="column" alignItems="center" gap={2}>
-          <Icon icon="simple-icons:flux" width={48} height={48} />
-          <Typography variant="h6">{t('Flux is not installed')}</Typography>
+          <Icon icon="simple-icons:flux" width={48} height={48} aria-hidden="true" />
+          <Typography variant="h6" component="h3">
+            {t('Flux is not installed')}
+          </Typography>
           <Typography variant="body2" color="text.secondary">
             {t('Flux is a set of continuous delivery solutions for Kubernetes.')}{' '}
-            <a
-              href="https://fluxcd.io/flux/installation/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <ExternalLink href="https://fluxcd.io/flux/installation/">
               {t('Learn how to install Flux')}
-            </a>
+            </ExternalLink>
           </Typography>
         </Box>
       </SectionBox>
@@ -403,8 +411,14 @@ export function FluxOverview() {
         headerProps={{
           actions: [
             <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="sort">
-              <InputLabel>{t('Sort By')}</InputLabel>
-              <Select value={sortFilter} label={t('Sort By')} onChange={handleSortFilterChange}>
+              <InputLabel id="flux-overview-sort-label">{t('Sort By')}</InputLabel>
+              <Select
+                labelId="flux-overview-sort-label"
+                id="flux-overview-sort"
+                value={sortFilter}
+                label={t('Sort By')}
+                onChange={handleSortFilterChange}
+              >
                 <MenuItem value="failed">{t('Most Failed First')}</MenuItem>
                 <MenuItem value="failed-asc">{t('Least Failed First')}</MenuItem>
                 <MenuItem value="total">{t('Most Total Resources')}</MenuItem>
@@ -416,8 +430,14 @@ export function FluxOverview() {
               </Select>
             </FormControl>,
             <FormControl size="small" sx={{ minWidth: 200, mr: 1 }} key="show">
-              <InputLabel>{t('Show')}</InputLabel>
-              <Select value={showFilter} label={t('Show')} onChange={handleShowFilterChange}>
+              <InputLabel id="flux-overview-show-label">{t('Show')}</InputLabel>
+              <Select
+                labelId="flux-overview-show-label"
+                id="flux-overview-show"
+                value={showFilter}
+                label={t('Show')}
+                onChange={handleShowFilterChange}
+              >
                 <MenuItem value="configured">{t('Configured Only')}</MenuItem>
                 <MenuItem value="all">{t('All Resources')}</MenuItem>
               </Select>
@@ -451,7 +471,7 @@ export function FluxOverview() {
       </SectionBox>
       <SectionBox title={t('Flux Checks')}>
         <Accordion>
-          <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
+          <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" aria-hidden="true" />}>
             <Box p={1} sx={{ display: 'flex', alignItems: 'center' }} gap={1}>
               <Box>{t('Version Information')}</Box>
               <Box>
@@ -467,7 +487,7 @@ export function FluxOverview() {
                 <StatusLabel status="success">
                   <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:check" width={16} height={16} />
+                      <Icon icon="mdi:check" width={16} height={16} aria-hidden="true" />
                     </Box>
                     {t('Bootstrapped')}
                   </Box>{' '}
@@ -476,7 +496,7 @@ export function FluxOverview() {
                 <StatusLabel status="error">
                   <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:close" width={16} height={16} />
+                      <Icon icon="mdi:close" width={16} height={16} aria-hidden="true" />
                     </Box>{' '}
                     {t('Not Bootstrapped')}
                   </Box>
@@ -486,7 +506,7 @@ export function FluxOverview() {
                 <StatusLabel status="success">
                   <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:check" width={16} height={16} />
+                      <Icon icon="mdi:check" width={16} height={16} aria-hidden="true" />
                     </Box>
                     {t('Distribution: {{distribution}}', { distribution: fluxCheck.distribution })}
                   </Box>{' '}
@@ -496,7 +516,7 @@ export function FluxOverview() {
           </AccordionDetails>
         </Accordion>
         <Accordion>
-          <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
+          <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" aria-hidden="true" />}>
             <Box p={1}>
               <Box>{t('Controllers')}</Box>
               {controllers?.length > 0 &&
@@ -508,7 +528,7 @@ export function FluxOverview() {
                   <StatusLabel status="success">
                     <Box display="flex" alignItems="center">
                       <Box mt={0.2} mr={0.1}>
-                        <Icon icon="mdi:check" width={16} height={16} />
+                        <Icon icon="mdi:check" width={16} height={16} aria-hidden="true" />
                       </Box>
                       {t('All Controllers Ready')}
                     </Box>{' '}
@@ -517,7 +537,7 @@ export function FluxOverview() {
                   <StatusLabel status="warning">
                     <Box display="flex" alignItems="center">
                       <Box mt={0.2} mr={0.1}>
-                        <Icon icon="mdi:close" width={16} height={16} />
+                        <Icon icon="mdi:close" width={16} height={16} aria-hidden="true" />
                       </Box>{' '}
                       {t('Some Controllers Are Not Ready')}
                     </Box>
@@ -532,14 +552,14 @@ export function FluxOverview() {
           </AccordionDetails>
         </Accordion>
         <Accordion>
-          <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
+          <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" aria-hidden="true" />}>
             <Box p={1}>
               <Box>{t('CRDs')}</Box>
               {fluxCheck.allCrdsSuccessful ? (
                 <StatusLabel status="success">
                   <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:check" width={16} height={16} />
+                      <Icon icon="mdi:check" width={16} height={16} aria-hidden="true" />
                     </Box>
                     {t('All Checks Passed')}
                   </Box>{' '}
@@ -548,7 +568,7 @@ export function FluxOverview() {
                 <StatusLabel status="warning">
                   <Box display="flex" alignItems="center">
                     <Box mt={0.2} mr={0.1}>
-                      <Icon icon="mdi:close" width={16} height={16} />
+                      <Icon icon="mdi:close" width={16} height={16} aria-hidden="true" />
                     </Box>{' '}
                     {t('Some CRDs Are Not Ready')}
                   </Box>
@@ -791,7 +811,11 @@ function FluxOverviewChart({ resourceClass }) {
   }
 
   return (
-    <Box sx={{ position: 'relative' }}>
+    <Box
+      sx={{ position: 'relative' }}
+      role="group"
+      aria-label={t('{{name}} status', { name: prepareName(resourceClass.apiName) })}
+    >
       <TileChart data={makeData()} total={100} label={getLabel()} legend={makeLegend()} />
     </Box>
   );
