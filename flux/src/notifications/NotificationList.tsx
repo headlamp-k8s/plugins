@@ -10,7 +10,7 @@ import React from 'react';
 import { NotSupported } from '../checkflux';
 import { AlertNotification, ProviderNotification, ReceiverNotification } from '../common/Resources';
 import Table from '../common/Table';
-import { useNamespaces } from '../helpers';
+import { formatObject, useNamespaces } from '../helpers';
 
 export function Notifications() {
   return (
@@ -138,7 +138,7 @@ function Providers() {
             header: t('certSecretRef'),
             accessorFn: item =>
               (item.jsonData.spec.certSecretRef &&
-                JSON.stringify(item.jsonData.spec.certSecretRef)) ||
+                formatObject(item.jsonData.spec.certSecretRef)) ||
               '-',
           },
           {
@@ -233,8 +233,8 @@ function Receivers() {
             header: t('Resources'),
             accessorFn: item =>
               item.jsonData.spec?.resources &&
-              item.jsonData.spec.resources.map(obj => (
-                <Box>{JSON.stringify(obj).replace(/"/g, '')}</Box>
+              item.jsonData.spec.resources.map((obj, idx) => (
+                <Box key={idx}>{formatObject(obj)}</Box>
               )),
           },
           {

@@ -8,14 +8,26 @@ export function DeploymentProgress({ canary }) {
   if (isNaN(progress))
     return (
       <Box sx={{ width: '100%' }}>
-        <LinearProgress value={0} variant="determinate" />
+        <LinearProgress
+          value={0}
+          variant="determinate"
+          aria-label={t('Canary progress')}
+          aria-valuetext={t('No progress data')}
+        />
       </Box>
     );
 
+  const progressText = t('{{progress}}% Complete', { progress: progress.toFixed(2) });
+
   return (
     <Box sx={{ width: '100%' }}>
-      <LinearProgress value={progress} variant="determinate" />
-      <p>{t('{{progress}}% Complete', { progress: progress.toFixed(2) })}</p>
+      <LinearProgress
+        value={progress}
+        variant="determinate"
+        aria-label={t('Canary progress')}
+        aria-valuetext={progressText}
+      />
+      <p>{progressText}</p>
     </Box>
   );
 }

@@ -75,6 +75,7 @@ function FluxManagedIndicator({ actionsAllowed }: { actionsAllowed: boolean }) {
         size="small"
         variant="outlined"
         color={actionsAllowed ? 'warning' : 'primary'}
+        tabIndex={0}
       />
     </Tooltip>
   );

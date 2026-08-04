@@ -19,7 +19,7 @@ import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import { getSourceClassByPluralName } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
-import { ObjectEvents } from '../helpers/index';
+import { formatObject, ObjectEvents } from '../helpers/index';
 
 export function FluxSourceDetailView(props: {
   name?: string;
@@ -68,7 +68,7 @@ function SourceDetailView(props) {
       },
       {
         name: t('Ref'),
-        value: resource?.jsonData.spec?.ref && JSON.stringify(resource?.jsonData.spec?.ref),
+        value: resource?.jsonData.spec?.ref && formatObject(resource?.jsonData.spec?.ref),
       },
       {
         name: t('Timeout'),
@@ -88,7 +88,7 @@ function SourceDetailView(props) {
         name: t('Source Ref'),
         hide: !resource?.jsonData.spec?.sourceRef,
         value:
-          resource?.jsonData.spec?.sourceRef && JSON.stringify(resource?.jsonData.spec?.sourceRef),
+          resource?.jsonData.spec?.sourceRef && formatObject(resource?.jsonData.spec?.sourceRef),
       },
       {
         name: t('Version'),
