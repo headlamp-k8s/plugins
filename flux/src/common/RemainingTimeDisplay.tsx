@@ -138,7 +138,7 @@ export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
     }
 
     if (!!timeoutRef.current) {
-      window.clearInterval(timeoutRef.current);
+      window.clearTimeout(timeoutRef.current);
     }
 
     // The trigger projection is not perfect, so if our remaining time is getting negative,
@@ -153,11 +153,15 @@ export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
   }, [nextAttemptStatus, timeRemaining]);
 
   React.useEffect(() => {
-    // Just to clear out any remaining timeouts when the component is unmounted
-    if (!!timeoutRef.current) {
-      window.clearInterval(timeoutRef.current);
-      timeoutRef.current = undefined;
-    }
+    // Just to clear out any remaining timeouts when the component is unmounted.
+    // This has to be returned as the cleanup function, otherwise it only runs on
+    // mount, when there is no timeout to clear yet.
+    return () => {
+      if (!!timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = undefined;
+      }
+    };
   }, []);
 
   return (
