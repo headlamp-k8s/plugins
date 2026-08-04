@@ -24,7 +24,7 @@ export function Settings(props) {
       name: 'Namespace',
       value: (
         <TextField
-          helperText="Please enter the namespace where Opencost is Installed"
+          helperText="Please enter the namespace where Opencost is Installed. Not used when Service URL below is a direct http(s) URL."
           defaultValue={data?.namespace ? data.namespace : ''}
           onChange={e => onDataChange({ ...data, namespace: e.target.value })}
           variant="standard"
@@ -36,7 +36,7 @@ export function Settings(props) {
       value: (
         <TextField
           fullWidth
-          helperText="Please enter the service URL of Opencost web UI service"
+          helperText="Either <service-name>:<port-name> to reach OpenCost through the Kubernetes apiserver proxy (default), or a direct http(s):// URL if your cluster rejects apiserver service-proxy requests to OpenCost."
           defaultValue={data?.serviceURL ? data.serviceURL : ''}
           onChange={e => onDataChange({ ...data, serviceURL: e.target.value })}
           variant="standard"
