@@ -1,6 +1,6 @@
 {
-  "name": "app-catalog",
-  "version": "0.9.1",
+  "name": "@headlamp-k8s/app-catalog",
+  "version": "0.9.2",
   "description": "An app catalog for Headlamp",
   "scripts": {
     "start": "headlamp-plugin start",
