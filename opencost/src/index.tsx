@@ -100,17 +100,24 @@ const useOpenCostData = () => {
     }
     setIsLoading(true);
     const fetchData = async () => {
-      const [namespace, serviceName] = await getServiceDetails();
-      const result = await fetchOpencostData(
-        namespace,
-        serviceName,
-        getDisplayTimespan(),
-        resourceType,
-        true
-      );
-      openCostDataCache = result;
-      setData(result);
-      setIsLoading(false);
+      try {
+        const [namespace, serviceName] = await getServiceDetails();
+        const result = await fetchOpencostData(
+          namespace,
+          serviceName,
+          getDisplayTimespan(),
+          resourceType,
+          true
+        );
+        openCostDataCache = result;
+        setData(result);
+      } catch (err) {
+        console.error('Failed to fetch OpenCost data', err);
+        openCostDataCache = null;
+        setData(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchData();
