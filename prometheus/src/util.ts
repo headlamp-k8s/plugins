@@ -1,4 +1,4 @@
-import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
+import { ConfigStore, ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { KarpenterDisruptionChart } from './components/Chart/KarpenterDisruptionChart/KarpenterDisruptionChart';
 import { NodeClaimCreationChart } from './components/Chart/KarpenterNodeClaimCreationChart/KarpenterNodeClaimCreationChart';
 import { KarpenterNodeClaimsProvisionChart } from './components/Chart/KarpenterNodeClaimProvisionChart/KarpenterNodeClaimProvisionChart';
@@ -16,7 +16,7 @@ export const PLUGIN_NAME = 'prometheus';
  * @property {string} defaultTimespan - The default timespan for metrics.
  * @property {string} defaultResolution - The default resolution for metrics.
  */
-type ClusterData = {
+export type ClusterData = {
   autoDetect?: boolean;
   isMetricsEnabled?: boolean;
   address?: string;
@@ -53,6 +53,78 @@ function getClusterConfig(cluster: string): ClusterData | null {
     return null;
   }
   return conf[cluster] || null;
+}
+
+let deploymentConfigCache: Record<string, ClusterData> = {};
+let deploymentConfigPromise: Record<string, Promise<ClusterData>> = {};
+
+/**
+ * Fetches the deployment-wide default configuration from a ConfigMap.
+ * @param {string} [cluster] - The name of the cluster.
+ * @returns {Promise<ClusterData>} The deployment configuration.
+ */
+export async function fetchDeploymentConfig(cluster?: string): Promise<ClusterData> {
+  const cacheKey = cluster || 'default';
+  if (deploymentConfigCache[cacheKey]) return deploymentConfigCache[cacheKey];
+  if (!deploymentConfigPromise[cacheKey]) {
+    deploymentConfigPromise[cacheKey] = (async () => {
+      try {
+        const queryParams = new URLSearchParams();
+        queryParams.append('labelSelector', 'headlamp.kubernetes.io/prometheus-config=true');
+
+        const searchResponse = await ApiProxy.request(
+          `/api/v1/namespaces/kube-public/configmaps?${queryParams}`,
+          {
+            method: 'GET',
+          }
+        );
+        
+        if (searchResponse?.items?.length > 0) {
+            const data = searchResponse.items[0].data || {};
+            return {
+               address: data.address,
+               subPath: data.subPath,
+               defaultTimespan: data.defaultTimespan,
+               defaultResolution: data.defaultResolution,
+               autoDetect: data.autoDetect ? data.autoDetect === 'true' : undefined,
+               isMetricsEnabled: data.isMetricsEnabled ? data.isMetricsEnabled === 'true' : undefined,
+            };
+        }
+      } catch(e) {
+        console.error("Failed to fetch deployment Prometheus config", e);
+        delete deploymentConfigPromise[cacheKey];
+        throw e;
+      }
+      return {};
+    })();
+  }
+  
+  try {
+    const config = await deploymentConfigPromise[cacheKey];
+    deploymentConfigCache[cacheKey] = config;
+    return config;
+  } catch(e) {
+    return {};
+  }
+}
+
+/**
+ * Returns the effective configuration for a specific cluster by merging built-in defaults, deployment defaults, and user settings.
+ * @param {string} cluster - The name of the cluster.
+ * @returns {Promise<ClusterData>} The effective configuration for the cluster.
+ */
+export async function getEffectiveClusterConfig(cluster: string): Promise<ClusterData> {
+  const userConfig = getClusterConfig(cluster) || {};
+  const deploymentConfig = await fetchDeploymentConfig(cluster);
+  
+  return {
+    isMetricsEnabled: userConfig.isMetricsEnabled ?? deploymentConfig.isMetricsEnabled ?? true,
+    autoDetect: userConfig.autoDetect ?? deploymentConfig.autoDetect ?? true,
+    address: userConfig.address ?? deploymentConfig.address,
+    subPath: userConfig.subPath ?? deploymentConfig.subPath,
+    defaultTimespan: userConfig.defaultTimespan ?? deploymentConfig.defaultTimespan ?? '24h',
+    defaultResolution: userConfig.defaultResolution ?? deploymentConfig.defaultResolution ?? 'medium',
+  };
 }
 
 /**
@@ -97,7 +169,7 @@ export function disableMetrics(cluster: string) {
 export async function getPrometheusPrefix(cluster: string): Promise<string | null> {
   // check if cluster has autoDetect enabled
   // if so return the prometheus pod address
-  const clusterData = getClusterConfig(cluster);
+  const clusterData = await getEffectiveClusterConfig(cluster);
   if (clusterData?.autoDetect) {
     const prometheusEndpoint = await isPrometheusInstalled();
     if (prometheusEndpoint.type === KubernetesType.none) {
@@ -117,30 +189,30 @@ export async function getPrometheusPrefix(cluster: string): Promise<string | nul
 /**
  * getPrometheusSubPath returns the subpath for the Prometheus metrics.
  * @param {string} cluster - The name of the cluster.
- * @returns {string | null} The subpath for the Prometheus metrics, or null if not found.
+ * @returns {Promise<string | null>} The subpath for the Prometheus metrics, or null if not found.
  */
-export function getPrometheusSubPath(cluster: string): string | null {
-  const clusterData = getClusterConfig(cluster);
+export async function getPrometheusSubPath(cluster: string): Promise<string | null> {
+  const clusterData = await getEffectiveClusterConfig(cluster);
   return !clusterData?.subPath || clusterData.subPath === '' ? null : clusterData.subPath;
 }
 
 /**
  * getPrometheusInterval returns the default timespan for the Prometheus metrics.
  * @param {string} cluster - The name of the cluster.
- * @returns {string} The default timespan for the Prometheus metrics.
+ * @returns {Promise<string>} The default timespan for the Prometheus metrics.
  */
-export function getPrometheusInterval(cluster: string): string {
-  const clusterData = getClusterConfig(cluster);
+export async function getPrometheusInterval(cluster: string): Promise<string> {
+  const clusterData = await getEffectiveClusterConfig(cluster);
   return clusterData?.defaultTimespan ?? '24h';
 }
 
 /**
  * getPrometheusResolution returns the default resolution for the Prometheus metrics.
  * @param {string} cluster - The name of the cluster.
- * @returns {string} The default resolution for the Prometheus metrics.
+ * @returns {Promise<string>} The default resolution for the Prometheus metrics.
  */
-export function getPrometheusResolution(cluster: string): string {
-  const clusterData = getClusterConfig(cluster);
+export async function getPrometheusResolution(cluster: string): Promise<string> {
+  const clusterData = await getEffectiveClusterConfig(cluster);
   return clusterData?.defaultResolution ?? 'medium';
 }
 
