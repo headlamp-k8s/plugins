@@ -276,6 +276,7 @@ export function StrimziChart(props: StrimziChartProps) {
                 </Button>
                 <Box>
                   <Select
+                    inputProps={{ 'aria-label': t('Timespan') }}
                     variant="outlined"
                     size="small"
                     name="Time"
@@ -300,6 +301,7 @@ export function StrimziChart(props: StrimziChartProps) {
                 </Box>
                 <Box>
                   <Select
+                    inputProps={{ 'aria-label': t('Resolution') }}
                     variant="outlined"
                     size="small"
                     name="Resolution"

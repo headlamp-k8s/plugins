@@ -148,7 +148,7 @@ export function CapiChart(props: CapiChartProps) {
                 <ToggleButtonGroup
                   onChange={handleChartVariantChange}
                   size="small"
-                  aria-label="metric chooser"
+                  aria-label={t('metric chooser')}
                   value={selectedChart}
                   exclusive
                 >
@@ -176,6 +176,7 @@ export function CapiChart(props: CapiChartProps) {
                 </Button>
                 <Box>
                   <Select
+                    inputProps={{ 'aria-label': t('Timespan') }}
                     variant="outlined"
                     size="small"
                     name="Time"
@@ -200,6 +201,7 @@ export function CapiChart(props: CapiChartProps) {
                 </Box>
                 <Box>
                   <Select
+                    inputProps={{ 'aria-label': t('Resolution') }}
                     variant="outlined"
                     size="small"
                     name="Time"

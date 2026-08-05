@@ -16,6 +16,8 @@
   "write": "write",
   "Pause": "Pause",
   "Resume": "Resume",
+  "Timespan": "Timespan",
+  "Resolution": "Resolution",
   "CPU": "CPU",
   "Memory": "Memory",
   "Network": "Network",
