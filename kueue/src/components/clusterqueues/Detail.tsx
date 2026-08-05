@@ -5,6 +5,7 @@ import {
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
   ClusterQueue,
@@ -63,9 +64,9 @@ function renderFlavorLink(flavorName: string) {
 }
 
 /** Convert nested ClusterQueue resource groups into table rows. */
-function getResourceGroupRows(resourceGroups: ResourceGroup[]): ResourceGroupRow[] {
+function getResourceGroupRows(resourceGroups: ResourceGroup[], t: (key: string) => string): ResourceGroupRow[] {
   return resourceGroups.flatMap((group, groupIndex): ResourceGroupRow[] => {
-    const groupLabel = `Group ${groupIndex + 1}`;
+    const groupLabel = `${t('Group')} ${groupIndex + 1}`;
     const coveredResources = group.coveredResources?.join(', ') || '-';
 
     if (!group.flavors?.length) {
@@ -138,8 +139,8 @@ function getAdmissionCheckRows(clusterQueue: ClusterQueue): AdmissionCheckRow[] 
 }
 
 /** Build the extra detail section that shows spec.resourceGroups as a table. */
-function getResourceGroupsSection(clusterQueue: ClusterQueue) {
-  const rows = getResourceGroupRows(clusterQueue.resourceGroups);
+function getResourceGroupsSection(clusterQueue: ClusterQueue, t: (key: string) => string) {
+  const rows = getResourceGroupRows(clusterQueue.resourceGroups, t);
 
   if (rows.length === 0) {
     return null;
@@ -148,37 +149,37 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
   return {
     id: 'resource-groups',
     section: (
-      <SectionBox title="Resource Groups">
+      <SectionBox title={t("Resource Groups")}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Group',
+              label: t('Group'),
               getter: (row: ResourceGroupRow) => row.group,
             },
             {
-              label: 'Covered Resources',
+              label: t('Covered Resources'),
               getter: (row: ResourceGroupRow) => row.coveredResources,
             },
             {
-              label: 'ResourceFlavor',
+              label: t('ResourceFlavor'),
               getter: (row: ResourceGroupRow) =>
                 row.flavor === '-' ? '-' : renderFlavorLink(row.flavor),
             },
             {
-              label: 'Resource',
+              label: t('Resource'),
               getter: (row: ResourceGroupRow) => row.resource,
             },
             {
-              label: 'Nominal Quota',
+              label: t('Nominal Quota'),
               getter: (row: ResourceGroupRow) => row.nominalQuota,
             },
             {
-              label: 'Borrowing Limit',
+              label: t('Borrowing Limit'),
               getter: (row: ResourceGroupRow) => row.borrowingLimit ?? '-',
             },
             {
-              label: 'Lending Limit',
+              label: t('Lending Limit'),
               getter: (row: ResourceGroupRow) => row.lendingLimit ?? '-',
             },
           ]}
@@ -189,7 +190,7 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
 }
 
 /** Build a table section for ClusterQueue status flavor reservations or usage. */
-function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUsage[]) {
+function getFlavorUsageSection(title: string, id: string, flavorUsage: FlavorUsage[] | undefined, t: (key: string) => string) {
   const rows = getFlavorUsageRows(flavorUsage);
 
   if (rows.length === 0) {
@@ -204,20 +205,20 @@ function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUs
           data={rows}
           columns={[
             {
-              label: 'ResourceFlavor',
+              label: t('ResourceFlavor'),
               getter: (row: FlavorUsageRow) =>
                 row.flavor === '-' ? '-' : renderFlavorLink(row.flavor),
             },
             {
-              label: 'Resource',
+              label: t('Resource'),
               getter: (row: FlavorUsageRow) => row.resource,
             },
             {
-              label: 'Total',
+              label: t('Total'),
               getter: (row: FlavorUsageRow) => row.total ?? '-',
             },
             {
-              label: 'Borrowed',
+              label: t('Borrowed'),
               getter: (row: FlavorUsageRow) => row.borrowed ?? '-',
             },
           ]}
@@ -228,7 +229,7 @@ function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUs
 }
 
 /** Build the extra detail section for configured admission checks. */
-function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
+function getAdmissionChecksSection(clusterQueue: ClusterQueue, t: (key: string) => string) {
   const rows = getAdmissionCheckRows(clusterQueue);
 
   if (rows.length === 0) {
@@ -238,16 +239,16 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
   return {
     id: 'admission-checks',
     section: (
-      <SectionBox title="Admission Checks">
+      <SectionBox title={t("Admission Checks")}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Name',
+              label: t('Name'),
               getter: (row: AdmissionCheckRow) => row.name,
             },
             {
-              label: 'ResourceFlavors',
+              label: t('ResourceFlavors'),
               getter: (row: AdmissionCheckRow) =>
                 row.flavors.length ? (
                   <>
@@ -259,7 +260,7 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
                     ))}
                   </>
                 ) : (
-                  'All flavors'
+                  t('All flavors')
                 ),
             },
           ]}
@@ -284,6 +285,7 @@ function getConditionsSection(clusterQueue: ClusterQueue) {
 /** Detail view for a cluster-scoped Kueue ClusterQueue resource. */
 export default function ClusterQueueDetail() {
   const { name } = useParams<{ name: string }>();
+  const { t } = useTranslation();
 
   return (
     <KueueAdminResourceAccess resourceClass={ClusterQueue} resourceLabel="ClusterQueues" verb="get">
@@ -295,59 +297,59 @@ export default function ClusterQueueDetail() {
           clusterQueue
             ? [
                 {
-                  name: 'Cohort',
+                  name: t('Cohort'),
                   value: clusterQueue.cohortName,
                 },
                 {
-                  name: 'Queueing Strategy',
+                  name: t('Queueing Strategy'),
                   value: clusterQueue.queueingStrategy,
                 },
                 {
-                  name: 'Stop Policy',
+                  name: t('Stop Policy'),
                   value: clusterQueue.stopPolicy,
                 },
                 {
-                  name: 'Namespace Selector',
+                  name: t('Namespace Selector'),
                   value: clusterQueue.namespaceSelectorDisplay,
                 },
                 {
-                  name: 'Pending Workloads',
+                  name: t('Pending Workloads'),
                   value: clusterQueue.pendingWorkloads,
                 },
                 {
-                  name: 'Admitted Workloads',
+                  name: t('Admitted Workloads'),
                   value: clusterQueue.admittedWorkloads,
                 },
                 {
-                  name: 'Reserving Workloads',
+                  name: t('Reserving Workloads'),
                   value: clusterQueue.reservingWorkloads,
                 },
                 {
-                  name: 'Status',
+                  name: t('Status'),
                   value: clusterQueue.statusDisplay,
                 },
                 {
-                  name: 'Referenced ResourceFlavors',
+                  name: t('Referenced ResourceFlavors'),
                   value: clusterQueue.referencedFlavorNamesDisplay,
                 },
                 {
-                  name: 'Preemption',
+                  name: t('Preemption'),
                   value: clusterQueue.preemptionDisplay,
                 },
                 {
-                  name: 'Flavor Fungibility',
+                  name: t('Flavor Fungibility'),
                   value: clusterQueue.flavorFungibilityDisplay,
                 },
                 {
-                  name: 'Fair Sharing',
+                  name: t('Fair Sharing'),
                   value: clusterQueue.fairSharingDisplay,
                 },
                 {
-                  name: 'Admission Scope',
+                  name: t('Admission Scope'),
                   value: clusterQueue.admissionScopeDisplay,
                 },
                 {
-                  name: 'Concurrent Admission',
+                  name: t('Concurrent Admission'),
                   value: clusterQueue.concurrentAdmissionPolicyDisplay,
                 },
               ]
@@ -357,17 +359,19 @@ export default function ClusterQueueDetail() {
           clusterQueue
             ? [
                 getConditionsSection(clusterQueue),
-                getResourceGroupsSection(clusterQueue),
-                getAdmissionChecksSection(clusterQueue),
+                getResourceGroupsSection(clusterQueue, t),
+                getAdmissionChecksSection(clusterQueue, t),
                 getFlavorUsageSection(
-                  'Flavor Reservations',
+                  t('Flavor Reservations'),
                   'flavor-reservations',
-                  clusterQueue.status.flavorsReservation
+                  clusterQueue.status.flavorsReservation,
+                  t
                 ),
                 getFlavorUsageSection(
-                  'Flavor Usage',
+                  t('Flavor Usage'),
                   'flavor-usage',
-                  clusterQueue.status.flavorsUsage
+                  clusterQueue.status.flavorsUsage,
+                  t
                 ),
               ].filter(Boolean)
             : []
