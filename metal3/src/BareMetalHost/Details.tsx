@@ -16,8 +16,10 @@
 
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { CRDGuard } from '../common/CRDGuard';
+import { parseBmcScheme } from './bmcScheme';
 import { bareMetalHostClass } from './List';
 
 /**
@@ -98,6 +100,27 @@ export function BareMetalHostDetail(props: { name?: string; namespace?: string }
             {
               name: 'BMC Address',
               value: item.jsonData.spec?.bmc?.address || '-',
+            },
+            {
+              // Protocol derived from the BMC address scheme. A missing or unknown
+              // scheme is flagged, since the operator silently treats a schemeless
+              // address as IPMI.
+              name: 'Protocol',
+              value: (() => {
+                const s = parseBmcScheme(item.jsonData.spec?.bmc?.address);
+                if (s.status === 'ok') {
+                  return s.protocol;
+                }
+                const warning =
+                  s.status === 'missing'
+                    ? 'No scheme in the BMC address; the operator will treat it as IPMI.'
+                    : `Unrecognised scheme "${s.scheme}".`;
+                return (
+                  <Typography component="span" sx={{ color: 'warning.main' }}>
+                    {warning}
+                  </Typography>
+                );
+              })(),
             },
           ]
         }
