@@ -1,7 +1,7 @@
 {
   "name": "kmesh",
-  "version": "0.1.0",
-  "description": "Headlamp plugin for viewing KMesh Waypoint (Gateway API) resources",
+  "version": "0.1.0-alpha",
+  "description": "A Headlamp plugin for monitoring and debugging Kmesh (high-performance eBPF-based service mesh in Kubernetes)",
   "scripts": {
     "start": "headlamp-plugin start",
     "build": "headlamp-plugin build",
