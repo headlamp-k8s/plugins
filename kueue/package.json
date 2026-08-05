@@ -33,7 +33,8 @@
   },
   "devDependencies": {
     "@headlamp-k8s/eslint-config": "^0.7.0",
-    "@kinvolk/headlamp-plugin": "^0.14.0"
+    "@kinvolk/headlamp-plugin": "^0.14.0",
+    "happy-dom": "^20.11.1"
   },
   "overrides": {
     "ws": "8.21.0"
