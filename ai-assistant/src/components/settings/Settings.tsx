@@ -21,6 +21,7 @@ import {
 } from '@headlamp-k8s/ai-common/skills/adapters/browser';
 import { getSkillsConfig, getSkillSourceIdentity } from '@headlamp-k8s/ai-common/skills/config';
 import { SkillManager } from '@headlamp-k8s/ai-common/skills/SkillManager';
+import { AiUiI18nProvider } from '@headlamp-k8s/ai-ui/AiUiI18nProvider';
 import type { DeveloperOptionsConfig } from '@headlamp-k8s/ai-ui/components/settings/DeveloperSettings';
 import { SettingsPage } from '@headlamp-k8s/ai-ui/components/settings/SettingsPage';
 import { isTestModeCheck } from '@headlamp-k8s/ai-ui/testing/testMode';
@@ -69,7 +70,7 @@ interface SkillDisplayInfo {
 export default function Settings() {
   const savedConfigs = usePluginConfig();
   const { enqueueSnackbar } = useSnackbar();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // Persistent SkillManager for the viewer (reuses cache across opens)
   const skillManagerRef = React.useRef<SkillManager | null>(null);
@@ -175,58 +176,60 @@ export default function Settings() {
   const isTestMode = isTestModeCheck() || savedConfigs?.testMode === true;
 
   return (
-    <SettingsPage
-      savedConfigs={savedConfigs}
-      onConfigsChange={configs => pluginStore.update(configs as any)}
-      onTermsAccept={configs => pluginStore.update(configs as any)}
-      commandRunner={commandRunner}
-      dismissedProviders={(pluginStore.get() as any)?.autoDetectDismissedProviders || []}
-      onDismissProviders={keys => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, autoDetectDismissedProviders: keys } as any);
-      }}
-      tools={getAllAvailableTools()}
-      isToolEnabled={toolId => isToolEnabled(pluginSettings, toolId)}
-      onToolToggle={toolId => {
-        const updatedSettings = toggleTool(pluginSettings, toolId);
-        pluginStore.update(updatedSettings);
-      }}
-      isRunningAsApp={Headlamp.isRunningAsApp()}
-      configStore={pluginStore}
-      loadSkills={loadSkills}
-      onSkillsLoadComplete={handleSkillsLoadComplete}
-      onHolmesConfigChange={(patch: Record<string, any>) => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, ...patch });
-      }}
-      defaultHolmesNamespace={HOLMES_SERVICE_NAMESPACE}
-      defaultHolmesServiceName={HOLMES_SERVICE_NAME}
-      defaultHolmesPort={HOLMES_SERVICE_PORT}
-      previewEnabled={savedConfigs?.previewEnabled ?? true}
-      onPreviewChange={enabled => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, previewEnabled: enabled });
-      }}
-      proactiveDiagnosisEnabled={savedConfigs?.proactiveDiagnosisEnabled ?? false}
-      onProactiveDiagnosisChange={enabled => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, proactiveDiagnosisEnabled: enabled });
-      }}
-      isTestMode={isTestMode}
-      onTestModeChange={enabled => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, testMode: enabled });
-      }}
-      hasShownConfigPopover={savedConfigs?.configPopoverShown || false}
-      onResetPopover={() => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, configPopoverShown: false });
-      }}
-      devOptions={savedConfigs?.devOptions ?? {}}
-      onDevOptionsChange={(options: DeveloperOptionsConfig) => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, devOptions: options });
-      }}
-    />
+    <AiUiI18nProvider i18n={i18n}>
+      <SettingsPage
+        savedConfigs={savedConfigs}
+        onConfigsChange={configs => pluginStore.update(configs as any)}
+        onTermsAccept={configs => pluginStore.update(configs as any)}
+        commandRunner={commandRunner}
+        dismissedProviders={(pluginStore.get() as any)?.autoDetectDismissedProviders || []}
+        onDismissProviders={keys => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, autoDetectDismissedProviders: keys } as any);
+        }}
+        tools={getAllAvailableTools()}
+        isToolEnabled={toolId => isToolEnabled(pluginSettings, toolId)}
+        onToolToggle={toolId => {
+          const updatedSettings = toggleTool(pluginSettings, toolId);
+          pluginStore.update(updatedSettings);
+        }}
+        isRunningAsApp={Headlamp.isRunningAsApp()}
+        configStore={pluginStore}
+        loadSkills={loadSkills}
+        onSkillsLoadComplete={handleSkillsLoadComplete}
+        onHolmesConfigChange={(patch: Record<string, any>) => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, ...patch });
+        }}
+        defaultHolmesNamespace={HOLMES_SERVICE_NAMESPACE}
+        defaultHolmesServiceName={HOLMES_SERVICE_NAME}
+        defaultHolmesPort={HOLMES_SERVICE_PORT}
+        previewEnabled={savedConfigs?.previewEnabled ?? true}
+        onPreviewChange={enabled => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, previewEnabled: enabled });
+        }}
+        proactiveDiagnosisEnabled={savedConfigs?.proactiveDiagnosisEnabled ?? false}
+        onProactiveDiagnosisChange={enabled => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, proactiveDiagnosisEnabled: enabled });
+        }}
+        isTestMode={isTestMode}
+        onTestModeChange={enabled => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, testMode: enabled });
+        }}
+        hasShownConfigPopover={savedConfigs?.configPopoverShown || false}
+        onResetPopover={() => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, configPopoverShown: false });
+        }}
+        devOptions={savedConfigs?.devOptions ?? {}}
+        onDevOptionsChange={(options: DeveloperOptionsConfig) => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, devOptions: options });
+        }}
+      />
+    </AiUiI18nProvider>
   );
 }

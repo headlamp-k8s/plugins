@@ -74,7 +74,9 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
   const [isLoadingMcp, setIsLoadingMcp] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
-  const [saveErrorKey, setSaveErrorKey] = useState('');
+  const [saveErrorCode, setSaveErrorCode] = useState<
+    '' | 'load-mcp' | 'save-mcp' | 'restore-mcp' | 'save-tools'
+  >('');
   const [isMcpConfigReady, setIsMcpConfigReady] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [requiresReload, setRequiresReload] = useState(false);
@@ -100,7 +102,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
     if (open) {
       setLocalEnabledTools(enabledTools);
       setSearchQuery('');
-      setSaveErrorKey('');
+      setSaveErrorCode('');
       setIsMcpConfigReady(false);
       setRequiresReload(false);
       setIsLoadingMcp(true);
@@ -144,7 +146,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       const mcpClient = new ElectronMCPClient();
       if (!mcpClient.isAvailable()) {
         if (loadRequestId.current === requestId) {
-          setSaveErrorKey('Failed to load MCP tools.');
+          setSaveErrorCode('load-mcp');
         }
         return;
       }
@@ -161,9 +163,9 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
         setOriginalMcpConfig(structuredClone(toolsConfigResponse.config));
         setIsMcpConfigReady(true);
         setRequiresReload(false);
-        setSaveErrorKey('');
+        setSaveErrorCode('');
       } else {
-        setSaveErrorKey('Failed to load MCP tools.');
+        setSaveErrorCode('load-mcp');
       }
 
       // Create tools from configuration (this is our source of truth)
@@ -202,7 +204,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       setExpandedServers(serversWithTools);
     } catch {
       if (loadRequestId.current === requestId) {
-        setSaveErrorKey('Failed to load MCP tools.');
+        setSaveErrorCode('load-mcp');
       }
     } finally {
       if (loadRequestId.current === requestId) {
@@ -305,7 +307,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
         mcpClient = new ElectronMCPClient();
         if (!mcpClient.isAvailable() || !(await mcpClient.updateToolsConfig(mcpToolsConfig))) {
           if (isCurrentSession()) {
-            setSaveErrorKey('Failed to save MCP tool settings.');
+            setSaveErrorCode('save-mcp');
           }
           return;
         }
@@ -325,12 +327,10 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
         if (!rollbackSucceeded) {
           setIsMcpConfigReady(false);
           setRequiresReload(true);
-          setSaveErrorKey(
-            'Failed to restore MCP tool settings. Close and reopen this dialog before trying again.'
-          );
+          setSaveErrorCode('restore-mcp');
           return;
         }
-        setSaveErrorKey('Failed to save tool settings.');
+        setSaveErrorCode('save-tools');
         return;
       }
       if (isCurrentSession()) {
@@ -338,7 +338,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       }
     } catch {
       if (isCurrentSession()) {
-        setSaveErrorKey('Failed to save tool settings.');
+        setSaveErrorCode('save-tools');
       }
     }
   };
@@ -348,7 +348,7 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
     saveInProgress.current = true;
     setIsSaving(true);
     const sessionId = dialogSessionId.current;
-    setSaveErrorKey('');
+    setSaveErrorCode('');
     const operation = performSave(sessionId).finally(() => {
       saveInProgress.current = false;
       if (mounted.current) {
@@ -582,7 +582,11 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
               </Box>
               <ListItemText
                 primary={<Typography variant="body1">{toolName}</Typography>}
-                secondary={t(tempTool.config.shortDescription || tempTool.config.description)}
+                secondary={
+                  tempTool.config.shortDescription === 'Make requests to the Kubernetes API'
+                    ? t('Make requests to the Kubernetes API')
+                    : tempTool.config.shortDescription || tempTool.config.description
+                }
               />
               <ListItemSecondaryAction>
                 <Switch
@@ -635,9 +639,17 @@ export const ToolsDialog: React.FC<ToolsDialogProps> = ({
       </DialogTitle>
 
       <DialogContent>
-        {saveErrorKey && (
+        {saveErrorCode && (
           <Typography role="alert" color="error" sx={{ mb: 2 }}>
-            {t(saveErrorKey)}
+            {saveErrorCode === 'load-mcp'
+              ? t('Failed to load MCP tools.')
+              : saveErrorCode === 'save-mcp'
+              ? t('Failed to save MCP tool settings.')
+              : saveErrorCode === 'restore-mcp'
+              ? t(
+                  'Failed to restore MCP tool settings. Close and reopen this dialog before trying again.'
+                )
+              : t('Failed to save tool settings.')}
           </Typography>
         )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>

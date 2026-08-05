@@ -17,6 +17,10 @@ async function loadGeneratePrompts() {
     useLocation: vi.fn(() => ({ pathname: '/' })),
   }));
 
+  vi.doMock('@kinvolk/headlamp-plugin/lib', () => ({
+    useTranslation: vi.fn(() => ({ t: (key: string) => key })),
+  }));
+
   vi.doMock('../pluginState', () => ({
     useGlobalState: vi.fn(() => ({ event: null })),
   }));

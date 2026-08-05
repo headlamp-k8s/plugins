@@ -27,9 +27,12 @@ type Story = StoryObj<typeof meta>;
 
 export const defaultPromptSuggestionsArgs: PromptSuggestionsProps = {
   suggestions: [
-    'What pods are running in the default namespace?',
-    'Show me deployments with issues',
-    'How do I scale a deployment?',
+    {
+      label: 'What pods are running in the default namespace?',
+      prompt: 'What pods are running in the default namespace?',
+    },
+    { label: 'Show me deployments with issues', prompt: 'Show me deployments with issues' },
+    { label: 'How do I scale a deployment?', prompt: 'How do I scale a deployment?' },
   ],
   apiError: null,
   loading: false,
@@ -41,9 +44,9 @@ export const Default: Story = { args: defaultPromptSuggestionsArgs };
 
 export const contentFilterErrorArgs: PromptSuggestionsProps = {
   suggestions: [
-    'List all pods in the cluster',
-    'Check node health status',
-    'Show recent Kubernetes events',
+    { label: 'List all pods in the cluster', prompt: 'List all pods in the cluster' },
+    { label: 'Check node health status', prompt: 'Check node health status' },
+    { label: 'Show recent Kubernetes events', prompt: 'Show recent Kubernetes events' },
   ],
   apiError: 'Response blocked by content filter policy',
   loading: false,
@@ -65,12 +68,12 @@ export const Loading: Story = { args: loadingPromptSuggestionsArgs };
 
 export const manyPromptSuggestionsArgs: PromptSuggestionsProps = {
   suggestions: [
-    'What pods are running?',
-    'Show me deployments',
-    'Check node status',
-    'List services in kube-system',
-    'Show recent events',
-    'Describe the nginx deployment',
+    { label: 'What pods are running?', prompt: 'What pods are running?' },
+    { label: 'Show me deployments', prompt: 'Show me deployments' },
+    { label: 'Check node status', prompt: 'Check node status' },
+    { label: 'List services in kube-system', prompt: 'List services in kube-system' },
+    { label: 'Show recent events', prompt: 'Show recent events' },
+    { label: 'Describe the nginx deployment', prompt: 'Describe the nginx deployment' },
   ],
   apiError: null,
   loading: false,

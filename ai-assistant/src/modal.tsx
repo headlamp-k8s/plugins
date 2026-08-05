@@ -32,7 +32,10 @@ import { createMockKubernetesToolManager } from '@headlamp-k8s/ai-common/tools/t
 import AIAssistantHeader from '@headlamp-k8s/ai-ui/components/assistant/AIAssistantHeader';
 import type { ChatMode } from '@headlamp-k8s/ai-ui/components/assistant/AllInputSection';
 import HolmesSetupGuide from '@headlamp-k8s/ai-ui/components/assistant/HolmesSetupGuide';
-import { PromptSuggestions } from '@headlamp-k8s/ai-ui/components/assistant/PromptSuggestions';
+import {
+  type PromptSuggestion,
+  PromptSuggestions,
+} from '@headlamp-k8s/ai-ui/components/assistant/PromptSuggestions';
 import ApiConfirmationDialog from '@headlamp-k8s/ai-ui/components/common/ApiConfirmationDialog';
 import {
   getProviderModels,
@@ -44,7 +47,21 @@ import { runCommand, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 
 // pluginRunCommand is injected as a scope variable by Headlamp's plugin runner.
 declare const pluginRunCommand: typeof runCommand;
+import {
+  type CommandRunner,
+  refreshAzureOpenAIKey,
+  refreshGitHubToken,
+} from '@headlamp-k8s/ai-common/providers/detectProvider';
+import {
+  getActiveConfig,
+  getSavedConfigurations,
+  isSameStoredConfig,
+  type ProviderSettings,
+  StoredProviderConfig,
+} from '@headlamp-k8s/ai-common/providers/savedConfigs';
+import { getEnabledToolIds } from '@headlamp-k8s/ai-common/tools/settings/enabledTools';
 import ProactiveDiagnosisSection from '@headlamp-k8s/ai-ui/components/assistant/ProactiveDiagnosisSection';
+import { usePromptWidth } from '@headlamp-k8s/ai-ui/contexts/PromptWidthContext';
 import {
   type DiagnosisStepCallback,
   ProactiveDiagnosisManager,
@@ -69,28 +86,6 @@ import { fetchClusterWarnings, fetchWarningEventsForClusters } from './kubernete
 import { getSettingsURL, type PluginConfig, useGlobalState } from './pluginState';
 import { useDynamicPrompts } from './prompts/promptGenerator';
 import { resolveRuntimeProviderConfig } from './resolveRuntimeProviderConfig';
-
-// Operation type constants for translation
-const OPERATION_TYPES = {
-  CREATION: 'creation',
-  UPDATE: 'update',
-  DELETION: 'deletion',
-  GENERIC: 'operation',
-} as const;
-import {
-  type CommandRunner,
-  refreshAzureOpenAIKey,
-  refreshGitHubToken,
-} from '@headlamp-k8s/ai-common/providers/detectProvider';
-import {
-  getActiveConfig,
-  getSavedConfigurations,
-  isSameStoredConfig,
-  type ProviderSettings,
-  StoredProviderConfig,
-} from '@headlamp-k8s/ai-common/providers/savedConfigs';
-import { getEnabledToolIds } from '@headlamp-k8s/ai-common/tools/settings/enabledTools';
-import { usePromptWidth } from '@headlamp-k8s/ai-ui/contexts/PromptWidthContext';
 
 interface CommandProcess {
   /** Standard output stream emitted by the injected command. */
@@ -165,7 +160,7 @@ export default function AIPrompt(props: {
   // const { enabledTools, setEnabledTools } = _pluginSetting;
   const [enabledTools, setEnabledTools] = React.useState<string[]>([]);
   const [promptHistory, setPromptHistory] = React.useState<ConversationMessage[]>([]);
-  const [suggestions, setSuggestions] = React.useState<string[]>([]);
+  const [suggestions, setSuggestions] = React.useState<PromptSuggestion[]>([]);
   const selectedClusters = useSelectedClusters();
   const clusters = useClustersConf() || {};
   const dynamicPrompts = useDynamicPrompts();
@@ -741,7 +736,7 @@ export default function AIPrompt(props: {
 
         // Update suggestions if this is the latest assistant response
         if (index === aiManager.history.length - 1 && suggestions.length > 0) {
-          setSuggestions(suggestions);
+          setSuggestions(suggestions.map(prompt => ({ label: prompt, prompt })));
         }
 
         // Return the prompt with cleaned content (without the SUGGESTIONS line)
@@ -814,21 +809,21 @@ export default function AIPrompt(props: {
       resourceInfo?: { kind?: string; name?: string; namespace?: string }
     ) => {
       // Determine the operation type from the error or method
-      let operation: string = OPERATION_TYPES.GENERIC;
+      let operation = t('operation');
       if (operationType) {
         switch (operationType.toLowerCase()) {
           case 'post':
-            operation = OPERATION_TYPES.CREATION;
+            operation = t('creation');
             break;
           case 'put':
           case 'patch':
-            operation = OPERATION_TYPES.UPDATE;
+            operation = t('update');
             break;
           case 'delete':
-            operation = OPERATION_TYPES.DELETION;
+            operation = t('deletion');
             break;
           default:
-            operation = OPERATION_TYPES.GENERIC;
+            operation = t('operation');
         }
       }
 
@@ -843,7 +838,7 @@ export default function AIPrompt(props: {
 
       // Build error content
       let errorContent = t('Resource {{operation}} failed: {{errorMessage}}', {
-        operation: t(operation),
+        operation,
         errorMessage,
       });
 
@@ -1962,10 +1957,10 @@ export default function AIPrompt(props: {
               suggestions={suggestions}
               apiError={apiError}
               loading={loading || isDiagnosisRunning}
-              onPromptSelect={prompt => setPromptVal(prompt)}
-              onPromptSend={prompt => {
+              onPromptSelect={suggestion => setPromptVal(suggestion.prompt)}
+              onPromptSend={suggestion => {
                 if (isDiagnosisRunning) return;
-                AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
+                AnalyzeResourceBasedOnPrompt(suggestion.prompt).catch(error => {
                   setApiError(error.message);
                 });
               }}

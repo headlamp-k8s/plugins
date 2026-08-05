@@ -20,8 +20,8 @@ import { initReactI18next } from 'react-i18next';
 let initializationPromise: Promise<void> | null = null;
 
 /**
- * Initializes the bundled i18next / react-i18next instance used by ai-ui
- * components.
+ * Initializes a fallback i18next / react-i18next instance for standalone ai-ui
+ * consumers such as Storybook and tests.
  *
  * **Why this is needed:**
  * The headlamp-plugin vite config does NOT externalize `react-i18next`, so
@@ -32,14 +32,14 @@ let initializationPromise: Promise<void> | null = null;
  * returns the raw key `'Configure {{provider}}'` instead of the expected
  * `'Configure GitHub Copilot'`.
  *
- * Call this once at plugin startup (before any ai-ui component renders) so
- * that interpolation works even before plugin-specific translations are
- * loaded by `initializePluginI18n`.
+ * Headlamp integrations must instead provide Headlamp's plugin i18next instance
+ * through `AiUiI18nProvider`. Production code must not initialize a second
+ * language or resource store with this function.
  * Initialization runs synchronously because no backend resources are loaded;
  * the returned promise still reports completion or failure to callers.
  *
  * @example
- * // In your plugin's index.tsx / entry point:
+ * // In a standalone preview entry point:
  * import { initAiUiI18n } from '@headlamp-k8s/ai-ui/i18n';
  * await initAiUiI18n();
  *
