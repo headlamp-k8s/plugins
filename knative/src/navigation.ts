@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-export interface KnativeNavigationItem {
+interface KnativeNavigationItemShape {
   name: string;
   label: string;
   path: string;
   routeName: string;
 }
 
-export interface KnativeNavigationSection {
+interface KnativeNavigationSectionShape {
   name: string;
   label: string;
-  items: readonly KnativeNavigationItem[];
+  items: readonly KnativeNavigationItemShape[];
 }
 
 /** The visible order and route metadata for the Knative sidebar. */
@@ -125,10 +125,16 @@ export const knativeNavigationSections = [
       },
     ],
   },
-] as const satisfies readonly KnativeNavigationSection[];
+] as const satisfies readonly KnativeNavigationSectionShape[];
 
-export type KnativeListRouteName =
-  (typeof knativeNavigationSections)[number]['items'][number]['routeName'];
+/** One literal section from the registered Knative navigation. */
+export type KnativeNavigationSection = (typeof knativeNavigationSections)[number];
+
+/** One literal item from the registered Knative navigation. */
+export type KnativeNavigationItem = KnativeNavigationSection['items'][number];
+
+/** Every list route name declared by the registered Knative navigation. */
+export type KnativeListRouteName = KnativeNavigationItem['routeName'];
 
 export const knativeNavigationItems: readonly KnativeNavigationItem[] =
   knativeNavigationSections.reduce<KnativeNavigationItem[]>(

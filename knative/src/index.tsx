@@ -27,25 +27,12 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import { CertificatesList } from './components/certificates/List';
-import { ClusterDomainClaimsList } from './components/clusterdomainclaims/List';
-import { ConfigurationsList } from './components/configurations/List';
-import { DomainMappingsList } from './components/domainmappings/List';
-import { ImagesList } from './components/images/List';
-import { IngressesList } from './components/ingresses/List';
 import { KServiceDetail } from './components/kservices/Detail';
-import { KServicesList } from './components/kservices/List';
-import { MetricsList } from './components/metrics/List';
-import { NetworkingConfiguration } from './components/networking/Configuration';
-import { PodAutoscalersList } from './components/podautoscalers/List';
 import { RevisionDetail } from './components/revisions/Detail';
-import { RevisionsList } from './components/revisions/List';
-import { RoutesList } from './components/routes/List';
-import { ServerlessServicesList } from './components/serverlessservices/List';
 import { isKnativeInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
+import { getKnativeListRouteComponent } from './listRoutes';
 import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
-import type { KnativeListRouteName } from './navigation';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
 
@@ -150,29 +137,13 @@ registerRoute({
   component: withQueryClient(RevisionDetail),
 });
 
-const listRouteComponents: Record<KnativeListRouteName, React.ComponentType> = {
-  kservices: KServicesList,
-  revisions: RevisionsList,
-  domainMappingList: DomainMappingsList,
-  clusterDomainClaimsList: ClusterDomainClaimsList,
-  knativeConfigurations: ConfigurationsList,
-  knativeRoutes: RoutesList,
-  knativeImages: ImagesList,
-  knativePodAutoscalers: PodAutoscalersList,
-  knativeMetrics: MetricsList,
-  knativeIngresses: IngressesList,
-  knativeServerlessServices: ServerlessServicesList,
-  knativeCertificates: CertificatesList,
-  knetworking: NetworkingConfiguration,
-};
-
 knativeNavigationItems.forEach(item => {
-  const routeName = item.routeName as KnativeListRouteName;
+  const component = getKnativeListRouteComponent(item.routeName);
   registerRoute({
     path: item.path,
     sidebar: item.name,
-    name: routeName,
-    component: withQueryClient(listRouteComponents[routeName]),
+    name: item.routeName,
+    component: withQueryClient(component),
   });
 });
 
