@@ -159,12 +159,31 @@ export function HardwareDetail() {
                     { label: 'Gateway', getter: row => fallback(row.dhcp?.ip?.gateway) },
                     { label: 'Netmask', getter: row => fallback(row.dhcp?.ip?.netmask) },
                     { label: 'Arch', getter: row => fallback(row.dhcp?.arch) },
+                  ]}
+                  data={item.spec?.interfaces ?? []}
+                />
+              </SectionBox>
+            ),
+          },
+          {
+            id: 'tinkerbell.hardware-boot-configuration',
+            section: (
+              <SectionBox title="Boot Configuration">
+                <SimpleTable
+                  columns={[
+                    { label: 'MAC', getter: row => fallback(row.dhcp?.mac) },
+                    { label: 'Hostname', getter: row => fallback(row.dhcp?.hostname) },
                     { label: 'UEFI', getter: row => booleanValue(row.dhcp?.uefi) },
                     { label: 'PXE', getter: row => booleanValue(row.netboot?.allowPXE) },
                     {
                       label: 'Workflow Boot',
                       getter: row => booleanValue(row.netboot?.allowWorkflow),
                     },
+                    { label: 'iPXE URL', getter: row => fallback(row.netboot?.ipxe?.url) },
+                    { label: 'iPXE Binary', getter: row => fallback(row.netboot?.ipxe?.binary) },
+                    { label: 'OSIE Base URL', getter: row => fallback(row.netboot?.osie?.baseURL) },
+                    { label: 'Kernel', getter: row => fallback(row.netboot?.osie?.kernel) },
+                    { label: 'Initrd', getter: row => fallback(row.netboot?.osie?.initrd) },
                   ]}
                   data={item.spec?.interfaces ?? []}
                 />
@@ -200,7 +219,7 @@ export function HardwareDetail() {
               </SectionBox>
             ),
           },
-          {
+          item.conditions?.length && {
             id: 'tinkerbell.hardware-conditions',
             section: <ConditionsSection resource={item.jsonData} />,
           },

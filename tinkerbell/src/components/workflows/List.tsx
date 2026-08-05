@@ -5,7 +5,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { normalizeState } from '../../resources/common';
 import { Workflow, WorkflowTaskStatus } from '../../resources/workflow';
-import { booleanLabel, countLabel, fallback, renderStatus } from '../common/listHelpers';
+import { countLabel, fallback, renderStatus } from '../common/listHelpers';
 
 /**
  * Gets a user-facing workflow state from the current v0.23.0 status shape.
@@ -21,11 +21,14 @@ function getWorkflowState(item: Workflow): string {
  * Gets the best currently relevant action name for a workflow.
  *
  * @param item - Workflow resource to inspect.
- * @returns Current action, latest action, or fallback.
+ * @returns Current action while running, or fallback for non-running workflows.
  */
 function getCurrentAction(item: Workflow): string {
-  const actions = item.status?.tasks?.flatMap(task => task.actions ?? []) ?? [];
-  return fallback(item.status?.currentState?.actionName ?? actions.at(-1)?.name);
+  if (getWorkflowState(item) !== 'Running') {
+    return fallback(undefined);
+  }
+
+  return fallback(item.status?.currentState?.actionName);
 }
 
 /**
@@ -62,11 +65,6 @@ export function WorkflowList() {
       id: 'template',
       label: 'Template',
       getValue: item => fallback(item.spec?.templateRef),
-    },
-    {
-      id: 'disabled',
-      label: 'Disabled',
-      getValue: item => booleanLabel(item.spec?.disabled),
     },
     {
       id: 'tasks',
