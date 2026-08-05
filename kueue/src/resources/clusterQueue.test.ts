@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   getUniqueFlavorNames,
   renderClusterQueueStatus,
+  renderConditions,
   renderLabelSelector,
+  renderResourceGroups,
   renderResourceGroupsSummary,
+  renderStringList,
 } from './clusterQueueFormatters';
 
 describe('ClusterQueue formatters', () => {
@@ -24,6 +27,14 @@ describe('ClusterQueue formatters', () => {
 
     expect(renderResourceGroupsSummary(resourceGroups)).toBe('2 groups, 3 flavors');
     expect(getUniqueFlavorNames(resourceGroups)).toEqual(['default', 'spot']);
+  });
+
+  it('safely handles undefined array parameters without throwing errors', () => {
+    expect(renderResourceGroupsSummary(undefined)).toBe('-');
+    expect(getUniqueFlavorNames(undefined)).toEqual([]);
+    expect(renderConditions(undefined)).toBe('-');
+    expect(renderResourceGroups(undefined)).toBe('-');
+    expect(renderStringList(undefined)).toBe('-');
   });
 
   it('derives a readable status from the Active condition', () => {
