@@ -44,6 +44,7 @@
   "Pause scaling for {{name}} and set the replica count to a specific value.": "Pause scaling for {{name}} and set the replica count to a specific value.",
   "Replicas": "Replicas",
   "Cancel": "Cancel",
+  "Checking KEDA installation status": "Checking KEDA installation status",
   "Invalid number: replicas must be a non-negative integer": "Invalid number: replicas must be a non-negative integer",
   "Successfully set paused replicas to {{value}} for {{name}}": "Successfully set paused replicas to {{value}} for {{name}}",
   "Failed to set paused replicas for {{name}}": "Failed to set paused replicas for {{name}}",

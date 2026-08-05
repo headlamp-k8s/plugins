@@ -39,7 +39,7 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
-        <CircularProgress />
+        <CircularProgress aria-label={t('Checking KEDA installation status')} />
       </Box>
     );
   }
@@ -544,7 +544,7 @@ export function makeJobStatusLabel(job: Job) {
       <Box display="inline">
         <StatusLabel status={conditionInfo.status as StatusLabelProps['status']}>
           {condition.type}
-          <Icon aria-label="hidden" icon={conditionInfo.icon} width="1.2rem" height="1.2rem" />
+          <Icon aria-hidden="true" icon={conditionInfo.icon} width="1.2rem" height="1.2rem" />
         </StatusLabel>
       </Box>
     </LightTooltip>
