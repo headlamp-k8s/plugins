@@ -31,6 +31,13 @@ const READ_ONLY_KNATIVE_GVKS = new Set([
   'networking.internal.knative.dev/v1alpha1/Certificate',
 ]);
 
+/**
+ * Returns whether a resource is one of the generated Knative kinds that this plugin protects.
+ *
+ * Matching uses the complete API version and kind so a similarly named resource from another API
+ * group is not affected. A managing owner reference is also required: an unowned object remains
+ * editable because it was not established as controller-generated.
+ */
 function isReadOnlyKnativeResource(resource: KubeObject | null): boolean {
   if (!resource) return false;
 
@@ -46,6 +53,18 @@ function isReadOnlyKnativeResource(resource: KubeObject | null): boolean {
   return isReadOnlyKind && Boolean(hasControllerOwner);
 }
 
+/**
+ * Removes Headlamp's default mutation actions from controller-generated Knative resources.
+ *
+ * For a protected resource, Edit, Delete, Scale, and Restart are removed while non-mutating and
+ * plugin-specific actions are preserved. Services, Revisions, DomainMappings,
+ * ClusterDomainClaims, unowned resources, and resources from other API groups retain the original
+ * action array unchanged.
+ *
+ * @param resource Resource whose detail-page actions are being assembled.
+ * @param actions Header actions supplied by Headlamp and other plugins.
+ * @returns The original array for an actionable resource, or a filtered array for a generated one.
+ */
 export function filterReadOnlyKnativeHeaderActions<T extends { id: string }>(
   resource: KubeObject | null,
   actions: T[]

@@ -22,35 +22,61 @@ import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluste
 import type { Traffic } from './resources/knative';
 import { findReadyCondition, getFirstOwner } from './resources/knative/resourceData';
 
+/**
+ * Resource data consumed by the pure Knative Map topology builders.
+ *
+ * This is intentionally a projection rather than a complete Kubernetes schema. It contains the
+ * identity and relationship fields shared by the Serving and Kubernetes resources displayed in
+ * the Map. For example, a Route named `checkout` can be matched to Revision
+ * `checkout-00004` without coupling these helpers to either resource class.
+ */
 export type TopologyResource = {
+  /** Kubernetes API version used when a relationship requires an exact resource identity. */
   apiVersion?: string;
+  /** Headlamp cluster identifier; resources from different clusters never match. */
   cluster?: string;
+  /** Kubernetes kind used when a relationship requires an exact resource identity. */
   kind?: string;
+  /** Kubernetes identity and controller ownership data used to create graph edges. */
   metadata: {
     name?: string;
     namespace?: string;
     ownerReferences?: Partial<KubeOwnerReference>[];
     uid?: string;
   };
+  /** Parent Knative Service name derived from the `serving.knative.dev/service` label. */
   parentService?: string;
+  /** Ready condition exposed directly by the Knative resource model when available. */
   readyCondition?: { status?: string };
+  /** Resource-specific desired-state fields inspected by relationship builders. */
   spec?: any;
+  /** Resource-specific observed-state fields inspected by relationship builders. */
   status?: any;
+  /** Namespace selected by a cluster-scoped ClusterDomainClaim. */
   targetNamespace?: string;
 };
 
+/** A possibly unloaded list returned by a Headlamp resource hook. */
 type ResourceList = TopologyResource[] | null | undefined;
 
+/** Static API identity exposed by a Headlamp resource class. */
 type ResourceClassIdentity = {
   apiVersion: string | string[];
   kind: string;
 };
 
+/** Owner-reference identity required when building one ownership relationship. */
 type OwnerFilter = {
   apiVersionPrefix?: string;
   kind: string;
 };
 
+/**
+ * Tests whether a raw Kubernetes object or Headlamp `KubeObject` belongs to a resource class.
+ *
+ * Headlamp instances keep `apiVersion` in `jsonData`, while stories and tests may supply raw
+ * resource JSON. Both shapes are accepted so the Map glance uses the same identity check.
+ */
 export function matchesResourceClass(resource: any, resourceClass: ResourceClassIdentity): boolean {
   const resourceData = resource?.jsonData ?? resource;
   const apiVersions = Array.isArray(resourceClass.apiVersion)
@@ -75,6 +101,7 @@ function resourceNamespace(resource: TopologyResource): string {
   return resource.metadata.namespace ?? '';
 }
 
+/** Creates the cluster-and-namespace-scoped lookup key used by every name-based relationship. */
 function namespacedKey(cluster: string, namespace: string, name: string): string {
   return `${cluster}|${namespace}|${name}`;
 }
@@ -118,6 +145,7 @@ function edge(
   };
 }
 
+/** Keeps the first edge for each stable relationship/source/target edge ID. */
 function deduplicateEdges(edges: Array<GraphEdge | null>): GraphEdge[] {
   const result = new Map<string, GraphEdge>();
   edges.forEach(item => {
@@ -126,6 +154,12 @@ function deduplicateEdges(edges: Array<GraphEdge | null>): GraphEdge[] {
   return Array.from(result.values());
 }
 
+/**
+ * Combines labels that point from one source to the same target into a single edge.
+ *
+ * A Route sending both `100%` and tagged `0% (candidate)` traffic to one Revision therefore
+ * produces one edge with both labels instead of overlapping edges.
+ */
 function labeledEdges(
   source: TopologyResource,
   relationship: string,
@@ -152,6 +186,12 @@ function matchesRef(ref: { apiVersion?: string; kind?: string }, filter?: OwnerF
   );
 }
 
+/**
+ * Converts a resource class identity into the owner-reference filter used by ownership edges.
+ *
+ * For `serving.knative.dev/v1 Service`, the result accepts Service owners from the
+ * `serving.knative.dev/` API group while remaining version-tolerant.
+ */
 export function ownerFilterFor(resourceClass: {
   apiVersion: string | string[];
   kind: string;
@@ -165,6 +205,13 @@ export function ownerFilterFor(resourceClass: {
     : { kind: resourceClass.kind };
 }
 
+/**
+ * Builds owner-reference edges from owner UID to child UID.
+ *
+ * Resources without an owner or the required owner and child UIDs are ignored, as are owners that
+ * do not match the optional identity filter. The supplied relationship becomes part of the edge
+ * ID, allowing multiple relationship types between the same graph nodes.
+ */
 export function makeOwnerEdges(
   resources: ResourceList,
   relationship: string,
@@ -190,10 +237,18 @@ function trafficLabel(target: Traffic): string {
   return target.tag ? `${percent} (${target.tag})` : percent;
 }
 
+/** Uses resolved Route status traffic when available, otherwise the requested spec traffic. */
 function effectiveTraffic(route: TopologyResource): Traffic[] {
   return route.status?.traffic?.length ? route.status.traffic : route.spec?.traffic ?? [];
 }
 
+/**
+ * Connects each Route to the Revision or Configuration selected by its effective traffic.
+ *
+ * Resolved `revisionName` targets take precedence. A latest-revision target without a resolved
+ * Revision falls back to its Configuration, using the parent Service name when necessary. Edge
+ * labels include percentages and tags, such as `100%` and `0% (candidate)`.
+ */
 export function makeRouteTrafficEdges(
   routes: ResourceList,
   revisions: ResourceList,
@@ -220,6 +275,7 @@ export function makeRouteTrafficEdges(
   );
 }
 
+/** Indexes effective Route traffic by revision within the same cluster and namespace. */
 export function indexRevisionTraffic(routes: ResourceList): Map<string, Traffic[]> {
   const trafficByRevision = new Map<string, Traffic[]>();
   routes?.forEach(route => {
@@ -238,6 +294,7 @@ export function indexRevisionTraffic(routes: ResourceList): Map<string, Traffic[
   return trafficByRevision;
 }
 
+/** Returns all effective Route traffic targets that name the supplied Revision. */
 export function getRevisionTraffic(
   revision: TopologyResource,
   trafficByRevision: Map<string, Traffic[]>
@@ -251,6 +308,10 @@ export function getRevisionTraffic(
   );
 }
 
+/**
+ * Connects a cluster-scoped ClusterDomainClaim to the same-named DomainMapping in its target
+ * namespace. Claims without a target namespace or matching mapping do not produce an edge.
+ */
 export function makeClusterDomainClaimEdges(
   claims: ResourceList,
   domainMappings: ResourceList
@@ -270,6 +331,12 @@ export function makeClusterDomainClaimEdges(
   );
 }
 
+/**
+ * Connects DomainMappings to referenced Knative Services.
+ *
+ * Core Kubernetes Service references and references outside `serving.knative.dev` are
+ * intentionally ignored because this edge represents the Knative addressable relationship.
+ */
 export function makeDomainMappingTargetEdges(
   domainMappings: ResourceList,
   services: ResourceList
@@ -293,6 +360,7 @@ export function makeDomainMappingTargetEdges(
   );
 }
 
+/** Connects each PodAutoscaler to its referenced `apps/v1 Deployment` in the same scope. */
 export function makePodAutoscalerTargetEdges(
   podAutoscalers: ResourceList,
   deployments: ResourceList
@@ -308,6 +376,7 @@ export function makePodAutoscalerTargetEdges(
   );
 }
 
+/** Connects each autoscaling Metric to the Kubernetes Service named by `spec.scrapeTarget`. */
 export function makeMetricTargetEdges(metrics: ResourceList, services: ResourceList): GraphEdge[] {
   const serviceIndex = indexNamespacedResources(services);
   return deduplicateEdges(
@@ -318,6 +387,12 @@ export function makeMetricTargetEdges(metrics: ResourceList, services: ResourceL
   );
 }
 
+/**
+ * Connects each image-resolution resource to its Kubernetes ServiceAccount.
+ *
+ * Knative uses the `default` ServiceAccount when `spec.serviceAccountName` is omitted, so the Map
+ * applies the same fallback.
+ */
 export function makeImageServiceAccountEdges(
   images: ResourceList,
   serviceAccounts: ResourceList
@@ -335,6 +410,10 @@ export function makeImageServiceAccountEdges(
   );
 }
 
+/**
+ * Connects each KIngress to the Kubernetes Services referenced by its HTTP backend splits.
+ * Duplicate backends are collapsed and their percentage labels are combined per target.
+ */
 export function makeIngressBackendEdges(
   ingresses: ResourceList,
   services: ResourceList
@@ -363,6 +442,7 @@ export function makeIngressBackendEdges(
   );
 }
 
+/** Connects each KIngress TLS entry to its referenced Kubernetes Secret. */
 export function makeIngressSecretEdges(
   ingresses: ResourceList,
   secrets: ResourceList
@@ -383,6 +463,10 @@ export function makeIngressSecretEdges(
   );
 }
 
+/**
+ * Connects each ServerlessService to its target Deployment and generated public/private Services.
+ * Missing status names are normal while Knative reconciles and do not produce placeholder edges.
+ */
 export function makeServerlessServiceTargetEdges(
   serverlessServices: ResourceList,
   deployments: ResourceList,
@@ -419,6 +503,7 @@ export function makeServerlessServiceTargetEdges(
   return deduplicateEdges(edges);
 }
 
+/** Connects each Knative Certificate to the Kubernetes Secret that stores its issued key pair. */
 export function makeCertificateSecretEdges(
   certificates: ResourceList,
   secrets: ResourceList
@@ -432,10 +517,12 @@ export function makeCertificateSecretEdges(
   );
 }
 
+/** Returns the model-provided Ready condition, or finds it in raw resource status. */
 export function getReadyCondition(resource: TopologyResource): { status?: string } | undefined {
   return resource.readyCondition ?? findReadyCondition(resource.status);
 }
 
+/** Maps Kubernetes Ready values to Headlamp graph colors: success, error, or warning. */
 export function getReadyNodeStatus(resource: TopologyResource): GraphNodeStatus {
   const ready = getReadyCondition(resource);
   if (ready?.status === 'True') return 'success';
