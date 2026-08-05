@@ -21,6 +21,7 @@ import { KubePod } from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { formatDuration } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, CircularProgress, Grid, Link as MuiLink, Typography } from '@mui/material';
 import { Fragment, ReactNode } from 'react';
+import { Trans } from 'react-i18next';
 import { useKedaInstalled } from '../../hooks/useKedaInstalled';
 import { AuthTargetRef } from '../../resources/authentication';
 import { ClusterTriggerAuthentication } from '../../resources/clusterTriggerAuthentication';
@@ -54,15 +55,19 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
         </Grid>
         <Grid item>
           <Typography>
-            {t('Learn how to')}{' '}
-            <MuiLink
-              href="https://keda.sh/docs/latest/deploy"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t('install')}
-            </MuiLink>{' '}
-            {t('KEDA')}
+            <Trans
+              t={t}
+              i18nKey="Learn how to <install>install KEDA</install>"
+              components={{
+                install: (
+                  <MuiLink
+                    href="https://keda.sh/docs/latest/deploy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                ),
+              }}
+            />
           </Typography>
         </Grid>
       </Grid>
@@ -202,7 +207,7 @@ export function BaseKedaAuthenticationDetail({
                       <NameValueTable
                         rows={[
                           {
-                            name: t('ScaledJobs'),
+                            name: t('Scaled Jobs'),
                             value: item.scaledjobs.map((objName, i) =>
                               resourceType === TriggerAuthentication ? (
                                 <Fragment key={objName}>
@@ -229,7 +234,7 @@ export function BaseKedaAuthenticationDetail({
                       <NameValueTable
                         rows={[
                           {
-                            name: t('ScaledObjects'),
+                            name: t('Scaled Objects'),
                             value: item.scaledobjects.map((objName, i) =>
                               resourceType === TriggerAuthentication ? (
                                 <Fragment key={objName}>
@@ -298,7 +303,7 @@ export function BaseKedaAuthenticationList({ title, resourceType }: BaseKedaAuth
           },
           {
             id: 'env',
-            label: t('Env'),
+            label: t('Environment Variable'),
             getValue: item => item.envName || '-',
           },
           {
