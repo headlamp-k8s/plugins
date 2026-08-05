@@ -460,7 +460,7 @@ export function PluginDetail() {
         } catch (error) {
           if (isMounted) {
             const message = error instanceof Error ? error.message : String(error);
-            setAlertMessage(`Failed to fetch plugin info from ArtifactHub: ${message}`);
+            setAlertMessage(t('Failed to fetch plugin info from {{url}}: {{message}}', { url, message }));
           }
           console.error('Error fetching plugin detail:', error);
           return;
