@@ -17,7 +17,7 @@
 /**
  * Ingress class constants for Knative networking configuration.
  *
- * These values correspond to the ingress.class setting in the config-network ConfigMap.
+ * These values correspond to the ingress-class (or legacy ingress.class) setting in the config-network ConfigMap.
  */
 
 const INGRESS_CLASS_SUFFIX = '.ingress.networking.knative.dev';
@@ -37,4 +37,31 @@ export function formatIngressClass(ingressClass: string | null): string {
   return ingressClass.endsWith(INGRESS_CLASS_SUFFIX)
     ? ingressClass.slice(0, -INGRESS_CLASS_SUFFIX.length)
     : ingressClass;
+}
+
+/**
+ * Extracts the exact, uncleaned ingress class string from the provided ConfigMap data.
+ *
+ * @param data - The parsed key-value data object from the config-network ConfigMap.
+ * @returns The exact ingress class string as provided, or null if not set.
+ */
+export function getIngressClassRaw(data: Record<string, string | undefined> | null | undefined): string | null {
+  return data?.['ingress-class'] ?? data?.['ingress.class'] ?? null;
+}
+
+/**
+ * Extracts the active ingress class name from the provided ConfigMap data.
+ *
+ * Modern versions of Knative use the `ingress-class` key instead of the older
+ * `ingress.class` key. If a ConfigMap contains both, the modern dashed version
+ * is given priority.
+ *
+ * @param data - The parsed key-value data object from the config-network ConfigMap.
+ * @returns The trimmed ingress class string, or null if not set or empty.
+ * @see https://knative.dev/docs/serving/config-network-adapters/#ingress-configurations
+ */
+export function getIngressClass(data: Record<string,string | undefined> | null | undefined){
+  const raw = getIngressClassRaw(data);
+  const trimmed = raw?.trim();
+  return trimmed && trimmed !== '' ? trimmed : null;
 }
