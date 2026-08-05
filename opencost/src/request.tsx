@@ -22,6 +22,17 @@ export async function isOpenCostInstalled() {
   return [false, null, null];
 }
 
+/**
+ * Some clusters (e.g. EKS with certain CNI configurations) reject
+ * kube-apiserver service-proxy requests to the OpenCost backend with
+ * "error trying to reach service: Address is not allowed". When the
+ * configured service value is itself a full URL, talk to it directly
+ * instead of going through the apiserver proxy.
+ */
+function isDirectUrl(serviceName: string): boolean {
+  return /^https?:\/\//i.test(serviceName);
+}
+
 export function fetchOpencostData(
   namespace: string,
   serviceName: string,
@@ -29,9 +40,20 @@ export function fetchOpencostData(
   resource: string,
   accumulate: boolean
 ) {
-  const url = `/api/v1/namespaces/${namespace}/services/${serviceName}/proxy/allocation?window=${window}&aggregate=${resource}&step=1d&accumulate=${accumulate.toString()}`;
+  const queryString = `window=${window}&aggregate=${resource}&step=1d&accumulate=${accumulate.toString()}`;
 
-  return request(url).then(data => {
-    return data;
-  });
+  if (isDirectUrl(serviceName)) {
+    const baseUrl = serviceName.replace(/\/+$/, '');
+    return fetch(`${baseUrl}/allocation?${queryString}`).then(response => {
+      if (!response.ok) {
+        throw new Error(
+          `Request to OpenCost URL ${baseUrl} failed with status ${response.status} ${response.statusText}`
+        );
+      }
+      return response.json();
+    });
+  }
+
+  const url = `/api/v1/namespaces/${namespace}/services/${serviceName}/proxy/allocation?${queryString}`;
+  return request(url);
 }
