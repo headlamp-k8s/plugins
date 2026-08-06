@@ -86,19 +86,10 @@ import { checkHolmesAgentHealth } from './holmesClient';
 import { HolmesHealthRequestGate } from './holmesHealthRequestGate';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import { fetchClusterWarnings, fetchWarningEventsForClusters } from './kubernetes/EventFetcher';
+import { createPluginCommandRunner } from './pluginCommandRunner';
 import { getSettingsURL, type PluginConfig, useGlobalState } from './pluginState';
 import { useDynamicPrompts } from './prompts/promptGenerator';
 import { resolveRuntimeProviderConfig } from './resolveRuntimeProviderConfig';
-
-interface CommandProcess {
-  /** Standard output stream emitted by the injected command. */
-  stdout: {
-    /** Registers a listener for command output chunks. */
-    on: (event: 'data', listener: (chunk: unknown) => void) => void;
-  };
-  /** Registers a listener for process exit. */
-  on: (event: 'exit', listener: (code: number | null) => void) => void;
-}
 
 interface HolmesTextEvent {
   /** Streamed message identifier. */
@@ -114,12 +105,6 @@ interface HolmesToolEvent {
   toolCallName?: string;
 }
 
-type PluginCommandRunner = (
-  command: string,
-  args: string[],
-  options: Record<string, unknown>
-) => CommandProcess;
-
 export default function AIPrompt(props: {
   openPopup: boolean;
   setOpenPopup: (open: boolean) => void;
@@ -134,13 +119,9 @@ export default function AIPrompt(props: {
   const commandRunnerRef = React.useRef<CommandRunner | null>(null);
   React.useEffect(() => {
     if (typeof pluginRunCommand !== 'undefined') {
-      commandRunnerRef.current = (command: string, args: string[]) =>
-        new Promise<{ stdout: string; exitCode: number }>(resolve => {
-          const proc = (pluginRunCommand as unknown as PluginCommandRunner)(command, args, {});
-          let out = '';
-          proc.stdout.on('data', chunk => (out += String(chunk)));
-          proc.on('exit', (code: number | null) => resolve({ stdout: out, exitCode: code ?? -1 }));
-        });
+      commandRunnerRef.current = createPluginCommandRunner((command, args, options) =>
+        pluginRunCommand(command as Parameters<typeof pluginRunCommand>[0], args, options)
+      );
     }
   }, []);
 
