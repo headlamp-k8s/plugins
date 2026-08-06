@@ -18,11 +18,12 @@ import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link as MuiLink } from '@mui/material';
-import { PolicyReport } from '../resources/policyReport';
+import { useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
+import { PolicyReport, Report } from '../resources/policyReport';
 import { SummaryChips } from './common';
 import { ReportViewer } from './ReportViewer';
 
-function openReportActivity(item: PolicyReport) {
+function openReportActivity(item: PolicyReport | Report) {
   Activity.launch({
     id: `kyverno-polr-${item.jsonData.metadata.namespace}-${item.jsonData.metadata.name}`,
     location: 'split-right',
@@ -32,6 +33,7 @@ function openReportActivity(item: PolicyReport) {
       <ReportViewer
         name={item.jsonData.metadata.name}
         namespace={item.jsonData.metadata.namespace}
+        resourceClass={item.constructor as any}
       />
     ),
   });
@@ -39,10 +41,13 @@ function openReportActivity(item: PolicyReport) {
 
 export function PolicyReportList() {
   const { t } = useTranslation();
+  const crds = useKyvernoCRDs();
+  const resourceClass = crds.openreports ? Report : PolicyReport;
+
   return (
     <ResourceListView
       title={t('Policy Reports')}
-      resourceClass={PolicyReport}
+      resourceClass={resourceClass}
       columns={[
         {
           id: 'name',

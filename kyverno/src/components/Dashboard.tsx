@@ -30,8 +30,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
-import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
+import {
+  ClusterPolicyReport,
+  ClusterReport,
+  PolicyReport,
+  PolicyResultStatus,
+  Report,
+} from '../resources/policyReport';
 
 const STATUS_COLORS: Record<PolicyResultStatus, string> = {
   pass: '#4caf50',
@@ -74,10 +81,13 @@ function MetricCard({
 
 export function Dashboard() {
   const { t } = useTranslation();
+  const crds = useKyvernoCRDs();
   const [clusterPolicies] = KyvernoClusterPolicy.useList();
   const [policies] = KyvernoPolicy.useList();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { items: openReports } = Report.useList();
+  const { items: openClusterReports } = ClusterReport.useList();
 
   const stats = useMemo(() => {
     const counts: Record<PolicyResultStatus, number> = {
@@ -91,7 +101,17 @@ export function Dashboard() {
     const bySeverity = new Map<string, number>();
     const byNamespace = new Map<string, { pass: number; fail: number }>();
 
-    const allReports = [...(policyReports || []), ...(clusterPolicyReports || [])];
+    const effectivePolicyReports = crds.wgreports ? policyReports : [];
+    const effectiveClusterPolicyReports = crds.wgreports ? clusterPolicyReports : [];
+    const effectiveOpenReports = crds.openreports ? openReports : [];
+    const effectiveOpenClusterReports = crds.openreports ? openClusterReports : [];
+
+    const allReports = [
+      ...(effectivePolicyReports || []),
+      ...(effectiveClusterPolicyReports || []),
+      ...(effectiveOpenReports || []),
+      ...(effectiveOpenClusterReports || []),
+    ];
 
     for (const report of allReports) {
       for (const result of report.results) {
@@ -137,7 +157,15 @@ export function Dashboard() {
       bySeverity,
       byNamespace,
     };
-  }, [clusterPolicies, policies, policyReports, clusterPolicyReports]);
+  }, [
+    crds,
+    clusterPolicies,
+    policies,
+    policyReports,
+    clusterPolicyReports,
+    openReports,
+    openClusterReports,
+  ]);
 
   const statusData = useMemo(() => {
     return (['pass', 'fail', 'warn', 'error', 'skip'] as PolicyResultStatus[])
@@ -177,11 +205,14 @@ export function Dashboard() {
 
   // Loading until ALL streams resolve — otherwise totals/compliance flash partial values
   // as each useList settles.
+  const isWgreportsLoading = crds.wgreports && (policyReports === null || clusterPolicyReports === null);
+  const isOpenreportsLoading = crds.openreports && (openReports === null || openClusterReports === null);
   const isLoading =
+    crds.loading ||
     clusterPolicies === null ||
     policies === null ||
-    policyReports === null ||
-    clusterPolicyReports === null;
+    isWgreportsLoading ||
+    isOpenreportsLoading;
 
   const complianceColor =
     stats.compliancePct === null

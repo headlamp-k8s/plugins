@@ -25,6 +25,7 @@ import {
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, CircularProgress, Typography } from '@mui/material';
+import { useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
 import {
   KyvernoClusterPolicy,
   KyvernoPolicy,
@@ -32,7 +33,13 @@ import {
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
-import { ClusterPolicyReport, PolicyReport, PolicyReportResult } from '../resources/policyReport';
+import {
+  ClusterPolicyReport,
+  ClusterReport,
+  PolicyReport,
+  PolicyReportResult,
+  Report,
+} from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip } from './common';
 
 interface PolicyViewerProps {
@@ -183,12 +190,22 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
 
 function AssociatedReportsSection({ policyName }: { policyName: string }) {
   const { t } = useTranslation();
+  const crds = useKyvernoCRDs();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { items: openReports } = Report.useList();
+  const { items: openClusterReports } = ClusterReport.useList();
 
-  // Wait for BOTH streams before rendering — otherwise we'd briefly show a
-  // partial result set as soon as the first list resolves.
-  if (policyReports === null || clusterPolicyReports === null) {
+  const effectivePolicyReports = crds.wgreports ? policyReports : [];
+  const effectiveClusterPolicyReports = crds.wgreports ? clusterPolicyReports : [];
+  const effectiveOpenReports = crds.openreports ? openReports : [];
+  const effectiveOpenClusterReports = crds.openreports ? openClusterReports : [];
+
+  const isWgreportsLoading = crds.wgreports && (policyReports === null || clusterPolicyReports === null);
+  const isOpenreportsLoading = crds.openreports && (openReports === null || openClusterReports === null);
+  const isLoading = crds.loading || isWgreportsLoading || isOpenreportsLoading;
+
+  if (isLoading) {
     return (
       <SectionBox title={t('Associated Report Results')}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
@@ -201,7 +218,7 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
   const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] =
     [];
 
-  for (const report of policyReports) {
+  for (const report of effectivePolicyReports || []) {
     for (const result of report.results) {
       if (result.policy === policyName) {
         matchingResults.push({
@@ -213,7 +230,30 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
     }
   }
 
-  for (const report of clusterPolicyReports) {
+  for (const report of effectiveClusterPolicyReports || []) {
+    for (const result of report.results) {
+      if (result.policy === policyName) {
+        matchingResults.push({
+          ...result,
+          reportName: report.jsonData.metadata.name,
+        });
+      }
+    }
+  }
+
+  for (const report of effectiveOpenReports || []) {
+    for (const result of report.results) {
+      if (result.policy === policyName) {
+        matchingResults.push({
+          ...result,
+          reportName: report.jsonData.metadata.name,
+          reportNamespace: report.jsonData.metadata.namespace,
+        });
+      }
+    }
+  }
+
+  for (const report of effectiveOpenClusterReports || []) {
     for (const result of report.results) {
       if (result.policy === policyName) {
         matchingResults.push({
