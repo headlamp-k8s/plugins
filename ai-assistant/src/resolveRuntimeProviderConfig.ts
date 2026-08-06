@@ -15,7 +15,8 @@ export interface RuntimeCredentialResolver {
   refreshAzureOpenAIKey: (
     resourceGroup: string,
     accountName: string,
-    runner: CommandRunner
+    runner: CommandRunner,
+    subscriptionId?: string
   ) => Promise<string | null>;
 }
 
@@ -51,17 +52,29 @@ export async function resolveRuntimeProviderConfig(
   if (runtimeConfig.apiKey === AZ_CLI_AUTH_SENTINEL) {
     const resourceGroup = runtimeConfig.azResourceGroup;
     const accountName = runtimeConfig.azAccountName;
+    const subscriptionId = runtimeConfig.azSubscriptionId;
+    if (typeof subscriptionId !== 'string' || !subscriptionId) {
+      throw new Error(
+        'Could not resolve the Azure OpenAI key because the saved provider has no subscription ID. ' +
+          'Run Auto Detect and save the Azure provider again.'
+      );
+    }
     const freshKey =
       resolver.commandRunner &&
       typeof resourceGroup === 'string' &&
       typeof accountName === 'string' &&
       resourceGroup &&
       accountName
-        ? await resolver.refreshAzureOpenAIKey(resourceGroup, accountName, resolver.commandRunner)
+        ? await resolver.refreshAzureOpenAIKey(
+            resourceGroup,
+            accountName,
+            resolver.commandRunner,
+            subscriptionId
+          )
         : null;
     if (!freshKey) {
       throw new Error(
-        'Could not resolve the Azure OpenAI key from the Azure CLI. ' +
+        'Could not resolve the Azure OpenAI key through Azure authentication. ' +
           'Ensure the `az` CLI is installed and logged in (run `az login`), ' +
           'then try again from the desktop app.'
       );
