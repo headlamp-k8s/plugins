@@ -6,6 +6,7 @@ vi.mock('../admissionchecks/Detail', () => ({ default: () => null }));
 vi.mock('../clusterqueues/Detail', () => ({ default: () => null }));
 vi.mock('../cohorts/Detail', () => ({ default: () => null }));
 vi.mock('../localqueues/Detail', () => ({ default: () => null }));
+vi.mock('../multikueue/Detail', () => ({ default: () => null }));
 vi.mock('../resourceflavors/Detail', () => ({ default: () => null }));
 vi.mock('../workloads/Detail', () => ({ default: () => null }));
 vi.mock('../../map/kueueMapSource', () => ({ kueueIconName: 'icon' }));
@@ -38,6 +39,14 @@ describe('matchKueueDetailPath', () => {
   it('ignores list pages and other routes', () => {
     expect(matchKueueDetailPath('/c/main/kueue/workloads')).toBeNull();
     expect(matchKueueDetailPath('/c/main/jobs/team-a/job-a')).toBeNull();
+  });
+
+  it('matches MultiKueueCluster detail routes', () => {
+    expect(matchKueueDetailPath('/c/main/kueue/multikueueclusters/worker-1')).toMatchObject({
+      kind: 'MultiKueueCluster',
+      cluster: 'main',
+      name: 'worker-1',
+    });
   });
 });
 

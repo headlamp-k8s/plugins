@@ -9,6 +9,7 @@ import AdmissionCheckDetail from '../admissionchecks/Detail';
 import ClusterQueueDetail from '../clusterqueues/Detail';
 import CohortDetail from '../cohorts/Detail';
 import LocalQueueDetail from '../localqueues/Detail';
+import MultiKueueClusterDetail from '../multikueue/Detail';
 import ResourceFlavorDetail from '../resourceflavors/Detail';
 import WorkloadDetail from '../workloads/Detail';
 
@@ -24,6 +25,11 @@ const panelDetails: { kind: string; path: string; Detail: ComponentType<DetailPr
   { kind: 'ClusterQueue', path: kueueRoutePaths.clusterQueueDetail, Detail: ClusterQueueDetail },
   { kind: 'Cohort', path: kueueRoutePaths.cohortDetail, Detail: CohortDetail },
   { kind: 'LocalQueue', path: kueueRoutePaths.localQueueDetail, Detail: LocalQueueDetail },
+  {
+    kind: 'MultiKueueCluster',
+    path: kueueRoutePaths.multiKueueClusterDetail,
+    Detail: MultiKueueClusterDetail,
+  },
   {
     kind: 'ResourceFlavor',
     path: kueueRoutePaths.resourceFlavorDetail,
