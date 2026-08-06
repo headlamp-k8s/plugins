@@ -216,6 +216,7 @@ export function RevisionsList() {
             status={rev.readyCondition?.status ?? 'Unknown'}
             reason={rev.readyCondition?.reason}
             message={rev.readyCondition?.message}
+            actualReplicas={rev.status?.actualReplicas}
           />
         ),
       },

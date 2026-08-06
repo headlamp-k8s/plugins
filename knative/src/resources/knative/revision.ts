@@ -45,6 +45,8 @@ export interface KRevisionResource extends KubeObjectInterface {
   status?: {
     conditions?: Condition[];
     imageDigest?: string;
+    actualReplicas?: number;
+    desiredReplicas?: number;
   };
 }
 
@@ -80,6 +82,14 @@ export class KRevision extends KubeObject<KRevisionResource> {
 
   get isReady(): boolean {
     return this.readyCondition?.status === 'True';
+  }
+
+  get actualReplicas(): number | undefined {
+    return this.status?.actualReplicas;
+  }
+
+  get desiredReplicas(): number | undefined {
+    return this.status?.desiredReplicas;
   }
 
   get parentService(): string | undefined {
