@@ -29,7 +29,7 @@ import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingr
 import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
-import { KnativeDomainMapping, KService } from '../../resources/knative';
+import { KnativeDomainMapping, KRevision,KService } from '../../resources/knative';
 import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
@@ -195,6 +195,9 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
   const domainMappingsResult = KnativeDomainMapping.useList({ clusters });
   const domainMappingsData = domainMappingsResult.items;
   const domainMappingsError = domainMappingsResult.error;
+
+  const revisionsResult = KRevision.useList({ clusters });
+  const revisions = revisionsResult.items || [];
 
   const configMapResult = ConfigMap.useList({
     clusters,
@@ -445,11 +448,30 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
           if (readyCondition?.status === 'True') status = 'True';
           else if (readyCondition?.status === 'False') status = 'False';
 
+          const serviceRevisions = revisions.filter(
+            rev =>
+              rev.parentService === svc.metadata.name &&
+              rev.metadata.namespace === svc.metadata.namespace &&
+              rev.cluster === svc.cluster
+          );
+
+          let actualReplicas: number | undefined = (svc.status as any)?.actualReplicas;
+          if (actualReplicas === undefined && serviceRevisions.length > 0) {
+            actualReplicas = 0;
+            for (const rev of serviceRevisions) {
+              const count = rev.status?.actualReplicas;
+              if (count !== undefined) {
+                actualReplicas += count;
+              }
+            }
+          }
+
           return (
             <ReadyStatusLabel
               status={status}
               reason={readyCondition?.reason}
               message={readyCondition?.message}
+              actualReplicas={actualReplicas}
             />
           );
         },
