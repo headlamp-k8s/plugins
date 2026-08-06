@@ -84,14 +84,15 @@ describe('useAutoDetect', () => {
     expect(detectionMocks.detectProviders).toHaveBeenCalledWith(
       [],
       ['already-dismissed'],
-      commandRunner
+      commandRunner,
+      expect.any(AbortSignal)
     );
     expect(result.current.autoDetecting).toBe(false);
     expect(result.current.detectedProviders).toEqual(sampleDetectedProviders);
     expect(result.current.showDetectedDialog).toBe(true);
   });
 
-  it('clears stale results when a later run finds nothing', async () => {
+  it('opens an empty result dialog when a later run finds nothing', async () => {
     detectionMocks.detectProviders
       .mockResolvedValueOnce(sampleDetectedProviders)
       .mockResolvedValueOnce([]);
@@ -102,7 +103,7 @@ describe('useAutoDetect', () => {
     await act(async () => result.current.handleAutoDetect());
 
     expect(result.current.detectedProviders).toEqual([]);
-    expect(result.current.showDetectedDialog).toBe(false);
+    expect(result.current.showDetectedDialog).toBe(true);
   });
 
   it('ignores an older detection result that finishes last', async () => {
@@ -119,6 +120,10 @@ describe('useAutoDetect', () => {
       firstRun = result.current.handleAutoDetect();
       secondRun = result.current.handleAutoDetect();
     });
+    const firstSignal = detectionMocks.detectProviders.mock.calls[0][3] as AbortSignal;
+    const secondSignal = detectionMocks.detectProviders.mock.calls[1][3] as AbortSignal;
+    expect(firstSignal.aborted).toBe(true);
+    expect(secondSignal.aborted).toBe(false);
     await act(async () => {
       second.resolve([sampleDetectedProviders[1]]);
       await secondRun;
@@ -150,7 +155,12 @@ describe('useAutoDetect', () => {
 
     await act(async () => result.current.handleAutoDetect());
 
-    expect(detectionMocks.detectProviders).toHaveBeenCalledWith([], [], null);
+    expect(detectionMocks.detectProviders).toHaveBeenCalledWith(
+      [],
+      [],
+      null,
+      expect.any(AbortSignal)
+    );
   });
 
   it('adds multiple providers, makes only the first default, and activates it', () => {

@@ -88,13 +88,15 @@ it('resets choices when the same provider list is reopened', async () => {
   );
 });
 
-it('renders an empty provider list with add disabled', () => {
+it('renders an actionable empty provider result', () => {
   const { rerender } = render(
     <DetectedProvidersDialog {...multipleProvidersArgs} detectedProviders={[]} open={false} />
   );
   expect(screen.queryByRole('dialog')).toBeNull();
   rerender(<DetectedProvidersDialog {...multipleProvidersArgs} detectedProviders={[]} open />);
-  expect(screen.getByRole('button', { name: 'Add Selected (0)' })).toHaveProperty('disabled', true);
+  expect(screen.getByText(/No AI providers were detected/)).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Add Selected/ })).toBeNull();
 });
 
 it('disables add when nothing is selected and supports re-selection', () => {
