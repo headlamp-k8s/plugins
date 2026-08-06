@@ -108,9 +108,13 @@ export default function DetectedProvidersDialog({
       <DialogTitle>{t('Detected AI Providers')}</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
-          {t(
-            'The following AI providers were automatically detected on your system. Select which ones you would like to add.'
-          )}
+          {providerCount > 0
+            ? t(
+                'The following AI providers were automatically detected on your system. Select which ones you would like to add.'
+              )
+            : t(
+                'No AI providers were detected. Check that the provider CLI is installed and authenticated, then try again.'
+              )}
         </DialogContentText>
         {detectedProviders.map((provider, index) => {
           const providerInfo = getProviderById(provider.providerId);
@@ -138,12 +142,18 @@ export default function DetectedProvidersDialog({
         })}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleDismiss} color="inherit">
-          {t('Not Now')}
-        </Button>
-        <Button onClick={handleAdd} variant="contained" disabled={selected.size === 0}>
-          {t('Add Selected ({{count}})', { count: selected.size })}
-        </Button>
+        {providerCount === 0 ? (
+          <Button onClick={onClose}>{t('Close')}</Button>
+        ) : (
+          <>
+            <Button onClick={handleDismiss} color="inherit">
+              {t('Not Now')}
+            </Button>
+            <Button onClick={handleAdd} variant="contained" disabled={selected.size === 0}>
+              {t('Add Selected ({{count}})', { count: selected.size })}
+            </Button>
+          </>
+        )}
       </DialogActions>
     </DialogSlot>
   );
