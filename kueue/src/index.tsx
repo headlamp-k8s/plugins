@@ -3,6 +3,8 @@ import ClusterQueueDetail from './components/clusterqueues/Detail';
 import ClusterQueueList from './components/clusterqueues/List';
 import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
+import MultiKueueClusterDetail from './components/multikueue/Detail';
+import MultiKueueClusterList from './components/multikueue/List';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
 import WorkloadDetail from './components/workloads/Detail';
@@ -43,6 +45,13 @@ registerSidebarEntry({
   name: 'kueue-workloads',
   label: 'Workloads',
   url: kueueRoutePaths.workloadsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-multikueueclusters',
+  label: 'MultiKueue Clusters',
+  url: kueueRoutePaths.multiKueueClustersList,
 });
 
 registerRoute({
@@ -107,4 +116,20 @@ registerRoute({
   name: kueueRouteNames.workloadDetail,
   exact: true,
   component: () => <WorkloadDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueClustersList,
+  sidebar: 'kueue-multikueueclusters',
+  name: kueueRouteNames.multiKueueClustersList,
+  exact: true,
+  component: () => <MultiKueueClusterList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueClusterDetail,
+  sidebar: 'kueue-multikueueclusters',
+  name: kueueRouteNames.multiKueueClusterDetail,
+  exact: true,
+  component: () => <MultiKueueClusterDetail />,
 });
