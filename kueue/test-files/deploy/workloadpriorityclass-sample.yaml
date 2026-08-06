@@ -1,0 +1,12 @@
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata:
+  name: sample-priority
+value: 10000
+description: "Sample priority"
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata:
+  name: low-priority
+value: 0

@@ -5,6 +5,8 @@ import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
+import WorkloadPriorityClassDetail from './components/workloadpriorityclasses/Detail';
+import WorkloadPriorityClassList from './components/workloadpriorityclasses/List';
 import WorkloadDetail from './components/workloads/Detail';
 import WorkloadList from './components/workloads/List';
 import { kueueRoutePaths } from './utils/kueueRoutes';
@@ -43,6 +45,13 @@ registerSidebarEntry({
   name: 'kueue-workloads',
   label: 'Workloads',
   url: kueueRoutePaths.workloadsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-workloadpriorityclasses',
+  label: 'WorkloadPriorityClasses',
+  url: kueueRoutePaths.workloadPriorityClassesList,
 });
 
 registerRoute({
@@ -107,4 +116,20 @@ registerRoute({
   name: 'Workload Detail',
   exact: true,
   component: () => <WorkloadDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.workloadPriorityClassesList,
+  sidebar: 'kueue-workloadpriorityclasses',
+  name: 'WorkloadPriorityClasses',
+  exact: true,
+  component: () => <WorkloadPriorityClassList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.workloadPriorityClassDetail,
+  sidebar: 'kueue-workloadpriorityclasses',
+  name: 'WorkloadPriorityClass Detail',
+  exact: true,
+  component: () => <WorkloadPriorityClassDetail />,
 });
