@@ -37,6 +37,10 @@ export interface ProviderSettings {
   endpoint?: string;
   /** Azure account label used to match CLI-authenticated configs. */
   azAccountName?: string;
+  /** Azure resource group containing a CLI-detected account. */
+  azResourceGroup?: string;
+  /** Azure subscription containing a CLI-detected account. */
+  azSubscriptionId?: string;
   /** Additional provider-specific persisted setting. */
   [key: string]: unknown;
 }
@@ -82,6 +86,8 @@ function normalizeProviderSettings(value: Record<string, unknown>): ProviderSett
     'deploymentName',
     'endpoint',
     'azAccountName',
+    'azResourceGroup',
+    'azSubscriptionId',
   ] as const;
   stringFields.forEach(fieldName => {
     if (settings[fieldName] !== undefined && typeof settings[fieldName] !== 'string') {
@@ -138,10 +144,14 @@ export function isSameStoredConfig(a: StoredProviderConfig, b: StoredProviderCon
   if (a.id && b.id) return a.id === b.id;
   if (a.providerId !== b.providerId) return false;
   if (a.providerId === 'azure' && (a.config.azAccountName || b.config.azAccountName)) {
+    const bothScoped = Boolean(a.config.azSubscriptionId && b.config.azSubscriptionId);
     return Boolean(
       a.config.azAccountName &&
         b.config.azAccountName &&
-        a.config.azAccountName === b.config.azAccountName
+        a.config.azAccountName === b.config.azAccountName &&
+        (!bothScoped ||
+          (a.config.azSubscriptionId === b.config.azSubscriptionId &&
+            a.config.azResourceGroup === b.config.azResourceGroup))
     );
   }
   if (a.config.apiKey && b.config.apiKey) return a.config.apiKey === b.config.apiKey;
@@ -272,10 +282,14 @@ export function saveProviderConfig(
       providerId === 'azure' &&
       (p.config.azAccountName || config.azAccountName)
     ) {
+      const bothScoped = Boolean(p.config.azSubscriptionId && config.azSubscriptionId);
       return Boolean(
         p.config.azAccountName &&
           config.azAccountName &&
-          p.config.azAccountName === config.azAccountName
+          p.config.azAccountName === config.azAccountName &&
+          (!bothScoped ||
+            (p.config.azSubscriptionId === config.azSubscriptionId &&
+              p.config.azResourceGroup === config.azResourceGroup))
       );
     }
     // If displayName is provided, use that as primary matching criteria
