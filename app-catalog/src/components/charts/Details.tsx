@@ -46,6 +46,18 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
   const [openEditor, setOpenEditor] = useState(false);
   const chartCfg = getCatalogConfig();
 
+  // useEffect(() => {
+  //   // Note: This path is not enabled for vanilla helm repo. Please check the following comment in charts/List.tsx
+  //   // TODO: The app-catalog using artifacthub.io loads the details about the chart with an option to install the chart
+  //   //
+  //   // An API to get details about a particular chart is required to achieve this. For example, take a look at the response
+  //   // from https://artifacthub.io/api/v1/packages/helm/grafana/grafana
+  //   // Easiest thing is to fetch index.yaml, get the details for chartName and fill the details
+  //   fetchChartDetailFromArtifact(chartName, repoName).then(response => {
+  //     setChart(response);
+  //   });
+  // }, [chartName, repoName]);
+
   useEffect(() => {
     // Note: This path is not enabled for vanilla helm repo. Please check the following comment in charts/List.tsx
     // TODO: The app-catalog using artifacthub.io loads the details about the chart with an option to install the chart
@@ -53,9 +65,19 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
     // An API to get details about a particular chart is required to achieve this. For example, take a look at the response
     // from https://artifacthub.io/api/v1/packages/helm/grafana/grafana
     // Easiest thing is to fetch index.yaml, get the details for chartName and fill the details
+    let ignore = false;
+
     fetchChartDetailFromArtifact(chartName, repoName).then(response => {
-      setChart(response);
+      // Guard against a stale/out-of-order response overwriting state
+      // for a chart the user has since navigated away from.
+      if (!ignore) {
+        setChart(response);
+      }
     });
+
+    return () => {
+      ignore = true;
+    };
   }, [chartName, repoName]);
 
   return (
