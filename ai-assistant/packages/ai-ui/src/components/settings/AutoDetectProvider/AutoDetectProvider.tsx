@@ -105,16 +105,27 @@ export function useAutoDetect({
   const [detectedProviders, setDetectedProviders] = React.useState<DetectedProvider[]>([]);
   const [showDetectedDialog, setShowDetectedDialog] = React.useState(false);
   const detectionRun = React.useRef(0);
+  const detectionController = React.useRef<AbortController | null>(null);
+
+  React.useEffect(() => () => detectionController.current?.abort(), []);
 
   const handleAutoDetect = React.useCallback(async (): Promise<void> => {
+    detectionController.current?.abort();
+    const controller = new AbortController();
+    detectionController.current = controller;
     const run = ++detectionRun.current;
     setAutoDetecting(true);
     setDetectedProviders([]);
     setShowDetectedDialog(false);
     try {
       const existing = savedConfigs?.providers || [];
-      const detected = await detectProviders(existing, dismissedProviders, commandRunner ?? null);
-      if (run === detectionRun.current && detected.length > 0) {
+      const detected = await detectProviders(
+        existing,
+        dismissedProviders,
+        commandRunner ?? null,
+        controller.signal
+      );
+      if (run === detectionRun.current) {
         setDetectedProviders(detected);
         setShowDetectedDialog(true);
       }
