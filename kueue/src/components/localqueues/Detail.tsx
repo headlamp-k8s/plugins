@@ -5,7 +5,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { LocalQueue } from '../../resources/localQueue';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { kueueRoutePaths } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 /** Render a ClusterQueue reference as a detail-page link. */
@@ -17,7 +17,7 @@ function renderClusterQueueLink(localQueue: LocalQueue) {
   }
 
   return (
-    <Link routeName={kueueRouteNames.clusterQueueDetail} params={{ name: clusterQueueName }}>
+    <Link routeName={kueueRoutePaths.clusterQueueDetail} params={{ name: clusterQueueName }}>
       {clusterQueueName}
     </Link>
   );
