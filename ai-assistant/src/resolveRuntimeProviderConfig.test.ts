@@ -32,18 +32,44 @@ describe('resolveRuntimeProviderConfig', () => {
       apiKey: AZ_CLI_AUTH_SENTINEL,
       azResourceGroup: 'resource-group',
       azAccountName: 'account',
+      azSubscriptionId: 'subscription-id',
       model: 'deployment',
     });
     const serializedBefore = JSON.stringify(persisted);
+    const refreshAzureOpenAIKey = vi.fn().mockResolvedValue('real-azure-key');
     const runtime = await resolveRuntimeProviderConfig(persisted, {
       commandRunner,
       refreshGitHubToken: vi.fn(),
-      refreshAzureOpenAIKey: vi.fn().mockResolvedValue('real-azure-key'),
+      refreshAzureOpenAIKey,
     });
 
     expect(runtime.apiKey).toBe('real-azure-key');
+    expect(refreshAzureOpenAIKey).toHaveBeenCalledWith(
+      'resource-group',
+      'account',
+      commandRunner,
+      'subscription-id'
+    );
     expect(persisted.apiKey).toBe(AZ_CLI_AUTH_SENTINEL);
     expect(JSON.stringify(persisted)).toBe(serializedBefore);
+  });
+
+  it('guides legacy Azure configs without a subscription ID to Auto Detect', async () => {
+    const persisted = Object.freeze<ProviderSettings>({
+      apiKey: AZ_CLI_AUTH_SENTINEL,
+      azResourceGroup: 'resource-group',
+      azAccountName: 'account',
+    });
+    const refreshAzureOpenAIKey = vi.fn();
+
+    await expect(
+      resolveRuntimeProviderConfig(persisted, {
+        commandRunner,
+        refreshGitHubToken: vi.fn(),
+        refreshAzureOpenAIKey,
+      })
+    ).rejects.toThrow('Run Auto Detect and save the Azure provider again');
+    expect(refreshAzureOpenAIKey).not.toHaveBeenCalled();
   });
 
   it('fails without exposing or changing the persisted sentinel config', async () => {
