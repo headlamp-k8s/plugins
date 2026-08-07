@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { redactSecrets } from '@headlamp-k8s/ai-common/security/redactSecrets';
 import {
   isLogRequest,
   isSpecificResourceRequestHelper,
@@ -543,6 +544,8 @@ export const handleActualApiRequest = async (
         // Fallback: if not a Response object, treat as string
         logText = String(response);
       }
+      // Logs routinely contain tokens/credentials printed by the workload.
+      logText = redactSecrets(logText);
 
       // Extract resource information from URL for better log button display
       const extractResourceFromUrl = (url: string) => {
@@ -702,7 +705,7 @@ export const handleActualApiRequest = async (
       aiManager.history.push({
         success: true,
         role: 'tool',
-        content: formattedResponse,
+        content: redactSecrets(formattedResponse),
       });
 
       // Call the success callback if provided
@@ -714,7 +717,7 @@ export const handleActualApiRequest = async (
       aiManager.history.push({
         success: true,
         role: 'tool',
-        content: formattedResponse,
+        content: redactSecrets(formattedResponse),
       });
 
       // Call the success callback if provided
@@ -726,7 +729,7 @@ export const handleActualApiRequest = async (
       aiManager.history.push({
         success: true,
         role: 'tool',
-        content: formattedResponse,
+        content: redactSecrets(formattedResponse),
       });
 
       // Call the success callback if provided
