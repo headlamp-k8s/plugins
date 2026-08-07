@@ -7,7 +7,7 @@ export function SettingsLink() {
   const theme = useTheme();
 
   return (
-    <RouterLink routeName="/settings/plugins/app-catalog" tooltip={t('App-Catalog Settings')}>
+    <RouterLink routeName="pluginDetails" params={{ name: '@headlamp-k8s/app-catalog' }} tooltip={t('App-Catalog Settings')}>
       <Typography
         sx={{
           size: '1rem',
