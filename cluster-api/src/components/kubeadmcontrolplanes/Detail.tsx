@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -43,6 +44,7 @@ interface KubeadmControlPlaneDetailProps {
  * Main detail view component for the KubeadmControlPlane resource.
  */
 export function KubeadmControlPlaneDetail({ node }: KubeadmControlPlaneDetailProps) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -50,7 +52,7 @@ export function KubeadmControlPlaneDetail({ node }: KubeadmControlPlaneDetailPro
   const crName = nameParam || node?.kubeObject?.metadata?.name;
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
 
-  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+  if (!crName) return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
 
   return (
     <KubeadmControlPlaneDetailContent
@@ -79,13 +81,14 @@ interface KubeadmControlPlaneDetailContentProps {
  * @param props - Component properties.
  */
 function KubeadmControlPlaneDetailContent(props: KubeadmControlPlaneDetailContentProps) {
+  const { t } = useTranslation();
   const { crName, namespace, crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedKubeadmControlPlane = useMemo(
     () => (apiVersion ? KubeadmControlPlane.withApiVersion(apiVersion) : KubeadmControlPlane),
     [apiVersion]
   );
-  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  if (!apiVersion) return <Loader title={t('Detecting Cluster API version')} />;
 
   return (
     <KubeadmControlPlaneDetailWithData
@@ -119,17 +122,21 @@ function KubeadmControlPlaneDetailWithData({
   VersionedKCP,
   crdName,
 }: KubeadmControlPlaneDetailWithDataProps) {
+  const { t } = useTranslation();
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedKCP.useGet(crName, namespace ?? undefined);
 
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading KubeadmControlPlane {crName}: {itemError?.message}
+        {t('Error loading KubeadmControlPlane {{name}}: {{message}}', {
+          name: crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
-  if (!item) return <Loader title="Loading KubeadmControlPlane details" />;
+  if (!item) return <Loader title={t('Loading KubeadmControlPlane details')} />;
 
   const spec = item.spec;
   const failure = item.failure;
@@ -137,7 +144,7 @@ function KubeadmControlPlaneDetailWithData({
 
   const extraInfo: NameValueTableRow[] = [
     {
-      name: 'Definition',
+      name: t('Definition'),
       value: (
         <Link routeName="crd" params={{ name: crdName }}>
           {crdName}
@@ -146,36 +153,36 @@ function KubeadmControlPlaneDetailWithData({
       hide: !crd,
     },
     {
-      name: 'Cluster',
+      name: t('Cluster'),
       value: item.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] ?? '-',
     },
     {
-      name: 'Replicas',
-      value: renderReplicas(item),
+      name: t('Replicas'),
+      value: renderReplicas(item, t),
       hide: !showReplicas(item),
     },
     {
-      name: 'Initialized',
+      name: t('Initialized'),
       value:
         initialized !== undefined ? (
           <StatusLabel status={initialized ? 'success' : 'warning'}>
-            {initialized ? 'True' : 'False'}
+            {initialized ? t('True') : t('False')}
           </StatusLabel>
         ) : (
           '-'
         ),
     },
     {
-      name: 'Update Strategy',
+      name: t('Update Strategy'),
       value: renderUpdateStrategy(item),
       hide: !showUpdateStrategy(item),
     },
     {
-      name: 'Version',
+      name: t('Version'),
       value: spec?.version ?? '-',
     },
     {
-      name: 'Observed Generation',
+      name: t('Observed Generation'),
       value:
         item.status?.observedGeneration !== undefined
           ? `${item.status?.observedGeneration} / ${item.metadata?.generation ?? '-'}`
@@ -185,7 +192,7 @@ function KubeadmControlPlaneDetailWithData({
     ...(failure?.failureReason
       ? [
           {
-            name: 'Failure Reason',
+            name: t('Failure Reason'),
             value: <StatusLabel status="error">{failure.failureReason}</StatusLabel>,
           },
         ]
@@ -193,7 +200,7 @@ function KubeadmControlPlaneDetailWithData({
     ...(failure?.failureMessage
       ? [
           {
-            name: 'Failure Message',
+            name: t('Failure Message'),
             value: (
               <Typography component="span" sx={{ color: 'error.main' }}>
                 {failure.failureMessage}
@@ -205,15 +212,15 @@ function KubeadmControlPlaneDetailWithData({
     ...(item.deletionTimeouts
       ? [
           {
-            name: 'Node Drain Timeout',
+            name: t('Node Drain Timeout'),
             value: item.deletionTimeouts.nodeDrain ?? '-',
           },
           {
-            name: 'Node Volume Detach Timeout',
+            name: t('Node Volume Detach Timeout'),
             value: item.deletionTimeouts.nodeVolumeDetach ?? '-',
           },
           {
-            name: 'Node Deletion Timeout',
+            name: t('Node Deletion Timeout'),
             value: item.deletionTimeouts.nodeDeletion ?? '-',
           },
         ]
@@ -253,7 +260,7 @@ function KubeadmControlPlaneDetailWithData({
         {
           id: 'cluster-api.kcp-machine-template',
           section: (
-            <SectionBox title="Machine Template">
+            <SectionBox title={t('Machine Template')}>
               <TemplateSection item={kcp} />
             </SectionBox>
           ),
@@ -263,19 +270,19 @@ function KubeadmControlPlaneDetailWithData({
               {
                 id: 'cluster-api.kcp-remediation',
                 section: (
-                  <SectionBox title="Remediation">
+                  <SectionBox title={t('Remediation')}>
                     <SimpleTable
                       columns={[
                         {
-                          label: 'Machine',
+                          label: t('Machine'),
                           getter: (row: { machine: string }) => row.machine,
                         },
                         {
-                          label: 'Time',
+                          label: t('Time'),
                           getter: (row: { time: string }) => localeDate(row.time),
                         },
                         {
-                          label: 'Retry Count',
+                          label: t('Retry Count'),
                           getter: (row: { retryCount: number }) => row.retryCount,
                         },
                       ]}
@@ -294,7 +301,7 @@ function KubeadmControlPlaneDetailWithData({
                 section: (
                   <KubeadmConfigSection
                     kubeadmConfigSpec={kubeadmConfigSpec}
-                    title="KubeadmConfig Spec"
+                    title={t('KubeadmConfig Spec')}
                   />
                 ),
               },

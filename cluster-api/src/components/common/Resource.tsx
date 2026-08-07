@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   EmptyContent,
   Loader,
@@ -105,6 +106,7 @@ export function OwnedMachinesSection({
   hideColumns,
   showCreateButton = false,
 }: OwnedMachinesSectionProps) {
+  const { t } = useTranslation();
   const machineVersion = useCapiApiVersion(Machine.crdName, 'v1beta1');
 
   const namespace =
@@ -116,7 +118,7 @@ export function OwnedMachinesSection({
   );
 
   if (!machineVersion) {
-    return <Loader title="Detecting Cluster API version" />;
+    return <Loader title={t('Detecting Cluster API version')} />;
   }
 
   return (
@@ -186,6 +188,7 @@ function resolveTemplateSpec(item: TemplateSectionResource): ResolvedTemplate {
  * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#machinetemplate
  */
 export function TemplateSection({ item }: { item: TemplateSectionResource }) {
+  const { t } = useTranslation();
   const { templateMetadata, machineSpec, directInfraRef } = resolveTemplateSpec(item);
 
   const labels = templateMetadata?.labels ?? {};
@@ -218,36 +221,36 @@ export function TemplateSection({ item }: { item: TemplateSectionResource }) {
 
   const rows: NameValueTableRow[] = [
     {
-      name: 'Cluster',
+      name: t('Cluster'),
       value: machineSpec?.clusterName ?? '-',
       hide: !machineSpec?.clusterName,
     },
     {
-      name: 'Version',
+      name: t('Version'),
       value: version ?? '-',
       hide: !version,
     },
     {
-      name: 'Rollout Strategy',
+      name: t('Rollout Strategy'),
       value: rolloutStrategy
         ? maxSurge !== undefined
-          ? `${rolloutStrategy} (maxSurge: ${maxSurge})`
+          ? t('{{strategy}} (maxSurge: {{maxSurge}})', { strategy: rolloutStrategy, maxSurge })
           : rolloutStrategy
         : '-',
       hide: !rolloutStrategy,
     },
     {
-      name: 'Provider ID',
+      name: t('Provider ID'),
       value: machineSpec?.providerID ?? '-',
       hide: !machineSpec?.providerID,
     },
     {
-      name: 'Failure Domain',
+      name: t('Failure Domain'),
       value: machineSpec?.failureDomain ?? '-',
       hide: !machineSpec?.failureDomain,
     },
     {
-      name: 'Labels',
+      name: t('Labels'),
       value:
         Object.keys(labels).length > 0 ? (
           <MetadataDictGrid dict={labels as Record<string, string>} />
@@ -256,7 +259,7 @@ export function TemplateSection({ item }: { item: TemplateSectionResource }) {
         ),
     },
     {
-      name: 'Annotations',
+      name: t('Annotations'),
       value:
         Object.keys(annotations).length > 0 ? (
           <MetadataDictGrid dict={annotations as Record<string, string>} />
@@ -266,28 +269,28 @@ export function TemplateSection({ item }: { item: TemplateSectionResource }) {
       hide: Object.keys(annotations).length === 0,
     },
     {
-      name: 'Node Drain Timeout',
+      name: t('Node Drain Timeout'),
       value: nodeDrainTimeout ?? '-',
       hide: !nodeDrainTimeout,
     },
     {
-      name: 'Node Volume Detach Timeout',
+      name: t('Node Volume Detach Timeout'),
       value: nodeVolumeDetachTimeout ?? '-',
       hide: !nodeVolumeDetachTimeout,
     },
     {
-      name: 'Node Deletion Timeout',
+      name: t('Node Deletion Timeout'),
       value: nodeDeletionTimeout ?? '-',
       hide: !nodeDeletionTimeout,
     },
     {
-      name: 'Bootstrap Ref',
-      value: renderReference(bootstrapRef),
+      name: t('Bootstrap Ref'),
+      value: renderReference(bootstrapRef, t),
       hide: !bootstrapRef,
     },
     {
-      name: 'Infrastructure Ref',
-      value: renderReference(infraRef),
+      name: t('Infrastructure Ref'),
+      value: renderReference(infraRef, t),
       hide: !infraRef,
     },
   ];
@@ -309,10 +312,8 @@ interface KubeadmConfigSectionProps {
  * @returns A styled section box with kubeadm config details.
  * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#kubeadmconfig
  */
-export function KubeadmConfigSection({
-  kubeadmConfigSpec,
-  title = 'Kubeadm Config',
-}: KubeadmConfigSectionProps) {
+export function KubeadmConfigSection({ kubeadmConfigSpec, title }: KubeadmConfigSectionProps) {
+  const { t } = useTranslation();
   const apiServer = kubeadmConfigSpec?.clusterConfiguration?.apiServer;
   const certSANs = apiServer?.certSANs ?? [];
   const certSANRows = certSANs.map(san => ({ san }));
@@ -335,11 +336,11 @@ export function KubeadmConfigSection({
     extraVolumes.length > 0 ? (
       <SimpleTable
         columns={[
-          { label: 'Name', getter: (row: (typeof extraVolumes)[number]) => row.name },
-          { label: 'Host Path', getter: row => row.hostPath },
-          { label: 'Mount Path', getter: row => row.mountPath },
-          { label: 'Path Type', getter: row => row.pathType ?? '-' },
-          { label: 'Read Only', getter: row => (row.readOnly ? 'Yes' : 'No') },
+          { label: t('Name'), getter: (row: (typeof extraVolumes)[number]) => row.name },
+          { label: t('Host Path'), getter: row => row.hostPath },
+          { label: t('Mount Path'), getter: row => row.mountPath },
+          { label: t('Path Type'), getter: row => row.pathType ?? '-' },
+          { label: t('Read Only'), getter: row => (row.readOnly ? t('Yes') : t('No')) },
         ]}
         data={extraVolumes}
       />
@@ -351,9 +352,9 @@ export function KubeadmConfigSection({
     files.length > 0 ? (
       <SimpleTable
         columns={[
-          { label: 'Path', getter: (row: { path: string; content?: string }) => row.path },
+          { label: t('Path'), getter: (row: { path: string; content?: string }) => row.path },
           {
-            label: 'Content',
+            label: t('Content'),
             getter: (row: { path: string; content?: string }) =>
               row.content ? (
                 <Typography
@@ -383,23 +384,23 @@ export function KubeadmConfigSection({
 
   const rows: NameValueTableRow[] = [
     {
-      name: 'Certificate SANs',
+      name: t('Certificate SANs'),
       value: certSANRows.length ? certSANs.join(', ') : '-',
       hide: certSANRows.length === 0,
     },
     {
-      name: 'Extra Args',
+      name: t('Extra Args'),
       value:
         Object.keys(extraArgsDict).length > 0 ? <MetadataDictGrid dict={extraArgsDict} /> : '-',
       hide: Object.keys(extraArgsDict).length === 0,
     },
     {
-      name: 'Extra Volumes',
+      name: t('Extra Volumes'),
       value: extraVolumesTable,
       hide: extraVolumes.length === 0,
     },
     {
-      name: 'Init Configuration Kubelet Args',
+      name: t('Init Configuration Kubelet Args'),
       value:
         Object.keys(initKubeletArgsDict).length > 0 ? (
           <MetadataDictGrid dict={initKubeletArgsDict} />
@@ -409,7 +410,7 @@ export function KubeadmConfigSection({
       hide: Object.keys(initKubeletArgsDict).length === 0,
     },
     {
-      name: 'Join Configuration Kubelet Args',
+      name: t('Join Configuration Kubelet Args'),
       value:
         Object.keys(joinKubeletArgsDict).length > 0 ? (
           <MetadataDictGrid dict={joinKubeletArgsDict} />
@@ -419,7 +420,7 @@ export function KubeadmConfigSection({
       hide: Object.keys(joinKubeletArgsDict).length === 0,
     },
     {
-      name: 'Files',
+      name: t('Files'),
       value: filesTable,
       hide: files.length === 0,
     },
@@ -428,9 +429,9 @@ export function KubeadmConfigSection({
   const hasContent = rows.some(row => !row.hide);
 
   return (
-    <SectionBox title={title}>
+    <SectionBox title={title ?? t('Kubeadm Config')}>
       {!hasContent ? (
-        <EmptyContent>No kubeadm config data found.</EmptyContent>
+        <EmptyContent>{t('No kubeadm config data found.')}</EmptyContent>
       ) : (
         <NameValueTable rows={rows} />
       )}
@@ -534,32 +535,33 @@ function V1Beta2Body({
   containerStyle: React.CSSProperties;
   skipSummary?: boolean;
 }) {
+  const { t } = useTranslation();
   const trigger = remediation?.triggerIf;
 
   const summaryRows: NameValueTableRow[] = [];
   if (!skipSummary) {
     if (checks.nodeStartupTimeoutSeconds !== undefined) {
       summaryRows.push({
-        name: 'Node Startup Timeout',
+        name: t('Node Startup Timeout'),
         value: `${checks.nodeStartupTimeoutSeconds}s`,
       });
     }
     if (trigger?.unhealthyLessThanOrEqualTo !== undefined) {
       summaryRows.push({
-        name: 'Remediation Trigger',
-        value: `≤ ${trigger.unhealthyLessThanOrEqualTo} unhealthy`,
+        name: t('Remediation Trigger'),
+        value: t('≤ {{threshold}} unhealthy', { threshold: trigger.unhealthyLessThanOrEqualTo }),
       });
     } else if (trigger?.unhealthyInRange) {
       summaryRows.push({
-        name: 'Remediation Trigger',
-        value: `range ${trigger.unhealthyInRange}`,
+        name: t('Remediation Trigger'),
+        value: t('range {{range}}', { range: trigger.unhealthyInRange }),
       });
     }
   }
 
   const conditionSections = [
-    { label: 'Node Conditions', data: checks.unhealthyNodeConditions },
-    { label: 'Machine Conditions', data: checks.unhealthyMachineConditions },
+    { label: t('Node Conditions'), data: checks.unhealthyNodeConditions },
+    { label: t('Machine Conditions'), data: checks.unhealthyMachineConditions },
   ];
 
   return (
@@ -576,11 +578,11 @@ function V1Beta2Body({
                   getter: (row: { type: string }) => row.type,
                 },
                 {
-                  label: 'Status',
+                  label: t('Status'),
                   getter: (row: { status: string }) => row.status,
                 },
                 {
-                  label: 'Timeout',
+                  label: t('Timeout'),
                   getter: (row: { timeoutSeconds?: number }) =>
                     row.timeoutSeconds !== undefined ? `${row.timeoutSeconds}s` : '—',
                 },
@@ -609,6 +611,7 @@ export function HealthCheckDisplay({
   compact,
   skipSummary = false,
 }: HealthCheckDisplayProps) {
+  const { t } = useTranslation();
   if (!healthCheck && !machineHealthCheck) return null;
 
   const containerStyle: React.CSSProperties = compact
@@ -641,14 +644,14 @@ export function HealthCheckDisplay({
   const mhcRows: NameValueTableRow[] = [];
   if (!skipSummary) {
     if (mhc.nodeStartupTimeout)
-      mhcRows.push({ name: 'Node Startup Timeout', value: mhc.nodeStartupTimeout });
+      mhcRows.push({ name: t('Node Startup Timeout'), value: mhc.nodeStartupTimeout });
     if (mhc.maxUnhealthy !== undefined && mhc.maxUnhealthy !== null) {
       mhcRows.push({
-        name: 'Max Unhealthy',
+        name: t('Max Unhealthy'),
         value: mhc.maxUnhealthy,
       });
     }
-    if (mhc.unhealthyRange) mhcRows.push({ name: 'Unhealthy Range', value: mhc.unhealthyRange });
+    if (mhc.unhealthyRange) mhcRows.push({ name: t('Unhealthy Range'), value: mhc.unhealthyRange });
   }
 
   return (
@@ -657,9 +660,9 @@ export function HealthCheckDisplay({
       {(mhc.unhealthyConditions?.length ?? 0) > 0 && (
         <SimpleTable
           columns={[
-            { label: 'Condition', getter: (row: { type: string }) => row.type },
-            { label: 'Status', getter: (row: { status: string }) => row.status },
-            { label: 'Timeout', getter: (row: { timeout?: string }) => row.timeout ?? '—' },
+            { label: t('Condition'), getter: (row: { type: string }) => row.type },
+            { label: t('Status'), getter: (row: { status: string }) => row.status },
+            { label: t('Timeout'), getter: (row: { timeout?: string }) => row.timeout ?? '—' },
           ]}
           data={mhc.unhealthyConditions!}
         />
@@ -677,18 +680,19 @@ export function HealthCheckDisplay({
  */
 
 export function HealthCheckBadge({ present }: { present: boolean }) {
+  const { t } = useTranslation();
   const isEnabled = present;
 
   const config = isEnabled
     ? {
-        label: 'Enabled',
+        label: t('Enabled'),
         icon: 'mdi:check-circle-outline',
         color: '#10b981',
         bg: 'rgba(16,185,129,0.12)',
         border: '1px solid rgba(16,185,129,0.25)',
       }
     : {
-        label: 'Not Configured',
+        label: t('Not Configured'),
         icon: 'mdi:alert-outline',
         color: '#f59e0b',
         bg: 'rgba(245,158,11,0.12)',
@@ -763,8 +767,9 @@ function hasV1Beta2Data(checksBlock: any): boolean {
 export function HealthCheckSection({
   healthCheck,
   machineHealthCheck,
-  title = 'Health Check',
+  title,
 }: HealthCheckSectionProps) {
+  const { t } = useTranslation();
   // v1beta1: legacy MachineHealthCheck fields at the top level
   const hasV1Beta1 = !!(
     machineHealthCheck &&
@@ -783,7 +788,7 @@ export function HealthCheckSection({
   if (!hasHealthCheck) return null;
 
   return (
-    <SectionBox title={title}>
+    <SectionBox title={title ?? t('Health Check')}>
       <HealthCheckDisplay
         healthCheck={healthCheck}
         machineHealthCheck={machineHealthCheck}

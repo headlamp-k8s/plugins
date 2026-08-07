@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   Loader,
@@ -21,16 +22,17 @@ interface KubeadmConfigsListWithDataProps {
  * @param props.KubeadmConfigClass - The KubeadmConfig resource class bound to a specific API version.
  */
 function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Kubeadm Configs"
+      title={t('Kubeadm Configs')}
       resourceClass={KubeadmConfigClass}
       columns={[
         'name',
         'namespace',
         {
           id: 'cluster',
-          label: 'Cluster',
+          label: t('Cluster'),
           getValue: (kc: KubeadmConfig) =>
             kc.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] ?? '-',
           render: (kc: KubeadmConfig) => {
@@ -46,7 +48,7 @@ function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWi
         },
         {
           id: 'ready',
-          label: 'Ready',
+          label: t('Ready'),
           getValue: (kc: KubeadmConfig) => {
             const cond = getCondition(kc.conditions, 'Ready');
             if (!cond) return 'Unknown';
@@ -54,15 +56,15 @@ function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWi
           },
           render: (kc: KubeadmConfig) =>
             renderConditionStatus(undefined, getCondition(kc.conditions, 'Ready'), {
-              trueLabel: 'true',
-              falseLabel: 'false',
+              trueLabel: t('true'),
+              falseLabel: t('false'),
               trueStatus: 'success',
               falseStatus: 'error',
             }),
         },
         {
           id: 'dataSecret',
-          label: 'Data Secret',
+          label: t('Data Secret'),
           getValue: (kc: KubeadmConfig) => kc.status?.dataSecretName ?? '-',
           render: (kc: KubeadmConfig) => {
             const secretName = kc.status?.dataSecretName;
@@ -79,7 +81,7 @@ function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWi
         },
         {
           id: 'format',
-          label: 'Format',
+          label: t('Format'),
           getValue: (kc: KubeadmConfig) => kc.spec?.format ?? '-',
           render: (kc: KubeadmConfig) => {
             const format = kc.spec?.format;
@@ -98,11 +100,12 @@ function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWi
  * Detects the CAPI version and renders the list with the correct resource class.
  */
 export function KubeadmConfigsList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(KubeadmConfig.crdName, 'v1beta1');
   const VersionedKubeadmConfig = useMemo(
     () => (version ? KubeadmConfig.withApiVersion(version) : KubeadmConfig),
     [version]
   );
-  if (!version) return <Loader title="Detecting Cluster API version" />;
+  if (!version) return <Loader title={t('Detecting Cluster API version')} />;
   return <KubeadmConfigsListWithData KubeadmConfigClass={VersionedKubeadmConfig} />;
 }
