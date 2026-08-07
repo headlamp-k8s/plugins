@@ -22,6 +22,7 @@ interface ReadyStatusLabelProps {
   reason?: string;
   message?: string;
   isReadyType?: boolean;
+  actualReplicas?: number;
 }
 
 export function ReadyStatusLabel({
@@ -29,13 +30,19 @@ export function ReadyStatusLabel({
   reason,
   message,
   isReadyType = true,
+  actualReplicas,
 }: ReadyStatusLabelProps) {
   let headlampStatus: 'success' | 'error' | 'warning' | '' = '';
   let labelText = 'Unknown';
 
   if (status === 'True') {
-    headlampStatus = 'success';
-    labelText = isReadyType ? 'Ready' : 'True';
+    if (actualReplicas === 0) {
+      headlampStatus = '';
+      labelText = isReadyType ? 'Scaled to Zero' : 'True';
+    } else {
+      headlampStatus = 'success';
+      labelText = isReadyType ? 'Ready' : 'True';
+    }
   } else if (status === 'False') {
     headlampStatus = 'error';
     labelText = isReadyType ? 'Not Ready' : 'False';

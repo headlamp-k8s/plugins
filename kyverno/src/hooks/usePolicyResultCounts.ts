@@ -15,8 +15,9 @@
  */
 
 import { useMemo } from 'react';
-import { ClusterPolicyReport, PolicyReport } from '../resources/policyReport';
+import { ClusterPolicyReport, ClusterReport, PolicyReport, Report } from '../resources/policyReport';
 import { bucketReportResults, PolicyResultCounts } from './policyResultBucket';
+import { useKyvernoCRDs } from './useKyvernoCRDs';
 
 export type { PolicyResultCounts };
 
@@ -34,20 +35,33 @@ export interface PolicyResultLookup {
  * unit-tested without the Headlamp SDK shim.
  */
 export function usePolicyResultCounts(): PolicyResultLookup {
+  const crds = useKyvernoCRDs();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { items: openReports } = Report.useList();
+  const { items: openClusterReports } = ClusterReport.useList();
 
   return useMemo(() => {
+    const effectivePolicyReports = crds.wgreports ? policyReports : [];
+    const effectiveClusterPolicyReports = crds.wgreports ? clusterPolicyReports : [];
+    const effectiveOpenReports = crds.openreports ? openReports : [];
+    const effectiveOpenClusterReports = crds.openreports ? openClusterReports : [];
+
     const { cluster, namespaced } = bucketReportResults([
-      ...(policyReports || []),
-      ...(clusterPolicyReports || []),
+      ...(effectivePolicyReports || []),
+      ...(effectiveClusterPolicyReports || []),
+      ...(effectiveOpenReports || []),
+      ...(effectiveOpenClusterReports || []),
     ]);
+
+    const isWgreportsLoading = crds.wgreports && (policyReports === null || clusterPolicyReports === null);
+    const isOpenreportsLoading = crds.openreports && (openReports === null || openClusterReports === null);
+    const loading = crds.loading || isWgreportsLoading || isOpenreportsLoading;
 
     return {
       forCluster: name => cluster.get(name),
       forNamespaced: (name, namespace) => namespaced.get(`${namespace}/${name}`),
-      // Loading until BOTH streams resolve — partial data would undercount per-row totals.
-      loading: policyReports === null || clusterPolicyReports === null,
+      loading,
     };
-  }, [policyReports, clusterPolicyReports]);
+  }, [crds, policyReports, clusterPolicyReports, openReports, openClusterReports]);
 }

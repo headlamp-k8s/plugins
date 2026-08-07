@@ -20,7 +20,13 @@ import { Badge, Box, IconButton, Link, Menu, Tooltip, Typography } from '@mui/ma
 import { useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
-import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
+import {
+  ClusterPolicyReport,
+  ClusterReport,
+  PolicyReport,
+  PolicyResultStatus,
+  Report,
+} from '../resources/policyReport';
 
 // App-bar actions render on every page, so the badge has to gate itself.
 // We only render when we're in a cluster context AND Kyverno is actually
@@ -40,8 +46,11 @@ export function ComplianceBadge() {
 
 function ComplianceBadgeContent() {
   const { t } = useTranslation();
+  const crds = useKyvernoCRDs();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { items: openReports } = Report.useList();
+  const { items: openClusterReports } = ClusterReport.useList();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const history = useHistory();
   const cluster = K8s.useCluster();
@@ -56,9 +65,14 @@ function ComplianceBadgeContent() {
 
   const open = Boolean(anchorEl);
 
-  // Hide the badge until BOTH streams arrive — otherwise we'd briefly show a misleading
-  // "100% compliant" while only one list has resolved.
-  const isLoading = policyReports === null || clusterPolicyReports === null;
+  const effectivePolicyReports = crds.wgreports ? policyReports : [];
+  const effectiveClusterPolicyReports = crds.wgreports ? clusterPolicyReports : [];
+  const effectiveOpenReports = crds.openreports ? openReports : [];
+  const effectiveOpenClusterReports = crds.openreports ? openClusterReports : [];
+
+  const isWgreportsLoading = crds.wgreports && (policyReports === null || clusterPolicyReports === null);
+  const isOpenreportsLoading = crds.openreports && (openReports === null || openClusterReports === null);
+  const isLoading = isWgreportsLoading || isOpenreportsLoading;
 
   const counts = useMemo(() => {
     const result: Record<PolicyResultStatus, number> = {
@@ -69,26 +83,52 @@ function ComplianceBadgeContent() {
       skip: 0,
     };
 
-    for (const report of policyReports || []) {
-      const s = report.summary;
-      result.pass += s.pass || 0;
-      result.fail += s.fail || 0;
-      result.warn += s.warn || 0;
-      result.error += s.error || 0;
-      result.skip += s.skip || 0;
-    }
+    if (!isLoading) {
+      for (const report of effectivePolicyReports || []) {
+        const s = report.summary;
+        result.pass += s.pass || 0;
+        result.fail += s.fail || 0;
+        result.warn += s.warn || 0;
+        result.error += s.error || 0;
+        result.skip += s.skip || 0;
+      }
 
-    for (const report of clusterPolicyReports || []) {
-      const s = report.summary;
-      result.pass += s.pass || 0;
-      result.fail += s.fail || 0;
-      result.warn += s.warn || 0;
-      result.error += s.error || 0;
-      result.skip += s.skip || 0;
+      for (const report of effectiveClusterPolicyReports || []) {
+        const s = report.summary;
+        result.pass += s.pass || 0;
+        result.fail += s.fail || 0;
+        result.warn += s.warn || 0;
+        result.error += s.error || 0;
+        result.skip += s.skip || 0;
+      }
+
+      for (const report of effectiveOpenReports || []) {
+        const s = report.summary;
+        result.pass += s.pass || 0;
+        result.fail += s.fail || 0;
+        result.warn += s.warn || 0;
+        result.error += s.error || 0;
+        result.skip += s.skip || 0;
+      }
+
+      for (const report of effectiveOpenClusterReports || []) {
+        const s = report.summary;
+        result.pass += s.pass || 0;
+        result.fail += s.fail || 0;
+        result.warn += s.warn || 0;
+        result.error += s.error || 0;
+        result.skip += s.skip || 0;
+      }
     }
 
     return result;
-  }, [policyReports, clusterPolicyReports]);
+  }, [
+    isLoading,
+    effectivePolicyReports,
+    effectiveClusterPolicyReports,
+    effectiveOpenReports,
+    effectiveOpenClusterReports,
+  ]);
 
   if (isLoading) {
     return null;

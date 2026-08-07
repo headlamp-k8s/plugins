@@ -29,12 +29,15 @@ import {
   Typography,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
+import { useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
 import {
   ClusterPolicyReport,
+  ClusterReport,
   PolicyReport,
   PolicyReportInterface,
   PolicyReportResult,
   PolicyResultStatus,
+  Report,
 } from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip } from './common';
 
@@ -49,7 +52,9 @@ const VIOLATION_STATUSES: PolicyResultStatus[] = ['fail', 'warn', 'error'];
 
 function collectViolations(
   policyReports: PolicyReport[] | null,
-  clusterPolicyReports: ClusterPolicyReport[] | null
+  clusterPolicyReports: ClusterPolicyReport[] | null,
+  openReports: Report[] | null,
+  openClusterReports: ClusterReport[] | null
 ): ViolationEntry[] {
   const violations: ViolationEntry[] = [];
 
@@ -66,6 +71,29 @@ function collectViolations(
   }
 
   for (const report of clusterPolicyReports || []) {
+    for (const result of report.results) {
+      if (VIOLATION_STATUSES.includes(result.result)) {
+        violations.push({
+          ...result,
+          scope: report.jsonData.scope,
+        });
+      }
+    }
+  }
+
+  for (const report of openReports || []) {
+    for (const result of report.results) {
+      if (VIOLATION_STATUSES.includes(result.result)) {
+        violations.push({
+          ...result,
+          reportNamespace: report.jsonData.metadata.namespace,
+          scope: report.jsonData.scope,
+        });
+      }
+    }
+  }
+
+  for (const report of openClusterReports || []) {
     for (const result of report.results) {
       if (VIOLATION_STATUSES.includes(result.result)) {
         violations.push({
@@ -154,11 +182,19 @@ function StatusFilterChips({
 
 export function ViolationsView() {
   const { t } = useTranslation();
+  const crds = useKyvernoCRDs();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { items: openReports } = Report.useList();
+  const { items: openClusterReports } = ClusterReport.useList();
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
+
+  const effectivePolicyReports = crds.wgreports ? policyReports : [];
+  const effectiveClusterPolicyReports = crds.wgreports ? clusterPolicyReports : [];
+  const effectiveOpenReports = crds.openreports ? openReports : [];
+  const effectiveOpenClusterReports = crds.openreports ? openClusterReports : [];
 
   // Column definitions depend on t() so they're built inside the component.
   const violationColumns = useMemo(
@@ -207,8 +243,19 @@ export function ViolationsView() {
   );
 
   const allViolations = useMemo(
-    () => collectViolations(policyReports, clusterPolicyReports),
-    [policyReports, clusterPolicyReports]
+    () =>
+      collectViolations(
+        effectivePolicyReports,
+        effectiveClusterPolicyReports,
+        effectiveOpenReports,
+        effectiveOpenClusterReports
+      ),
+    [
+      effectivePolicyReports,
+      effectiveClusterPolicyReports,
+      effectiveOpenReports,
+      effectiveOpenClusterReports,
+    ]
   );
 
   const filteredViolations = useMemo(() => {
@@ -241,8 +288,9 @@ export function ViolationsView() {
     return Array.from(set).sort();
   }, [allViolations]);
 
-  // Wait for BOTH streams — partial data here would silently undercount violations.
-  const isLoading = policyReports === null || clusterPolicyReports === null;
+  const isWgreportsLoading = crds.wgreports && (policyReports === null || clusterPolicyReports === null);
+  const isOpenreportsLoading = crds.openreports && (openReports === null || openClusterReports === null);
+  const isLoading = crds.loading || isWgreportsLoading || isOpenreportsLoading;
 
   if (isLoading) {
     return (

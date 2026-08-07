@@ -56,3 +56,10 @@ WithMessage.args = {
   reason: 'RevisionFailed',
   message: 'Initial scale was never achieved',
 };
+
+export const ScaledToZero = Template.bind({});
+ScaledToZero.args = {
+  status: 'True',
+  actualReplicas: 0,
+};
+

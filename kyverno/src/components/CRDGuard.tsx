@@ -19,7 +19,7 @@ import { ReactNode } from 'react';
 import { KyvernoCRDStatus, useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
 import { NotInstalledBanner } from './common';
 
-export type CRDGroup = keyof Omit<KyvernoCRDStatus, 'loading'>;
+export type CRDGroup = keyof Omit<KyvernoCRDStatus, 'loading' | 'openreports' | 'wgreports'>;
 
 interface CRDGuardProps {
   requires: CRDGroup;
@@ -37,7 +37,9 @@ export function CRDGuard({ requires, children, message }: CRDGuardProps) {
       'Kyverno CEL policies (policies.kyverno.io/v1) were not detected on this cluster. Kyverno 1.14+ is required.'
     ),
     cleanup: t('Kyverno cleanup policies (kyverno.io/v2) were not detected on this cluster.'),
-    reports: t('Policy Reports (wgpolicyk8s.io/v1alpha2) were not detected on this cluster.'),
+    reports: t(
+      'Policy Reports (wgpolicyk8s.io/v1alpha2 or openreports.io/v1alpha1) were not detected on this cluster.'
+    ),
     exceptions: t('Policy Exceptions (kyverno.io/v2) were not detected on this cluster.'),
     kyvernoV2Reports: t(
       'Kyverno admission/background-scan reports (kyverno.io/v2) were not detected on this cluster.'
