@@ -53,9 +53,29 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
     // An API to get details about a particular chart is required to achieve this. For example, take a look at the response
     // from https://artifacthub.io/api/v1/packages/helm/grafana/grafana
     // Easiest thing is to fetch index.yaml, get the details for chartName and fill the details
-    fetchChartDetailFromArtifact(chartName, repoName).then(response => {
-      setChart(response);
-    });
+    let ignore = false;
+
+    // Clear the previous chart so the loader shows instead of the details of
+    // the chart we just navigated away from.
+    setChart(null);
+
+    fetchChartDetailFromArtifact(chartName, repoName)
+      .then(response => {
+        // A request for a chart we have since navigated away from must not
+        // overwrite the details of the chart currently being viewed.
+        if (!ignore) {
+          setChart(response);
+        }
+      })
+      .catch(error => {
+        if (!ignore) {
+          console.error(`Failed to fetch details for chart ${chartName}:`, error);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [chartName, repoName]);
 
   return (
