@@ -62,6 +62,21 @@ function renderFlavorLink(flavorName: string) {
   );
 }
 
+/** Render a Cohort reference as a detail-page link. */
+function renderCohortLink(clusterQueue: ClusterQueue) {
+  const cohortName = clusterQueue.spec.cohortName;
+
+  if (!cohortName) {
+    return '-';
+  }
+
+  return (
+    <Link routeName={kueueRouteNames.cohortDetail} params={{ name: cohortName }}>
+      {cohortName}
+    </Link>
+  );
+}
+
 /** Convert nested ClusterQueue resource groups into table rows. */
 function getResourceGroupRows(resourceGroups: ResourceGroup[]): ResourceGroupRow[] {
   return resourceGroups.flatMap((group, groupIndex): ResourceGroupRow[] => {
@@ -296,7 +311,7 @@ export default function ClusterQueueDetail() {
             ? [
                 {
                   name: 'Cohort',
-                  value: clusterQueue.cohortName,
+                  value: renderCohortLink(clusterQueue),
                 },
                 {
                   name: 'Queueing Strategy',
