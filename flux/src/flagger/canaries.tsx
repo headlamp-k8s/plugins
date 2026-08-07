@@ -108,7 +108,7 @@ function CanaryList({ canaryResourceClass }) {
                 >
                   <Box alignItems="center" display="flex">
                     <Box mr={0.5}>{item.metadata.name}</Box>
-                    <Icon icon="mdi:bird" color="#fff200" width={'20'} />
+                    <Icon icon="mdi:bird" color="#fff200" width={'20'} aria-hidden="true" />
                   </Box>
                 </Link>
               );
@@ -163,11 +163,11 @@ function CanaryList({ canaryResourceClass }) {
             Cell: ({ row: { original: item } }) =>
               item?.hasAbTesting ? (
                 <Box display="flex" alignItems="center">
-                  <Icon icon="mdi:check" color="#4caf50" width="20" />
+                  <Icon icon="mdi:check" color="#4caf50" width="20" aria-label="Enabled" />
                 </Box>
               ) : (
                 <Box display="flex" alignItems="center">
-                  <Icon icon="mdi:close" color="#f44336" width="20" />
+                  <Icon icon="mdi:close" color="#f44336" width="20" aria-label="Disabled" />
                 </Box>
               ),
           },

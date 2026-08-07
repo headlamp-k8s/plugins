@@ -8,16 +8,16 @@ import { type ChangeEvent, type ReactNode, useEffect, useState } from 'react';
 
 interface AutoSaveSwitchProps {
   settingKey: keyof PluginConfig;
-  label: string;
   onSave: (key: keyof PluginConfig, value: boolean) => void;
+  label: string;
   defaultValue?: boolean;
   helperText?: ReactNode;
 }
 
 function AutoSaveSwitch({
   settingKey,
-  label,
   onSave,
+  label,
   defaultValue,
   helperText = null,
 }: AutoSaveSwitchProps) {
@@ -46,7 +46,7 @@ function AutoSaveSwitch({
 
   return (
     <>
-      <Switch checked={value} inputProps={{ 'aria-label': label }} onChange={handleChange} />
+      <Switch checked={value} onChange={handleChange} inputProps={{ 'aria-label': label }} />
       {helperText && <FormHelperText sx={{ ml: 1.75, mt: 0.5 }}>{helperText}</FormHelperText>}
     </>
   );
