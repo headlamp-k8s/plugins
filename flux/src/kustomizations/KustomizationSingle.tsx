@@ -56,7 +56,7 @@ function KustomizationDetails(props) {
       },
       {
         name: t('Force'),
-        value: cr?.jsonData.spec?.force.toString(),
+        value: cr?.jsonData?.spec?.force?.toString() ?? 'false',
       },
       {
         name: t('Path'),
