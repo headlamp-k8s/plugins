@@ -39,7 +39,7 @@ registerSidebarEntry({
 registerRoute({
   path: kueueRoutePaths.clusterQueuesList,
   sidebar: 'kueue-clusterqueues',
-  name: kueueRouteNames.clusterQueuesList,
+  name: 'Cluster Queues',
   exact: true,
   component: () => <ClusterQueueList />,
 });
@@ -47,7 +47,7 @@ registerRoute({
 registerRoute({
   path: kueueRoutePaths.clusterQueueDetail,
   sidebar: 'kueue-clusterqueues',
-  name: kueueRouteNames.clusterQueueDetail,
+  name: 'Cluster Queue Detail',
   exact: true,
   component: () => <ClusterQueueDetail />,
 });
@@ -55,7 +55,7 @@ registerRoute({
 registerRoute({
   path: kueueRoutePaths.localQueuesList,
   sidebar: 'kueue-localqueues',
-  name: kueueRouteNames.localQueuesList,
+  name: 'Local Queues',
   exact: true,
   component: () => <LocalQueueList />,
 });
@@ -63,7 +63,7 @@ registerRoute({
 registerRoute({
   path: kueueRoutePaths.localQueueDetail,
   sidebar: 'kueue-localqueues',
-  name: kueueRouteNames.localQueueDetail,
+  name: 'Local Queue Detail',
   exact: true,
   component: () => <LocalQueueDetail />,
 });
@@ -71,7 +71,7 @@ registerRoute({
 registerRoute({
   path: kueueRoutePaths.resourceFlavorsList,
   sidebar: 'kueue-resourceflavors',
-  name: kueueRouteNames.resourceFlavorsList,
+  name: 'Resource Flavors',
   exact: true,
   component: () => <ResourceFlavorList />,
 });
@@ -79,7 +79,7 @@ registerRoute({
 registerRoute({
   path: kueueRoutePaths.resourceFlavorDetail,
   sidebar: 'kueue-resourceflavors',
-  name: kueueRouteNames.resourceFlavorDetail,
+  name: 'Resource Flavor Detail',
   exact: true,
   component: () => <ResourceFlavorDetail />,
 });
