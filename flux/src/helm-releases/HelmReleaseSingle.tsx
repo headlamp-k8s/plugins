@@ -126,7 +126,7 @@ function CustomResourceDetails(props) {
       },
       {
         name: t('Reconcile Strategy'),
-        value: cr?.jsonData?.spec.chart?.spec?.reconcileStrategy,
+        value: cr?.jsonData?.spec?.chart?.spec?.reconcileStrategy,
       },
     ];
 
