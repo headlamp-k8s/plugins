@@ -184,7 +184,8 @@ it('immediately persists suggested repos and scopes the viewer load', async () =
         type: 'git',
         url: 'https://github.com/kubeshark/kubeshark',
         path: 'skills',
-      })
+      }),
+      undefined
     )
   );
   fireEvent.click(screen.getByRole('button', { name: 'Close viewer' }));
