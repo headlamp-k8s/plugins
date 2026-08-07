@@ -446,22 +446,29 @@ export function PluginDetail() {
 
   useEffect(() => {
     let isMounted = true;
-
     const initialize = async () => {
       if (isMounted) {
-        const data = await fetchHeadlampPluginDetail(repoName, pluginName);
-        const enrichedPluginData = await checkIfPluginIsInstalled(data);
-        setPluginDetail(enrichedPluginData);
-        // Default to the latest version, but don't override a version the user
-        // has already picked (this runs again whenever currentAction changes).
-        setSelectedVersion(prev => prev || enrichedPluginData.version);
+        try {
+          const data = await fetchHeadlampPluginDetail(repoName, pluginName);
+          const enrichedPluginData = await checkIfPluginIsInstalled(data);
+          if (isMounted) {
+            setPluginDetail(enrichedPluginData);
+            // Default to the latest version, but don't override a version the user has already picked
+            // keep user's version choice if already set
+            setSelectedVersion(prev => prev || enrichedPluginData.version);
+          }
+        } catch (error) {
+          if (isMounted) {
+            const message = error instanceof Error ? error.message : String(error);
+            setAlertMessage(t('Failed to fetch plugin info from {{url}}: {{message}}', { url, message }));
+          }
+          console.error('Error fetching plugin detail:', error);
+          return;
+        }
       }
-
       fetchStatus();
     };
-
     initialize();
-
     return () => {
       isMounted = false;
     };
