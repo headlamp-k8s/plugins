@@ -12,7 +12,7 @@ import {
   ResourceGroup,
   ResourceQuota,
 } from '../../resources/clusterQueue';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { kueueRoutePaths } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 /** Flattened row rendered in the ClusterQueue resource groups table. */
@@ -56,7 +56,7 @@ interface AdmissionCheckRow {
 /** Render a ResourceFlavor name as a Headlamp link to its detail page. */
 function renderFlavorLink(flavorName: string) {
   return (
-    <Link routeName={kueueRouteNames.resourceFlavorDetail} params={{ name: flavorName }}>
+    <Link routeName={kueueRoutePaths.resourceFlavorDetail} params={{ name: flavorName }}>
       {flavorName}
     </Link>
   );
