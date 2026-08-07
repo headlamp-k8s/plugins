@@ -20,10 +20,11 @@ import {
   Typography,
 } from '@mui/material';
 import Markdown from 'markdown-to-jsx';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import semver from 'semver';
 import LoadingButton from './LoadingButton';
+import { pollPluginManagerStatus } from './pluginManagerAction';
 
 const { createRouteURL } = Router;
 
@@ -395,45 +396,55 @@ export function PluginDetail() {
   const [selectedVersion, setSelectedVersion] = useState<string>('');
   // Tracks the most recent version-readme request so out-of-order responses are ignored.
   const latestReadmeRequest = React.useRef<string>('');
+  const currentActionRef = useRef(currentAction);
+  currentActionRef.current = currentAction;
+  const pluginDetailRef = useRef(pluginDetail);
+  pluginDetailRef.current = pluginDetail;
   const url = `https://artifacthub.io/packages/headlamp/${repoName}/${pluginName}`;
   const { t } = useTranslation();
 
   const fetchStatus = async () => {
     try {
-      let status = await PluginManager.getStatus(identifier);
+      const actionAtStart = currentActionRef.current;
+      const status = await pollPluginManagerStatus(identifier, {
+        isCancelled: () => false,
+        shouldContinue: () => !!currentActionRef.current,
+        onStatus: nextStatus => {
+          if (nextStatus.type === 'error' || nextStatus.type === 'success') {
+            return;
+          }
+          // @todo: PluginManager ProgressResp doesn't have a percentage.
+          setCurrentActionState(nextStatus.type);
+          setCurrentActionMessage(nextStatus.message ?? null);
+        },
+      });
+
+      if (!status) {
+        return;
+      }
+
       if (status.type === 'error' && status.message === 'No such operation in progress') {
         setCurrentActionState(null);
         setCurrentActionProgress(0);
         setCurrentAction(null);
         return;
       }
-      while (status && currentAction) {
-        if (status.type === 'error' || status.type === 'success') {
-          const enrichedPluginData = await checkIfPluginIsInstalled(pluginDetail!);
+
+      if (status.type === 'error' || status.type === 'success') {
+        if (pluginDetailRef.current) {
+          const enrichedPluginData = await checkIfPluginIsInstalled(pluginDetailRef.current);
           setPluginDetail(enrichedPluginData);
-          setCurrentActionState(null);
-          setCurrentActionMessage(null);
-          setCurrentActionProgress(0);
-          setCurrentAction(null);
-
-          // Set alert message
-          setAlertMessage(
-            status.type === 'success'
-              ? t('{{action}} completed successfully.', { action: t(currentAction ?? '') })
-              : t('Error: {{message}}', { message: status.message })
-          );
-
-          break;
         }
-        // @todo: PluginManager ProgressResp doesn't have a percentage.
-        // if (status.percentage !== undefined) {
-        //   setCurrentActionProgress(status.percentage);
-        // }
-        setCurrentActionState(status.type);
-        setCurrentActionMessage(status.message);
+        setCurrentActionState(null);
+        setCurrentActionMessage(null);
+        setCurrentActionProgress(0);
+        setCurrentAction(null);
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        status = await PluginManager.getStatus(identifier);
+        setAlertMessage(
+          status.type === 'success'
+            ? t('{{action}} completed successfully.', { action: t(actionAtStart ?? '') })
+            : t('Error: {{message}}', { message: status.message })
+        );
       }
     } catch (error) {
       setCurrentActionState(null);
