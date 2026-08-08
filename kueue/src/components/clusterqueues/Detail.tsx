@@ -42,8 +42,8 @@ interface AdmissionCheckRow {
 }
 
 /** Convert status flavor usage or reservation entries into table rows. */
-function getFlavorUsageRows(flavorUsage: FlavorUsage[] = []): FlavorUsageRow[] {
-  return flavorUsage.flatMap(flavor => {
+function getFlavorUsageRows(flavorUsage?: FlavorUsage[] | null): FlavorUsageRow[] {
+  return (flavorUsage ?? []).flatMap(flavor => {
     if (!flavor.resources?.length) {
       return [
         {

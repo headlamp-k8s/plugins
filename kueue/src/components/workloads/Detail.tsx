@@ -131,9 +131,9 @@ function getPodSetRows(podSets: PodSet[]): PodSetRow[] {
 
 /** Convert admission assignments into table rows. */
 function getAdmissionAssignmentRows(
-  assignments: PodSetAssignment[] = []
+  assignments?: PodSetAssignment[] | null
 ): AdmissionAssignmentRow[] {
-  return assignments.map(assignment => ({
+  return (assignments ?? []).map(assignment => ({
     name: assignment.name || 'main',
     count: assignment.count ?? '-',
     flavors: renderResourceList(assignment.flavors),
@@ -144,8 +144,10 @@ function getAdmissionAssignmentRows(
 }
 
 /** Convert admission checks into table rows. */
-function getAdmissionCheckRows(admissionChecks: AdmissionCheckState[] = []): AdmissionCheckRow[] {
-  return admissionChecks.map(admissionCheck => ({
+function getAdmissionCheckRows(
+  admissionChecks?: AdmissionCheckState[] | null
+): AdmissionCheckRow[] {
+  return (admissionChecks ?? []).map(admissionCheck => ({
     name: admissionCheck.name,
     state: renderText(admissionCheck.state),
     lastTransitionTime: renderText(admissionCheck.lastTransitionTime),
@@ -156,24 +158,24 @@ function getAdmissionCheckRows(admissionChecks: AdmissionCheckState[] = []): Adm
 }
 
 /** Convert reclaimable pods into table rows. */
-function getReclaimablePodRows(reclaimablePods: ReclaimablePod[] = []): ReclaimablePodRow[] {
-  return reclaimablePods.map(reclaimablePod => ({
+function getReclaimablePodRows(reclaimablePods?: ReclaimablePod[] | null): ReclaimablePodRow[] {
+  return (reclaimablePods ?? []).map(reclaimablePod => ({
     name: reclaimablePod.name,
     count: reclaimablePod.count,
   }));
 }
 
 /** Convert resource request status entries into table rows. */
-function getResourceRequestRows(resourceRequests: PodSetRequest[] = []): ResourceRequestRow[] {
-  return resourceRequests.map(request => ({
+function getResourceRequestRows(resourceRequests?: PodSetRequest[] | null): ResourceRequestRow[] {
+  return (resourceRequests ?? []).map(request => ({
     name: request.name,
     resources: renderResourceList(request.resources),
   }));
 }
 
 /** Convert scheduling eviction stats into table rows. */
-function getEvictionRows(evictions: WorkloadSchedulingStatsEviction[] = []): EvictionRow[] {
-  return evictions.map(eviction => ({
+function getEvictionRows(evictions?: WorkloadSchedulingStatsEviction[] | null): EvictionRow[] {
+  return (evictions ?? []).map(eviction => ({
     reason: eviction.reason,
     underlyingCause: renderText(eviction.underlyingCause),
     count: eviction.count,
