@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Chip, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
@@ -44,6 +45,7 @@ function TrafficDisplay({ revision }: { revision: KRevision }) {
 }
 
 function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
+  const { t } = useTranslation();
   const {
     parentService,
     metadata: { namespace },
@@ -57,7 +59,7 @@ function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
   if (error) {
     return (
       <Typography variant="body2" color="error">
-        Error loading traffic
+        {t('Error loading traffic')}
       </Typography>
     );
   }
@@ -70,15 +72,14 @@ function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
 
   return (
     <Box display="flex" gap={1} flexWrap="wrap">
-      {traffic.map(t => {
-        const isTagOnly = t.percent === 0 && t.tag;
-        const latestSuffix = t.latestRevision ? ' (Latest)' : '';
+      {traffic.map(entry => {
+        const isTagOnly = entry.percent === 0 && entry.tag;
         if (isTagOnly) {
-          const url = getSafeUrl(t.url);
+          const url = getSafeUrl(entry.url);
           return url ? (
             <Chip
-              key={t.tag}
-              label={t.tag}
+              key={entry.tag}
+              label={entry.tag}
               size="small"
               component="a"
               href={url}
@@ -88,22 +89,37 @@ function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
               color="primary"
             />
           ) : (
-            <Chip key={t.tag} label={`Tag: ${t.tag}`} size="small" variant="outlined" />
+            <Chip
+              key={entry.tag}
+              label={t('Tag: {{ tag }}', { tag: entry.tag })}
+              size="small"
+              variant="outlined"
+            />
           );
         }
 
-        const label = `${t.percent || 0}%${t.tag ? ` (Tag: ${t.tag})` : ''}${latestSuffix}`;
+        const percent = entry.percent || 0;
+        let label: string;
+        if (entry.tag && entry.latestRevision) {
+          label = t('{{ percent }}% (Tag: {{ tag }}) (Latest)', { percent, tag: entry.tag });
+        } else if (entry.tag) {
+          label = t('{{ percent }}% (Tag: {{ tag }})', { percent, tag: entry.tag });
+        } else if (entry.latestRevision) {
+          label = t('{{ percent }}% (Latest)', { percent });
+        } else {
+          label = `${percent}%`;
+        }
 
-        const key = `${t.revisionName || revision.metadata.name}-${t.tag || 'untagged'}-${
-          t.url || 'no-url'
-        }-${t.percent ?? '0'}`;
+        const key = `${entry.revisionName || revision.metadata.name}-${entry.tag || 'untagged'}-${
+          entry.url || 'no-url'
+        }-${entry.percent ?? '0'}`;
         return (
           <Chip
             key={key}
             label={label}
             size="small"
-            color={t.percent && t.percent > 0 ? 'success' : 'default'}
-            variant={t.percent && t.percent > 0 ? 'filled' : 'outlined'}
+            color={entry.percent && entry.percent > 0 ? 'success' : 'default'}
+            variant={entry.percent && entry.percent > 0 ? 'filled' : 'outlined'}
           />
         );
       })}
@@ -112,6 +128,7 @@ function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
 }
 
 export function RevisionDetail() {
+  const { t } = useTranslation();
   const { name, namespace } = useParams<{ namespace: string; name: string }>();
   const clusters = useClusters();
   const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
@@ -172,7 +189,7 @@ export function RevisionDetail() {
               if (!rev) return null;
               return [
                 {
-                  name: 'Parent Service',
+                  name: t('Parent Service'),
                   value: rev.parentService ? (
                     <Link
                       routeName="kserviceDetails"
@@ -186,19 +203,19 @@ export function RevisionDetail() {
                   ),
                 },
                 {
-                  name: 'Traffic',
+                  name: t('Traffic'),
                   value: <TrafficDisplay revision={rev} />,
                 },
                 {
-                  name: 'Container Concurrency',
-                  value: rev.spec?.containerConcurrency ?? 'Default',
+                  name: t('Container Concurrency'),
+                  value: rev.spec?.containerConcurrency ?? t('Default'),
                 },
                 {
-                  name: 'Timeout (Seconds)',
-                  value: rev.spec?.timeoutSeconds ?? 'Default',
+                  name: t('Timeout (Seconds)'),
+                  value: rev.spec?.timeoutSeconds ?? t('Default'),
                 },
                 {
-                  name: 'Image Digest',
+                  name: t('Image Digest'),
                   value: (
                     <Typography
                       variant="body2"

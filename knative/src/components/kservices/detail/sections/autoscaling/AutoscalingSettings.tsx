@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
@@ -104,6 +105,7 @@ export default function AutoscalingSettings({
   kservice,
   defaults,
 }: AutoscalingSettingsProps) {
+  const { t } = useTranslation();
   const [saving, setSaving] = React.useState(false);
   const { canPatchKService, isLoading } = useKServicePermissions();
   const { isEditMode } = useKServiceEditMode();
@@ -171,11 +173,15 @@ export default function AutoscalingSettings({
         await kservice.patch(patchBody);
       }
 
-      notifySuccess('Autoscaling updated');
+      notifySuccess(t('Autoscaling updated'));
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
       const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to update settings: ${detail}` : 'Failed to update settings');
+      notifyError(
+        detail
+          ? t('Failed to update settings: {{ detail }}', { detail })
+          : t('Failed to update settings')
+      );
     } finally {
       setSaving(false);
     }
@@ -199,38 +205,38 @@ export default function AutoscalingSettings({
         value
       ) : (
         <Typography component="span" color="text.secondary">
-          Not set {fallbackInfo ? `(${fallbackInfo})` : ''}
+          {fallbackInfo ? t('Not set ({{ info }})', { info: fallbackInfo }) : t('Not set')}
         </Typography>
       )}
     </Typography>
   );
 
   return (
-    <SectionBox title="Autoscaling metrics & concurrency">
+    <SectionBox title={t('Autoscaling metrics & concurrency')}>
       <Stack spacing={2}>
         <NameValueTable
           rows={[
             {
-              name: 'Metric',
+              name: t('Metric'),
               value: isReadOnly ? (
                 <Typography variant="body2">
                   {metric === 'concurrency' ? (
-                    'Concurrency'
+                    t('Concurrency')
                   ) : metric === 'rps' ? (
-                    'RPS'
+                    t('RPS')
                   ) : (
                     <Typography component="span" color="text.secondary">
-                      Unset (cluster default)
+                      {t('Unset (cluster default)')}
                     </Typography>
                   )}
                 </Typography>
               ) : (
                 <FormControl sx={{ minWidth: 220 }}>
-                  <InputLabel id="metric-label">Metric</InputLabel>
+                  <InputLabel id="metric-label">{t('Metric')}</InputLabel>
                   <Select
                     size="small"
                     labelId="metric-label"
-                    label="Metric"
+                    label={t('Metric')}
                     value={metric}
                     onChange={(e: SelectChangeEvent<string>) =>
                       setMetric((e.target.value as MetricType) || '')
@@ -238,25 +244,26 @@ export default function AutoscalingSettings({
                   >
                     <MenuItem value="">
                       <em>
-                        Unset
                         {resolvedDefaultTarget !== undefined
-                          ? ` (default target: ${resolvedDefaultTarget})`
-                          : ' (use cluster default)'}
+                          ? t('Unset (default target: {{ defaultTarget }})', {
+                              defaultTarget: resolvedDefaultTarget,
+                            })
+                          : t('Unset (use cluster default)')}
                       </em>
                     </MenuItem>
-                    <MenuItem value="concurrency">Concurrency</MenuItem>
-                    <MenuItem value="rps">RPS</MenuItem>
+                    <MenuItem value="concurrency">{t('Concurrency')}</MenuItem>
+                    <MenuItem value="rps">{t('RPS')}</MenuItem>
                   </Select>
                 </FormControl>
               ),
             },
             {
-              name: effectiveMetric === 'rps' ? 'RPS Target' : 'Concurrency Target',
+              name: effectiveMetric === 'rps' ? t('RPS Target') : t('Concurrency Target'),
               value: isReadOnly ? (
                 renderReadonly(
                   target,
                   resolvedDefaultTarget !== undefined
-                    ? `Default: ${resolvedDefaultTarget}`
+                    ? t('Default: {{ value }}', { value: resolvedDefaultTarget })
                     : undefined
                 )
               ) : (
@@ -269,11 +276,15 @@ export default function AutoscalingSettings({
                   helperText={
                     metric
                       ? resolvedDefaultTarget !== undefined
-                        ? `Per-revision soft limit target (default: ${resolvedDefaultTarget})`
-                        : 'Per-revision soft limit target'
+                        ? t('Per-revision soft limit target (default: {{ defaultTarget }})', {
+                            defaultTarget: resolvedDefaultTarget,
+                          })
+                        : t('Per-revision soft limit target')
                       : resolvedDefaultTarget !== undefined
-                      ? `Disabled when Metric is unset (default: ${resolvedDefaultTarget})`
-                      : 'Disabled when Metric is unset'
+                      ? t('Disabled when Metric is unset (default: {{ defaultTarget }})', {
+                          defaultTarget: resolvedDefaultTarget,
+                        })
+                      : t('Disabled when Metric is unset')
                   }
                   disabled={!metric}
                   sx={{ maxWidth: 400 }}
@@ -281,11 +292,13 @@ export default function AutoscalingSettings({
               ),
             },
             {
-              name: 'Target Utilization %',
+              name: t('Target Utilization %'),
               value: isReadOnly ? (
                 renderReadonly(
                   util,
-                  resolvedDefaultUtil !== undefined ? `Default: ${resolvedDefaultUtil}%` : undefined
+                  resolvedDefaultUtil !== undefined
+                    ? t('Default: {{ value }}%', { value: resolvedDefaultUtil })
+                    : undefined
                 )
               ) : (
                 <TextField
@@ -296,19 +309,23 @@ export default function AutoscalingSettings({
                   inputProps={{ min: 1, max: 100, step: 1, inputMode: 'numeric' }}
                   helperText={
                     resolvedDefaultUtil !== undefined
-                      ? `Optional (default: ${resolvedDefaultUtil}%)`
-                      : 'Optional'
+                      ? t('Optional (default: {{ defaultUtil }}%)', {
+                          defaultUtil: resolvedDefaultUtil,
+                        })
+                      : t('Optional')
                   }
                   sx={{ maxWidth: 400 }}
                 />
               ),
             },
             {
-              name: 'Hard limit (container concurrency)',
+              name: t('Hard limit (container concurrency)'),
               value: isReadOnly ? (
                 renderReadonly(
                   hard,
-                  resolvedDefaultHard !== undefined ? `Default: ${resolvedDefaultHard}` : undefined
+                  resolvedDefaultHard !== undefined
+                    ? t('Default: {{ value }}', { value: resolvedDefaultHard })
+                    : undefined
                 )
               ) : (
                 <TextField
@@ -319,8 +336,10 @@ export default function AutoscalingSettings({
                   inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
                   helperText={
                     resolvedDefaultHard !== undefined
-                      ? `0 = no limit (default: ${resolvedDefaultHard})`
-                      : '0 = no limit. Enforced upper bound per replica.'
+                      ? t('0 = no limit (default: {{ defaultHard }})', {
+                          defaultHard: resolvedDefaultHard,
+                        })
+                      : t('0 = no limit. Enforced upper bound per replica.')
                   }
                   sx={{ maxWidth: 400 }}
                 />
@@ -332,19 +351,19 @@ export default function AutoscalingSettings({
         {!isReadOnly && (
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="body2" color={isValid() ? 'text.secondary' : 'error'}>
-              {isValid() ? 'All inputs valid' : 'Fix invalid inputs'}
+              {isValid() ? t('All inputs valid') : t('Fix invalid inputs')}
             </Typography>
             <Box display="flex" gap={1}>
-              <Button variant="text" onClick={resetSection} aria-label="Reset autoscaling">
-                Reset
+              <Button variant="text" onClick={resetSection} aria-label={t('Reset autoscaling')}>
+                {t('Reset')}
               </Button>
               <Button
                 variant="contained"
                 onClick={onSave}
                 disabled={!isValid() || saving}
-                aria-label="Save autoscaling"
+                aria-label={t('Save autoscaling')}
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t('Saving…') : t('Save')}
               </Button>
             </Box>
           </Box>

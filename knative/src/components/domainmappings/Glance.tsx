@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box } from '@mui/system';
 import { KnativeDomainMapping } from '../../resources/knative';
@@ -35,6 +36,7 @@ interface GlanceProps {
  * @param props.node - The map node containing the resource.
  */
 export function DomainMappingGlance({ node }: GlanceProps) {
+  const { t } = useTranslation();
   const kubeObject = node.kubeObject;
   const isKnativeDomainMapping =
     kubeObject instanceof KnativeDomainMapping ||
@@ -52,9 +54,11 @@ export function DomainMappingGlance({ node }: GlanceProps) {
         <StatusLabel
           status={readyStatus === 'True' ? 'success' : readyStatus === 'False' ? 'error' : ''}
         >
-          Ready: {readyStatus}
+          {t('Ready: {{ readyStatus }}', { readyStatus })}
         </StatusLabel>
-        {dm.spec?.ref?.name && <StatusLabel>Target: {dm.spec.ref.name}</StatusLabel>}
+        {dm.spec?.ref?.name && (
+          <StatusLabel>{t('Target: {{ name }}', { name: dm.spec.ref.name })}</StatusLabel>
+        )}
       </Box>
     );
   }

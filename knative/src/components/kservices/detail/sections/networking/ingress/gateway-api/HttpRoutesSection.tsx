@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ResourceTable,
   type ResourceTableColumn,
@@ -241,6 +242,7 @@ export default function HttpRoutesSection({
   serviceName,
   networkTemplates,
 }: HttpRoutesSectionProps) {
+  const { t } = useTranslation();
   const uniqueClusters = new Set(
     (routes ?? []).map(r => r.cluster).filter((c): c is string => Boolean(c))
   );
@@ -251,7 +253,7 @@ export default function HttpRoutesSection({
     'name',
     {
       id: 'role',
-      label: 'Role',
+      label: t('Role'),
       gridTemplate: 'min-content',
       getValue: item => {
         const r = item as HttpRoute;
@@ -307,7 +309,7 @@ export default function HttpRoutesSection({
     },
     {
       id: 'origin',
-      label: 'Origin',
+      label: t('Origin'),
       gridTemplate: 'min-content',
       getValue: item => {
         const r = item as HttpRoute;
@@ -340,7 +342,7 @@ export default function HttpRoutesSection({
     },
     {
       id: 'hostnames',
-      label: 'Hostnames',
+      label: t('Hostnames'),
       getValue: item => {
         const r = item as HttpRoute;
         return (r.spec?.hostnames ?? []).join(', ') || '';

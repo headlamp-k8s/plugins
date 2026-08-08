@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box } from '@mui/system';
 import { KService } from '../../resources/knative';
@@ -42,6 +43,8 @@ export function KServiceGlance({ node }: GlanceProps) {
       typeof kubeObject?.apiVersion === 'string' &&
       kubeObject.apiVersion.startsWith('serving.knative.dev/'));
 
+  const { t } = useTranslation();
+
   if (isKnativeService) {
     const svc = kubeObject as KService;
     const readyCond = svc.status?.conditions?.find(c => c.type === 'Ready');
@@ -52,10 +55,12 @@ export function KServiceGlance({ node }: GlanceProps) {
         <StatusLabel
           status={readyStatus === 'True' ? 'success' : readyStatus === 'False' ? 'error' : ''}
         >
-          Ready: {readyStatus}
+          {t('Ready: {{ readyStatus }}', { readyStatus })}
         </StatusLabel>
         {svc.status?.latestReadyRevisionName && (
-          <StatusLabel>Latest: {svc.status.latestReadyRevisionName}</StatusLabel>
+          <StatusLabel>
+            {t('Latest: {{ name }}', { name: svc.status.latestReadyRevisionName })}
+          </StatusLabel>
         )}
       </Box>
     );

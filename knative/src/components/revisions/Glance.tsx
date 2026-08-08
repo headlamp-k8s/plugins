@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box } from '@mui/system';
 import { KRevision } from '../../resources/knative';
@@ -35,6 +36,7 @@ interface GlanceProps {
  * @param props.node - The map node containing the resource.
  */
 export function RevisionGlance({ node }: GlanceProps) {
+  const { t } = useTranslation();
   const kubeObject = node.kubeObject;
   const isKnativeRevision =
     kubeObject instanceof KRevision ||
@@ -52,9 +54,9 @@ export function RevisionGlance({ node }: GlanceProps) {
     if (node.traffic?.length) {
       const percents: string[] = [];
       const tags: string[] = [];
-      for (const t of node.traffic) {
-        percents.push(`${t.percent || 0}%`);
-        if (t.tag) tags.push(t.tag);
+      for (const entry of node.traffic) {
+        percents.push(`${entry.percent || 0}%`);
+        if (entry.tag) tags.push(entry.tag);
       }
       trafficStr = percents.join(', ');
       tagsStr = tags.length ? tags.join(', ') : null;
@@ -62,13 +64,21 @@ export function RevisionGlance({ node }: GlanceProps) {
 
     return (
       <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="revision-glance">
-        <StatusLabel status={rev.isReady ? 'success' : 'error'}>Ready: {readyStatus}</StatusLabel>
-        {rev.parentService && <StatusLabel>Service: {rev.parentService}</StatusLabel>}
-        {trafficStr && <StatusLabel>Traffic: {trafficStr}</StatusLabel>}
-        {tagsStr && <StatusLabel>Tags: {tagsStr}</StatusLabel>}
+        <StatusLabel status={rev.isReady ? 'success' : 'error'}>
+          {t('Ready: {{ readyStatus }}', { readyStatus })}
+        </StatusLabel>
+        {rev.parentService && (
+          <StatusLabel>{t('Service: {{ name }}', { name: rev.parentService })}</StatusLabel>
+        )}
+        {trafficStr && (
+          <StatusLabel>{t('Traffic: {{ traffic }}', { traffic: trafficStr })}</StatusLabel>
+        )}
+        {tagsStr && <StatusLabel>{t('Tags: {{ tags }}', { tags: tagsStr })}</StatusLabel>}
         {rev.primaryImage && (
           <StatusLabel>
-            Image: {rev.primaryImage.split('/').pop()?.split('@')[0] || rev.primaryImage}
+            {t('Image: {{ image }}', {
+              image: rev.primaryImage.split('/').pop()?.split('@')[0] || rev.primaryImage,
+            })}
           </StatusLabel>
         )}
       </Box>

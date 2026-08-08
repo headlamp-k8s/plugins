@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   CreateResourceButton,
@@ -137,6 +138,7 @@ type KServiceRowActionsProps = {
 };
 
 function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
+  const { t } = useTranslation();
   const { acting, handleRedeploy, handleRestart } = useKServiceActions(kservice, {
     onDone: () => {
       if (closeMenu) {
@@ -167,7 +169,7 @@ function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
     <>
       {canPatchKService.allowed === true && (
         <ActionButton
-          description="Redeploy Latest Revision"
+          description={t('Redeploy Latest Revision')}
           buttonStyle="menu"
           onClick={handleRedeploy}
           icon="mdi:update"
@@ -176,7 +178,7 @@ function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
       )}
       {canDeletePods.allowed === true && (
         <ActionButton
-          description="Restart"
+          description={t('Restart')}
           buttonStyle="menu"
           onClick={handleRestart}
           icon="mdi:restart"
@@ -192,6 +194,7 @@ type KServicesListContentsProps = {
 };
 
 function KServicesListContents({ clusters }: KServicesListContentsProps) {
+  const { t } = useTranslation();
   const domainMappingsResult = KnativeDomainMapping.useList({ clusters });
   const domainMappingsData = domainMappingsResult.items;
   const domainMappingsError = domainMappingsResult.error;
@@ -277,9 +280,9 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
   const ingressClassLabel = React.useMemo(() => {
     if (!ingressClassData || ingressClassData.length <= 1) {
-      return 'Ingress class';
+      return t('Ingress class');
     }
-    return 'Ingress classes';
+    return t('Ingress classes');
   }, [ingressClassData]);
 
   const columns = React.useMemo<
@@ -288,7 +291,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
     const cols: (ResourceTableColumn<KService> | 'namespace' | 'cluster' | 'age')[] = [
       {
         id: 'name',
-        label: 'Name',
+        label: t('Name'),
         gridTemplate: 'auto',
         getValue: svc => svc.metadata?.name ?? '',
         render: svc => (
@@ -314,19 +317,19 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
     cols.push(
       {
         id: 'visibility',
-        label: 'Visibility',
+        label: t('Visibility'),
         gridTemplate: 'min-content',
         filterVariant: 'multi-select',
         filterSelectOptions: [
-          { label: 'Internal', value: 'Internal' },
-          { label: 'External', value: 'External' },
+          { label: t('Internal'), value: 'Internal' },
+          { label: t('External'), value: 'External' },
         ],
         getValue: svc => getVisibilityLabel(svc),
         render: svc => {
           const visibilityLabel = getVisibilityLabel(svc);
           return (
             <Chip
-              label={visibilityLabel}
+              label={t(visibilityLabel)}
               color={visibilityLabel === 'Internal' ? 'default' : 'primary'}
               size="small"
             />
@@ -335,7 +338,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'url',
-        label: 'URL',
+        label: t('URL'),
         gridTemplate: '2fr',
         getValue: svc => {
           const [primary] = getServiceUrls(svc, domainByServiceKey);
@@ -375,7 +378,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'latestCreated',
-        label: 'LatestCreated',
+        label: t('LatestCreated'),
         gridTemplate: 'min-content',
         getValue: svc => {
           const revisionName = svc.status?.latestCreatedRevisionName;
@@ -401,7 +404,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'latestReady',
-        label: 'LatestReady',
+        label: t('LatestReady'),
         gridTemplate: 'min-content',
         getValue: svc => {
           const revisionName = svc.status?.latestReadyRevisionName;
@@ -427,7 +430,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'ready',
-        label: 'Ready',
+        label: t('Ready'),
         gridTemplate: 'min-content',
         filterVariant: 'multi-select',
         filterSelectOptions: [
@@ -456,7 +459,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'reason',
-        label: 'Reason',
+        label: t('Reason'),
         gridTemplate: '2fr',
         getValue: svc => {
           const readyCondition = getReadyCondition(svc);
@@ -479,7 +482,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'traffic',
-        label: 'Traffic',
+        label: t('Traffic'),
         gridTemplate: '2fr',
         getValue: svc => trafficSummary(svc).toLowerCase(),
         render: svc => (
@@ -490,7 +493,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'tags',
-        label: 'Tags',
+        label: t('Tags'),
         gridTemplate: 'min-content',
         filterVariant: 'multi-select',
         getValue: svc => getTags(svc).tags.join(',').toLowerCase(),
@@ -564,7 +567,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
           )}
           {domainMappingsError && (
             <Chip
-              label="Domain mappings unavailable"
+              label={t('Domain mappings unavailable')}
               size="small"
               color="warning"
               variant="outlined"
@@ -600,7 +603,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
   return (
     <ResourceListView
-      title="KServices"
+      title={t('KServices')}
       headerProps={headerProps}
       resourceClass={KService}
       columns={columns}

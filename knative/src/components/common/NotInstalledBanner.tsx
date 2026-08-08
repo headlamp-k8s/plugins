@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, CircularProgress, Link as MuiLink, Typography } from '@mui/material';
 
 interface NotInstalledBannerProps {
@@ -21,6 +22,8 @@ interface NotInstalledBannerProps {
 }
 
 export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProps) {
+  const { t } = useTranslation();
+
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
@@ -44,16 +47,18 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
         }}
       >
         <Typography variant="h5">
-          Knative was not detected on your cluster. If you haven't already, please install it.
+          {t(
+            "Knative was not detected on your cluster. If you haven't already, please install it."
+          )}
         </Typography>
         <Typography>
-          Learn how to{' '}
+          {t('Learn how to')}{' '}
           <MuiLink
             href="https://knative.dev/docs/install/"
             target="_blank"
             rel="noopener noreferrer"
           >
-            install
+            {t('install')}
           </MuiLink>{' '}
           Knative
         </Typography>

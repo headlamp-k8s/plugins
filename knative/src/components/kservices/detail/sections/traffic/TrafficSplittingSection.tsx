@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Autocomplete, Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
@@ -84,6 +85,7 @@ export interface PureTrafficSplittingSectionProps {
 }
 
 export default function TrafficSplittingSection({ cluster, kservice, revisions }: Props) {
+  const { t } = useTranslation();
   const [savingTraffic, setSavingTraffic] = React.useState(false);
   const { canPatchKService, isLoading } = useKServicePermissions();
   const { isEditMode } = useKServiceEditMode();
@@ -174,22 +176,22 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
   }, [revisions, latestReadyRevisionName]);
 
   const trafficValidationError = React.useMemo(() => {
-    if (!revisions?.length) return 'No revisions available';
+    if (!revisions?.length) return t('No revisions available');
     for (const key of Object.keys(revPercents)) {
       const val = Number(revPercents[key]);
       if (Number.isNaN(val) || val < 0 || val > 100) {
-        return 'Traffic percentages must be between 0 and 100';
+        return t('Traffic percentages must be between 0 and 100');
       }
     }
     const latestVal = Number(latestPercent);
     if (Number.isNaN(latestVal) || latestVal < 0 || latestVal > 100) {
-      return 'Latest revision percent must be between 0 and 100';
+      return t('Latest revision percent must be between 0 and 100');
     }
     if (totalTraffic !== 100) {
-      return 'Total traffic must equal 100%';
+      return t('Total traffic must equal 100%');
     }
     if (hasDuplicateTags) {
-      return 'Tags must be unique';
+      return t('Tags must be unique');
     }
     return null;
   }, [revPercents, totalTraffic, latestPercent, hasDuplicateTags, revisions]);
@@ -197,7 +199,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
   const pendingTagError = React.useMemo(
     () =>
       Object.values(pendingTagInputs).some(v => Boolean(v?.trim()))
-        ? 'There are unconfirmed tags. Please press Enter to confirm.'
+        ? t('There are unconfirmed tags. Please press Enter to confirm.')
         : null,
     [pendingTagInputs]
   );
@@ -223,7 +225,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
   async function onSaveTraffic() {
     if (!kservice || !revisions) return;
     if (!cluster) {
-      notifyError('No cluster available');
+      notifyError(t('No cluster available'));
       return;
     }
 
@@ -266,30 +268,30 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
       for (const key of Object.keys(revPercents)) {
         const val = Number(revPercents[key]);
         if (Number.isNaN(val) || val < 0 || val > 100) {
-          validationError = 'Traffic percentages must be between 0 and 100';
+          validationError = t('Traffic percentages must be between 0 and 100');
           break;
         }
       }
       if (!validationError) {
         const lp = Number(latestPercent);
         if (Number.isNaN(lp) || lp < 0 || lp > 100) {
-          validationError = 'Latest revision percent must be between 0 and 100';
+          validationError = t('Latest revision percent must be between 0 and 100');
         }
       }
       if (!validationError && total !== 100) {
-        validationError = 'Total traffic must equal 100%';
+        validationError = t('Total traffic must equal 100%');
       }
       if (!validationError) {
         const seen = new Set<string>();
         const all: string[] = [];
-        Object.values(mergedRevTags).forEach(list => list.forEach(t => all.push(t)));
-        mergedLatestTags.forEach(t => all.push(t));
-        for (const t of all) {
-          if (seen.has(t)) {
-            validationError = 'Tags must be unique';
+        Object.values(mergedRevTags).forEach(list => list.forEach(tag => all.push(tag)));
+        mergedLatestTags.forEach(tag => all.push(tag));
+        for (const tag of all) {
+          if (seen.has(tag)) {
+            validationError = t('Tags must be unique');
             break;
           }
-          seen.add(t);
+          seen.add(tag);
         }
       }
       if (validationError) {
@@ -361,11 +363,15 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
       });
       if (latestTagInputRef.current) latestTagInputRef.current.value = '';
 
-      notifySuccess('Traffic updated');
+      notifySuccess(t('Traffic updated'));
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
       const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to update traffic: ${detail}` : 'Failed to update traffic');
+      notifyError(
+        detail
+          ? t('Failed to update traffic: {{ detail }}', { detail })
+          : t('Failed to update traffic')
+      );
     } finally {
       setSavingTraffic(false);
     }
@@ -384,7 +390,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
 
   const columns = [
     {
-      label: 'Name',
+      label: t('Name'),
       getter: (original: TrafficTableRow) => {
         const namespace = kservice.metadata.namespace!;
         const revisionName = original.isLatestRow ? original.badgeLabel : original.id;
@@ -407,7 +413,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
             )}
 
             {original.showUnavailableBadge && (
-              <Chip label="Unavailable" color="warning" size="small" variant="outlined" />
+              <Chip label={t('Unavailable')} color="warning" size="small" variant="outlined" />
             )}
           </Stack>
         );
@@ -417,7 +423,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
       },
     },
     {
-      label: 'Ready',
+      label: t('Ready'),
       getter: (original: TrafficTableRow) => {
         let status: 'True' | 'False' | 'Unknown' = 'Unknown';
         if (original.hasStatus && original.readyCond?.status) {
@@ -438,12 +444,12 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
       },
     },
     {
-      label: 'Age',
+      label: t('Age'),
       getter: (original: TrafficTableRow) =>
         original.creationTimestamp ? getAge(original.creationTimestamp) : '-',
     },
     {
-      label: 'Traffic',
+      label: t('Traffic'),
       getter: (original: TrafficTableRow) => {
         const val = original.isLatestRow ? latestPercent : revPercents[original.id] ?? 0;
 
@@ -486,7 +492,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
       },
     },
     {
-      label: 'Tags',
+      label: t('Tags'),
       getter: (original: TrafficTableRow) => {
         const tags = original.isLatestRow ? latestTags : revTags[original.id] || [];
 
@@ -557,7 +563,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
               return (
                 <TextField
                   {...params}
-                  placeholder="Add tag"
+                  placeholder={t('Add tag')}
                   inputRef={el => {
                     if (original.isLatestRow) {
                       latestTagInputRef.current = el;
@@ -566,7 +572,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
                     }
                   }}
                   error={hasError}
-                  helperText={hasError ? 'Press Enter to confirm the tag' : undefined}
+                  helperText={hasError ? t('Press Enter to confirm the tag') : undefined}
                   onChange={e => {
                     params.inputProps.onChange?.(e as React.ChangeEvent<HTMLInputElement>);
                     setPendingTagInputs(prev => ({
@@ -603,7 +609,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
     {
       id: 'latest',
       isLatestRow: true,
-      nameLabel: 'Latest Ready Revision',
+      nameLabel: t('Latest Ready Revision'),
       showLatestBadge: Boolean(latestReadyRevisionName),
       badgeLabel: latestReadyRevisionName,
       showUnavailableBadge: !latestReadyRevisionName,
@@ -616,7 +622,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
       isLatestRow: false,
       nameLabel: r.metadata.name,
       showLatestBadge: latestReadyRevisionName === r.metadata.name,
-      badgeLabel: 'Latest Ready',
+      badgeLabel: t('Latest Ready'),
       showUnavailableBadge: false,
       hasStatus: true,
       readyCond: r.status?.conditions?.find(c => c.type === 'Ready'),
@@ -625,7 +631,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
   ];
 
   return (
-    <SectionBox title="Traffic Splitting">
+    <SectionBox title={t('Traffic Splitting')}>
       <Stack spacing={2}>
         <SimpleTable columns={columns} data={tableData} />
         <Box
@@ -638,7 +644,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
         >
           <Box display="flex" flexDirection="column">
             <Typography variant="body2" color={isTrafficValid ? 'text.secondary' : 'error'}>
-              Total: {totalTraffic}% (must equal 100%)
+              {t('Total: {{ total }}% (must equal 100%)', { total: totalTraffic })}
             </Typography>
             {!isTrafficValid && combinedValidationError && (
               <Typography variant="caption" color="error">
@@ -648,8 +654,8 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
           </Box>
           <Box display="flex" gap={1}>
             {!isReadOnly && (
-              <Button variant="text" onClick={resetSection} aria-label="Reset traffic">
-                Reset
+              <Button variant="text" onClick={resetSection} aria-label={t('Reset traffic')}>
+                {t('Reset')}
               </Button>
             )}
             {!isReadOnly && (
@@ -657,9 +663,9 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
                 variant="contained"
                 onClick={onSaveTraffic}
                 disabled={!isTrafficValid || savingTraffic}
-                aria-label="Save traffic"
+                aria-label={t('Save traffic')}
               >
-                {savingTraffic ? 'Saving…' : 'Save'}
+                {savingTraffic ? t('Saving…') : t('Save')}
               </Button>
             )}
           </Box>

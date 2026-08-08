@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   ResourceListView,
@@ -35,6 +36,7 @@ function RevisionNameDisplay({
   revision: KRevision;
   kservice: KService | null;
 }) {
+  const { t } = useTranslation();
   const {
     metadata: { namespace, name },
     cluster,
@@ -51,7 +53,9 @@ function RevisionNameDisplay({
       >
         {name}
       </Link>
-      {isLatestReady && <Chip label="Latest Ready" color="info" size="small" variant="outlined" />}
+      {isLatestReady && (
+        <Chip label={t('Latest Ready')} color="info" size="small" variant="outlined" />
+      )}
     </Stack>
   );
 }
@@ -63,6 +67,7 @@ function RevisionTrafficDisplay({
   revision: KRevision;
   kservice: KService | null;
 }) {
+  const { t } = useTranslation();
   const myTraffic = kservice ? revision.getTrafficInService(kservice) : [];
 
   if (!kservice)
@@ -72,7 +77,9 @@ function RevisionTrafficDisplay({
       </Typography>
     );
 
-  const trafficWithPercent = myTraffic.filter(t => t.percent !== undefined && t.percent > 0);
+  const trafficWithPercent = myTraffic.filter(
+    item => item.percent !== undefined && item.percent > 0
+  );
 
   if (trafficWithPercent.length === 0) {
     return (
@@ -84,10 +91,14 @@ function RevisionTrafficDisplay({
 
   return (
     <Stack direction="column" spacing={1} sx={{ flexWrap: 'wrap' }}>
-      {trafficWithPercent.map((t, idx) => (
+      {trafficWithPercent.map((item, idx) => (
         <Chip
           key={idx}
-          label={`${t.percent}%${t.latestRevision ? ' (Latest)' : ''}`}
+          label={
+            item.latestRevision
+              ? t('{{ percent }}% (Latest)', { percent: item.percent })
+              : `${item.percent}%`
+          }
           size="small"
           color="success"
           variant="filled"
@@ -148,6 +159,7 @@ function RevisionTagDisplay({
 }
 
 export function RevisionsList() {
+  const { t } = useTranslation();
   const clusters = useClusters();
   const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
   const showClusterColumn = clusters.length > 1;
@@ -168,7 +180,7 @@ export function RevisionsList() {
     const cols: (ResourceTableColumn<KRevision> | 'namespace' | 'cluster' | 'age')[] = [
       {
         id: 'name',
-        label: 'Name',
+        label: t('Name'),
         gridTemplate: 'auto',
         getValue: rev => rev.metadata.name ?? '',
         render: rev => {
@@ -188,7 +200,7 @@ export function RevisionsList() {
     cols.push(
       {
         id: 'service',
-        label: 'Service',
+        label: t('Service'),
         gridTemplate: 'auto',
         getValue: rev => rev.parentService ?? '',
         render: rev =>
@@ -208,7 +220,7 @@ export function RevisionsList() {
       },
       {
         id: 'ready',
-        label: 'Ready',
+        label: t('Ready'),
         gridTemplate: 'auto',
         getValue: rev => rev.readyCondition?.status || 'Unknown',
         render: rev => (
@@ -221,7 +233,7 @@ export function RevisionsList() {
       },
       {
         id: 'image',
-        label: 'Image',
+        label: t('Image'),
         gridTemplate: 'auto',
         getValue: rev => rev.primaryImage ?? '',
         render: rev => (
@@ -232,7 +244,7 @@ export function RevisionsList() {
       },
       {
         id: 'traffic',
-        label: 'Traffic',
+        label: t('Traffic'),
         gridTemplate: 'auto',
         getValue: rev => {
           let kservice: KService | null = null;
@@ -241,7 +253,7 @@ export function RevisionsList() {
             kservice = kserviceMap.get(key) ?? null;
           }
           const traffic = kservice ? rev.getTrafficInService(kservice) : [];
-          return traffic.reduce((acc, t) => acc + (t.percent || 0), 0);
+          return traffic.reduce((acc, item) => acc + (item.percent || 0), 0);
         },
         render: rev => {
           if (!rev.parentService) return <Typography variant="body2">-</Typography>;
@@ -252,7 +264,7 @@ export function RevisionsList() {
       },
       {
         id: 'tags',
-        label: 'Tags',
+        label: t('Tags'),
         gridTemplate: 'auto',
         getValue: () => '',
         render: rev => {
@@ -273,7 +285,7 @@ export function RevisionsList() {
 
   return (
     <ResourceListView
-      title="Revisions"
+      title={t('Revisions')}
       resourceClass={KRevision}
       columns={columns}
       reflectInURL="knative-revisions"

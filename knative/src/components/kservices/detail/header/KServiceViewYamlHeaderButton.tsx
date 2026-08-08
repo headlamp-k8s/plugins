@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KService } from '../../../../resources/knative';
 import { Activity } from '../../../common/activity/Activity';
@@ -50,6 +51,7 @@ function KServiceYamlActivityContent({
 }
 
 export function KServiceViewYamlHeaderButton({ kservice }: KServiceViewYamlHeaderButtonProps) {
+  const { t } = useTranslation();
   const { canPatchKService } = useKServicePermissions();
 
   // Hide in read-only mode (no patch permission).
@@ -73,5 +75,5 @@ export function KServiceViewYamlHeaderButton({ kservice }: KServiceViewYamlHeade
     });
   };
 
-  return <ActionButton icon="mdi:eye" onClick={openYaml} description="View YAML" />;
+  return <ActionButton icon="mdi:eye" onClick={openYaml} description={t('View YAML')} />;
 }
