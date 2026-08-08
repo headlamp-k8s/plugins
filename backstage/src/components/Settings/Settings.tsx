@@ -1,15 +1,7 @@
 import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
 import React, { useCallback, useEffect, useState } from 'react';
+import { isValidBackstageBaseUrl } from '../../utils/url';
 import { SettingsData, SettingsPure } from './SettingsPure';
-
-function validateUrl(url: string): boolean {
-  try {
-    new URL(url);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
 
 interface SettingsProps {
   data?: SettingsData;
@@ -30,7 +22,7 @@ export const Settings: React.FC<SettingsProps> = ({ data = {}, onDataChange }) =
   useEffect(() => {
     const selectedClusterData = data?.[selectedCluster] || {};
     if (selectedClusterData.backstageUrl) {
-      setValidUrl(validateUrl(selectedClusterData.backstageUrl));
+      setValidUrl(isValidBackstageBaseUrl(selectedClusterData.backstageUrl));
     } else {
       setValidUrl(false);
     }
@@ -54,7 +46,7 @@ export const Settings: React.FC<SettingsProps> = ({ data = {}, onDataChange }) =
       }
 
       onDataChange?.(newData);
-      setValidUrl(validateUrl(newURL));
+      setValidUrl(isValidBackstageBaseUrl(newURL));
     },
     [data, onDataChange, selectedCluster]
   );

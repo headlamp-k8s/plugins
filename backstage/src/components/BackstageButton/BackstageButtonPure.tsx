@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { IconButton, Tooltip } from '@mui/material';
 import React from 'react';
+import { isValidBackstageBaseUrl } from '../../utils/url';
 
 /**
  * Props for the BackstageButtonPure component.
@@ -44,6 +45,9 @@ export function BackstageButtonPure({
         redirectPath,
       });
     } else {
+      if (!isValidBackstageBaseUrl(backstageUrl)) {
+        return;
+      }
       const redirectUrl = new URL(backstageUrl);
       redirectUrl.pathname = redirectUrl.pathname.replace(/\/$/, '') + redirectPath;
       window.open(redirectUrl.toString(), '_blank');
@@ -52,7 +56,7 @@ export function BackstageButtonPure({
 
   // If we are not running in Backstage + the Backstage URL is not set up, then we
   // do not display the button at all.
-  if (!isInIframe && !backstageUrl) {
+  if (!isInIframe && (!backstageUrl || !isValidBackstageBaseUrl(backstageUrl))) {
     return null;
   }
 
