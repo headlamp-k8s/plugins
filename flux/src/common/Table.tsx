@@ -79,10 +79,11 @@ export function Table(props: TableProps) {
 
   const processedColumns = React.useMemo(() => {
     return columns.map(column => {
+      let colObj: any;
       if (typeof column === 'string') {
         switch (column) {
           case 'namespace':
-            return {
+            colObj = {
               header: t('Namespace'),
               accessorKey: 'metadata.namespace',
               Cell: ({ row: { original: item } }) => (
@@ -96,16 +97,19 @@ export function Table(props: TableProps) {
                 </Link>
               ),
             };
+            break;
           case 'name':
-            return prepareNameColumn(undefined, t);
+            colObj = prepareNameColumn(undefined, t);
+            break;
           case 'lastUpdated':
-            return {
+            colObj = {
               header: t('Last Updated'),
               accessorFn: item => prepareLastUpdated(item),
               Cell: ({ cell }: any) => <DateLabel format="mini" date={cell.getValue()} />,
             };
+            break;
           case 'age':
-            return {
+            colObj = {
               id: 'age',
               header: t('Age'),
               gridTemplate: 'min-content',
@@ -120,8 +124,9 @@ export function Table(props: TableProps) {
                   <DateLabel date={row.original.metadata.creationTimestamp} format="mini" />
                 ),
             };
+            break;
           case 'source':
-            return {
+            colObj = {
               header: t('Source'),
               accessorFn: item => {
                 const { name } = getSourceNameAndPluralKind(item);
@@ -143,14 +148,16 @@ export function Table(props: TableProps) {
                 );
               },
             };
+            break;
           case 'status':
-            return {
+            colObj = {
               header: t('Status'),
               accessorFn: item => t(getStatusText(item)),
               Cell: ({ row: { original: item } }: any) => <StatusLabel item={item} />,
             };
+            break;
           case 'revision':
-            return {
+            colObj = {
               header: t('Revision'),
               accessorFn: item => {
                 const reference = item.jsonData.status?.lastAttemptedRevision;
@@ -161,8 +168,9 @@ export function Table(props: TableProps) {
                 );
               },
             };
+            break;
           case 'message':
-            return {
+            colObj = {
               header: t('Message'),
               accessorFn: item => {
                 const message = item.jsonData.status?.conditions?.find(
@@ -175,16 +183,25 @@ export function Table(props: TableProps) {
                 );
               },
             };
+            break;
           default:
-            return column;
+            colObj = { header: column };
+        }
+      } else if ((column as NameColumn).extends === 'name') {
+        colObj = prepareNameColumn(column as NameColumn, t);
+      } else {
+        colObj = { ...column };
+      }
+
+      if (colObj && !colObj.id && !colObj.accessorKey) {
+        if (typeof colObj.header === 'string') {
+          colObj.id = colObj.header.toLowerCase().replace(/\s+/g, '-');
+        } else {
+          colObj.id = Math.random().toString(36).substring(2, 9);
         }
       }
 
-      if ((column as NameColumn).extends === 'name') {
-        return prepareNameColumn(column as NameColumn, t);
-      }
-
-      return column;
+      return colObj;
     });
   }, [columns, t]);
 
