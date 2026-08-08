@@ -38,7 +38,9 @@ function hasCrdInCluster(cluster: string, crdName: string): Promise<boolean> {
       () => settle(true),
       crdName,
       undefined,
-      () => settle(false),
+      // Only a confirmed 404 means the CRD is genuinely absent.
+      // Other failures (403, 5xx, network) do not prove absence.
+      err => settle(err?.status !== 404),
       { cluster }
     );
 
@@ -47,7 +49,8 @@ function hasCrdInCluster(cluster: string, crdName: string): Promise<boolean> {
         cancelFn = cancel;
       })
       .catch(() => {
-        settle(false);
+        // Request-level failures (e.g. network) are not confirmed absence.
+        settle(true);
       });
   });
 }
