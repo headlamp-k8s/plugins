@@ -14,19 +14,42 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
 import {
   Link,
   ResourceListView,
   ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Chip, Stack, Typography } from '@mui/material';
-import React from 'react';
+import { Chip, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import React, { useState } from 'react';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KRevision, KService } from '../../resources/knative';
 import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
+import { RevisionDiffModal } from './RevisionDiffModal';
+
+function RevisionCompareRowButton({ revision }: { revision: KRevision }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Tooltip title="Compare Revisions">
+        <IconButton size="small" onClick={() => setOpen(true)} color="primary">
+          <Icon icon="mdi:compare" width={20} />
+        </IconButton>
+      </Tooltip>
+      {open && (
+        <RevisionDiffModal
+          open={open}
+          onClose={() => setOpen(false)}
+          revision={revision}
+        />
+      )}
+    </>
+  );
+}
 
 function RevisionNameDisplay({
   revision,
@@ -262,7 +285,14 @@ export function RevisionsList() {
           return <RevisionTagDisplay revision={rev} kservice={kservice} />;
         },
       },
-      'age'
+      'age',
+      {
+        id: 'actions',
+        label: 'Actions',
+        gridTemplate: 'auto',
+        getValue: () => '',
+        render: rev => <RevisionCompareRowButton revision={rev} />,
+      }
     );
     return cols;
   }, [showClusterColumn, kserviceMap]);
