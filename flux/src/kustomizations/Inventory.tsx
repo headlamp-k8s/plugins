@@ -41,9 +41,10 @@ export function GetResourcesFromInventory(
       const parsedID = parseID(item.id);
       const { name, namespace, group, kind } = parsedID;
 
-      // @todo: this use of makeCustomResourceClass is deprecated
-      // "Use the version of the function that receives an object as its argument."
-      const resourceClass = makeCustomResourceClass({
+      // Prefer native Headlamp resource classes (e.g. CustomResourceDefinition,
+      // Pod, Service) so their built-in getters are preserved. Only fall back to
+      // makeCustomResourceClass for resources Headlamp does not natively know.
+      const resourceClass = K8s.ResourceClasses[kind] ?? makeCustomResourceClass({
         apiInfo: [{ group: group, version: item.v }],
         isNamespaced: !!namespace,
         singularName: kind,
