@@ -107,7 +107,10 @@ function getResourceGroupRows(resourceGroups: ResourceGroup[]): ResourceGroupRow
 }
 
 /** Convert status flavor usage or reservation entries into table rows. */
-function getFlavorUsageRows(flavorUsage: FlavorUsage[] = []): FlavorUsageRow[] {
+function getFlavorUsageRows(flavorUsage?: FlavorUsage[] | null): FlavorUsageRow[] {
+  if (!flavorUsage) {
+    return [];
+  }
   return flavorUsage.flatMap(flavor => {
     if (!flavor.resources?.length) {
       return [
