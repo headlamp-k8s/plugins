@@ -1,6 +1,6 @@
 import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
 import React, { useCallback, useEffect, useState } from 'react';
-import { isValidBackstageBaseUrl } from '../../utils/url';
+import { isValidBackstageBaseUrl } from '../../utils';
 import { SettingsData, SettingsPure } from './SettingsPure';
 
 interface SettingsProps {

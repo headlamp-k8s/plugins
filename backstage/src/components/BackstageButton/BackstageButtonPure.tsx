@@ -1,7 +1,7 @@
 import { Icon } from '@iconify/react';
 import { IconButton, Tooltip } from '@mui/material';
 import React from 'react';
-import { isValidBackstageBaseUrl } from '../../utils/url';
+import { isValidBackstageBaseUrl } from '../../utils';
 
 /**
  * Props for the BackstageButtonPure component.
