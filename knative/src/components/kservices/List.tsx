@@ -209,9 +209,9 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
     const domainMap: Record<string, string[]> = {};
     if (!domainMappingsData) return domainMap;
     for (const dm of domainMappingsData) {
-      const refName = dm.spec.ref.name;
+      const refName = dm.spec?.ref?.name;
       if (!refName) continue;
-      const svcNs = dm.spec.ref.namespace || dm.metadata.namespace!;
+      const svcNs = dm.spec?.ref?.namespace || dm.metadata?.namespace || '';
       const key = `${dm.cluster}/${svcNs}/${refName}`;
       const isReady = dm.status?.conditions?.find(c => c.type === 'Ready')?.status === 'True';
       const url = dm.status?.url || dm.status?.address?.url;
