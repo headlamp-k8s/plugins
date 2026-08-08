@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ActionButton,
   LightTooltip,
@@ -229,6 +230,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
 
   const [activity] = useActivity();
   const { enqueueSnackbar } = useSnackbar();
+  const { t } = useTranslation();
 
   const {
     items: kservicePods,
@@ -409,7 +411,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
     if (podsError) {
       if (!notifiedRef.current.podsError) {
         const message =
-          (podsError as { message?: string })?.message ?? 'Failed to fetch pods: Unknown error';
+          (podsError as { message?: string })?.message ?? t('Failed to fetch pods: Unknown error');
         enqueueSnackbar(message, { variant: 'error', autoHideDuration: 5000 });
         notifiedRef.current.podsError = true;
       }
@@ -424,7 +426,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
     if (allPods.length === 0) {
       if (!notifiedRef.current.noPods) {
         enqueueSnackbar(
-          'No running pods were found for this KService. It may currently be scaled to zero.',
+          t('No running pods were found for this KService. It may currently be scaled to zero.'),
           { variant: 'info', autoHideDuration: 5000 }
         );
         notifiedRef.current.noPods = true;
@@ -559,16 +561,16 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
   const sternControls = (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', width: '100%' }}>
       <FormControl sx={{ minWidth: 220 }}>
-        <InputLabel>Select Pod</InputLabel>
+        <InputLabel>{t('Select Pod')}</InputLabel>
         <Select
           value={selectedPodName}
           onChange={(event: SelectChangeEvent<'all' | string>) => {
             clearTerminalAndState();
             setSelectedPodName(event.target.value as 'all' | string);
           }}
-          label="Select Pod"
+          label={t('Select Pod')}
         >
-          <MenuItem value="all">All Pods</MenuItem>
+          <MenuItem value="all">{t('All Pods')}</MenuItem>
           {availablePodNames.map(podName => (
             <MenuItem key={podName} value={podName}>
               {podName}
@@ -578,7 +580,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
       </FormControl>
 
       <FormControl sx={{ minWidth: 260 }}>
-        <InputLabel>Container</InputLabel>
+        <InputLabel>{t('Container')}</InputLabel>
         <Select<string[]>
           multiple
           value={selectedContainers}
@@ -592,13 +594,13 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
             }
             setSelectedContainers(next);
           }}
-          label="Container"
+          label={t('Container')}
           renderValue={selected =>
-            Array.isArray(selected) && selected.length ? selected.join(', ') : 'All Containers'
+            Array.isArray(selected) && selected.length ? selected.join(', ') : t('All Containers')
           }
         >
           <MenuItem value={ALL_CONTAINERS_SENTINEL}>
-            <ListItemText primary="All Containers" />
+            <ListItemText primary={t('All Containers')} />
           </MenuItem>
           {availableContainerNames.map(container => (
             <MenuItem key={container} value={container}>
@@ -610,33 +612,33 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
       </FormControl>
 
       <FormControl sx={{ minWidth: 120 }}>
-        <InputLabel>Lines</InputLabel>
+        <InputLabel>{t('Lines')}</InputLabel>
         <Select
           value={tailLines}
           onChange={(event: SelectChangeEvent<number>) => {
             clearTerminalAndState();
             setTailLines(Number(event.target.value));
           }}
-          label="Lines"
+          label={t('Lines')}
         >
           {[100, 1000, 2500].map(i => (
             <MenuItem key={i} value={i}>
               {i}
             </MenuItem>
           ))}
-          <MenuItem value={-1}>All</MenuItem>
+          <MenuItem value={-1}>{t('All')}</MenuItem>
         </Select>
       </FormControl>
 
       <LightTooltip
         title={
           canShowPrevious
-            ? 'Show logs for previous instances of this container.'
-            : 'You can only select this option for containers that have been restarted.'
+            ? t('Show logs for previous instances of this container.')
+            : t('You can only select this option for containers that have been restarted.')
         }
       >
         <FormControlLabel
-          label="Show previous"
+          label={t('Show previous')}
           disabled={!canShowPrevious}
           control={
             <Switch
@@ -662,7 +664,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
             size="small"
           />
         }
-        label="Timestamps"
+        label={t('Timestamps')}
       />
 
       <FormControlLabel
@@ -676,14 +678,14 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
             size="small"
           />
         }
-        label="Follow"
+        label={t('Follow')}
       />
 
       <LightTooltip
         title={
           disableWrap
-            ? 'Show logs without wrapping (prefix colored per pod).'
-            : 'Use terminal view (ANSI colors, but long lines wrap).'
+            ? t('Show logs without wrapping (prefix colored per pod).')
+            : t('Use terminal view (ANSI colors, but long lines wrap).')
         }
       >
         <FormControlLabel
@@ -703,7 +705,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
               size="small"
             />
           }
-          label="Wrap"
+          label={t('Wrap')}
         />
       </LightTooltip>
     </Box>
@@ -770,22 +772,26 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
               <ActionButton
                 icon="mdi:magnify"
                 onClick={() => {
-                  enqueueSnackbar('Use browser find (Cmd/Ctrl+F) in no-wrap view.', {
+                  enqueueSnackbar(t('Use browser find (Cmd/Ctrl+F) in no-wrap view.'), {
                     variant: 'info',
                     autoHideDuration: 3000,
                   });
                 }}
-                description="Find"
+                description={t('Find')}
               />
             </Grid>
             <Grid item xs>
-              <ActionButton icon="mdi:broom" onClick={clearTerminalAndState} description="Clear" />
+              <ActionButton
+                icon="mdi:broom"
+                onClick={clearTerminalAndState}
+                description={t('Clear')}
+              />
             </Grid>
             <Grid item xs>
               <ActionButton
                 icon="mdi:file-download-outline"
                 onClick={downloadPlainLogs}
-                description="Download"
+                description={t('Download')}
               />
             </Grid>
           </Grid>
@@ -812,7 +818,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
               color="info"
               variant="contained"
             >
-              Reconnect
+              {t('Reconnect')}
             </Button>
           )}
 
@@ -863,6 +869,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
 }
 
 export function KServiceLogsHeaderButton({ kservice }: KServiceLogsHeaderButtonProps) {
+  const { t } = useTranslation();
   const { canGetPodLogs } = useKServicePermissions();
 
   const onClick = () => {
@@ -871,7 +878,7 @@ export function KServiceLogsHeaderButton({ kservice }: KServiceLogsHeaderButtonP
 
     Activity.launch({
       id: `knative-kservice-logs-${kservice.metadata.uid ?? name}`,
-      title: `Logs: ${name}`,
+      title: t('Logs: {{ name }}', { name }),
       icon: <Icon icon="mdi:file-document-box-outline" width="100%" height="100%" />,
       cluster: kservice.cluster,
       location: 'full',
@@ -884,6 +891,10 @@ export function KServiceLogsHeaderButton({ kservice }: KServiceLogsHeaderButtonP
   }
 
   return (
-    <ActionButton icon="mdi:file-document-box-outline" onClick={onClick} description="Show logs" />
+    <ActionButton
+      icon="mdi:file-document-box-outline"
+      onClick={onClick}
+      description={t('Show logs')}
+    />
   );
 }

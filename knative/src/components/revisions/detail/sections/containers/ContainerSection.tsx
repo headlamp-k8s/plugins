@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   NameValueTable,
@@ -51,6 +52,7 @@ export interface PureContainerSectionProps {
 type EnvVar = NonNullable<Container['env']>[number];
 
 export function ContainerSection({ revision }: { revision: KRevision }) {
+  const { t } = useTranslation();
   const containers = revision.containers;
   if (!containers || containers.length === 0) return null;
 
@@ -60,14 +62,14 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
         const resourceData: ResourceRow[] = [];
         if (container.resources?.requests) {
           resourceData.push({
-            type: 'Requests',
+            type: t('Requests'),
             cpu: container.resources.requests.cpu || '-',
             memory: container.resources.requests.memory || '-',
           });
         }
         if (container.resources?.limits) {
           resourceData.push({
-            type: 'Limits',
+            type: t('Limits'),
             cpu: container.resources.limits.cpu || '-',
             memory: container.resources.limits.memory || '-',
           });
@@ -76,12 +78,15 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
         const envData = container.env || [];
 
         return (
-          <SectionBox title={`Container: ${container.name || 'user-container'}`} key={idx}>
+          <SectionBox
+            title={t('Container: {{ name }}', { name: container.name || 'user-container' })}
+            key={idx}
+          >
             {/* Image and Ports */}
             <NameValueTable
               rows={[
                 {
-                  name: 'Image',
+                  name: t('Image'),
                   value: (
                     <Typography sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
                       {container.image}
@@ -89,7 +94,7 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
                   ),
                 },
                 {
-                  name: 'Ports',
+                  name: t('Ports'),
                   value:
                     container.ports
                       ?.map(p => `${p.containerPort}${p.name ? ` (${p.name})` : ''}`)
@@ -102,21 +107,21 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
             {resourceData.length > 0 && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem' }}>
-                  Compute Resources
+                  {t('Compute Resources')}
                 </Typography>
                 <SimpleTable
                   columns={[
                     {
-                      label: 'Type',
+                      label: t('Type'),
                       getter: (row: ResourceRow) => row.type,
                       sort: (a: ResourceRow, b: ResourceRow) => a.type.localeCompare(b.type),
                     },
                     {
-                      label: 'CPU',
+                      label: t('CPU'),
                       getter: (row: ResourceRow) => row.cpu,
                     },
                     {
-                      label: 'Memory',
+                      label: t('Memory'),
                       getter: (row: ResourceRow) => row.memory,
                     },
                   ]}
@@ -129,12 +134,12 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
             {envData.length > 0 && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem' }}>
-                  Environment Variables
+                  {t('Environment Variables')}
                 </Typography>
                 <SimpleTable
                   columns={[
                     {
-                      label: 'Name',
+                      label: t('Name'),
                       getter: (env: EnvVar) => (
                         <Typography sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>
                           {env.name}
@@ -142,7 +147,7 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
                       ),
                     },
                     {
-                      label: 'Value',
+                      label: t('Value'),
                       getter: (env: EnvVar) => {
                         if (env.value !== undefined) {
                           return (
@@ -165,7 +170,7 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
                                 {env.valueFrom.secretKeyRef.name}
                               </Link>
                               <Typography variant="caption" color="text.secondary">
-                                (key: {env.valueFrom.secretKeyRef.key})
+                                {t('(key: {{ key }})', { key: env.valueFrom.secretKeyRef.key })}
                               </Typography>
                             </Box>
                           );
@@ -183,7 +188,7 @@ export function ContainerSection({ revision }: { revision: KRevision }) {
                                 {env.valueFrom.configMapKeyRef.name}
                               </Link>
                               <Typography variant="caption" color="text.secondary">
-                                (key: {env.valueFrom.configMapKeyRef.key})
+                                {t('(key: {{ key }})', { key: env.valueFrom.configMapKeyRef.key })}
                               </Typography>
                             </Box>
                           );

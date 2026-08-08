@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ResourceTable,
   type ResourceTableColumn,
@@ -59,6 +60,7 @@ function getReadyCondition(dm: KnativeDomainMapping): {
 }
 
 export default function DomainMappingSection({ namespace, serviceName, cluster }: Props) {
+  const { t } = useTranslation();
   const clusters = [cluster];
   const { notifyError, notifyInfo } = useNotify();
   const [creating, setCreating] = React.useState<boolean>(false);
@@ -84,12 +86,16 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
     setCreating(true);
     try {
       await createDomainMapping(domainInput, cluster, namespace, serviceName);
-      notifyInfo('DomainMapping Created');
+      notifyInfo(t('DomainMapping Created'));
       setDomainInput('');
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
       const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to create: ${detail}` : 'Failed to create Domain Mapping');
+      notifyError(
+        detail
+          ? t('Failed to create: {{ detail }}', { detail })
+          : t('Failed to create Domain Mapping')
+      );
     } finally {
       setCreating(false);
     }
@@ -101,10 +107,10 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
   async function handleCreateClusterDomainClaim(dm: KnativeDomainMapping) {
     try {
       await createClusterDomainClaim(dm, namespace);
-      notifyInfo('ClusterDomainClaim created');
+      notifyInfo(t('ClusterDomainClaim created'));
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
-      notifyError(error?.message || 'Failed to create ClusterDomainClaim');
+      notifyError(error?.message || t('Failed to create ClusterDomainClaim'));
     }
   }
 
@@ -115,7 +121,7 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
     'name',
     {
       id: 'ready',
-      label: 'Ready',
+      label: t('Ready'),
       gridTemplate: 'auto',
       disableFiltering: true,
       getValue: item => {
@@ -137,7 +143,7 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
     },
     {
       id: 'clusterdomainclaim',
-      label: 'ClusterDomainClaim',
+      label: t('ClusterDomainClaim'),
       gridTemplate: 'auto',
       disableFiltering: true,
       getValue: item => {
@@ -156,15 +162,15 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
         }
 
         return state === 'present' ? (
-          <Chip label="Present" color="success" size="small" />
+          <Chip label={t('Present')} color="success" size="small" />
         ) : (
-          <Chip label="Missing" color="warning" size="small" />
+          <Chip label={t('Missing')} color="warning" size="small" />
         );
       },
     },
     {
       id: 'url',
-      label: 'URL',
+      label: t('URL'),
       getValue: item => (item as KnativeDomainMapping).readyUrl ?? '',
       gridTemplate: 'auto',
       render: item => {
@@ -200,11 +206,11 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
   });
 
   return (
-    <SectionBox title="Custom Domains (DomainMapping)">
+    <SectionBox title={t('Custom Domains (DomainMapping)')}>
       <Stack spacing={1}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <TextField
-            label="Domain name (e.g. app.example.com)"
+            label={t('Domain name (e.g. app.example.com)')}
             size="small"
             value={domainInput}
             onChange={e => setDomainInput(e.target.value)}
@@ -213,7 +219,7 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
           />
           {canCreateClusterDomainClaim === true && canCreateDomainMapping === true && (
             <Button variant="contained" onClick={handleCreate} disabled={creating}>
-              Create
+              {t('Create')}
             </Button>
           )}
         </Stack>

@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KRevision } from '../../../../resources/knative';
 import { Activity } from '../../../common/activity/Activity';
@@ -49,6 +50,7 @@ function RevisionYamlActivityContent({
 }
 
 export function RevisionViewYamlHeaderButton({ revision }: RevisionViewYamlHeaderButtonProps) {
+  const { t } = useTranslation();
   const activityId = `revision-yaml-${revision.metadata.uid ?? revision.metadata.name}`;
 
   const openYaml = () => {
@@ -62,5 +64,5 @@ export function RevisionViewYamlHeaderButton({ revision }: RevisionViewYamlHeade
     });
   };
 
-  return <ActionButton icon="mdi:eye" onClick={openYaml} description="View YAML" />;
+  return <ActionButton icon="mdi:eye" onClick={openYaml} description={t('View YAML')} />;
 }

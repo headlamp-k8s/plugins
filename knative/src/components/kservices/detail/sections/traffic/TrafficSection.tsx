@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, CircularProgress, Stack, Typography } from '@mui/material';
 import React from 'react';
 import { KRevision, KService } from '../../../../../resources/knative';
@@ -24,6 +25,7 @@ type KServiceSectionProps = {
 };
 
 export function TrafficSection({ kservice }: KServiceSectionProps) {
+  const { t } = useTranslation();
   const {
     cluster,
     metadata: { name },
@@ -40,7 +42,7 @@ export function TrafficSection({ kservice }: KServiceSectionProps) {
   const error = React.useMemo(() => {
     if (revisionListResult.error) {
       return (
-        (revisionListResult.error as { message?: string })?.message || 'Failed to load revisions'
+        (revisionListResult.error as { message?: string })?.message || t('Failed to load revisions')
       );
     }
     return null;

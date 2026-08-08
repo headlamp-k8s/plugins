@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { LightTooltip, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box } from '@mui/material';
 
@@ -30,22 +31,23 @@ export function ReadyStatusLabel({
   message,
   isReadyType = true,
 }: ReadyStatusLabelProps) {
+  const { t } = useTranslation();
   let headlampStatus: 'success' | 'error' | 'warning' | '' = '';
-  let labelText = 'Unknown';
+  let labelText = t('Unknown');
 
   if (status === 'True') {
     headlampStatus = 'success';
-    labelText = isReadyType ? 'Ready' : 'True';
+    labelText = isReadyType ? t('Ready') : 'True';
   } else if (status === 'False') {
     headlampStatus = 'error';
-    labelText = isReadyType ? 'Not Ready' : 'False';
+    labelText = isReadyType ? t('Not Ready') : 'False';
   } else {
     headlampStatus = 'warning';
   }
 
   const tooltipLines = [labelText];
-  if (reason) tooltipLines.push(`Reason: ${reason}`);
-  if (message) tooltipLines.push(`Message: ${message}`);
+  if (reason) tooltipLines.push(t('Reason: {{ reason }}', { reason }));
+  if (message) tooltipLines.push(t('Message: {{ message }}', { message }));
 
   return (
     <LightTooltip

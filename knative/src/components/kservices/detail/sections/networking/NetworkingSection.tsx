@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
 import { Alert, Stack } from '@mui/material';
 import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../../../../config/ingress';
@@ -74,6 +75,7 @@ export function IngressClassValue({ cluster }: IngressClassValueProps) {
 }
 
 export function NetworkingSection({ kservice }: KServiceSectionProps) {
+  const { t } = useTranslation();
   const {
     cluster,
     metadata: { name },
@@ -90,11 +92,14 @@ export function NetworkingSection({ kservice }: KServiceSectionProps) {
     <Stack spacing={2}>
       {shouldShowIngressWarning && (
         <Alert severity="warning" variant="filled">
-          Gateway API integration may be limited because Knative "config-network" ConfigMap
-          ingress.class
           {ingressClass === null
-            ? ' is not set.'
-            : ` is set to "${ingressClass}", not "${INGRESS_CLASS_GATEWAY_API}".`}
+            ? t(
+                'Gateway API integration may be limited because Knative "config-network" ConfigMap ingress.class is not set.'
+              )
+            : t(
+                'Gateway API integration may be limited because Knative "config-network" ConfigMap ingress.class is set to "{{ ingressClass }}", not "{{ gatewayApiClass }}".',
+                { ingressClass, gatewayApiClass: INGRESS_CLASS_GATEWAY_API }
+              )}
         </Alert>
       )}
 
