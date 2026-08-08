@@ -14,7 +14,57 @@
  * limitations under the License.
  */
 
-import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from './ingress';
+import { formatIngressClass, INGRESS_CLASS_GATEWAY_API, readIngressClass } from './ingress';
+
+describe('readIngressClass', () => {
+  it('should read the ingress-class value from config-network', () => {
+    expect(
+      readIngressClass({
+        'ingress-class': '  gateway-api.ingress.networking.knative.dev  ',
+      })
+    ).toEqual({
+      raw: '  gateway-api.ingress.networking.knative.dev  ',
+      value: 'gateway-api.ingress.networking.knative.dev',
+    });
+  });
+
+  it('should fall back to the legacy ingress.class value', () => {
+    expect(
+      readIngressClass({
+        'ingress.class': '  kourier.ingress.networking.knative.dev  ',
+      })
+    ).toEqual({
+      raw: '  kourier.ingress.networking.knative.dev  ',
+      value: 'kourier.ingress.networking.knative.dev',
+    });
+  });
+
+  it('should prefer ingress-class when both keys are present', () => {
+    expect(
+      readIngressClass({
+        'ingress-class': 'gateway-api.ingress.networking.knative.dev',
+        'ingress.class': 'kourier.ingress.networking.knative.dev',
+      })
+    ).toEqual({
+      raw: 'gateway-api.ingress.networking.knative.dev',
+      value: 'gateway-api.ingress.networking.knative.dev',
+    });
+  });
+
+  it('should not fall back when ingress-class is blank', () => {
+    expect(
+      readIngressClass({
+        'ingress-class': '  ',
+        'ingress.class': 'kourier.ingress.networking.knative.dev',
+      })
+    ).toEqual({ raw: '  ', value: null });
+  });
+
+  it('should return null when neither key is present', () => {
+    expect(readIngressClass(undefined)).toEqual({ raw: null, value: null });
+    expect(readIngressClass({})).toEqual({ raw: null, value: null });
+  });
+});
 
 describe('formatIngressClass', () => {
   it('should return "(not set)" for null', () => {
