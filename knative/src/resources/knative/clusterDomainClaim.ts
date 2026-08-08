@@ -102,6 +102,6 @@ export class ClusterDomainClaim extends KubeObject<ClusterDomainClaimResource> {
    * The namespace that owns this domain.
    */
   get targetNamespace(): string {
-    return this.spec.namespace;
+    return this.spec?.namespace ?? '';
   }
 }
