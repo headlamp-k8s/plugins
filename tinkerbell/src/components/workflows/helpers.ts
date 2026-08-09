@@ -1,5 +1,50 @@
 import { normalizeState } from '../../resources/common';
-import type { WorkflowTaskStatus } from '../../resources/workflow';
+import type { Workflow, WorkflowTaskStatus } from '../../resources/workflow';
+import { fallback } from '../common/listHelpers';
+
+/**
+ * Gets a user-facing workflow state from supported status shapes.
+ *
+ * @param item - Workflow resource to inspect.
+ * @returns Normalized workflow state.
+ */
+export function getWorkflowState(item: Workflow): string {
+  return normalizeState(item.status?.state ?? item.status?.currentState?.state);
+}
+
+/**
+ * Gets the current task only while the workflow is actively running.
+ *
+ * Completed and pending workflows may keep stale currentState data, so hiding it
+ * outside Running avoids presenting old task names as active progress.
+ *
+ * @param item - Workflow resource to inspect.
+ * @returns Current task while running, or fallback otherwise.
+ */
+export function getCurrentTask(item: Workflow): string {
+  if (getWorkflowState(item) !== 'Running') {
+    return fallback(undefined);
+  }
+
+  return fallback(item.status?.currentState?.taskName);
+}
+
+/**
+ * Gets the current action only while the workflow is actively running.
+ *
+ * Completed and pending workflows may keep stale currentState data, so hiding it
+ * outside Running avoids presenting old action names as active progress.
+ *
+ * @param item - Workflow resource to inspect.
+ * @returns Current action while running, or fallback otherwise.
+ */
+export function getCurrentAction(item: Workflow): string {
+  if (getWorkflowState(item) !== 'Running') {
+    return fallback(undefined);
+  }
+
+  return fallback(item.status?.currentState?.actionName);
+}
 
 /**
  * Gets a task state from its actions when the task has no direct state field.

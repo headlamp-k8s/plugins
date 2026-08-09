@@ -22,7 +22,6 @@ export function BmcJobDetail() {
       resourceType={BmcJob}
       name={name}
       namespace={namespace}
-      withEvents
       extraInfo={item =>
         item
           ? [

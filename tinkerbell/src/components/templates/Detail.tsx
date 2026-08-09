@@ -1,6 +1,5 @@
 import {
   DetailsGrid,
-  NameValueTable,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
@@ -321,7 +320,6 @@ export function TemplateDetail() {
       resourceType={Template}
       name={name}
       namespace={namespace}
-      withEvents
       extraInfo={item => {
         const parsedTemplate = parseTemplateData(item?.data);
 
@@ -330,8 +328,7 @@ export function TemplateDetail() {
               { name: 'Template Name', value: fallback(parsedTemplate.name) },
               { name: 'Global Timeout', value: fallback(parsedTemplate.globalTimeout) },
               { name: 'Tasks', value: fallback(parsedTemplate.tasks.length) },
-              { name: 'Action Slots', value: fallback(parsedTemplate.actions.length) },
-              { name: 'Template Data Size', value: fallback(`${item.data?.length ?? 0} chars`) },
+              { name: 'Total Actions', value: fallback(parsedTemplate.actions.length) },
             ]
           : [];
       }}
@@ -341,21 +338,6 @@ export function TemplateDetail() {
         return item
           ? [
               {
-                id: 'tinkerbell.template-summary',
-                section: (
-                  <SectionBox title="Template Summary">
-                    <NameValueTable
-                      rows={[
-                        { name: 'Name', value: fallback(parsedTemplate.name) },
-                        { name: 'Global Timeout', value: fallback(parsedTemplate.globalTimeout) },
-                        { name: 'Tasks', value: fallback(parsedTemplate.tasks.length) },
-                        { name: 'Action Slots', value: fallback(parsedTemplate.actions.length) },
-                      ]}
-                    />
-                  </SectionBox>
-                ),
-              },
-              {
                 id: 'tinkerbell.template-tasks',
                 section: (
                   <SectionBox title="Tasks">
@@ -363,7 +345,7 @@ export function TemplateDetail() {
                       columns={[
                         { label: 'Name', getter: row => row.name },
                         { label: 'Worker', getter: row => fallback(row.worker) },
-                        { label: 'Action Slots', getter: row => fallback(row.actionCount) },
+                        { label: 'Total Actions', getter: row => fallback(row.actionCount) },
                         { label: 'Volumes', getter: row => fallback(row.volumeCount) },
                       ]}
                       data={parsedTemplate.tasks}
@@ -389,35 +371,6 @@ export function TemplateDetail() {
                         { label: 'Timeout', getter: row => fallback(row.timeout) },
                       ]}
                       data={parsedTemplate.actions}
-                    />
-                  </SectionBox>
-                ),
-              },
-              parsedTemplate.images.length > 0 && {
-                id: 'tinkerbell.template-images',
-                section: (
-                  <SectionBox title="Images Used">
-                    <SimpleTable
-                      columns={[
-                        { label: 'Image', getter: row => row.image },
-                        { label: 'Actions', getter: row => fallback(row.actionCount) },
-                      ]}
-                      data={(() => {
-                        const imageActionCounts = new Map<string, number>();
-                        parsedTemplate.actions.forEach(action => {
-                          if (action.image) {
-                            imageActionCounts.set(
-                              action.image,
-                              (imageActionCounts.get(action.image) ?? 0) + 1
-                            );
-                          }
-                        });
-
-                        return parsedTemplate.images.map(image => ({
-                          image,
-                          actionCount: imageActionCounts.get(image) ?? 0,
-                        }));
-                      })()}
                     />
                   </SectionBox>
                 ),

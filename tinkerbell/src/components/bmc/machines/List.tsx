@@ -20,11 +20,6 @@ export function BmcMachineList() {
       render: item => renderStatus(item.status?.powerState),
     },
     {
-      id: 'connection',
-      label: 'Connection',
-      getValue: item => fallback(item.spec?.connection ? 'Configured' : undefined),
-    },
-    {
       id: 'conditions',
       label: 'Conditions',
       getValue: item => fallback(item.status?.conditions?.at(-1)?.type),

@@ -112,7 +112,6 @@ export function HardwareDetail() {
       resourceType={Hardware}
       name={name}
       namespace={namespace}
-      withEvents
       extraInfo={item =>
         item
           ? (() => {
@@ -158,7 +157,6 @@ export function HardwareDetail() {
                     { label: 'IP Address', getter: row => fallback(row.dhcp?.ip?.address) },
                     { label: 'Gateway', getter: row => fallback(row.dhcp?.ip?.gateway) },
                     { label: 'Netmask', getter: row => fallback(row.dhcp?.ip?.netmask) },
-                    { label: 'Arch', getter: row => fallback(row.dhcp?.arch) },
                   ]}
                   data={item.spec?.interfaces ?? []}
                 />
@@ -175,10 +173,6 @@ export function HardwareDetail() {
                     { label: 'Hostname', getter: row => fallback(row.dhcp?.hostname) },
                     { label: 'UEFI', getter: row => booleanValue(row.dhcp?.uefi) },
                     { label: 'PXE', getter: row => booleanValue(row.netboot?.allowPXE) },
-                    {
-                      label: 'Workflow Boot',
-                      getter: row => booleanValue(row.netboot?.allowWorkflow),
-                    },
                     { label: 'iPXE URL', getter: row => fallback(row.netboot?.ipxe?.url) },
                     { label: 'iPXE Binary', getter: row => fallback(row.netboot?.ipxe?.binary) },
                     { label: 'OSIE Base URL', getter: row => fallback(row.netboot?.osie?.baseURL) },
@@ -196,10 +190,13 @@ export function HardwareDetail() {
               <SectionBox title="Disks">
                 <SimpleTable
                   columns={[
+                    { label: 'Index', getter: row => fallback(row.index) },
                     { label: 'Device', getter: row => fallback(row.device) },
-                    { label: 'Wipe Table', getter: row => booleanValue(row.wipeTable) },
                   ]}
-                  data={item.spec?.disks ?? []}
+                  data={(item.spec?.disks ?? []).map((disk, index) => ({
+                    index: index + 1,
+                    device: disk.device,
+                  }))}
                 />
               </SectionBox>
             ),
@@ -211,7 +208,10 @@ export function HardwareDetail() {
                 <NameValueTable
                   rows={[
                     { name: 'Name', value: fallback(item.spec?.bmcRef?.name) },
-                    { name: 'Namespace', value: fallback(item.spec?.bmcRef?.namespace) },
+                    {
+                      name: 'Namespace',
+                      value: fallback(item.spec?.bmcRef?.namespace ?? item.metadata.name),
+                    },
                     { name: 'Kind', value: fallback(item.spec?.bmcRef?.kind) },
                     { name: 'API Group', value: fallback(item.spec?.bmcRef?.apiGroup) },
                   ]}

@@ -9,7 +9,7 @@ import { useParams } from 'react-router-dom';
 import { normalizeState } from '../../resources/common';
 import { Workflow, WorkflowActionStatus } from '../../resources/workflow';
 import { booleanValue, fallback, renderRecordSection, statusValue } from '../common/detailHelpers';
-import { getTaskState } from './helpers';
+import { getCurrentAction, getCurrentTask, getTaskState, getWorkflowState } from './helpers';
 
 /** Workflow action row enriched with its parent task name. */
 interface WorkflowActionRow extends WorkflowActionStatus {
@@ -84,25 +84,7 @@ function getBootMode(item: Workflow): string {
  */
 function getToggleAllowNetboot(item: Workflow): string {
   const toggleRequested = item.spec?.bootOptions?.toggleAllowNetboot;
-  const allowNetboot = item.status?.bootOptions?.allowNetboot;
-
-  if (!toggleRequested) {
-    return booleanValue(toggleRequested);
-  }
-
-  if (allowNetboot?.toggledTrue && allowNetboot?.toggledFalse) {
-    return 'Yes (enabled, restored)';
-  }
-
-  if (allowNetboot?.toggledTrue) {
-    return 'Yes (enabled)';
-  }
-
-  if (allowNetboot?.toggledFalse) {
-    return 'Yes (restored)';
-  }
-
-  return 'Yes';
+  return booleanValue(toggleRequested);
 }
 
 /**
@@ -140,15 +122,12 @@ export function WorkflowDetail() {
       resourceType={Workflow}
       name={name}
       namespace={namespace}
-      withEvents
       extraInfo={item =>
         item
           ? [
               {
                 name: 'Status',
-                value: statusValue(
-                  normalizeState(item.status?.state ?? item.status?.currentState?.state)
-                ),
+                value: statusValue(getWorkflowState(item)),
               },
               { name: 'Hardware', value: fallback(item.spec?.hardwareRef) },
               { name: 'Template', value: fallback(item.spec?.templateRef) },
@@ -214,11 +193,11 @@ export function WorkflowDetail() {
                     },
                     {
                       name: 'Current Task',
-                      value: fallback(item.status?.currentState?.taskName),
+                      value: getCurrentTask(item),
                     },
                     {
                       name: 'Current Action',
-                      value: fallback(item.status?.currentState?.actionName),
+                      value: getCurrentAction(item),
                     },
                     { name: 'Agent ID', value: fallback(item.status?.agentID) },
                     { name: 'Global Timeout', value: fallback(item.status?.globalTimeout) },

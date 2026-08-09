@@ -53,14 +53,9 @@ export function TemplateList() {
     'name',
     'namespace',
     {
-      id: 'steps',
-      label: 'Steps',
+      id: 'tasks',
+      label: 'Tasks',
       getValue: item => fallback(countTemplateSteps(item.data)),
-    },
-    {
-      id: 'data',
-      label: 'Template Data',
-      getValue: item => fallback(item.data ? `${item.data.length} chars` : undefined),
     },
     'age',
   ];
