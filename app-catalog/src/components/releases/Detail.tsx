@@ -19,7 +19,7 @@ import {
   Select,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router';
 import {
   deleteRelease,
@@ -46,22 +46,38 @@ export default function ReleaseDetail() {
   const { enqueueSnackbar } = useSnackbar();
   const history = useHistory();
 
+  const isMounted = useRef(true);
+  const deletePollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (deletePollingRef.current) clearTimeout(deletePollingRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     getRelease(namespace, releaseName).then(response => {
-      setRelease(response);
+      if (isMounted.current) {
+        setRelease(response);
+      }
     });
-  }, [update]);
+  }, [update, namespace, releaseName]);
 
   useEffect(() => {
     getReleaseHistory(namespace, releaseName).then(response => {
-      setReleaseHistory(response);
+      if (isMounted.current) {
+        setReleaseHistory(response);
+      }
     });
-  }, [update]);
+  }, [update, namespace, releaseName]);
 
   function checkDeleteReleaseStatus(name: string) {
     getActionStatus(name, 'uninstall').then(response => {
+      if (!isMounted.current) return;
       if (response.status === 'processing') {
-        setTimeout(() => checkDeleteReleaseStatus(name), 1000);
+        deletePollingRef.current = setTimeout(() => checkDeleteReleaseStatus(name), 1000);
       } else if (response.status !== 'success') {
         enqueueSnackbar(
           t('Failed to delete release {{ name }}{{ message }}', {
@@ -118,6 +134,7 @@ export default function ReleaseDetail() {
             disabled={isDeleting}
             onClick={() => {
               deleteRelease(namespace, releaseName).then(() => {
+                if (!isMounted.current) return;
                 setIsDeleting(true);
                 enqueueSnackbar(
                   t('Delete request for release {{ releaseName }} accepted', { releaseName }),
@@ -173,6 +190,7 @@ export default function ReleaseDetail() {
                 release.name,
                 Number.parseInt(revertVersion, 10)
               ).then(() => {
+                if (!isMounted.current) return;
                 setRollbackPopup(false);
                 setUpdate(!update);
               });
