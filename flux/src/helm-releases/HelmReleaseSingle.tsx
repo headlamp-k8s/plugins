@@ -167,11 +167,11 @@ function CustomResourceDetails(props) {
     }
     extraInfo.push({
       name: t('Version'),
-      value: cr?.jsonData?.spec.chart?.spec?.version,
+      value: cr?.jsonData?.spec?.chart?.spec?.version,
     });
     extraInfo.push({
       name: t('Suspend'),
-      value: cr?.jsonData.spec?.suspend ? t('True') : t('False'),
+      value: cr?.jsonData?.spec?.suspend ? t('True') : t('False'),
     });
 
     const interval = cr?.jsonData.spec?.interval;
