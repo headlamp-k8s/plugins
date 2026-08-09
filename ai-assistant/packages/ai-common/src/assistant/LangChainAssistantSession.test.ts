@@ -39,6 +39,7 @@ import type { NormalizedToolCall } from '../tools/calls/processToolCalls';
 import type { KubernetesToolContext } from '../tools/kubernetes/context';
 import type { RecommendedTool } from '../tools/langchain/ToolPlanner';
 import { ToolPlanner } from '../tools/langchain/ToolPlanner';
+import type { ToolCall } from '../tools/types';
 import {
   createMockKubernetesToolManager,
   createMockToolManager,
@@ -2976,6 +2977,86 @@ describe('handleMultipleToolExecution', () => {
     );
     expect(result.role).toBe('assistant');
     expect(result.content).toBeTruthy();
+  });
+
+  it('uses MCP manifest description in approval dialog for orchestrated tools', async () => {
+    let capturedToolCalls: ToolCall[] = [];
+    const approvalHandler = createMockApprovalManager({
+      onRequestApproval: calls => {
+        capturedToolCalls = calls;
+      },
+    });
+    inlineToolApprovalManager.setApprovalHandler(approvalHandler);
+
+    const toolManager = createMockToolManager({
+      enabledToolNames: ['flux__reconcile_kustomization', 'mcp_tool_b'],
+      toolResults: {
+        flux__reconcile_kustomization: { data: 'reconciled' },
+        mcp_tool_b: { data: 'result_b' },
+      },
+    });
+    const manager = new LangChainAssistantSession('mock-testing-model', {}, [], { toolManager });
+    privateManager(manager).toolManager.getMCPTools = () => [
+      {
+        name: 'flux__reconcile_kustomization',
+        description: 'Reconcile a Flux Kustomization object',
+      },
+      { name: 'mcp_tool_b' },
+    ];
+    privateManager(manager).model = {
+      invoke: vi.fn().mockResolvedValue({ content: 'Combined result.', tool_calls: [] }),
+      stream: async function* () {},
+    };
+
+    vi.spyOn(ToolPlanner, 'groupToolsByExecutionStrategy').mockReturnValueOnce({
+      parallel: [
+        {
+          name: 'flux__reconcile_kustomization',
+          priority: 'high' as const,
+          reason: 'reconcile',
+          description: 'LLM generated description',
+          arguments: {},
+        },
+        {
+          name: 'mcp_tool_b',
+          priority: 'medium' as const,
+          reason: 'observe',
+          description: 'LLM generated description for b',
+          arguments: {},
+        },
+      ],
+      sequential: [],
+    });
+
+    const recommended: RecommendedTool[] = [
+      {
+        name: 'flux__reconcile_kustomization',
+        description: 'LLM generated description',
+        priority: 'high',
+        reason: 'reconcile',
+        arguments: {},
+      },
+      {
+        name: 'mcp_tool_b',
+        description: 'LLM generated description for b',
+        priority: 'medium',
+        reason: 'observe',
+        arguments: {},
+      },
+    ];
+
+    await privateManager(manager).handleMultipleToolExecution(
+      'reconcile and observe',
+      recommended
+    );
+
+    const fluxTool = capturedToolCalls.find(t => t.name === 'flux__reconcile_kustomization');
+    expect(fluxTool).toBeDefined();
+    expect(fluxTool?.description).toBe('Reconcile a Flux Kustomization object');
+
+    const toolB = capturedToolCalls.find(t => t.name === 'mcp_tool_b');
+    expect(toolB).toBeDefined();
+    expect(toolB?.description).toBe('MCP tool: mcp_tool_b');
   });
 
   it('returns denial prompt when all MCP tools are denied and no built-in tools', async () => {
