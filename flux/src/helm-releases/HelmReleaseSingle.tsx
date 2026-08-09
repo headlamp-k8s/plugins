@@ -174,13 +174,13 @@ function CustomResourceDetails(props) {
       value: cr?.jsonData?.spec?.suspend ? t('True') : t('False'),
     });
 
-    const interval = cr?.jsonData.spec?.interval;
+    const interval = cr?.jsonData?.spec?.interval;
     extraInfo.push({
       name: t('Interval'),
       value: interval,
     });
 
-    if (!cr?.jsonData.spec?.suspend) {
+    if (!cr?.jsonData?.spec?.suspend) {
       extraInfo.push({
         name: t('Next Reconciliation'),
         value: <RemainingTimeDisplay item={cr} />,

@@ -60,11 +60,11 @@ function KustomizationDetails(props) {
       },
       {
         name: t('Path'),
-        value: cr?.jsonData.spec?.path,
+        value: cr?.jsonData?.spec?.path,
       },
       {
         name: t('Prune'),
-        value: cr?.jsonData.spec?.prune,
+        value: cr?.jsonData?.spec?.prune,
       },
       {
         name: t('SourceRef'),
@@ -84,16 +84,16 @@ function KustomizationDetails(props) {
     ];
     extraInfo.push({
       name: t('Suspend'),
-      value: cr?.jsonData.spec?.suspend ? t('True') : t('False'),
+      value: cr?.jsonData?.spec?.suspend ? t('True') : t('False'),
     });
 
-    const interval = cr?.jsonData.spec?.interval;
+    const interval = cr?.jsonData?.spec?.interval;
     extraInfo.push({
       name: t('Interval'),
       value: interval,
     });
 
-    if (!cr?.jsonData.spec?.suspend) {
+    if (!cr?.jsonData?.spec?.suspend) {
       extraInfo.push({
         name: t('Next Reconciliation'),
         value: <RemainingTimeDisplay item={cr} />,
