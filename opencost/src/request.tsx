@@ -12,10 +12,13 @@ export async function isOpenCostInstalled() {
 
   if (response.items && response.items.length > 0) {
     // find the service with name http-ui
-    const httpUIPort = response.items[0].spec.ports.filter(port => port.name === 'http-ui');
+    const httpUIPort = response.items[0].spec.ports.find(port => port.name === 'http-ui');
+    if (!httpUIPort) {
+      return [false, null, null];
+    }
     return [
       true,
-      `${response.items[0].metadata.name}:${httpUIPort[0].name}`,
+      `${response.items[0].metadata.name}:${httpUIPort.name}`,
       response.items[0].metadata.namespace,
     ];
   }
