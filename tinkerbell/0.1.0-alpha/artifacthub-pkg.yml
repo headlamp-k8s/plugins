@@ -1,0 +1,43 @@
+version: 0.1.0-alpha
+name: headlamp_tinkerbell
+displayName: Tinkerbell
+createdAt: "2026-08-10T00:00:00Z"
+description: A Headlamp plugin for viewing Tinkerbell bare metal provisioning resources
+logoURL: https://avatars.githubusercontent.com/u/62397138?s=200&v=4
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/tinkerbell
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - tinkerbell
+  - bare-metal
+  - provisioning
+maintainers:
+  - name: Ayushmaan Sharma
+    email: ayushmaan.sharma911@gmail.com
+changes:
+  - kind: added
+    description: "Add Tinkerbell sidebar navigation and routes"
+  - kind: added
+    description: "Add CRD detection for Tinkerbell v0.23.0 resources"
+  - kind: added
+    description: "Add Hardware list and detail views"
+  - kind: added
+    description: "Add Template list and detail views with parsed tasks and actions"
+  - kind: added
+    description: "Add Workflow list and detail views with provisioning status"
+  - kind: added
+    description: "Show current task and action while workflows are running"
+  - kind: added
+    description: "Add failed action summary for workflow debugging"
+  - kind: added
+    description: "Add early WorkflowRuleSet and BMC resource views"
+  - kind: added
+    description: "Add unit tests for status and workflow helper behavior"
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/tinkerbell-0.1.0-alpha/headlamp-k8s-tinkerbell-0.1.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: sha256:cea7cfcf40422cc914e05c0c37191fd0d3c1dd32d866a988aece8f629d83fc75
+  headlamp/plugin/version-compat: ">=0.20"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
