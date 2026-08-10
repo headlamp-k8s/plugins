@@ -23,6 +23,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
 import { isCnpgInstalled } from './checks/isCnpgInstalled';
+import { ClusterDetail } from './components/clusters/ClusterDetail';
 import { ClustersList } from './components/clusters/ClustersList';
 
 // Neutral database glyph: the PostgreSQL elephant is a trademarked mark and is
@@ -96,4 +97,12 @@ registerRoute({
   name: 'cnpg-clusters',
   exact: true,
   component: () => <ClustersList />,
+});
+
+registerRoute({
+  path: '/cnpg/clusters/:namespace/:name',
+  sidebar: 'cnpg-clusters',
+  name: 'cnpg-cluster-details',
+  exact: true,
+  component: () => <ClusterDetail />,
 });

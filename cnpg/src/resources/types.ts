@@ -51,7 +51,10 @@ export interface CnpgClusterStatus {
   readyInstances?: number;
   instanceNames?: string[];
   instancesStatus?: Record<string, string[]>;
-  instancesReportedState?: Record<string, { isPrimary?: boolean; timeLineID?: number }>;
+  instancesReportedState?: Record<
+    string,
+    { isPrimary?: boolean; timeLineID?: number; ip?: string }
+  >;
   currentPrimary?: string;
   targetPrimary?: string;
   currentPrimaryTimestamp?: string;
@@ -127,4 +130,94 @@ export interface CnpgClusterLike {
 export interface CnpgClusterJson extends KubeObjectInterface {
   spec?: CnpgClusterSpec;
   status?: CnpgClusterStatus;
+}
+
+/** Reference from a Backup or ScheduledBackup to the Cluster it belongs to. */
+export interface CnpgClusterReference {
+  name?: string;
+}
+
+/**
+ * `Backup.status`.
+ *
+ * Unlike the backup fields on `Cluster.status`, nothing here is deprecated, so
+ * Backup objects are the authoritative record of what has actually been backed
+ * up — including for clusters that archive through the barman-cloud plugin.
+ */
+export interface CnpgBackupStatus {
+  /** One of: pending, started, running, finalizing, completed, failed,
+   * walArchivingFailing, "invalid backup definition". */
+  phase?: string;
+  method?: string;
+  startedAt?: string;
+  stoppedAt?: string;
+  error?: string;
+  backupId?: string;
+  backupName?: string;
+  online?: boolean;
+  beginLSN?: string;
+  endLSN?: string;
+}
+
+/** `Backup.spec`, limited to the fields this plugin reads. */
+export interface CnpgBackupSpec {
+  cluster?: CnpgClusterReference;
+  method?: string;
+  target?: string;
+  online?: boolean;
+}
+
+/** Structural shape of a Backup, for the pure helpers and their fixtures. */
+export interface CnpgBackupLike {
+  metadata?: {
+    name?: string;
+    namespace?: string;
+    creationTimestamp?: string;
+    uid?: string;
+  };
+  spec?: CnpgBackupSpec;
+  status?: CnpgBackupStatus;
+}
+
+/** A `postgresql.cnpg.io/v1` Backup as returned by the API server. */
+export interface CnpgBackupJson extends KubeObjectInterface {
+  spec?: CnpgBackupSpec;
+  status?: CnpgBackupStatus;
+}
+
+/** `ScheduledBackup.spec`, limited to the fields this plugin reads. */
+export interface CnpgScheduledBackupSpec {
+  cluster?: CnpgClusterReference;
+  /** Six-field cron expression, seconds first, in the operator's timezone. */
+  schedule?: string;
+  suspend?: boolean;
+  immediate?: boolean;
+  method?: string;
+  target?: string;
+}
+
+/** `ScheduledBackup.status`. */
+export interface CnpgScheduledBackupStatus {
+  lastCheckTime?: string;
+  lastScheduleTime?: string;
+  nextScheduleTime?: string;
+  error?: string;
+}
+
+/** Structural shape of a ScheduledBackup, for the pure helpers. */
+export interface CnpgScheduledBackupLike {
+  metadata?: {
+    name?: string;
+    namespace?: string;
+    creationTimestamp?: string;
+    uid?: string;
+  };
+  spec?: CnpgScheduledBackupSpec;
+  status?: CnpgScheduledBackupStatus;
+}
+
+/** A `postgresql.cnpg.io/v1` ScheduledBackup as returned by the API server. */
+export interface CnpgScheduledBackupJson extends KubeObjectInterface {
+  spec?: CnpgScheduledBackupSpec;
+  status?: CnpgScheduledBackupStatus;
 }

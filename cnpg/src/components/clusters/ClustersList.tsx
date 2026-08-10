@@ -15,7 +15,11 @@
  */
 
 import { useTranslation, Utils } from '@kinvolk/headlamp-plugin/lib';
-import { LightTooltip, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  LightTooltip,
+  Link as HeadlampLink,
+  ResourceListView,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import React from 'react';
 import { ClusterClass, CNPG_GROUP } from '../../resources/cluster';
 import { isForbidden } from '../../utils/permissions';
@@ -61,6 +65,17 @@ export function ClustersList() {
           id: 'name',
           label: t('Name'),
           getValue: (cluster: ClusterClass) => cluster.metadata.name,
+          render: (cluster: ClusterClass) => (
+            <HeadlampLink
+              routeName="cnpg-cluster-details"
+              params={{
+                namespace: cluster.metadata.namespace ?? '',
+                name: cluster.metadata.name,
+              }}
+            >
+              {cluster.metadata.name}
+            </HeadlampLink>
+          ),
         },
         {
           id: 'namespace',
