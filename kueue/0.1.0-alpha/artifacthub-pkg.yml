@@ -1,0 +1,48 @@
+version: 0.1.0-alpha
+name: headlamp_kueue
+displayName: Kueue
+createdAt: "2026-08-10T00:00:00Z"
+description: A Headlamp plugin for viewing Kueue batch workload queueing, admission, and resource usage.
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/kueue
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - kueue
+  - batch
+  - scheduling
+  - queueing
+  - workloads
+screenshots:
+  - title: Kueue Workloads
+    url: https://github.com/user-attachments/assets/3c2cd61e-6ba6-42db-83bd-84bb8b15bf24
+  - title: ClusterQueue details
+    url: https://github.com/user-attachments/assets/aba137f5-122f-43b3-b230-66212c21c1d8
+changes:
+  - kind: added
+    description: "Add Kueue sidebar navigation and list/detail routes for supported resources"
+  - kind: added
+    description: "Add ClusterQueue views with queue status, workload counts, resource groups, and ResourceFlavor links"
+  - kind: added
+    description: "Add ClusterQueue quota, borrowing and lending limits, flavor reservations, and resource usage"
+  - kind: added
+    description: "Add ClusterQueue preemption, flavor fungibility, fair sharing, admission settings, and conditions"
+  - kind: added
+    description: "Add LocalQueue views with workload counts, status, conditions, and ClusterQueue navigation"
+  - kind: added
+    description: "Add ResourceFlavor views for node labels, taints, tolerations, and topology configuration"
+  - kind: added
+    description: "Add Workload list and detail views with priority, admission, completion, and scheduling status"
+  - kind: added
+    description: "Add Workload PodSet, resource request, admission assignment, admission check, and requeue details"
+  - kind: added
+    description: "Add navigation between Workloads, LocalQueues, ClusterQueues, ResourceFlavors, and owning Kubernetes resources"
+  - kind: added
+    description: "Add Kubernetes RBAC-aware access handling for Kueue resource pages"
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/kueue-0.1.0-alpha/headlamp-k8s-kueue-0.1.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:0c0b6e93844362aa262e602a0b6fd9feedecb6e7709dae443be48a3cab0cdca4
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
