@@ -41,4 +41,16 @@ describe('isSpecificResourceRequestHelper', () => {
       isSpecificResourceRequestHelper('/apis/apps/v1/namespaces/default/deployments/my-deploy')
     ).toBe(true);
   });
+
+  it('handles absolute URLs, queries, invalid segments, and long paths', () => {
+    expect(
+      isSpecificResourceRequestHelper(
+        'https://cluster.test/api/v1/namespaces/default/pods/my-pod?watch=false'
+      )
+    ).toBe(true);
+    expect(isSpecificResourceRequestHelper('/api/v1/namespaces/default/pods/my.pod')).toBe(false);
+    expect(isSpecificResourceRequestHelper(`/api/v1/${'segment/'.repeat(10_000)}pods/my-pod`)).toBe(
+      true
+    );
+  });
 });
