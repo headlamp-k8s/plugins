@@ -69,24 +69,13 @@ export function getCurrentPrimary(cluster: CnpgClusterLike | undefined): string 
 }
 
 /**
- * Returns the most recent successful backup timestamp reported *on the Cluster
- * object*, or null when none is reported.
+ * Deliberately absent: a getLastSuccessfulBackup() reading
+ * `Cluster.status.lastSuccessfulBackup`.
  *
- * Upstream marks these fields "Deprecated: the field is not set for backup
- * plugins", so null here means "the Cluster does not say", not "no backup
- * exists" — a cluster backed up via the barman-cloud plugin always returns
- * null. Callers that need a real answer must consult Backup objects.
+ * Upstream marks those fields "Deprecated: the field is not set for backup
+ * plugins", and in-tree barman is removed in CloudNativePG 1.31.0, so the only
+ * configuration that populates them is the one being deleted. Both the list and
+ * the detail view derive the last backup from Backup objects instead — see
+ * lastSuccessfulBackupByCluster in backupFacts.ts. Nothing should reintroduce a
+ * Cluster-status shortcut here: it would make the two views disagree.
  */
-export function getLastSuccessfulBackup(cluster: CnpgClusterLike | undefined): string | null {
-  const status = cluster?.status;
-  if (status?.lastSuccessfulBackup) {
-    return status.lastSuccessfulBackup;
-  }
-
-  const byMethod = Object.values(status?.lastSuccessfulBackupByMethod ?? {}).filter(Boolean);
-  if (byMethod.length === 0) {
-    return null;
-  }
-
-  return byMethod.reduce((latest, current) => (current > latest ? current : latest));
-}

@@ -48,7 +48,14 @@ export interface BackupSummary {
   methods: string[];
 }
 
-/** `Backup.status.phase` values that mean the backup finished successfully. */
+/**
+ * `Backup.status.phase` values, as defined upstream.
+ *
+ * The exact strings come from the BackupPhase constants in CloudNativePG's
+ * `api/v1/backup_types.go`, which is the source of truth for all three sets
+ * below — including `invalid backup definition`, the value of
+ * `BackupPhaseDefinitionInvalid`, whose spaces are easy to mistake for a typo.
+ */
 const SUCCESS_PHASES = new Set(['completed']);
 
 /**
@@ -110,6 +117,40 @@ export function backupsForCluster(
       backup => Boolean(backup.spec?.cluster?.name) && backup.spec?.cluster?.name === clusterName
     )
     .map(toBackupRecord);
+}
+
+/**
+ * Indexes the most recent successful Backup per cluster, keyed `namespace/name`.
+ *
+ * Built for the list view, which reads Backups across every namespace at once:
+ * matching on cluster name alone would show one namespace's backup time against
+ * a same-named cluster in another. A cluster with no successful backup is absent
+ * from the map rather than present with a null, so a caller cannot mistake
+ * "nothing succeeded" for "not looked at".
+ */
+export function lastSuccessfulBackupByCluster(
+  backups: CnpgBackupLike[] | null | undefined
+): Map<string, BackupRecord> {
+  const index = new Map<string, BackupRecord>();
+
+  for (const backup of backups ?? []) {
+    const clusterName = backup.spec?.cluster?.name;
+    const phase = backup.status?.phase;
+
+    if (!clusterName || !phase || !SUCCESS_PHASES.has(phase)) {
+      continue;
+    }
+
+    const key = `${backup.metadata?.namespace ?? ''}/${clusterName}`;
+    const record = toBackupRecord(backup);
+    const incumbent = index.get(key);
+
+    if (!incumbent || completionTime(record) >= completionTime(incumbent)) {
+      index.set(key, record);
+    }
+  }
+
+  return index;
 }
 
 /**

@@ -21,10 +21,24 @@ import {
   ResourceListView,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import React from 'react';
+import { BackupClass } from '../../resources/backup';
 import { ClusterClass, CNPG_GROUP } from '../../resources/cluster';
-import { isForbidden } from '../../utils/permissions';
+import { lastSuccessfulBackupByCluster } from '../../utils/backupFacts';
+import { describeMissingPermission, isForbidden } from '../../utils/permissions';
 import { LoadFailed, PermissionDenied } from '../common/EmptyStates';
 import { ClusterPhaseLabel } from './ClusterPhaseLabel';
+import { lastBackupSortValue, LastBackupState, lastBackupState } from './lastBackupCell';
+
+/** A value the Backup objects do not answer, with the reason on hover. */
+function UnknownBackup({ reason }: { reason: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <LightTooltip title={reason}>
+      <span>{t('Unknown')}</span>
+    </LightTooltip>
+  );
+}
 
 /**
  * List view for CloudNativePG Clusters.
@@ -38,6 +52,31 @@ export function ClustersList() {
   const [clusters, error] = ClusterClass.useList();
   const title = t('PostgreSQL Clusters');
 
+  // Read across every namespace once and index the result, rather than reading
+  // per row. The last-backup time is derived from Backup objects for the same
+  // reason the detail view does it: Cluster.status.lastSuccessfulBackup is
+  // deprecated upstream and is never populated for plugin-based backups, so a
+  // healthy plugin-backed cluster used to render here as though it had none.
+  const [backups, backupsError] = BackupClass.useList();
+  const backupIndex = React.useMemo(
+    () => lastSuccessfulBackupByCluster(backups?.map(backup => backup.jsonData)),
+    [backups]
+  );
+
+  // A denial on Backups degrades this one column; it must not take the rows
+  // with it, because phase, readiness and primary are all still readable.
+  const backupDenialReason = backupsError
+    ? isForbidden(backupsError)
+      ? t('Backup objects could not be read: {{ permission }}', {
+          permission: describeMissingPermission({
+            verb: 'list',
+            resource: 'backups',
+            apiGroup: CNPG_GROUP,
+          }),
+        })
+      : t('Backup objects could not be read: {{ message }}', { message: backupsError.message })
+    : '';
+
   if (error) {
     if (isForbidden(error)) {
       return (
@@ -50,6 +89,13 @@ export function ClustersList() {
 
     return <LoadFailed title={title} message={error.message} />;
   }
+
+  const lastBackupFor = (cluster: ClusterClass): LastBackupState =>
+    lastBackupState({
+      hasError: Boolean(backupsError),
+      loaded: Boolean(backups),
+      record: backupIndex.get(`${cluster.metadata.namespace ?? ''}/${cluster.metadata.name}`),
+    });
 
   return (
     <ResourceListView
@@ -101,25 +147,34 @@ export function ClustersList() {
         {
           id: 'lastBackup',
           label: t('Last Backup'),
-          // Sort on the raw timestamp; clusters that report nothing sort last.
-          getValue: (cluster: ClusterClass) => cluster.lastSuccessfulBackup ?? '',
+          // Doubles as the table's repaint key — see lastBackupSortValue.
+          getValue: (cluster: ClusterClass) => lastBackupSortValue(lastBackupFor(cluster)),
           render: (cluster: ClusterClass) => {
-            const timestamp = cluster.lastSuccessfulBackup;
-            if (!timestamp) {
+            const state = lastBackupFor(cluster);
+
+            if (state.kind === 'denied') {
+              return <UnknownBackup reason={backupDenialReason} />;
+            }
+
+            if (state.kind === 'loading') {
+              return <UnknownBackup reason={t('Backup objects have not been read yet.')} />;
+            }
+
+            if (state.kind === 'none') {
+              // Distinct from Unknown on purpose: the Backup objects were read
+              // and none of them reports a successful backup for this cluster.
               return (
                 <LightTooltip
-                  title={t(
-                    'This cluster does not report a backup timestamp. Clusters using the barman-cloud plugin never populate this field; check Backup objects instead.'
-                  )}
+                  title={t('No Backup object for this cluster has completed successfully.')}
                 >
-                  <span>{t('Unknown')}</span>
+                  <span>{t('None')}</span>
                 </LightTooltip>
               );
             }
 
             return (
-              <LightTooltip title={timestamp}>
-                <span>{Utils.timeAgo(timestamp)}</span>
+              <LightTooltip title={`${state.completedAt} · ${state.record.name}`}>
+                <span>{Utils.timeAgo(state.completedAt)}</span>
               </LightTooltip>
             );
           },

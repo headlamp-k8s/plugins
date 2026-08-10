@@ -19,7 +19,6 @@ import {
   getClusterPhase,
   getCurrentPrimary,
   getInstancesReady,
-  getLastSuccessfulBackup,
 } from './clusterSummary';
 
 describe('getClusterPhase', () => {
@@ -98,35 +97,5 @@ describe('getCurrentPrimary', () => {
 
   it('treats an empty string as no primary', () => {
     expect(getCurrentPrimary({ status: { currentPrimary: '' } })).toBeNull();
-  });
-});
-
-describe('getLastSuccessfulBackup', () => {
-  it('returns the timestamp reported directly on the cluster', () => {
-    expect(
-      getLastSuccessfulBackup({ status: { lastSuccessfulBackup: '2026-08-10T06:00:00Z' } })
-    ).toBe('2026-08-10T06:00:00Z');
-  });
-
-  it('falls back to the most recent per-method timestamp', () => {
-    expect(
-      getLastSuccessfulBackup({
-        status: {
-          lastSuccessfulBackupByMethod: {
-            barmanObjectStore: '2026-08-10T02:00:00Z',
-            volumeSnapshot: '2026-08-10T05:00:00Z',
-          },
-        },
-      })
-    ).toBe('2026-08-10T05:00:00Z');
-  });
-
-  // Clusters using the barman-cloud *plugin* never populate these fields.
-  it('returns null when the deprecated backup fields are unset', () => {
-    expect(getLastSuccessfulBackup({ status: { phase: 'Cluster in healthy state' } })).toBeNull();
-  });
-
-  it('does not throw on undefined input', () => {
-    expect(getLastSuccessfulBackup(undefined)).toBeNull();
   });
 });

@@ -20,6 +20,7 @@ import {
   describeBackupConfiguration,
   getContinuousArchivingStatus,
   getFirstRecoverabilityPoint,
+  lastSuccessfulBackupByCluster,
   scheduledBackupsForCluster,
   summarizeBackups,
 } from './backupFacts';
@@ -57,6 +58,63 @@ describe('backupsForCluster', () => {
   it('tolerates a null list, which is what Headlamp supplies before a read completes', () => {
     expect(backupsForCluster(null, 'pg-1')).toEqual([]);
     expect(backupsForCluster(undefined, 'pg-1')).toEqual([]);
+  });
+});
+
+describe('lastSuccessfulBackupByCluster', () => {
+  it('keys each cluster by namespace and name', () => {
+    const backups = [
+      backup('a', 'pg-1', { status: { phase: 'completed', stoppedAt: '2026-08-01T01:00:00Z' } }),
+    ];
+
+    expect(lastSuccessfulBackupByCluster(backups).get('db/pg-1')?.name).toBe('a');
+  });
+
+  it('never attributes a backup to a same-named cluster in another namespace', () => {
+    // The list view reads Backups across namespaces, so name-only matching would
+    // show one team's backup time against another team's cluster.
+    const elsewhere = backup('a', 'pg-1', {
+      metadata: { name: 'a', namespace: 'other' },
+      status: { phase: 'completed', stoppedAt: '2026-08-01T01:00:00Z' },
+    });
+
+    const index = lastSuccessfulBackupByCluster([elsewhere]);
+
+    expect(index.get('other/pg-1')?.name).toBe('a');
+    expect(index.get('db/pg-1')).toBeUndefined();
+  });
+
+  it('reports the most recent successful backup and ignores failures', () => {
+    const backups = [
+      backup('old', 'pg-1', { status: { phase: 'completed', stoppedAt: '2026-08-01T01:00:00Z' } }),
+      backup('new', 'pg-1', { status: { phase: 'completed', stoppedAt: '2026-08-03T01:00:00Z' } }),
+      backup('broken', 'pg-1', { status: { phase: 'failed', stoppedAt: '2026-08-04T01:00:00Z' } }),
+    ];
+
+    expect(lastSuccessfulBackupByCluster(backups).get('db/pg-1')?.name).toBe('new');
+  });
+
+  it('omits a cluster whose backups have all failed, rather than claiming one', () => {
+    const backups = [
+      backup('broken', 'pg-1', { status: { phase: 'failed', stoppedAt: '2026-08-04T01:00:00Z' } }),
+    ];
+
+    expect(lastSuccessfulBackupByCluster(backups).get('db/pg-1')).toBeUndefined();
+  });
+
+  it('drops backups that name no cluster rather than attributing them', () => {
+    const orphan: CnpgBackupLike = {
+      metadata: { name: 'orphan', namespace: 'db' },
+      spec: {},
+      status: { phase: 'completed', stoppedAt: '2026-08-01T01:00:00Z' },
+    };
+
+    expect(lastSuccessfulBackupByCluster([orphan]).size).toBe(0);
+  });
+
+  it('tolerates a null list, which is what Headlamp supplies before a read completes', () => {
+    expect(lastSuccessfulBackupByCluster(null).size).toBe(0);
+    expect(lastSuccessfulBackupByCluster(undefined).size).toBe(0);
   });
 });
 

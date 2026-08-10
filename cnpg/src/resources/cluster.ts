@@ -20,7 +20,6 @@ import {
   getClusterPhase,
   getCurrentPrimary,
   getInstancesReady,
-  getLastSuccessfulBackup,
   InstancesReady,
 } from '../utils/clusterSummary';
 import { CnpgClusterJson, CnpgClusterSpec, CnpgClusterStatus, CnpgCondition } from './types';
@@ -73,14 +72,5 @@ export class ClusterClass extends KubeObject<CnpgClusterJson> {
 
   get currentPrimary(): string | null {
     return getCurrentPrimary(this.jsonData);
-  }
-
-  /**
-   * Last successful backup as reported on the Cluster object. Null does not
-   * mean "no backup" — see getLastSuccessfulBackup for why plugin-based
-   * backup configurations never populate this.
-   */
-  get lastSuccessfulBackup(): string | null {
-    return getLastSuccessfulBackup(this.jsonData);
   }
 }
