@@ -234,7 +234,7 @@ export function getFirstRecoverabilityPoint(cluster: CnpgClusterLike | undefined
 }
 
 export interface BackupConfiguration {
-  kind: 'barmanObjectStore' | 'plugin' | 'none';
+  kind: 'barmanObjectStore' | 'plugin' | 'volumeSnapshot' | 'none';
   retentionPolicy: string | null;
   walArchiverPlugins: string[];
 }
@@ -243,6 +243,12 @@ export interface BackupConfiguration {
  * Describes how, if at all, the cluster is configured to archive.
  *
  * This reads spec, so it says what was asked for, not what is working.
+ *
+ * The kinds are ordered by how much recovery they make possible, because a
+ * cluster may configure more than one at once. An object store or a WAL
+ * archiver plugin receives WALs and so allows point-in-time recovery; volume
+ * snapshots only take base backups, so they are the weaker answer and are
+ * reported only when neither of the others is present.
  */
 export function describeBackupConfiguration(
   cluster: CnpgClusterLike | undefined
@@ -254,9 +260,18 @@ export function describeBackupConfiguration(
     .map(plugin => plugin.name as string);
 
   const hasObjectStore = Boolean(spec.backup?.barmanObjectStore);
+  const hasVolumeSnapshot = Boolean(spec.backup?.volumeSnapshot);
+
+  const kind = hasObjectStore
+    ? 'barmanObjectStore'
+    : walArchiverPlugins.length > 0
+    ? 'plugin'
+    : hasVolumeSnapshot
+    ? 'volumeSnapshot'
+    : 'none';
 
   return {
-    kind: hasObjectStore ? 'barmanObjectStore' : walArchiverPlugins.length > 0 ? 'plugin' : 'none',
+    kind,
     retentionPolicy: spec.backup?.retentionPolicy ?? null,
     walArchiverPlugins,
   };

@@ -15,6 +15,7 @@
  */
 
 import {
+  BackupConfiguration,
   describeBackupConfiguration,
   getContinuousArchivingStatus,
   getFirstRecoverabilityPoint,
@@ -185,6 +186,25 @@ function backupObjectCount(total: number): string {
   return total === 1 ? '1 Backup object targets' : `${total} Backup objects target`;
 }
 /**
+ * Names the configured destination for evidence lines.
+ *
+ * Only called once something is known to be configured, so the 'none' case is
+ * unreachable in practice and exists to keep the function total.
+ */
+function describeDestination(configuration: BackupConfiguration): string {
+  switch (configuration.kind) {
+    case 'plugin':
+      return `WAL archiver plugin: ${configuration.walArchiverPlugins.join(', ')}`;
+    case 'volumeSnapshot':
+      return 'Backup destination: volume snapshots on the cluster spec';
+    case 'barmanObjectStore':
+      return 'Backup destination: barman object store on the cluster spec';
+    default:
+      return 'No backup destination is configured';
+  }
+}
+
+/**
  * Rule 2: could this cluster actually be restored?
  *
  * The three answers are distinct and must not be collapsed: nothing is
@@ -206,7 +226,7 @@ const noRecoverabilityPoint: Rule = ({ cluster, backups }) => {
       severity: 'critical',
       message: 'No backup destination is configured, so point-in-time recovery is not possible.',
       evidence: [
-        'Cluster spec has neither backup.barmanObjectStore nor an enabled WAL archiver plugin',
+        'Cluster spec has no backup.barmanObjectStore, no backup.volumeSnapshot and no enabled WAL archiver plugin',
         `${backupObjectCount(total)} this cluster`,
       ],
     };
@@ -219,9 +239,7 @@ const noRecoverabilityPoint: Rule = ({ cluster, backups }) => {
       message:
         'A backup destination is configured but no backup has ever completed, so point-in-time recovery is not possible.',
       evidence: [
-        configuration.kind === 'plugin'
-          ? `WAL archiver plugin: ${configuration.walArchiverPlugins.join(', ')}`
-          : 'Backup destination: barman object store on the cluster spec',
+        describeDestination(configuration),
         `${backupObjectCount(total)} this cluster, none completed`,
       ],
     };

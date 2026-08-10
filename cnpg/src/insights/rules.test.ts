@@ -247,8 +247,25 @@ describe('rule: no recoverability point', () => {
     expect(finding.evidence).toContain('1 Backup object targets this cluster');
   });
 
-  it('reports the recovery window as unknown, not absent, for plugin-based backups', () => {
-    // Plugin-backed clusters never populate firstRecoverabilityPoint, so a
+  // Volume snapshots are a backup destination the plugin used not to recognise,
+  // so a snapshot-configured cluster that had not yet produced a backup was told
+  // nothing was configured at all — a false statement about its own spec.
+  it('does not claim nothing is configured when the cluster backs up to volume snapshots', () => {
+    const cluster = healthyCluster();
+    cluster.spec = {
+      instances: 3,
+      backup: { volumeSnapshot: { className: 'csi-azuredisk' } },
+    };
+    cluster.status!.firstRecoverabilityPoint = undefined;
+
+    const finding = findingsById({ cluster, backups: [], scheduledBackups: [] })[
+      'no-recoverability-point'
+    ];
+
+    expect(finding.evidence.join(' ')).not.toContain('neither');
+  });
+
+  it('reports the recovery window as unknown, not absent, for plugin-based backups', () => {    // Plugin-backed clusters never populate firstRecoverabilityPoint, so a
     // completed backup with no point is a gap in the data, not a missing backup.
     const cluster = healthyCluster();
     cluster.spec = {

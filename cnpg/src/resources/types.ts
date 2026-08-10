@@ -91,6 +91,7 @@ export interface CnpgClusterSpec {
   primaryUpdateStrategy?: string;
   backup?: {
     barmanObjectStore?: Record<string, unknown>;
+    volumeSnapshot?: Record<string, unknown>;
     target?: string;
     retentionPolicy?: string;
   };

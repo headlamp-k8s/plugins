@@ -347,6 +347,34 @@ describe('describeBackupConfiguration', () => {
     expect(describeBackupConfiguration(cluster).kind).toBe('none');
   });
 
+  it('recognises volume snapshots configured on the cluster', () => {
+    const cluster: CnpgClusterLike = {
+      spec: { backup: { volumeSnapshot: { className: 'csi-azuredisk' } } },
+    };
+
+    expect(describeBackupConfiguration(cluster)).toEqual({
+      kind: 'volumeSnapshot',
+      retentionPolicy: null,
+      walArchiverPlugins: [],
+    });
+  });
+
+  // Both can be set at once: snapshots take the base backup while the object
+  // store receives the WALs. The object store is the stronger answer because it
+  // is the one that makes point-in-time recovery possible.
+  it('prefers the object store when snapshots are configured alongside it', () => {
+    const cluster: CnpgClusterLike = {
+      spec: {
+        backup: {
+          barmanObjectStore: { destinationPath: 's3://x' },
+          volumeSnapshot: { className: 'csi-azuredisk' },
+        },
+      },
+    };
+
+    expect(describeBackupConfiguration(cluster).kind).toBe('barmanObjectStore');
+  });
+
   it('reports none when nothing is configured', () => {
     expect(describeBackupConfiguration({ spec: {} }).kind).toBe('none');
     expect(describeBackupConfiguration(undefined).kind).toBe('none');

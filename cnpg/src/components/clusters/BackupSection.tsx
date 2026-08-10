@@ -119,6 +119,8 @@ export function BackupSection({
       ? t('WAL archiver plugin: {{ plugins }}', {
           plugins: configuration.walArchiverPlugins.join(', '),
         })
+      : configuration.kind === 'volumeSnapshot'
+      ? t('Volume snapshots, configured on the cluster')
       : t('None configured on this cluster');
 
   const rows = [

@@ -3,6 +3,7 @@
   "Backup facts are incomplete: your account is not allowed to perform this action:": "Backup facts are incomplete: your account is not allowed to perform this action:",
   "Barman object store, configured on the cluster": "Barman object store, configured on the cluster",
   "WAL archiver plugin: {{ plugins }}": "WAL archiver plugin: {{ plugins }}",
+  "Volume snapshots, configured on the cluster": "Volume snapshots, configured on the cluster",
   "None configured on this cluster": "None configured on this cluster",
   "Backup configuration": "Backup configuration",
   "Retention policy: {{ policy }}": "Retention policy: {{ policy }}",
