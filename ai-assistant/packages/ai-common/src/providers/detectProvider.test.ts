@@ -34,6 +34,7 @@ import {
   refreshAzureOpenAIKey,
   refreshGitHubToken,
   validateGitHubToken,
+  verifyAzureOpenAIAccess,
 } from './detectProvider';
 
 // ---------------------------------------------------------------------------
@@ -776,14 +777,86 @@ describe('refreshAzureOpenAIKey', () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(JSON.stringify({ key1: 'fresh-key' }), { status: 200 }));
-    expect(await refreshAzureOpenAIKey('rg1', 'account1', runner, 'sub')).toBe('fresh-key');
+    expect(await refreshAzureOpenAIKey('rg1', 'account1', runner, 'sub')).toEqual({
+      key: 'fresh-key',
+    });
     fetchSpy.mockRestore();
   });
 
-  it('returns null when token acquisition fails', async () => {
+  it('explains the failure when token acquisition fails', async () => {
     const runner = mockCommandRunner({});
     const result = await refreshAzureOpenAIKey('rg1', 'account1', runner);
-    expect(result).toBeNull();
+    expect(result.key).toBeNull();
+    expect(result.reason).toContain('no subscription ID');
+  });
+});
+
+describe('verifyAzureOpenAIAccess', () => {
+  const config = {
+    azResourceGroup: 'rg1',
+    azAccountName: 'account1',
+    azSubscriptionId: 'sub',
+    endpoint: 'https://account1.openai.azure.com',
+  };
+
+  /** Builds a runner whose Azure CLI token acquisition succeeds. */
+  function authenticatedRunner(): CommandRunner {
+    return mockCommandRunner({ 'az account get-access-token': { stdout: 'token', exitCode: 0 } });
+  }
+
+  it('passes when the key can be read and the endpoint accepts the key', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async url =>
+      String(url).includes('/listKeys')
+        ? new Response(JSON.stringify({ key1: 'fresh-key' }), { status: 200 })
+        : new Response(JSON.stringify({ data: [] }), { status: 200 })
+    );
+    expect(await verifyAzureOpenAIAccess(config, authenticatedRunner())).toEqual({ ok: true });
+  });
+
+  it('explains that listing deployments does not grant key access', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 403 }));
+    const result = await verifyAzureOpenAIAccess(config, authenticatedRunner());
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('Cognitive Services Contributor');
+  });
+
+  it('surfaces the endpoint rejection reason when network rules block the account', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async url =>
+      String(url).includes('/listKeys')
+        ? new Response(JSON.stringify({ key1: 'fresh-key' }), { status: 200 })
+        : new Response(
+            JSON.stringify({
+              error: { message: 'Access denied due to Virtual Network/Firewall rules.' },
+            }),
+            { status: 403 }
+          )
+    );
+    const result = await verifyAzureOpenAIAccess(config, authenticatedRunner());
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('Virtual Network/Firewall rules');
+  });
+
+  it('does not block on an unreachable endpoint', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async url => {
+      if (String(url).includes('/listKeys')) {
+        return new Response(JSON.stringify({ key1: 'fresh-key' }), { status: 200 });
+      }
+      throw new TypeError('Failed to fetch');
+    });
+    expect(await verifyAzureOpenAIAccess(config, authenticatedRunner())).toEqual({ ok: true });
+  });
+
+  it('rejects a config that lacks the account details needed to fetch a key', async () => {
+    const result = await verifyAzureOpenAIAccess(
+      { azAccountName: 'account1' },
+      authenticatedRunner()
+    );
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('missing the Azure account details');
+  });
+
+  it('skips the check when no command runner is available', async () => {
+    expect(await verifyAzureOpenAIAccess(config, null)).toEqual({ ok: true });
   });
 });
 
@@ -1330,9 +1403,9 @@ describe('refreshAzureOpenAIKey — extra paths', () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(JSON.stringify({ key1: 'key' }), { status: 200 }));
-    expect(await refreshAzureOpenAIKey('rg name', 'account/name', runner, 'subscription')).toBe(
-      'key'
-    );
+    expect(await refreshAzureOpenAIKey('rg name', 'account/name', runner, 'subscription')).toEqual({
+      key: 'key',
+    });
     expect(calls).toEqual([
       'az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv',
     ]);
@@ -1348,16 +1421,22 @@ describe('refreshAzureOpenAIKey — extra paths', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ key2: 'secondary-key' }), { status: 200 })
     );
-    expect(await refreshAzureOpenAIKey('rg1', 'account1', runner, 'sub')).toBe('secondary-key');
+    expect(await refreshAzureOpenAIKey('rg1', 'account1', runner, 'sub')).toEqual({
+      key: 'secondary-key',
+    });
   });
 
-  it('returns null when the subscription or key API is unavailable', async () => {
+  it('explains why the subscription or key API is unavailable', async () => {
     const runner = mockCommandRunner({
       'az account get-access-token': { stdout: 'token', exitCode: 0 },
     });
-    expect(await refreshAzureOpenAIKey('rg1', 'account1', runner)).toBeNull();
+    expect((await refreshAzureOpenAIKey('rg1', 'account1', runner)).reason).toContain(
+      'no subscription ID'
+    );
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 403 }));
-    expect(await refreshAzureOpenAIKey('rg1', 'account1', runner, 'sub')).toBeNull();
+    const denied = await refreshAzureOpenAIKey('rg1', 'account1', runner, 'sub');
+    expect(denied.key).toBeNull();
+    expect(denied.reason).toContain('not allowed to read its keys');
   });
 });
 

@@ -1,5 +1,6 @@
 import {
   AZ_CLI_AUTH_SENTINEL,
+  type AzureKeyResolution,
   type CommandRunner,
   GH_CLI_AUTH_SENTINEL,
 } from '@headlamp-k8s/ai-common/providers/detectProvider';
@@ -17,7 +18,7 @@ export interface RuntimeCredentialResolver {
     accountName: string,
     runner: CommandRunner,
     subscriptionId?: string
-  ) => Promise<string | null>;
+  ) => Promise<AzureKeyResolution>;
 }
 
 /**
@@ -53,33 +54,34 @@ export async function resolveRuntimeProviderConfig(
     const resourceGroup = runtimeConfig.azResourceGroup;
     const accountName = runtimeConfig.azAccountName;
     const subscriptionId = runtimeConfig.azSubscriptionId;
-    if (typeof subscriptionId !== 'string' || !subscriptionId) {
+    if (
+      !resolver.commandRunner ||
+      typeof resourceGroup !== 'string' ||
+      typeof accountName !== 'string' ||
+      !resourceGroup ||
+      !accountName
+    ) {
       throw new Error(
-        'Could not resolve the Azure OpenAI key because the saved provider has no subscription ID. ' +
+        'Could not resolve the Azure OpenAI key because the saved provider is missing its ' +
+          'Azure account details, or the desktop app cannot run the `az` CLI. ' +
           'Run Auto Detect and save the Azure provider again.'
       );
     }
-    const freshKey =
-      resolver.commandRunner &&
-      typeof resourceGroup === 'string' &&
-      typeof accountName === 'string' &&
-      resourceGroup &&
-      accountName
-        ? await resolver.refreshAzureOpenAIKey(
-            resourceGroup,
-            accountName,
-            resolver.commandRunner,
-            subscriptionId
-          )
-        : null;
-    if (!freshKey) {
+    const { key, reason } = await resolver.refreshAzureOpenAIKey(
+      resourceGroup,
+      accountName,
+      resolver.commandRunner,
+      typeof subscriptionId === 'string' ? subscriptionId : undefined
+    );
+    if (!key) {
       throw new Error(
-        'Could not resolve the Azure OpenAI key through Azure authentication. ' +
-          'Ensure the `az` CLI is installed and logged in (run `az login`), ' +
-          'then try again from the desktop app.'
+        reason ??
+          'Could not resolve the Azure OpenAI key through Azure authentication. ' +
+            'Ensure the `az` CLI is installed and logged in (run `az login`), ' +
+            'then try again from the desktop app.'
       );
     }
-    runtimeConfig.apiKey = freshKey;
+    runtimeConfig.apiKey = key;
   }
 
   return runtimeConfig;
