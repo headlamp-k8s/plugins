@@ -51,6 +51,11 @@ export function ClustersList() {
     <ResourceListView
       title={title}
       data={clusters}
+      // This plugin is strictly read-only. Headlamp's default row menu offers
+      // Edit and Delete, and row selection exists to drive bulk deletion, so
+      // both are switched off rather than left at their defaults.
+      enableRowActions={false}
+      enableRowSelection={false}
       columns={[
         {
           id: 'name',

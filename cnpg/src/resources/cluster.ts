@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import {
   formatInstancesReady,
   getClusterPhase,

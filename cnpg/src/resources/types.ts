@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
+import { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 
 /**
  * Type definitions for the CloudNativePG CRDs consumed by this plugin.
