@@ -1453,6 +1453,25 @@ describe('detectProviders — Azure and Copilot result building', () => {
     expect(result.filter(p => p.providerId === 'azure')).toHaveLength(0);
   });
 
+  it('re-detects a legacy CLI Azure config that has no subscription ID', async () => {
+    fetchSpy.mockRejectedValueOnce(new Error('no ollama'));
+    const runner = makeAzureBaseRunner(CHAT_DEPLOYMENT_STDOUT);
+    const existing = [
+      {
+        providerId: 'azure',
+        config: {
+          apiKey: AZ_CLI_AUTH_SENTINEL,
+          azAccountName: 'myoai',
+          endpoint: 'https://myoai.openai.azure.com',
+        },
+      },
+    ];
+    const result = await detectProviders(existing, [], runner);
+    const azureResults = result.filter(p => p.providerId === 'azure');
+    expect(azureResults).toHaveLength(1);
+    expect(azureResults[0].config.azSubscriptionId).toBe('sub');
+  });
+
   it('normalises azure-endpoint: dismissal key (bug fix: uppercase endpoint is still skipped)', async () => {
     fetchSpy.mockRejectedValueOnce(new Error('no ollama'));
     const runner = makeAzureBaseRunner(CHAT_DEPLOYMENT_STDOUT);

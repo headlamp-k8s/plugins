@@ -1061,10 +1061,22 @@ export async function detectProviders(
       .filter(k => k.startsWith('azure-account:'))
       .map(k => k.slice('azure-account:'.length).toLowerCase())
   );
+  // CLI-backed configs saved before subscription scoping must stay detectable so
+  // re-saving them can backfill the subscription needed for key resolution.
+  const needsSubscriptionMigration = (provider: StoredProviderConfig): boolean =>
+    provider.providerId === 'azure' &&
+    provider.config?.apiKey === AZ_CLI_AUTH_SENTINEL &&
+    Boolean(provider.config?.azAccountName) &&
+    !provider.config?.azSubscriptionId;
+
   const savedAzureAccountNames = new Set(
     existingProviders
       .filter(
-        p => p.providerId === 'azure' && p.config?.azAccountName && !p.config?.azSubscriptionId
+        p =>
+          p.providerId === 'azure' &&
+          p.config?.azAccountName &&
+          !p.config?.azSubscriptionId &&
+          !needsSubscriptionMigration(p)
       )
       .map(p => p.config.azAccountName as string)
   );
@@ -1081,7 +1093,7 @@ export async function detectProviders(
   );
   const savedAzureEndpoints = new Set(
     existingProviders
-      .filter(p => p.providerId === 'azure' && p.config?.endpoint)
+      .filter(p => p.providerId === 'azure' && p.config?.endpoint && !needsSubscriptionMigration(p))
       .map(p => normaliseEndpoint(p.config.endpoint as string))
   );
   const skipAzureAccountNames = new Set([...savedAzureAccountNames, ...dismissedAzureNames]);
