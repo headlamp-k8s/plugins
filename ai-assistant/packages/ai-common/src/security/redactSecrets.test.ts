@@ -44,6 +44,27 @@ describe('redactSecrets', () => {
     expect(out).toContain('[REDACTED]');
   });
 
+  it('handles repeated eyJ input without treating it as a JWT', () => {
+    const adversarialInput = 'eyJ'.repeat(100_000);
+
+    expect(redactSecrets(adversarialInput)).toBe(adversarialInput);
+  });
+
+  it('preserves incomplete JWT-like values', () => {
+    const incomplete = 'prefix eyJheader.eyJpayload suffix';
+
+    expect(redactSecrets(incomplete)).toBe(incomplete);
+  });
+
+  it('redacts every valid JWT embedded in surrounding text', () => {
+    const first = 'eyJheader.eyJpayload.signature_one';
+    const second = 'eyJother.eyJclaims.signature-two';
+
+    expect(redactSecrets(`first=${first}; second=${second}`)).toBe(
+      'first=[REDACTED]; second=[REDACTED]'
+    );
+  });
+
   it('redacts PEM private keys', () => {
     const pem = `-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4
@@ -287,5 +308,20 @@ namespace: default`;
     expect(
       redactSecrets('DefaultEndpointsProtocol=https;AccountKey=abc123DEF456==;Rest=1')
     ).toContain('AccountKey=[REDACTED]');
+  });
+
+  it('redacts credentials that are not at the start of a line', () => {
+    expect(redactSecrets('url=https://x.io/?token=abc123')).toBe(
+      'url=https://x.io/?token=[REDACTED]'
+    );
+    expect(redactSecrets('export PASSWORD=hunter2')).toBe('export PASSWORD=[REDACTED]');
+    expect(redactSecrets('my password: hunter2')).toBe('my password: [REDACTED]');
+    expect(redactSecrets('The password: hunter2 was leaked')).toBe('The password: [REDACTED]');
+  });
+
+  it('leaves non-credential fields and already-redacted values alone', () => {
+    expect(redactSecrets('url=https://example.com/path')).toBe('url=https://example.com/path');
+    expect(redactSecrets('password: [REDACTED]')).toBe('password: [REDACTED]');
+    expect(redactSecrets('DB_PASSWORD=hunter2')).toBe('DB_PASSWORD=hunter2');
   });
 });
