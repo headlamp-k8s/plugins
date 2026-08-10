@@ -644,6 +644,8 @@ async function listAzureOpenAIAccountsWithResourceGraphApi(
     'Resources',
     "| where type =~ 'microsoft.cognitiveservices/accounts'",
     "| where kind in~ ('OpenAI', 'AIServices')",
+    // Accounts with local auth disabled reject the api-key this plugin sends.
+    "| where tostring(properties.disableLocalAuth) != 'true'",
     '| project id, name, resourceGroup, subscriptionId, endpoint=tostring(properties.endpoint)',
     '| order by name asc',
   ].join(' ');

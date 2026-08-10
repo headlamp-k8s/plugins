@@ -1400,6 +1400,16 @@ describe('detectProviders — Azure and Copilot result building', () => {
     expect(result.some(p => p.providerId === 'azure')).toBe(true);
   });
 
+  it('excludes Azure accounts that reject key authentication', async () => {
+    fetchSpy.mockRejectedValueOnce(new Error('no ollama'));
+    const runner = makeAzureBaseRunner(CHAT_DEPLOYMENT_STDOUT);
+    await detectProviders([], [], runner);
+    const calls = (globalThis.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls;
+    const graphCall = calls.find(call => String(call[0]).includes('Microsoft.ResourceGraph'));
+    expect(String(graphCall?.[1]?.body)).toContain("properties.disableLocalAuth) != 'true'");
+  });
+
   it('includes same-named Azure accounts from different subscriptions', async () => {
     fetchSpy.mockRejectedValueOnce(new Error('no ollama'));
     const accounts = ['subscription-one', 'subscription-two'].map(subscriptionId => ({
