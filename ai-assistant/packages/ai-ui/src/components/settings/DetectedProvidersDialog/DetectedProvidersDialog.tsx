@@ -18,6 +18,7 @@ import { getProviderById } from '@headlamp-k8s/ai-common/providers/catalog';
 import type { DetectedProvider } from '@headlamp-k8s/ai-common/providers/detectProvider';
 import { Icon } from '@iconify/react';
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -44,6 +45,10 @@ export interface DetectedProvidersDialogProps {
   onAddProviders: (providers: DetectedProvider[]) => void;
   /** Callback when the user dismisses all detected providers. */
   onDismiss?: (providers: DetectedProvider[]) => void;
+  /** Whether the selected providers are being verified. */
+  adding?: boolean;
+  /** Why the selected providers could not be added. */
+  errorMessage?: string | null;
   /** Component used to render the dialog shell. Falls back to MUI Dialog. */
   DialogSlot?: React.ElementType;
 }
@@ -61,6 +66,8 @@ export default function DetectedProvidersDialog({
   detectedProviders,
   onAddProviders,
   onDismiss,
+  adding = false,
+  errorMessage = null,
   DialogSlot = Dialog,
 }: DetectedProvidersDialogProps): React.ReactElement {
   const { t } = useTranslation();
@@ -113,7 +120,7 @@ export default function DetectedProvidersDialog({
                 'The following AI providers were automatically detected on your system. Select which ones you would like to add.'
               )
             : t(
-                'No AI providers were detected. Check that the provider CLI is installed and authenticated, then try again.'
+                'No new AI providers were detected. Providers you already added or dismissed are not listed. Otherwise, check that the provider CLI is installed and authenticated, then try again.'
               )}
         </DialogContentText>
         {detectedProviders.map((provider, index) => {
@@ -140,17 +147,28 @@ export default function DetectedProvidersDialog({
             />
           );
         })}
+        {errorMessage ? (
+          <Alert severity="error" sx={{ mt: 2, whiteSpace: 'pre-line' }}>
+            {errorMessage}
+          </Alert>
+        ) : null}
       </DialogContent>
       <DialogActions>
         {providerCount === 0 ? (
           <Button onClick={onClose}>{t('Close')}</Button>
         ) : (
           <>
-            <Button onClick={handleDismiss} color="inherit">
+            <Button onClick={handleDismiss} color="inherit" disabled={adding}>
               {t('Not Now')}
             </Button>
-            <Button onClick={handleAdd} variant="contained" disabled={selected.size === 0}>
-              {t('Add Selected ({{count}})', { count: selected.size })}
+            <Button
+              onClick={handleAdd}
+              variant="contained"
+              disabled={selected.size === 0 || adding}
+            >
+              {adding
+                ? t('Checking access…')
+                : t('Add Selected ({{count}})', { count: selected.size })}
             </Button>
           </>
         )}

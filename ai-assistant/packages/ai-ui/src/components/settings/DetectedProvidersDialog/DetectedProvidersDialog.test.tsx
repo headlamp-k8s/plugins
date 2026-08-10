@@ -94,7 +94,7 @@ it('renders an actionable empty provider result', () => {
   );
   expect(screen.queryByRole('dialog')).toBeNull();
   rerender(<DetectedProvidersDialog {...multipleProvidersArgs} detectedProviders={[]} open />);
-  expect(screen.getByText(/No AI providers were detected/)).toBeTruthy();
+  expect(screen.getByText(/No new AI providers were detected/)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: /Add Selected/ })).toBeNull();
 });
