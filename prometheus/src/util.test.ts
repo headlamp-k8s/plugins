@@ -20,9 +20,9 @@ describe('getTimeRangeAndStepSize', () => {
 
   test.each([
     ['10m', 'medium', { from: mockNow - 600, to: mockNow, step: 2 }],
-    ['30m', 'medium', { from: mockNow - 1800, to: mockNow, step: 7 }],
-    ['3h', 'medium', { from: mockNow - 10800, to: mockNow, step: 43 }],
-    ['24h', 'medium', { from: mockNow - day, to: mockNow, step: 345 }],
+    ['30m', 'medium', { from: 1699998194, to: 1699999994, step: 7 }],
+    ['3h', 'medium', { from: 1699989169, to: 1699999969, step: 43 }],
+    ['24h', 'medium', { from: 1699913520, to: 1699999920, step: 345 }],
     [
       'today',
       'medium',
@@ -44,7 +44,7 @@ describe('getTimeRangeAndStepSize', () => {
         step: 345,
       },
     ],
-    ['week', 'medium', { from: mockNow - 7 * day, to: mockNow, step: 2419 }],
+    ['week', 'medium', { from: 1699393411, to: 1699998211, step: 2419 }],
     [
       'lastweek',
       'medium',
@@ -56,18 +56,18 @@ describe('getTimeRangeAndStepSize', () => {
     ],
 
     // Different resolutions with same interval
-    ['1h', 'low', { from: mockNow - 3600, to: mockNow, step: 36 }], // timeRange / 100
-    ['1h', 'medium', { from: mockNow - 3600, to: mockNow, step: 14 }], // timeRange / 250
+    ['1h', 'low', { from: 1699996392, to: 1699999992, step: 36 }], // timeRange / 100
+    ['1h', 'medium', { from: 1699996394, to: 1699999994, step: 14 }], // timeRange / 250
     ['1h', 'high', { from: mockNow - 3600, to: mockNow, step: 4 }], // timeRange / 750
 
     // Fixed step sizes with same interval
-    ['1h', '30s', { from: mockNow - 3600, to: mockNow, step: 30 }],
-    ['1h', '15m', { from: mockNow - 3600, to: mockNow, step: 900 }],
-    ['1h', '1h', { from: mockNow - 3600, to: mockNow, step: 3600 }],
+    ['1h', '30s', { from: 1699996380, to: 1699999980, step: 30 }],
+    ['1h', '15m', { from: 1699995600, to: 1699999200, step: 900 }],
+    ['1h', '1h', { from: 1699995600, to: 1699999200, step: 3600 }],
 
     // Edge cases
     ['1m', 'medium', { from: mockNow - 60, to: mockNow, step: 1 }], // Minimum step size is 1
-    ['14d', 'medium', { from: mockNow - 14 * day, to: mockNow, step: 4838 }], // Large time range
+    ['14d', 'medium', { from: 1698786192, to: 1699995792, step: 4838 }], // Large time range
     [
       'invalid', // Falls back to 10 minutes interval
       'medium',
@@ -80,7 +80,7 @@ describe('getTimeRangeAndStepSize', () => {
     [
       '1h',
       'invalid', // Falls back to medium resolution
-      { from: mockNow - 3600, to: mockNow, step: 14 },
+      { from: 1699996394, to: 1699999994, step: 14 },
     ],
   ])(
     'should return correct timeRange and stepSize for %s interval and %s resolution',
@@ -97,9 +97,35 @@ describe('getTimeRangeAndStepSize', () => {
 
     const result = getTimeRangeAndStepSize('1h', 'medium');
     expect(result).toEqual({
-      from: specificTime - 3600,
-      to: specificTime,
+      from: 1599996396,
+      to: 1599999996,
       step: 14,
+    });
+  });
+
+  test('should quantize timestamps to step boundary to prevent auto-refresh flicker', () => {
+    const unalignedTime = 1700000007; // 7 seconds after step boundary
+    vitest.spyOn(Date, 'now').mockImplementation(() => unalignedTime * 1000);
+
+    const result = getTimeRangeAndStepSize('1h', '30s');
+    // Expected step is 30s; 1700000007 % 30 = 27
+    expect(result).toEqual({
+      from: 1699996380,
+      to: 1699999980,
+      step: 30,
+    });
+  });
+
+  test('should preserve midnight for today when snapping the live end timestamp', () => {
+    vitest.spyOn(Date, 'now').mockImplementation(() => 1700000007 * 1000);
+
+    const result = getTimeRangeAndStepSize('today', 'medium');
+    const midnight = 1700000007 - (1700000007 % 86400);
+
+    expect(result).toEqual({
+      from: midnight,
+      to: 1700000000,
+      step: 320,
     });
   });
 });
