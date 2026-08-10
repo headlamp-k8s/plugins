@@ -18,6 +18,23 @@ import type { Storage } from '../persistence/Storage';
 import type { MCPToolsConfig } from '../types';
 import { parseMCPToolName } from './toolName';
 
+function isSafeConfigKey(value: string): boolean {
+  return value !== '__proto__' && value !== 'constructor' && value !== 'prototype';
+}
+
+function setOwnConfigValue<T extends object, K extends keyof any, V>(
+  target: T,
+  key: K,
+  value: V
+): void {
+  Object.defineProperty(target, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+}
+
 /**
  * Manages persisted MCP tool state, including enablement, schemas, descriptions,
  * and usage statistics.
@@ -231,15 +248,16 @@ export class ToolStateStore {
    * @returns No value.
    */
   setToolEnabled(serverName: string, toolName: string, enabled: boolean): void {
+    if (!isSafeConfigKey(serverName) || !isSafeConfigKey(toolName)) return;
     if (!this.config[serverName]) {
-      this.config[serverName] = {};
+      setOwnConfigValue(this.config, serverName, {});
     }
 
     if (!this.config[serverName][toolName]) {
-      this.config[serverName][toolName] = {
+      setOwnConfigValue(this.config[serverName], toolName, {
         enabled: true,
         usageCount: 0,
-      };
+      });
     }
 
     this.config[serverName][toolName].enabled = enabled;
@@ -288,15 +306,16 @@ export class ToolStateStore {
    * @returns No value.
    */
   recordToolUsage(serverName: string, toolName: string): void {
+    if (!isSafeConfigKey(serverName) || !isSafeConfigKey(toolName)) return;
     if (!this.config[serverName]) {
-      this.config[serverName] = {};
+      setOwnConfigValue(this.config, serverName, {});
     }
 
     if (!this.config[serverName][toolName]) {
-      this.config[serverName][toolName] = {
+      setOwnConfigValue(this.config[serverName], toolName, {
         enabled: true,
         usageCount: 0,
-      };
+      });
     }
 
     const toolState = this.config[serverName][toolName];
@@ -356,23 +375,26 @@ export class ToolStateStore {
       description?: string;
     }>
   ): void {
+    if (!isSafeConfigKey(serverName)) return;
+    const safeToolsInfo = toolsInfo.filter(toolInfo => isSafeConfigKey(toolInfo.name));
+    if (safeToolsInfo.length === 0) return;
     if (!this.config[serverName]) {
-      this.config[serverName] = {};
+      setOwnConfigValue(this.config, serverName, {});
     }
 
     const serverConfig = this.config[serverName];
     let hasChanges = false;
 
-    for (const toolInfo of toolsInfo) {
+    for (const toolInfo of safeToolsInfo) {
       const toolName = toolInfo.name;
 
       if (!serverConfig[toolName]) {
-        serverConfig[toolName] = {
+        setOwnConfigValue(serverConfig, toolName, {
           enabled: true,
           usageCount: 0,
           inputSchema: toJsonSchema(toolInfo.inputSchema) ?? null,
           description: toolInfo.description || '',
-        };
+        });
         hasChanges = true;
       } else {
         // Always update schema and description for existing tools
