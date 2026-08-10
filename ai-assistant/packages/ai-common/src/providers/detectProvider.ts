@@ -598,6 +598,16 @@ async function getAzureManagementToken(
 }
 
 /**
+ * Reports why an Azure call failed, so detection returning nothing can be diagnosed.
+ *
+ * @param operation - Human-readable name of the failed call.
+ * @param cause - Status text or thrown error.
+ */
+function logAzureApiFailure(operation: string, cause: unknown): void {
+  console.warn(`[ai-assistant auto-detect] Azure ${operation} failed:`, cause);
+}
+
+/**
  * Lists subscriptions available to the authenticated Azure identity.
  *
  * @param token - ARM bearer token.
@@ -616,14 +626,18 @@ async function listAzureSubscriptionsWithApi(
         { headers: { Authorization: `Bearer ${token}` } },
         signal
       );
-      if (!response.ok) return null;
+      if (!response.ok) {
+        logAzureApiFailure('subscription listing', `${response.status} ${response.statusText}`);
+        return null;
+      }
       const page: AzureManagementListResponse<AzureSubscription> = await response.json();
       if (!Array.isArray(page.value)) return null;
       subscriptions.push(...page.value);
       url = page.nextLink;
     }
     return subscriptions;
-  } catch {
+  } catch (e) {
+    logAzureApiFailure('subscription listing', e);
     return null;
   }
 }
@@ -673,7 +687,10 @@ async function listAzureOpenAIAccountsWithResourceGraphApi(
         },
         signal
       );
-      if (!response.ok) return null;
+      if (!response.ok) {
+        logAzureApiFailure('account discovery', `${response.status} ${response.statusText}`);
+        return null;
+      }
       const page: AzureResourceGraphResponse = await response.json();
       if (!Array.isArray(page.data)) return null;
       accounts.push(
@@ -686,7 +703,8 @@ async function listAzureOpenAIAccountsWithResourceGraphApi(
         }))
       );
       skipToken = page.$skipToken;
-    } catch {
+    } catch (e) {
+      logAzureApiFailure('account discovery', e);
       return null;
     }
   } while (skipToken);
@@ -955,25 +973,54 @@ export async function detectAzureOpenAIProvider(
   );
 }
 
+/** Outcome of a `listKeys` call, including why it failed. */
+interface AzureKeyResult {
+  /** Account key when the call succeeded. */
+  key: string | null;
+  /** HTTP status of the call, or `null` when the request could not be made. */
+  status: number | null;
+  /** Error detail reported by Azure Resource Manager. */
+  message?: string;
+}
+
+/** Data-plane API version used to probe an endpoint before saving it. */
+const AZURE_DATA_PLANE_API_VERSION = '2024-10-21';
+
 /**
- * Fetches a fresh Azure OpenAI API key from the Azure Management API.
- * Call at model creation time when config.apiKey is {@link AZ_CLI_AUTH_SENTINEL}.
+ * Reads the human-readable error message from a failed Azure response.
+ *
+ * @param response - Failed Azure REST response.
+ * @returns Azure's explanation, or an empty string when none is present.
+ */
+async function readAzureErrorMessage(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    const message = body?.error?.message ?? body?.message;
+    return typeof message === 'string' ? message.trim() : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Requests an account key from the Azure Management API, preserving the failure reason.
  *
  * @param resourceGroup - Resource group containing the account.
  * @param accountName - Azure account resource name.
- * @param commandRunner - Host-provided command executor.
  * @param subscriptionId - Subscription used to scope the key lookup.
- * @returns Primary or secondary account key, or `null` when unavailable.
+ * @param commandRunner - Host-provided command executor.
+ * @param signal - Optional cancellation signal.
+ * @returns The key when available, plus the status and message needed to explain a failure.
  */
-export async function refreshAzureOpenAIKey(
+async function requestAzureOpenAIKey(
   resourceGroup: string,
   accountName: string,
+  subscriptionId: string,
   commandRunner: CommandRunner,
-  subscriptionId?: string
-): Promise<string | null> {
-  if (!subscriptionId) return null;
-  const managementToken = await getAzureManagementToken(commandRunner);
-  if (!managementToken) return null;
+  signal?: AbortSignal
+): Promise<AzureKeyResult> {
+  const managementToken = await getAzureManagementToken(commandRunner, signal);
+  if (!managementToken) return { key: null, status: null };
   const accountId = `/subscriptions/${encodeURIComponent(
     subscriptionId
   )}/resourceGroups/${encodeURIComponent(
@@ -985,14 +1032,182 @@ export async function refreshAzureOpenAIKey(
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${managementToken}` },
-      }
+      },
+      signal
     );
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return { key: null, status: response.status, message: await readAzureErrorMessage(response) };
+    }
     const keys = await response.json();
-    return keys.key1 || keys.key2 || null;
+    return { key: keys.key1 || keys.key2 || null, status: response.status };
   } catch {
-    return null;
+    return { key: null, status: null };
   }
+}
+
+/** Result of resolving an Azure OpenAI key for a saved provider. */
+export interface AzureKeyResolution {
+  /** Resolved account key, or `null` when it could not be read. */
+  key: string | null;
+  /** Explanation of the failure, present only when `key` is `null`. */
+  reason?: string;
+}
+
+/**
+ * Fetches a fresh Azure OpenAI API key from the Azure Management API.
+ * Call at model creation time when config.apiKey is {@link AZ_CLI_AUTH_SENTINEL}.
+ *
+ * @param resourceGroup - Resource group containing the account.
+ * @param accountName - Azure account resource name.
+ * @param commandRunner - Host-provided command executor.
+ * @param subscriptionId - Subscription used to scope the key lookup.
+ * @returns The account key, or the reason it could not be read.
+ */
+export async function refreshAzureOpenAIKey(
+  resourceGroup: string,
+  accountName: string,
+  commandRunner: CommandRunner,
+  subscriptionId?: string
+): Promise<AzureKeyResolution> {
+  if (!subscriptionId) {
+    return {
+      key: null,
+      reason:
+        `The saved provider for "${accountName}" has no subscription ID. ` +
+        'Run Auto Detect and save it again.',
+    };
+  }
+  const result = await requestAzureOpenAIKey(
+    resourceGroup,
+    accountName,
+    subscriptionId,
+    commandRunner
+  );
+  if (result.key) return { key: result.key };
+  return { key: null, reason: describeAzureKeyFailure(accountName, result) };
+}
+
+/** Azure account fields required to check whether a provider is usable. */
+export interface AzureAccessCheckConfig {
+  /** Resource group containing the account. */
+  azResourceGroup?: string;
+  /** Azure account resource name. */
+  azAccountName?: string;
+  /** Subscription containing the account. */
+  azSubscriptionId?: string;
+  /** Data-plane endpoint of the account. */
+  endpoint?: string;
+}
+
+/** Result of checking whether a detected Azure provider can actually be used. */
+export interface AzureAccessCheckResult {
+  /** Whether the account is usable, or the check was inconclusive. */
+  ok: boolean;
+  /** Explanation of why the account is unusable. */
+  reason?: string;
+}
+
+/**
+ * Explains why an Azure `listKeys` call failed.
+ *
+ * @param accountName - Account the key was requested for.
+ * @param result - Failed key request.
+ * @returns User-facing explanation.
+ */
+function describeAzureKeyFailure(accountName: string, result: AzureKeyResult): string {
+  if (result.status === 401 || result.status === 403) {
+    return (
+      `You can see "${accountName}" but are not allowed to read its keys. ` +
+      'Listing deployments only needs Reader, while using the model needs ' +
+      'Cognitive Services Contributor or higher.'
+    );
+  }
+  if (result.status === 404) {
+    return `The Azure OpenAI account "${accountName}" no longer exists.`;
+  }
+  if (result.status === null) {
+    return (
+      `Could not reach Azure to read the keys of "${accountName}". ` +
+      'Ensure the `az` CLI is installed and logged in (run `az login`).'
+    );
+  }
+  const detail = result.message ? ` ${result.message}` : '';
+  return `Azure returned ${result.status} when reading the keys of "${accountName}".${detail}`;
+}
+
+/**
+ * Sends a minimal data-plane request so firewall and key restrictions surface
+ * before the account is saved rather than on the first chat message.
+ *
+ * @param endpoint - Account data-plane endpoint.
+ * @param key - Account key to authenticate with.
+ * @param accountName - Account name used in the failure message.
+ * @param signal - Optional cancellation signal.
+ * @returns Failure only for an explicit rejection; ambiguous outcomes pass.
+ */
+async function probeAzureOpenAIEndpoint(
+  endpoint: string,
+  key: string,
+  accountName: string,
+  signal?: AbortSignal
+): Promise<AzureAccessCheckResult> {
+  let response: Response;
+  try {
+    response = await fetchAzureApi(
+      `${normaliseEndpoint(endpoint)}/openai/models?api-version=${AZURE_DATA_PLANE_API_VERSION}`,
+      { headers: { 'api-key': key } },
+      signal
+    );
+  } catch {
+    // Transport failures are ambiguous here, so they must not block the save.
+    return { ok: true };
+  }
+  if (response.status !== 401 && response.status !== 403) return { ok: true };
+  const detail = await readAzureErrorMessage(response);
+  return {
+    ok: false,
+    reason:
+      `"${accountName}" rejected a test request (${response.status}).` +
+      (detail ? ` ${detail}` : ''),
+  };
+}
+
+/**
+ * Verifies that an Azure provider can be used, not merely listed.
+ *
+ * Detection only reads Resource Manager metadata, which Reader grants, so an
+ * account can be discoverable while its keys, roles, or network rules block use.
+ *
+ * @param config - Azure account fields from the provider config.
+ * @param commandRunner - Host-provided command executor, or `null` outside the desktop app.
+ * @param signal - Optional cancellation signal.
+ * @returns Whether the account is usable, with a reason when it is not.
+ */
+export async function verifyAzureOpenAIAccess(
+  config: AzureAccessCheckConfig,
+  commandRunner: CommandRunner | null,
+  signal?: AbortSignal
+): Promise<AzureAccessCheckResult> {
+  if (!commandRunner) return { ok: true };
+  const { azResourceGroup, azAccountName, azSubscriptionId, endpoint } = config;
+  if (!azResourceGroup || !azAccountName || !azSubscriptionId) {
+    return {
+      ok: false,
+      reason: 'This provider is missing the Azure account details needed to fetch its key.',
+    };
+  }
+  const keyResult = await requestAzureOpenAIKey(
+    azResourceGroup,
+    azAccountName,
+    azSubscriptionId,
+    commandRunner,
+    signal
+  );
+  if (!keyResult.key) {
+    return { ok: false, reason: describeAzureKeyFailure(azAccountName, keyResult) };
+  }
+  if (!endpoint) return { ok: true };
+  return probeAzureOpenAIEndpoint(endpoint, keyResult.key, azAccountName, signal);
 }
 
 /**
