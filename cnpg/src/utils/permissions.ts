@@ -14,8 +14,13 @@
  * limitations under the License.
  */
 
-/** The subset of Headlamp's ApiError this module needs. */
-interface MaybeApiError {
+/** The subset of Headlamp's ApiError this plugin needs.
+ *
+ * Declared structurally rather than imported: Headlamp's apiProxy module is not
+ * in the bundler's externals map, so importing its types risks an import path
+ * that only fails in the browser.
+ */
+export interface MaybeApiError {
   status?: number;
   message?: string;
 }

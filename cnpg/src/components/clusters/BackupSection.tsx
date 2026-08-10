@@ -25,19 +25,17 @@ import {
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import React from 'react';
-import { BackupClass, ScheduledBackupClass } from '../../resources/backup';
 import { ClusterClass, CNPG_GROUP } from '../../resources/cluster';
 import {
   BackupRecord,
-  backupsForCluster,
   describeBackupConfiguration,
   getContinuousArchivingStatus,
   getFirstRecoverabilityPoint,
   ScheduledBackupRecord,
-  scheduledBackupsForCluster,
   summarizeBackups,
 } from '../../utils/backupFacts';
 import { describeMissingPermission, isForbidden } from '../../utils/permissions';
+import { ClusterBackupData } from './useClusterBackupData';
 
 /** Renders a timestamp as "x ago", with the exact value on hover. */
 function TimeAgo({ timestamp }: { timestamp: string }) {
@@ -96,23 +94,18 @@ function InlinePermissionDenied({
  * This section reports facts only. It draws no conclusion about whether the
  * cluster is adequately protected; that judgement belongs to the rules engine.
  */
-export function BackupSection({ cluster }: { cluster: ClusterClass }) {
+export function BackupSection({
+  cluster,
+  backupData,
+}: {
+  cluster: ClusterClass;
+  backupData: ClusterBackupData;
+}) {
   const { t } = useTranslation();
   const namespace = cluster.metadata.namespace ?? '';
-  const name = cluster.metadata.name;
 
-  const [backups, backupsError] = BackupClass.useList({ namespace });
-  const [scheduledBackups, scheduledError] = ScheduledBackupClass.useList({ namespace });
-
-  const records = backupsForCluster(
-    backups?.map(backup => backup.jsonData),
-    name
-  );
+  const { backups: records, schedules, backupsError, schedulesError: scheduledError } = backupData;
   const summary = summarizeBackups(records);
-  const schedules = scheduledBackupsForCluster(
-    scheduledBackups?.map(scheduled => scheduled.jsonData),
-    name
-  );
 
   const configuration = describeBackupConfiguration(cluster.jsonData);
   const archiving = getContinuousArchivingStatus(cluster.jsonData);

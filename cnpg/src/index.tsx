@@ -25,6 +25,13 @@ import React from 'react';
 import { isCnpgInstalled } from './checks/isCnpgInstalled';
 import { ClusterDetail } from './components/clusters/ClusterDetail';
 import { ClustersList } from './components/clusters/ClustersList';
+import { registerInsightsProvider } from './insights/registry';
+import { rulesProvider } from './insights/rules';
+
+// Phase 1 ships exactly one insights provider: the deterministic rules engine.
+// It is registered here, at plugin load, rather than imported by the panel, so
+// that adding a provider later is a registration and not a change to the UI.
+registerInsightsProvider(rulesProvider);
 
 // Neutral database glyph: the PostgreSQL elephant is a trademarked mark and is
 // deliberately not reproduced here.

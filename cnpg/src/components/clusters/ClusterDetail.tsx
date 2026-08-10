@@ -30,7 +30,9 @@ import { isForbidden } from '../../utils/permissions';
 import { LoadFailed, PermissionDenied } from '../common/EmptyStates';
 import { BackupSection } from './BackupSection';
 import { ClusterPhaseLabel } from './ClusterPhaseLabel';
+import { InsightsPanel } from './InsightsPanel';
 import { TopologySection } from './TopologySection';
+import { useClusterBackupData } from './useClusterBackupData';
 
 /**
  * Read-only detail view for one CloudNativePG Cluster.
@@ -62,6 +64,19 @@ export function ClusterDetail() {
   if (!cluster) {
     return <Loader title={t('Loading cluster details')} />;
   }
+
+  return <ClusterDetailContent cluster={cluster} title={title} />;
+}
+
+/**
+ * The loaded detail view.
+ *
+ * Split from the fetch above so the backup hook is called unconditionally: the
+ * cluster is known to exist here, so there is no early return above the hook.
+ */
+function ClusterDetailContent({ cluster, title }: { cluster: ClusterClass; title: string }) {
+  const { t } = useTranslation();
+  const backupData = useClusterBackupData(cluster);
 
   const image = cluster.status.image ?? cluster.spec.imageName ?? null;
 
@@ -103,8 +118,9 @@ export function ClusterDetail() {
         )}
       </SectionBox>
 
+      <InsightsPanel cluster={cluster} backupData={backupData} />
       <TopologySection cluster={cluster} />
-      <BackupSection cluster={cluster} />
+      <BackupSection cluster={cluster} backupData={backupData} />
     </>
   );
 }
