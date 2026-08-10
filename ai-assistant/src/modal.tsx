@@ -983,9 +983,16 @@ export default function AIPrompt(props: {
   const classifyAgentText = (
     text: string
   ): 'tool-start' | 'tool-result' | 'todo-update' | 'intermediate-text' => {
-    if (/^🔧\s*Using Agent tool:/.test(text)) return 'tool-start';
-    if (/^🔧\s*\S+\s+result:/.test(text)) return 'tool-result';
-    if (/^###\s*Investigation Tasks:/.test(text)) return 'todo-update';
+    const trimmed = text.trimStart();
+    if (trimmed.startsWith('🔧')) {
+      const toolText = trimmed.slice('🔧'.length).trimStart();
+      if (toolText.startsWith('Using Agent tool:')) return 'tool-start';
+      if (toolText.includes(' result:')) return 'tool-result';
+    }
+    if (trimmed.startsWith('###')) {
+      const heading = trimmed.slice(3).trimStart();
+      if (heading.startsWith('Investigation Tasks:')) return 'todo-update';
+    }
     return 'intermediate-text';
   };
 
@@ -996,23 +1003,37 @@ export default function AIPrompt(props: {
   const sanitizeAgentContent = (text: string): string => {
     if (!text) return text;
 
-    let cleaned = text;
-
-    // Remove 🔧 tool result blocks (🔧 <tool> result: ... up to the next ## heading)
-    cleaned = cleaned.replace(/🔧\s*\S+\s+result:[\s\S]*?(?=\n\s*##)/g, '');
-    // Also remove standalone 🔧 result blocks at the end (no ## heading follows)
-    cleaned = cleaned.replace(/🔧\s*\S+\s+result:[\s\S]*$/g, '');
-
-    // Remove 🔧 tool-start lines
-    cleaned = cleaned.replace(/🔧\s*Using Agent tool:.*\n?/g, '');
+    const lines = text.split('\n');
+    const retainedLines: string[] = [];
+    let skippingResult = false;
+    for (const line of lines) {
+      const trimmed = line.trimStart();
+      if (trimmed.startsWith('🔧') && trimmed.includes(' result:')) {
+        skippingResult = true;
+        continue;
+      }
+      if (
+        trimmed.startsWith('🔧') &&
+        trimmed.slice('🔧'.length).trimStart().startsWith('Using Agent tool:')
+      ) {
+        continue;
+      }
+      if (skippingResult) {
+        if (!trimmed.startsWith('##')) continue;
+        skippingResult = false;
+      }
+      retainedLines.push(line);
+    }
+    let cleaned = retainedLines.join('\n');
 
     // If content starts with non-markdown text before a ## heading,
     // check whether it looks like leaked tool/CLI output and strip it
-    const headingMatch = cleaned.match(/(^[\s\S]*?)(\n##\s)/m);
-    if (headingMatch && headingMatch[1]) {
-      const before = headingMatch[1].trim();
+    const cleanedLines = cleaned.split('\n');
+    const headingIndex = cleanedLines.findIndex(line => line.trimStart().startsWith('##'));
+    if (headingIndex > 0) {
+      const before = cleanedLines.slice(0, headingIndex).join('\n').trim();
       if (before && looksLikeToolOutput(before)) {
-        cleaned = cleaned.substring((headingMatch.index ?? 0) + headingMatch[1].length);
+        cleaned = cleanedLines.slice(headingIndex).join('\n');
       }
     }
 
@@ -1024,13 +1045,13 @@ export default function AIPrompt(props: {
     const t = text.trim();
     if (!t) return false;
     // Common CLI error lines
-    if (/^(error|Error|ERROR)\s*:/m.test(t)) return true;
+    if (t.toLowerCase().startsWith('error:')) return true;
     // kubectl commands or output
-    if (/kubectl\s+\w+/m.test(t)) return true;
+    if (t.includes('kubectl ')) return true;
     // Tool-result emoji markers
-    if (/🔧/.test(t)) return true;
+    if (t.includes('🔧')) return true;
     // Shell prompts
-    if (/^\$\s+/m.test(t)) return true;
+    if (t.split('\n').some(line => line.trimStart().startsWith('$ '))) return true;
     return false;
   };
 
