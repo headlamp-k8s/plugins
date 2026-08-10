@@ -1,4 +1,5 @@
 {
+  "Error fetching chart details {{ error }}": "Error fetching chart details {{ error }}",
   "Install": "Install",
   "Name": "Name",
   "Description": "Description",
