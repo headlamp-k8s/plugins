@@ -593,6 +593,33 @@ describe('ProviderConfigManager', () => {
       expect(result.providers![0].config.model).toBe('gpt-4o');
     });
 
+    it('backfills subscription metadata onto a legacy Azure config in place', () => {
+      const existing = {
+        providers: [
+          {
+            id: 'azure-1',
+            providerId: 'azure',
+            displayName: 'Azure OpenAI (myoai)',
+            config: {
+              apiKey: '__AZ_CLI_AUTH__',
+              azAccountName: 'myoai',
+              endpoint: 'https://myoai.openai.azure.com',
+            },
+          },
+        ],
+      };
+      const result = saveProviderConfig(existing, 'azure', {
+        apiKey: '__AZ_CLI_AUTH__',
+        azAccountName: 'myoai',
+        azResourceGroup: 'rg1',
+        azSubscriptionId: 'sub',
+        endpoint: 'https://myoai.openai.azure.com',
+      });
+      expect(result.providers).toHaveLength(1);
+      expect(result.providers![0].id).toBe('azure-1');
+      expect(result.providers![0].config.azSubscriptionId).toBe('sub');
+    });
+
     it('adds new Azure config when azAccountName differs', () => {
       const existing = {
         providers: [
