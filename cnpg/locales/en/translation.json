@@ -1,0 +1,14 @@
+{
+  "Unknown": "Unknown",
+  "PostgreSQL Clusters": "PostgreSQL Clusters",
+  "Name": "Name",
+  "Namespace": "Namespace",
+  "Phase": "Phase",
+  "Instances Ready": "Instances Ready",
+  "Primary": "Primary",
+  "Last Backup": "Last Backup",
+  "This cluster does not report a backup timestamp. Clusters using the barman-cloud plugin never populate this field; check Backup objects instead.": "This cluster does not report a backup timestamp. Clusters using the barman-cloud plugin never populate this field; check Backup objects instead.",
+  "Insufficient permissions": "Insufficient permissions",
+  "Your account is not allowed to perform this action:": "Your account is not allowed to perform this action:",
+  "Could not load CloudNativePG resources": "Could not load CloudNativePG resources"
+}
