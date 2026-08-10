@@ -114,17 +114,22 @@ export function parseSuggestionsFromResponse(content: unknown): {
     }
   }
 
-  const suggestionPattern = /SUGGESTIONS:\s*(.+?)(?:\n|$)/i;
-  const match = processedContent.match(suggestionPattern);
+  const marker = 'SUGGESTIONS:';
+  const markerIndex = processedContent.toUpperCase().indexOf(marker);
 
-  if (match) {
-    const suggestionsText = match[1];
+  if (markerIndex >= 0) {
+    const valueStart = markerIndex + marker.length;
+    const lineEnd = processedContent.indexOf('\n', valueStart);
+    const suggestionsText = processedContent.slice(
+      valueStart,
+      lineEnd < 0 ? processedContent.length : lineEnd
+    );
     const suggestions = parseSuggestionLabels(suggestionsText);
+    const cleanContent =
+      processedContent.slice(0, markerIndex) +
+      (lineEnd < 0 ? '' : processedContent.slice(lineEnd + 1));
 
-    // Remove the suggestions line from the content
-    const cleanContent = processedContent.replace(suggestionPattern, '').trim();
-
-    return { cleanContent, suggestions };
+    return { cleanContent: cleanContent.trim(), suggestions };
   }
 
   return { cleanContent: processedContent, suggestions: [] };
