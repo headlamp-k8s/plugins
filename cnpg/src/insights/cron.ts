@@ -131,8 +131,12 @@ export function estimateScheduleIntervalMs(schedule: string | null | undefined):
 
   // Every time-of-day field is pinned, so the schedule runs at most once a day
   // and the calendar fields decide how often that day comes round.
+  //
+  // A fixed month comes round once a year. A step does not divide the year
+  // evenly — a quarterly step fires in months 1, 4, 7 and 10, then waits five
+  // months for January — so there is no one cadence to report.
   if (month.kind !== 'wildcard') {
-    return 365 * DAY;
+    return month.kind === 'fixed' ? 365 * DAY : null;
   }
 
   const dayOfMonthConstrained = dayOfMonth.kind !== 'wildcard';

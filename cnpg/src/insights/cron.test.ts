@@ -74,6 +74,18 @@ describe('estimateScheduleIntervalMs', () => {
     expect(estimateScheduleIntervalMs('0 0 2 * * *')).toBe(DAY);
   });
 
+  /*
+   * The same reasoning as the day fields, one level up. A fixed month comes
+   * round once a year, but a step does not divide the year evenly: a quarterly
+   * step fires in months 1, 4, 7 and 10, then waits five months for the next
+   * January. Reading that as yearly overstates the interval fourfold and makes
+   * the staleness rule lenient without saying so.
+   */
+  it('reads a fixed month as yearly but gives up on a stepped month', () => {
+    expect(estimateScheduleIntervalMs('0 0 2 1 1 *')).toBe(365 * DAY);
+    expect(estimateScheduleIntervalMs('0 0 2 1 */3 *')).toBeNull();
+  });
+
   it('supports the shorthand descriptors the cron library accepts', () => {
     expect(estimateScheduleIntervalMs('@daily')).toBe(DAY);
     expect(estimateScheduleIntervalMs('@midnight')).toBe(DAY);
