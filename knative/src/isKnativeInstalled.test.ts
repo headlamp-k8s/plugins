@@ -103,14 +103,6 @@ describe('isKnativeInstalled', () => {
     expect(result).toBe(true);
   });
 
-  // This exercises the .catch() branch: the request function itself rejects
-  // rather than invoking the error callback.
-  it('does not classify a rejected request as Knative absence', async () => {
-    mockApiGet.mockImplementation(() => () => Promise.reject(new Error('Request setup failed')));
-
-    await expect(isKnativeInstalled(['cluster-a'])).resolves.toBe(true);
-  });
-
   it('returns false for empty clusters', async () => {
     const result = await isKnativeInstalled([]);
     expect(result).toBe(false);

@@ -49,8 +49,7 @@ function hasCrdInCluster(cluster: string, crdName: string): Promise<boolean> {
         cancelFn = cancel;
       })
       .catch(() => {
-        // Request-level failures (e.g. network) are not confirmed absence.
-        settle(true);
+        settle(false);
       });
   });
 }
