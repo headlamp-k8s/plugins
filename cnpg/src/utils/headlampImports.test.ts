@@ -63,7 +63,11 @@ describe('Headlamp module imports', () => {
 
     for (const file of collectSourceFiles(SRC_DIR)) {
       const source = fs.readFileSync(file, 'utf8');
-      for (const match of source.matchAll(/from '(@kinvolk\/headlamp-plugin[^']*)'/g)) {
+      // Both quote styles: Prettier normalises to single quotes, but this guard
+      // exists to catch an import that slipped through every other check, and a
+      // matcher that only sees the formatted form cannot do that for code that
+      // has not been formatted yet.
+      for (const match of source.matchAll(/from ['"](@kinvolk\/headlamp-plugin[^'"]*)['"]/g)) {
         const specifier = match[1];
         if (!ALLOWED_HEADLAMP_IMPORTS.has(specifier)) {
           offenders.push(`${path.relative(SRC_DIR, file)}: ${specifier}`);
@@ -72,5 +76,17 @@ describe('Headlamp module imports', () => {
     }
 
     expect(offenders).toEqual([]);
+  });
+
+  // The guard is only worth having if it actually rejects something, and its
+  // one failure mode is a matcher that quietly matches nothing.
+  it('matches an import specifier in either quote style', () => {
+    const pattern = /from ['"](@kinvolk\/headlamp-plugin[^'"]*)['"]/g;
+    // Assembled rather than written out: this file is one of the files the test
+    // above scans, so a literal disallowed specifier here would report itself.
+    const specifier = ['@kinvolk', 'headlamp-plugin', 'lib', 'k8s', 'KubeObject'].join('/');
+    const source = `import a from '${specifier}';\nimport b from "${specifier}";`;
+
+    expect([...source.matchAll(pattern)].map(match => match[1])).toEqual([specifier, specifier]);
   });
 });

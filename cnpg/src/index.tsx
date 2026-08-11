@@ -62,8 +62,16 @@ async function refreshInstalledCheck(cluster: string) {
   inFlight[cluster] = true;
   try {
     installedByCluster[cluster] = await isCnpgInstalled(cluster);
-    lastCheckedAt[cluster] = Date.now();
+  } catch {
+    // isCnpgInstalled handles its own failures, so reaching here means something
+    // unforeseen. The verdict stays whatever it was — null on a first run, which
+    // shows the entry — because a thrown error is not evidence of absence.
+    installedByCluster[cluster] = installedByCluster[cluster] ?? null;
   } finally {
+    // Stamped in `finally`, so a failed check backs off for the TTL like a
+    // successful one. Stamping only on success lets a persistently failing
+    // cluster re-fire the request on every sidebar render.
+    lastCheckedAt[cluster] = Date.now();
     inFlight[cluster] = false;
   }
 }

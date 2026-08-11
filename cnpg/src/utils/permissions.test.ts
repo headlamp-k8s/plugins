@@ -29,6 +29,16 @@ describe('isForbidden', () => {
     expect(isForbidden({ status: 404 })).toBe(false);
   });
 
+  // The API server writes "forbidden" lower-case, but the string reaching here
+  // has passed through a proxy and a fetch wrapper, either of which may have
+  // capitalised it. Matching case-sensitively means a denial with no status code
+  // renders as a generic failure, losing the one thing that makes it actionable:
+  // the name of the permission the user is missing.
+  it('recognises a forbidden message whatever its capitalisation', () => {
+    expect(isForbidden({ message: 'clusters.postgresql.cnpg.io is forbidden' })).toBe(true);
+    expect(isForbidden({ message: 'Forbidden: User cannot list clusters' })).toBe(true);
+  });
+
   it('does not treat a missing error as a permission problem', () => {
     expect(isForbidden(null)).toBe(false);
   });

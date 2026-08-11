@@ -135,15 +135,29 @@ export function estimateScheduleIntervalMs(schedule: string | null | undefined):
     return 365 * DAY;
   }
 
-  if (dayOfMonth.kind === 'fixed') {
-    return 30 * DAY;
+  const dayOfMonthConstrained = dayOfMonth.kind !== 'wildcard';
+  const dayOfWeekConstrained = dayOfWeek.kind !== 'wildcard';
+
+  // Cron ORs the two day fields rather than intersecting them: "the 1st" and
+  // "every Monday" together fire on the union, five or six times a month at
+  // uneven gaps. There is no interval to report, and guessing one from whichever
+  // field is tested first overstates it several-fold — which makes the staleness
+  // rule lenient without saying so.
+  if (dayOfMonthConstrained && dayOfWeekConstrained) {
+    return null;
   }
 
-  if (dayOfWeek.kind === 'fixed') {
-    return 7 * DAY;
+  if (dayOfWeekConstrained) {
+    // A single weekday repeats weekly. A step over weekdays does not: */2 fires
+    // on days 0, 2, 4 and 6, so the gap alternates and there is no one cadence.
+    return dayOfWeek.kind === 'fixed' ? 7 * DAY : null;
   }
 
-  const calendar = unitFor(dayOfMonth, DAY) ?? unitFor(dayOfWeek, 7 * DAY);
+  if (dayOfMonthConstrained) {
+    return dayOfMonth.kind === 'fixed' ? 30 * DAY : unitFor(dayOfMonth, DAY);
+  }
 
-  return calendar;
+  // Every calendar field is a wildcard, so the pinned time of day comes round
+  // once every day.
+  return DAY;
 }

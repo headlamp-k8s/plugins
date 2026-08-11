@@ -47,6 +47,33 @@ describe('estimateScheduleIntervalMs', () => {
     expect(estimateScheduleIntervalMs('0 0 2 1 * *')).toBe(30 * DAY);
   });
 
+  /*
+   * Cron ORs the two day fields: when both day-of-month and day-of-week are
+   * constrained, the schedule fires on the union of them, so "the 1st" and
+   * "every Monday" together run five or six times a month at uneven gaps. There
+   * is no single interval to report, and the previous reading — 30 days, from
+   * whichever field was tested first — was roughly five times too long. A
+   * too-long interval makes the staleness rule silently lenient.
+   */
+  it('gives up when both day fields are constrained, because cron ORs them', () => {
+    expect(estimateScheduleIntervalMs('0 0 2 1 * 1')).toBeNull();
+    expect(estimateScheduleIntervalMs('0 0 2 */2 * 1')).toBeNull();
+  });
+
+  /*
+   * The mirror image, and the one that produces false alarms rather than
+   * silence: a wildcard day-of-month used to be read as "daily" and returned
+   * before the day-of-week field was ever consulted, so a schedule running some
+   * days of the week was judged against a one-day threshold.
+   */
+  it('does not read a stepped day-of-week as daily just because day-of-month is a wildcard', () => {
+    expect(estimateScheduleIntervalMs('0 0 2 * * */2')).toBeNull();
+  });
+
+  it('still reads an unconstrained daily schedule as daily', () => {
+    expect(estimateScheduleIntervalMs('0 0 2 * * *')).toBe(DAY);
+  });
+
   it('supports the shorthand descriptors the cron library accepts', () => {
     expect(estimateScheduleIntervalMs('@daily')).toBe(DAY);
     expect(estimateScheduleIntervalMs('@midnight')).toBe(DAY);

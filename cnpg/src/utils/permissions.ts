@@ -46,8 +46,9 @@ export function isForbidden(error: MaybeApiError | null | undefined): boolean {
     return true;
   }
 
-  // Some transports surface the API server's message without a status code.
-  return !error.status && !!error.message?.includes('forbidden');
+  // Some transports surface the API server's message without a status code, and
+  // may have recapitalised it on the way, so the match is case-insensitive.
+  return !error.status && !!error.message?.toLowerCase().includes('forbidden');
 }
 
 /**
