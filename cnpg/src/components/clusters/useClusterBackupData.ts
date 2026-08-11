@@ -27,6 +27,17 @@ import { MaybeApiError } from '../../utils/permissions';
 export interface ClusterBackupData {
   backups: BackupRecord[];
   schedules: ScheduledBackupRecord[];
+  /**
+   * Whether `backups` is an answer or a placeholder.
+   *
+   * False while the list is still loading and false when the read failed, so
+   * `backups: []` only means "this cluster has none" when this is true. The
+   * distinction matters because the rules engine will otherwise report a
+   * cluster as never backed up on the strength of a list nobody managed to
+   * read — see LastBackupState, which draws the same line for the list view.
+   */
+  backupsReadable: boolean;
+  schedulesReadable: boolean;
   backupsError: MaybeApiError | null;
   schedulesError: MaybeApiError | null;
 }
@@ -42,6 +53,10 @@ export function useClusterBackupData(cluster: ClusterClass): ClusterBackupData {
   const namespace = cluster.metadata.namespace ?? '';
   const name = cluster.metadata.name;
 
+  // useList returns null for the list until the first response arrives, and
+  // keeps returning null when the read fails. Both are "not known", and neither
+  // is "empty" — flattening them here is what fed a fabricated critical to the
+  // insights panel, so the null is turned into a flag rather than into [].
   const [backups, backupsError] = BackupClass.useList({ namespace });
   const [scheduledBackups, schedulesError] = ScheduledBackupClass.useList({ namespace });
 
@@ -54,6 +69,8 @@ export function useClusterBackupData(cluster: ClusterClass): ClusterBackupData {
       scheduledBackups?.map(scheduled => scheduled.jsonData),
       name
     ),
+    backupsReadable: backups !== null && !backupsError,
+    schedulesReadable: scheduledBackups !== null && !schedulesError,
     backupsError: backupsError ?? null,
     schedulesError: schedulesError ?? null,
   };

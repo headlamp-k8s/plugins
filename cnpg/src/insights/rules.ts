@@ -92,8 +92,27 @@ function ageMs(timestamp: string | null | undefined, now: number): number | null
  * business. One missed run is a warning, because a run can simply be slow; two
  * missed runs is a pattern and is critical.
  */
-const staleBackup: Rule = ({ cluster, backups, scheduledBackups, now }) => {
+const staleBackup: Rule = ({
+  cluster,
+  backups,
+  backupsReadable,
+  scheduledBackups,
+  scheduledBackupsReadable,
+  now,
+}) => {
   const schedules = scheduledBackups;
+
+  // An unread schedule list is not an absent one: without it there is no
+  // cadence to be late against, and saying nothing would read as "on time".
+  if (!scheduledBackupsReadable) {
+    return {
+      id: 'stale-backup',
+      severity: 'unknown',
+      message: 'Cannot tell whether backups are on time: the backup schedules could not be read.',
+      evidence: ['ScheduledBackup objects for this cluster could not be read'],
+    };
+  }
+
   if (schedules.length === 0) {
     return null;
   }
@@ -148,6 +167,20 @@ const staleBackup: Rule = ({ cluster, backups, scheduledBackups, now }) => {
   const cadence = `every ${humanDuration(shortest.interval)}`;
 
   if (!lastSuccessful || backupAge === null) {
+    // Only a successful read makes "no successful backup" a fact. Otherwise the
+    // schedule is known and the backups are not, which is a gap, not a failure.
+    if (!backupsReadable) {
+      return {
+        id: 'stale-backup',
+        severity: 'unknown',
+        message: 'Cannot tell whether backups are on time: the Backup objects could not be read.',
+        evidence: [
+          `ScheduledBackup ${shortest.schedule.name} runs on "${shortest.schedule.schedule}", ${cadence}`,
+          'Backup objects for this cluster could not be read',
+        ],
+      };
+    }
+
     return {
       id: 'stale-backup',
       severity: 'critical',
@@ -211,7 +244,7 @@ function describeDestination(configuration: BackupConfiguration): string {
  * configured, something is configured but has never produced a backup, or a
  * backup exists but the operator does not publish a recovery window for it.
  */
-const noRecoverabilityPoint: Rule = ({ cluster, backups }) => {
+const noRecoverabilityPoint: Rule = ({ cluster, backups, backupsReadable }) => {
   const configuration = describeBackupConfiguration(cluster);
   const point = getFirstRecoverabilityPoint(cluster);
   const { lastSuccessful, total } = summarizeBackups(backups);
@@ -220,15 +253,33 @@ const noRecoverabilityPoint: Rule = ({ cluster, backups }) => {
     return null;
   }
 
+  // A count derived from a list that was never read is not evidence of
+  // anything, so it is left out rather than reported as zero.
+  const backupCountEvidence = backupsReadable
+    ? [`${backupObjectCount(total)} this cluster`]
+    : ['Backup objects for this cluster could not be read'];
+
   if (configuration.kind === 'none') {
+    // The spec lives on the Cluster object, which was read. An unreadable
+    // Backup list does not make a missing destination any less missing.
     return {
       id: 'no-recoverability-point',
       severity: 'critical',
       message: 'No backup destination is configured, so point-in-time recovery is not possible.',
       evidence: [
         'Cluster spec has no backup.barmanObjectStore, no backup.volumeSnapshot and no enabled WAL archiver plugin',
-        `${backupObjectCount(total)} this cluster`,
+        ...backupCountEvidence,
       ],
+    };
+  }
+
+  if (!backupsReadable) {
+    return {
+      id: 'no-recoverability-point',
+      severity: 'unknown',
+      message:
+        'A backup destination is configured, but whether anything has been backed up could not be determined.',
+      evidence: [describeDestination(configuration), ...backupCountEvidence],
     };
   }
 

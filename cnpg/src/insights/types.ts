@@ -58,11 +58,22 @@ export interface Finding {
  *
  * `now` is passed in rather than read from the clock so that every rule is a
  * pure function of its input and time-dependent rules are testable.
+ *
+ * The `*Readable` flags are required rather than optional, and deliberately so.
+ * An empty list means "nothing exists" only when the read succeeded; while the
+ * list is still loading, or when it was denied or errored, the same `[]` means
+ * "not known". Collapsing the two lets a rule state as fact that a cluster has
+ * never been backed up when nobody ever looked. Making the flags required
+ * forces every caller to say which of the two it is holding.
  */
 export interface InsightsContext {
   cluster: CnpgClusterLike;
   backups: BackupRecord[];
   scheduledBackups: ScheduledBackupRecord[];
+  /** False while the Backup list is loading, denied, or failed to read. */
+  backupsReadable: boolean;
+  /** False while the ScheduledBackup list is loading, denied, or failed to read. */
+  scheduledBackupsReadable: boolean;
   now: number;
 }
 

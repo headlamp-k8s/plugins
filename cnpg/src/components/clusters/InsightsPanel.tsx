@@ -23,7 +23,7 @@ import React from 'react';
 import { collectFindings } from '../../insights/registry';
 import { Finding, Severity } from '../../insights/types';
 import { ClusterClass, CNPG_GROUP } from '../../resources/cluster';
-import { describeMissingPermissions, isForbidden } from '../../utils/permissions';
+import { describeMissingPermissions, isForbidden, MaybeApiError } from '../../utils/permissions';
 import { ClusterBackupData } from './useClusterBackupData';
 
 /** Maps a finding severity onto the status colours Headlamp already uses. */
@@ -95,8 +95,10 @@ export function InsightsPanel({
 }) {
   const { t } = useTranslation();
   const [findings, setFindings] = React.useState<Finding[] | null>(null);
+  const [failed, setFailed] = React.useState(false);
 
-  const { backups, schedules, backupsError, schedulesError } = backupData;
+  const { backups, schedules, backupsReadable, schedulesReadable, backupsError, schedulesError } =
+    backupData;
   const namespace = cluster.metadata.namespace ?? '';
 
   // Findings are recomputed whenever the cluster or its backups change. The
@@ -113,23 +115,43 @@ export function InsightsPanel({
       cluster: cluster.jsonData,
       backups,
       scheduledBackups: schedules,
+      backupsReadable,
+      scheduledBackupsReadable: schedulesReadable,
       now: Date.now(),
-    }).then(result => {
-      if (!cancelled) {
-        setFindings(result);
-      }
-    });
+    })
+      .then(result => {
+        if (!cancelled) {
+          setFindings(result);
+        }
+      })
+      // The registry already isolates a failing provider, so reaching here means
+      // the collection itself broke. Without this the panel sits on "Evaluating
+      // checks…" for ever, which reads as "still working" rather than "failed".
+      .catch(() => {
+        if (!cancelled) {
+          setFindings([]);
+          setFailed(true);
+        }
+      });
 
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clusterVersion, backupsKey, schedulesKey]);
+  }, [clusterVersion, backupsKey, schedulesKey, backupsReadable, schedulesReadable]);
 
   const denied = [
     backupsError && isForbidden(backupsError) ? 'backups' : null,
     schedulesError && isForbidden(schedulesError) ? 'scheduledbackups' : null,
   ].filter(Boolean) as string[];
+
+  // An error that is not a denial would otherwise produce no visible signal at
+  // all here, while the rules quietly downgrade to "unknown" — leaving the
+  // reader to wonder why a check they expected an answer from went quiet.
+  const unreadable = [
+    backupsError && !isForbidden(backupsError) ? backupsError : null,
+    schedulesError && !isForbidden(schedulesError) ? schedulesError : null,
+  ].filter(Boolean) as MaybeApiError[];
 
   return (
     <SectionBox title={t('Insights')}>
@@ -153,7 +175,24 @@ export function InsightsPanel({
         </Alert>
       )}
 
-      {findings === null ? (
+      {unreadable.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {t(
+            'Some checks could not be evaluated because the backup objects could not be read. They are reported as unknown rather than assumed.'
+          )}
+          {unreadable.map((error, index) => (
+            <Box key={index} sx={{ fontSize: '0.85rem' }}>
+              {error.message}
+            </Box>
+          ))}
+        </Alert>
+      )}
+
+      {failed ? (
+        <Alert severity="error">
+          {t('The checks could not be evaluated. No conclusion should be drawn from this panel.')}
+        </Alert>
+      ) : findings === null ? (
         <Box sx={{ color: 'text.secondary' }}>{t('Evaluating checks…')}</Box>
       ) : findings.length === 0 ? (
         <Alert severity="success">

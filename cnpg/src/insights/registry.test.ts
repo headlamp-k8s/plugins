@@ -26,6 +26,8 @@ const context: InsightsContext = {
   cluster: { metadata: { name: 'pg-1' } },
   backups: [],
   scheduledBackups: [],
+  backupsReadable: true,
+  scheduledBackupsReadable: true,
   now: Date.parse('2026-08-10T12:00:00Z'),
 };
 

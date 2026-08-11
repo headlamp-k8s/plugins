@@ -78,6 +78,8 @@ function context(overrides: Partial<InsightsContext> = {}): InsightsContext {
     cluster: healthyCluster(),
     backups: [completedBackup(2 * HOUR)],
     scheduledBackups: [nightlySchedule()],
+    backupsReadable: true,
+    scheduledBackupsReadable: true,
     now: NOW,
     ...overrides,
   };
@@ -108,6 +110,8 @@ describe('rulesProvider', () => {
       cluster: {},
       backups: [],
       scheduledBackups: [],
+      backupsReadable: true,
+      scheduledBackupsReadable: true,
       now: NOW,
     };
 
@@ -119,6 +123,8 @@ describe('rulesProvider', () => {
       cluster: {},
       backups: [],
       scheduledBackups: [],
+      backupsReadable: true,
+      scheduledBackupsReadable: true,
       now: NOW,
     }) as Finding[];
 
@@ -202,6 +208,82 @@ describe('rule: stale backup relative to its schedule', () => {
     expect(ruleIds({ scheduledBackups: [], backups: [completedBackup(500 * HOUR)] })).not.toContain(
       'stale-backup'
     );
+  });
+});
+
+/**
+ * An unread list is not an empty one.
+ *
+ * `backups: []` means two entirely different things depending on whether the
+ * read succeeded, and the difference is the difference between "this cluster
+ * has never been backed up" and "I was not allowed to look". Reporting the
+ * first when the second is true is the worst thing this plugin can do: it is a
+ * fabricated critical about unrecoverable data, and it fires on clusters whose
+ * backups are perfectly healthy.
+ */
+describe('backup rules when the Backup objects could not be read', () => {
+  it('does not claim backups are missing when the Backup list was not read', () => {
+    const finding = findingsById({ backups: [], backupsReadable: false })['stale-backup'];
+
+    expect(finding.severity).toBe('unknown');
+    expect(finding.message).not.toContain('never completed');
+  });
+
+  it('does not claim nothing was ever backed up when the Backup list was not read', () => {
+    const cluster = healthyCluster();
+    cluster.status!.firstRecoverabilityPoint = undefined;
+
+    const finding = findingsById({
+      cluster,
+      backups: [],
+      backupsReadable: false,
+      scheduledBackups: [],
+    })['no-recoverability-point'];
+
+    expect(finding.severity).toBe('unknown');
+    expect(finding.message).not.toContain('no backup has ever completed');
+  });
+
+  it('never counts an unread list as zero Backup objects', () => {
+    const cluster = healthyCluster();
+    cluster.status!.firstRecoverabilityPoint = undefined;
+
+    const finding = findingsById({
+      cluster,
+      backups: [],
+      backupsReadable: false,
+      scheduledBackups: [],
+    })['no-recoverability-point'];
+
+    expect(finding.evidence.join(' ')).not.toContain('0 Backup objects');
+  });
+
+  // The spec is on the Cluster object, which was read. Not being able to read
+  // Backup objects does not make a missing destination any less missing, so
+  // this one stays critical — it just must not cite a backup count.
+  it('still reports a missing destination, which is a fact about the spec', () => {
+    const cluster = healthyCluster();
+    cluster.spec = { instances: 3 };
+    cluster.status!.firstRecoverabilityPoint = undefined;
+
+    const finding = findingsById({
+      cluster,
+      backups: [],
+      backupsReadable: false,
+      scheduledBackups: [],
+    })['no-recoverability-point'];
+
+    expect(finding.severity).toBe('critical');
+    expect(finding.evidence.join(' ')).not.toContain('0 Backup objects');
+  });
+
+  it('cannot judge staleness when the schedules could not be read', () => {
+    const finding = findingsById({
+      scheduledBackups: [],
+      scheduledBackupsReadable: false,
+    })['stale-backup'];
+
+    expect(finding.severity).toBe('unknown');
   });
 });
 

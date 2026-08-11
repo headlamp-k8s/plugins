@@ -104,14 +104,29 @@ export function BackupSection({
   const { t } = useTranslation();
   const namespace = cluster.metadata.namespace ?? '';
 
-  const { backups: records, schedules, backupsError, schedulesError: scheduledError } = backupData;
+  const {
+    backups: records,
+    schedules,
+    backupsReadable,
+    schedulesReadable,
+    backupsError,
+    schedulesError: scheduledError,
+  } = backupData;
   const summary = summarizeBackups(records);
 
   const configuration = describeBackupConfiguration(cluster.jsonData);
   const archiving = getContinuousArchivingStatus(cluster.jsonData);
   const firstRecoverabilityPoint = getFirstRecoverabilityPoint(cluster.jsonData);
 
-  const backupsUnreadable = Boolean(backupsError);
+  // Not readable covers the first paint as well as a denial: until the list has
+  // arrived there is nothing to report, and "0 Backup objects" on a cluster with
+  // hundreds is a worse answer than saying so.
+  const backupsUnreadable = !backupsReadable;
+  // "Not read yet" and "could not be read" are both unknown, but a reader who
+  // hovers deserves to know which one they are looking at.
+  const backupsUnknownReason = backupsError
+    ? t('Backup objects could not be read.')
+    : t('Backup objects have not been read yet.');
   const configurationText =
     configuration.kind === 'barmanObjectStore'
       ? t('Barman object store, configured on the cluster')
@@ -165,7 +180,7 @@ export function BackupSection({
     {
       name: t('Last successful backup'),
       value: backupsUnreadable ? (
-        <UnknownValue reason={t('Backup objects could not be read.')} />
+        <UnknownValue reason={backupsUnknownReason} />
       ) : summary.lastSuccessful ? (
         <Box>
           {summary.lastSuccessful.completedAt ? (
@@ -221,7 +236,7 @@ export function BackupSection({
     {
       name: t('Backup objects'),
       value: backupsUnreadable ? (
-        <UnknownValue reason={t('Backup objects could not be read.')} />
+        <UnknownValue reason={backupsUnknownReason} />
       ) : (
         String(summary.total)
       ),
@@ -281,21 +296,37 @@ export function BackupSection({
             ]}
             data={schedules}
             emptyMessage={
-              scheduledError
-                ? t('Scheduled backups could not be read')
+              !schedulesReadable
+                ? scheduledError
+                  ? t('Scheduled backups could not be read')
+                  : t('Reading scheduled backups…')
                 : t('No ScheduledBackup targets this cluster')
             }
           />
         </SectionBox>
       </Box>
 
-      <RecentBackups records={records} unreadable={backupsUnreadable} />
+      <RecentBackups
+        records={records}
+        unreadable={backupsUnreadable}
+        unreadableMessage={
+          backupsError ? t('Backup objects could not be read') : t('Reading Backup objects…')
+        }
+      />
     </SectionBox>
   );
 }
 
 /** The cluster's most recent Backup objects, newest first. */
-function RecentBackups({ records, unreadable }: { records: BackupRecord[]; unreadable: boolean }) {
+function RecentBackups({
+  records,
+  unreadable,
+  unreadableMessage,
+}: {
+  records: BackupRecord[];
+  unreadable: boolean;
+  unreadableMessage: string;
+}) {
   const { t } = useTranslation();
 
   const recent = [...records]
@@ -323,11 +354,7 @@ function RecentBackups({ records, unreadable }: { records: BackupRecord[]; unrea
             },
           ]}
           data={recent}
-          emptyMessage={
-            unreadable
-              ? t('Backup objects could not be read')
-              : t('No Backup object targets this cluster')
-          }
+          emptyMessage={unreadable ? unreadableMessage : t('No Backup object targets this cluster')}
         />
       </SectionBox>
     </Box>
