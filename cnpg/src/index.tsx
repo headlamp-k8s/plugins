@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import { addIcon } from '@iconify/react';
 import {
   registerRoute,
   registerSidebarEntry,
@@ -33,14 +32,6 @@ import { rulesProvider } from './insights/rules';
 // It is registered here, at plugin load, rather than imported by the panel, so
 // that adding a provider later is a registration and not a change to the UI.
 registerInsightsProvider(rulesProvider);
-
-// Neutral database glyph: the PostgreSQL elephant is a trademarked mark and is
-// deliberately not reproduced here.
-addIcon('custom:cnpg', {
-  body: `<path fill="currentColor" d="M12 2C7.58 2 4 3.79 4 6v12c0 2.21 3.58 4 8 4s8-1.79 8-4V6c0-2.21-3.58-4-8-4m0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2s-6-1.5-6-2s2.13-2 6-2M6 8.61c1.46.86 3.61 1.39 6 1.39s4.54-.53 6-1.39V12c0 .5-2.13 2-6 2s-6-1.5-6-2zm0 6c1.46.86 3.61 1.39 6 1.39s4.54-.53 6-1.39V18c0 .5-2.13 2-6 2s-6-1.5-6-2z"/>`,
-  width: 24,
-  height: 24,
-});
 
 // The sidebar entry must be absent on clusters without CloudNativePG, so the
 // plugin adds zero noise for non-CNPG users. The check is asynchronous, so
@@ -97,7 +88,9 @@ registerSidebarEntry({
   parent: null,
   name: 'cnpg',
   label: 'CloudNativePG',
-  icon: 'custom:cnpg',
+  // A neutral database glyph from the icon set Headlamp already bundles. The
+  // PostgreSQL elephant is a trademarked mark and is deliberately not used.
+  icon: 'mdi:database-outline',
   url: '/cnpg/clusters',
 });
 
