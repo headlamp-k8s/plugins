@@ -120,6 +120,8 @@ function StatusFilterChips({
   onChange: (statuses: PolicyResultStatus[]) => void;
   counts: Record<PolicyResultStatus, number>;
 }) {
+  const { t } = useTranslation();
+
   function toggle(status: PolicyResultStatus) {
     if (selected.includes(status)) {
       if (selected.length > 1) {
@@ -131,23 +133,33 @@ function StatusFilterChips({
   }
 
   return (
-    <Box sx={{ display: 'flex', gap: 1 }}>
-      {VIOLATION_STATUSES.map(status => (
-        <Chip
-          key={status}
-          label={`${status} (${counts[status] || 0})`}
-          color={
-            selected.includes(status)
-              ? status === 'fail' || status === 'error'
-                ? 'error'
-                : 'warning'
-              : 'default'
-          }
-          variant={selected.includes(status) ? 'filled' : 'outlined'}
-          onClick={() => toggle(status)}
-          sx={{ cursor: 'pointer' }}
-        />
-      ))}
+    <Box sx={{ display: 'flex', gap: 1 }} role="group" aria-label={t('Filter by status')}>
+      {VIOLATION_STATUSES.map(status => {
+        const isSelected = selected.includes(status);
+        // The last remaining filter cannot be turned off, otherwise the table
+        // would show nothing. Expose that to assistive tech rather than
+        // letting the click silently do nothing.
+        const isLocked = isSelected && selected.length === 1;
+
+        return (
+          <Chip
+            key={status}
+            label={`${status} (${counts[status] || 0})`}
+            color={
+              isSelected
+                ? status === 'fail' || status === 'error'
+                  ? 'error'
+                  : 'warning'
+                : 'default'
+            }
+            variant={isSelected ? 'filled' : 'outlined'}
+            onClick={() => toggle(status)}
+            aria-pressed={isSelected}
+            aria-disabled={isLocked || undefined}
+            sx={{ cursor: 'pointer' }}
+          />
+        );
+      })}
     </Box>
   );
 }
