@@ -1,6 +1,7 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import type { ComponentType } from 'react';
 import AuthzPolicies from './components/daemon/AuthzPolicies';
+import EbpfMaps from './components/daemon/EbpfMaps';
 import HealthDashboard from './components/daemon/HealthDashboard';
 import ObservabilityPanel from './components/daemon/ObservabilityPanel';
 import XdsConfigDump from './components/daemon/XdsConfigDump';
@@ -152,4 +153,20 @@ registerRoute({
   name: kmeshRouteNames.authzPolicies,
   exact: true,
   component: () => <AuthzPolicies />,
+});
+
+// eBPF Map Viewer
+registerSidebarEntry({
+  parent: 'kmesh',
+  name: 'kmesh-ebpf-maps',
+  label: 'eBPF Maps',
+  url: kmeshRoutePaths.ebpfMaps,
+});
+
+registerRoute({
+  path: kmeshRoutePaths.ebpfMaps,
+  sidebar: 'kmesh-ebpf-maps',
+  name: kmeshRouteNames.ebpfMaps,
+  exact: true,
+  component: () => <EbpfMaps />,
 });
