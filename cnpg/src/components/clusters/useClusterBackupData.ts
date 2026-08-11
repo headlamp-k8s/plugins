@@ -50,7 +50,11 @@ export interface ClusterBackupData {
  * denial is reported in one place rather than repeated per section.
  */
 export function useClusterBackupData(cluster: ClusterClass): ClusterBackupData {
-  const namespace = cluster.metadata.namespace ?? '';
+  // Undefined rather than '' when the namespace is missing: Headlamp normalizes
+  // a string namespace to [namespace], so '' becomes [''] and is then treated as
+  // a real namespace to query rather than as "no filter given". Undefined is the
+  // value that falls back to the allowed namespaces.
+  const namespace = cluster.metadata.namespace || undefined;
   const name = cluster.metadata.name;
 
   // useList returns null for the list until the first response arrives, and
