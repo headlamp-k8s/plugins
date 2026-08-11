@@ -75,9 +75,9 @@ export function NodeClaimList() {
         {
           id: 'instance-type',
           label: t('Instance Type'),
-          getValue: item => item.jsonData?.metadata?.labels['node.kubernetes.io/instance-type'],
+          getValue: item => item.jsonData?.metadata?.labels?.['node.kubernetes.io/instance-type'],
           render: item => {
-            return item.jsonData?.metadata?.labels['node.kubernetes.io/instance-type'] || '-';
+            return item.jsonData?.metadata?.labels?.['node.kubernetes.io/instance-type'] || '-';
           },
         },
         {
@@ -91,9 +91,9 @@ export function NodeClaimList() {
         {
           id: 'zone',
           label: t('Zone'),
-          getValue: item => item.jsonData.metadata?.labels['topology.kubernetes.io/zone'],
+          getValue: item => item.jsonData.metadata?.labels?.['topology.kubernetes.io/zone'],
           render: item => {
-            return item.jsonData.metadata?.labels['topology.kubernetes.io/zone'] || '-';
+            return item.jsonData.metadata?.labels?.['topology.kubernetes.io/zone'] || '-';
           },
         },
         'age',

@@ -37,3 +37,48 @@ describe('NodeClaim status condition extraction', () => {
     expect(getLastConditionReason(item.jsonData)).toBe('NodeReady');
   });
 });
+
+describe('NodeClaim metadata labels extraction', () => {
+  const getInstanceType = (jsonData: any) => {
+    return jsonData?.metadata?.labels?.['node.kubernetes.io/instance-type'] || '-';
+  };
+
+  const getCapacityType = (jsonData: any) => {
+    return jsonData?.metadata?.labels?.['karpenter.sh/capacity-type'] || '-';
+  };
+
+  const getZone = (jsonData: any) => {
+    return jsonData?.metadata?.labels?.['topology.kubernetes.io/zone'] || '-';
+  };
+
+  it('should return "-" when metadata is undefined', () => {
+    const item = { jsonData: {} };
+    expect(getInstanceType(item.jsonData)).toBe('-');
+    expect(getCapacityType(item.jsonData)).toBe('-');
+    expect(getZone(item.jsonData)).toBe('-');
+  });
+
+  it('should return "-" when labels is undefined', () => {
+    const item = { jsonData: { metadata: {} } };
+    expect(getInstanceType(item.jsonData)).toBe('-');
+    expect(getCapacityType(item.jsonData)).toBe('-');
+    expect(getZone(item.jsonData)).toBe('-');
+  });
+
+  it('should return label values when labels is populated', () => {
+    const item = {
+      jsonData: {
+        metadata: {
+          labels: {
+            'node.kubernetes.io/instance-type': 'm5.large',
+            'karpenter.sh/capacity-type': 'on-demand',
+            'topology.kubernetes.io/zone': 'us-east-1a',
+          },
+        },
+      },
+    };
+    expect(getInstanceType(item.jsonData)).toBe('m5.large');
+    expect(getCapacityType(item.jsonData)).toBe('on-demand');
+    expect(getZone(item.jsonData)).toBe('us-east-1a');
+  });
+});

@@ -58,11 +58,11 @@ export function ScalingDetailView(props: { name?: string }) {
             },
             {
               name: t('Instance Type'),
-              value: item.jsonData.metadata?.labels['node.kubernetes.io/instance-type'] || '-',
+              value: item.jsonData.metadata?.labels?.['node.kubernetes.io/instance-type'] || '-',
             },
             {
               name: t('Capacity Type'),
-              value: item.jsonData.metadata?.labels['karpenter.sh/capacity-type'] || '-',
+              value: item.jsonData.metadata?.labels?.['karpenter.sh/capacity-type'] || '-',
             },
           ]
         );
