@@ -14,6 +14,10 @@ import {
 } from '../../resources/clusterQueue';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import {
+  RelatedLocalQueuesSection,
+  RelatedWorkloadsSection,
+} from '../common/RelatedResources';
 
 /** Flattened row rendered in the ClusterQueue resource groups table. */
 interface ResourceGroupRow {
@@ -369,6 +373,16 @@ export default function ClusterQueueDetail() {
                   'flavor-usage',
                   clusterQueue.status.flavorsUsage
                 ),
+                {
+                  id: 'related-local-queues',
+                  section: (
+                    <RelatedLocalQueuesSection clusterQueueName={clusterQueue.metadata.name} />
+                  ),
+                },
+                {
+                  id: 'related-workloads',
+                  section: <RelatedWorkloadsSection clusterQueueName={clusterQueue.metadata.name} />,
+                },
               ].filter(Boolean)
             : []
         }
