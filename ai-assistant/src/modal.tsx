@@ -34,6 +34,7 @@ import type { ChatMode } from '@headlamp-k8s/ai-ui/components/assistant/AllInput
 import HolmesSetupGuide from '@headlamp-k8s/ai-ui/components/assistant/HolmesSetupGuide';
 import { PromptSuggestions } from '@headlamp-k8s/ai-ui/components/assistant/PromptSuggestions';
 import ApiConfirmationDialog from '@headlamp-k8s/ai-ui/components/common/ApiConfirmationDialog';
+import { ElectronMCPClient } from '@headlamp-k8s/ai-ui/mcp/electron-client';
 import {
   getProviderModels,
   parseSuggestionsFromResponse,
@@ -600,7 +601,7 @@ export default function AIPrompt(props: {
           enabledTools,
           pluginSettings?.devOptions?.enableMockTools
             ? { toolManager: createMockKubernetesToolManager() }
-            : undefined
+            : { mcpClient: new ElectronMCPClient() }
         );
         setAiManager(newManager);
       } catch (error: unknown) {
@@ -683,7 +684,7 @@ export default function AIPrompt(props: {
             enabledTools,
             pluginSettings?.devOptions?.enableMockTools
               ? { toolManager: createMockKubernetesToolManager() }
-              : undefined
+              : { mcpClient: new ElectronMCPClient() }
           );
           // LangChain doesn't stream intermediate events, so just report start/end
           onStep?.({
