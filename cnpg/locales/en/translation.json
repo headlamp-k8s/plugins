@@ -24,6 +24,7 @@
   "Backup objects": "Backup objects",
   "Backup and restore confidence": "Backup and restore confidence",
   "Could not read Backup objects: {{ message }}": "Could not read Backup objects: {{ message }}",
+  "Could not read ScheduledBackup objects: {{ message }}": "Could not read ScheduledBackup objects: {{ message }}",
   "Scheduled backups": "Scheduled backups",
   "Name": "Name",
   "Schedule": "Schedule",

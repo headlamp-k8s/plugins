@@ -50,10 +50,14 @@ function parseEveryDuration(text: string): number | null {
     return null;
   }
 
-  return parts.reduce((total, part) => {
+  const total = parts.reduce((sum, part) => {
     const unit = part.slice(-1);
-    return total + Number(part.slice(0, -1)) * DURATION_UNITS[unit];
+    return sum + Number(part.slice(0, -1)) * DURATION_UNITS[unit];
   }, 0);
+
+  // Zero is not an interval: callers divide by it to count missed runs, so it
+  // would produce Infinity rather than a number. Unknown is the honest answer.
+  return total > 0 ? total : null;
 }
 
 /** A field is either a wildcard, a step such as "every 6", or a fixed number. */

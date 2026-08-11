@@ -101,6 +101,13 @@ export function ClustersList() {
     <ResourceListView
       title={title}
       data={clusters}
+      // Rows are passed as `data`, not via `resourceClass`. That is load-bearing:
+      // given a resourceClass, ResourceListView renders a CreateResourceButton
+      // above the table, which would put a mutating control into a plugin that
+      // is read-only by design. `data` is also what lets the list read Clusters
+      // and Backups separately so a Backup denial degrades one column instead of
+      // emptying the view.
+      //
       // This plugin is strictly read-only. Headlamp's default row menu offers
       // Edit and Delete, and row selection exists to drive bulk deletion, so
       // both are switched off rather than left at their defaults.

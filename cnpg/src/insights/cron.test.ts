@@ -59,6 +59,17 @@ describe('estimateScheduleIntervalMs', () => {
     expect(estimateScheduleIntervalMs('@every 1h30m')).toBe(HOUR + 30 * MINUTE);
   });
 
+  /*
+   * A zero interval is not a very frequent schedule, it is a nonsensical one.
+   * Callers divide an age by this value to count missed runs, so returning 0
+   * yields Infinity — "Infinity scheduled runs missed" on screen. The step
+   * fields already reject zero for the same reason.
+   */
+  it('treats a zero-length @every duration as unknown rather than as an interval', () => {
+    expect(estimateScheduleIntervalMs('@every 0s')).toBeNull();
+    expect(estimateScheduleIntervalMs('@every 0h0m0s')).toBeNull();
+  });
+
   it('gives up on lists and ranges rather than guessing wrongly', () => {
     // A staleness threshold derived from a wrong interval is worse than no
     // threshold, so anything beyond a step or a fixed value is unknown.

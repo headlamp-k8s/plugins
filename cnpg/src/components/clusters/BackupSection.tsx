@@ -34,6 +34,7 @@ import {
   ScheduledBackupRecord,
   summarizeBackups,
 } from '../../utils/backupFacts';
+import { describeTimeUntil } from '../../utils/futureTime';
 import { describeMissingPermission, isForbidden } from '../../utils/permissions';
 import { ClusterBackupData } from './useClusterBackupData';
 
@@ -42,6 +43,23 @@ function TimeAgo({ timestamp }: { timestamp: string }) {
   return (
     <LightTooltip title={timestamp}>
       <span>{Utils.timeAgo(timestamp)}</span>
+    </LightTooltip>
+  );
+}
+
+/**
+ * Renders a time the operator has published ahead of the event.
+ *
+ * Deliberately not TimeAgo: that formatter is past-only and renders a future
+ * timestamp as the literal string '<invalid>'.
+ */
+function TimeUntil({ timestamp }: { timestamp: string }) {
+  const { t } = useTranslation();
+  const described = describeTimeUntil(timestamp, Date.now());
+
+  return (
+    <LightTooltip title={timestamp}>
+      <span>{described ?? t('Unknown')}</span>
     </LightTooltip>
   );
 }
@@ -256,6 +274,13 @@ export function BackupSection({
       {scheduledError && isForbidden(scheduledError) && (
         <InlinePermissionDenied verb="list" resource="scheduledbackups" namespace={namespace} />
       )}
+      {scheduledError && !isForbidden(scheduledError) && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {t('Could not read ScheduledBackup objects: {{ message }}', {
+            message: scheduledError.message,
+          })}
+        </Alert>
+      )}
 
       <NameValueTable rows={rows} />
 
@@ -284,7 +309,7 @@ export function BackupSection({
                 label: t('Next run'),
                 getter: (schedule: ScheduledBackupRecord) =>
                   schedule.nextScheduleTime ? (
-                    <TimeAgo timestamp={schedule.nextScheduleTime} />
+                    <TimeUntil timestamp={schedule.nextScheduleTime} />
                   ) : (
                     '—'
                   ),

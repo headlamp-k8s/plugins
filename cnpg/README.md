@@ -24,7 +24,9 @@ own.
   the current primary, the time of the last successful backup, and age.
 - A **cluster detail** view showing:
   - **Insights** — findings from a deterministic rules engine, each with the
-    evidence it was derived from. Severity is critical, warning or info.
+    evidence it was derived from. Severity is critical, warning, info, or
+    unknown — the last for a question the plugin could not answer, such as a
+    check whose input could not be read.
   - **Topology** — every instance with its role, the state the operator reports
     for it, its timeline and its pod IP.
   - **Backup and restore confidence** — the backup destination configured on the

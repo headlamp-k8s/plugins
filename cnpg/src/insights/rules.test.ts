@@ -344,7 +344,13 @@ describe('rule: no recoverability point', () => {
       'no-recoverability-point'
     ];
 
-    expect(finding.evidence.join(' ')).not.toContain('neither');
+    // Asserted positively, against the strings the rule actually emits: the
+    // regression was the "none" branch firing, so the test has to fail if that
+    // branch returns. An assertion against a word the rule never uses would
+    // pass either way.
+    expect(finding.evidence).toContain('Backup destination: volume snapshots on the cluster spec');
+    expect(finding.evidence.join(' ')).not.toContain('no backup.volumeSnapshot');
+    expect(finding.message).not.toContain('No backup destination is configured');
   });
 
   it('reports the recovery window as unknown, not absent, for plugin-based backups', () => {
@@ -426,6 +432,43 @@ describe('rule: ready instances below spec', () => {
 
   it('stays quiet when every instance is ready', () => {
     expect(ruleIds()).not.toContain('ready-instances-below-spec');
+  });
+
+  /*
+   * The list column derives its ready/desired from status.instances first, so
+   * mid-scale-up it reads "1/1" while this rule, which measures against the
+   * spec, reads "1 of 3". Both are correct about different things, and a reader
+   * seeing them side by side deserves to be told why they differ rather than
+   * being left to guess which one is lying.
+   */
+  it('says the cluster is still converging when status has not caught up with the spec', () => {
+    const cluster = healthyCluster();
+    cluster.spec!.instances = 3;
+    cluster.status!.instances = 1;
+    cluster.status!.readyInstances = 1;
+
+    const finding = findingsById({ cluster })['ready-instances-below-spec'];
+
+    expect(finding.evidence.join(' ')).toContain('converging');
+    expect(finding.evidence.join(' ')).toContain('detected 1');
+  });
+
+  /*
+   * The count is attributed to the spec in the evidence, so it must actually
+   * come from the spec. Falling back to status.instances and still calling it
+   * "the spec asks for" states as declared intent a number the operator
+   * observed.
+   */
+  it('does not attribute a status-derived count to the spec', () => {
+    const cluster = healthyCluster();
+    cluster.spec!.instances = undefined;
+    cluster.status!.instances = 3;
+    cluster.status!.readyInstances = 2;
+
+    const finding = findingsById({ cluster })['ready-instances-below-spec'];
+
+    expect(finding.evidence.join(' ')).not.toContain('spec asks for');
+    expect(finding.evidence.join(' ')).toContain('the spec does not state');
   });
 });
 

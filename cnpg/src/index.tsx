@@ -22,6 +22,7 @@ import {
   Utils,
 } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
+import { InstalledVerdict } from './checks/discoveryVerdict';
 import { isCnpgInstalled } from './checks/isCnpgInstalled';
 import { ClusterDetail } from './components/clusters/ClusterDetail';
 import { ClustersList } from './components/clusters/ClustersList';
@@ -44,8 +45,9 @@ addIcon('custom:cnpg', {
 // The sidebar entry must be absent on clusters without CloudNativePG, so the
 // plugin adds zero noise for non-CNPG users. The check is asynchronous, so
 // results are cached per cluster and the filter re-runs as Headlamp re-renders
-// the sidebar.
-const installedByCluster: Record<string, boolean> = {};
+// the sidebar. A check that could not be answered caches as null and is retried
+// once the TTL expires, so a blip costs a visible entry rather than a hidden one.
+const installedByCluster: Record<string, InstalledVerdict> = {};
 const lastCheckedAt: Record<string, number> = {};
 const inFlight: Record<string, boolean> = {};
 const CHECK_TTL_MS = 30 * 1000;

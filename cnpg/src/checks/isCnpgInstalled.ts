@@ -16,17 +16,21 @@
 
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { CNPG_API_PATH } from '../resources/cluster';
+import { InstalledVerdict, verdictForDiscoveryError } from './discoveryVerdict';
 
 /**
  * Reports whether the CloudNativePG API group is served by the given cluster.
  *
  * This uses API discovery rather than reading the CustomResourceDefinition
  * object, because discovery is normally readable by any authenticated user
- * while `get customresourcedefinitions` frequently is not. A failure of any
- * kind is reported as "not installed", which keeps the plugin dormant and
- * silent for non-CNPG users, as intended.
+ * while `get customresourcedefinitions` frequently is not.
+ *
+ * Returns null when the check could not be answered. A failure is not a
+ * negative: the caller caches this verdict, so treating a dropped connection or
+ * a denied discovery request as "not installed" would hide the entire plugin
+ * for the length of that cache, with nothing on screen to explain it.
  */
-export async function isCnpgInstalled(cluster?: string): Promise<boolean> {
+export async function isCnpgInstalled(cluster?: string): Promise<InstalledVerdict> {
   try {
     const response = await ApiProxy.request(CNPG_API_PATH, {
       method: 'GET',
@@ -34,6 +38,6 @@ export async function isCnpgInstalled(cluster?: string): Promise<boolean> {
     });
     return !!response;
   } catch (error) {
-    return false;
+    return verdictForDiscoveryError(error as { status?: number; message?: string });
   }
 }

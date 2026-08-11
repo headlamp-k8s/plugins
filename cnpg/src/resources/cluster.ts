@@ -22,7 +22,7 @@ import {
   getInstancesReady,
   InstancesReady,
 } from '../utils/clusterSummary';
-import { CnpgClusterJson, CnpgClusterSpec, CnpgClusterStatus, CnpgCondition } from './types';
+import { CnpgClusterJson, CnpgClusterSpec, CnpgClusterStatus } from './types';
 
 export const CNPG_GROUP = 'postgresql.cnpg.io';
 export const CNPG_VERSION = 'v1';
@@ -52,10 +52,6 @@ export class ClusterClass extends KubeObject<CnpgClusterJson> {
 
   get status(): CnpgClusterStatus {
     return this.jsonData.status ?? {};
-  }
-
-  get conditions(): CnpgCondition[] {
-    return this.status.conditions ?? [];
   }
 
   get phase(): string | null {

@@ -353,7 +353,15 @@ const clusterPhaseUnhealthy: Rule = ({ cluster }) => {
 
 /** Rule 4: are as many instances ready as the spec asks for? */
 const readyInstancesBelowSpec: Rule = ({ cluster }) => {
-  const desired = cluster.spec?.instances ?? cluster.status?.instances;
+  // Spec first, deliberately: this rule measures the cluster against what was
+  // asked for. The Clusters list resolves the same pair status-first, because it
+  // reports what the operator currently sees. The two legitimately disagree
+  // while a scale-up is in flight, which the evidence below spells out — the
+  // alternative is a reader comparing "1/1" in the list with "1 of 3" here and
+  // having no way to tell which is wrong.
+  const specDesired = cluster.spec?.instances;
+  const statusDesired = cluster.status?.instances;
+  const desired = specDesired ?? statusDesired;
   const ready = cluster.status?.readyInstances;
 
   if (desired === undefined || ready === undefined) {
@@ -372,6 +380,21 @@ const readyInstancesBelowSpec: Rule = ({ cluster }) => {
     return null;
   }
 
+  // Only a number that came from the spec may be attributed to it.
+  const desiredEvidence =
+    specDesired !== undefined
+      ? `Cluster spec asks for ${specDesired} instance${specDesired === 1 ? '' : 's'}`
+      : `Operator reports ${statusDesired} instance${
+          statusDesired === 1 ? '' : 's'
+        }; the spec does not state a count`;
+
+  const convergingEvidence =
+    specDesired !== undefined && statusDesired !== undefined && statusDesired !== specDesired
+      ? [
+          `Operator has detected ${statusDesired} of them so far, so the cluster is still converging on the spec`,
+        ]
+      : [];
+
   return {
     id: 'ready-instances-below-spec',
     severity: ready === 0 ? 'critical' : 'warning',
@@ -380,8 +403,9 @@ const readyInstancesBelowSpec: Rule = ({ cluster }) => {
         ? `No instance is ready: 0 of ${desired} instances are serving.`
         : `Only ${ready} of ${desired} instances are ready.`,
     evidence: [
-      `Cluster spec asks for ${desired} instance${desired === 1 ? '' : 's'}`,
+      desiredEvidence,
       `Operator reports ${ready} ready`,
+      ...convergingEvidence,
       cluster.status?.currentPrimary
         ? `Current primary: ${cluster.status.currentPrimary}`
         : 'No primary has been elected',

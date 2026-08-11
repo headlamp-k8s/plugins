@@ -126,6 +126,40 @@ describe('collectFindings', () => {
     ]);
   });
 
+  /*
+   * A provider is third-party code, and the severity union is only a compile-time
+   * promise. A severity the registry does not rank makes every comparison against
+   * it NaN, which is neither negative, zero, nor positive — a non-total comparator.
+   * The sort does not merely misplace the offending finding: it scrambles the rest,
+   * so a critical can land below an info because an unrelated provider returned a
+   * typo. Ranking the unknown severity explicitly keeps the comparator total.
+   */
+  it('still orders valid severities when a provider returns a severity it does not know', async () => {
+    registerInsightsProvider(
+      dummyProvider('rogue', [
+        { severity: 'catastrophic' as Finding['severity'], message: 'rogue' },
+      ])
+    );
+    registerInsightsProvider(
+      dummyProvider('alpha', [
+        { severity: 'info', message: 'info' },
+        { severity: 'critical', message: 'critical' },
+        { severity: 'warning', message: 'warning' },
+      ])
+    );
+
+    const findings = await collectFindings(context);
+
+    expect(findings.filter(finding => finding.source === 'alpha').map(f => f.message)).toEqual([
+      'critical',
+      'warning',
+      'info',
+    ]);
+    // Nothing can be claimed about a severity nobody ranks, so it goes last
+    // rather than being dropped — a finding is still a finding.
+    expect(findings[findings.length - 1].message).toBe('rogue');
+  });
+
   it('keeps the findings of other providers when one throws', async () => {
     registerInsightsProvider({
       name: 'broken',

@@ -50,7 +50,16 @@ export interface CnpgClusterStatus {
   instances?: number;
   readyInstances?: number;
   instanceNames?: string[];
-  instancesStatus?: Record<string, string[]>;
+  /**
+   * Health buckets keyed by label, e.g. `{ healthy: ['pg-1-1'] }`.
+   *
+   * The value is `string[] | undefined` rather than `string[]` because this is
+   * unvalidated JSON from the API server, not a type the plugin controls: a null
+   * or absent bucket arrives as undefined whatever the CRD schema promises. The
+   * declared `string[]` made the `?? []` guards at every read site look dead,
+   * which is exactly how they get removed.
+   */
+  instancesStatus?: Record<string, string[] | undefined>;
   instancesReportedState?: Record<
     string,
     { isPrimary?: boolean; timeLineID?: number; ip?: string }

@@ -81,5 +81,14 @@ export async function collectFindings(context: InsightsContext): Promise<Finding
 
   // Stable within a severity band, so findings keep their providers'
   // registration and declaration order rather than shuffling between renders.
-  return collected.flat().sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+  //
+  // A provider is third-party code and can return a severity outside the union
+  // whatever the types say. An unranked severity yields NaN from the subtraction
+  // above, which makes the comparator non-total and lets the sort scramble the
+  // whole list rather than misplacing one finding, so unknown severities are
+  // ranked explicitly — at the bottom, since nothing can be claimed about them.
+  const rank = (severity: Finding['severity']): number =>
+    SEVERITY_ORDER[severity] ?? Number.MAX_SAFE_INTEGER;
+
+  return collected.flat().sort((a, b) => rank(a.severity) - rank(b.severity));
 }
