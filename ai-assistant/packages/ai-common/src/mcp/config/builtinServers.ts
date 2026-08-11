@@ -74,12 +74,21 @@ export interface BuiltinServerDefinition {
 }
 
 /**
- * Records the definition last written for each built-in server name.
+ * Records the definition last written for each built-in server, keyed by its
+ * name trimmed and lowercased.
  *
  * A `null` value means the server was seeded by an older version that did not
  * record its definition, so customization cannot be detected.
  */
 export type BuiltinServerState = Record<string, BuiltinServerDefinition | null>;
+
+/**
+ * Reconciliation state as it may exist on disk.
+ *
+ * Installs seeded before definitions were recorded persisted a plain list of
+ * server names; {@link reconcileBuiltinServers} upgrades those on the next run.
+ */
+export type PersistedBuiltinServerState = BuiltinServerState | readonly string[];
 
 /** Outcome of reconciling built-in server definitions with stored config. */
 export interface ReconcileBuiltinServersResult {
@@ -96,12 +105,22 @@ function toKey(name: string): string {
   return name.trim().toLowerCase();
 }
 
+/** @returns Whether two environments hold the same variables, whatever their key order. */
+function isSameEnv(a: Record<string, string> = {}, b: Record<string, string> = {}): boolean {
+  const aKeys = Object.keys(a).sort();
+  const bKeys = Object.keys(b).sort();
+  return (
+    aKeys.length === bKeys.length && aKeys.every((key, i) => key === bKeys[i] && a[key] === b[key])
+  );
+}
+
 /** @returns Whether two definitions describe the same server process. */
 function isSameDefinition(a: BuiltinServerDefinition, b: BuiltinServerDefinition): boolean {
   return (
     a.command === b.command &&
-    JSON.stringify(a.args) === JSON.stringify(b.args) &&
-    JSON.stringify(a.env ?? {}) === JSON.stringify(b.env ?? {})
+    a.args.length === b.args.length &&
+    a.args.every((arg, i) => arg === b.args[i]) &&
+    isSameEnv(a.env, b.env)
   );
 }
 
@@ -110,8 +129,19 @@ function toDefinition({ command, args, env }: MCPServer): BuiltinServerDefinitio
   return env === undefined ? { command, args } : { command, args, env };
 }
 
+/** @returns The server with plugin-owned fields replaced, dropping an env the built-in no longer sets. */
+function applyDefinition(existing: MCPServer, definition: BuiltinServerDefinition): MCPServer {
+  const refreshed: MCPServer = { ...existing, command: definition.command, args: definition.args };
+  if (definition.env === undefined) {
+    delete refreshed.env;
+  } else {
+    refreshed.env = definition.env;
+  }
+  return refreshed;
+}
+
 /** @returns Previously seeded state, upgrading the legacy name-list format. */
-function normalizeState(previous: readonly string[] | BuiltinServerState): BuiltinServerState {
+function normalizeState(previous: PersistedBuiltinServerState): BuiltinServerState {
   const entries = Array.isArray(previous)
     ? previous.map(name => [toKey(name), null] as const)
     : Object.entries(previous).map(([name, definition]) => [toKey(name), definition] as const);
@@ -134,7 +164,7 @@ function normalizeState(previous: readonly string[] | BuiltinServerState): Built
 export function reconcileBuiltinServers(
   config: MCPSettings,
   builtinServers: MCPServer[],
-  previousState: readonly string[] | BuiltinServerState = {}
+  previousState: PersistedBuiltinServerState = {}
 ): ReconcileBuiltinServersResult {
   const state = normalizeState(previousState);
   const nextState: BuiltinServerState = { ...state };
@@ -166,11 +196,11 @@ export function reconcileBuiltinServers(
       continue;
     }
 
-    const refreshed: MCPServer = { ...existing, ...toDefinition(builtin) };
-    nextState[key] = toDefinition(refreshed);
-    if (isSameDefinition(toDefinition(existing), toDefinition(refreshed))) continue;
+    const definition = toDefinition(builtin);
+    nextState[key] = definition;
+    if (isSameDefinition(toDefinition(existing), definition)) continue;
 
-    servers[index] = refreshed;
+    servers[index] = applyDefinition(existing, definition);
     changed = true;
   }
 

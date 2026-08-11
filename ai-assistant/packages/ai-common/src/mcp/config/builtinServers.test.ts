@@ -99,6 +99,32 @@ describe('reconcileBuiltinServers', () => {
     ]);
   });
 
+  it('treats an environment written in a different key order as unchanged', () => {
+    const builtin = { ...createAksMcpServer(), env: { A: '1', B: '2' } };
+    const stored = configWithArgs(builtin.args, { env: { B: '2', A: '1' } });
+    const state = {
+      [AKS_MCP_SERVER_NAME]: { command: 'aks-mcp', args: builtin.args, env: builtin.env },
+    };
+
+    const result = reconcileBuiltinServers(stored, [builtin], state);
+
+    expect(result.changed).toBe(false);
+  });
+
+  it('clears an environment the built-in no longer sets', () => {
+    const builtin = createAksMcpServer();
+    const stored = configWithArgs(builtin.args, { env: { LEGACY: '1' } });
+    const state = {
+      [AKS_MCP_SERVER_NAME]: { command: 'aks-mcp', args: builtin.args, env: { LEGACY: '1' } },
+    };
+
+    const result = reconcileBuiltinServers(stored, [builtin], state);
+
+    expect(result.changed).toBe(true);
+    expect(result.config.servers[0]).not.toHaveProperty('env');
+    expect(result.state[AKS_MCP_SERVER_NAME]).not.toHaveProperty('env');
+  });
+
   it('does not reseed a server the user removed', () => {
     const state = { [AKS_MCP_SERVER_NAME]: { command: 'aks-mcp', args: [] } };
 

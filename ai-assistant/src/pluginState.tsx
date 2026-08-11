@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { BuiltinServerState } from '@headlamp-k8s/ai-common/mcp/config/builtinServers';
+import type { PersistedBuiltinServerState } from '@headlamp-k8s/ai-common/mcp/config/builtinServers';
 import {
   SavedConfigurations,
   StoredProviderConfig,
@@ -194,8 +194,11 @@ export interface PluginConfig extends SavedConfigurations {
   enabledTools?: string[] | Record<string, boolean>;
   /** MCP configuration */
   mcpConfig?: MCPConfig;
-  /** Definitions last written for host-provided built-in MCP servers, keyed by name. */
-  seededBuiltinMCPServers?: BuiltinServerState;
+  /**
+   * Definitions last written for host-provided built-in MCP servers, keyed by
+   * trimmed lowercase server name. Older installs persisted a plain name list.
+   */
+  seededBuiltinMCPServers?: PersistedBuiltinServerState;
   /** Skills configuration */
   skills?: SkillsConfig;
   /** Definitions last written for host-provided built-in skill sources, keyed by identity. */
