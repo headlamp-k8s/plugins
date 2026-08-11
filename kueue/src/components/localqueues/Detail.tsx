@@ -7,6 +7,7 @@ import { useParams } from 'react-router-dom';
 import { LocalQueue } from '../../resources/localQueue';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { RelatedWorkloadsSection } from '../common/RelatedResources';
 
 /** Render a ClusterQueue reference as a detail-page link. */
 function renderClusterQueueLink(localQueue: LocalQueue) {
@@ -81,7 +82,20 @@ export default function LocalQueueDetail() {
             : []
         }
         extraSections={localQueue =>
-          localQueue ? [getConditionsSection(localQueue)].filter(Boolean) : []
+          localQueue
+            ? [
+                getConditionsSection(localQueue),
+                {
+                  id: 'related-workloads',
+                  section: (
+                    <RelatedWorkloadsSection
+                      namespace={localQueue.metadata.namespace}
+                      localQueueName={localQueue.metadata.name}
+                    />
+                  ),
+                },
+              ].filter(Boolean)
+            : []
         }
       />
     </KueueAdminResourceAccess>
