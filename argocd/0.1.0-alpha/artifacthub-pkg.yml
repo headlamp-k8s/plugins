@@ -1,0 +1,61 @@
+version: 0.1.0-alpha
+name: headlamp_argocd
+displayName: Argo CD
+createdAt: "2025-08-11T00:00:00Z"
+description: A Headlamp plugin for Argo CD GitOps Application Management
+logoURL: https://raw.githubusercontent.com/argoproj/argo-cd/master/docs/assets/argo.png
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/argocd
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - argocd
+  - gitops
+screenshots:
+  - title: Application List
+    url: https://github.com/user-attachments/assets/e9606b89-3976-4669-a41d-fdef2b8bed10
+  - title: Application Detail
+    url: https://github.com/user-attachments/assets/383a2c97-df18-49a8-a584-2746e75a47e7
+  - title: Managed Resources
+    url: https://github.com/user-attachments/assets/e3a4e9bc-008f-4688-8c0d-3d5248184811
+  - title: Sync History
+    url: https://github.com/user-attachments/assets/cf40ac44-4765-4e5e-b019-05894c817b4c
+  - title: AppProjects
+    url: https://github.com/user-attachments/assets/c7927dd2-215a-4ca6-99b0-0eae0d832768
+maintainers:
+  - name: Joshna Waikar
+    email: joshnawaikar@gmail.com
+changes:
+  - kind: added
+    description: "Application list view with project, source repo, revision, sync status, and health status columns"
+  - kind: added
+    description: "Application detail view with GitOps Summary (source, revision, path, destination, project, sync, health)"
+  - kind: added
+    description: "Managed Resources table with sync and health information"
+  - kind: added
+    description: "Sync Policy section (automated sync, self-heal, prune, retry settings, sync options)"
+  - kind: added
+    description: "Sync History section from Application status history"
+  - kind: added
+    description: "AppProject list and detail views with source repos, destinations, cluster resource whitelist, and roles"
+  - kind: added
+    description: "Namespace GitOps Insights section extending Headlamp Namespace detail page"
+  - kind: added
+    description: "Kubernetes-native Sync action via PATCH on .operation.sync"
+  - kind: added
+    description: "Kubernetes-native Refresh action via argocd.argoproj.io/refresh annotation"
+  - kind: added
+    description: "RBAC-aware action visibility using AuthVisible"
+  - kind: added
+    description: "Argo CD CRD detection to hide sidebar when Argo CD is not installed"
+  - kind: added
+    description: "Official Argo CD octopus icon registered as offline Iconify icon (CSP-safe)"
+  - kind: added
+    description: "Argo CD status icons (heart-pulse for Healthy, check-circle for Synced)"
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/argocd-0.1.0-alpha/headlamp-k8s-argocd-0.1.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:52eec016c40e1abe2c9a797391de0119c94f10c22005f9638389027604e8c39b
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
