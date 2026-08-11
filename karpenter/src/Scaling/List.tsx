@@ -64,12 +64,12 @@ export function NodeClaimList() {
           label: t('Status'),
           getValue: item => item.jsonData?.status?.conditions,
           render: item => {
-            const finalCondition = item.jsonData?.status?.conditions?.length;
-            return (
-              <StatusLabel>
-                {item.jsonData?.status?.conditions[finalCondition - 1]?.reason || '-'}
-              </StatusLabel>
-            );
+            const conditions = item.jsonData?.status?.conditions;
+            const lastCondition =
+              Array.isArray(conditions) && conditions.length > 0
+                ? conditions[conditions.length - 1]
+                : null;
+            return <StatusLabel>{lastCondition?.reason || '-'}</StatusLabel>;
           },
         },
         {

@@ -24,8 +24,14 @@ export function ScalingDetailView(props: { name?: string }) {
       name={name}
       withEvents
       extraInfo={item => {
-        const conditionsLength = item.jsonData.status?.conditions?.length || 0;
-        const nodepool = item.jsonData.metadata?.ownerReferences?.find(x => x.kind === 'NodePool');
+        const conditions = item?.jsonData?.status?.conditions;
+        const lastCondition =
+          Array.isArray(conditions) && conditions.length > 0
+            ? conditions[conditions.length - 1]
+            : null;
+        const nodepool = item?.jsonData?.metadata?.ownerReferences?.find(
+          (x: any) => x.kind === 'NodePool'
+        );
 
         return (
           item && [
@@ -48,11 +54,7 @@ export function ScalingDetailView(props: { name?: string }) {
             },
             {
               name: t('Status'),
-              value: (
-                <StatusLabel>
-                  {item.jsonData.status?.conditions[conditionsLength - 1]?.reason || '-'}
-                </StatusLabel>
-              ),
+              value: <StatusLabel>{lastCondition?.reason || '-'}</StatusLabel>,
             },
             {
               name: t('Instance Type'),
