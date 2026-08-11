@@ -140,6 +140,7 @@ describe('getJobFlowGeneratedJobCount', () => {
 
   it('sums the per-phase arrays when jobStatusList is empty', () => {
     const jobFlow = makeJobFlow({
+      jobStatusList: [],
       pendingJobs: ['flow-a'],
       runningJobs: ['flow-b'],
       failedJobs: ['flow-c'],
@@ -149,6 +150,15 @@ describe('getJobFlowGeneratedJobCount', () => {
     });
 
     expect(getJobFlowGeneratedJobCount(jobFlow)).toBe(6);
+  });
+
+  it('sums the per-phase arrays when jobStatusList is absent', () => {
+    const jobFlow = makeJobFlow({
+      pendingJobs: ['flow-a'],
+      runningJobs: ['flow-b'],
+    });
+
+    expect(getJobFlowGeneratedJobCount(jobFlow)).toBe(2);
   });
 
   it('returns zero when nothing has been generated', () => {
@@ -298,6 +308,11 @@ describe('getPatchSummary', () => {
     );
   });
 
+  // getPatchSummary renders a display string, so the exact output is the
+  // contract being pinned here, plugin ordering included. Object.keys()
+  // follows insertion order, so the names appear in the order the API returned
+  // them. If that is ever sorted the rendered text changes, and this test is
+  // meant to fail when it does.
   it('summarizes collection fields by size and plugin names', () => {
     const summary = getPatchSummary({
       name: 'a',
