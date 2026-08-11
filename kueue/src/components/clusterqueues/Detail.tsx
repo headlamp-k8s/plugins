@@ -12,8 +12,15 @@ import {
   ResourceGroup,
   ResourceQuota,
 } from '../../resources/clusterQueue';
+import {
+  calculateResourceQuotaRatio,
+  findConfiguredQuota,
+  formatRawQuantity,
+  ResourceQuotaCalculation,
+} from '../../utils/resourceQuota';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import ClusterQueueQuotaBar from './ClusterQueueQuotaBar';
 
 /** Flattened row rendered in the ClusterQueue resource groups table. */
 interface ResourceGroupRow {
@@ -43,6 +50,10 @@ interface FlavorUsageRow {
   total?: string | number;
   /** Quantity currently borrowed from the cohort. */
   borrowed?: string | number;
+  /** Configured nominal quota for the resource/flavor pair. */
+  nominalQuota?: string | number;
+  /** Calculated quota ratio & metric info. */
+  calculation?: ResourceQuotaCalculation;
 }
 
 /** Admission check row from spec.admissionChecksStrategy. */
@@ -106,7 +117,45 @@ function getResourceGroupRows(resourceGroups: ResourceGroup[]): ResourceGroupRow
   });
 }
 
-/** Convert status flavor usage or reservation entries into table rows. */
+/** Convert status flavor reservation entries into table rows with quota calculations. */
+function getFlavorReservationRows(
+  flavorUsage: FlavorUsage[] = [],
+  resourceGroups: ResourceGroup[] = []
+): FlavorUsageRow[] {
+  return flavorUsage.flatMap(flavor => {
+    if (!flavor.resources?.length) {
+      return [
+        {
+          flavor: flavor.name,
+          resource: '-',
+        },
+      ];
+    }
+
+    return flavor.resources.map(resource => {
+      const calc = calculateResourceQuotaRatio(
+        flavor.name,
+        resource.name,
+        resource.total,
+        resource.borrowed,
+        resourceGroups
+      );
+
+      const { nominalQuota } = findConfiguredQuota(resourceGroups, flavor.name, resource.name);
+
+      return {
+        flavor: flavor.name,
+        resource: resource.name,
+        total: resource.total,
+        borrowed: resource.borrowed,
+        nominalQuota,
+        calculation: calc,
+      };
+    });
+  });
+}
+
+/** Convert status flavor usage entries into plain table rows. */
 function getFlavorUsageRows(flavorUsage: FlavorUsage[] = []): FlavorUsageRow[] {
   return flavorUsage.flatMap(flavor => {
     if (!flavor.resources?.length) {
@@ -188,7 +237,60 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
   };
 }
 
-/** Build a table section for ClusterQueue status flavor reservations or usage. */
+/** Build visual table section for ClusterQueue status flavor reservations with progress meters. */
+function getFlavorReservationsSection(clusterQueue: ClusterQueue) {
+  const rows = getFlavorReservationRows(
+    clusterQueue.status.flavorsReservation,
+    clusterQueue.resourceGroups
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return {
+    id: 'flavor-reservations',
+    section: (
+      <SectionBox title="Flavor Reservations">
+        <SimpleTable
+          data={rows}
+          columns={[
+            {
+              label: 'ResourceFlavor',
+              getter: (row: FlavorUsageRow) =>
+                row.flavor === '-' ? '-' : renderFlavorLink(row.flavor),
+            },
+            {
+              label: 'Resource',
+              getter: (row: FlavorUsageRow) => row.resource,
+            },
+            {
+              label: 'Reserved',
+              getter: (row: FlavorUsageRow) =>
+                formatRawQuantity(row.total, row.resource),
+            },
+            {
+              label: 'Borrowed',
+              getter: (row: FlavorUsageRow) =>
+                formatRawQuantity(row.borrowed, row.resource),
+            },
+            {
+              label: 'Quota Reserved',
+              getter: (row: FlavorUsageRow) =>
+                row.calculation ? (
+                  <ClusterQueueQuotaBar calculation={row.calculation} />
+                ) : (
+                  '-'
+                ),
+            },
+          ]}
+        />
+      </SectionBox>
+    ),
+  };
+}
+
+/** Build plain table section for ClusterQueue status flavor usage (admitted workloads). */
 function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUsage[]) {
   const rows = getFlavorUsageRows(flavorUsage);
 
@@ -213,7 +315,7 @@ function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUs
               getter: (row: FlavorUsageRow) => row.resource,
             },
             {
-              label: 'Total',
+              label: 'Total Admitted',
               getter: (row: FlavorUsageRow) => row.total ?? '-',
             },
             {
@@ -359,11 +461,7 @@ export default function ClusterQueueDetail() {
                 getConditionsSection(clusterQueue),
                 getResourceGroupsSection(clusterQueue),
                 getAdmissionChecksSection(clusterQueue),
-                getFlavorUsageSection(
-                  'Flavor Reservations',
-                  'flavor-reservations',
-                  clusterQueue.status.flavorsReservation
-                ),
+                getFlavorReservationsSection(clusterQueue),
                 getFlavorUsageSection(
                   'Flavor Usage',
                   'flavor-usage',
