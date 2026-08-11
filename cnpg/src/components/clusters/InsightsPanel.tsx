@@ -23,7 +23,7 @@ import React from 'react';
 import { collectFindings } from '../../insights/registry';
 import { Finding, Severity } from '../../insights/types';
 import { ClusterClass, CNPG_GROUP } from '../../resources/cluster';
-import { describeMissingPermission, isForbidden } from '../../utils/permissions';
+import { describeMissingPermissions, isForbidden } from '../../utils/permissions';
 import { ClusterBackupData } from './useClusterBackupData';
 
 /** Maps a finding severity onto the status colours Headlamp already uses. */
@@ -135,15 +135,19 @@ export function InsightsPanel({
     <SectionBox title={t('Insights')}>
       {denied.length > 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          {t('Backup-related checks were skipped: your account is not allowed to perform:')}{' '}
-          {denied.map(resource => (
-            <Box key={resource} component="code" sx={{ fontFamily: 'monospace', mr: 1 }}>
-              {describeMissingPermission({
-                verb: 'list',
-                resource,
-                apiGroup: CNPG_GROUP,
-                namespace,
-              })}
+          {t('Backup-related checks were skipped: your account is not allowed to perform:')}
+          {describeMissingPermissions({
+            verb: 'list',
+            resources: denied,
+            apiGroup: CNPG_GROUP,
+            namespace,
+          }).map(permission => (
+            <Box
+              key={permission}
+              component="code"
+              sx={{ display: 'block', fontFamily: 'monospace' }}
+            >
+              {permission}
             </Box>
           ))}
         </Alert>

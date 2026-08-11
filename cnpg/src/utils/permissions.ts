@@ -63,3 +63,30 @@ export function describeMissingPermission({
   const scope = namespace ? `in namespace "${namespace}"` : 'at the cluster scope';
   return `${verb} ${resource}.${apiGroup} ${scope}`;
 }
+
+/** Several resources denied under the same verb and API group. */
+export interface MissingPermissions {
+  verb: string;
+  resources: string[];
+  apiGroup: string;
+  namespace?: string;
+}
+
+/**
+ * Describes each denied resource separately, so a view can give each its own
+ * line.
+ *
+ * Returning a list rather than a joined string is the point: two permissions
+ * rendered end to end read as one malformed rule, because each already ends in
+ * a scope clause and begins with a verb.
+ */
+export function describeMissingPermissions({
+  verb,
+  resources,
+  apiGroup,
+  namespace,
+}: MissingPermissions): string[] {
+  return resources.map(resource =>
+    describeMissingPermission({ verb, resource, apiGroup, namespace })
+  );
+}

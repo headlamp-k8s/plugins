@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { describeMissingPermission, isForbidden } from './permissions';
+import { describeMissingPermission, describeMissingPermissions, isForbidden } from './permissions';
 
 describe('isForbidden', () => {
   it('recognises a 403 response', () => {
@@ -58,5 +58,54 @@ describe('describeMissingPermission', () => {
         namespace: 'db',
       })
     ).toBe('list backups.postgresql.cnpg.io in namespace "db"');
+  });
+});
+
+describe('describeMissingPermissions', () => {
+  const namespace = 'db';
+  const apiGroup = 'postgresql.cnpg.io';
+
+  it('returns one entry per denied resource, each independently readable', () => {
+    expect(
+      describeMissingPermissions({
+        verb: 'list',
+        resources: ['backups', 'scheduledbackups'],
+        apiGroup,
+        namespace,
+      })
+    ).toEqual([
+      'list backups.postgresql.cnpg.io in namespace "db"',
+      'list scheduledbackups.postgresql.cnpg.io in namespace "db"',
+    ]);
+  });
+
+  // Two adjacent permissions used to be rendered as inline code spans separated
+  // only by a margin, so they read as one run-on rule: `... in namespace "db"
+  // list scheduledbackups ...`. Keeping them as separate strings is what lets
+  // the view give each its own line.
+  it('never joins two permissions into a single string', () => {
+    const described = describeMissingPermissions({
+      verb: 'list',
+      resources: ['backups', 'scheduledbackups'],
+      apiGroup,
+      namespace,
+    });
+
+    expect(described).toHaveLength(2);
+    for (const entry of described) {
+      expect(entry.match(/\blist\b/g)).toHaveLength(1);
+    }
+  });
+
+  it('describes a single denial the same way describeMissingPermission does', () => {
+    expect(describeMissingPermissions({ verb: 'get', resources: ['clusters'], apiGroup })).toEqual([
+      describeMissingPermission({ verb: 'get', resource: 'clusters', apiGroup }),
+    ]);
+  });
+
+  it('returns nothing when no resource was denied', () => {
+    expect(
+      describeMissingPermissions({ verb: 'list', resources: [], apiGroup, namespace })
+    ).toEqual([]);
   });
 });
