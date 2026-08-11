@@ -28,6 +28,7 @@ import { describeMissingPermission, isForbidden } from '../../utils/permissions'
 import { LoadFailed, PermissionDenied } from '../common/EmptyStates';
 import { ClusterPhaseLabel } from './ClusterPhaseLabel';
 import { lastBackupSortValue, LastBackupState, lastBackupState } from './lastBackupCell';
+import { phaseCellValue } from './phaseCell';
 
 /** A value the Backup objects do not answer, with the reason on hover. */
 function UnknownBackup({ reason }: { reason: string }) {
@@ -138,7 +139,9 @@ export function ClustersList() {
         {
           id: 'phase',
           label: t('Phase'),
-          getValue: (cluster: ClusterClass) => cluster.phase ?? t('Unknown'),
+          // Doubles as the table's repaint key — see phaseCellValue.
+          getValue: (cluster: ClusterClass) =>
+            phaseCellValue(cluster.phase ?? t('Unknown'), cluster.status?.phaseReason),
           render: (cluster: ClusterClass) => <ClusterPhaseLabel cluster={cluster} />,
         },
         {
