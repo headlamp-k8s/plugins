@@ -3,10 +3,10 @@
 Thumbnails
 
 # IDE
-.vscode/
 .idea
 *.xml
 *.iml
 
 # Node
 node_modules/
+config.bat
