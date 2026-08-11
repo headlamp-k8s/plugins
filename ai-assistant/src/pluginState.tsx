@@ -19,6 +19,8 @@ import {
   SavedConfigurations,
   StoredProviderConfig,
 } from '@headlamp-k8s/ai-common/providers/savedConfigs';
+import type { BuiltinSkillSourceState } from '@headlamp-k8s/ai-common/skills/builtinSources';
+import type { SkillsConfig } from '@headlamp-k8s/ai-common/skills/config';
 import {
   getAllAvailableToolsIncludingMCP as discoverAllAvailableToolsIncludingMCP,
   getEnabledToolIdsIncludingMCP as discoverEnabledToolIdsIncludingMCP,
@@ -194,6 +196,10 @@ export interface PluginConfig extends SavedConfigurations {
   mcpConfig?: MCPConfig;
   /** Definitions last written for host-provided built-in MCP servers, keyed by name. */
   seededBuiltinMCPServers?: BuiltinServerState;
+  /** Skills configuration */
+  skills?: SkillsConfig;
+  /** Definitions last written for host-provided built-in skill sources, keyed by identity. */
+  seededBuiltinSkillSources?: BuiltinSkillSourceState;
   /** Is the AI Assistant preview enabled? Disabled by default. */
   previewEnabled?: boolean;
   /** Is scheduled proactive diagnosis enabled? Disabled by default. */
