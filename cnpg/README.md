@@ -84,10 +84,11 @@ Denials are scoped to the affected view: losing access to `Backup` objects leave
 the topology and phase information intact, and the insights panel says which
 checks it had to skip instead of silently reporting fewer findings.
 
-One host-version caveat: Headlamp 0.39 does not report a denied *namespaced* list
-to plugins, so on that version the cluster detail view shows empty backup sections
+One host-version caveat: Headlamp releases before 0.44 do not surface a denied
+*namespaced* list to plugins (fixed upstream in 0.44, kubernetes-sigs/headlamp
+347c13f16), so on older hosts the cluster detail view shows empty backup sections
 instead of naming the permission. The clusters list, which reads across
-namespaces, names it on both versions, as does the detail view on Headlamp 0.44.
+namespaces, names it on every version, as does the detail view from 0.44 onward.
 
 ## A note on the backup timestamps
 
