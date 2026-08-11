@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { BuiltinServerState } from '@headlamp-k8s/ai-common/mcp/config/builtinServers';
 import {
   SavedConfigurations,
   StoredProviderConfig,
@@ -191,6 +192,8 @@ export interface PluginConfig extends SavedConfigurations {
   enabledTools?: string[] | Record<string, boolean>;
   /** MCP configuration */
   mcpConfig?: MCPConfig;
+  /** Definitions last written for host-provided built-in MCP servers, keyed by name. */
+  seededBuiltinMCPServers?: BuiltinServerState;
   /** Is the AI Assistant preview enabled? Disabled by default. */
   previewEnabled?: boolean;
   /** Is scheduled proactive diagnosis enabled? Disabled by default. */

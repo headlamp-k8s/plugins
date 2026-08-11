@@ -39,7 +39,10 @@ import HeadlampEventHandler from './components/appbar/HeadlampEventHandler';
 import AIPanelComponent from './components/panel/AIPanelComponent';
 import Settings from './components/settings/Settings';
 import type { RawK8sEvent } from './kubernetes/EventFetcher';
+import { seedBuiltinMCPServers } from './mcp/seedBuiltinServers';
 import { PLUGIN_NAME, useGlobalState, usePluginConfig } from './pluginState';
+
+void seedBuiltinMCPServers();
 
 // Register UI Panel component that uses the shared state to show/hide
 registerUIPanel({
