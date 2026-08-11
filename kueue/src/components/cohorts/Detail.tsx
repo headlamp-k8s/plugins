@@ -1,6 +1,8 @@
 import {
   DetailsGrid,
+  EmptyContent,
   Link,
+  Loader,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
@@ -189,7 +191,25 @@ function getReferencedFlavorsSection(cohort: Cohort) {
 }
 
 /** Build a linked table for child Cohorts. */
-function getChildCohortsSection(cohort: Cohort, cohorts: Cohort[] | null) {
+function getChildCohortsSection(cohort: Cohort, cohorts: Cohort[] | null, error: unknown) {
+  if (error) {
+    return {
+      id: 'child-cohorts',
+      section: (
+        <SectionBox title="Child Cohorts">
+          <EmptyContent color="text.secondary">Child Cohorts are unavailable.</EmptyContent>
+        </SectionBox>
+      ),
+    };
+  }
+
+  if (!cohorts) {
+    return {
+      id: 'child-cohorts',
+      section: <Loader title="Loading child Cohorts..." />,
+    };
+  }
+
   const rows = getChildCohorts(cohorts, cohort.metadata.name);
 
   if (rows.length === 0) {
@@ -231,7 +251,29 @@ function getChildCohortsSection(cohort: Cohort, cohorts: Cohort[] | null) {
 }
 
 /** Build a linked table for ClusterQueues that belong to the Cohort. */
-function getMemberClusterQueuesSection(cohort: Cohort, clusterQueues: ClusterQueue[] | null) {
+function getMemberClusterQueuesSection(
+  cohort: Cohort,
+  clusterQueues: ClusterQueue[] | null,
+  error: unknown
+) {
+  if (error) {
+    return {
+      id: 'member-clusterqueues',
+      section: (
+        <SectionBox title="Member ClusterQueues">
+          <EmptyContent color="text.secondary">Member ClusterQueues are unavailable.</EmptyContent>
+        </SectionBox>
+      ),
+    };
+  }
+
+  if (!clusterQueues) {
+    return {
+      id: 'member-clusterqueues',
+      section: <Loader title="Loading member ClusterQueues..." />,
+    };
+  }
+
   const rows = getCohortClusterQueues(clusterQueues, cohort.metadata.name);
 
   if (rows.length === 0) {
@@ -284,8 +326,8 @@ function getMemberClusterQueuesSection(cohort: Cohort, clusterQueues: ClusterQue
 /** Detail view for a cluster-scoped Kueue Cohort resource. */
 export default function CohortDetail() {
   const { name } = useParams<{ name: string }>();
-  const [clusterQueues] = ClusterQueue.useList();
-  const [cohorts] = Cohort.useList();
+  const [clusterQueues, clusterQueuesError] = ClusterQueue.useList();
+  const [cohorts, cohortsError] = Cohort.useList();
 
   return (
     <KueueAdminResourceAccess resourceClass={Cohort} resourceLabel="Cohorts" verb="get">
@@ -324,8 +366,8 @@ export default function CohortDetail() {
             ? [
                 getResourceGroupsSection(cohort),
                 getReferencedFlavorsSection(cohort),
-                getChildCohortsSection(cohort, cohorts),
-                getMemberClusterQueuesSection(cohort, clusterQueues),
+                getChildCohortsSection(cohort, cohorts, cohortsError),
+                getMemberClusterQueuesSection(cohort, clusterQueues, clusterQueuesError),
               ].filter(Boolean)
             : []
         }

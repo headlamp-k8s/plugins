@@ -3,7 +3,10 @@ import { useMemo } from 'react';
 import { ClusterQueue } from '../../resources/clusterQueue';
 import { Cohort } from '../../resources/cohort';
 import { renderRelatedCount } from '../../resources/cohortFormatters';
-import { getChildCohorts, getCohortClusterQueues } from '../../resources/cohortRelations';
+import {
+  groupChildCohortsByParent,
+  groupClusterQueuesByCohort,
+} from '../../resources/cohortRelations';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
@@ -23,29 +26,36 @@ function renderParentLink(cohort: Cohort) {
 }
 
 export default function CohortList() {
-  const [clusterQueues] = ClusterQueue.useList();
-  const [cohorts] = Cohort.useList();
+  const [clusterQueues, clusterQueuesError] = ClusterQueue.useList();
+  const [cohorts, cohortsError] = Cohort.useList();
 
   const clusterQueuesByCohort = useMemo(
-    () =>
-      new Map(
-        (cohorts || []).map(cohort => [
-          cohort.metadata.name,
-          getCohortClusterQueues(clusterQueues, cohort.metadata.name),
-        ])
-      ),
-    [clusterQueues, cohorts]
+    () => groupClusterQueuesByCohort(clusterQueues),
+    [clusterQueues]
   );
-  const childCohortsByCohort = useMemo(
-    () =>
-      new Map(
-        (cohorts || []).map(cohort => [
-          cohort.metadata.name,
-          getChildCohorts(cohorts, cohort.metadata.name),
-        ])
-      ),
-    [cohorts]
-  );
+  const childCohortsByCohort = useMemo(() => groupChildCohortsByParent(cohorts), [cohorts]);
+  const getClusterQueueCount = (cohort: Cohort) => {
+    if (clusterQueuesError) {
+      return 'Unavailable';
+    }
+
+    if (!clusterQueues) {
+      return 'Loading';
+    }
+
+    return renderRelatedCount(clusterQueuesByCohort.get(cohort.metadata.name));
+  };
+  const getChildCohortCount = (cohort: Cohort) => {
+    if (cohortsError) {
+      return 'Unavailable';
+    }
+
+    if (!cohorts) {
+      return 'Loading';
+    }
+
+    return renderRelatedCount(childCohortsByCohort.get(cohort.metadata.name));
+  };
 
   return (
     <KueueAdminResourceAccess resourceClass={Cohort} resourceLabel="Cohorts" verb="list">
@@ -63,14 +73,12 @@ export default function CohortList() {
           {
             id: 'clusterQueues',
             label: 'ClusterQueues',
-            getValue: (cohort: Cohort) =>
-              renderRelatedCount(clusterQueuesByCohort.get(cohort.metadata.name)),
+            getValue: (cohort: Cohort) => getClusterQueueCount(cohort),
           },
           {
             id: 'childCohorts',
             label: 'Child Cohorts',
-            getValue: (cohort: Cohort) =>
-              renderRelatedCount(childCohortsByCohort.get(cohort.metadata.name)),
+            getValue: (cohort: Cohort) => getChildCohortCount(cohort),
           },
           {
             id: 'resourceGroups',

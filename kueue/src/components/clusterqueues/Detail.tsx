@@ -14,6 +14,7 @@ import {
 } from '../../resources/clusterQueue';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { renderCohortLink } from '../common/KueueResourceLinks';
 
 /** Flattened row rendered in the ClusterQueue resource groups table. */
 interface ResourceGroupRow {
@@ -58,21 +59,6 @@ function renderFlavorLink(flavorName: string) {
   return (
     <Link routeName={kueueRouteNames.resourceFlavorDetail} params={{ name: flavorName }}>
       {flavorName}
-    </Link>
-  );
-}
-
-/** Render a Cohort reference as a detail-page link. */
-function renderCohortLink(clusterQueue: ClusterQueue) {
-  const cohortName = clusterQueue.spec.cohortName;
-
-  if (!cohortName) {
-    return '-';
-  }
-
-  return (
-    <Link routeName={kueueRouteNames.cohortDetail} params={{ name: cohortName }}>
-      {cohortName}
     </Link>
   );
 }
@@ -311,7 +297,7 @@ export default function ClusterQueueDetail() {
             ? [
                 {
                   name: 'Cohort',
-                  value: renderCohortLink(clusterQueue),
+                  value: renderCohortLink(clusterQueue.spec.cohortName),
                 },
                 {
                   name: 'Queueing Strategy',

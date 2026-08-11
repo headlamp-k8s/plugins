@@ -1,22 +1,7 @@
-import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { ClusterQueue } from '../../resources/clusterQueue';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
-
-/** Render a ClusterQueue Cohort value as a detail-page link when present. */
-function renderCohortLink(clusterQueue: ClusterQueue) {
-  const cohortName = clusterQueue.spec.cohortName;
-
-  if (!cohortName) {
-    return '-';
-  }
-
-  return (
-    <Link routeName={kueueRouteNames.cohortDetail} params={{ name: cohortName }}>
-      {cohortName}
-    </Link>
-  );
-}
+import { renderCohortLink } from '../common/KueueResourceLinks';
 
 export default function ClusterQueueList() {
   return (
@@ -34,7 +19,7 @@ export default function ClusterQueueList() {
             id: 'cohort',
             label: 'Cohort',
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.cohortName,
-            render: (clusterQueue: ClusterQueue) => renderCohortLink(clusterQueue),
+            render: (clusterQueue: ClusterQueue) => renderCohortLink(clusterQueue.spec.cohortName),
           },
           {
             id: 'queueingStrategy',

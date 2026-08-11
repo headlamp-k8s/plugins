@@ -39,3 +39,45 @@ export function getCohortClusterQueues<T extends ClusterQueueCohortRelationshipL
 
   return (clusterQueues || []).filter(clusterQueue => clusterQueue.spec?.cohortName === cohortName);
 }
+
+/** Group Cohorts by parentName in one pass for list relationship counts. */
+export function groupChildCohortsByParent<T extends CohortRelationshipLike>(
+  cohorts: T[] | null | undefined
+) {
+  const cohortsByParent = new Map<string, T[]>();
+
+  for (const cohort of cohorts || []) {
+    const parentName = cohort.spec?.parentName;
+
+    if (!parentName) {
+      continue;
+    }
+
+    const siblings = cohortsByParent.get(parentName) || [];
+    siblings.push(cohort);
+    cohortsByParent.set(parentName, siblings);
+  }
+
+  return cohortsByParent;
+}
+
+/** Group ClusterQueues by cohortName in one pass for list relationship counts. */
+export function groupClusterQueuesByCohort<T extends ClusterQueueCohortRelationshipLike>(
+  clusterQueues: T[] | null | undefined
+) {
+  const clusterQueuesByCohort = new Map<string, T[]>();
+
+  for (const clusterQueue of clusterQueues || []) {
+    const cohortName = clusterQueue.spec?.cohortName;
+
+    if (!cohortName) {
+      continue;
+    }
+
+    const members = clusterQueuesByCohort.get(cohortName) || [];
+    members.push(clusterQueue);
+    clusterQueuesByCohort.set(cohortName, members);
+  }
+
+  return clusterQueuesByCohort;
+}

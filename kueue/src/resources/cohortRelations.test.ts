@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getChildCohorts, getCohortClusterQueues } from './cohortRelations';
+import {
+  getChildCohorts,
+  getCohortClusterQueues,
+  groupChildCohortsByParent,
+  groupClusterQueuesByCohort,
+} from './cohortRelations';
 
 describe('Cohort relationship helpers', () => {
   it('handles undefined related-resource lists', () => {
@@ -37,5 +42,31 @@ describe('Cohort relationship helpers', () => {
     expect(
       getCohortClusterQueues([{ spec: { cohortName: 'default' } }, { spec: {} }], 'default')
     ).toHaveLength(1);
+  });
+
+  it('groups child Cohorts by parentName', () => {
+    const childA = { spec: { parentName: 'default' } };
+    const childB = { spec: { parentName: 'default' } };
+    const root = { spec: {} };
+
+    const groups = groupChildCohortsByParent([childA, childB, root]);
+
+    expect(groups.get('default')).toEqual([childA, childB]);
+    expect(groups.has('')).toBe(false);
+  });
+
+  it('groups ClusterQueues by cohortName', () => {
+    const clusterQueueA = { spec: { cohortName: 'default' } };
+    const clusterQueueB = { spec: { cohortName: 'default' } };
+    const standaloneClusterQueue = { spec: {} };
+
+    const groups = groupClusterQueuesByCohort([
+      clusterQueueA,
+      clusterQueueB,
+      standaloneClusterQueue,
+    ]);
+
+    expect(groups.get('default')).toEqual([clusterQueueA, clusterQueueB]);
+    expect(groups.has('')).toBe(false);
   });
 });
