@@ -3,8 +3,8 @@
   "version": "0.2.0-alpha",
   "description": "Headlamp plugin for Kubeflow",
   "scripts": {
-    "start": "headlamp-plugin start",
-    "build": "headlamp-plugin build",
+    "start": "node init && headlamp-plugin start",
+    "build": "node init && headlamp-plugin build",
     "format": "headlamp-plugin format",
     "lint": "headlamp-plugin lint",
     "lint-fix": "headlamp-plugin lint --fix",

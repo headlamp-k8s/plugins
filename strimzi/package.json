@@ -26,9 +26,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "headlamp-plugin build",
+    "build": "node init && headlamp-plugin build",
     "package": "headlamp-plugin package",
-    "start": "headlamp-plugin start",
+    "start": "node init && headlamp-plugin start",
     "tsc": "headlamp-plugin tsc",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "lint": "eslint src --ext .ts,.tsx",

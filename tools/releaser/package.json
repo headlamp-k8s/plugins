@@ -8,9 +8,9 @@
     "plugin-releaser": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
-    "start": "tsc && node dist/index.js",
-    "dev": "ts-node src/index.ts"
+    "build": "node init && tsc",
+    "start": "node init && tsc && node dist/index.js",
+    "dev": "node init && ts-node src/index.ts"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",

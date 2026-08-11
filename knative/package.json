@@ -3,8 +3,8 @@
   "version": "0.3.0-beta",
   "description": "A Headlamp plugin for visualizing and managing Knative Services. Provides GUI functionality to list and view service details, edit traffic splitting, update concurrency settings, perform redeploy/restart operations, and reference external/internal HTTPRoutes.",
   "scripts": {
-    "start": "headlamp-plugin start",
-    "build": "headlamp-plugin build",
+    "start": "node init && headlamp-plugin start",
+    "build": "node init && headlamp-plugin build",
     "format": "headlamp-plugin format",
     "lint": "headlamp-plugin lint",
     "lint-fix": "headlamp-plugin lint --fix",

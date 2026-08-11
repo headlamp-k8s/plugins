@@ -3,8 +3,8 @@
   "version": "0.7.0",
   "description": "A UI for viewing and managing Flux for Git Ops",
   "scripts": {
-    "start": "headlamp-plugin start",
-    "build": "headlamp-plugin build",
+    "start": "node init && headlamp-plugin start",
+    "build": "node init && headlamp-plugin build",
     "package": "headlamp-plugin package",
     "format": "headlamp-plugin format",
     "lint": "headlamp-plugin lint",
