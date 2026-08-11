@@ -15,10 +15,16 @@
  */
 
 import type { ClusterDomainClaim, KnativeDomainMapping } from '../resources/knative';
-import { getClusterDomainClaim } from './domain';
+import { createClusterDomainClaim, getClusterDomainClaim } from './domain';
+
+const post = vi.fn();
 
 vi.mock('../resources/knative', () => ({
-  ClusterDomainClaim: class {},
+  ClusterDomainClaim: {
+    kind: 'ClusterDomainClaim',
+    apiVersion: 'networking.internal.knative.dev/v1alpha1',
+    apiEndpoint: { post: (...args: unknown[]) => post(...args) },
+  },
   KnativeDomainMapping: class {},
 }));
 
@@ -48,6 +54,7 @@ function makeDomainMapping(cluster = 'cluster-b', host = HOST): KnativeDomainMap
     get host() {
       return jsonData.metadata.name;
     },
+    patch: vi.fn().mockResolvedValue({}),
   } as unknown as KnativeDomainMapping;
 }
 
@@ -144,5 +151,62 @@ describe('getClusterDomainClaim', () => {
       state: 'unknown',
       claim: null,
     });
+  });
+});
+
+describe('createClusterDomainClaim', () => {
+  beforeEach(() => {
+    post.mockReset();
+    post.mockResolvedValue({});
+  });
+
+  it('rejects a DomainMapping with no host', async () => {
+    await expect(
+      createClusterDomainClaim(makeDomainMapping('cluster-b', ''), NAMESPACE)
+    ).rejects.toThrow('Domain name is missing');
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('creates the claim and annotates the DomainMapping on the happy path', async () => {
+    const domainMapping = makeDomainMapping();
+
+    await expect(createClusterDomainClaim(domainMapping, NAMESPACE)).resolves.toBeUndefined();
+
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: { name: HOST }, spec: { namespace: NAMESPACE } }),
+      {},
+      'cluster-b'
+    );
+    expect(domainMapping.patch).toHaveBeenCalledTimes(1);
+    expect(domainMapping.patch).toHaveBeenCalledWith({
+      metadata: { annotations: { 'knative.headlamp.dev/reconciledAt': expect.any(String) } },
+    });
+  });
+
+  it('reports a claim-creation failure as a ClusterDomainClaim error', async () => {
+    post.mockRejectedValue(new Error('forbidden'));
+
+    await expect(createClusterDomainClaim(makeDomainMapping(), NAMESPACE)).rejects.toThrow(
+      'Failed to create ClusterDomainClaim: forbidden'
+    );
+  });
+
+  it('reports an annotation failure without blaming ClusterDomainClaim creation', async () => {
+    const domainMapping = makeDomainMapping();
+    vi.mocked(domainMapping.patch).mockRejectedValue(new Error('patch conflict'));
+
+    await expect(createClusterDomainClaim(domainMapping, NAMESPACE)).rejects.toThrow(
+      /^Failed to annotate DomainMapping: patch conflict$/
+    );
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats an already-existing claim as success and still annotates', async () => {
+    post.mockRejectedValue(new Error('clusterdomainclaims "app.example.com" already exists'));
+    const domainMapping = makeDomainMapping();
+
+    await expect(createClusterDomainClaim(domainMapping, NAMESPACE)).resolves.toBeUndefined();
+    expect(domainMapping.patch).toHaveBeenCalledTimes(1);
   });
 });
