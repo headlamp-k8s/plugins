@@ -103,6 +103,13 @@ export function ClusterPolicyList() {
           getValue: item => counts.forCluster(item.jsonData.metadata.name)?.total ?? 0,
           render: item => {
             const c = counts.forCluster(item.jsonData.metadata.name);
+            if (counts.error) {
+              return (
+                <Typography variant="body2" color="error">
+                  {t('Unavailable')}
+                </Typography>
+              );
+            }
             if (counts.loading && !c) return <Typography variant="body2">…</Typography>;
             if (!c || c.total === 0) return <Typography variant="body2">—</Typography>;
             return (
