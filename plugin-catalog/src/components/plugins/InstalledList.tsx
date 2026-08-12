@@ -11,7 +11,7 @@ interface Plugin {
   pluginName: string;
   pluginTitle: string;
   pluginVersion: string;
-  folderName: boolean;
+  folderName: string;
   repoName: string;
   author: string;
 }
