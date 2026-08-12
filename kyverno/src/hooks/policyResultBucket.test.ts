@@ -84,4 +84,26 @@ describe('bucketReportResults', () => {
     expect(cluster.size).toBe(0);
     expect(namespaced.size).toBe(0);
   });
+
+  test('safely handles reports with undefined or empty results array', () => {
+    const { cluster, namespaced } = bucketReportResults([
+      { results: undefined },
+      {},
+    ]);
+    expect(cluster.size).toBe(0);
+    expect(namespaced.size).toBe(0);
+  });
+
+  test('ignores entries with missing policy name', () => {
+    const { cluster } = bucketReportResults([
+      {
+        results: [
+          { policy: undefined as unknown as string, result: 'fail' },
+          { policy: 'valid-policy', result: 'pass' },
+        ],
+      },
+    ]);
+    expect(cluster.size).toBe(1);
+    expect(cluster.get('valid-policy')).toEqual({ fail: 0, total: 1 });
+  });
 });
