@@ -15,7 +15,9 @@
  */
 
 import { ClusterDomainClaim, KnativeDomainMapping } from '../resources/knative';
-import { errorDetail, withDetail } from './error';
+import { errorDetail } from './error';
+
+type TFunc = (key: string, options?: Record<string, string>) => string;
 
 export function getClusterDomainClaim(
   dm: KnativeDomainMapping,
@@ -88,17 +90,18 @@ export async function createDomainMapping(
   domainInput: string,
   cluster: string,
   namespace: string,
-  serviceName: string
+  serviceName: string,
+  t: TFunc
 ) {
   const host = domainInput.trim();
   if (!host) {
-    throw new Error('Please enter a domain name');
+    throw new Error(t('Please enter a domain name'));
   }
   if (!isValidDomain(host)) {
-    throw new Error('Invalid domain name format');
+    throw new Error(t('Invalid domain name format'));
   }
   if (!cluster) {
-    throw new Error('No cluster available');
+    throw new Error(t('No cluster available'));
   }
 
   // Create Cluster Domain Claim
@@ -137,16 +140,25 @@ export async function createDomainMapping(
  * no host, and otherwise with an error that names the step that failed: creating the
  * ClusterDomainClaim or annotating the DomainMapping.
  */
-export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespace: string) {
+export async function createClusterDomainClaim(
+  dm: KnativeDomainMapping,
+  namespace: string,
+  t: TFunc
+) {
   const host = dm.host?.trim();
   if (!host) {
-    throw new Error('Domain name is missing');
+    throw new Error(t('Domain name is missing'));
   }
 
   try {
     await ensureClusterDomainClaim({ host, cluster: dm.cluster, namespace });
   } catch (e: unknown) {
-    throw new Error(withDetail('Failed to create ClusterDomainClaim', errorDetail(e)));
+    const detail = errorDetail(e);
+    throw new Error(
+      detail
+        ? t('Failed to create ClusterDomainClaim: {{ detail }}', { detail })
+        : t('Failed to create ClusterDomainClaim')
+    );
   }
 
   // Add dummy annotation to trigger DomainMapping reconciliation
@@ -159,6 +171,11 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
       },
     });
   } catch (e: unknown) {
-    throw new Error(withDetail('Failed to annotate DomainMapping', errorDetail(e)));
+    const detail = errorDetail(e);
+    throw new Error(
+      detail
+        ? t('Failed to annotate DomainMapping: {{ detail }}', { detail })
+        : t('Failed to annotate DomainMapping')
+    );
   }
 }
