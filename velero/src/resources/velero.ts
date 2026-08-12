@@ -1,12 +1,24 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 
+/** Kubernetes label selector requirement (Velero Schedule template). */
+export interface LabelSelectorRequirement {
+  key: string;
+  operator: string;
+  values?: string[];
+}
+
+/** Kubernetes label selector used by Velero `labelSelector` / `orLabelSelectors`. */
+export interface LabelSelector {
+  matchLabels?: Record<string, string>;
+  matchExpressions?: LabelSelectorRequirement[];
+}
+
 /** Backup template fields from a Velero Schedule used for coverage matching. */
 export interface VeleroBackupTemplate {
   includedNamespaces?: string[];
   excludedNamespaces?: string[];
-  labelSelector?: {
-    matchLabels?: Record<string, string>;
-  };
+  labelSelector?: LabelSelector;
+  orLabelSelectors?: LabelSelector[];
   includedResources?: string[];
   excludedResources?: string[];
 }
