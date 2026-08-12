@@ -153,30 +153,7 @@ export function ObjectEventsRenderer(props: { events?: Event[] }) {
   );
 }
 
-export function parseDuration(duration) {
-  const regex = /(\d+)([hms])/g; // Match numbers followed by h, m, or s
-  let totalMilliseconds = 0;
-  let match;
-
-  while ((match = regex.exec(duration)) !== null) {
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-
-    switch (unit) {
-      case 'h':
-        totalMilliseconds += value * 60 * 60 * 1000; // Convert hours to milliseconds
-        break;
-      case 'm':
-        totalMilliseconds += value * 60 * 1000; // Convert minutes to milliseconds
-        break;
-      case 's':
-        totalMilliseconds += value * 1000; // Convert seconds to milliseconds
-        break;
-    }
-  }
-
-  return totalMilliseconds;
-}
+export { parseDuration } from './parseDuration';
 
 export function NameLink(resourceClass: KubeObjectClass) {
   const apiVersion = new String(resourceClass.apiVersion); // explicit String cast is needed for string methods
