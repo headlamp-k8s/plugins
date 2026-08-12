@@ -254,7 +254,7 @@ registerKyvernoPage({
   parent: 'Kyverno',
   label: 'Violations',
   path: '/kyverno/violations',
-  requires: 'reports',
+  requires: 'reportSources',
   component: () => <ViolationsView />,
 });
 

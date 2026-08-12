@@ -16,8 +16,14 @@
 
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ClusterEphemeralReport, EphemeralReport } from '../resources/kyvernoReports';
 import { ClusterPolicyReport, PolicyReport } from '../resources/policyReport';
 import { usePolicyResultCounts } from './usePolicyResultCounts';
+
+vi.mock('../resources/kyvernoReports', () => ({
+  EphemeralReport: { useList: vi.fn() },
+  ClusterEphemeralReport: { useList: vi.fn() },
+}));
 
 vi.mock('../resources/policyReport', () => ({
   PolicyReport: { useList: vi.fn() },
@@ -26,21 +32,33 @@ vi.mock('../resources/policyReport', () => ({
 
 /** Mimics the shape `KubeObject.useList` returns for a still-in-flight query. */
 function pendingList() {
-  return { items: null, errors: null, isLoading: true, isError: false };
+  return { items: null, error: null, errors: null, isLoading: true, isError: false };
 }
 
 /** A list that settled with an error, e.g. the CRD is absent or RBAC denied it. */
 function erroredList() {
-  return { items: null, errors: [new Error('not found')], isLoading: false, isError: true };
+  const error = { status: 404, message: 'not found' };
+  return { items: null, error, errors: [error], isLoading: false, isError: true };
 }
 
 function resolvedList(items: unknown[]) {
-  return { items, errors: null, isLoading: false, isError: false };
+  return { items, error: null, errors: null, isLoading: false, isError: false };
+}
+
+function report(results: { policy: string; result: 'fail' | 'pass'; rule: string }[]) {
+  return {
+    jsonData: { metadata: { name: 'policy-report', namespace: 'default' } },
+    results,
+    scope: undefined,
+    summary: {},
+  };
 }
 
 describe('usePolicyResultCounts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(EphemeralReport.useList).mockReturnValue(resolvedList([]) as any);
+    vi.mocked(ClusterEphemeralReport.useList).mockReturnValue(resolvedList([]) as any);
   });
 
   it('stops loading once a list settles with an error', () => {
@@ -67,12 +85,10 @@ describe('usePolicyResultCounts', () => {
   it('still aggregates the lists that did resolve', () => {
     vi.mocked(PolicyReport.useList).mockReturnValue(
       resolvedList([
-        {
-          results: [
-            { policy: 'default/require-labels', result: 'fail' },
-            { policy: 'default/require-labels', result: 'pass' },
-          ],
-        },
+        report([
+          { policy: 'default/require-labels', result: 'fail', rule: 'require-owner' },
+          { policy: 'default/require-labels', result: 'pass', rule: 'require-team' },
+        ]),
       ]) as any
     );
     vi.mocked(ClusterPolicyReport.useList).mockReturnValue(erroredList() as any);
