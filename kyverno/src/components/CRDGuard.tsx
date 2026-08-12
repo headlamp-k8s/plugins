@@ -38,6 +38,7 @@ export function CRDGuard({ requires, children, message }: CRDGuardProps) {
     ),
     cleanup: t('Kyverno cleanup policies (kyverno.io/v2) were not detected on this cluster.'),
     reports: t('Policy Reports (wgpolicyk8s.io/v1alpha2) were not detected on this cluster.'),
+    reportSources: t('Kyverno report sources were not detected on this cluster.'),
     exceptions: t('Policy Exceptions (kyverno.io/v2) were not detected on this cluster.'),
     kyvernoV2Reports: t(
       'Kyverno admission/background-scan reports (kyverno.io/v2) were not detected on this cluster.'

@@ -25,6 +25,7 @@ import {
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, CircularProgress, Typography } from '@mui/material';
+import { usePolicyReportSources } from '../hooks/usePolicyReportSources';
 import {
   KyvernoClusterPolicy,
   KyvernoPolicy,
@@ -32,7 +33,7 @@ import {
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
-import { ClusterPolicyReport, PolicyReport, PolicyReportResult } from '../resources/policyReport';
+import { PolicyReportResult } from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip } from './common';
 
 interface PolicyViewerProps {
@@ -183,12 +184,9 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
 
 function AssociatedReportsSection({ policyName }: { policyName: string }) {
   const { t } = useTranslation();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { reports, loading: reportsLoading } = usePolicyReportSources();
 
-  // Wait for BOTH streams before rendering — otherwise we'd briefly show a
-  // partial result set as soon as the first list resolves.
-  if (policyReports === null || clusterPolicyReports === null) {
+  if (reportsLoading) {
     return (
       <SectionBox title={t('Associated Report Results')}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
@@ -201,24 +199,13 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
   const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] =
     [];
 
-  for (const report of policyReports) {
+  for (const report of reports) {
     for (const result of report.results) {
       if (result.policy === policyName) {
         matchingResults.push({
           ...result,
           reportName: report.jsonData.metadata.name,
           reportNamespace: report.jsonData.metadata.namespace,
-        });
-      }
-    }
-  }
-
-  for (const report of clusterPolicyReports) {
-    for (const result of report.results) {
-      if (result.policy === policyName) {
-        matchingResults.push({
-          ...result,
-          reportName: report.jsonData.metadata.name,
         });
       }
     }
