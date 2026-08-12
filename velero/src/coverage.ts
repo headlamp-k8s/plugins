@@ -1,5 +1,9 @@
 import { formatNextScheduledRun } from './cron';
-import type { VeleroBackupTemplate } from './resources/velero';
+import type {
+  LabelSelector,
+  LabelSelectorRequirement,
+  VeleroBackupTemplate,
+} from './resources/velero';
 
 /** A Headlamp workload whose Velero schedule coverage should be evaluated. */
 export interface WorkloadTarget {
@@ -85,18 +89,84 @@ function namespaceIncluded(template: VeleroBackupTemplate, namespace: string): b
   return included.includes(namespace);
 }
 
-function labelsMatch(template: VeleroBackupTemplate, labels: Record<string, string>): boolean {
-  const matchLabels = template.labelSelector?.matchLabels;
-  if (!matchLabels || Object.keys(matchLabels).length === 0) {
+function hasSelectorTerms(selector: LabelSelector | undefined): boolean {
+  if (!selector) {
+    return false;
+  }
+  return (
+    Object.keys(selector.matchLabels ?? {}).length > 0 ||
+    (selector.matchExpressions ?? []).length > 0
+  );
+}
+
+/**
+ * Evaluates one Kubernetes label selector.
+ * Unknown operators fail closed (do not treat as "match all").
+ */
+function matchesLabelSelector(
+  selector: LabelSelector | undefined,
+  labels: Record<string, string>
+): boolean {
+  if (!hasSelectorTerms(selector)) {
     return true;
   }
 
-  return Object.entries(matchLabels).every(([key, value]) => labels[key] === value);
+  const matchLabels = selector!.matchLabels ?? {};
+  for (const [key, value] of Object.entries(matchLabels)) {
+    if (labels[key] !== value) {
+      return false;
+    }
+  }
+
+  for (const expression of selector!.matchExpressions ?? []) {
+    if (!matchesExpression(expression, labels)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function matchesExpression(
+  expression: LabelSelectorRequirement,
+  labels: Record<string, string>
+): boolean {
+  const values = expression.values ?? [];
+  const hasKey = Object.prototype.hasOwnProperty.call(labels, expression.key);
+  const labelValue = labels[expression.key];
+
+  switch (expression.operator) {
+    case 'In':
+      return hasKey && values.includes(labelValue);
+    case 'NotIn':
+      return !hasKey || !values.includes(labelValue);
+    case 'Exists':
+      return hasKey;
+    case 'DoesNotExist':
+      return !hasKey;
+    default:
+      // Unknown operator: fail closed so we never report false coverage.
+      return false;
+  }
+}
+
+/**
+ * Velero uses `orLabelSelectors` when set (match if any selector matches),
+ * otherwise `labelSelector`. Empty / missing selectors match all resources.
+ */
+function labelsMatch(template: VeleroBackupTemplate, labels: Record<string, string>): boolean {
+  const orSelectors = template.orLabelSelectors ?? [];
+  if (orSelectors.length > 0) {
+    return orSelectors.some(selector => matchesLabelSelector(selector, labels));
+  }
+
+  return matchesLabelSelector(template.labelSelector, labels);
 }
 
 /**
  * Returns whether a Velero schedule template covers the given workload.
- * Matches included/excluded namespaces and resources, then label selectors.
+ * Matches included/excluded namespaces and resources, then label selectors
+ * (`matchLabels`, `matchExpressions`, and Velero `orLabelSelectors`).
  */
 export function scheduleCoversWorkload(
   schedule: ScheduleCoverageInput,
