@@ -8,6 +8,7 @@ Shows whether a workload or namespace is covered by a Velero backup schedule —
 
 - **Deployment, StatefulSet, PVC** detail views — matching schedules, cron, next run, last backup status
 - **Namespace** detail view — schedules with any coverage in that namespace
+- Coverage matching uses Schedule template include/exclude filters and label selectors (`matchLabels`, `matchExpressions`, `orLabelSelectors`). Unknown selector operators fail closed (not reported as covered).
 - **Read-only** — no backup or restore actions
 - **Velero not installed** — clear empty state
 

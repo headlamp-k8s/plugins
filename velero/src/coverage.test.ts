@@ -72,6 +72,114 @@ describe('scheduleCoversWorkload', () => {
     ).toBe(false);
   });
 
+  test('evaluates matchExpressions instead of treating them as match-all', () => {
+    const schedule = {
+      name: 'env-prod',
+      template: {
+        includedNamespaces: ['apps'],
+        includedResources: ['deployments'],
+        labelSelector: {
+          matchExpressions: [{ key: 'env', operator: 'In', values: ['prod'] }],
+        },
+      },
+    };
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: { env: 'prod' },
+        resourceKind: 'deployments',
+      })
+    ).toBe(true);
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: { env: 'dev' },
+        resourceKind: 'deployments',
+      })
+    ).toBe(false);
+  });
+
+  test('requires both matchLabels and matchExpressions', () => {
+    const schedule = {
+      name: 'api-prod',
+      template: {
+        includedNamespaces: ['apps'],
+        includedResources: ['deployments'],
+        labelSelector: {
+          matchLabels: { app: 'api' },
+          matchExpressions: [{ key: 'env', operator: 'In', values: ['prod'] }],
+        },
+      },
+    };
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: { app: 'api', env: 'prod' },
+        resourceKind: 'deployments',
+      })
+    ).toBe(true);
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: { app: 'api', env: 'dev' },
+        resourceKind: 'deployments',
+      })
+    ).toBe(false);
+  });
+
+  test('matches orLabelSelectors if any selector matches', () => {
+    const schedule = {
+      name: 'or-labels',
+      template: {
+        includedNamespaces: ['apps'],
+        includedResources: ['deployments'],
+        orLabelSelectors: [{ matchLabels: { app: 'web' } }, { matchLabels: { app: 'api' } }],
+      },
+    };
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: { app: 'api' },
+        resourceKind: 'deployments',
+      })
+    ).toBe(true);
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: { app: 'other' },
+        resourceKind: 'deployments',
+      })
+    ).toBe(false);
+  });
+
+  test('fails closed on unknown matchExpressions operators', () => {
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'unknown-op',
+          template: {
+            includedNamespaces: ['apps'],
+            includedResources: ['deployments'],
+            labelSelector: {
+              matchExpressions: [{ key: 'env', operator: 'Gt', values: ['1'] }],
+            },
+          },
+        },
+        {
+          namespace: 'apps',
+          labels: { env: '2' },
+          resourceKind: 'deployments',
+        }
+      )
+    ).toBe(false);
+  });
+
   test('rejects PVC when schedule only includes deployments', () => {
     const schedule = {
       name: 'deployments-only',
