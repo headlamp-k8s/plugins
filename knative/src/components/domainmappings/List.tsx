@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   CreateResourceButton,
   Link,
@@ -153,6 +154,7 @@ export function useDomainMappingColumns(
 }
 
 function DomainMappingsListContents({ clusters }: { clusters: string[] }) {
+  const { t } = useTranslation();
   const { notifyError, notifyInfo } = useNotify();
 
   // We need to fetch ClusterDomainClaims to cross-reference their status
@@ -194,7 +196,7 @@ function DomainMappingsListContents({ clusters }: { clusters: string[] }) {
                 dm={dm}
                 onAction={async () => {
                   try {
-                    await createClusterDomainClaim(dm, namespace);
+                    await createClusterDomainClaim(dm, namespace, t);
                     notifyInfo('ClusterDomainClaim created');
                   } catch (err: unknown) {
                     const error = err as { message?: string } | undefined;
