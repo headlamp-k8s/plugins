@@ -8,6 +8,7 @@ import { FormControlLabel } from '@mui/material';
 import { isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import semver from 'semver';
+import { getExternalProxyEndpoint } from './externalProxy';
 import { PluginCard } from './PluginCard';
 
 const PAGE_SIZE = 60; // Maximum allowed by the API
@@ -20,7 +21,6 @@ type conf = {
 };
 
 const configStore = new ConfigStore<conf>('@headlamp-k8s/plugin-catalog');
-
 export interface PluginPackage {
   package_id: string;
   name: string;
@@ -75,7 +75,7 @@ async function fetchPlugins(offset: number, org?: string) {
   const queryString = new URLSearchParams(params).toString();
   const finalUrl = `${url}?${queryString}`;
 
-  const response = await fetch(`http://localhost:4466/externalproxy`, {
+  const response = await fetch(getExternalProxyEndpoint(), {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
