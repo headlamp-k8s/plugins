@@ -456,8 +456,6 @@ export function PluginDetail() {
         // has already picked (this runs again whenever currentAction changes).
         setSelectedVersion(prev => prev || enrichedPluginData.version);
       }
-
-      fetchStatus();
     };
 
     initialize();
