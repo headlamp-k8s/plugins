@@ -165,7 +165,7 @@ export default function AutoscalingSettings({
 
       const metricToSave: 'concurrency' | 'rps' | null | undefined = metric
         ? (metric as 'concurrency' | 'rps')
-        : prevAnns['autoscaling.knative.dev/metric']
+        : 'autoscaling.knative.dev/metric' in prevAnns
         ? null
         : undefined;
 
@@ -173,13 +173,13 @@ export default function AutoscalingSettings({
         metric: metricToSave,
         target:
           target === ''
-            ? prevAnns['autoscaling.knative.dev/target']
+            ? 'autoscaling.knative.dev/target' in prevAnns
               ? null
               : undefined
             : Number(target),
         targetUtilization:
           util === ''
-            ? prevAnns['autoscaling.knative.dev/target-utilization-percentage']
+            ? 'autoscaling.knative.dev/target-utilization-percentage' in prevAnns
               ? null
               : undefined
             : Number(util),

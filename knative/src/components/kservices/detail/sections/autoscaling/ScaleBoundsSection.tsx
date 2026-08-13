@@ -150,10 +150,10 @@ export default function ScaleBoundsSection({
       const prevAnns = kservice.spec.template.metadata?.annotations ?? {};
 
       function numOrClear(key: string, val: string): number | null | undefined {
-        return val === '' ? (prevAnns[key] ? null : undefined) : Number(val);
+        return val === '' ? (key in prevAnns ? null : undefined) : Number(val);
       }
       function strOrClear(key: string, val: string): string | null | undefined {
-        return val === '' ? (prevAnns[key] ? null : undefined) : val;
+        return val === '' ? (key in prevAnns ? null : undefined) : val;
       }
 
       const patchBody = KService.buildAutoscalingPatch({
