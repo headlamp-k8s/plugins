@@ -41,6 +41,26 @@ export type AutoscalingPatchBody = {
   };
 };
 
+export function annNumOrClear(
+  prevAnns: Record<string, string>,
+  key: string,
+  val: string
+): number | null | undefined {
+  return val === '' ? (key in prevAnns ? null : undefined) : Number(val);
+}
+
+export function annStrOrClear(
+  prevAnns: Record<string, string>,
+  key: string,
+  val: string
+): string | null | undefined {
+  return val === '' ? (key in prevAnns ? null : undefined) : val;
+}
+
+export function specNumOrClear(prev: number | undefined, val: string): number | null | undefined {
+  return val === '' ? (typeof prev === 'number' ? null : undefined) : Number(val);
+}
+
 export function buildAutoscalingPatch(params: AutoscalingParams): AutoscalingPatchBody | null {
   const {
     metric,

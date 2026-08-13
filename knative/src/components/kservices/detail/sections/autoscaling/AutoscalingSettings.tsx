@@ -28,7 +28,7 @@ import {
   Typography,
 } from '@mui/material';
 import React from 'react';
-import { KService } from '../../../../../resources/knative';
+import { annNumOrClear, KService, specNumOrClear } from '../../../../../resources/knative';
 import { useNotify } from '../../../../common/notifications/useNotify';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
@@ -171,20 +171,13 @@ export default function AutoscalingSettings({
 
       const patchBody = KService.buildAutoscalingPatch({
         metric: metricToSave,
-        target:
-          target === ''
-            ? 'autoscaling.knative.dev/target' in prevAnns
-              ? null
-              : undefined
-            : Number(target),
-        targetUtilization:
-          util === ''
-            ? 'autoscaling.knative.dev/target-utilization-percentage' in prevAnns
-              ? null
-              : undefined
-            : Number(util),
-        containerConcurrency:
-          hard === '' ? (typeof prevHard === 'number' ? null : undefined) : Number(hard),
+        target: annNumOrClear(prevAnns, 'autoscaling.knative.dev/target', target),
+        targetUtilization: annNumOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/target-utilization-percentage',
+          util
+        ),
+        containerConcurrency: specNumOrClear(prevHard, hard),
       });
 
       if (patchBody) {

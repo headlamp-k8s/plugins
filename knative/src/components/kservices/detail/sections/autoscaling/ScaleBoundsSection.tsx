@@ -17,7 +17,7 @@
 import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
-import { KService } from '../../../../../resources/knative';
+import { annNumOrClear, annStrOrClear, KService } from '../../../../../resources/knative';
 import { useNotify } from '../../../../common/notifications/useNotify';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
@@ -149,20 +149,25 @@ export default function ScaleBoundsSection({
 
       const prevAnns = kservice.spec.template.metadata?.annotations ?? {};
 
-      function numOrClear(key: string, val: string): number | null | undefined {
-        return val === '' ? (key in prevAnns ? null : undefined) : Number(val);
-      }
-      function strOrClear(key: string, val: string): string | null | undefined {
-        return val === '' ? (key in prevAnns ? null : undefined) : val;
-      }
-
       const patchBody = KService.buildAutoscalingPatch({
-        minScale: numOrClear('autoscaling.knative.dev/min-scale', minScale),
-        maxScale: numOrClear('autoscaling.knative.dev/max-scale', maxScale),
-        initialScale: numOrClear('autoscaling.knative.dev/initial-scale', initialScale),
-        activationScale: numOrClear('autoscaling.knative.dev/activation-scale', activationScale),
-        scaleDownDelay: strOrClear('autoscaling.knative.dev/scale-down-delay', scaleDownDelay),
-        stableWindow: strOrClear('autoscaling.knative.dev/window', stableWindow),
+        minScale: annNumOrClear(prevAnns, 'autoscaling.knative.dev/min-scale', minScale),
+        maxScale: annNumOrClear(prevAnns, 'autoscaling.knative.dev/max-scale', maxScale),
+        initialScale: annNumOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/initial-scale',
+          initialScale
+        ),
+        activationScale: annNumOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/activation-scale',
+          activationScale
+        ),
+        scaleDownDelay: annStrOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/scale-down-delay',
+          scaleDownDelay
+        ),
+        stableWindow: annStrOrClear(prevAnns, 'autoscaling.knative.dev/window', stableWindow),
       });
 
       if (patchBody) {

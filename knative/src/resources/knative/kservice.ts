@@ -20,12 +20,16 @@ import {
   type KubeObjectInterface,
 } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import {
+  annNumOrClear,
+  annStrOrClear,
   type AutoscalingParams,
   type AutoscalingPatchBody,
   buildAutoscalingPatch,
+  specNumOrClear,
 } from './autoscalingPatch';
 import type { Condition } from './common';
 
+export { annNumOrClear, annStrOrClear, specNumOrClear };
 export type { AutoscalingParams, AutoscalingPatchBody };
 
 export type Traffic = {

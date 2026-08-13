@@ -14,7 +14,12 @@
  * limitations under the License.
  */
 
-import { buildAutoscalingPatch } from './autoscalingPatch';
+import {
+  annNumOrClear,
+  annStrOrClear,
+  buildAutoscalingPatch,
+  specNumOrClear,
+} from './autoscalingPatch';
 
 describe('buildAutoscalingPatch', () => {
   it('returns null when all params are undefined (no-op)', () => {
@@ -86,19 +91,10 @@ describe('buildAutoscalingPatch', () => {
   });
 });
 
-describe('caller-level: annotation clearing translates to null', () => {
-  it('previously-set annotation cleared by blank produces null', () => {
-    const prevAnns: Record<string, string> = {
-      'autoscaling.knative.dev/min-scale': '2',
-    };
-    const minScale = '';
-
-    const param =
-      minScale === ''
-        ? 'autoscaling.knative.dev/min-scale' in prevAnns
-          ? null
-          : undefined
-        : Number(minScale);
+describe('caller helpers: annNumOrClear / annStrOrClear / specNumOrClear', () => {
+  it('annNumOrClear: previously-set annotation cleared by blank produces null', () => {
+    const prevAnns: Record<string, string> = { 'autoscaling.knative.dev/min-scale': '2' };
+    const param = annNumOrClear(prevAnns, 'autoscaling.knative.dev/min-scale', '');
     const patch = buildAutoscalingPatch({ minScale: param });
 
     expect(patch).not.toBeNull();
@@ -107,54 +103,57 @@ describe('caller-level: annotation clearing translates to null', () => {
     );
   });
 
-  it('absent annotation cleared by blank remains undefined (no-op)', () => {
+  it('annNumOrClear: absent annotation cleared by blank remains undefined (no-op)', () => {
     const prevAnns: Record<string, string> = {};
-    const minScale = '';
-
-    const param =
-      minScale === ''
-        ? 'autoscaling.knative.dev/min-scale' in prevAnns
-          ? null
-          : undefined
-        : Number(minScale);
+    const param = annNumOrClear(prevAnns, 'autoscaling.knative.dev/min-scale', '');
     const patch = buildAutoscalingPatch({ minScale: param });
 
     expect(patch).toBeNull();
   });
 
-  it('previously-set containerConcurrency cleared by blank produces null', () => {
-    const prevHard: number | undefined = 10;
-    const hard = '';
+  it('annNumOrClear: non-blank value produces number', () => {
+    const prevAnns: Record<string, string> = {};
+    const param = annNumOrClear(prevAnns, 'autoscaling.knative.dev/min-scale', '5');
+    expect(param).toBe(5);
+  });
 
-    const param = hard === '' ? (typeof prevHard === 'number' ? null : undefined) : Number(hard);
+  it('annStrOrClear: previously-set string annotation cleared by blank produces null', () => {
+    const prevAnns: Record<string, string> = {
+      'autoscaling.knative.dev/scale-down-delay': '15m',
+    };
+    const param = annStrOrClear(prevAnns, 'autoscaling.knative.dev/scale-down-delay', '');
+    const patch = buildAutoscalingPatch({ scaleDownDelay: param });
+
+    expect(patch).not.toBeNull();
+    expect(
+      patch!.spec.template.metadata!.annotations!['autoscaling.knative.dev/scale-down-delay']
+    ).toBe(null);
+  });
+
+  it('annStrOrClear: non-blank value produces string', () => {
+    const prevAnns: Record<string, string> = {};
+    const param = annStrOrClear(prevAnns, 'autoscaling.knative.dev/scale-down-delay', '30s');
+    expect(param).toBe('30s');
+  });
+
+  it('specNumOrClear: previously-set containerConcurrency cleared by blank produces null', () => {
+    const param = specNumOrClear(10, '');
     const patch = buildAutoscalingPatch({ containerConcurrency: param });
 
     expect(patch).not.toBeNull();
     expect(patch!.spec.template.spec!.containerConcurrency).toBe(null);
   });
 
-  it('absent containerConcurrency cleared by blank remains undefined (no-op)', () => {
-    const prevHard: number | undefined = undefined;
-    const hard = '';
-
-    const param = hard === '' ? (typeof prevHard === 'number' ? null : undefined) : Number(hard);
+  it('specNumOrClear: absent containerConcurrency cleared by blank remains undefined (no-op)', () => {
+    const param = specNumOrClear(undefined, '');
     const patch = buildAutoscalingPatch({ containerConcurrency: param });
 
     expect(patch).toBeNull();
   });
 
-  it('uses key presence not truthiness for annotations', () => {
-    const prevAnns: Record<string, string> = {
-      'autoscaling.knative.dev/min-scale': '',
-    };
-    const minScale = '';
-
-    const param =
-      minScale === ''
-        ? 'autoscaling.knative.dev/min-scale' in prevAnns
-          ? null
-          : undefined
-        : Number(minScale);
+  it('annNumOrClear: uses key presence not truthiness (empty-string value)', () => {
+    const prevAnns: Record<string, string> = { 'autoscaling.knative.dev/min-scale': '' };
+    const param = annNumOrClear(prevAnns, 'autoscaling.knative.dev/min-scale', '');
     const patch = buildAutoscalingPatch({ minScale: param });
 
     expect(patch).not.toBeNull();
