@@ -1,4 +1,6 @@
 export const kueueRouteNames = {
+  admissionChecksList: 'kueue-admissionchecks-list',
+  admissionCheckDetail: 'kueue-admissioncheck-detail',
   clusterQueuesList: 'kueue-clusterqueues-list',
   clusterQueueDetail: 'kueue-clusterqueue-detail',
   localQueuesList: 'kueue-localqueues-list',
@@ -10,6 +12,8 @@ export const kueueRouteNames = {
 } as const;
 
 export const kueueRoutePaths = {
+  admissionChecksList: '/kueue/admissionchecks',
+  admissionCheckDetail: '/kueue/admissionchecks/:name',
   clusterQueuesList: '/kueue/clusterqueues',
   clusterQueueDetail: '/kueue/clusterqueues/:name',
   localQueuesList: '/kueue/localqueues',
