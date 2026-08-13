@@ -19,9 +19,11 @@ import {
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
+import { DetachActionButton } from './BareMetalHost/DetachActionButton';
 import { BareMetalHostDetail } from './BareMetalHost/Details';
 import { BareMetalHosts } from './BareMetalHost/List';
 import { PowerActionButton } from './BareMetalHost/PowerActionButton';
+import { RebootActionButton } from './BareMetalHost/RebootActionButton';
 import { Metal3ClusterDetail } from './Metal3Cluster/Details';
 import { Metal3Clusters } from './Metal3Cluster/List';
 import { Metal3ClusterTemplateDetail } from './Metal3ClusterTemplate/Details';
@@ -276,3 +278,9 @@ registerRoute({
 
 // Power on/off action on the BareMetalHost detail view. Toggles spec.online.
 registerDetailsViewHeaderAction(PowerActionButton);
+
+// Reboot action on the BareMetalHost detail view (reboot annotation, soft or hard).
+registerDetailsViewHeaderAction(RebootActionButton);
+
+// Detach action on the BareMetalHost detail view (detached annotation; toggles attach).
+registerDetailsViewHeaderAction(DetachActionButton);
