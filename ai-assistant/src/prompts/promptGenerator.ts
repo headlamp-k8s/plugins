@@ -7,6 +7,9 @@ export interface PromptEvent {
   resource?: { kind?: string; [key: string]: unknown };
   resources?: Array<{ kind?: string; [key: string]: unknown }>;
   objectEvent?: { events?: unknown[] };
+  project?: { id?: string; [key: string]: unknown };
+  projects?: unknown[];
+  projectTab?: string;
 }
 
 /**
@@ -28,6 +31,20 @@ export function generatePrompts(event: PromptEvent | null | undefined): string[]
 
   // Context-specific prompts
   const contextPrompts: string[] = [];
+
+  if (event?.project) {
+    contextPrompts.push('Is everything healthy in this project?');
+    contextPrompts.push('Summarize the resources in this project');
+
+    if (event.projectTab) {
+      contextPrompts.push(`What should I check in the ${event.projectTab} tab?`);
+    }
+  }
+
+  if (event?.projects && Array.isArray(event.projects)) {
+    contextPrompts.push('Which projects need my attention?');
+    contextPrompts.push('Summarize the status of these projects');
+  }
 
   if (event?.resource) {
     const resource = event.resource;

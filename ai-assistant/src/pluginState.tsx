@@ -133,6 +133,19 @@ export function initializeToolsState(pluginSettings: unknown) {
 //   };
 // }
 
+/**
+ * Headlamp project shape, mirrored locally because @kinvolk/headlamp-plugin
+ * does not export the project event types.
+ */
+export interface ProjectSummary {
+  /** Project identifier, also used as its display name. */
+  id: string;
+  /** Namespaces that belong to the project. */
+  namespaces: string[];
+  /** Clusters the project spans. */
+  clusters: string[];
+}
+
 export type HeadlampEventPayload =
   | {
       type: 'headlamp.home-page-loaded';
@@ -141,6 +154,36 @@ export type HeadlampEventPayload =
       clusters: any;
       errors: any;
       resource?: EventListEvent['data']['resource'];
+      resources?: any;
+      resourceKind?: string;
+      objectEvent?: any;
+    }
+  | {
+      type: 'headlamp.project-list-view';
+      title?: string;
+      items?: any[];
+      projects: ProjectSummary[];
+      resource?: any;
+      resources?: any;
+      resourceKind?: string;
+      objectEvent?: any;
+    }
+  | {
+      type:
+        | 'headlamp.project-details-view'
+        | 'headlamp.project-details-tab-change'
+        | 'headlamp.create-project'
+        | 'headlamp.delete-project';
+      title?: string;
+      items?: any[];
+      project: ProjectSummary;
+      /** Selected tab in the project details view. */
+      projectTab?: string;
+      /** Tab that was selected before the current one. */
+      previousProjectTab?: string;
+      /** Whether project namespaces were deleted along with the project. */
+      deleteNamespaces?: boolean;
+      resource?: any;
       resources?: any;
       resourceKind?: string;
       objectEvent?: any;
