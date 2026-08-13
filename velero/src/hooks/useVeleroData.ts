@@ -14,6 +14,7 @@ function toScheduleInput(schedule: VeleroSchedule): ScheduleCoverageInput {
   return {
     name: schedule.metadata.name,
     cronSchedule: schedule.cronSchedule,
+    paused: schedule.paused,
     template: schedule.template,
   };
 }

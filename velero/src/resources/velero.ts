@@ -26,6 +26,8 @@ export interface VeleroBackupTemplate {
 /** Velero Schedule CRD (velero.io/v1). */
 export interface VeleroScheduleSpec {
   schedule?: string;
+  /** When true, Velero does not create new backups for this schedule. */
+  paused?: boolean;
   template?: VeleroBackupTemplate;
 }
 
@@ -56,6 +58,10 @@ export class VeleroSchedule extends KubeObject<VeleroScheduleInterface> {
 
   get cronSchedule(): string {
     return this.spec?.schedule ?? '';
+  }
+
+  get paused(): boolean {
+    return !!this.spec?.paused;
   }
 
   get template(): VeleroBackupTemplate {

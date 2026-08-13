@@ -5,6 +5,9 @@ import type {
   VeleroBackupTemplate,
 } from './resources/velero';
 
+/** Label Velero uses to skip an individual resource from backup. */
+export const VELERO_EXCLUDE_FROM_BACKUP_LABEL = 'velero.io/exclude-from-backup';
+
 /** A Headlamp workload whose Velero schedule coverage should be evaluated. */
 export interface WorkloadTarget {
   namespace: string;
@@ -17,6 +20,8 @@ export interface ScheduleCoverageInput {
   name: string;
   template: VeleroBackupTemplate;
   cronSchedule?: string;
+  /** When true, the schedule does not create new backups. */
+  paused?: boolean;
 }
 
 /** Normalized Velero Backup fields joined onto schedule coverage results. */
@@ -34,6 +39,8 @@ export interface ScheduleCoverageResult {
   cronSchedule?: string;
   nextScheduledRun?: string;
   lastBackup?: BackupCoverageInput;
+  /** True when the schedule is paused and will not create new backups. */
+  paused?: boolean;
 }
 
 const DEPLOYMENT_ALIASES = new Set(['deployments', 'deployments.apps']);
@@ -75,18 +82,57 @@ function resourceIncluded(
   return included.some(name => aliases.has(name) || included.includes(kind));
 }
 
+/**
+ * Matches a Velero namespace glob pattern (`*`, `?`, `[abc]`) against a namespace.
+ * See https://velero.io/docs/main/namespace-glob-patterns/
+ */
+export function matchesNamespaceGlob(pattern: string, namespace: string): boolean {
+  if (pattern === '*') {
+    return true;
+  }
+
+  let re = '^';
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern[i];
+    if (c === '*') {
+      re += '.*';
+    } else if (c === '?') {
+      re += '.';
+    } else if (c === '[') {
+      const end = pattern.indexOf(']', i + 1);
+      if (end === -1) {
+        re += '\\[';
+      } else {
+        re += pattern.slice(i, end + 1);
+        i = end;
+      }
+    } else if (/[.+^${}()|\\]/.test(c)) {
+      re += `\\${c}`;
+    } else {
+      re += c;
+    }
+  }
+  re += '$';
+  return new RegExp(re).test(namespace);
+}
+
 function namespaceIncluded(template: VeleroBackupTemplate, namespace: string): boolean {
   const excluded = template.excludedNamespaces ?? [];
-  if (excluded.includes(namespace)) {
+  if (excluded.some(pattern => matchesNamespaceGlob(pattern, namespace))) {
     return false;
   }
 
   const included = template.includedNamespaces ?? [];
-  if (included.length === 0) {
+  // Empty or explicit '*' means all namespaces (Velero default).
+  if (included.length === 0 || included.some(pattern => pattern === '*')) {
     return true;
   }
 
-  return included.includes(namespace);
+  return included.some(pattern => matchesNamespaceGlob(pattern, namespace));
+}
+
+function isExcludedFromBackup(labels: Record<string, string>): boolean {
+  return labels[VELERO_EXCLUDE_FROM_BACKUP_LABEL] === 'true';
 }
 
 function hasSelectorTerms(selector: LabelSelector | undefined): boolean {
@@ -165,13 +211,21 @@ function labelsMatch(template: VeleroBackupTemplate, labels: Record<string, stri
 
 /**
  * Returns whether a Velero schedule template covers the given workload.
- * Matches included/excluded namespaces and resources, then label selectors
- * (`matchLabels`, `matchExpressions`, and Velero `orLabelSelectors`).
+ * Matches included/excluded namespaces (with Velero globs) and resources,
+ * label selectors (`matchLabels`, `matchExpressions`, `orLabelSelectors`),
+ * and the `velero.io/exclude-from-backup` label.
+ *
+ * Paused schedules still "match" the template so they can be shown as paused;
+ * callers decide how to present them via {@link ScheduleCoverageResult.paused}.
  */
 export function scheduleCoversWorkload(
   schedule: ScheduleCoverageInput,
   target: WorkloadTarget
 ): boolean {
+  if (isExcludedFromBackup(target.labels)) {
+    return false;
+  }
+
   const template = schedule.template ?? {};
   return (
     namespaceIncluded(template, target.namespace) &&
@@ -199,10 +253,13 @@ function toScheduleCoverageResult(
   schedule: ScheduleCoverageInput,
   backups: BackupCoverageInput[]
 ): ScheduleCoverageResult {
+  const paused = !!schedule.paused;
   return {
     scheduleName: schedule.name,
     cronSchedule: schedule.cronSchedule,
-    nextScheduledRun: formatNextScheduledRun(schedule.cronSchedule),
+    paused,
+    // Paused schedules do not create new backups; do not show a misleading next run.
+    nextScheduledRun: paused ? undefined : formatNextScheduledRun(schedule.cronSchedule),
     lastBackup: getLatestBackupForSchedule(backups, schedule.name),
   };
 }
