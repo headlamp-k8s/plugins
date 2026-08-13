@@ -72,8 +72,8 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
       })
       .catch(err => {
         if (!ignore) {
-          console.error(`Failed to fetch details for chart ${chartName}:`, err);
-          setError(err);
+          console.error(`Failed to fetch details for chart ${chartName} in repo ${repoName}:`, err);
+          setError(err instanceof Error ? err : new Error(String(err)));
         }
       });
 
