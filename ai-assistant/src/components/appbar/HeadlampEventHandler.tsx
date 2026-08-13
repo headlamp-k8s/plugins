@@ -1,8 +1,12 @@
 import { registerHeadlampEventCallback } from '@kinvolk/headlamp-plugin/lib';
-// @todo: this HeadlampEventType import is weird. Maybe fix in headlamp to be better.
-import { DefaultHeadlampEvents as HeadlampEventType } from '@kinvolk/headlamp-plugin/lib/plugin/registry';
 import type { HeadlampEventPayload } from '../../pluginState';
 import { useGlobalState } from '../../pluginState';
+
+const HEADLAMP_EVENT_TYPE = {
+  DETAILS_VIEW: 'headlamp.details-view',
+  LIST_VIEW: 'headlamp.list-view',
+  OBJECT_EVENTS: 'headlamp.object-events',
+} as const;
 
 /**
  * Headless component that registers Headlamp event callbacks.
@@ -31,18 +35,18 @@ export default function HeadlampEventHandler() {
         errors: data.errors,
       } as HeadlampEventPayload);
     }
-    if (event.type === HeadlampEventType.OBJECT_EVENTS) {
+    if (event.type === HEADLAMP_EVENT_TYPE.OBJECT_EVENTS) {
       _pluginState.setEvent({
         ..._pluginState.event,
-        type: HeadlampEventType.OBJECT_EVENTS,
+        type: HEADLAMP_EVENT_TYPE.OBJECT_EVENTS,
         objectEvent: prev.objectEvent,
         resources: data.resources,
         resourceKind: data.resourceKind,
       } as HeadlampEventPayload);
     }
-    if (event.type === HeadlampEventType.DETAILS_VIEW) {
+    if (event.type === HEADLAMP_EVENT_TYPE.DETAILS_VIEW) {
       _pluginState.setEvent({
-        type: HeadlampEventType.DETAILS_VIEW,
+        type: HEADLAMP_EVENT_TYPE.DETAILS_VIEW,
         title: data.title,
         resource: data.resource,
         objectEvent: prev.objectEvent,
@@ -50,9 +54,9 @@ export default function HeadlampEventHandler() {
         resourceKind: data.resourceKind,
       } as HeadlampEventPayload);
     }
-    if (event.type === HeadlampEventType.LIST_VIEW) {
+    if (event.type === HEADLAMP_EVENT_TYPE.LIST_VIEW) {
       _pluginState.setEvent({
-        type: HeadlampEventType.LIST_VIEW,
+        type: HEADLAMP_EVENT_TYPE.LIST_VIEW,
         title: data.title,
         resources: data.resources,
         resourceKind: data.resourceKind,
