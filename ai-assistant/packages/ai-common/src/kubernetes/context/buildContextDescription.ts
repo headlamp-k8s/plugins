@@ -58,6 +58,16 @@ type MinimizedResource = Pick<
   'kind' | 'metadata' | 'status' | '_clusterName'
 >;
 
+/** Headlamp project shape used for context generation. */
+export interface ProjectContext {
+  /** Project identifier, also used as its display name. */
+  id?: string;
+  /** Namespaces that belong to the project. */
+  namespaces?: string[];
+  /** Clusters the project spans. */
+  clusters?: string[];
+}
+
 /** Event payload structure for context generation (platform-agnostic). */
 export interface ContextEventPayload {
   /** Event type or view identifier. */
@@ -72,6 +82,12 @@ export interface ContextEventPayload {
   resources?: KubernetesContextResource[];
   /** Resource kind shared by the resources collection. */
   resourceKind?: string;
+  /** Project currently open in the project details view. */
+  project?: ProjectContext;
+  /** Projects shown in the project list view. */
+  projects?: ProjectContext[];
+  /** Tab selected in the project details view. */
+  projectTab?: string;
 }
 
 /**
@@ -143,6 +159,36 @@ export function generateContextDescription(
   if (event?.title || event?.type) {
     const viewName = event.title || event.type;
     contextParts.push(`Current view: ${viewName}`);
+  }
+
+  // Add project context
+  if (event?.project?.id) {
+    contextParts.push(`Viewing project: ${event.project.id}`);
+
+    if (event.project.namespaces && event.project.namespaces.length > 0) {
+      contextParts.push(`Project namespaces: ${event.project.namespaces.join(', ')}`);
+    }
+    if (event.project.clusters && event.project.clusters.length > 0) {
+      contextParts.push(`Project clusters: ${event.project.clusters.join(', ')}`);
+    }
+    if (event.projectTab) {
+      contextParts.push(`Selected project tab: ${event.projectTab}`);
+    }
+  }
+
+  // Add project list context
+  if (event?.projects && Array.isArray(event.projects)) {
+    const projectCount = event.projects.length;
+    if (projectCount > 0) {
+      contextParts.push(`Showing ${projectCount} project${projectCount !== 1 ? 's' : ''}`);
+
+      const projectNames = event.projects
+        .map(project => project?.id)
+        .filter((id): id is string => !!id);
+      if (projectNames.length > 0) {
+        contextParts.push(`Projects: ${projectNames.join(', ')}`);
+      }
+    }
   }
 
   // Add resource details context
