@@ -159,12 +159,32 @@ export default function AutoscalingSettings({
     if (!isValid() || !cluster) return;
     try {
       setSaving(true);
-      const metricToSave = metric ? (metric as 'concurrency' | 'rps') : undefined;
+
+      const prevAnns = kservice.spec.template?.metadata?.annotations ?? {};
+      const prevHard = kservice.spec.template?.spec?.containerConcurrency;
+
+      const metricToSave: 'concurrency' | 'rps' | null | undefined = metric
+        ? (metric as 'concurrency' | 'rps')
+        : prevAnns['autoscaling.knative.dev/metric']
+        ? null
+        : undefined;
+
       const patchBody = KService.buildAutoscalingPatch({
         metric: metricToSave,
-        target: target === '' ? undefined : Number(target),
-        targetUtilization: util === '' ? undefined : Number(util),
-        containerConcurrency: hard === '' ? undefined : Number(hard),
+        target:
+          target === ''
+            ? prevAnns['autoscaling.knative.dev/target']
+              ? null
+              : undefined
+            : Number(target),
+        targetUtilization:
+          util === ''
+            ? prevAnns['autoscaling.knative.dev/target-utilization-percentage']
+              ? null
+              : undefined
+            : Number(util),
+        containerConcurrency:
+          hard === '' ? (typeof prevHard === 'number' ? null : undefined) : Number(hard),
       });
 
       if (patchBody) {

@@ -146,13 +146,23 @@ export default function ScaleBoundsSection({
     if (!isValid() || !cluster) return;
     try {
       setSaving(true);
+
+      const prevAnns = kservice.spec.template.metadata?.annotations ?? {};
+
+      function numOrClear(key: string, val: string): number | null | undefined {
+        return val === '' ? (prevAnns[key] ? null : undefined) : Number(val);
+      }
+      function strOrClear(key: string, val: string): string | null | undefined {
+        return val === '' ? (prevAnns[key] ? null : undefined) : val;
+      }
+
       const patchBody = KService.buildAutoscalingPatch({
-        minScale: minScale === '' ? undefined : Number(minScale),
-        maxScale: maxScale === '' ? undefined : Number(maxScale),
-        initialScale: initialScale === '' ? undefined : Number(initialScale),
-        activationScale: activationScale === '' ? undefined : Number(activationScale),
-        scaleDownDelay: scaleDownDelay === '' ? undefined : scaleDownDelay,
-        stableWindow: stableWindow === '' ? undefined : stableWindow,
+        minScale: numOrClear('autoscaling.knative.dev/min-scale', minScale),
+        maxScale: numOrClear('autoscaling.knative.dev/max-scale', maxScale),
+        initialScale: numOrClear('autoscaling.knative.dev/initial-scale', initialScale),
+        activationScale: numOrClear('autoscaling.knative.dev/activation-scale', activationScale),
+        scaleDownDelay: strOrClear('autoscaling.knative.dev/scale-down-delay', scaleDownDelay),
+        stableWindow: strOrClear('autoscaling.knative.dev/window', stableWindow),
       });
 
       if (patchBody) {

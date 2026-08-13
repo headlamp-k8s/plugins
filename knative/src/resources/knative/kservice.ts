@@ -30,28 +30,28 @@ export type Traffic = {
   url?: string;
 };
 
-type AutoscalingParams = {
-  metric?: 'concurrency' | 'rps';
-  target?: number;
-  targetUtilization?: number;
-  containerConcurrency?: number;
-  minScale?: number;
-  maxScale?: number;
-  initialScale?: number;
-  activationScale?: number;
-  scaleDownDelay?: string;
-  stableWindow?: string;
+export type AutoscalingParams = {
+  metric?: 'concurrency' | 'rps' | null;
+  target?: number | null;
+  targetUtilization?: number | null;
+  containerConcurrency?: number | null;
+  minScale?: number | null;
+  maxScale?: number | null;
+  initialScale?: number | null;
+  activationScale?: number | null;
+  scaleDownDelay?: string | null;
+  stableWindow?: string | null;
 };
 
-type AutoscalingPatchBody = {
+export type AutoscalingPatchBody = {
   spec: {
     template: {
       metadata?: {
         name?: string | null;
-        annotations?: Record<string, string>;
+        annotations?: Record<string, string | null>;
       };
       spec?: {
-        containerConcurrency?: number;
+        containerConcurrency?: number | null;
       };
     };
   };
@@ -159,7 +159,7 @@ export class KService extends KubeObject<KServiceResource> {
       containerConcurrency,
     } = params;
 
-    const annotationSources: Record<string, string | number | undefined> = {
+    const annotationSources: Record<string, string | number | null | undefined> = {
       'autoscaling.knative.dev/metric': metric,
       'autoscaling.knative.dev/target': target,
       'autoscaling.knative.dev/target-utilization-percentage': targetUtilization,
@@ -171,15 +171,15 @@ export class KService extends KubeObject<KServiceResource> {
       'autoscaling.knative.dev/window': stableWindow,
     };
 
-    const annotationsPatch: Record<string, string> = {};
+    const annotationsPatch: Record<string, string | null> = {};
     for (const [key, value] of Object.entries(annotationSources)) {
       if (typeof value === 'undefined') {
         continue;
       }
-      annotationsPatch[key] = String(value);
+      annotationsPatch[key] = value === null ? null : String(value);
     }
 
-    const templateSpecPatch: { containerConcurrency?: number } = {};
+    const templateSpecPatch: { containerConcurrency?: number | null } = {};
     if (typeof containerConcurrency !== 'undefined') {
       templateSpecPatch.containerConcurrency = containerConcurrency;
     }
