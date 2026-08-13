@@ -5,6 +5,8 @@ import EbpfMaps from './components/daemon/EbpfMaps';
 import HealthDashboard from './components/daemon/HealthDashboard';
 import ObservabilityPanel from './components/daemon/ObservabilityPanel';
 import XdsConfigDump from './components/daemon/XdsConfigDump';
+import KmeshNodeInfoDetail from './components/nodeinfo/Detail';
+import KmeshNodeInfoList from './components/nodeinfo/List';
 import WaypointDetail from './components/waypoints/Detail';
 import WaypointList from './components/waypoints/List';
 import { kmeshRouteNames, kmeshRoutePaths } from './utils/kmeshRoutes';
@@ -86,6 +88,16 @@ const kmeshResources: KmeshResourceRegistration[] = [
     detailRouteName: kmeshRouteNames.waypointDetail,
     ListComponent: WaypointList,
     DetailComponent: WaypointDetail,
+  },
+  {
+    sidebarName: 'kmesh-node-security',
+    label: 'Node Security',
+    listPath: kmeshRoutePaths.nodeInfoList,
+    detailPath: kmeshRoutePaths.nodeInfoDetail,
+    listRouteName: kmeshRouteNames.nodeInfoList,
+    detailRouteName: kmeshRouteNames.nodeInfoDetail,
+    ListComponent: KmeshNodeInfoList,
+    DetailComponent: KmeshNodeInfoDetail,
   },
 ];
 
