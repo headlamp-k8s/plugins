@@ -58,6 +58,7 @@ registerSidebarEntry({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'baremetalhosts',
+  icon: 'mdi:server-network',
   label: 'Bare Metal Hosts',
   url: '/metal3/baremetalhosts',
 });
@@ -83,7 +84,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3machines',
-  label: 'Metal3 Machines',
+  icon: 'mdi:desktop-classic',
+  label: 'Machines',
   url: '/metal3/metal3machines',
 });
 
@@ -105,7 +107,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3machinetemplates',
-  label: 'Metal3 Machine Templates',
+  icon: 'mdi:shape-outline',
+  label: 'Machine Templates',
   url: '/metal3/metal3machinetemplates',
 });
 
@@ -127,7 +130,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3clusters',
-  label: 'Metal3 Clusters',
+  icon: 'mdi:kubernetes',
+  label: 'Clusters',
   url: '/metal3/metal3clusters',
 });
 
@@ -149,7 +153,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3clustertemplates',
-  label: 'Metal3 Cluster Templates',
+  icon: 'mdi:shape-outline',
+  label: 'Cluster Templates',
   url: '/metal3/metal3clustertemplates',
 });
 
@@ -171,7 +176,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3datas',
-  label: 'Metal3 Data',
+  icon: 'mdi:database',
+  label: 'Data',
   url: '/metal3/metal3datas',
 });
 
@@ -193,7 +199,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3dataclaims',
-  label: 'Metal3 Data Claims',
+  icon: 'mdi:database-check',
+  label: 'Data Claims',
   url: '/metal3/metal3dataclaims',
 });
 
@@ -215,7 +222,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3datatemplates',
-  label: 'Metal3 Data Templates',
+  icon: 'mdi:shape-outline',
+  label: 'Data Templates',
   url: '/metal3/metal3datatemplates',
 });
 
@@ -237,7 +245,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3remediations',
-  label: 'Metal3 Remediations',
+  icon: 'mdi:wrench',
+  label: 'Remediations',
   url: '/metal3/metal3remediations',
 });
 
@@ -259,7 +268,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3remediationtemplates',
-  label: 'Metal3 Remediation Templates',
+  icon: 'mdi:shape-outline',
+  label: 'Remediation Templates',
   url: '/metal3/metal3remediationtemplates',
 });
 
