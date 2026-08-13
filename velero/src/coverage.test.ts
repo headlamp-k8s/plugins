@@ -224,6 +224,96 @@ describe('scheduleCoversWorkload', () => {
       )
     ).toBe(false);
   });
+
+  test('matches includedNamespaces glob patterns', () => {
+    const schedule = {
+      name: 'app-ns',
+      template: {
+        includedNamespaces: ['app-*'],
+        includedResources: ['deployments'],
+      },
+    };
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'app-frontend',
+        labels: {},
+        resourceKind: 'deployments',
+      })
+    ).toBe(true);
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'other',
+        labels: {},
+        resourceKind: 'deployments',
+      })
+    ).toBe(false);
+  });
+
+  test('excludes namespaces matched by excludedNamespaces globs (no false coverage)', () => {
+    const schedule = {
+      name: 'all-but-prod',
+      template: {
+        includedNamespaces: ['*'],
+        excludedNamespaces: ['prod-*'],
+        includedResources: ['deployments'],
+      },
+    };
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'prod-api',
+        labels: {},
+        resourceKind: 'deployments',
+      })
+    ).toBe(false);
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'staging',
+        labels: {},
+        resourceKind: 'deployments',
+      })
+    ).toBe(true);
+  });
+
+  test('rejects workload labeled velero.io/exclude-from-backup=true', () => {
+    const schedule = {
+      name: 'daily',
+      template: {
+        includedNamespaces: ['apps'],
+        includedResources: ['deployments'],
+      },
+    };
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: { 'velero.io/exclude-from-backup': 'true' },
+        resourceKind: 'deployments',
+      })
+    ).toBe(false);
+  });
+
+  test('rejects PVC labeled velero.io/exclude-from-backup=true', () => {
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'daily',
+          template: {
+            includedNamespaces: ['apps'],
+            includedResources: ['persistentvolumeclaims'],
+          },
+        },
+        {
+          namespace: 'apps',
+          labels: { 'velero.io/exclude-from-backup': 'true' },
+          resourceKind: 'persistentvolumeclaims',
+        }
+      )
+    ).toBe(false);
+  });
 });
 
 describe('getLatestBackupForSchedule', () => {
@@ -284,6 +374,7 @@ describe('getCoveringSchedules', () => {
         scheduleName: 'daily',
         cronSchedule: '0 7 * * *',
         nextScheduledRun: expect.any(String),
+        paused: false,
         lastBackup: {
           name: 'backup-1',
           scheduleName: 'daily',
@@ -292,6 +383,29 @@ describe('getCoveringSchedules', () => {
         },
       },
     ]);
+  });
+
+  test('marks paused schedules and omits next run', () => {
+    const results = getCoveringSchedules(
+      [
+        {
+          name: 'paused-daily',
+          cronSchedule: '0 7 * * *',
+          paused: true,
+          template: { includedNamespaces: ['apps'], includedResources: ['deployments'] },
+        },
+      ],
+      [],
+      {
+        namespace: 'apps',
+        labels: {},
+        resourceKind: 'deployments',
+      }
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].paused).toBe(true);
+    expect(results[0].nextScheduledRun).toBeUndefined();
   });
 
   test('partial namespace coverage only matches labeled workloads', () => {
@@ -353,6 +467,7 @@ describe('getSchedulesForNamespace', () => {
         scheduleName: 'daily-apps',
         cronSchedule: '0 7 * * *',
         nextScheduledRun: expect.any(String),
+        paused: false,
         lastBackup: {
           name: 'backup-1',
           scheduleName: 'daily-apps',
