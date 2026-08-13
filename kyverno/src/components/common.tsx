@@ -15,7 +15,8 @@
  */
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { Box, Chip, CircularProgress, Link, Tooltip, Typography } from '@mui/material';
+import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Chip, Link, Tooltip, Typography } from '@mui/material';
 import { Trans } from 'react-i18next';
 import { PolicyReportSummary, PolicyResultStatus } from '../resources/policyReport';
 
@@ -80,16 +81,27 @@ export function SummaryChips({ summary }: { summary: PolicyReportSummary }) {
 }
 
 export function NotInstalledBanner({ loading, message }: { loading?: boolean; message?: string }) {
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
-        <CircularProgress />
+        <Loader title={t('Detecting Kyverno resources')} />
       </Box>
     );
   }
 
   return (
-    <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
+    <Box
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      p={2}
+      minHeight="200px"
+    >
       <Box textAlign="center">
         <Typography variant="h5" gutterBottom>
           {message}
