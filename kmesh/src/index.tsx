@@ -1,10 +1,15 @@
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerDetailsViewSection,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
 import type { ComponentType } from 'react';
 import AuthzPolicies from './components/daemon/AuthzPolicies';
 import EbpfMaps from './components/daemon/EbpfMaps';
 import HealthDashboard from './components/daemon/HealthDashboard';
 import ObservabilityPanel from './components/daemon/ObservabilityPanel';
 import XdsConfigDump from './components/daemon/XdsConfigDump';
+import NamespaceEnrollment from './components/namespace/NamespaceEnrollment';
 import KmeshNodeInfoDetail from './components/nodeinfo/Detail';
 import KmeshNodeInfoList from './components/nodeinfo/List';
 import WaypointDetail from './components/waypoints/Detail';
@@ -182,3 +187,6 @@ registerRoute({
   exact: true,
   component: () => <EbpfMaps />,
 });
+
+// Register Namespace Enrollment section in the details view
+registerDetailsViewSection(NamespaceEnrollment);
