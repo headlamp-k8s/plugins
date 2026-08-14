@@ -7,6 +7,8 @@ export const kueueRouteNames = {
   resourceFlavorDetail: 'kueue-resourceflavor-detail',
   workloadsList: 'kueue-workloads-list',
   workloadDetail: 'kueue-workload-detail',
+  admissionChecksList: 'kueue-admissionchecks-list',
+  admissionCheckDetail: 'kueue-admissioncheck-detail',
 } as const;
 
 export const kueueRoutePaths = {
@@ -18,4 +20,6 @@ export const kueueRoutePaths = {
   resourceFlavorDetail: '/kueue/resourceflavors/:name',
   workloadsList: '/kueue/workloads',
   workloadDetail: '/kueue/workloads/:namespace/:name',
+  admissionChecksList: '/kueue/admissionchecks',
+  admissionCheckDetail: '/kueue/admissionchecks/:name',
 } as const;

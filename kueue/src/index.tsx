@@ -8,6 +8,8 @@ import ResourceFlavorList from './components/resourceflavors/List';
 import WorkloadDetail from './components/workloads/Detail';
 import WorkloadList from './components/workloads/List';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
+import AdmissionCheckDetail from './components/admissionchecks/Detail';
+import AdmissionCheckList from './components/admissionchecks/List';
 
 registerSidebarEntry({
   parent: null,
@@ -59,6 +61,29 @@ registerRoute({
   name: kueueRouteNames.clusterQueueDetail,
   exact: true,
   component: () => <ClusterQueueDetail />,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-admissionchecks',
+  label: 'AdmissionChecks',
+  url: kueueRoutePaths.admissionChecksList,
+});
+
+registerRoute({
+  path: kueueRoutePaths.admissionChecksList,
+  sidebar: 'kueue-admissionchecks',
+  name: kueueRouteNames.admissionChecksList,
+  exact: true,
+  component: () => <AdmissionCheckList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.admissionCheckDetail,
+  sidebar: 'kueue-admissionchecks',
+  name: kueueRouteNames.admissionCheckDetail,
+  exact: true,
+  component: () => <AdmissionCheckDetail />,
 });
 
 registerRoute({
