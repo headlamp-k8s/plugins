@@ -6,7 +6,20 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { BmcTask } from '../../../resources/bmcTask';
-import { fallback, renderRecordSection, renderUnknownValue } from '../../common/detailHelpers';
+import { fallback, renderUnknownValue } from '../../common/detailHelpers';
+
+/**
+ * Gets the BMC operation name from the task data key.
+ *
+ * @param item - BMC Task resource to inspect.
+ * @returns First task data key, or a fallback field if present.
+ */
+function getTaskOperation(item: BmcTask): string {
+  const task = item.spec?.task;
+  const taskKey = task ? Object.keys(task)[0] : undefined;
+
+  return fallback(taskKey ?? task?.type ?? task?.action);
+}
 
 /**
  * Renders the Tinkerbell BMC Task detail view.
@@ -21,17 +34,12 @@ export function BmcTaskDetail() {
       resourceType={BmcTask}
       name={name}
       namespace={namespace}
-      withEvents
       extraInfo={item =>
         item
           ? [
               {
                 name: 'Operation',
-                value: fallback(item.spec?.task?.type ?? item.spec?.task?.action),
-              },
-              {
-                name: 'Connection',
-                value: fallback(item.spec?.connection ? 'Configured' : undefined),
+                value: getTaskOperation(item),
               },
               { name: 'Started', value: fallback(item.status?.startTime) },
               { name: 'Completed', value: fallback(item.status?.completionTime) },
@@ -49,17 +57,13 @@ export function BmcTaskDetail() {
                       rows={[
                         {
                           name: 'Operation',
-                          value: fallback(item.spec?.task?.type ?? item.spec?.task?.action),
+                          value: getTaskOperation(item),
                         },
                         { name: 'Task Data', value: renderUnknownValue(item.spec?.task) },
                       ]}
                     />
                   </SectionBox>
                 ),
-              },
-              {
-                id: 'tinkerbell.bmc-task-connection',
-                section: renderRecordSection('Connection', item.spec?.connection),
               },
               {
                 id: 'tinkerbell.bmc-task-timing',

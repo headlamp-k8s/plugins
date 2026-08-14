@@ -232,7 +232,9 @@ export interface BpfBackendValue {
 }
 
 export interface BpfFrontendValue {
-  /** Upstream identifier for the frontend */
+  /** Frontend IP address (VIP or pod IP) — the routing table key */
+  ip?: string;
+  /** Upstream identifier for the frontend (service or backend ID) */
   upstreamId?: string;
 }
 
@@ -244,6 +246,12 @@ export interface BpfWorkloadPolicyValue {
 export interface BpfEndpointValue {
   /** Unique identifier of the backend providing this endpoint */
   backendUid?: string;
+  /** Service ID this endpoint belongs to */
+  serviceId?: string;
+  /** Locality priority bucket (0 = same node/zone, 6 = cross-network) */
+  priority?: number;
+  /** Backend index within this priority bucket */
+  backendIndex?: number;
 }
 
 /** Response shape for GET /debug/config_dump/bpf/dual-engine */
