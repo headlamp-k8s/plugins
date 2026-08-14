@@ -1,10 +1,12 @@
+import { Icon } from '@iconify/react';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
-  Link,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Link as MuiLink } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import {
   AdmissionCheckState,
@@ -21,8 +23,9 @@ import {
   renderStringMap,
   renderText,
 } from '../../resources/workloadFormatters';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { openClusterQueueActivity } from '../clusterqueues/Detail';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { openLocalQueueActivity } from '../localqueues/Detail';
 
 /** Row rendered for Workload spec.podSets. */
 interface PodSetRow {
@@ -98,7 +101,7 @@ interface EvictionRow {
   count: number;
 }
 
-/** Render the LocalQueue reference as a detail-page link when possible. */
+/** Render the LocalQueue reference as a link that opens its details in a side panel. */
 function renderLocalQueueLink(workload: Workload) {
   const queueName = workload.queueName;
   const namespace = workload.metadata.namespace;
@@ -108,13 +111,17 @@ function renderLocalQueueLink(workload: Workload) {
   }
 
   return (
-    <Link routeName={kueueRouteNames.localQueueDetail} params={{ namespace, name: queueName }}>
+    <MuiLink
+      component="button"
+      sx={{ textAlign: 'left' }}
+      onClick={() => openLocalQueueActivity(namespace, queueName, workload.cluster)}
+    >
       {queueName}
-    </Link>
+    </MuiLink>
   );
 }
 
-/** Render the admitted ClusterQueue as a detail-page link when possible. */
+/** Render the admitted ClusterQueue as a link that opens its details in a side panel. */
 function renderClusterQueueLink(workload: Workload) {
   const clusterQueue = workload.admissionClusterQueue;
 
@@ -123,9 +130,13 @@ function renderClusterQueueLink(workload: Workload) {
   }
 
   return (
-    <Link routeName={kueueRouteNames.clusterQueueDetail} params={{ name: clusterQueue }}>
+    <MuiLink
+      component="button"
+      sx={{ textAlign: 'left' }}
+      onClick={() => openClusterQueueActivity(clusterQueue, workload.cluster)}
+    >
       {clusterQueue}
-    </Link>
+    </MuiLink>
   );
 }
 
@@ -453,8 +464,22 @@ function getConditionsSection(workload: Workload) {
   };
 }
 
-export default function WorkloadDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+/** Open a Workload's details in a side panel instead of navigating away. */
+export function openWorkloadActivity(namespace: string, name: string, cluster?: string) {
+  Activity.launch({
+    id: `kueue-workload-${cluster ?? ''}-${namespace}-${name}`,
+    location: 'split-right',
+    icon: <Icon icon="mdi:briefcase-outline" />,
+    title: `${namespace}/${name}`,
+    cluster,
+    content: <WorkloadDetail namespace={namespace} name={name} />,
+  });
+}
+
+export default function WorkloadDetail(props: { namespace?: string; name?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <KueueAdminResourceAccess

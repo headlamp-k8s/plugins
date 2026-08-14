@@ -1,10 +1,12 @@
+import { Icon } from '@iconify/react';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
-  Link,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Link as MuiLink } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import {
   ClusterQueue,
@@ -12,8 +14,8 @@ import {
   ResourceGroup,
   ResourceQuota,
 } from '../../resources/clusterQueue';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { openResourceFlavorActivity } from '../resourceflavors/Detail';
 
 /** Flattened row rendered in the ClusterQueue resource groups table. */
 interface ResourceGroupRow {
@@ -53,12 +55,16 @@ interface AdmissionCheckRow {
   flavors: string[];
 }
 
-/** Render a ResourceFlavor name as a Headlamp link to its detail page. */
-function renderFlavorLink(flavorName: string) {
+/** Render a ResourceFlavor name as a link that opens its details in a side panel. */
+function renderFlavorLink(flavorName: string, cluster?: string) {
   return (
-    <Link routeName={kueueRouteNames.resourceFlavorDetail} params={{ name: flavorName }}>
+    <MuiLink
+      component="button"
+      sx={{ textAlign: 'left' }}
+      onClick={() => openResourceFlavorActivity(flavorName, cluster)}
+    >
       {flavorName}
-    </Link>
+    </MuiLink>
   );
 }
 
@@ -163,7 +169,7 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
             {
               label: 'ResourceFlavor',
               getter: (row: ResourceGroupRow) =>
-                row.flavor === '-' ? '-' : renderFlavorLink(row.flavor),
+                row.flavor === '-' ? '-' : renderFlavorLink(row.flavor, clusterQueue.cluster),
             },
             {
               label: 'Resource',
@@ -189,7 +195,12 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
 }
 
 /** Build a table section for ClusterQueue status flavor reservations or usage. */
-function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUsage[]) {
+function getFlavorUsageSection(
+  title: string,
+  id: string,
+  flavorUsage?: FlavorUsage[],
+  cluster?: string
+) {
   const rows = getFlavorUsageRows(flavorUsage);
 
   if (rows.length === 0) {
@@ -206,7 +217,7 @@ function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUs
             {
               label: 'ResourceFlavor',
               getter: (row: FlavorUsageRow) =>
-                row.flavor === '-' ? '-' : renderFlavorLink(row.flavor),
+                row.flavor === '-' ? '-' : renderFlavorLink(row.flavor, cluster),
             },
             {
               label: 'Resource',
@@ -254,7 +265,7 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
                     {row.flavors.map((flavor, index) => (
                       <span key={flavor}>
                         {index > 0 ? ', ' : ''}
-                        {renderFlavorLink(flavor)}
+                        {renderFlavorLink(flavor, clusterQueue.cluster)}
                       </span>
                     ))}
                   </>
@@ -281,9 +292,22 @@ function getConditionsSection(clusterQueue: ClusterQueue) {
   };
 }
 
+/** Open a ClusterQueue's details in a side panel instead of navigating away. */
+export function openClusterQueueActivity(name: string, cluster?: string) {
+  Activity.launch({
+    id: `kueue-clusterqueue-${cluster ?? ''}-${name}`,
+    location: 'split-right',
+    icon: <Icon icon="mdi:queue-first-in-last-out" />,
+    title: name,
+    cluster,
+    content: <ClusterQueueDetail name={name} />,
+  });
+}
+
 /** Detail view for a cluster-scoped Kueue ClusterQueue resource. */
-export default function ClusterQueueDetail() {
-  const { name } = useParams<{ name: string }>();
+export default function ClusterQueueDetail(props: { name?: string }) {
+  const { name: nameParam } = useParams<{ name: string }>();
+  const name = props.name ?? nameParam;
 
   return (
     <KueueAdminResourceAccess resourceClass={ClusterQueue} resourceLabel="ClusterQueues" verb="get">
@@ -362,12 +386,14 @@ export default function ClusterQueueDetail() {
                 getFlavorUsageSection(
                   'Flavor Reservations',
                   'flavor-reservations',
-                  clusterQueue.status.flavorsReservation
+                  clusterQueue.status.flavorsReservation,
+                  clusterQueue.cluster
                 ),
                 getFlavorUsageSection(
                   'Flavor Usage',
                   'flavor-usage',
-                  clusterQueue.status.flavorsUsage
+                  clusterQueue.status.flavorsUsage,
+                  clusterQueue.cluster
                 ),
               ].filter(Boolean)
             : []
