@@ -28,6 +28,15 @@ describe('Kueue API constants', () => {
     expect(kueueRoutePaths.multiKueueConfigDetail).toBe('/kueue/multikueueconfigs/:name');
   });
 
+  it('defines ProvisioningRequestConfig list and detail routes', () => {
+    expect(kueueRoutePaths.provisioningRequestConfigsList).toBe(
+      '/kueue/provisioningrequestconfigs'
+    );
+    expect(kueueRoutePaths.provisioningRequestConfigDetail).toBe(
+      '/kueue/provisioningrequestconfigs/:name'
+    );
+  });
+
   it('defines Workload list and namespaced detail routes', () => {
     expect(kueueRoutePaths.workloadsList).toBe('/kueue/workloads');
     expect(kueueRoutePaths.workloadDetail).toBe('/kueue/workloads/:namespace/:name');
