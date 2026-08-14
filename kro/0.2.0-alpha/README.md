@@ -27,7 +27,8 @@ watches.
 - **Embedded graphs on detail pages**: the RGD detail page renders the
   template DAG and the instance detail page renders the live resource graph.
   On hosts that expose Headlamp's Map renderer to plugins
-  (kubernetes-sigs/headlamp#6992, newer than Headlamp 0.44.0) these use
+  ([headlamp#6992](https://github.com/kubernetes-sigs/headlamp/pull/6992),
+  newer than Headlamp 0.44.0) these use
   Headlamp's own GraphView — with KubeIcons and the standard node details
   panel; older hosts get a lightweight built-in renderer automatically.
 - **New Instance**: opens Headlamp's YAML editor pre-filled with a minimal
@@ -51,7 +52,8 @@ Headlamp 0.44.0), the view behaves like the global Map it is built from:
   its kro context (its RGD and sibling instances included).
 
 These are upstream behaviors of the exposed renderer, tracked in
-kubernetes-sigs/headlamp#7242 (requesting an opt-in embedded mode).
+[headlamp#7242](https://github.com/kubernetes-sigs/headlamp/issues/7242)
+(requesting an opt-in embedded mode).
 
 ## Screenshots
 

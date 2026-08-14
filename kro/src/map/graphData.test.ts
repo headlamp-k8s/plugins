@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { KubeResourceGraphDefinition } from '../resources/resourceGraphDefinition';
-import {
-  computeLayout,
-  getInstanceGraph,
-  getTemplateGraph,
-  TEMPLATE_ROOT_ID,
-} from './graphData';
+import { computeLayout, getInstanceGraph, getTemplateGraph, TEMPLATE_ROOT_ID } from './graphData';
 
 type RgdData = Pick<KubeResourceGraphDefinition, 'spec' | 'status'> & {
   metadata?: { name?: string };
