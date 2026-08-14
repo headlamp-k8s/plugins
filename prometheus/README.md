@@ -7,6 +7,11 @@ orphaned resources. These charts appear only when Prometheus is enabled for the 
 and the resource is `argoproj.io/v1alpha1` `Application`. Missing Argo CD metrics simply show the
 normal no-data state.
 
+On PersistentVolumeClaim details, use the disk chart's **Timespan** and **Resolution**
+selectors to override the cluster's defaults for the current view. These choices do not
+change plugin settings and reset when switching clusters. **Pause** and **Resume**
+control automatic refresh independently of the selected range and resolution.
+
 ## Enabling Charts
 
 For the charts to be shown, Prometheus must be installed in the cluster.
