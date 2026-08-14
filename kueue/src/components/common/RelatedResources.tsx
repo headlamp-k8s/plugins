@@ -1,6 +1,5 @@
 import {
   EmptyContent,
-  Link,
   Loader,
   SectionBox,
   SimpleTable,
@@ -8,7 +7,7 @@ import {
 import { useMemo } from 'react';
 import { LocalQueue } from '../../resources/localQueue';
 import { Workload } from '../../resources/workload';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { renderLocalQueueLink, renderWorkloadLink } from './KueueResourceLinks';
 
 interface RelatedLocalQueuesSectionProps {
   clusterQueueName: string;
@@ -77,9 +76,12 @@ export function RelatedLocalQueuesSection({ clusterQueueName }: RelatedLocalQueu
         columns={[
           {
             label: 'Name',
-            getter: (localQueue: LocalQueue) => (
-              <Link kubeObject={localQueue}>{localQueue.metadata.name}</Link>
-            ),
+            getter: (localQueue: LocalQueue) =>
+              renderLocalQueueLink(
+                localQueue.metadata.name,
+                localQueue.metadata.namespace,
+                localQueue.cluster
+              ),
           },
           {
             label: 'Namespace',
@@ -200,9 +202,12 @@ function RelatedWorkloadsTable({
         columns={[
           {
             label: 'Name',
-            getter: (workload: Workload) => (
-              <Link kubeObject={workload}>{workload.metadata.name}</Link>
-            ),
+            getter: (workload: Workload) =>
+              renderWorkloadLink(
+                workload.metadata.name,
+                workload.metadata.namespace,
+                workload.cluster
+              ),
           },
           {
             label: 'Namespace',
@@ -210,22 +215,12 @@ function RelatedWorkloadsTable({
           },
           {
             label: 'LocalQueue',
-            getter: (workload: Workload) => {
-              const workloadNamespace = workload.metadata.namespace;
-
-              if (!workload.queueName || !workloadNamespace) {
-                return '-';
-              }
-
-              return (
-                <Link
-                  routeName={kueueRouteNames.localQueueDetail}
-                  params={{ namespace: workloadNamespace, name: workload.queueName }}
-                >
-                  {workload.queueName}
-                </Link>
-              );
-            },
+            getter: (workload: Workload) =>
+              renderLocalQueueLink(
+                workload.queueName,
+                workload.metadata.namespace,
+                workload.cluster
+              ),
           },
           {
             label: 'Priority',
