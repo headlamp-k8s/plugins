@@ -284,13 +284,21 @@ describe('buildArgoCDGraph', () => {
     expect(graph.edges.filter(edge => edge.id.startsWith('owner-reference:'))).toEqual([]);
   });
 
-  it('two Applications managing same Service create one Service node and two edges', () => {
+  it('two Applications managing the same Service create one node, two edges, and the worst status', () => {
     const app1 = new ArgoApplication({
       metadata: { uid: 'app1' },
       spec: localAppSpec,
       status: {
         resources: [
-          { group: '', version: 'v1', kind: 'Service', namespace: 'default', name: 'svc-name' },
+          {
+            group: '',
+            version: 'v1',
+            kind: 'Service',
+            namespace: 'default',
+            name: 'svc-name',
+            status: 'Synced',
+            health: { status: 'Healthy' },
+          },
         ],
       },
     } as KubeArgoApplication);
@@ -300,7 +308,15 @@ describe('buildArgoCDGraph', () => {
       spec: localAppSpec,
       status: {
         resources: [
-          { group: '', version: 'v1', kind: 'Service', namespace: 'default', name: 'svc-name' },
+          {
+            group: '',
+            version: 'v1',
+            kind: 'Service',
+            namespace: 'default',
+            name: 'svc-name',
+            status: 'OutOfSync',
+            health: { status: 'Healthy' },
+          },
         ],
       },
     } as KubeArgoApplication);
@@ -311,6 +327,7 @@ describe('buildArgoCDGraph', () => {
 
     expect(graph.nodes).toHaveLength(3); // App1, App2, Svc
     expect(graph.nodes.filter(n => n.id === 'svc-uid')).toHaveLength(1);
+    expect(graph.nodes.find(node => node.id === 'svc-uid')?.status).toBe('error');
 
     const managedEdges = graph.edges.filter(e => e.id.startsWith('managed-by-argocd'));
     expect(managedEdges).toHaveLength(2);
