@@ -26,13 +26,20 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { ConditionsTable } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Link as MuiLink, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Link as MuiLink, Tooltip, Typography } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import type { ComponentProps, ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { refreshApplication, syncApplication } from '../../api/argoClient';
 import { useArgoOperation } from '../../hooks/useArgoOperation';
 import { ArgoApplication, ManagedResource, RevisionHistory } from '../../resources/application';
+import {
+  ApiAvailability,
+  canOpenManagedResourcesInCurrentCluster,
+  getApiAvailabilityPresentation,
+  managedResourceApiKey,
+  useManagedResourceApiAvailability,
+} from './apiAvailability';
 import { getManagedResourceLink } from './managedResourceLinks';
 import { getHealthIcon, getHealthStatus, getSyncIcon, getSyncStatus } from './statusHelpers';
 
@@ -270,70 +277,111 @@ function formatDestinationCluster(destination: string) {
  * @returns A section box definition containing the managed resources table, or null if no resources exist.
  */
 function getManagedResourcesSection(app: ArgoApplication) {
-  const resources = app.managedResources;
-  if (!resources.length) return null;
+  if (!app.managedResources.length) return null;
 
   return {
     id: 'managed-resources',
-    section: (
-      <SectionBox title="Managed Resources">
-        <ManagedResourcesOverview resources={resources} />
-        <SimpleTable
-          data={resources}
-          columns={[
-            {
-              label: 'Kind',
-              getter: (r: ManagedResource) => <ResourceKindLabel resource={r} />,
-              sort: (a: ManagedResource, b: ManagedResource) => a.kind.localeCompare(b.kind),
-            },
-            {
-              label: 'Name',
-              getter: (r: ManagedResource) => getManagedResourceLink(r),
-              sort: (a: ManagedResource, b: ManagedResource) => a.name.localeCompare(b.name),
-            },
-            {
-              label: 'Namespace',
-              getter: (r: ManagedResource) => r.namespace ?? '-',
-              sort: true,
-            },
-            {
-              label: 'Sync',
-              getter: (r: ManagedResource) => (
-                <StatusLabel status={getSyncStatus(getManagedResourceSync(r))}>
-                  <Icon
-                    icon={getSyncIcon(getManagedResourceSync(r))}
-                    style={{ marginRight: '4px' }}
-                  />
-                  {getManagedResourceSync(r)}
-                </StatusLabel>
-              ),
-              sort: (a: ManagedResource, b: ManagedResource) =>
-                getManagedResourceSync(a).localeCompare(getManagedResourceSync(b)),
-            },
-            {
-              label: 'Health',
-              getter: (r: ManagedResource) => (
-                <StatusLabel status={getHealthStatus(getManagedResourceHealth(r))}>
-                  <Icon
-                    icon={getHealthIcon(getManagedResourceHealth(r))}
-                    style={{ marginRight: '4px' }}
-                  />
-                  {getManagedResourceHealth(r)}
-                </StatusLabel>
-              ),
-              sort: (a: ManagedResource, b: ManagedResource) =>
-                getManagedResourceHealth(a).localeCompare(getManagedResourceHealth(b)),
-            },
-            {
-              label: 'API',
-              getter: (r: ManagedResource) => getManagedResourceApi(r),
-              sort: true,
-            },
-          ]}
-        />
-      </SectionBox>
-    ),
+    section: <ManagedResourcesSection application={app} />,
   };
+}
+
+function ManagedResourcesSection(props: { application: ArgoApplication }) {
+  const resources = props.application.managedResources;
+  const { availability, loading } = useManagedResourceApiAvailability(props.application);
+  const canOpenResources = canOpenManagedResourcesInCurrentCluster(props.application);
+  const hasUnavailableApi = [...availability.values()].some(result =>
+    ['version-not-served', 'resource-not-found'].includes(result.state)
+  );
+
+  return (
+    <SectionBox title="Managed Resources">
+      <ManagedResourcesOverview resources={resources} />
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        API availability checks whether Kubernetes offers this resource API. It does not verify
+        controller feature support or application traffic.
+      </Typography>
+      {hasUnavailableApi && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          One or more resource APIs reported by Argo CD are not available in the selected cluster.
+        </Alert>
+      )}
+      <SimpleTable
+        data={resources}
+        columns={[
+          {
+            label: 'Kind',
+            getter: (r: ManagedResource) => <ResourceKindLabel resource={r} />,
+            sort: (a: ManagedResource, b: ManagedResource) => a.kind.localeCompare(b.kind),
+          },
+          {
+            label: 'Name',
+            getter: (r: ManagedResource) => (canOpenResources ? getManagedResourceLink(r) : r.name),
+            sort: (a: ManagedResource, b: ManagedResource) => a.name.localeCompare(b.name),
+          },
+          {
+            label: 'Namespace',
+            getter: (r: ManagedResource) => r.namespace ?? '-',
+            sort: true,
+          },
+          {
+            label: 'Sync',
+            getter: (r: ManagedResource) => (
+              <StatusLabel status={getSyncStatus(getManagedResourceSync(r))}>
+                <Icon
+                  icon={getSyncIcon(getManagedResourceSync(r))}
+                  style={{ marginRight: '4px' }}
+                />
+                {getManagedResourceSync(r)}
+              </StatusLabel>
+            ),
+            sort: (a: ManagedResource, b: ManagedResource) =>
+              getManagedResourceSync(a).localeCompare(getManagedResourceSync(b)),
+          },
+          {
+            label: 'Health',
+            getter: (r: ManagedResource) => (
+              <StatusLabel status={getHealthStatus(getManagedResourceHealth(r))}>
+                <Icon
+                  icon={getHealthIcon(getManagedResourceHealth(r))}
+                  style={{ marginRight: '4px' }}
+                />
+                {getManagedResourceHealth(r)}
+              </StatusLabel>
+            ),
+            sort: (a: ManagedResource, b: ManagedResource) =>
+              getManagedResourceHealth(a).localeCompare(getManagedResourceHealth(b)),
+          },
+          {
+            label: 'Resource API',
+            getter: (r: ManagedResource) => getManagedResourceApi(r),
+            sort: true,
+          },
+          {
+            label: 'Cluster API',
+            getter: (r: ManagedResource) => (
+              <ApiAvailabilityLabel
+                result={availability.get(managedResourceApiKey(r))}
+                loading={loading}
+              />
+            ),
+            sort: (r: ManagedResource) =>
+              availability.get(managedResourceApiKey(r))?.state ?? 'checking',
+          },
+        ]}
+      />
+    </SectionBox>
+  );
+}
+
+function ApiAvailabilityLabel(props: { result: ApiAvailability | undefined; loading: boolean }) {
+  const presentation = getApiAvailabilityPresentation(props.result, props.loading);
+  return (
+    <Tooltip title={presentation.tooltip}>
+      <span>
+        <StatusLabel status={presentation.status}>{presentation.label}</StatusLabel>
+      </span>
+    </Tooltip>
+  );
 }
 
 function ManagedResourcesOverview(props: { resources: ManagedResource[] }) {

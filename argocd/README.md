@@ -6,11 +6,19 @@ To learn more about Argo CD, see the [Argo CD Getting Started Guide](https://arg
 
 ## Features
 
+- **Managed Resource API Availability** — Compares each API reported in `Application.status.resources` with the APIs served by the selected local Kubernetes cluster. Missing kinds and unserved versions are highlighted without fetching arbitrary live objects.
+
 - **Application List View** — Lists all Argo CD `Application` resources in the cluster with columns for project, source repo, target revision, sync status, and health status (rendered as color-coded badges).
 - **Application Detail View** — Displays detailed metadata for a single Application: project, source, destination, sync status, health status, and Kubernetes events.
 - **Sync Action** — Triggers a sync by patching the Application's `.operation` field via the Kubernetes API. The Argo CD application-controller picks this up exactly as it would from the Argo CD UI.
 - **Refresh Action** — Requests a refresh by setting the `argocd.argoproj.io/refresh` annotation (supports `normal` and `hard` refresh types).
 - **Argo CD Sidebar Icon** — Registers the official Argo CD octopus logo as an offline Iconify icon (CSP-safe, no external fetch).
+
+### API availability scope
+
+The Managed Resources table checks whether the selected Kubernetes cluster serves the exact API group, version, and kind reported by Argo CD. For example, it can show that a resource uses an API version that the cluster no longer serves.
+
+This is an **API availability check**, not a full controller compatibility test. A matching API does not prove that an installed controller implements every field or feature, and it does not prove that application traffic works. Remote or unverified Application destinations are not queried and are shown as `Not checked — remote`.
 
 ### Why the Kubernetes API instead of the Argo CD REST API?
 
