@@ -32,8 +32,11 @@
     ]
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
     "@headlamp-k8s/eslint-config": "^0.7.0",
-    "@kinvolk/headlamp-plugin": "^0.14.0"
+    "@kinvolk/headlamp-plugin": "^0.14.0",
+    "babel-loader": "^10.1.1"
   },
   "overrides": {
     "ws": "8.21.0"
