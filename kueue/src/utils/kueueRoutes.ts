@@ -9,6 +9,8 @@ export const kueueRouteNames = {
   workloadDetail: 'kueue-workload-detail',
   provisioningRequestConfigsList: 'kueue-provisioningrequestconfigs-list',
   provisioningRequestConfigDetail: 'kueue-provisioningrequestconfig-detail',
+  multiKueueConfigsList: 'kueue-multikueueconfigs-list',
+  multiKueueConfigDetail: 'kueue-multikueueconfig-detail',
 } as const;
 
 export const kueueRoutePaths = {
@@ -22,4 +24,6 @@ export const kueueRoutePaths = {
   workloadDetail: '/kueue/workloads/:namespace/:name',
   provisioningRequestConfigsList: '/kueue/provisioningrequestconfigs',
   provisioningRequestConfigDetail: '/kueue/provisioningrequestconfigs/:name',
+  multiKueueConfigsList: '/kueue/multikueueconfigs',
+  multiKueueConfigDetail: '/kueue/multikueueconfigs/:name',
 } as const;

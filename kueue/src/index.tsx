@@ -10,6 +10,8 @@ import WorkloadList from './components/workloads/List';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
 import ProvisioningRequestConfigDetail from './components/provisioningrequestconfigs/Detail';
 import ProvisioningRequestConfigList from './components/provisioningrequestconfigs/List';
+import MultiKueueConfigDetail from './components/multikueueconfigs/Detail';
+import MultiKueueConfigList from './components/multikueueconfigs/List';
 
 registerSidebarEntry({
   parent: null,
@@ -52,6 +54,13 @@ registerSidebarEntry({
   name: 'kueue-provisioningrequestconfigs',
   label: 'ProvisioningRequestConfigs',
   url: kueueRoutePaths.provisioningRequestConfigsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-multikueueconfigs',
+  label: 'MultiKueueConfigs',
+  url: kueueRoutePaths.multiKueueConfigsList,
 });
 
 registerRoute({
@@ -132,4 +141,20 @@ registerRoute({
   name: kueueRouteNames.provisioningRequestConfigDetail,
   exact: true,
   component: () => <ProvisioningRequestConfigDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueConfigsList,
+  sidebar: 'kueue-multikueueconfigs',
+  name: kueueRouteNames.multiKueueConfigsList,
+  exact: true,
+  component: () => <MultiKueueConfigList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueConfigDetail,
+  sidebar: 'kueue-multikueueconfigs',
+  name: kueueRouteNames.multiKueueConfigDetail,
+  exact: true,
+  component: () => <MultiKueueConfigDetail />,
 });
