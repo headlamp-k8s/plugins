@@ -1,117 +1,22 @@
 import {
   DetailsGrid,
   EmptyContent,
-  Link,
   Loader,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
-import { ClusterQueue, ResourceGroup, ResourceQuota } from '../../resources/clusterQueue';
+import { ClusterQueue } from '../../resources/clusterQueue';
+import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
 import { Cohort } from '../../resources/cohort';
 import { getChildCohorts, getCohortClusterQueues } from '../../resources/cohortRelations';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
-
-/** Flattened row rendered in the Cohort resource groups table. */
-interface ResourceGroupRow {
-  /** Display label for the resource group index from spec.resourceGroups. */
-  group: string;
-  /** Comma-separated resources covered by this group, such as cpu and memory. */
-  coveredResources: string;
-  /** ResourceFlavor name associated with this resource quota row. */
-  flavor: string;
-  /** Resource name within the flavor quota, for example cpu or memory. */
-  resource: string;
-  /** Shared nominal quota configured for the resource and flavor pair. */
-  nominalQuota: string | number;
-  /** Optional quota this Cohort subtree can borrow from its parent subtree. */
-  borrowingLimit?: string | number;
-  /** Optional quota this Cohort subtree can lend to its parent subtree. */
-  lendingLimit?: string | number;
-}
-
-/** Render a Cohort name as a Headlamp link to its detail page. */
-function renderCohortLink(cohortName: string) {
-  return (
-    <Link routeName={kueueRouteNames.cohortDetail} params={{ name: cohortName }}>
-      {cohortName}
-    </Link>
-  );
-}
-
-/** Render a ResourceFlavor name as a Headlamp link to its detail page. */
-function renderFlavorLink(flavorName: string) {
-  return (
-    <Link routeName={kueueRouteNames.resourceFlavorDetail} params={{ name: flavorName }}>
-      {flavorName}
-    </Link>
-  );
-}
-
-/** Render a ClusterQueue name as a Headlamp link to its detail page. */
-function renderClusterQueueLink(clusterQueueName: string) {
-  return (
-    <Link routeName={kueueRouteNames.clusterQueueDetail} params={{ name: clusterQueueName }}>
-      {clusterQueueName}
-    </Link>
-  );
-}
-
-/** Render the parent Cohort value as a link when one is configured. */
-function renderParentLink(cohort: Cohort) {
-  const parentName = cohort.spec.parentName;
-
-  if (!parentName) {
-    return 'Root';
-  }
-
-  return renderCohortLink(parentName);
-}
-
-/** Convert nested Cohort resource groups into table rows. */
-function getResourceGroupRows(resourceGroups: ResourceGroup[]): ResourceGroupRow[] {
-  return resourceGroups.flatMap((group, groupIndex): ResourceGroupRow[] => {
-    const groupLabel = `Group ${groupIndex + 1}`;
-    const coveredResources = group.coveredResources?.join(', ') || '-';
-
-    if (!group.flavors?.length) {
-      return [
-        {
-          group: groupLabel,
-          coveredResources,
-          flavor: '-',
-          resource: '-',
-          nominalQuota: '-',
-        },
-      ];
-    }
-
-    return group.flavors.flatMap((flavor): ResourceGroupRow[] => {
-      if (!flavor.resources?.length) {
-        return [
-          {
-            group: groupLabel,
-            coveredResources,
-            flavor: flavor.name,
-            resource: '-',
-            nominalQuota: '-',
-          },
-        ];
-      }
-
-      return flavor.resources.map((resource: ResourceQuota) => ({
-        group: groupLabel,
-        coveredResources,
-        flavor: flavor.name,
-        resource: resource.name,
-        nominalQuota: resource.nominalQuota,
-        borrowingLimit: resource.borrowingLimit,
-        lendingLimit: resource.lendingLimit,
-      }));
-    });
-  });
-}
+import {
+  renderClusterQueueLink,
+  renderCohortLink,
+  renderParentCohortLink,
+  renderResourceFlavorLink,
+} from '../common/KueueResourceLinks';
 
 /** Build the detail section that shows spec.resourceGroups as a table. */
 function getResourceGroupsSection(cohort: Cohort) {
@@ -139,7 +44,7 @@ function getResourceGroupsSection(cohort: Cohort) {
             {
               label: 'ResourceFlavor',
               getter: (row: ResourceGroupRow) =>
-                row.flavor === '-' ? '-' : renderFlavorLink(row.flavor),
+                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
             },
             {
               label: 'Resource',
@@ -181,7 +86,7 @@ function getReferencedFlavorsSection(cohort: Cohort) {
           columns={[
             {
               label: 'Name',
-              getter: (row: { name: string }) => renderFlavorLink(row.name),
+              getter: (row: { name: string }) => renderResourceFlavorLink(row.name),
             },
           ]}
         />
@@ -340,7 +245,7 @@ export default function CohortDetail() {
             ? [
                 {
                   name: 'Parent Cohort',
-                  value: renderParentLink(cohort),
+                  value: renderParentCohortLink(cohort.spec.parentName),
                 },
                 {
                   name: 'Fair Sharing Weight',

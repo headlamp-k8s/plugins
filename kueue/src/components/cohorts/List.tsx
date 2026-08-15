@@ -1,4 +1,4 @@
-import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useMemo } from 'react';
 import { ClusterQueue } from '../../resources/clusterQueue';
 import { Cohort } from '../../resources/cohort';
@@ -7,23 +7,8 @@ import {
   groupChildCohortsByParent,
   groupClusterQueuesByCohort,
 } from '../../resources/cohortRelations';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
-
-/** Render a Cohort parent reference as a detail-page link. */
-function renderParentLink(cohort: Cohort) {
-  const parentName = cohort.spec.parentName;
-
-  if (!parentName) {
-    return 'Root';
-  }
-
-  return (
-    <Link routeName={kueueRouteNames.cohortDetail} params={{ name: parentName }}>
-      {parentName}
-    </Link>
-  );
-}
+import { renderParentCohortLink } from '../common/KueueResourceLinks';
 
 export default function CohortList() {
   const [clusterQueues, clusterQueuesError] = ClusterQueue.useList();
@@ -68,7 +53,7 @@ export default function CohortList() {
             id: 'parentCohort',
             label: 'Parent Cohort',
             getValue: (cohort: Cohort) => cohort.parentNameDisplay,
-            render: (cohort: Cohort) => renderParentLink(cohort),
+            render: (cohort: Cohort) => renderParentCohortLink(cohort.spec.parentName),
           },
           {
             id: 'clusterQueues',
