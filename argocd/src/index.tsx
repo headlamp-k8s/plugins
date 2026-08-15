@@ -21,6 +21,8 @@ import {
   registerDetailsViewSectionsProcessor,
   registerKindIcon,
   registerMapSource,
+  registerProjectDetailsTab,
+  registerProjectOverviewSection,
   registerRoute,
   registerSidebarEntry,
   registerSidebarEntryFilter,
@@ -30,21 +32,24 @@ import type { ReactNode } from 'react';
 import { ARGO_ICON_COLOR, ARGO_ICON_NAME, argoIcon } from './argoIcon';
 import ApplicationDetail from './components/applications/Detail';
 import ApplicationList from './components/applications/List';
+import ApplicationSetDetail from './components/applicationsets/Detail';
+import ApplicationSetList from './components/applicationsets/List';
 import AppProjectDetail from './components/appprojects/Detail';
 import AppProjectList from './components/appprojects/List';
 import ArgoNamespaceInsights from './components/namespaces/ArgoNamespaceInsights';
+import { ArgoCDProjectApplicationsTab, ArgoCDProjectOverview } from './components/projects/GitOps';
 import { argoCDSource } from './mapView';
 
 // ---------------------------------------------------------------------------
 // CRD Detection Guard — hide Argo CD sidebar entries on clusters without
 // the argoproj.io CRDs installed. Follows the Flux plugin pattern.
 // ---------------------------------------------------------------------------
-const argoInstalledByCluster: Record<string, boolean> = {};
+const argoCRDsByCluster: Record<string, Set<string> | undefined> = {};
 const lastCheckedAt: Record<string, number> = {};
 const inFlight: Record<string, boolean> = {};
 const CHECK_TTL_MS = 30 * 1000;
 
-function checkArgoInstalled(cluster: string) {
+function checkArgoCRDs(cluster: string) {
   const now = Date.now();
   const fresh = now - (lastCheckedAt[cluster] ?? 0) < CHECK_TTL_MS;
   if (inFlight[cluster] || fresh) {
@@ -54,18 +59,24 @@ function checkArgoInstalled(cluster: string) {
 
   const listFn = K8s.ResourceClasses.CustomResourceDefinition.apiList(
     (crds: { jsonData: { metadata: { name: string } } }[]) => {
-      argoInstalledByCluster[cluster] = crds.some(crd =>
-        [
-          'applications.argoproj.io',
-          'appprojects.argoproj.io',
-          'applicationsets.argoproj.io',
-        ].includes(crd.jsonData?.metadata?.name)
+      argoCRDsByCluster[cluster] = new Set(
+        crds
+          .map(crd => crd.jsonData?.metadata?.name)
+          .filter(
+            (name): name is string =>
+              typeof name === 'string' &&
+              [
+                'applications.argoproj.io',
+                'appprojects.argoproj.io',
+                'applicationsets.argoproj.io',
+              ].includes(name)
+          )
       );
       lastCheckedAt[cluster] = Date.now();
       inFlight[cluster] = false;
     },
     () => {
-      argoInstalledByCluster[cluster] = false;
+      delete argoCRDsByCluster[cluster];
       lastCheckedAt[cluster] = Date.now();
       inFlight[cluster] = false;
     },
@@ -80,12 +91,25 @@ registerSidebarEntryFilter(entry => {
   }
 
   const cluster = Utils.getCluster() ?? '';
-  checkArgoInstalled(cluster);
+  checkArgoCRDs(cluster);
 
-  if (argoInstalledByCluster[cluster] === false) {
-    return null;
+  const installed = argoCRDsByCluster[cluster];
+  if (!installed) return entry;
+
+  if (entry.name === 'argocd') {
+    if (installed.size === 0) return null;
+    if (installed.has('applications.argoproj.io')) return entry;
+    if (installed.has('appprojects.argoproj.io')) return { ...entry, url: '/argocd/projects' };
+    return { ...entry, url: '/argocd/applicationsets' };
   }
-  return entry;
+
+  const requiredCRD: Record<string, string> = {
+    'argocd-applications': 'applications.argoproj.io',
+    'argocd-projects': 'appprojects.argoproj.io',
+    'argocd-applicationsets': 'applicationsets.argoproj.io',
+  };
+  const requirement = requiredCRD[entry.name];
+  return !requirement || installed.has(requirement) ? entry : null;
 });
 
 const NAMESPACE_GITOPS_INSIGHTS_SECTION_ID = 'argocd.namespace-gitops-insights';
@@ -199,3 +223,42 @@ registerKindIcon('Application', { icon: argoIcon, color: ARGO_ICON_COLOR }, 'arg
 registerKindIcon('Application', { icon: argoIcon, color: ARGO_ICON_COLOR });
 registerKindIcon('AppProject', { icon: argoIcon, color: ARGO_ICON_COLOR }, 'argoproj.io');
 registerKindIcon('AppProject', { icon: argoIcon, color: ARGO_ICON_COLOR });
+
+registerRoute({
+  path: '/argocd/applicationsets',
+  sidebar: 'argocd-applicationsets',
+  name: 'argocd-applicationsets-list',
+  exact: true,
+  component: () => <ApplicationSetList />,
+});
+
+registerRoute({
+  path: '/argocd/applicationsets/:namespace/:name',
+  sidebar: 'argocd-applicationsets',
+  name: 'argocd-applicationset-detail',
+  exact: true,
+  component: () => <ApplicationSetDetail />,
+});
+
+registerSidebarEntry({
+  parent: 'argocd',
+  name: 'argocd-applicationsets',
+  label: 'ApplicationSets',
+  url: '/argocd/applicationsets',
+  icon: ARGO_ICON_NAME,
+});
+
+registerProjectOverviewSection({
+  id: 'argocd.project-overview',
+  component: ArgoCDProjectOverview,
+});
+
+registerProjectDetailsTab({
+  id: 'argocd.project-applications',
+  label: 'Argo CD Applications',
+  icon: ARGO_ICON_NAME,
+  component: ArgoCDProjectApplicationsTab,
+});
+
+registerKindIcon('ApplicationSet', { icon: argoIcon, color: ARGO_ICON_COLOR }, 'argoproj.io');
+registerKindIcon('ApplicationSet', { icon: argoIcon, color: ARGO_ICON_COLOR });
