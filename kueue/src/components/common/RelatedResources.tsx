@@ -20,9 +20,7 @@ interface RelatedWorkloadsSectionProps {
 }
 
 /** List the LocalQueues backed by a ClusterQueue. */
-export function RelatedLocalQueuesSection({
-  clusterQueueName,
-}: RelatedLocalQueuesSectionProps) {
+export function RelatedLocalQueuesSection({ clusterQueueName }: RelatedLocalQueuesSectionProps) {
   const [localQueues, error] = LocalQueue.useList();
 
   const relatedLocalQueues = useMemo(
