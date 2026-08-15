@@ -30,9 +30,14 @@ import { Alert, Box, Link as MuiLink, Tooltip, Typography } from '@mui/material'
 import type { Theme } from '@mui/material/styles';
 import type { ComponentProps, ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
-import { refreshApplication, syncApplication } from '../../api/argoClient';
+import { refreshApplication, rollbackApplication, syncApplication } from '../../api/argoClient';
 import { useArgoOperation } from '../../hooks/useArgoOperation';
-import { ArgoApplication, ManagedResource, RevisionHistory } from '../../resources/application';
+import {
+  ArgoApplication,
+  compareRevisionHistory,
+  ManagedResource,
+  RevisionHistory,
+} from '../../resources/application';
 import {
   ApiAvailability,
   canOpenManagedResourcesInCurrentCluster,
@@ -42,6 +47,7 @@ import {
 } from './apiAvailability';
 import { getManagedResourceLink } from './managedResourceLinks';
 import { OpenInArgoCDAction } from './openInArgoCD';
+import { RollbackAction } from './rollback';
 import { getHealthIcon, getHealthStatus, getSyncIcon, getSyncStatus } from './statusHelpers';
 
 type HeadlampStatus = ComponentProps<typeof StatusLabel>['status'];
@@ -65,7 +71,8 @@ export default function ApplicationDetail(props: { namespace?: string; name?: st
   const { namespace = params.namespace, name = params.name } = props;
   const sync = useArgoOperation(syncApplication, 'Sync');
   const refresh = useArgoOperation(refreshApplication, 'Refresh');
-  const anyLoading = sync.isLoading || refresh.isLoading;
+  const rollback = useArgoOperation(rollbackApplication, 'Rollback');
+  const anyLoading = sync.isLoading || refresh.isLoading || rollback.isLoading;
 
   return (
     <DetailsGrid
@@ -102,6 +109,22 @@ export default function ApplicationDetail(props: { namespace?: string; name?: st
                   </AuthVisible>
                 ),
               },
+              ...(!app.isAutomatedSyncEnabled && app.rollbackHistory.length
+                ? [
+                    {
+                      id: 'argocd-rollback',
+                      action: (
+                        <AuthVisible item={app} authVerb="patch">
+                          <RollbackAction
+                            application={app}
+                            operation={rollback}
+                            disabled={anyLoading || app.hasActiveOperation}
+                          />
+                        </AuthVisible>
+                      ),
+                    },
+                  ]
+                : []),
               {
                 id: 'argocd-open-external',
                 action: <OpenInArgoCDAction application={app} />,
@@ -570,7 +593,7 @@ function getManagedResourceKindIcon(kind: string) {
 }
 
 function getSyncHistorySection(app: ArgoApplication) {
-  const history = [...app.syncHistory].sort(compareHistoryEntries);
+  const history = [...app.syncHistory].sort(compareRevisionHistory);
 
   return {
     id: 'sync-history',
@@ -630,17 +653,6 @@ function getSyncHistorySection(app: ArgoApplication) {
       </SectionBox>
     ),
   };
-}
-
-function compareHistoryEntries(first: RevisionHistory, second: RevisionHistory) {
-  const firstTime = Date.parse(first.deployedAt || first.deployStartedAt || '') || 0;
-  const secondTime = Date.parse(second.deployedAt || second.deployStartedAt || '') || 0;
-
-  if (firstTime !== secondTime) {
-    return secondTime - firstTime;
-  }
-
-  return (second.id ?? 0) - (first.id ?? 0);
 }
 
 function RevisionLabel(props: { entry: RevisionHistory }) {
