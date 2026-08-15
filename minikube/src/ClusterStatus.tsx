@@ -3,7 +3,7 @@ import { Box, IconButton, Tooltip, Typography, useTheme } from '@mui/material';
 import React from 'react';
 import CommandCluster from './CommandCluster/CommandCluster';
 
-export default function ClusterStatus({ cluster, error }) {
+export default function ClusterStatus({ cluster, error }: { cluster: any; error: any }) {
   const theme = useTheme() as any;
   const stateUnknown = error === undefined;
   const hasReachError = error && error.status !== 401 && error.status !== 403;
