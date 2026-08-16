@@ -22,6 +22,7 @@ const CONDITION_TYPES = {
   preempted: 'Preempted',
   requeued: 'Requeued',
   deactivationTarget: 'DeactivationTarget',
+  waitingForReplacementPods: 'WaitingForReplacementPods',
 } as const;
 
 /** Render text values with the plugin's standard empty-value fallback. */
@@ -156,7 +157,13 @@ export function renderWorkloadStatus(conditions: WorkloadConditionLike[] = [], a
   }
 
   if (isConditionTrue(conditions, CONDITION_TYPES.admitted)) {
-    return isConditionTrue(conditions, CONDITION_TYPES.podsReady) ? 'Running' : 'Admitted';
+    if (isConditionTrue(conditions, CONDITION_TYPES.podsReady)) {
+      return 'Running';
+    }
+    if (isConditionTrue(conditions, CONDITION_TYPES.waitingForReplacementPods)) {
+      return 'Waiting for replacement pods';
+    }
+    return 'Admitted';
   }
 
   const quotaReservedCondition = findWorkloadCondition(conditions, CONDITION_TYPES.quotaReserved);
