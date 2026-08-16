@@ -65,11 +65,15 @@ describe('RemainingTimeDisplay', () => {
     const clearSpy = vi.spyOn(window, 'clearTimeout');
 
     const { unmount } = render(<RemainingTimeDisplay item={itemDueIn('5m')} />);
+
+    // The handle this component scheduled, which is the one unmount has to clear.
     expect(setSpy).toHaveBeenCalled();
+    const scheduled = setSpy.mock.results.at(-1)?.value;
+    expect(scheduled).toBeDefined();
 
     clearSpy.mockClear();
     unmount();
 
-    expect(clearSpy).toHaveBeenCalled();
+    expect(clearSpy).toHaveBeenCalledWith(scheduled);
   });
 });

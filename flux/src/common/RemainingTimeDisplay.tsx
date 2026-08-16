@@ -137,7 +137,7 @@ export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
       timeoutTrigger = remainingTimeSecs % 60;
     }
 
-    if (!!timeoutRef.current) {
+    if (timeoutRef.current !== undefined) {
       window.clearTimeout(timeoutRef.current);
     }
 
@@ -155,7 +155,7 @@ export default function RemainingTimeDisplay(props: RemainingTimeDisplayProps) {
   React.useEffect(() => {
     // Just to clear out any remaining timeouts when the component is unmounted
     return () => {
-      if (!!timeoutRef.current) {
+      if (timeoutRef.current !== undefined) {
         window.clearTimeout(timeoutRef.current);
         timeoutRef.current = undefined;
       }
