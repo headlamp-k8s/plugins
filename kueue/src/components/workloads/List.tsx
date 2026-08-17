@@ -1,17 +1,10 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Workload } from '../../resources/workload';
-import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 export default function WorkloadList() {
   return (
-    <KueueAdminResourceAccess
-      resourceClass={Workload}
-      resourceLabel="Workloads"
-      verb="list"
-      accessDescription="Kueue Workloads are namespaced user workload resources."
-    >
-      <ResourceListView
-        title="Kueue Workloads"
+    <ResourceListView
+      title="Kueue Workloads"
         resourceClass={Workload}
         columns={[
           'name',
@@ -54,6 +47,5 @@ export default function WorkloadList() {
           'age',
         ]}
       />
-    </KueueAdminResourceAccess>
   );
 }

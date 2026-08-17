@@ -1,18 +1,11 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { ClusterQueue } from '../../resources/clusterQueue';
 import { LocalQueue } from '../../resources/localQueue';
-import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 export default function LocalQueueList() {
   return (
-    <KueueAdminResourceAccess
-      resourceClass={LocalQueue}
-      resourceLabel="LocalQueues"
-      verb="list"
-      accessDescription="Kueue LocalQueues are namespaced user queue resources."
-    >
-      <ResourceListView
-        title="Kueue LocalQueues"
+    <ResourceListView
+      title="Kueue LocalQueues"
         resourceClass={LocalQueue}
         columns={[
           'name',
@@ -50,6 +43,5 @@ export default function LocalQueueList() {
           'age',
         ]}
       />
-    </KueueAdminResourceAccess>
   );
 }

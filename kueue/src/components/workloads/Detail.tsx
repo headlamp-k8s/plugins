@@ -461,6 +461,7 @@ export default function WorkloadDetail() {
       resourceClass={Workload}
       resourceLabel="Workloads"
       verb="get"
+      namespace={namespace}
       accessDescription="Kueue Workloads are namespaced user workload resources."
     >
       <DetailsGrid

@@ -14,6 +14,8 @@ interface KueueAdminResourceAccessProps {
   resourceLabel: string;
   /** Kubernetes verb to verify before rendering the page. */
   verb: 'get' | 'list';
+  /** Optional namespace for namespace-scoped resources. */
+  namespace?: string;
   /** Optional sentence describing the resource scope in denied messages. */
   accessDescription?: string;
   /** Page content to render after the user is authorized. */
@@ -24,6 +26,7 @@ export default function KueueAdminResourceAccess({
   resourceClass,
   resourceLabel,
   verb,
+  namespace,
   accessDescription = `Kueue ${resourceLabel} are cluster-scoped admin resources.`,
   children,
 }: KueueAdminResourceAccessProps) {
@@ -44,6 +47,7 @@ export default function KueueAdminResourceAccess({
       <AuthVisible
         item={resourceClass}
         authVerb={verb}
+        namespace={namespace}
         onAuthResult={result => setAllowed(result.allowed)}
         onError={() => setAllowed(false)}
       >
