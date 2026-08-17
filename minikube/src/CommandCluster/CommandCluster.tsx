@@ -9,6 +9,16 @@ const MAX_OUTPUT_LINES = 200;
 
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
+
+function getPluginRunCommand() {
+  if (typeof pluginRunCommand === 'function') {
+    return pluginRunCommand;
+  }
+  if (typeof window !== 'undefined' && typeof (window as any).pluginRunCommand === 'function') {
+    return (window as any).pluginRunCommand;
+  }
+  return null;
+}
 const packagePath =
   typeof pluginPath !== 'undefined'
     ? pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
@@ -111,6 +121,12 @@ export default function CommandCluster(props: CommandClusterProps) {
     }
     processRef.current = null;
   }
+
+  React.useEffect(() => {
+    return () => {
+      killProcess();
+    };
+  }, []);
 
   if (DEBUG) {
     console.log('CommandCluster 1', {
@@ -226,7 +242,12 @@ export default function CommandCluster(props: CommandClusterProps) {
       if (!openDialog) return;
 
       try {
-        const proc = runCommand('minikube', ['version', '--short'], {});
+        const runner = getPluginRunCommand();
+        if (!runner) {
+          setMinikubeAvailable(false);
+          return;
+        }
+        const proc = runner('minikube', ['version', '--short'], {});
         proc.on('exit', code => {
           setMinikubeAvailable(code === 0);
         });
@@ -244,11 +265,24 @@ export default function CommandCluster(props: CommandClusterProps) {
     if (DEBUG) {
       console.log('runFunc 10 handleSave', clusterName);
     }
+
+    const runner = getPluginRunCommand();
+    if (!runner) {
+      console.error('pluginRunCommand is not available.');
+      setOpenDialog(true);
+      setActing(false);
+      setRunning(false);
+      setCommandDone(true);
+      setCommandError(true);
+      setRunningLines(['Failed to execute command: command runner is not available.']);
+      return;
+    }
+
     setTheCluster(clusterName);
     setActing(true);
     onCommandStarted && onCommandStarted();
 
-    function runFunc(clusterName: string) {
+    function runFunc(clusterName: string, runner: typeof runCommand) {
       if (DEBUG) {
         console.log('runFunc 11', clusterName);
       }
@@ -280,54 +314,75 @@ export default function CommandCluster(props: CommandClusterProps) {
         console.log({ minikubeProfiles, isHyperV, isVfkit, driver, existingProfile });
       }
 
-      if (isHyperV) {
-        // If hyperv, we use the scriptjs to run the command because it needs to run with admin rights
-        const commandHyperV = `${command}-minikube-hyperv`;
-        if (command === 'start') {
-          args.push('--cni=calico');
-          args.push('--addons=metallb,ingress-dns');
-          args.push('--memory=3072');
-        }
-
-        // remove the first argument, and put the commandHyperV as the first argument
-        args.shift();
-        args.unshift(commandHyperV);
-        if (DEBUG) {
-          console.log('runFunc 11.1, running commandHyperV:', commandHyperV, args);
-        }
-        minikube = pluginRunCommand(
-          // @ts-ignore
-          'scriptjs',
-          [`${packagePath}/manage-minikube.js`, ...args],
-          {}
-        );
-      } else if (isVfkit) {
-        if (command === 'start') {
-          // remove the first argument, and put the 'start-minikube-vfkit' as the first argument
-          args.shift();
-          args.unshift('start-minikube-vfkit');
-          if (DEBUG) {
-            console.log('runFunc 11.2, running start-minikube-vfkit:', args);
+      try {
+        if (isHyperV) {
+          // If hyperv, we use the scriptjs to run the command because it needs to run with admin rights
+          const commandHyperV = `${command}-minikube-hyperv`;
+          if (command === 'start') {
+            args.push('--cni=calico');
+            args.push('--addons=metallb,ingress-dns');
+            args.push('--memory=3072');
           }
-          args.push('--cni=calico');
-          args.push('--container-runtime=containerd');
-          args.push('--memory=3072');
-          args.push('--addons=metallb,ingress-dns');
-          minikube = pluginRunCommand(
+
+          // remove the first argument, and put the commandHyperV as the first argument
+          args.shift();
+          args.unshift(commandHyperV);
+          if (DEBUG) {
+            console.log('runFunc 11.1, running commandHyperV:', commandHyperV, args);
+          }
+          minikube = runner(
             // @ts-ignore
             'scriptjs',
             [`${packagePath}/manage-minikube.js`, ...args],
             {}
           );
+        } else if (isVfkit) {
+          if (command === 'start') {
+            // remove the first argument, and put the 'start-minikube-vfkit' as the first argument
+            args.shift();
+            args.unshift('start-minikube-vfkit');
+            if (DEBUG) {
+              console.log('runFunc 11.2, running start-minikube-vfkit:', args);
+            }
+            args.push('--cni=calico');
+            args.push('--container-runtime=containerd');
+            args.push('--memory=3072');
+            args.push('--addons=metallb,ingress-dns');
+            minikube = runner(
+              // @ts-ignore
+              'scriptjs',
+              [`${packagePath}/manage-minikube.js`, ...args],
+              {}
+            );
+          } else {
+            minikube = runner('minikube', args, {});
+          }
         } else {
-          minikube = pluginRunCommand('minikube', args, {});
-        }
-      } else {
-        if (driver) {
-          args.push('--driver', driver);
-        }
+          if (driver) {
+            args.push('--driver', driver);
+          }
 
-        minikube = pluginRunCommand('minikube', args, {});
+          minikube = runner('minikube', args, {});
+        }
+      } catch (error) {
+        setActing(false);
+        setRunning(false);
+        setCommandDone(true);
+        setCommandError(true);
+        setRunningLines([
+          `Failed to execute command: ${error instanceof Error ? error.message : String(error)}`,
+        ]);
+        throw error;
+      }
+
+      if (!minikube) {
+        const error = new Error('Minikube command process was not created.');
+        setActing(false);
+        setRunning(false);
+        setCommandDone(true);
+        setCommandError(true);
+        setRunningLines([error.message]);
+        throw error;
       }
       processRef.current = minikube;
 
@@ -387,7 +442,7 @@ export default function CommandCluster(props: CommandClusterProps) {
       console.log('runFunc 17, dispatching', clusterName);
     }
 
-    clusterAction(() => runFunc(clusterName), {
+    clusterAction(() => runFunc(clusterName, runner), {
       startMessage: `About to ${command} cluster ${clusterName}…`,
       cancelledMessage: `Cancelled ${command} cluster ${clusterName}.`,
       successMessage: `Cluster ${command} of ${clusterName} begun.`,

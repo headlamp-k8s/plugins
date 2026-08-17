@@ -21,6 +21,17 @@ export interface DriverInfo {
 
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
+
+function getPluginRunCommand() {
+  if (typeof pluginRunCommand === 'function') {
+    return pluginRunCommand;
+  }
+  if (typeof window !== 'undefined' && typeof (window as any).pluginRunCommand === 'function') {
+    return (window as any).pluginRunCommand;
+  }
+  return null;
+}
+
 const packagePath =
   typeof pluginPath !== 'undefined'
     ? pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
@@ -39,43 +50,62 @@ export function useInfo(): DriverInfo | null {
   const [info, setInfo] = React.useState<DriverInfo | null>(null);
 
   React.useEffect(() => {
-    let stdoutData = '';
-    const scriptjs = pluginRunCommand(
-      //@ts-ignore
-      'scriptjs',
-      [`${packagePath}/manage-minikube.js`, '-headless', 'info'],
-      {}
-    );
-    scriptjs.stdout.on('data', data => {
-      if (DEBUG) {
-        console.log('useInfo on data:', data.toString());
-      }
-      stdoutData += data.toString();
-    });
-    scriptjs.stderr.on('data', data => {
-      console.error('Error from minikube info script:', data.toString());
-      console.error('Error fetching minikube info:', data.toString());
-    });
-    scriptjs.on('exit', code => {
-      if (code === 0) {
-        try {
-          if (DEBUG) {
-            console.log('useInfo, on exit stdoutData:', stdoutData);
-          }
+    const runner = getPluginRunCommand();
+    if (!runner) {
+      return;
+    }
 
-          setInfo(JSON.parse(stdoutData));
-        } catch (e) {
-          console.error('Failed to parse minikube info JSON:', e, stdoutData);
+    let stdoutData = '';
+    let scriptjs: any = null;
+    try {
+      scriptjs = runner(
+        //@ts-ignore
+        'scriptjs',
+        [`${packagePath}/manage-minikube.js`, '-headless', 'info'],
+        {}
+      );
+      if (!scriptjs || !scriptjs.stdout) {
+        return;
+      }
+      scriptjs.stdout.on('data', data => {
+        if (DEBUG) {
+          console.log('useInfo on data:', data.toString());
+        }
+        stdoutData += data.toString();
+      });
+      scriptjs.stderr.on('data', data => {
+        console.error('Error from minikube info script:', data.toString());
+        console.error('Error fetching minikube info:', data.toString());
+      });
+      scriptjs.on('exit', code => {
+        if (code === 0) {
+          try {
+            if (DEBUG) {
+              console.log('useInfo, on exit stdoutData:', stdoutData);
+            }
+
+            setInfo(JSON.parse(stdoutData));
+          } catch (e) {
+            console.error('Failed to parse minikube info JSON:', e, stdoutData);
+            setInfo(null);
+          }
+        } else {
+          console.error('Failed to fetch minikube info, exit code:', code, stdoutData);
           setInfo(null);
         }
-      } else {
-        console.error('Failed to fetch minikube info, exit code:', code, stdoutData);
-        setInfo(null);
-      }
-    });
+      });
+    } catch (err) {
+      console.error('Failed to execute minikube info command:', err);
+    }
 
     return () => {
-      // Cleanup if needed
+      try {
+        if (scriptjs && typeof scriptjs.kill === 'function') {
+          scriptjs.kill();
+        }
+      } catch {
+        // ignore cleanup error
+      }
     };
   }, []);
 
