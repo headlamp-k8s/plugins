@@ -41,6 +41,7 @@ import {
   useManagedResourceApiAvailability,
 } from './apiAvailability';
 import { getManagedResourceLink } from './managedResourceLinks';
+import { OpenInArgoCDAction } from './openInArgoCD';
 import { getHealthIcon, getHealthStatus, getSyncIcon, getSyncStatus } from './statusHelpers';
 
 type HeadlampStatus = ComponentProps<typeof StatusLabel>['status'];
@@ -100,6 +101,10 @@ export default function ApplicationDetail(props: { namespace?: string; name?: st
                     />
                   </AuthVisible>
                 ),
+              },
+              {
+                id: 'argocd-open-external',
+                action: <OpenInArgoCDAction application={app} />,
               },
             ]
           : []

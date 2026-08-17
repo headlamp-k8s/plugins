@@ -120,6 +120,8 @@ export interface ArgoCondition {
  * of the application in the target cluster.
  */
 export interface ArgoApplicationStatus {
+  /** Namespace where the Argo CD application controller is running. */
+  controllerNamespace?: string;
   /** The health assessment of the application. */
   health?: {
     /** The health status string (e.g., "Healthy", "Degraded", "Progressing", "Missing"). */
@@ -183,6 +185,11 @@ export class ArgoApplication extends KubeObject<KubeArgoApplication> {
   /** Returns the application's observed runtime status, or undefined if not yet available. */
   get status(): ArgoApplicationStatus | undefined {
     return this.jsonData.status;
+  }
+
+  /** Returns the namespace reported by the Argo CD application controller. */
+  get controllerNamespace(): string | undefined {
+    return this.status?.controllerNamespace;
   }
 
   /** Returns the Argo CD project name this application belongs to. Defaults to "default". */

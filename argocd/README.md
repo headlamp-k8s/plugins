@@ -12,6 +12,7 @@ To learn more about Argo CD, see the [Argo CD Getting Started Guide](https://arg
 - **Application Detail View** — Displays detailed metadata for a single Application: project, source, destination, sync status, health status, and Kubernetes events.
 - **Sync Action** — Triggers a sync by patching the Application's `.operation` field via the Kubernetes API. The Argo CD application-controller picks this up exactly as it would from the Argo CD UI.
 - **Refresh Action** — Requests a refresh by setting the `argocd.argoproj.io/refresh` annotation (supports `normal` and `hard` refresh types).
+- **Open in Argo CD** — Opens the current Application in the configured Argo CD web UI when `argocd-cm.data.url` is available.
 - **Argo CD Sidebar Icon** — Registers the official Argo CD octopus logo as an offline Iconify icon (CSP-safe, no external fetch).
 
 ### API availability scope
@@ -60,6 +61,28 @@ rules:
 
 If the user lacks `patch` permission, the Sync/Refresh buttons are hidden. If a patch request is still attempted and returns 403, the plugin shows a clear error message explaining which RBAC permission is missing.
 
+### Optional Argo CD UI link permission
+
+The **Open in Argo CD** action reads only the `url` key from the existing `argocd-cm`
+ConfigMap. Grant this permission in the namespace where the Argo CD application controller
+runs if you want the action to appear:
+
+```yaml
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["argocd-cm"]
+  verbs: ["get"]
+```
+
+The plugin first uses `Application.status.controllerNamespace` to find the ConfigMap and falls
+back to the Application namespace for standard single-namespace installations. It never searches
+other namespaces. The action is hidden when the ConfigMap is missing, access is denied, or `url`
+is not a valid HTTP(S) URL.
+
+Opening the link does not require an Argo CD API token and does not make an Argo CD API request.
+Argo CD handles authentication in the new browser tab. Advanced diagnostics, diffs, and resource
+actions remain available in the native Argo CD UI.
+
 ## Development
 
 Run `npm install` and then `npm run start` to begin development.
@@ -88,18 +111,28 @@ If you don't have a full Argo CD installation, you can use the provided test man
    kubectl apply -f test-files/deploy/application.yaml
    ```
 
-4. **Build and install the plugin**:
+4. **Optionally configure the mock Argo CD UI link**:
+
+   ```bash
+   kubectl apply -f test-files/deploy/argocd-cm.yaml
+   ```
+
+   This manifest uses the reserved `.invalid` domain for safe UI testing. Do not apply it over a
+   real Argo CD installation; configure the `url` key on that installation's existing
+   `argocd-cm` instead.
+
+5. **Build and install the plugin**:
 
    ```bash
    npm install
    npm run build
    ```
 
-5. Copy the contents of the `dist/` folder to your Headlamp plugins directory:
+6. Copy the contents of the `dist/` folder to your Headlamp plugins directory:
    - **Linux/macOS**: `~/.config/Headlamp/plugins/argocd/`
    - **Windows**: `%APPDATA%\Headlamp\Config\plugins\argocd\`
 
-6. **Launch Headlamp** and navigate to the **Argo CD > Applications** sidebar entry to see the mock `guestbook` application.
+7. **Launch Headlamp** and navigate to the **Argo CD > Applications** sidebar entry to see the mock `guestbook` application.
 
 ### Verifying the mock data
 
