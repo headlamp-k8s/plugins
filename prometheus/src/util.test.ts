@@ -1,4 +1,4 @@
-import { getTimeRangeAndStepSize, supportsPrometheusMetrics } from './util';
+import { formatBytes, getTimeRangeAndStepSize, supportsPrometheusMetrics } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -142,5 +142,18 @@ describe('supportsPrometheusMetrics', () => {
     ['rejects missing resources', undefined, false],
   ])('%s', (_, resource, expected) => {
     expect(supportsPrometheusMetrics(resource)).toBe(expected);
+  });
+});
+
+describe('formatBytes', () => {
+  test.each([
+    [0, '0.00B'],
+    [1024, '1.00KB'],
+    [1024 ** 4, '1.00TB'],
+    // values above the largest unit used to come out as "1.00undefined"
+    [1024 ** 5, '1024.00TB'],
+    [1024 ** 6, '1048576.00TB'],
+  ])('formatBytes(%d) -> %s', (bytes, expected) => {
+    expect(formatBytes(bytes)).toBe(expected);
   });
 });
