@@ -95,3 +95,40 @@ export function getSyncIcon(sync: string): string {
       return 'mdi:help-circle';
   }
 }
+
+/**
+ * Maps Argo CD sync and health statuses to Headlamp Map GraphNodeStatus.
+ *
+ * @param syncStatus - The sync status string (e.g., "Synced", "OutOfSync").
+ * @param healthStatus - The health status string (e.g., "Healthy", "Degraded").
+ * @returns A graph status string or undefined.
+ */
+export function getGraphStatus(
+  syncStatus?: string,
+  healthStatus?: string
+): 'success' | 'warning' | 'error' | undefined {
+  if (syncStatus === 'OutOfSync' || healthStatus === 'Degraded' || healthStatus === 'Missing') {
+    return 'error';
+  }
+
+  if (
+    syncStatus === 'Unknown' ||
+    healthStatus === 'Progressing' ||
+    healthStatus === 'Suspended' ||
+    healthStatus === 'Unknown' ||
+    (syncStatus && syncStatus !== 'Synced') ||
+    (healthStatus && healthStatus !== 'Healthy')
+  ) {
+    return 'warning';
+  }
+
+  if (syncStatus === 'Synced' && healthStatus === 'Healthy') {
+    return 'success';
+  }
+
+  if (syncStatus || healthStatus) {
+    return 'warning';
+  }
+
+  return undefined;
+}

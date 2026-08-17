@@ -23,11 +23,15 @@ const {
   mockRegisterRoute,
   mockRegisterSidebarEntry,
   mockRegisterSidebarEntryFilter,
+  mockRegisterMapSource,
+  mockRegisterKindIcon,
 } = vi.hoisted(() => ({
   mockRegisterDetailsViewSectionsProcessor: vi.fn(),
   mockRegisterRoute: vi.fn(),
   mockRegisterSidebarEntry: vi.fn(),
   mockRegisterSidebarEntryFilter: vi.fn(),
+  mockRegisterMapSource: vi.fn(),
+  mockRegisterKindIcon: vi.fn(),
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
@@ -38,6 +42,8 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   registerRoute: mockRegisterRoute,
   registerSidebarEntry: mockRegisterSidebarEntry,
   registerSidebarEntryFilter: mockRegisterSidebarEntryFilter,
+  registerMapSource: mockRegisterMapSource,
+  registerKindIcon: mockRegisterKindIcon,
   ApiProxy: { request: vi.fn() },
   K8s: {
     cluster: {
@@ -190,5 +196,30 @@ describe('argocd plugin', () => {
       type: ArgoNamespaceInsights,
       props: { resource: namespace },
     });
+  });
+
+  it('should register the Argo CD resource tree map source', () => {
+    expect(mockRegisterMapSource).toHaveBeenCalledTimes(1);
+    expect(mockRegisterMapSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'argocd-resource-tree',
+        label: 'Argo CD',
+      })
+    );
+  });
+
+  it('should register the Application and AppProject kind icons', () => {
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith(
+      'Application',
+      expect.anything(),
+      'argoproj.io'
+    );
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith('Application', expect.anything());
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith(
+      'AppProject',
+      expect.anything(),
+      'argoproj.io'
+    );
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith('AppProject', expect.anything());
   });
 });
