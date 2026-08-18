@@ -29,9 +29,20 @@ jobs:
 
       - name: Find changed Headlamp plugin directories
         id: dirs
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
+          # Determine the correct base ref depending on the event type.
+          # On push, github.event.before is the commit SHA before the push.
+          # On pull_request, origin/main is the correct base.
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            BASE_REF="$BEFORE_SHA"
+          else
+            BASE_REF="origin/main"
+          fi
+
           # Get all top-level directories that had changes
-          changed_dirs=$(git diff --name-only origin/main...HEAD | awk -F/ '{print $1}' | sort -u)
+          changed_dirs=$(git diff --name-only "$BASE_REF"...HEAD | awk -F/ '{print $1}' | sort -u)
           echo "Changed directories: $changed_dirs"
 
           # If .github/ changed, run all plugins
