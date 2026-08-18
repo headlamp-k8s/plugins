@@ -37,6 +37,10 @@ jobs:
           # On pull_request, origin/main is the correct base.
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
             BASE_REF="$BEFORE_SHA"
+            # Fallback for new branches where before SHA is all zeros
+            if [ "$BASE_REF" = "0000000000000000000000000000000000000000" ]; then
+              BASE_REF="HEAD~1"
+            fi
           else
             BASE_REF="origin/main"
           fi
