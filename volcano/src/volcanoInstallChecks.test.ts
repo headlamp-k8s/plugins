@@ -50,14 +50,21 @@ describe('probeVolcanoCoreInstalled', () => {
     await expect(probeVolcanoCoreInstalled()).resolves.toBe('absent');
   });
 
-  it('prefers unreachable over absent when a probe was inconclusive', async () => {
+  it('reports absent when a required group is missing and another probe was inconclusive', async () => {
+    // The groups are a conjunction, so a single 404 settles it on its own.
     respondPerPath({ [SCHEDULING_PATH]: apiError(403), [JOB_PATH]: apiError(404) });
 
-    await expect(probeVolcanoCoreInstalled()).resolves.toBe('unreachable');
+    await expect(probeVolcanoCoreInstalled()).resolves.toBe('absent');
   });
 
   it('reports unreachable when one group is served and the other is inconclusive', async () => {
     respondPerPath({ [SCHEDULING_PATH]: {}, [JOB_PATH]: apiError(502) });
+
+    await expect(probeVolcanoCoreInstalled()).resolves.toBe('unreachable');
+  });
+
+  it('never reports absent from inconclusive probes alone', async () => {
+    respondPerPath({ [SCHEDULING_PATH]: apiError(403), [JOB_PATH]: apiError(502) });
 
     await expect(probeVolcanoCoreInstalled()).resolves.toBe('unreachable');
   });
