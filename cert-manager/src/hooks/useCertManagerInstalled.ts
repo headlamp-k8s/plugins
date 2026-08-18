@@ -8,10 +8,11 @@ import { InstallProbeResult, probeCertManagerInstalled } from '../isCertManagerI
  * Re-probes when the cluster changes, and ignores a probe that settles after
  * unmount so it cannot write state into a component that has gone away.
  *
- * @returns Flags: isInstalled (API group served), notInstalled (discovery
- *   returned 404), and isLoading (probe in flight). When the probe cannot
- *   complete, all three are false: callers should render their content and let
- *   the real request report the failure.
+ * @returns notInstalled (discovery returned 404) and isLoading (probe in flight).
+ *   There is deliberately no positive flag. When the probe cannot complete both
+ *   are false, so callers render their content and let the real request report the
+ *   failure. Gating on an isInstalled flag instead would send that case back to the
+ *   banner, which is the behaviour this check exists to avoid.
  */
 export function useCertManagerInstalled() {
   const cluster = Utils.getCluster() ?? '';
@@ -33,7 +34,6 @@ export function useCertManagerInstalled() {
   }, [cluster]);
 
   return {
-    isInstalled: result === 'installed',
     notInstalled: result === 'absent',
     isLoading: result === null,
   };
