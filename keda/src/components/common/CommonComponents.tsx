@@ -564,20 +564,20 @@ export interface JobsListRendererProps {
   noNamespaceFilter?: boolean;
 }
 
+export function sortByCompletions(job1: Job, job2: Job) {
+  const completionsSorted = (job1.spec.completions ?? 0) - (job2.spec.completions ?? 0);
+  if (completionsSorted === 0) {
+    return (job1.spec.parallelism ?? 0) - (job2.spec.parallelism ?? 0);
+  }
+  return completionsSorted;
+}
+
 export function JobsListRenderer(props: JobsListRendererProps) {
   const { jobs, errors, hideColumns = [], reflectTableInURL = 'jobs', noNamespaceFilter } = props;
   const { t } = useTranslation();
 
   function getCompletions(job: Job) {
     return `${job.spec.completions}/${job.spec.parallelism}`;
-  }
-
-  function sortByCompletions(job1: Job, job2: Job) {
-    const parallelismSorted = job1.spec.parallelism - job2.spec.parallelism;
-    if (parallelismSorted === 0) {
-      return job1.spec.completions - job2.spec.completions;
-    }
-    return parallelismSorted;
   }
 
   return (
