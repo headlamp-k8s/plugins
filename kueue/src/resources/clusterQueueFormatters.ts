@@ -151,31 +151,35 @@ export function renderClusterQueueStatus(activeCondition?: ClusterQueueCondition
 }
 
 /** Return unique ResourceFlavor names referenced by ClusterQueue resource groups. */
-export function getUniqueFlavorNames(resourceGroups: ResourceGroupLike[]) {
-  const names = resourceGroups.flatMap(group => group.flavors?.map(flavor => flavor.name) || []);
+export function getUniqueFlavorNames(resourceGroups?: ResourceGroupLike[]) {
+  const names = (resourceGroups || []).flatMap(
+    group => group.flavors?.map(flavor => flavor.name) || []
+  );
 
   return Array.from(new Set(names)).filter(Boolean).sort();
 }
 
 /** Render a compact resource group and flavor count for ClusterQueue lists. */
-export function renderResourceGroupsSummary(resourceGroups: ResourceGroupLike[]) {
-  if (resourceGroups.length === 0) {
+export function renderResourceGroupsSummary(resourceGroups?: ResourceGroupLike[]) {
+  const groups = resourceGroups || [];
+  if (groups.length === 0) {
     return '-';
   }
 
-  const flavorCount = resourceGroups.reduce(
+  const flavorCount = groups.reduce(
     (count, group) => count + (group.flavors?.length || 0),
     0
   );
-  const groupLabel = resourceGroups.length === 1 ? 'group' : 'groups';
+  const groupLabel = groups.length === 1 ? 'group' : 'groups';
   const flavorLabel = flavorCount === 1 ? 'flavor' : 'flavors';
 
-  return `${resourceGroups.length} ${groupLabel}, ${flavorCount} ${flavorLabel}`;
+  return `${groups.length} ${groupLabel}, ${flavorCount} ${flavorLabel}`;
 }
 
 /** Render a comma-separated list, falling back to '-' when empty. */
-export function renderStringList(values: string[]) {
-  return values.length > 0 ? values.join(', ') : '-';
+export function renderStringList(values?: string[]) {
+  const list = values || [];
+  return list.length > 0 ? list.join(', ') : '-';
 }
 
 /** Render a Kubernetes label selector as compact detail text. */
@@ -197,12 +201,13 @@ export function renderLabelSelector(selector?: LabelSelectorLike) {
 }
 
 /** Render all resource groups and nested flavors as multiline detail text. */
-export function renderResourceGroups(resourceGroups: ResourceGroupLike[]) {
-  if (resourceGroups.length === 0) {
+export function renderResourceGroups(resourceGroups?: ResourceGroupLike[]) {
+  const groups = resourceGroups || [];
+  if (groups.length === 0) {
     return '-';
   }
 
-  return resourceGroups
+  return groups
     .map((group, index) => {
       const resources = renderStringList(group.coveredResources || []);
       const flavors = (group.flavors || []).map(renderFlavorQuotas).join('; ') || '-';
@@ -231,12 +236,13 @@ function renderResourceQuota(resource: ResourceQuotaLike) {
 }
 
 /** Render ClusterQueue conditions as multiline status text. */
-export function renderConditions(conditions: ClusterQueueConditionLike[]) {
-  if (conditions.length === 0) {
+export function renderConditions(conditions?: ClusterQueueConditionLike[]) {
+  const list = conditions || [];
+  if (list.length === 0) {
     return '-';
   }
 
-  return conditions
+  return list
     .map(condition => {
       const reason = condition.reason ? ` (${condition.reason})` : '';
       const message = condition.message ? `: ${condition.message}` : '';
