@@ -14,11 +14,16 @@ const KEDA_API_PATH = '/apis/keda.sh/v1alpha1';
 /**
  * Checks whether the cluster serves the KEDA API group.
  *
- * Only a 404 proves the group is missing. Discovery is not RBAC gated (Kubernetes
- * binds the system:discovery ClusterRole to system:authenticated), so any
- * authenticated user gets a definitive answer. Every other failure means the probe
- * did not complete. Headlamp turns a thrown fetch into a 502 and a timeout into a
- * 408, and neither of those says anything about KEDA.
+ * Only a 404 proves the group is missing. Discovery is not RBAC gated for
+ * authenticated users: Kubernetes binds the system:discovery ClusterRole to
+ * system:authenticated, so they get a definitive answer from /apis even when they
+ * are denied every resource in the group. An anonymous request is not covered by
+ * that binding and can be refused with a 403, which lands in 'unreachable', the
+ * right answer for it.
+ *
+ * Every other failure means the probe did not complete. Headlamp turns a thrown
+ * fetch into a 502 and a timeout into a 408, and neither of those says anything
+ * about KEDA.
  *
  * @returns 'installed', 'absent' if discovery returned 404, otherwise 'unreachable'.
  */
