@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box } from '@mui/system';
 import { ClusterDomainClaim } from '../../resources/knative';
@@ -35,6 +36,7 @@ interface GlanceProps {
  * @param props.node - The map node containing the resource.
  */
 export function ClusterDomainClaimGlance({ node }: GlanceProps) {
+  const { t } = useTranslation();
   const kubeObject = node.kubeObject;
   const isKnativeClusterDomainClaim =
     kubeObject instanceof ClusterDomainClaim ||
@@ -47,7 +49,9 @@ export function ClusterDomainClaimGlance({ node }: GlanceProps) {
 
     return (
       <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="cdc-glance">
-        <StatusLabel status="">Owner: {cdc.targetNamespace || '-'}</StatusLabel>
+        <StatusLabel status="">
+          {t('Owner: {{ namespace }}', { namespace: cdc.targetNamespace || '-' })}
+        </StatusLabel>
       </Box>
     );
   }

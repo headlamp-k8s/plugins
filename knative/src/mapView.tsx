@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useMemo } from 'react';
 import { ClusterDomainClaim, KnativeDomainMapping, KRevision, KService } from './resources/knative';
@@ -26,128 +27,143 @@ export const makeKubeToKubeEdge = (from: any, to: any, options: any = {}): any =
   ...options,
 });
 
-const KServiceDetails = ({ node }: { node: any }) => (
-  <DetailsGrid
-    resourceType={KService}
-    name={node.kubeObject.jsonData.metadata.name}
-    namespace={node.kubeObject.jsonData.metadata.namespace}
-    withEvents
-    extraInfo={item =>
-      item
-        ? [
-            {
-              name: 'Ready',
-              value: item.isReady ? 'True' : 'False',
-            },
-            {
-              name: 'URL',
-              value: item.url || '-',
-            },
-            {
-              name: 'Latest Created',
-              value: item.status?.latestCreatedRevisionName || '-',
-            },
-            {
-              name: 'Latest Ready',
-              value: item.status?.latestReadyRevisionName || '-',
-            },
-          ]
-        : null
-    }
-  />
-);
+const KServiceDetails = ({ node }: { node: any }) => {
+  const { t } = useTranslation();
+  return (
+    <DetailsGrid
+      resourceType={KService}
+      name={node.kubeObject.jsonData.metadata.name}
+      namespace={node.kubeObject.jsonData.metadata.namespace}
+      withEvents
+      extraInfo={item =>
+        item
+          ? [
+              {
+                name: t('Ready'),
+                value: item.isReady ? 'True' : 'False',
+              },
+              {
+                name: t('URL'),
+                value: item.url || '-',
+              },
+              {
+                name: t('Latest Created'),
+                value: item.status?.latestCreatedRevisionName || '-',
+              },
+              {
+                name: t('Latest Ready'),
+                value: item.status?.latestReadyRevisionName || '-',
+              },
+            ]
+          : null
+      }
+    />
+  );
+};
 
-const RevisionDetails = ({ node }: { node: any }) => (
-  <DetailsGrid
-    resourceType={KRevision}
-    name={node.kubeObject.jsonData.metadata.name}
-    namespace={node.kubeObject.jsonData.metadata.namespace}
-    withEvents
-    extraInfo={item =>
-      item
-        ? [
-            {
-              name: 'Ready',
-              value: item.isReady ? 'True' : 'False',
-            },
-            {
-              name: 'Parent Service',
-              value: item.parentService || '-',
-            },
-            {
-              name: 'Image',
-              value: item.primaryImage || '-',
-            },
-            {
-              name: 'Container Concurrency',
-              value: item.spec?.containerConcurrency ?? 'Default',
-            },
-            {
-              name: 'Traffic',
-              value: node.traffic?.length
-                ? node.traffic
-                    .map((t: any) => `${t.percent || 0}%${t.tag ? ` (${t.tag})` : ''}`)
-                    .join(', ')
-                : '0%',
-            },
-          ]
-        : null
-    }
-  />
-);
+const RevisionDetails = ({ node }: { node: any }) => {
+  const { t } = useTranslation();
+  return (
+    <DetailsGrid
+      resourceType={KRevision}
+      name={node.kubeObject.jsonData.metadata.name}
+      namespace={node.kubeObject.jsonData.metadata.namespace}
+      withEvents
+      extraInfo={item =>
+        item
+          ? [
+              {
+                name: t('Ready'),
+                value: item.isReady ? 'True' : 'False',
+              },
+              {
+                name: t('Parent Service'),
+                value: item.parentService || '-',
+              },
+              {
+                name: t('Image'),
+                value: item.primaryImage || '-',
+              },
+              {
+                name: t('Container Concurrency'),
+                value: item.spec?.containerConcurrency ?? t('Default'),
+              },
+              {
+                name: t('Traffic'),
+                value: node.traffic?.length
+                  ? node.traffic
+                      .map(
+                        (entry: any) =>
+                          `${entry.percent || 0}%${entry.tag ? ` (${entry.tag})` : ''}`
+                      )
+                      .join(', ')
+                  : '0%',
+              },
+            ]
+          : null
+      }
+    />
+  );
+};
 
-const DomainMappingDetails = ({ node }: { node: any }) => (
-  <DetailsGrid
-    resourceType={KnativeDomainMapping}
-    name={node.kubeObject.jsonData.metadata.name}
-    namespace={node.kubeObject.jsonData.metadata.namespace}
-    withEvents
-    extraInfo={item =>
-      item
-        ? [
-            {
-              name: 'Host',
-              value: item.host || '-',
-            },
-            {
-              name: 'Target',
-              value: item.spec?.ref?.name || '-',
-            },
-            {
-              name: 'Target Kind',
-              value: item.spec?.ref?.kind || '-',
-            },
-            {
-              name: 'URL',
-              value: item.readyUrl || '-',
-            },
-          ]
-        : null
-    }
-  />
-);
+const DomainMappingDetails = ({ node }: { node: any }) => {
+  const { t } = useTranslation();
+  return (
+    <DetailsGrid
+      resourceType={KnativeDomainMapping}
+      name={node.kubeObject.jsonData.metadata.name}
+      namespace={node.kubeObject.jsonData.metadata.namespace}
+      withEvents
+      extraInfo={item =>
+        item
+          ? [
+              {
+                name: t('Host'),
+                value: item.host || '-',
+              },
+              {
+                name: t('Target'),
+                value: item.spec?.ref?.name || '-',
+              },
+              {
+                name: t('Target Kind'),
+                value: item.spec?.ref?.kind || '-',
+              },
+              {
+                name: t('URL'),
+                value: item.readyUrl || '-',
+              },
+            ]
+          : null
+      }
+    />
+  );
+};
 
-const ClusterDomainClaimDetails = ({ node }: { node: any }) => (
-  <DetailsGrid
-    resourceType={ClusterDomainClaim}
-    name={node.kubeObject.jsonData.metadata.name}
-    withEvents
-    extraInfo={item =>
-      item
-        ? [
-            {
-              name: 'Domain',
-              value: item.metadata?.name || '-',
-            },
-            {
-              name: 'Owner Namespace',
-              value: item.targetNamespace || '-',
-            },
-          ]
-        : null
-    }
-  />
-);
+const ClusterDomainClaimDetails = ({ node }: { node: any }) => {
+  const { t } = useTranslation();
+  return (
+    <DetailsGrid
+      resourceType={ClusterDomainClaim}
+      name={node.kubeObject.jsonData.metadata.name}
+      withEvents
+      extraInfo={item =>
+        item
+          ? [
+              {
+                name: t('Domain'),
+                value: item.metadata?.name || '-',
+              },
+              {
+                name: t('Owner Namespace'),
+                value: item.targetNamespace || '-',
+              },
+            ]
+          : null
+      }
+    />
+  );
+};
 
 const knativeServiceSource: any = {
   id: 'knative-service',

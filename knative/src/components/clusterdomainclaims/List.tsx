@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   CreateResourceButton,
   Link,
@@ -30,6 +31,7 @@ export function useClusterDomainClaimColumns(
   clusters: string[],
   domainMappings: KnativeDomainMapping[] | null
 ) {
+  const { t } = useTranslation();
   const showClusterColumn = clusters.length > 1;
 
   return useMemo<(ResourceTableColumn<KubeObject> | 'age' | 'name')[]>(() => {
@@ -37,7 +39,7 @@ export function useClusterDomainClaimColumns(
       'name',
       {
         id: 'namespace',
-        label: 'Namespace',
+        label: t('Namespace'),
         gridTemplate: 'auto',
         getValue: item => {
           const cdc = item as ClusterDomainClaim;
@@ -67,7 +69,7 @@ export function useClusterDomainClaimColumns(
         ? ([
             {
               id: 'cluster',
-              label: 'Cluster',
+              label: t('Cluster'),
               gridTemplate: 'auto',
               getValue: item => item.cluster ?? '',
             },
@@ -75,7 +77,7 @@ export function useClusterDomainClaimColumns(
         : []),
       {
         id: 'domainmapping',
-        label: 'DomainMapping',
+        label: t('DomainMapping'),
         gridTemplate: 'auto',
         disableFiltering: true,
         getValue: item => {
@@ -138,11 +140,11 @@ export function useClusterDomainClaimColumns(
                   crName: found.metadata.name,
                 }}
               >
-                <Chip label="Present" color="success" size="small" clickable />
+                <Chip label={t('Present')} color="success" size="small" clickable />
               </Link>
             );
           } else {
-            return <Chip label="Missing" color="warning" size="small" />;
+            return <Chip label={t('Missing')} color="warning" size="small" />;
           }
         },
       },
@@ -154,6 +156,7 @@ export function useClusterDomainClaimColumns(
 }
 
 function ClusterDomainClaimsListContent({ clusters }: { clusters: string[] }) {
+  const { t } = useTranslation();
   const domainMappingsResult = KnativeDomainMapping.useList({ clusters });
   const domainMappings = domainMappingsResult.items;
 
@@ -178,7 +181,7 @@ function ClusterDomainClaimsListContent({ clusters }: { clusters: string[] }) {
 
   return (
     <ResourceListView
-      title="Cluster Domain Claims"
+      title={t('Cluster Domain Claims')}
       headerProps={headerProps}
       resourceClass={ClusterDomainClaim}
       columns={columns}

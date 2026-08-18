@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   CreateResourceButton,
   Link,
@@ -50,6 +51,7 @@ export function useDomainMappingColumns(
   clusters: string[],
   clusterDomainClaims: ClusterDomainClaim[] | null
 ) {
+  const { t } = useTranslation();
   const showClusterColumn = clusters.length > 1;
 
   return useMemo<
@@ -61,7 +63,7 @@ export function useDomainMappingColumns(
       ...(showClusterColumn ? (['cluster'] as const) : []),
       {
         id: 'ready',
-        label: 'Ready',
+        label: t('Ready'),
         gridTemplate: 'auto',
         disableFiltering: true,
         getValue: item => {
@@ -83,7 +85,7 @@ export function useDomainMappingColumns(
       },
       {
         id: 'clusterdomainclaim',
-        label: 'ClusterDomainClaim',
+        label: t('ClusterDomainClaim'),
         gridTemplate: 'auto',
         disableFiltering: true,
         getValue: item => {
@@ -119,7 +121,7 @@ export function useDomainMappingColumns(
                   crName: claim?.metadata.name,
                 }}
               >
-                <Chip label="Present" color="success" size="small" clickable />
+                <Chip label={t('Present')} color="success" size="small" clickable />
               </Link>
             );
           }
@@ -127,7 +129,7 @@ export function useDomainMappingColumns(
       },
       {
         id: 'url',
-        label: 'URL',
+        label: t('URL'),
         gridTemplate: 'auto',
         getValue: item => (item as KnativeDomainMapping).readyUrl ?? '',
         render: item => {
@@ -153,6 +155,7 @@ export function useDomainMappingColumns(
 }
 
 function DomainMappingsListContents({ clusters }: { clusters: string[] }) {
+  const { t } = useTranslation();
   const { notifyError, notifyInfo } = useNotify();
 
   // We need to fetch ClusterDomainClaims to cross-reference their status
@@ -195,10 +198,10 @@ function DomainMappingsListContents({ clusters }: { clusters: string[] }) {
                 onAction={async () => {
                   try {
                     await createClusterDomainClaim(dm, namespace);
-                    notifyInfo('ClusterDomainClaim created');
+                    notifyInfo(t('ClusterDomainClaim created'));
                   } catch (err: unknown) {
                     const error = err as { message?: string } | undefined;
-                    notifyError(error?.message || 'Failed to create ClusterDomainClaim');
+                    notifyError(error?.message || t('Failed to create ClusterDomainClaim'));
                   }
                   context.closeMenu?.();
                 }}
@@ -215,7 +218,7 @@ function DomainMappingsListContents({ clusters }: { clusters: string[] }) {
 
   return (
     <ResourceListView
-      title="Domain Mappings"
+      title={t('Domain Mappings')}
       headerProps={headerProps}
       resourceClass={KnativeDomainMapping}
       columns={columns}

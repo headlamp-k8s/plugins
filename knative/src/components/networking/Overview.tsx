@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
 import { Box, CircularProgress, Paper, Typography } from '@mui/material';
 import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
@@ -174,12 +175,13 @@ function useGatewayConfigForCluster(cluster: string): GatewayConfigHookResult {
 }
 
 function GatewaySection({ label, config }: { label: string; config: GatewayConfig | null }) {
+  const { t } = useTranslation();
   if (!config) {
     return (
       <Box sx={{ mt: 1.5 }}>
         <Typography variant="subtitle2">{label}</Typography>
         <Typography variant="body2" color="text.secondary">
-          Not configured.
+          {t('Not configured.')}
         </Typography>
       </Box>
     );
@@ -189,21 +191,28 @@ function GatewaySection({ label, config }: { label: string; config: GatewayConfi
     <Box sx={{ mt: 1.5 }}>
       <Typography variant="subtitle2">{label}</Typography>
       <Typography variant="body2">
-        GatewayClass: <strong>{config.class}</strong>
+        {t('GatewayClass:')} <strong>{config.class}</strong>
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Controller: {config.controllerName ?? '(unknown)'}
+        {t('Controller: {{ name }}', { name: config.controllerName ?? t('(unknown)') })}
       </Typography>
       <Typography variant="body2">
-        Gateway: {config.gateway.namespace}/{config.gateway.name}
+        {t('Gateway: {{ reference }}', {
+          reference: `${config.gateway.namespace}/${config.gateway.name}`,
+        })}
       </Typography>
       <Typography variant="body2">
-        KService:{' '}
-        {config.service ? `${config.service.namespace}/${config.service.name}` : '(not set)'}
+        {t('KService: {{ reference }}', {
+          reference: config.service
+            ? `${config.service.namespace}/${config.service.name}`
+            : t('(not set)'),
+        })}
       </Typography>
       {config.supportedFeatures && config.supportedFeatures.length > 0 && (
         <Typography variant="body2">
-          Supported features: {config.supportedFeatures.join(', ')}
+          {t('Supported features: {{ features }}', {
+            features: config.supportedFeatures.join(', '),
+          })}
         </Typography>
       )}
     </Box>
@@ -211,6 +220,7 @@ function GatewaySection({ label, config }: { label: string; config: GatewayConfi
 }
 
 function ClusterNetworkingCardContainer({ cluster }: { cluster: string }) {
+  const { t } = useTranslation();
   const { ingressClass, ingressClassRaw, ingressClassLoading } = useIngressClassForCluster(cluster);
   const { gatewayConfig, gatewayConfigLoading } = useGatewayConfigForCluster(cluster);
 
@@ -218,7 +228,7 @@ function ClusterNetworkingCardContainer({ cluster }: { cluster: string }) {
     return (
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 1 }}>
-          Cluster: {cluster}
+          {t('Cluster: {{ cluster }}', { cluster })}
         </Typography>
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
           <CircularProgress size={24} />
@@ -248,47 +258,53 @@ function ClusterNetworkingCard({
   ingressClassRaw: string | null;
   gatewayConfig: GatewayConfigResult | null;
 }) {
+  const { t } = useTranslation();
   const isGatewayApi = ingressClass === INGRESS_CLASS_GATEWAY_API;
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 1 }}>
-        Cluster: {cluster}
+        {t('Cluster: {{ cluster }}', { cluster })}
       </Typography>
 
       <Box sx={{ mb: 2 }}>
-        <Typography variant="h6">Ingress</Typography>
+        <Typography variant="h6">{t('Ingress')}</Typography>
         <Typography variant="body2">
-          Effective ingress class: <strong>{formatIngressClass(ingressClass)}</strong>
+          {t('Effective ingress class:')} <strong>{formatIngressClass(ingressClass)}</strong>
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Raw value: {ingressClassRaw ?? '(not set)'}
+          {t('Raw value: {{ value }}', { value: ingressClassRaw ?? t('(not set)') })}
         </Typography>
       </Box>
 
       <Box>
-        <Typography variant="h6">Gateway API</Typography>
+        <Typography variant="h6">{t('Gateway API')}</Typography>
         {isGatewayApi ? (
           <>
             <Typography variant="body2" color="text.secondary">
-              Using Gateway API ingress (ingress class &quot;
-              {formatIngressClass(ingressClass)}&quot;).
+              {t('Using Gateway API ingress (ingress class "{{ class }}").', {
+                class: formatIngressClass(ingressClass),
+              })}
             </Typography>
-            <GatewaySection label="External gateway" config={gatewayConfig?.external ?? null} />
             <GatewaySection
-              label="Local gateway (cluster-local)"
+              label={t('External gateway')}
+              config={gatewayConfig?.external ?? null}
+            />
+            <GatewaySection
+              label={t('Local gateway (cluster-local)')}
               config={gatewayConfig?.local ?? null}
             />
             {!gatewayConfig?.external && !gatewayConfig?.local && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-                No external or local gateway entries found in the config-gateway ConfigMap.
+                {t('No external or local gateway entries found in the config-gateway ConfigMap.')}
               </Typography>
             )}
           </>
         ) : (
           <Typography variant="body2" color="text.secondary">
-            Gateway API ingress class is not enabled. Current ingress class is{' '}
-            {formatIngressClass(ingressClass)}.
+            {t('Gateway API ingress class is not enabled. Current ingress class is {{ class }}.', {
+              class: formatIngressClass(ingressClass),
+            })}
           </Typography>
         )}
       </Box>
@@ -297,6 +313,7 @@ function ClusterNetworkingCard({
 }
 
 export function NetworkingOverview() {
+  const { t } = useTranslation();
   const clusters = useClusters();
   const hasCluster = clusters.length > 0;
   const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
@@ -305,7 +322,7 @@ export function NetworkingOverview() {
     return (
       <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <Typography color="text.secondary">
-          No cluster selected. Select a cluster to view Knative networking details.
+          {t('No cluster selected. Select a cluster to view Knative networking details.')}
         </Typography>
       </Box>
     );
@@ -318,9 +335,9 @@ export function NetworkingOverview() {
   return (
     <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box sx={{ mb: 1 }}>
-        <Typography variant="h5">Knative Networking</Typography>
+        <Typography variant="h5">{t('Knative Networking')}</Typography>
         <Typography variant="body2" color="text.secondary">
-          Overview of ingress settings configured
+          {t('Overview of ingress settings configured')}
         </Typography>
       </Box>
 
