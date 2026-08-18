@@ -1,14 +1,13 @@
-import {
-  ConditionsSection,
-  DetailsGrid,
-  Link,
-} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Icon } from '@iconify/react';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
+import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Link as MuiLink } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { LocalQueue } from '../../resources/localQueue';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { openClusterQueueActivity } from '../clusterqueues/Detail';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
-/** Render a ClusterQueue reference as a detail-page link. */
+/** Render a ClusterQueue reference as a link that opens its details in a side panel. */
 function renderClusterQueueLink(localQueue: LocalQueue) {
   const clusterQueueName = localQueue.clusterQueueName;
 
@@ -17,10 +16,26 @@ function renderClusterQueueLink(localQueue: LocalQueue) {
   }
 
   return (
-    <Link routeName={kueueRouteNames.clusterQueueDetail} params={{ name: clusterQueueName }}>
+    <MuiLink
+      component="button"
+      sx={{ textAlign: 'left' }}
+      onClick={() => openClusterQueueActivity(clusterQueueName, localQueue.cluster)}
+    >
       {clusterQueueName}
-    </Link>
+    </MuiLink>
   );
+}
+
+/** Open a LocalQueue's details in a side panel instead of navigating away. */
+export function openLocalQueueActivity(namespace: string, name: string, cluster?: string) {
+  Activity.launch({
+    id: `kueue-localqueue-${cluster ?? ''}-${namespace}-${name}`,
+    location: 'split-right',
+    icon: <Icon icon="mdi:format-list-bulleted" />,
+    title: `${namespace}/${name}`,
+    cluster,
+    content: <LocalQueueDetail namespace={namespace} name={name} />,
+  });
 }
 
 /** Build the standard Headlamp conditions section for LocalQueue status. */
@@ -35,8 +50,10 @@ function getConditionsSection(localQueue: LocalQueue) {
   };
 }
 
-export default function LocalQueueDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export default function LocalQueueDetail(props: { namespace?: string; name?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <KueueAdminResourceAccess
