@@ -35,6 +35,18 @@ Watch: https://github.com/user-attachments/assets/3d32d729-a892-4efc-bf98-ea0b21
 
 Views for resource types whose CRDs are not installed are hidden automatically.
 
+## LFX Mentorship
+
+The [Kyverno Policy Visualization & Operational Improvements](https://github.com/cncf/mentoring/tree/main/programs/lfx-mentorship/2026/03-Sep-Nov#kyverno-policy-visualization--operational-improvements)
+project is part of CNCF LFX Mentorship 2026 Term 3.
+
+Mentors:
+
+- Rene Dudfield ([@illume](https://github.com/illume))
+- Sumit Goyal ([@itvi-1234](https://github.com/itvi-1234))
+- Ashwani Yadav ([@NAME-ASHWANIYADAV](https://github.com/NAME-ASHWANIYADAV))
+- Joshna Waikar ([@Joshna907](https://github.com/Joshna907))
+
 ## Prerequisites
 
 - A Kubernetes cluster with [Kyverno](https://kyverno.io/docs/installation/)
