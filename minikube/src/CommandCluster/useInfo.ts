@@ -21,6 +21,17 @@ export interface DriverInfo {
 
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
+
+function getPluginRunCommand() {
+  if (typeof pluginRunCommand === 'function') {
+    return pluginRunCommand;
+  }
+  if (typeof window !== 'undefined' && typeof (window as any).pluginRunCommand === 'function') {
+    return (window as any).pluginRunCommand;
+  }
+  return null;
+}
+
 const packagePath =
   typeof pluginPath !== 'undefined'
     ? pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
@@ -39,13 +50,22 @@ export function useInfo(): DriverInfo | null {
   const [info, setInfo] = React.useState<DriverInfo | null>(null);
 
   React.useEffect(() => {
+    const runner = getPluginRunCommand();
+    if (!runner) {
+      return;
+    }
+
     let stdoutData = '';
-    const scriptjs = pluginRunCommand(
-      //@ts-ignore
-      'scriptjs',
-      [`${packagePath}/manage-minikube.js`, '-headless', 'info'],
-      {}
-    );
+    try {
+      const scriptjs = runner(
+        //@ts-ignore
+        'scriptjs',
+        [`${packagePath}/manage-minikube.js`, '-headless', 'info'],
+        {}
+      );
+      if (!scriptjs || !scriptjs.stdout) {
+        return;
+      }
     scriptjs.stdout.on('data', data => {
       if (DEBUG) {
         console.log('useInfo on data:', data.toString());
@@ -73,6 +93,9 @@ export function useInfo(): DriverInfo | null {
         setInfo(null);
       }
     });
+    } catch (err) {
+      console.error('Failed to execute minikube info command:', err);
+    }
 
     return () => {
       // Cleanup if needed
