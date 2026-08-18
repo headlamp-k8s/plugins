@@ -146,25 +146,6 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
 
   try {
     await ensureClusterDomainClaim({ host, cluster: dm.cluster, namespace });
-
-    // Add dummy annotation to trigger DomainMapping reconciliation
-    try {
-      await dm.patch({
-        metadata: {
-          annotations: {
-            'knative.headlamp.dev/reconciledAt': new Date().toISOString(),
-          },
-        },
-      });
-    } catch (e2: unknown) {
-      const error2 = e2 as { message?: string } | undefined;
-      const detail2 = error2?.message?.trim();
-      throw new Error(
-        detail2
-          ? `Failed to annotate DomainMapping: ${detail2}`
-          : 'Failed to annotate DomainMapping'
-      );
-    }
   } catch (e: unknown) {
     const error = e as { message?: string } | undefined;
     const detail = error?.message?.trim();
@@ -172,6 +153,26 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
       detail
         ? `Failed to create ClusterDomainClaim: ${detail}`
         : 'Failed to create ClusterDomainClaim'
+    );
+  }
+
+  // Add dummy annotation to trigger DomainMapping reconciliation.
+  // Kept outside the block above so that a patch failure is not reported as a
+  // claim-creation failure: the ClusterDomainClaim already exists by this point, and
+  // mislabelling the error sends users to debug the wrong resource.
+  try {
+    await dm.patch({
+      metadata: {
+        annotations: {
+          'knative.headlamp.dev/reconciledAt': new Date().toISOString(),
+        },
+      },
+    });
+  } catch (e: unknown) {
+    const error = e as { message?: string } | undefined;
+    const detail = error?.message?.trim();
+    throw new Error(
+      detail ? `Failed to annotate DomainMapping: ${detail}` : 'Failed to annotate DomainMapping'
     );
   }
 }
