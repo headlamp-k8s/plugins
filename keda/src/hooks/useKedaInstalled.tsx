@@ -1,19 +1,40 @@
+import { Utils } from '@kinvolk/headlamp-plugin/lib';
 import { useEffect, useState } from 'react';
-import { isKedaInstalled as checkKedaInstallation } from '../isKedaInstalled';
+import { InstallProbeResult, probeKedaInstalled } from '../isKedaInstalled';
 
+/**
+ * Tracks whether KEDA is installed on the current cluster.
+ *
+ * Re-probes when the cluster changes, and ignores a probe that settles after
+ * unmount so it cannot write state into a component that has gone away.
+ *
+ * @returns Flags: isInstalled (API group served), notInstalled (discovery
+ *   returned 404), and isLoading (probe in flight). When the probe cannot
+ *   complete, all three are false: callers should render their content and let
+ *   the real request report the failure.
+ */
 export function useKedaInstalled() {
-  const [isKedaInstalled, setIsKedaInstalled] = useState<boolean | null>(null);
+  const cluster = Utils.getCluster() ?? '';
+  const [result, setResult] = useState<InstallProbeResult | null>(null);
 
   useEffect(() => {
-    async function checkKedaInstalled() {
-      const isInstalled = await checkKedaInstallation();
-      setIsKedaInstalled(!!isInstalled);
-    }
-    checkKedaInstalled();
-  }, []);
+    let cancelled = false;
+    setResult(null);
+
+    probeKedaInstalled().then(probed => {
+      if (!cancelled) {
+        setResult(probed);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cluster]);
 
   return {
-    isKedaInstalled,
-    isKedaCheckLoading: isKedaInstalled === null,
+    isInstalled: result === 'installed',
+    notInstalled: result === 'absent',
+    isLoading: result === null,
   };
 }
