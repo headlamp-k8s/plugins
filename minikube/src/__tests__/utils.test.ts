@@ -1,5 +1,5 @@
 import { generateClusterName, isValidClusterName } from '../CommandCluster/CommandDialog';
-import { detectOS } from '../CommandCluster/DriverSelect';
+import { detectOS, isMacOSAtLeast } from '../CommandCluster/DriverSelect';
 import { isElectron, isMinikube } from '../index';
 
 describe('isElectron', () => {
@@ -95,6 +95,28 @@ describe('detectOS', () => {
       configurable: true,
     });
     expect(detectOS()).toBe('unknown');
+  });
+});
+
+describe('isMacOSAtLeast', () => {
+  it('rejects old single-digit minor versions', () => {
+    // this used to be compared with parseFloat, where "10.9" > 10.13 numerically
+    expect(isMacOSAtLeast('10.9', 10, 13)).toBe(false);
+    expect(isMacOSAtLeast('10.2', 10, 13)).toBe(false);
+  });
+
+  it('accepts versions past the minor threshold', () => {
+    expect(isMacOSAtLeast('10.13', 10, 13)).toBe(true);
+    expect(isMacOSAtLeast('10.15', 10, 13)).toBe(true);
+  });
+
+  it('accepts any higher major version', () => {
+    expect(isMacOSAtLeast('11.0', 10, 13)).toBe(true);
+    expect(isMacOSAtLeast('14.4', 10, 13)).toBe(true);
+  });
+
+  it('rejects lower major versions regardless of minor', () => {
+    expect(isMacOSAtLeast('9.9', 10, 13)).toBe(false);
   });
 });
 
