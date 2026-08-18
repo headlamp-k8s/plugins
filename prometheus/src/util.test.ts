@@ -102,6 +102,19 @@ describe('getTimeRangeAndStepSize', () => {
       step: 14,
     });
   });
+
+  test('should quantize timestamps to step boundary to prevent auto-refresh flicker', () => {
+    const unalignedTime = 1700000007; // 7 seconds after step boundary
+    vitest.spyOn(Date, 'now').mockImplementation(() => unalignedTime * 1000);
+
+    const result = getTimeRangeAndStepSize('1h', '30s');
+    // Expected step is 30s; 1700000007 % 30 = 7, so to should be 1700000000
+    expect(result).toEqual({
+      from: 1700000000 - 3600,
+      to: 1700000000,
+      step: 30,
+    });
+  });
 });
 
 describe('supportsPrometheusMetrics', () => {
