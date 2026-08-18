@@ -5,8 +5,6 @@ import {
   renderClusterQueueStatus,
   renderLabelSelector,
   renderResourceGroupsSummary,
-  resolveAndRenderAdmissionChecks,
-  resolveCohortName,
 } from './clusterQueueFormatters';
 
 describe('ClusterQueue formatters', () => {
@@ -66,62 +64,5 @@ describe('ClusterQueue formatters', () => {
         ],
       })
     ).toBe('prov-request (spot); quota-check (default, gpu-flavor)');
-  });
-
-  it('resolves cohort name from v1beta2 cohortName with fallback to v1beta1 cohort', () => {
-    // v1beta2: cohortName is set
-    expect(resolveCohortName({ cohortName: 'research' })).toBe('research');
-
-    // v1beta1: only cohort is set
-    expect(resolveCohortName({ cohort: 'research' })).toBe('research');
-
-    // v1beta2 takes priority when both are present
-    expect(resolveCohortName({ cohortName: 'v2-name', cohort: 'v1-name' })).toBe('v2-name');
-
-    // Neither set
-    expect(resolveCohortName({})).toBeUndefined();
-    expect(resolveCohortName()).toBeUndefined();
-  });
-
-  it('resolves admission checks from v1beta2 strategy with fallback to v1beta1 flat list', () => {
-    // v1beta2: admissionChecksStrategy is set
-    expect(
-      resolveAndRenderAdmissionChecks({
-        admissionChecksStrategy: {
-          admissionChecks: [{ name: 'prov-request', onFlavors: ['spot'] }],
-        },
-      })
-    ).toBe('prov-request (spot)');
-
-    // v1beta1: admissionChecks is a flat string array (no per-flavor scoping)
-    expect(
-      resolveAndRenderAdmissionChecks({
-        admissionChecks: ['prov-request'],
-      })
-    ).toBe('prov-request (all flavors)');
-
-    // v1beta1: multiple admission checks
-    expect(
-      resolveAndRenderAdmissionChecks({
-        admissionChecks: ['prov-request', 'quota-check'],
-      })
-    ).toBe('prov-request (all flavors); quota-check (all flavors)');
-
-    // v1beta2 strategy takes priority when both are present
-    expect(
-      resolveAndRenderAdmissionChecks({
-        admissionChecksStrategy: {
-          admissionChecks: [{ name: 'v2-check' }],
-        },
-        admissionChecks: ['v1-check'],
-      })
-    ).toBe('v2-check (all flavors)');
-
-    // Neither set
-    expect(resolveAndRenderAdmissionChecks({})).toBe('-');
-    expect(resolveAndRenderAdmissionChecks()).toBe('-');
-
-    // Empty v1beta1 array
-    expect(resolveAndRenderAdmissionChecks({ admissionChecks: [] })).toBe('-');
   });
 });

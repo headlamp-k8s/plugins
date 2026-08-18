@@ -288,53 +288,6 @@ export function renderAdmissionChecks(strategy?: AdmissionChecksStrategyLike) {
     .join('; ');
 }
 
-/** Minimal spec shape needed by the v1beta1/v1beta2 cohort resolver. */
-export interface CohortSpecLike {
-  /** Cohort name in v1beta2 (renamed from `cohort` in v1beta1). */
-  cohortName?: string;
-  /** Cohort name in v1beta1. */
-  cohort?: string;
-}
-
-/** Minimal spec shape needed by the v1beta1/v1beta2 admission checks resolver. */
-export interface AdmissionChecksSpecLike {
-  /** v1beta2 structured strategy. */
-  admissionChecksStrategy?: AdmissionChecksStrategyLike;
-  /** v1beta1 flat list of AdmissionCheck names. */
-  admissionChecks?: string[];
-}
-
-/**
- * Resolve the cohort name from either v1beta2 (`cohortName`) or v1beta1 (`cohort`).
- *
- * The v1beta2 field takes priority because it is the current API version.
- * Returns `undefined` when neither field is set.
- */
-export function resolveCohortName(spec?: CohortSpecLike): string | undefined {
-  return spec?.cohortName || spec?.cohort;
-}
-
-/**
- * Resolve and render admission checks from either v1beta2 (`admissionChecksStrategy`)
- * or v1beta1 (`admissionChecks`).
- *
- * In v1beta1, admission checks are a flat `string[]` with no per-flavor scoping;
- * each entry renders as applying to all flavors — matching the Kueue conversion
- * semantics where v1beta1 checks map to the v1beta2 strategy without `onFlavors`.
- */
-export function resolveAndRenderAdmissionChecks(spec?: AdmissionChecksSpecLike): string {
-  if (spec?.admissionChecksStrategy) {
-    return renderAdmissionChecks(spec.admissionChecksStrategy);
-  }
-
-  const checks = spec?.admissionChecks || [];
-  if (checks.length === 0) {
-    return '-';
-  }
-
-  return checks.map(name => `${name} (all flavors)`).join('; ');
-}
-
 /** Render ClusterQueue flavor fungibility settings for the detail page. */
 export function renderFlavorFungibility(flavorFungibility?: FlavorFungibilityLike) {
   if (!flavorFungibility) {

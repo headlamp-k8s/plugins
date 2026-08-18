@@ -1,6 +1,7 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { kueueApiVersions } from '../utils/kueueApi';
 import { kueueRoutePaths } from '../utils/kueueRoutes';
+import { getAdmissionChecksStrategy, getCohortName } from './clusterQueueCompat';
 import {
   getUniqueFlavorNames,
   renderAdmissionChecks,
@@ -15,8 +16,6 @@ import {
   renderResourceGroups,
   renderResourceGroupsSummary,
   renderStringList,
-  resolveAndRenderAdmissionChecks,
-  resolveCohortName,
 } from './clusterQueueFormatters';
 
 const CLUSTER_QUEUE_API_DOCS =
@@ -685,7 +684,7 @@ export class ClusterQueue extends KubeObject<KubeClusterQueue> {
   }
 
   get cohortName() {
-    return resolveCohortName(this.spec) || '-';
+    return getCohortName(this.spec) || '-';
   }
 
   get queueingStrategy() {
@@ -753,7 +752,7 @@ export class ClusterQueue extends KubeObject<KubeClusterQueue> {
   }
 
   get admissionChecksDisplay() {
-    return resolveAndRenderAdmissionChecks(this.spec);
+    return renderAdmissionChecks(getAdmissionChecksStrategy(this.spec));
   }
 
   get flavorFungibilityDisplay() {
