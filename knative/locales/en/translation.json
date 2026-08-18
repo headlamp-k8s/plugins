@@ -1,0 +1,17 @@
+{
+  "Cluster": "Cluster",
+  "Cluster Domain Claims": "Cluster Domain Claims",
+  "Domain name is missing": "Domain name is missing",
+  "DomainMapping": "DomainMapping",
+  "Failed to annotate DomainMapping": "Failed to annotate DomainMapping",
+  "Failed to annotate DomainMapping: {{ detail }}": "Failed to annotate DomainMapping: {{ detail }}",
+  "Failed to create ClusterDomainClaim": "Failed to create ClusterDomainClaim",
+  "Failed to create ClusterDomainClaim: {{ detail }}": "Failed to create ClusterDomainClaim: {{ detail }}",
+  "Invalid domain name format": "Invalid domain name format",
+  "Missing": "Missing",
+  "Namespace": "Namespace",
+  "No cluster available": "No cluster available",
+  "Owner: {{ namespace }}": "Owner: {{ namespace }}",
+  "Please enter a domain name": "Please enter a domain name",
+  "Present": "Present"
+}
