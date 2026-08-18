@@ -23,6 +23,7 @@ import {
 import { DetachActionButton } from './BareMetalHost/DetachActionButton';
 import { BareMetalHostDetail } from './BareMetalHost/Details';
 import { BareMetalHosts } from './BareMetalHost/List';
+import { BareMetalHostOverview } from './BareMetalHost/Overview';
 import { PowerActionButton } from './BareMetalHost/PowerActionButton';
 import { RebootActionButton } from './BareMetalHost/RebootActionButton';
 import { ReprovisionActionButton } from './BareMetalHost/ReprovisionActionButton';
@@ -46,14 +47,30 @@ import { Metal3Remediations } from './Metal3Remediation/List';
 import { Metal3RemediationTemplateDetail } from './Metal3RemediationTemplate/Details';
 import { Metal3RemediationTemplates } from './Metal3RemediationTemplate/List';
 
-// Parent Metal3 group. Its url points at the first child's list so the group
-// header is itself navigable.
+// Parent Metal3 group. Its url points at the Overview so the group header lands
+// on the fleet dashboard.
 registerSidebarEntry({
   parent: null,
   name: 'metal3',
   icon: 'mdi:server',
   label: 'Metal3',
-  url: '/metal3/baremetalhosts',
+  url: '/metal3/overview',
+});
+
+// Overview / fleet dashboard: the section's landing page.
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3overview',
+  label: 'Overview',
+  url: '/metal3/overview',
+});
+
+registerRoute({
+  path: '/metal3/overview',
+  sidebar: 'metal3overview',
+  component: BareMetalHostOverview,
+  name: 'metal3-overview',
+  exact: true,
 });
 
 registerSidebarEntry({
