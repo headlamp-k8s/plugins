@@ -1,4 +1,12 @@
 {
-  "extends": "./node_modules/@kinvolk/headlamp-plugin/config/plugins-tsconfig.json",
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "jsx": "react",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
   "include": ["./src/**/*"]
 }
