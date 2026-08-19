@@ -31,11 +31,21 @@ export default function KueueAdminResourceAccess({
   children,
 }: KueueAdminResourceAccessProps) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
   return (
     <>
-      {allowed === null && <Loader title={`Checking access to Kueue ${resourceLabel}`} />}
-      {allowed === false && (
+      {allowed === null && error === null && (
+        <Loader title={`Checking access to Kueue ${resourceLabel}`} />
+      )}
+      {error !== null && (
+        <SectionBox title={`Kueue ${resourceLabel}`}>
+          <EmptyContent color="error.main">
+            {`Failed to check access: ${error.message}`}
+          </EmptyContent>
+        </SectionBox>
+      )}
+      {allowed === false && error === null && (
         <SectionBox title={`Kueue ${resourceLabel}`}>
           <EmptyContent color="text.secondary">
             {`${accessDescription} Your current Kubernetes credentials are not authorized to ${
@@ -49,7 +59,7 @@ export default function KueueAdminResourceAccess({
         authVerb={verb}
         namespace={namespace}
         onAuthResult={result => setAllowed(result.allowed)}
-        onError={() => setAllowed(false)}
+        onError={err => setError(err)}
       >
         {children}
       </AuthVisible>

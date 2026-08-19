@@ -1,10 +1,25 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import type { FilterState } from '@kinvolk/headlamp-plugin/lib/redux/filterSlice';
+import { useSelector } from 'react-redux';
 import { Workload } from '../../resources/workload';
+import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 export default function WorkloadList() {
+  // Use 'type' import so it doesn't crash at runtime, and avoid 'any'
+  const namespacesSet = useSelector((state: { filter: FilterState }) => state.filter.namespaces);
+  const namespaces = [...namespacesSet];
+  const namespace = namespaces.length === 1 ? namespaces[0] : undefined;
+
   return (
-    <ResourceListView
-      title="Kueue Workloads"
+    <KueueAdminResourceAccess
+      resourceClass={Workload}
+      resourceLabel="Workloads"
+      verb="list"
+      namespace={namespace}
+      accessDescription="Kueue Workloads are namespaced user workload resources."
+    >
+      <ResourceListView
+        title="Kueue Workloads"
         resourceClass={Workload}
         columns={[
           'name',
@@ -47,5 +62,6 @@ export default function WorkloadList() {
           'age',
         ]}
       />
+    </KueueAdminResourceAccess>
   );
 }
