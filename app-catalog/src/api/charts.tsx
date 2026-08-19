@@ -185,6 +185,54 @@ export function fetchChartValues(packageID: string, packageVersion: string) {
 }
 
 /**
+ * Fetches the values schema (values.schema.json) for a specific package and version.
+ *
+ * Not all charts ship a values schema; in that case (or on any fetch/parse error)
+ * this resolves to null so callers can fall back to the plain YAML editor.
+ *
+ * @param packageID - The ID of the package to fetch the values schema for.
+ * @param packageVersion - The version of the package to fetch the values schema for.
+ * @returns A promise that resolves to the parsed JSON Schema object, or null if unavailable.
+ */
+export async function fetchChartValuesSchema(
+  packageID: string,
+  packageVersion: string
+): Promise<Record<string, any> | null> {
+  const chartCfg = getCatalogConfig();
+  try {
+    if (!isElectron()) {
+      // The values schema is only available through the Artifact Hub API.
+      if (chartCfg.chartProfile !== COMMUNITY_REPO) {
+        return null;
+      }
+      const url =
+        `${SERVICE_PROXY}/${chartCfg.catalogNamespace}/${chartCfg.catalogName}?` +
+        getURLSearchParams(`api/v1/packages/${packageID}/${packageVersion}/values-schema`);
+
+      const response = await request(url, { isJSON: false }, true, true, {});
+      const text = await response.text();
+      const schema = JSON.parse(text);
+      return typeof schema === 'object' && schema !== null ? schema : null;
+    }
+
+    // Use /externalproxy for App-catalog desktop version
+    const response = await fetch(`http://localhost:4466/externalproxy`, {
+      headers: {
+        'Forward-To': `https://artifacthub.io/api/v1/packages/${packageID}/${packageVersion}/values-schema`,
+      },
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const schema = await response.json();
+    return typeof schema === 'object' && schema !== null ? schema : null;
+  } catch {
+    // Chart has no values schema, or the response was not valid JSON.
+    return null;
+  }
+}
+
+/**
  * Fetches the chart icon from the Artifact repository based on the provided icon name.
  *
  * @param iconName - The name of the icon to fetch.

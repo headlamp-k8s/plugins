@@ -17,6 +17,7 @@
   "Installation request for {{ releaseName }} accepted": "Installation request for {{ releaseName }} accepted",
   "Error creating release request {{ error }}": "Error creating release request {{ error }}",
   "Error adding repository {{ error }}": "Error adding repository {{ error }}",
+  "Cannot switch to the form view: the YAML contains errors": "Cannot switch to the form view: the YAML contains errors",
   "App: {{ name }}": "App: {{ name }}",
   "Release Name *": "Release Name *",
   "Enter a name for the release": "Enter a name for the release",
@@ -25,6 +26,8 @@
   "Versions *": "Versions *",
   "Select Version": "Select Version",
   "Release Description *": "Release Description *",
+  "Form View": "Form View",
+  "YAML View": "YAML View",
   "Close": "Close",
   "Installing": "Installing",
   "Search": "Search",
@@ -51,6 +54,7 @@
   "Powered by ArtifactHub": "Powered by ArtifactHub",
   "App-Catalog Settings": "App-Catalog Settings",
   "Settings": "Settings",
+  "This chart does not provide a values schema. Use the YAML view to edit values.": "This chart does not provide a values schema. Use the YAML view to edit values.",
   "Failed to delete release {{ name }}{{ message }}": "Failed to delete release {{ name }}{{ message }}",
   "Successfully deleted release {{ name }}": "Successfully deleted release {{ name }}",
   "Uninstall App": "Uninstall App",
@@ -89,5 +93,6 @@
   "Installed": "Installed",
   "Current Version": "Current Version",
   "Latest Version": "Latest Version",
-  "Version": "Version"
+  "Version": "Version",
+  "Actions": "Actions"
 }
