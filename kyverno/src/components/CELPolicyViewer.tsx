@@ -34,6 +34,7 @@ import {
   MutatingPolicy,
   ValidatingPolicy,
 } from '../resources/celPolicies';
+import { getMutationExpression } from './mutationExpression';
 
 type CELPolicy = ValidatingPolicy | MutatingPolicy | GeneratingPolicy | DeletingPolicy;
 
@@ -272,7 +273,7 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
             { label: t('Patch Type'), getter: i => i.patchType || 'JSONPatch' },
             {
               label: t('Expression'),
-              getter: i => i.applyConfiguration?.expression || i.rfc6902?.expression,
+              getter: getMutationExpression,
             },
           ]}
         />
