@@ -153,6 +153,10 @@ describe('formatBytes', () => {
     // values above the largest unit used to come out as "1.00undefined"
     [1024 ** 5, '1024.00TB'],
     [1024 ** 6, '1048576.00TB'],
+    // same defect on the other side: log(bytes) < 0 for 0 < bytes < 1, which
+    // used to index units[-1] and print "undefined" too
+    [0.5, '0.50B'],
+    [-5, '-5.00B'],
   ])('formatBytes(%d) -> %s', (bytes, expected) => {
     expect(formatBytes(bytes)).toBe(expected);
   });
