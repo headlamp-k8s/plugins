@@ -572,13 +572,13 @@ export function sortByCompletions(job1: Job, job2: Job) {
   return completionsSorted;
 }
 
+export function getCompletions(job: Job) {
+  return `${job.spec.completions ?? 0}/${job.spec.parallelism ?? 0}`;
+}
+
 export function JobsListRenderer(props: JobsListRendererProps) {
   const { jobs, errors, hideColumns = [], reflectTableInURL = 'jobs', noNamespaceFilter } = props;
   const { t } = useTranslation();
-
-  function getCompletions(job: Job) {
-    return `${job.spec.completions}/${job.spec.parallelism}`;
-  }
 
   return (
     <ResourceListView

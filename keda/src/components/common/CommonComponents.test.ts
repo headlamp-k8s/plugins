@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sortByCompletions } from './CommonComponents';
+import { getCompletions, sortByCompletions } from './CommonComponents';
 
 function job(completions?: number, parallelism?: number) {
   return { spec: { completions, parallelism } } as any;
@@ -21,5 +21,15 @@ describe('sortByCompletions', () => {
     expect(
       Number.isNaN(sortByCompletions(job(undefined, undefined), job(undefined, undefined)))
     ).toBe(false);
+  });
+});
+
+describe('getCompletions', () => {
+  it('renders both fields when set', () => {
+    expect(getCompletions(job(1, 5))).toBe('1/5');
+  });
+
+  it('renders 0 instead of undefined for unset fields, matching how they sort', () => {
+    expect(getCompletions(job(undefined, undefined))).toBe('0/0');
   });
 });
