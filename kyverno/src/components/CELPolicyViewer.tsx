@@ -34,6 +34,7 @@ import {
   MutatingPolicy,
   ValidatingPolicy,
 } from '../resources/celPolicies';
+import { explainCEL } from '../utils/celExplainer';
 
 type CELPolicy = ValidatingPolicy | MutatingPolicy | GeneratingPolicy | DeletingPolicy;
 
@@ -236,7 +237,19 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
           data={spec.variables}
           columns={[
             { label: t('Name'), getter: i => i.name },
-            { label: t('Expression'), getter: i => i.expression },
+            {
+              label: t('Expression'),
+              getter: i => (
+                <Box>
+                  <Box>{i.expression}</Box>
+                  {i.expression && (
+                    <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                      Explanation: {explainCEL(i.expression)}
+                    </Box>
+                  )}
+                </Box>
+              ),
+            },
           ]}
         />
       )}
@@ -246,7 +259,19 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
           title={t('Validations')}
           data={policy.spec.validations}
           columns={[
-            { label: t('Expression'), getter: i => i.expression },
+            {
+              label: t('Expression'),
+              getter: i => (
+                <Box>
+                  <Box>{i.expression}</Box>
+                  {i.expression && (
+                    <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                      Explanation: {explainCEL(i.expression)}
+                    </Box>
+                  )}
+                </Box>
+              ),
+            },
             { label: t('Message'), getter: i => i.message || i.messageExpression },
             { label: t('Reason'), getter: i => i.reason },
           ]}
@@ -259,7 +284,19 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
           data={policy.spec.auditAnnotations}
           columns={[
             { label: t('Key'), getter: i => i.key },
-            { label: t('Value Expression'), getter: i => i.valueExpression },
+            {
+              label: t('Value Expression'),
+              getter: i => (
+                <Box>
+                  <Box>{i.valueExpression}</Box>
+                  {i.valueExpression && (
+                    <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                      Explanation: {explainCEL(i.valueExpression)}
+                    </Box>
+                  )}
+                </Box>
+              ),
+            },
           ]}
         />
       )}
@@ -272,7 +309,19 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
             { label: t('Patch Type'), getter: i => i.patchType || 'JSONPatch' },
             {
               label: t('Expression'),
-              getter: i => i.applyConfiguration?.expression || i.rfc6902?.expression,
+              getter: i => {
+                const expr = i.applyConfiguration?.expression || i.rfc6902?.expression;
+                return (
+                  <Box>
+                    <Box>{expr}</Box>
+                    {expr && (
+                      <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                        Explanation: {explainCEL(expr)}
+                      </Box>
+                    )}
+                  </Box>
+                );
+              },
             },
           ]}
         />
@@ -283,7 +332,19 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
           title={t('Generators')}
           data={policy.spec.generate}
           columns={[
-            { label: t('Expression'), getter: i => i.expression },
+            {
+              label: t('Expression'),
+              getter: i => (
+                <Box>
+                  <Box>{i.expression}</Box>
+                  {i.expression && (
+                    <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                      Explanation: {explainCEL(i.expression)}
+                    </Box>
+                  )}
+                </Box>
+              ),
+            },
             { label: t('Name'), getter: i => i.name },
             { label: t('Namespace'), getter: i => i.namespace },
           ]}
