@@ -34,6 +34,7 @@ import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeDomainMapping, KService } from '../../resources/knative';
+import { isScaledToZero } from '../../utils/status';
 import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
@@ -450,6 +451,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
               status={status}
               reason={readyCondition?.reason}
               message={readyCondition?.message}
+              isScaledToZero={isScaledToZero(svc)}
             />
           );
         },
