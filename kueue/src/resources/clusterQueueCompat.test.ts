@@ -101,4 +101,88 @@ describe('ClusterQueue compatibility resolvers', () => {
       );
     });
   });
+
+  /**
+   * Regression tests for the Detail page admission check row pipeline.
+   *
+   * Detail.tsx builds admission check rows by calling:
+   *   getAdmissionChecksStrategy(clusterQueue.spec)?.admissionChecks?.map(...)
+   *
+   * These tests replicate that exact pipeline to verify that v1beta1 flat
+   * admissionChecks produce non-empty rows through the resolver.
+   * A caller that bypasses the resolver and reads spec.admissionChecksStrategy
+   * directly would get empty rows for v1beta1 — this is the bug the reviewer
+   * identified.
+   */
+  describe('Detail page admission check row pipeline', () => {
+    /** Replicate the row-building logic from Detail.tsx getAdmissionCheckRows. */
+    function buildAdmissionCheckRows(spec: Record<string, unknown>) {
+      return (
+        getAdmissionChecksStrategy(spec)?.admissionChecks?.map(check => ({
+          name: check.name,
+          flavors: check.onFlavors || [],
+        })) || []
+      );
+    }
+
+    it('builds rows from v1beta2 admissionChecksStrategy', () => {
+      expect(
+        buildAdmissionCheckRows({
+          admissionChecksStrategy: {
+            admissionChecks: [
+              { name: 'prov-request', onFlavors: ['spot'] },
+              { name: 'quota-check', onFlavors: ['default', 'gpu-flavor'] },
+            ],
+          },
+        })
+      ).toEqual([
+        { name: 'prov-request', flavors: ['spot'] },
+        { name: 'quota-check', flavors: ['default', 'gpu-flavor'] },
+      ]);
+    });
+
+    it('builds rows from v1beta1 flat admissionChecks via compatibility resolver', () => {
+      const rows = buildAdmissionCheckRows({
+        admissionChecks: ['check-a', 'check-b'],
+      });
+
+      expect(rows).toEqual([
+        { name: 'check-a', flavors: [] },
+        { name: 'check-b', flavors: [] },
+      ]);
+    });
+
+    it('returns empty array when no admission checks are configured', () => {
+      expect(buildAdmissionCheckRows({})).toEqual([]);
+    });
+
+    it('prefers v1beta2 strategy over v1beta1 flat list when both are present', () => {
+      expect(
+        buildAdmissionCheckRows({
+          admissionChecksStrategy: {
+            admissionChecks: [{ name: 'v2-check', onFlavors: ['spot'] }],
+          },
+          admissionChecks: ['v1-check-a', 'v1-check-b'],
+        })
+      ).toEqual([{ name: 'v2-check', flavors: ['spot'] }]);
+    });
+
+    it('falls back to v1beta1 when v1beta2 strategy has empty admissionChecks', () => {
+      expect(
+        buildAdmissionCheckRows({
+          admissionChecksStrategy: { admissionChecks: [] },
+          admissionChecks: ['fallback-check'],
+        })
+      ).toEqual([{ name: 'fallback-check', flavors: [] }]);
+    });
+
+    it('v1beta1 checks have no per-flavor scoping and use empty flavors', () => {
+      const rows = buildAdmissionCheckRows({
+        admissionChecks: ['check-a'],
+      });
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].flavors).toEqual([]);
+    });
+  });
 });
