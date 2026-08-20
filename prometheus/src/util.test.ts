@@ -138,6 +138,19 @@ describe('supportsPrometheusMetrics', () => {
       false,
     ],
     ['rejects Queues without apiVersion', { kind: 'Queue', jsonData: { kind: 'Queue' } }, false],
+    [
+      'supports Argo CD Applications',
+      {
+        kind: 'Application',
+        jsonData: { kind: 'Application', apiVersion: 'argoproj.io/v1alpha1' },
+      },
+      true,
+    ],
+    [
+      'rejects non-Argo Applications with the same kind',
+      { kind: 'Application', jsonData: { kind: 'Application', apiVersion: 'example.com/v1' } },
+      false,
+    ],
     ['rejects unknown kinds', { kind: 'VolcanoJob', jsonData: { kind: 'VolcanoJob' } }, false],
     ['rejects missing resources', undefined, false],
   ])('%s', (_, resource, expected) => {
