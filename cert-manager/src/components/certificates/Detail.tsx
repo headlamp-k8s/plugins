@@ -7,7 +7,13 @@ import {
 import { useParams } from 'react-router-dom';
 import { useCertManagerInstalled } from '../../hooks/useCertManagerInstalled';
 import { Certificate } from '../../resources/certificate';
-import { IssuerRef, NotInstalledBanner, StringArray } from '../common/CommonComponents';
+import {
+  IssuerRef,
+  NotInstalledBanner,
+  SecretNameLink,
+  StringArray,
+} from '../common/CommonComponents';
+import { CertificateExpiryLabel } from './CertificateExpiryLabel';
 
 export function CertificateDetail() {
   const { t } = useTranslation();
@@ -70,7 +76,9 @@ export function CertificateDetail() {
               },
               {
                 name: t('Secret Name'),
-                value: item.spec.secretName,
+                value: (
+                  <SecretNameLink name={item.spec.secretName} namespace={item.metadata.namespace} />
+                ),
               },
               {
                 name: t('Issuer Ref'),
@@ -237,7 +245,7 @@ export function CertificateDetail() {
                         },
                         {
                           name: t('Not After'),
-                          value: item.status?.notAfter,
+                          value: <CertificateExpiryLabel notAfter={item.status?.notAfter} />,
                         },
                         {
                           name: t('Renewal Time'),
