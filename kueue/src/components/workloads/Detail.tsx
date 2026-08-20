@@ -1,7 +1,6 @@
 import {
   ConditionsSection,
   DetailsGrid,
-  Link,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
@@ -21,8 +20,8 @@ import {
   renderStringMap,
   renderText,
 } from '../../resources/workloadFormatters';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { renderClusterQueueLink, renderLocalQueueLink } from '../common/KueueResourceLinks';
 
 /** Row rendered for Workload spec.podSets. */
 interface PodSetRow {
@@ -96,37 +95,6 @@ interface EvictionRow {
   underlyingCause: string;
   /** Eviction count. */
   count: number;
-}
-
-/** Render the LocalQueue reference as a detail-page link when possible. */
-function renderLocalQueueLink(workload: Workload) {
-  const queueName = workload.queueName;
-  const namespace = workload.metadata.namespace;
-
-  if (!queueName || !namespace) {
-    return '-';
-  }
-
-  return (
-    <Link routeName={kueueRouteNames.localQueueDetail} params={{ namespace, name: queueName }}>
-      {queueName}
-    </Link>
-  );
-}
-
-/** Render the admitted ClusterQueue as a detail-page link when possible. */
-function renderClusterQueueLink(workload: Workload) {
-  const clusterQueue = workload.admissionClusterQueue;
-
-  if (!clusterQueue) {
-    return '-';
-  }
-
-  return (
-    <Link routeName={kueueRouteNames.clusterQueueDetail} params={{ name: clusterQueue }}>
-      {clusterQueue}
-    </Link>
-  );
 }
 
 /** Convert Workload podSets into table rows. */
@@ -473,7 +441,7 @@ export default function WorkloadDetail() {
             ? [
                 {
                   name: 'Queue',
-                  value: renderLocalQueueLink(workload),
+                  value: renderLocalQueueLink(workload.queueName, workload.metadata.namespace),
                 },
                 {
                   name: 'Priority',
@@ -513,7 +481,7 @@ export default function WorkloadDetail() {
                 },
                 {
                   name: 'Assigned ClusterQueue',
-                  value: renderClusterQueueLink(workload),
+                  value: renderClusterQueueLink(workload.admissionClusterQueue),
                 },
                 {
                   name: 'Assigned ResourceFlavors',

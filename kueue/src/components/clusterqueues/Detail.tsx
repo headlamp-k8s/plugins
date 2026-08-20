@@ -1,37 +1,14 @@
 import {
   ConditionsSection,
   DetailsGrid,
-  Link,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
-import {
-  ClusterQueue,
-  FlavorUsage,
-  ResourceGroup,
-  ResourceQuota,
-} from '../../resources/clusterQueue';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { ClusterQueue, FlavorUsage } from '../../resources/clusterQueue';
+import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
-
-/** Flattened row rendered in the ClusterQueue resource groups table. */
-interface ResourceGroupRow {
-  /** Display label for the resource group index from spec.resourceGroups. */
-  group: string;
-  /** Comma-separated resources covered by this group, such as cpu and memory. */
-  coveredResources: string;
-  /** ResourceFlavor name associated with this resource quota row. */
-  flavor: string;
-  /** Resource name within the flavor quota, for example cpu or memory. */
-  resource: string;
-  /** Guaranteed quota configured for the resource and flavor pair. */
-  nominalQuota: string | number;
-  /** Optional quota this ClusterQueue can borrow from the cohort. */
-  borrowingLimit?: string | number;
-  /** Optional quota this ClusterQueue can lend to the cohort. */
-  lendingLimit?: string | number;
-}
+import { renderCohortLink, renderResourceFlavorLink } from '../common/KueueResourceLinks';
 
 /** Flattened row rendered for status flavor reservations or flavor usage. */
 interface FlavorUsageRow {
@@ -51,59 +28,6 @@ interface AdmissionCheckRow {
   name: string;
   /** Flavor names this AdmissionCheck applies to; empty means all flavors. */
   flavors: string[];
-}
-
-/** Render a ResourceFlavor name as a Headlamp link to its detail page. */
-function renderFlavorLink(flavorName: string) {
-  return (
-    <Link routeName={kueueRouteNames.resourceFlavorDetail} params={{ name: flavorName }}>
-      {flavorName}
-    </Link>
-  );
-}
-
-/** Convert nested ClusterQueue resource groups into table rows. */
-function getResourceGroupRows(resourceGroups: ResourceGroup[]): ResourceGroupRow[] {
-  return resourceGroups.flatMap((group, groupIndex): ResourceGroupRow[] => {
-    const groupLabel = `Group ${groupIndex + 1}`;
-    const coveredResources = group.coveredResources?.join(', ') || '-';
-
-    if (!group.flavors?.length) {
-      return [
-        {
-          group: groupLabel,
-          coveredResources,
-          flavor: '-',
-          resource: '-',
-          nominalQuota: '-',
-        },
-      ];
-    }
-
-    return group.flavors.flatMap((flavor): ResourceGroupRow[] => {
-      if (!flavor.resources?.length) {
-        return [
-          {
-            group: groupLabel,
-            coveredResources,
-            flavor: flavor.name,
-            resource: '-',
-            nominalQuota: '-',
-          },
-        ];
-      }
-
-      return flavor.resources.map((resource: ResourceQuota) => ({
-        group: groupLabel,
-        coveredResources,
-        flavor: flavor.name,
-        resource: resource.name,
-        nominalQuota: resource.nominalQuota,
-        borrowingLimit: resource.borrowingLimit,
-        lendingLimit: resource.lendingLimit,
-      }));
-    });
-  });
 }
 
 /** Convert status flavor usage or reservation entries into table rows. */
@@ -163,7 +87,7 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
             {
               label: 'ResourceFlavor',
               getter: (row: ResourceGroupRow) =>
-                row.flavor === '-' ? '-' : renderFlavorLink(row.flavor),
+                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
             },
             {
               label: 'Resource',
@@ -206,7 +130,7 @@ function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUs
             {
               label: 'ResourceFlavor',
               getter: (row: FlavorUsageRow) =>
-                row.flavor === '-' ? '-' : renderFlavorLink(row.flavor),
+                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
             },
             {
               label: 'Resource',
@@ -254,7 +178,7 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
                     {row.flavors.map((flavor, index) => (
                       <span key={flavor}>
                         {index > 0 ? ', ' : ''}
-                        {renderFlavorLink(flavor)}
+                        {renderResourceFlavorLink(flavor)}
                       </span>
                     ))}
                   </>
@@ -296,7 +220,7 @@ export default function ClusterQueueDetail() {
             ? [
                 {
                   name: 'Cohort',
-                  value: clusterQueue.cohortName,
+                  value: renderCohortLink(clusterQueue.spec.cohortName),
                 },
                 {
                   name: 'Queueing Strategy',
