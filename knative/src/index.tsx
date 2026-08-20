@@ -16,6 +16,7 @@
 
 import { Icon } from '@iconify/react';
 import {
+  registerDetailsViewHeaderActionsProcessor,
   registerKindIcon,
   registerKubeObjectGlance,
   registerMapSource,
@@ -26,20 +27,26 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import { ClusterDomainClaimsList } from './components/clusterdomainclaims/List';
-import { DomainMappingsList } from './components/domainmappings/List';
 import { KServiceDetail } from './components/kservices/Detail';
-import { KServicesList } from './components/kservices/List';
-import { NetworkingOverview } from './components/networking/Overview';
 import { RevisionDetail } from './components/revisions/Detail';
-import { RevisionsList } from './components/revisions/List';
 import { isKnativeInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
-import { knativePluginSource } from './mapView';
+import { getKnativeListRouteComponent } from './listRoutes';
+import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
+import { knativeNavigationItems, knativeNavigationSections } from './navigation';
+import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
 
 registerKnativeIcon();
+registerDetailsViewHeaderActionsProcessor((resource, actions) =>
+  filterReadOnlyKnativeHeaderActions(resource, actions)
+);
 
 const queryClient = new QueryClient();
+
+const knativeSidebarParents = new Set([
+  'knative',
+  ...knativeNavigationSections.map(section => section.name),
+]);
 
 function withQueryClient(Component: React.ComponentType) {
   return React.memo(function WithQueryClient() {
@@ -76,7 +83,7 @@ async function checkKnativeInstalled(cluster: string) {
 }
 
 registerSidebarEntryFilter(entry => {
-  if (entry.name !== 'knative' && entry.parent !== 'knative') {
+  if (entry.name !== 'knative' && !knativeSidebarParents.has(entry.parent ?? '')) {
     return entry;
   }
 
@@ -89,7 +96,6 @@ registerSidebarEntryFilter(entry => {
   return entry;
 });
 
-// Sidebar entries for Knative
 registerSidebarEntry({
   parent: null,
   name: 'knative',
@@ -98,105 +104,70 @@ registerSidebarEntry({
   url: '/knative/services',
 });
 
-registerSidebarEntry({
-  parent: 'knative',
-  name: 'kservices',
-  label: 'KServices',
-  url: '/knative/services',
-});
+knativeNavigationSections.forEach(section => {
+  registerSidebarEntry({
+    parent: 'knative',
+    name: section.name,
+    label: section.label,
+    entryType: 'subheader',
+    sx: { opacity: 0.65 },
+  });
 
-registerSidebarEntry({
-  parent: 'knative',
-  name: 'revisions',
-  label: 'Revisions',
-  url: '/knative/revisions',
-});
-
-registerSidebarEntry({
-  parent: 'knative',
-  name: 'domain-mappings',
-  label: 'Domain Mapping',
-  url: '/knative/domain-mappings',
-});
-
-registerSidebarEntry({
-  parent: 'knative',
-  name: 'cluster-domain-claims',
-  label: 'Cluster Domain Claims',
-  url: '/knative/cluster-domain-claims',
-});
-
-registerSidebarEntry({
-  parent: 'knative',
-  name: 'knetworking',
-  label: 'Networking',
-  url: '/knative/networking',
+  section.items.forEach(item => {
+    registerSidebarEntry({
+      parent: section.name,
+      name: item.name,
+      label: item.label,
+      url: item.path,
+    });
+  });
 });
 
 registerRoute({
   path: '/knative/services/:namespace/:name',
-  sidebar: 'kservices',
+  sidebar: 'knative-services',
   name: 'kserviceDetails',
   component: withQueryClient(KServiceDetail),
 });
 
 registerRoute({
-  path: '/knative/services',
-  sidebar: 'kservices',
-  name: 'kservices',
-  component: withQueryClient(KServicesList),
-});
-
-registerRoute({
   path: '/knative/revisions/:namespace/:name',
-  sidebar: 'revisions',
+  sidebar: 'knative-revisions',
   name: 'revisionDetails',
   component: withQueryClient(RevisionDetail),
 });
 
-registerRoute({
-  path: '/knative/revisions',
-  sidebar: 'revisions',
-  name: 'revisions',
-  component: withQueryClient(RevisionsList),
-});
-
-registerRoute({
-  path: '/knative/domain-mappings',
-  sidebar: 'domain-mappings',
-  name: 'domainMappingList',
-  component: withQueryClient(DomainMappingsList),
-});
-
-registerRoute({
-  path: '/knative/cluster-domain-claims',
-  sidebar: 'cluster-domain-claims',
-  name: 'clusterDomainClaimsList',
-  component: withQueryClient(ClusterDomainClaimsList),
-});
-
-registerRoute({
-  path: '/knative/networking',
-  sidebar: 'knetworking',
-  name: 'knetworking',
-  component: withQueryClient(NetworkingOverview),
+knativeNavigationItems.forEach(item => {
+  const component = getKnativeListRouteComponent(item.routeName);
+  registerRoute({
+    path: item.path,
+    sidebar: item.name,
+    name: item.routeName,
+    component: withQueryClient(component),
+  });
 });
 
 registerMapSource(knativePluginSource);
 
-registerKindIcon('serving.knative.dev/Service', {
-  icon: <Icon icon="custom:knative" width="70%" height="70%" />,
-  color: 'rgb(7, 102, 174)',
-});
+const knativeKindIconKinds = [
+  'serving.knative.dev/Service',
+  'Revision',
+  'DomainMapping',
+  'serving.knative.dev/Configuration',
+  'serving.knative.dev/Route',
+  'autoscaling.internal.knative.dev/PodAutoscaler',
+  'autoscaling.internal.knative.dev/Metric',
+  'caching.internal.knative.dev/Image',
+  'networking.internal.knative.dev/Ingress',
+  'networking.internal.knative.dev/ServerlessService',
+  'networking.internal.knative.dev/Certificate',
+];
 
-registerKindIcon('Revision', {
-  icon: <Icon icon="custom:knative" width="70%" height="70%" />,
-  color: 'rgb(7, 102, 174)',
-});
-
-registerKindIcon('DomainMapping', {
-  icon: <Icon icon="custom:knative" width="70%" height="70%" />,
-  color: 'rgb(7, 102, 174)',
+knativeKindIconKinds.forEach(kind => {
+  registerKindIcon(kind, {
+    icon: <Icon icon="custom:knative" width="70%" height="70%" />,
+    color: 'rgb(7, 102, 174)',
+  });
 });
 
 registerKindIcon('ClusterDomainClaim', {
@@ -215,4 +186,8 @@ registerKubeObjectGlance({ id: 'knative-domain-mapping-glance', component: Domai
 registerKubeObjectGlance({
   id: 'knative-cluster-domain-claim-glance',
   component: ClusterDomainClaimGlance,
+});
+registerKubeObjectGlance({
+  id: 'knative-serving-internal-resource-glance',
+  component: KnativeInternalResourceGlance,
 });

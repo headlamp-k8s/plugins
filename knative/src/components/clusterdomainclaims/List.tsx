@@ -75,7 +75,7 @@ export function useClusterDomainClaimColumns(
         : []),
       {
         id: 'domainmapping',
-        label: 'DomainMapping',
+        label: 'Domain Mapping',
         gridTemplate: 'auto',
         disableFiltering: true,
         getValue: item => {
