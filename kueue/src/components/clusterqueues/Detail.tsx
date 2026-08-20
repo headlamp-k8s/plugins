@@ -12,6 +12,7 @@ import {
   ResourceGroup,
   ResourceQuota,
 } from '../../resources/clusterQueue';
+import { getAdmissionChecksStrategy } from '../../resources/clusterQueueCompat';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
@@ -130,7 +131,7 @@ function getFlavorUsageRows(flavorUsage: FlavorUsage[] = []): FlavorUsageRow[] {
 /** Extract admission checks and their flavor scope from the ClusterQueue spec. */
 function getAdmissionCheckRows(clusterQueue: ClusterQueue): AdmissionCheckRow[] {
   return (
-    clusterQueue.spec.admissionChecksStrategy?.admissionChecks?.map(check => ({
+    getAdmissionChecksStrategy(clusterQueue.spec)?.admissionChecks?.map(check => ({
       name: check.name,
       flavors: check.onFlavors || [],
     })) || []

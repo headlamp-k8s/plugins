@@ -1,6 +1,7 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { kueueApiVersions } from '../utils/kueueApi';
 import { kueueRoutePaths } from '../utils/kueueRoutes';
+import { getAdmissionChecksStrategy, getCohortName } from './clusterQueueCompat';
 import {
   getUniqueFlavorNames,
   renderAdmissionChecks,
@@ -465,11 +466,18 @@ export interface ClusterQueueSpec {
    */
   resourceGroups?: ResourceGroup[];
   /**
-   * Cohort name this ClusterQueue belongs to.
+   * Cohort name this ClusterQueue belongs to (v1beta2 field name).
    *
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#clusterqueuespec
    */
   cohortName?: string;
+  /**
+   * Cohort name this ClusterQueue belongs to (v1beta1 field name).
+   *
+   * In v1beta1, this field is called `cohort`. In v1beta2, it was renamed
+   * to `cohortName`. Both are supported for backwards compatibility.
+   */
+  cohort?: string;
   /**
    * Queueing strategy for workloads across queues in this ClusterQueue.
    *
@@ -495,11 +503,20 @@ export interface ClusterQueueSpec {
    */
   preemption?: ClusterQueuePreemption;
   /**
-   * Strategy mapping AdmissionChecks to ResourceFlavors.
+   * Strategy mapping AdmissionChecks to ResourceFlavors (v1beta2).
    *
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#clusterqueuespec
    */
   admissionChecksStrategy?: AdmissionChecksStrategy;
+  /**
+   * Flat list of AdmissionCheck names (v1beta1).
+   *
+   * In v1beta1, admission checks are a simple string array under
+   * `spec.admissionChecks`. In v1beta2, they were restructured into
+   * `spec.admissionChecksStrategy.admissionChecks[].name` with per-flavor
+   * scoping. Both are supported for backwards compatibility.
+   */
+  admissionChecks?: string[];
   /**
    * Stop policy for admission and draining behavior.
    *
@@ -667,7 +684,7 @@ export class ClusterQueue extends KubeObject<KubeClusterQueue> {
   }
 
   get cohortName() {
-    return this.spec.cohortName || '-';
+    return getCohortName(this.spec) || '-';
   }
 
   get queueingStrategy() {
@@ -735,7 +752,7 @@ export class ClusterQueue extends KubeObject<KubeClusterQueue> {
   }
 
   get admissionChecksDisplay() {
-    return renderAdmissionChecks(this.spec.admissionChecksStrategy);
+    return renderAdmissionChecks(getAdmissionChecksStrategy(this.spec));
   }
 
   get flavorFungibilityDisplay() {
