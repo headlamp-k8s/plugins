@@ -32,7 +32,7 @@ import {
 
 export function MetricsList() {
   const clusters = useClusters();
-  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
+  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
   const showClusterColumn = clusters.length > 1;
   const columns = React.useMemo<
     (ResourceTableColumn<KnativeMetric> | 'name' | 'namespace' | 'cluster' | 'age')[]

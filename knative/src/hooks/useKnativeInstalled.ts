@@ -15,9 +15,19 @@
  */
 
 import { useEffect, useState } from 'react';
-import { isKnativeInstalled } from '../isKnativeInstalled';
+import { isKnativeComponentInstalled, type KnativeComponent } from '../isKnativeInstalled';
 
-export function useKnativeInstalled(clusters: string[]) {
+/**
+ * Tracks whether the Knative component a view needs is installed.
+ *
+ * Serving and Eventing install independently, so a view has to say which one it
+ * needs rather than ask whether Knative in general is present.
+ *
+ * @param component The Knative component the view depends on.
+ * @param clusters The clusters the view is showing.
+ * @returns The result of the check, and whether it is still running.
+ */
+export function useKnativeInstalled(component: KnativeComponent, clusters: string[]) {
   const clustersKey = clusters.join(',');
 
   const [isKnativeInstalledState, setIsKnativeInstalledState] = useState<boolean | null>(null);
@@ -27,7 +37,7 @@ export function useKnativeInstalled(clusters: string[]) {
 
     async function checkKnativeInstalled() {
       setIsKnativeInstalledState(null);
-      const installed = await isKnativeInstalled(clusters);
+      const installed = await isKnativeComponentInstalled(component, clusters);
       if (cancelled) {
         return;
       }
@@ -39,7 +49,7 @@ export function useKnativeInstalled(clusters: string[]) {
     return () => {
       cancelled = true;
     };
-  }, [clustersKey]);
+  }, [component, clustersKey]);
 
   return {
     isKnativeInstalled: isKnativeInstalledState,

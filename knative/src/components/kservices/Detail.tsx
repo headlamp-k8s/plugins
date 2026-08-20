@@ -43,7 +43,7 @@ import { TrafficSection } from './detail/sections/traffic/TrafficSection';
 export function KServiceDetail() {
   const { name, namespace } = useParams<{ namespace: string; name: string }>();
   const clusters = useClusters();
-  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
+  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
   return (
     <KServiceEditContextProvider>
       {isKnativeInstalled ? (
