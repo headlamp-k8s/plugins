@@ -237,12 +237,19 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
           data={spec.variables}
           columns={[
             { label: t('Name'), getter: i => i.name },
-            { label: t('Expression'), getter: i => (
+            {
+              label: t('Expression'),
+              getter: i => (
                 <Box>
                   <Box>{i.expression}</Box>
-                  {i.expression && <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>Explanation: {explainCEL(i.expression)}</Box>}
+                  {i.expression && (
+                    <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                      Explanation: {explainCEL(i.expression)}
+                    </Box>
+                  )}
                 </Box>
-            ) },
+              ),
+            },
           ]}
         />
       )}
@@ -252,12 +259,19 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
           title={t('Validations')}
           data={policy.spec.validations}
           columns={[
-            { label: t('Expression'), getter: i => (
+            {
+              label: t('Expression'),
+              getter: i => (
                 <Box>
                   <Box>{i.expression}</Box>
-                  {i.expression && <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>Explanation: {explainCEL(i.expression)}</Box>}
+                  {i.expression && (
+                    <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                      Explanation: {explainCEL(i.expression)}
+                    </Box>
+                  )}
                 </Box>
-            ) },
+              ),
+            },
             { label: t('Message'), getter: i => i.message || i.messageExpression },
             { label: t('Reason'), getter: i => i.reason },
           ]}
@@ -270,12 +284,19 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
           data={policy.spec.auditAnnotations}
           columns={[
             { label: t('Key'), getter: i => i.key },
-            { label: t('Value Expression'), getter: i => (
+            {
+              label: t('Value Expression'),
+              getter: i => (
                 <Box>
                   <Box>{i.valueExpression}</Box>
-                  {i.valueExpression && <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>Explanation: {explainCEL(i.valueExpression)}</Box>}
+                  {i.valueExpression && (
+                    <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                      Explanation: {explainCEL(i.valueExpression)}
+                    </Box>
+                  )}
                 </Box>
-            ) },
+              ),
+            },
           ]}
         />
       )}
@@ -293,7 +314,11 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
                 return (
                   <Box>
                     <Box>{expr}</Box>
-                    {expr && <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>Explanation: {explainCEL(expr)}</Box>}
+                    {expr && (
+                      <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                        Explanation: {explainCEL(expr)}
+                      </Box>
+                    )}
                   </Box>
                 );
               },
@@ -307,12 +332,19 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
           title={t('Generators')}
           data={policy.spec.generate}
           columns={[
-            { label: t('Expression'), getter: i => (
+            {
+              label: t('Expression'),
+              getter: i => (
                 <Box>
                   <Box>{i.expression}</Box>
-                  {i.expression && <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>Explanation: {explainCEL(i.expression)}</Box>}
+                  {i.expression && (
+                    <Box sx={{ fontSize: '0.85em', color: 'text.secondary', mt: 0.5 }}>
+                      Explanation: {explainCEL(i.expression)}
+                    </Box>
+                  )}
                 </Box>
-            ) },
+              ),
+            },
             { label: t('Name'), getter: i => i.name },
             { label: t('Namespace'), getter: i => i.namespace },
           ]}

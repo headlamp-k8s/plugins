@@ -38,6 +38,7 @@
     "@kinvolk/headlamp-plugin": "^0.13.1"
   },
   "dependencies": {
-    "@marcbachmann/cel-js": "^8.0.0"
+    "@marcbachmann/cel-js": "^8.0.0",
+    "yargs": "^18.1.0"
   }
 }
