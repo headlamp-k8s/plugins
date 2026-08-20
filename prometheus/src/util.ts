@@ -220,6 +220,7 @@ const ChartEnabledKinds = [
   'Service',
   'Revision',
   'Queue',
+  'Application',
   'Cluster',
   'MachineDeployment',
   'MachineSet',
