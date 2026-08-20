@@ -336,7 +336,11 @@ export function createDataProcessor(
  */
 export function formatBytes(bytes: number) {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = bytes === 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024));
+  const exponent = Math.floor(Math.log(bytes) / Math.log(1024));
+  const i =
+    bytes === 0 || !Number.isFinite(exponent)
+      ? 0
+      : Math.min(units.length - 1, Math.max(0, exponent));
   return (bytes / Math.pow(1024, i)).toFixed(2) + units[i];
 }
 
