@@ -32,31 +32,72 @@ function calculateChecksum(filePath: string): string {
 }
 
 /**
- * Check if plugin has an artifacthub-pkg.yml file
+ * Get the versioned directory path for a plugin release.
+ * Layout: <plugin>/<version>/artifacthub-pkg.yml
  */
-export function hasArtifactHubFile(pluginName: string): boolean {
+export function getVersionDir(pluginName: string, version: string): string {
   const pluginPath = getPluginPath(pluginName);
-  const artifactHubPath = path.join(pluginPath, 'artifacthub-pkg.yml');
-  return fs.existsSync(artifactHubPath);
+  return path.join(pluginPath, version);
 }
 
 /**
- * Get the path to the artifacthub-pkg.yml file for a plugin
+ * Check if plugin has an artifacthub-pkg.yml file for the given version.
+ * Falls back to checking the legacy top-level location.
  */
-export function getArtifactHubPath(pluginName: string): string {
+export function hasArtifactHubFile(pluginName: string, version?: string): boolean {
+  if (version) {
+    const versionDir = getVersionDir(pluginName, version);
+    return fs.existsSync(path.join(versionDir, 'artifacthub-pkg.yml'));
+  }
+
+  // Check for any version directory containing an artifacthub-pkg.yml
+  const pluginPath = getPluginPath(pluginName);
+  const entries = fs.readdirSync(pluginPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isDirectory() && fs.existsSync(path.join(pluginPath, entry.name, 'artifacthub-pkg.yml'))) {
+      return true;
+    }
+  }
+
+  // Legacy: check top-level
+  return fs.existsSync(path.join(pluginPath, 'artifacthub-pkg.yml'));
+}
+
+/**
+ * Get the path to the artifacthub-pkg.yml file for a plugin version.
+ */
+export function getArtifactHubPath(pluginName: string, version?: string): string {
+  if (version) {
+    return path.join(getVersionDir(pluginName, version), 'artifacthub-pkg.yml');
+  }
+
+  // Legacy fallback
   const pluginPath = getPluginPath(pluginName);
   return path.join(pluginPath, 'artifacthub-pkg.yml');
 }
 
 /**
- * Read and parse the artifacthub-pkg.yml file
+ * Find the latest version directory for a plugin by reading existing version folders.
  */
-export function readArtifactHubConfig(pluginName: string): ArtifactHubConfig | null {
-  if (!hasArtifactHubFile(pluginName)) {
+export function getLatestArtifactHubVersion(pluginName: string): string | null {
+  const pluginPath = getPluginPath(pluginName);
+  const entries = fs.readdirSync(pluginPath, { withFileTypes: true });
+  const versions = entries
+    .filter(e => e.isDirectory() && fs.existsSync(path.join(pluginPath, e.name, 'artifacthub-pkg.yml')))
+    .map(e => e.name)
+    .sort();
+  return versions.length > 0 ? versions[versions.length - 1] : null;
+}
+
+/**
+ * Read and parse the artifacthub-pkg.yml file for a given version.
+ */
+export function readArtifactHubConfig(pluginName: string, version?: string): ArtifactHubConfig | null {
+  const artifactHubPath = getArtifactHubPath(pluginName, version);
+  if (!fs.existsSync(artifactHubPath)) {
     return null;
   }
 
-  const artifactHubPath = getArtifactHubPath(pluginName);
   try {
     const content = fs.readFileSync(artifactHubPath, 'utf-8');
     return yaml.load(content) as ArtifactHubConfig;
@@ -68,16 +109,22 @@ export function readArtifactHubConfig(pluginName: string): ArtifactHubConfig | n
 }
 
 /**
- * Update the artifacthub-pkg.yml file with new version and tarball information
+ * Update the artifacthub-pkg.yml file with new version and tarball information.
+ * Creates a version directory (<plugin>/<version>/) and copies the README into it.
  */
 export function updateArtifactHubConfig(
   pluginName: string,
   version: string,
   tarballPath: string
 ): void {
-  const artifactHubPath = getArtifactHubPath(pluginName);
-  const pluginInfo = getPluginInfo(getPluginPath(pluginName));
+  const pluginPath = getPluginPath(pluginName);
+  const pluginInfo = getPluginInfo(pluginPath);
   const { owner, repo } = getOwnerAndRepo();
+
+  const versionDir = getVersionDir(pluginName, version);
+  fs.mkdirSync(versionDir, { recursive: true });
+
+  const artifactHubPath = path.join(versionDir, 'artifacthub-pkg.yml');
 
   // Calculate checksum of the tarball
   const checksum = calculateChecksum(tarballPath);
@@ -88,14 +135,16 @@ export function updateArtifactHubConfig(
 
   let config: ArtifactHubConfig;
 
-  if (hasArtifactHubFile(pluginName)) {
-    // Update existing config
-    config = readArtifactHubConfig(pluginName)!;
+  // Try reading an existing config for this version, then fall back to the latest version
+  const existingConfig = readArtifactHubConfig(pluginName, version)
+    ?? readArtifactHubConfig(pluginName, getLatestArtifactHubVersion(pluginName) ?? undefined);
+
+  if (existingConfig) {
+    config = existingConfig;
     config.version = version;
     config.annotations['headlamp/plugin/archive-url'] = archiveUrl;
     config.annotations['headlamp/plugin/archive-checksum'] = `SHA256:${checksum}`;
   } else {
-    // Create new config
     config = {
       version,
       name: `headlamp_${pluginName.replace(/-/g, '_')}`,
@@ -118,21 +167,40 @@ export function updateArtifactHubConfig(
   });
 
   fs.writeFileSync(artifactHubPath, yamlContent);
+
+  // Remove legacy top-level artifacthub-pkg.yml if it exists
+  const legacyPath = path.join(pluginPath, 'artifacthub-pkg.yml');
+  if (fs.existsSync(legacyPath)) {
+    fs.unlinkSync(legacyPath);
+    console.log(chalk.dim('Removed legacy top-level artifacthub-pkg.yml'));
+  }
+
+  // Copy README.md into the version directory
+  const readmeSrc = path.join(pluginPath, 'README.md');
+  if (fs.existsSync(readmeSrc)) {
+    fs.copyFileSync(readmeSrc, path.join(versionDir, 'README.md'));
+  }
 }
 
 /**
- * Create a template artifacthub-pkg.yml file for a plugin
+ * Create a template artifacthub-pkg.yml file for a plugin in a version directory.
  */
 export function createArtifactHubTemplate(pluginName: string): void {
-  const artifactHubPath = getArtifactHubPath(pluginName);
-  const pluginInfo = getPluginInfo(getPluginPath(pluginName));
+  const pluginPath = getPluginPath(pluginName);
+  const pluginInfo = getPluginInfo(pluginPath);
+  const version = pluginInfo.version;
+
+  const versionDir = getVersionDir(pluginName, version);
+  const artifactHubPath = path.join(versionDir, 'artifacthub-pkg.yml');
 
   if (fs.existsSync(artifactHubPath)) {
-    throw new Error(`artifacthub-pkg.yml already exists for ${pluginName}`);
+    throw new Error(`artifacthub-pkg.yml already exists for ${pluginName} v${version}`);
   }
 
+  fs.mkdirSync(versionDir, { recursive: true });
+
   const template: Partial<ArtifactHubConfig> = {
-    version: pluginInfo.version,
+    version,
     name: `headlamp_${pluginName.replace(/-/g, '_')}`,
     displayName: pluginInfo.name,
     createdAt: new Date().toISOString(),
@@ -152,4 +220,10 @@ export function createArtifactHubTemplate(pluginName: string): void {
   });
 
   fs.writeFileSync(artifactHubPath, yamlContent);
+
+  // Copy README.md into the version directory
+  const readmeSrc = path.join(pluginPath, 'README.md');
+  if (fs.existsSync(readmeSrc)) {
+    fs.copyFileSync(readmeSrc, path.join(versionDir, 'README.md'));
+  }
 }
