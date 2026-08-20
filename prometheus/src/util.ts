@@ -174,6 +174,18 @@ const resourceApiVersionRules: Record<string, RegExp> = {
   Revision: /^serving\.knative\.dev\/v1$/,
 };
 
+/**
+ * Returns whether a resource is the Argo CD Application CRD that exposes the
+ * Application-specific Prometheus metrics. This is deliberately separate from
+ * the chart allowlist: the chart UI is added by the follow-up feature.
+ */
+export function isArgoCDApplication(resource?: ResourceIdentity): boolean {
+  return (
+    getResourceKind(resource) === 'Application' &&
+    getResourceApiVersion(resource) === 'argoproj.io/v1alpha1'
+  );
+}
+
 export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean {
   const kind = getResourceKind(resource);
 

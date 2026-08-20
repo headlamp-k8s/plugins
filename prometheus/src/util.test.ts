@@ -1,4 +1,4 @@
-import { getTimeRangeAndStepSize, supportsPrometheusMetrics } from './util';
+import { getTimeRangeAndStepSize, isArgoCDApplication, supportsPrometheusMetrics } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -138,9 +138,43 @@ describe('supportsPrometheusMetrics', () => {
       false,
     ],
     ['rejects Queues without apiVersion', { kind: 'Queue', jsonData: { kind: 'Queue' } }, false],
+    [
+      'does not show Application metrics before the chart UI is available',
+      {
+        kind: 'Application',
+        jsonData: { kind: 'Application', apiVersion: 'argoproj.io/v1alpha1' },
+      },
+      false,
+    ],
+    [
+      'rejects non-Argo Applications with the same kind',
+      { kind: 'Application', jsonData: { kind: 'Application', apiVersion: 'example.com/v1' } },
+      false,
+    ],
     ['rejects unknown kinds', { kind: 'VolcanoJob', jsonData: { kind: 'VolcanoJob' } }, false],
     ['rejects missing resources', undefined, false],
   ])('%s', (_, resource, expected) => {
     expect(supportsPrometheusMetrics(resource)).toBe(expected);
+  });
+});
+
+describe('isArgoCDApplication', () => {
+  test.each([
+    [
+      'recognizes the Argo CD Application CRD',
+      {
+        kind: 'Application',
+        jsonData: { kind: 'Application', apiVersion: 'argoproj.io/v1alpha1' },
+      },
+      true,
+    ],
+    [
+      'rejects another Application kind',
+      { kind: 'Application', jsonData: { kind: 'Application', apiVersion: 'example.com/v1' } },
+      false,
+    ],
+    ['rejects an Application without an API version', { kind: 'Application' }, false],
+  ])('%s', (_, resource, expected) => {
+    expect(isArgoCDApplication(resource)).toBe(expected);
   });
 });
