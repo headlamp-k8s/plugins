@@ -17,13 +17,15 @@
 import { ApiProxy, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { useEffect, useState } from 'react';
 
+export type CRDAvailability = boolean | undefined;
+
 export interface KyvernoCRDStatus {
-  legacy: boolean; // kyverno.io/v1 (ClusterPolicy, Policy)
-  cel: boolean; // policies.kyverno.io/v1 (ValidatingPolicy, MutatingPolicy, etc.)
-  cleanup: boolean; // kyverno.io/v2 (CleanupPolicy, ClusterCleanupPolicy)
-  reports: boolean; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
-  exceptions: boolean; // kyverno.io/v2 (PolicyException)
-  ephemeralReports: boolean; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
+  legacy: CRDAvailability; // kyverno.io/v1 (ClusterPolicy, Policy)
+  cel: CRDAvailability; // policies.kyverno.io/v1 (ValidatingPolicy, MutatingPolicy, etc.)
+  cleanup: CRDAvailability; // kyverno.io/v2 (CleanupPolicy, ClusterCleanupPolicy)
+  reports: CRDAvailability; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
+  exceptions: CRDAvailability; // kyverno.io/v2 (PolicyException)
+  ephemeralReports: CRDAvailability; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
   // Plural resource names actually present under policies.kyverno.io/v1 on this cluster
   // (e.g. "namespacedmutatingpolicies"). The CEL kinds were added to that API group across
   // several Kyverno releases (the namespaced kinds specifically span 1.16 and 1.17), so unlike
@@ -35,29 +37,34 @@ export interface KyvernoCRDStatus {
 }
 
 const initialStatus: KyvernoCRDStatus = {
-  legacy: false,
-  cel: false,
-  cleanup: false,
-  reports: false,
-  exceptions: false,
-  ephemeralReports: false,
+  legacy: undefined,
+  cel: undefined,
+  cleanup: undefined,
+  reports: undefined,
+  exceptions: undefined,
+  ephemeralReports: undefined,
   celResources: new Set(),
   loading: true,
 };
 
-async function checkAPIGroup(path: string): Promise<boolean> {
+async function checkAPIGroup(path: string): Promise<CRDAvailability> {
   try {
     await ApiProxy.request(path, { method: 'GET' });
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    return (error as { status?: number }).status === 404 ? false : undefined;
   }
 }
 
 // Same discovery call as checkAPIGroup, but keeps the resource names from the response instead
 // of discarding them, since the APIResourceList already lists every kind in the group/version in
 // one response, subresources like "validatingpolicies/status" included, filtered out here.
-async function fetchAPIResourceNames(path: string): Promise<Set<string>> {
+interface APIResourceDiscovery {
+  availability: CRDAvailability;
+  resources: Set<string>;
+}
+
+async function fetchAPIResourceNames(path: string): Promise<APIResourceDiscovery> {
   try {
     const response = await ApiProxy.request(path, { method: 'GET' });
     const names = new Set<string>();
@@ -66,9 +73,12 @@ async function fetchAPIResourceNames(path: string): Promise<Set<string>> {
         names.add(resource.name);
       }
     }
-    return names;
-  } catch {
-    return new Set();
+    return { availability: true, resources: names };
+  } catch (error) {
+    return {
+      availability: (error as { status?: number }).status === 404 ? false : undefined,
+      resources: new Set(),
+    };
   }
 }
 
@@ -88,33 +98,28 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
   if (existing) return existing;
 
   const promise = (async () => {
-    const [legacy, celResources, reports, ephemeralReports] = await Promise.all([
+    const [legacy, celDiscovery, reports, ephemeralReports] = await Promise.all([
       checkAPIGroup('/apis/kyverno.io/v1'),
       fetchAPIResourceNames('/apis/policies.kyverno.io/v1'),
       checkAPIGroup('/apis/wgpolicyk8s.io/v1alpha2'),
       checkAPIGroup('/apis/reports.kyverno.io/v1'),
     ]);
-    const cel = celResources.size > 0;
+    const { resources: celResources } = celDiscovery;
+    const cel =
+      celDiscovery.availability === true ? celResources.size > 0 : celDiscovery.availability;
 
     // kyverno.io/v2 hosts cleanup and exceptions. The API-group-level probe
-    // doesn't tell us *which* CRDs are inside, so we treat both v2 features
-    // as available together, matching what stock Kyverno installs.
-    let cleanup = false;
-    let exceptions = false;
-    if (legacy) {
-      const v2 = await checkAPIGroup('/apis/kyverno.io/v2');
-      if (v2) {
-        cleanup = true;
-        exceptions = true;
-      }
-    }
+    // doesn't tell us which CRDs are inside, so we treat both features as
+    // available together. They are known absent only when the legacy group is
+    // confirmed absent.
+    const v2 = legacy === false ? false : await checkAPIGroup('/apis/kyverno.io/v2');
 
     const status: KyvernoCRDStatus = {
       legacy,
       cel,
-      cleanup,
+      cleanup: v2,
       reports,
-      exceptions,
+      exceptions: v2,
       ephemeralReports,
       celResources,
       loading: false,
