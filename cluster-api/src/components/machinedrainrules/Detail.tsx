@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid, Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
@@ -15,6 +16,7 @@ interface MachineDrainRuleNode {
  * @param props - Component properties including optional node from a list.
  */
 export function MachineDrainRuleDetail({ node }: { node?: MachineDrainRuleNode }) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -32,7 +34,7 @@ export function MachineDrainRuleDetail({ node }: { node?: MachineDrainRuleNode }
     [apiVersion]
   );
 
-  if (!apiVersion) return <Loader title="Detecting MachineDrainRule version" />;
+  if (!apiVersion) return <Loader title={t('Detecting MachineDrainRule version')} />;
 
   return (
     <>

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -32,6 +33,7 @@ type KubeadmConfigNode = { kubeObject: KubeadmConfig };
  * @param props - Component properties including optional node from a list.
  */
 export function KubeadmConfigDetail({ node }: { node?: KubeadmConfigNode }) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -40,7 +42,7 @@ export function KubeadmConfigDetail({ node }: { node?: KubeadmConfigNode }) {
   const crName = nameParam || node?.kubeObject?.metadata?.name;
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
 
-  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+  if (!crName) return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
 
   return (
     <KubeadmConfigDetailContent
@@ -68,6 +70,7 @@ interface KubeadmConfigDetailContentPropsWithVersion extends KubeadmConfigDetail
  * @param props - Component properties.
  */
 function KubeadmConfigDetailContent(props: KubeadmConfigDetailContentProps) {
+  const { t } = useTranslation();
   const { crName, namespace, crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedKubeadmConfig = useMemo(
@@ -75,7 +78,7 @@ function KubeadmConfigDetailContent(props: KubeadmConfigDetailContentProps) {
     [apiVersion]
   );
 
-  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  if (!apiVersion) return <Loader title={t('Detecting Cluster API version')} />;
 
   return (
     <KubeadmConfigDetailContentWithData
@@ -94,6 +97,7 @@ function KubeadmConfigDetailContent(props: KubeadmConfigDetailContentProps) {
  * @param props - Component properties including the versioned class and version.
  */
 function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPropsWithVersion) {
+  const { t } = useTranslation();
   const { crName, namespace, crdName, VersionedKubeadmConfig, apiVersion } = props;
   const [crd, crdError] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedKubeadmConfig.useGet(crName, namespace ?? undefined);
@@ -101,11 +105,14 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading KubeadmConfig {crName}: {itemError?.message}
+        {t('Error loading KubeadmConfig {{crName}}: {{message}}', {
+          crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
-  if (!item) return <Loader title="Loading KubeadmConfig details" />;
+  if (!item) return <Loader title={t('Loading KubeadmConfig details')} />;
 
   const spec = item.spec;
   const status = item.status;
@@ -116,7 +123,7 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
   const extraInfo = (() => {
     const info: NameValueTableRow[] = [
       {
-        name: 'Cluster',
+        name: t('Cluster'),
         value: clusterName ? (
           <Link
             routeName="capicluster"
@@ -129,26 +136,26 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
         ),
       },
       {
-        name: 'Machine',
+        name: t('Machine'),
         value: machineName ?? '-',
         hide: !machineName,
       },
       {
-        name: 'Ready',
+        name: t('Ready'),
         value: renderConditionStatus(undefined, getCondition(item.conditions, 'Ready'), {
-          trueLabel: 'true',
-          falseLabel: 'false',
+          trueLabel: t('true'),
+          falseLabel: t('false'),
           trueStatus: 'success',
           falseStatus: 'error',
         }),
       },
       {
-        name: 'Data Secret',
+        name: t('Data Secret'),
         value: status?.dataSecretName ?? '-',
         hide: !status?.dataSecretName,
       },
       {
-        name: 'Observed Generation',
+        name: t('Observed Generation'),
         value:
           status?.observedGeneration !== undefined
             ? `${status.observedGeneration} / ${item.metadata?.generation ?? '-'}`
@@ -156,17 +163,17 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
         hide: status?.observedGeneration === undefined,
       },
       {
-        name: 'Format',
+        name: t('Format'),
         value: spec?.format ?? '-',
         hide: !spec?.format,
       },
       {
-        name: 'Verbosity',
+        name: t('Verbosity'),
         value: spec?.verbosity !== undefined ? String(spec.verbosity) : '-',
         hide: spec?.verbosity === undefined,
       },
       {
-        name: 'NTP',
+        name: t('NTP'),
         value: spec?.ntp
           ? `${spec.ntp.enabled ? 'Enabled' : 'Disabled'}${
               spec.ntp.servers?.length ? ` — ${spec.ntp.servers.join(', ')}` : ''
@@ -177,7 +184,7 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
       ...(failure?.failureReason
         ? [
             {
-              name: 'Failure Reason',
+              name: t('Failure Reason'),
               value: <StatusLabel status="error">{failure.failureReason}</StatusLabel>,
             },
           ]
@@ -185,7 +192,7 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
       ...(failure?.failureMessage
         ? [
             {
-              name: 'Failure Message',
+              name: t('Failure Message'),
               value: (
                 <Typography component="span" sx={{ color: 'error.main' }}>
                   {failure.failureMessage}
@@ -198,7 +205,7 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
 
     if (crd) {
       info.unshift({
-        name: 'Definition',
+        name: t('Definition'),
         value: (
           <Link routeName="crd" params={{ name: crdName }}>
             {crdName}
@@ -209,7 +216,10 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
         ...getExtraInfoFromPrinterColumns(getExtraColumnsFromCrd(crd, apiVersion), item.jsonData)
       );
     } else if (crdError) {
-      info.push({ name: 'Additional info', value: 'Some extra details could not be loaded.' });
+      info.push({
+        name: t('Additional info'),
+        value: t('Some extra details could not be loaded.'),
+      });
     }
 
     return info;
@@ -241,25 +251,25 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
                 {
                   id: 'cluster-api.kubeadm-config-files',
                   section: (
-                    <SectionBox title="Files">
+                    <SectionBox title={t('Files')}>
                       <SimpleTable
                         columns={[
-                          { label: 'Path', getter: (r: { path: string }) => r.path },
-                          { label: 'Owner', getter: (r: { owner?: string }) => r.owner ?? '-' },
+                          { label: t('Path'), getter: (r: { path: string }) => r.path },
+                          { label: t('Owner'), getter: (r: { owner?: string }) => r.owner ?? '-' },
                           {
-                            label: 'Permissions',
+                            label: t('Permissions'),
                             getter: (r: { permissions?: string }) => r.permissions ?? '-',
                           },
                           {
-                            label: 'Encoding',
+                            label: t('Encoding'),
                             getter: (r: { encoding?: string }) => r.encoding ?? 'plain',
                           },
                           {
-                            label: 'Append',
+                            label: t('Append'),
                             getter: (r: { append?: boolean }) => String(r.append ?? false),
                           },
                           {
-                            label: 'Source',
+                            label: t('Source'),
                             getter: (r: {
                               contentFrom?: { secret?: { name: string; key: string } };
                               content?: string;
@@ -283,22 +293,25 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
                 {
                   id: 'cluster-api.kubeadm-config-users',
                   section: (
-                    <SectionBox title="Users">
+                    <SectionBox title={t('Users')}>
                       <SimpleTable
                         columns={[
-                          { label: 'Name', getter: (r: { name: string }) => r.name },
-                          { label: 'Shell', getter: (r: { shell?: string }) => r.shell ?? '-' },
-                          { label: 'Groups', getter: (r: { groups?: string }) => r.groups ?? '-' },
+                          { label: t('Name'), getter: (r: { name: string }) => r.name },
+                          { label: t('Shell'), getter: (r: { shell?: string }) => r.shell ?? '-' },
                           {
-                            label: 'Home Dir',
+                            label: t('Groups'),
+                            getter: (r: { groups?: string }) => r.groups ?? '-',
+                          },
+                          {
+                            label: t('Home Dir'),
                             getter: (r: { homeDir?: string }) => r.homeDir ?? '-',
                           },
                           {
-                            label: 'Inactive',
+                            label: t('Inactive'),
                             getter: (r: { inactive?: boolean }) => String(r.inactive ?? false),
                           },
                           {
-                            label: 'Passwd From',
+                            label: t('Passwd From'),
                             getter: (r: {
                               passwdFrom?: { secret?: { name: string; key: string } };
                             }) =>
@@ -321,12 +334,12 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
                 {
                   id: 'cluster-api.kubeadm-config-commands',
                   section: (
-                    <SectionBox title="Commands">
+                    <SectionBox title={t('Commands')}>
                       <Box>
                         {spec?.bootCommands?.length ? (
                           <Box sx={{ mb: 2 }}>
                             <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                              Boot Commands
+                              {t('Boot Commands')}
                             </Typography>
                             <Typography component="pre" sx={{ ...codeStyle, m: 0 }}>
                               {spec.bootCommands.join('\n')}
@@ -336,7 +349,7 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
                         {spec?.preKubeadmCommands?.length ? (
                           <Box sx={{ mb: 2 }}>
                             <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                              Pre-Kubeadm Commands
+                              {t('Pre-Kubeadm Commands')}
                             </Typography>
                             <Typography component="pre" sx={{ ...codeStyle, m: 0 }}>
                               {spec.preKubeadmCommands.join('\n')}
@@ -346,7 +359,7 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
                         {spec?.postKubeadmCommands?.length ? (
                           <Box>
                             <Typography sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                              Post-Kubeadm Commands
+                              {t('Post-Kubeadm Commands')}
                             </Typography>
                             <Typography component="pre" sx={{ ...codeStyle, m: 0 }}>
                               {spec.postKubeadmCommands.join('\n')}
@@ -364,24 +377,24 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
                 {
                   id: 'cluster-api.kubeadm-config-disk',
                   section: (
-                    <SectionBox title="Disk Setup">
+                    <SectionBox title={t('Disk Setup')}>
                       {spec.diskSetup?.partitions?.length ? (
                         <>
-                          <strong>Partitions</strong>
+                          <strong>{t('Partitions')}</strong>
                           <SimpleTable
                             columns={[
-                              { label: 'Device', getter: (r: { device: string }) => r.device },
+                              { label: t('Device'), getter: (r: { device: string }) => r.device },
                               {
-                                label: 'Layout',
+                                label: t('Layout'),
                                 getter: (r: { layout: boolean }) => String(r.layout),
                               },
                               {
-                                label: 'Overwrite',
+                                label: t('Overwrite'),
                                 getter: (r: { overwrite?: boolean }) =>
                                   String(r.overwrite ?? false),
                               },
                               {
-                                label: 'Table Type',
+                                label: t('Table Type'),
                                 getter: (r: { tableType?: string }) => r.tableType ?? '-',
                               },
                             ]}
@@ -391,17 +404,20 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
                       ) : null}
                       {spec.diskSetup?.filesystems?.length ? (
                         <>
-                          <strong>Filesystems</strong>
+                          <strong>{t('Filesystems')}</strong>
                           <SimpleTable
                             columns={[
-                              { label: 'Device', getter: (r: { device: string }) => r.device },
+                              { label: t('Device'), getter: (r: { device: string }) => r.device },
                               {
-                                label: 'Filesystem',
+                                label: t('Filesystem'),
                                 getter: (r: { filesystem: string }) => r.filesystem,
                               },
-                              { label: 'Label', getter: (r: { label?: string }) => r.label ?? '-' },
                               {
-                                label: 'Overwrite',
+                                label: t('Label'),
+                                getter: (r: { label?: string }) => r.label ?? '-',
+                              },
+                              {
+                                label: t('Overwrite'),
                                 getter: (r: { overwrite?: boolean }) =>
                                   String(r.overwrite ?? false),
                               },
@@ -420,7 +436,10 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
                 {
                   id: 'cluster-api.kubeadm-config-spec',
                   section: (
-                    <KubeadmConfigSection kubeadmConfigSpec={spec} title="KubeadmConfig Spec" />
+                    <KubeadmConfigSection
+                      kubeadmConfigSpec={spec}
+                      title={t('KubeadmConfig Spec')}
+                    />
                   ),
                 },
               ]
