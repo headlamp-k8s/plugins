@@ -1,0 +1,44 @@
+# The control account: everything this plugin reads, and nothing else.
+#
+# Worth applying first. If the UI shows a permission warning under this account,
+# the fixture is wrong — or the plugin has started reading something it did not
+# read before, which is worth knowing either way.
+#
+# Cluster-scoped rather than namespaced because the cluster list reads Backups
+# across all namespaces in a single request; a namespaced Role reproduces the
+# detail-view states but not the list-view one.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cnpg-reader-full
+  namespace: cnpg-headlamp-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cnpg-reader-full
+rules:
+  - apiGroups: ['postgresql.cnpg.io']
+    resources: ['clusters', 'backups', 'scheduledbackups']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['']
+    resources: ['namespaces']
+    verbs: ['get', 'list', 'watch']
+  # Lets the plugin's installed-check answer "present" so the sidebar entry
+  # appears. Not what any of these fixtures is testing.
+  - apiGroups: ['apiextensions.k8s.io']
+    resources: ['customresourcedefinitions']
+    verbs: ['get', 'list']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cnpg-reader-full
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cnpg-reader-full
+subjects:
+  - kind: ServiceAccount
+    name: cnpg-reader-full
+    namespace: cnpg-headlamp-test
