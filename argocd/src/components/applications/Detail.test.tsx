@@ -56,6 +56,13 @@ vi.mock('../../resources/application', () => ({
   ArgoApplication: class ArgoApplication {},
 }));
 
+vi.mock('./apiAvailability', () => ({
+  canOpenManagedResourcesInCurrentCluster: () => true,
+  getApiAvailabilityPresentation: () => ({ label: 'Available', status: 'success', tooltip: '' }),
+  managedResourceApiKey: () => 'resource',
+  useManagedResourceApiAvailability: () => ({ availability: new Map(), loading: false }),
+}));
+
 vi.mock('./managedResourceLinks', () => ({
   getManagedResourceLink: vi.fn(),
 }));
