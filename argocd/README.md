@@ -12,6 +12,7 @@ To learn more about Argo CD, see the [Argo CD Getting Started Guide](https://arg
 - **Application Detail View** — Displays detailed metadata for a single Application: project, source, destination, sync status, health status, and Kubernetes events.
 - **Sync Action** — Triggers a sync by patching the Application's `.operation` field via the Kubernetes API. The Argo CD application-controller picks this up exactly as it would from the Argo CD UI.
 - **Refresh Action** — Requests a refresh by setting the `argocd.argoproj.io/refresh` annotation (supports `normal` and `hard` refresh types).
+- **Rollback Action** — Lets an authorized user deliberately select a complete earlier deployment from Sync History and trigger it as a one-time Argo CD operation without changing the Application's configured Git revision.
 - **Open in Argo CD** — Opens the current Application in the configured Argo CD web UI when `argocd-cm.data.url` is available.
 - **Argo CD Sidebar Icon** — Registers the official Argo CD octopus logo as an offline Iconify icon (CSP-safe, no external fetch).
 
@@ -29,13 +30,33 @@ Instead, this plugin drives Argo CD the **Kubernetes-native way** — by writing
 
 ### Behavioral differences from the Argo CD UI
 
-| Behavior | Argo CD UI | This plugin |
-|---|---|---|
-| **Auth** | Argo CD session token (JWT or cookie) | Kubernetes RBAC (same kubeconfig as Headlamp) |
-| **Sync** | REST API `POST /api/v1/applications/{name}/sync` | K8s PATCH on `.operation.sync` field |
-| **Refresh** | REST API `GET` with `?refresh=normal` | K8s PATCH setting `argocd.argoproj.io/refresh` annotation |
-| **Refresh annotation cleanup** | Controller removes the annotation after reconciliation | Same — the controller handles cleanup |
-| **`.operation` field cleanup** | Controller clears `.operation` and writes `.status.operationState` | Same — this is controller-managed |
+| Behavior                       | Argo CD UI                                                         | This plugin                                                                  |
+| ------------------------------ | ------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| **Auth**                       | Argo CD session token (JWT or cookie)                              | Kubernetes RBAC (same kubeconfig as Headlamp)                                |
+| **Sync**                       | REST API `POST /api/v1/applications/{name}/sync`                   | K8s PATCH on `.operation.sync` field                                         |
+| **Rollback**                   | REST API rollback request                                          | K8s PATCH on `.operation.sync` using the selected historical source snapshot |
+| **Refresh**                    | REST API `GET` with `?refresh=normal`                              | K8s PATCH setting `argocd.argoproj.io/refresh` annotation                    |
+| **Refresh annotation cleanup** | Controller removes the annotation after reconciliation             | Same — the controller handles cleanup                                        |
+| **`.operation` field cleanup** | Controller clears `.operation` and writes `.status.operationState` | Same — this is controller-managed                                            |
+
+### Rollback behavior and safeguards
+
+Rollback is available on an Application detail page only when all of these conditions are met:
+
+- the user has Kubernetes `patch` permission for the Application;
+- automated sync is disabled;
+- Argo CD is not already processing another operation; and
+- Sync History contains at least one earlier deployment with a complete source snapshot.
+
+The dialog starts with no deployment selected. It shows the full historical revision, source, and
+deployment time for review before confirmation. Single-source and multi-source Applications are
+supported when Argo CD recorded complete, aligned history data.
+
+After confirmation, Headlamp patches only the Application's top-level `.operation` field. It does
+not patch `spec.source.targetRevision`, `spec.sources`, or the Git repository, and it does not enable
+pruning. The success message says that rollback was **triggered** because the Argo CD controller
+performs the deployment asynchronously. Sync windows and other controller policies can still reject
+or delay the operation.
 
 ## Prerequisites
 
@@ -54,12 +75,15 @@ kind: ClusterRole
 metadata:
   name: argocd-headlamp-plugin
 rules:
-  - apiGroups: ["argoproj.io"]
-    resources: ["applications"]
-    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ['argoproj.io']
+    resources: ['applications']
+    verbs: ['get', 'list', 'watch', 'patch']
 ```
 
-If the user lacks `patch` permission, the Sync/Refresh buttons are hidden. If a patch request is still attempted and returns 403, the plugin shows a clear error message explaining which RBAC permission is missing.
+If the user lacks `patch` permission, the Sync, Refresh, and Rollback buttons are hidden. Rollback
+requires no permission beyond the existing Application `patch` permission. If a patch request is
+still attempted and returns 403, the plugin shows a clear error message explaining which Kubernetes
+RBAC permission is missing.
 
 ### Optional Argo CD UI link permission
 
@@ -68,10 +92,10 @@ ConfigMap. Grant this permission in the namespace where the Argo CD application 
 runs if you want the action to appear:
 
 ```yaml
-- apiGroups: [""]
-  resources: ["configmaps"]
-  resourceNames: ["argocd-cm"]
-  verbs: ["get"]
+- apiGroups: ['']
+  resources: ['configmaps']
+  resourceNames: ['argocd-cm']
+  verbs: ['get']
 ```
 
 The plugin first uses `Application.status.controllerNamespace` to find the ConfigMap and falls
@@ -129,6 +153,7 @@ If you don't have a full Argo CD installation, you can use the provided test man
    ```
 
 6. Copy the contents of the `dist/` folder to your Headlamp plugins directory:
+
    - **Linux/macOS**: `~/.config/Headlamp/plugins/argocd/`
    - **Windows**: `%APPDATA%\Headlamp\Config\plugins\argocd\`
 
