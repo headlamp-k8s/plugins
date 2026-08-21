@@ -59,6 +59,23 @@ function positiveNumberOr(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+const isForwardSlash = (char: string): boolean => char === '/';
+const isPathSeparator = (char: string): boolean => char === '/' || char === '\\';
+
+/** Character scan avoids the backtracking cost of anchored `+` separator regexes. */
+function trimTrailing(value: string, isSeparator: (char: string) => boolean): string {
+  let end = value.length;
+  while (end > 0 && isSeparator(value[end - 1])) end -= 1;
+  return value.slice(0, end);
+}
+
+/** Character scan avoids the backtracking cost of anchored `+` separator regexes. */
+function trimLeading(value: string, isSeparator: (char: string) => boolean): string {
+  let start = 0;
+  while (start < value.length && isSeparator(value[start])) start += 1;
+  return value.slice(start);
+}
+
 /**
  * Normalizes a filesystem path or Git URL used as a skill source location.
  *
@@ -71,20 +88,24 @@ export function normalizeSkillSourceUrl(value: string, type: SkillSource['type']
   if (type === 'git') {
     try {
       const parsed = new URL(trimmed);
-      const pathname = parsed.pathname.replace(/\/+$/, '').replace(/\.git$/i, '');
+      const pathname = trimTrailing(parsed.pathname, isForwardSlash).replace(/\.git$/i, '');
       return `${parsed.origin}${pathname}`;
     } catch {
-      return trimmed.replace(/\/+$/, '').replace(/\.git$/i, '');
+      return trimTrailing(trimmed, isForwardSlash).replace(/\.git$/i, '');
     }
   }
   return trimmed === '/' || /^[A-Za-z]:[\\/]?$/.test(trimmed)
     ? trimmed
-    : trimmed.replace(/[\\/]+$/, '');
+    : trimTrailing(trimmed, isPathSeparator);
 }
 
 /** @returns Canonical optional Git subdirectory without surrounding separators. */
 export function normalizeSkillSourcePath(value: string | undefined): string | undefined {
-  const normalized = value?.trim().replace(/^[\\/]+|[\\/]+$/g, '');
+  const trimmed = value?.trim();
+  const normalized =
+    trimmed === undefined
+      ? undefined
+      : trimLeading(trimTrailing(trimmed, isPathSeparator), isPathSeparator);
   return normalized || undefined;
 }
 

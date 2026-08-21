@@ -231,6 +231,66 @@ describe('contextGenerator', () => {
         '- kind: Deployment, name: web, namespace: default, cluster: remote'
       );
     });
+
+    it('describes the project shown in the project details view', () => {
+      const result = generateContextDescription({
+        type: 'headlamp.project-details-view',
+        title: 'Project: my-project',
+        project: { id: 'my-project', namespaces: ['dev', 'staging'], clusters: ['minikube'] },
+      });
+
+      expect(result).toContain('Current view: Project: my-project');
+      expect(result).toContain('Viewing project: my-project');
+      expect(result).toContain('Project namespaces: dev, staging');
+      expect(result).toContain('Project clusters: minikube');
+    });
+
+    it('describes the selected project tab', () => {
+      const result = generateContextDescription({
+        type: 'headlamp.project-details-tab-change',
+        project: { id: 'my-project' },
+        projectTab: 'Workloads',
+      });
+
+      expect(result).toContain('Selected project tab: Workloads');
+    });
+
+    it('omits project details that are empty', () => {
+      const result = generateContextDescription({ project: { id: 'my-project' } });
+
+      expect(result).toContain('Viewing project: my-project');
+      expect(result).not.toContain('Project namespaces:');
+      expect(result).not.toContain('Project clusters:');
+      expect(result).not.toContain('Selected project tab:');
+    });
+
+    it('lists the projects shown in the project list view', () => {
+      const result = generateContextDescription({
+        type: 'headlamp.project-list-view',
+        projects: [{ id: 'alpha' }, { id: 'beta' }],
+      });
+
+      expect(result).toContain('Showing 2 projects');
+      expect(result).toContain('Projects: alpha, beta');
+    });
+
+    it('uses the singular form for a single project', () => {
+      const result = generateContextDescription({ projects: [{ id: 'alpha' }] });
+
+      expect(result).toContain('Showing 1 project');
+    });
+
+    it('includes project resources in the structured resource list', () => {
+      const result = generateContextDescription(
+        {
+          project: { id: 'my-project' },
+          resources: [{ kind: 'Pod', metadata: { name: 'api', namespace: 'dev' } }],
+        },
+        'minikube'
+      );
+
+      expect(result).toContain('- kind: Pod, name: api, namespace: dev, cluster: minikube');
+    });
   });
 
   describe('generateResourceSummary', () => {
