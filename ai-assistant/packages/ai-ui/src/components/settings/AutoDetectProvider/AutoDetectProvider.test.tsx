@@ -24,11 +24,13 @@ import {
 
 const detectionMocks = vi.hoisted(() => ({
   detectProviders: vi.fn(),
+  verifyAzureOpenAIAccess: vi.fn(),
 }));
 
 vi.mock('@headlamp-k8s/ai-common/providers/detectProvider', async importOriginal => ({
   ...(await importOriginal<typeof import('@headlamp-k8s/ai-common/providers/detectProvider')>()),
   detectProviders: detectionMocks.detectProviders,
+  verifyAzureOpenAIAccess: detectionMocks.verifyAzureOpenAIAccess,
 }));
 
 vi.mock('react-i18next', () => ({
@@ -69,12 +71,13 @@ function hookProps(overrides: Partial<Parameters<typeof useAutoDetect>[0]> = {})
 beforeEach(() => {
   vi.clearAllMocks();
   detectionMocks.detectProviders.mockResolvedValue([]);
+  detectionMocks.verifyAzureOpenAIAccess.mockResolvedValue({ ok: true });
 });
 
 afterEach(cleanup);
 
 describe('useAutoDetect', () => {
-  it('opens the dialog with detected providers and passes detection inputs', async () => {
+  it('opens the dialog with detected providers and ignores dismissals on an explicit run', async () => {
     detectionMocks.detectProviders.mockResolvedValue(sampleDetectedProviders);
     const props = hookProps({ dismissedProviders: ['already-dismissed'] });
     const { result } = renderHook(() => useAutoDetect(props));
@@ -83,15 +86,16 @@ describe('useAutoDetect', () => {
 
     expect(detectionMocks.detectProviders).toHaveBeenCalledWith(
       [],
-      ['already-dismissed'],
-      commandRunner
+      [],
+      commandRunner,
+      expect.any(AbortSignal)
     );
     expect(result.current.autoDetecting).toBe(false);
     expect(result.current.detectedProviders).toEqual(sampleDetectedProviders);
     expect(result.current.showDetectedDialog).toBe(true);
   });
 
-  it('clears stale results when a later run finds nothing', async () => {
+  it('opens an empty result dialog when a later run finds nothing', async () => {
     detectionMocks.detectProviders
       .mockResolvedValueOnce(sampleDetectedProviders)
       .mockResolvedValueOnce([]);
@@ -102,7 +106,7 @@ describe('useAutoDetect', () => {
     await act(async () => result.current.handleAutoDetect());
 
     expect(result.current.detectedProviders).toEqual([]);
-    expect(result.current.showDetectedDialog).toBe(false);
+    expect(result.current.showDetectedDialog).toBe(true);
   });
 
   it('ignores an older detection result that finishes last', async () => {
@@ -119,6 +123,10 @@ describe('useAutoDetect', () => {
       firstRun = result.current.handleAutoDetect();
       secondRun = result.current.handleAutoDetect();
     });
+    const firstSignal = detectionMocks.detectProviders.mock.calls[0][3] as AbortSignal;
+    const secondSignal = detectionMocks.detectProviders.mock.calls[1][3] as AbortSignal;
+    expect(firstSignal.aborted).toBe(true);
+    expect(secondSignal.aborted).toBe(false);
     await act(async () => {
       second.resolve([sampleDetectedProviders[1]]);
       await secondRun;
@@ -150,7 +158,12 @@ describe('useAutoDetect', () => {
 
     await act(async () => result.current.handleAutoDetect());
 
-    expect(detectionMocks.detectProviders).toHaveBeenCalledWith([], [], null);
+    expect(detectionMocks.detectProviders).toHaveBeenCalledWith(
+      [],
+      [],
+      null,
+      expect.any(AbortSignal)
+    );
   });
 
   it('adds multiple providers, makes only the first default, and activates it', () => {
@@ -202,6 +215,47 @@ describe('useAutoDetect', () => {
 
     expect(onConfigsChange).toHaveBeenCalledWith({ providers: [] });
     expect(onActiveConfigChange).not.toHaveBeenCalled();
+  });
+
+  it('does not save an Azure provider that fails verification and reports why', async () => {
+    detectionMocks.verifyAzureOpenAIAccess.mockResolvedValue({
+      ok: false,
+      reason: 'You are not allowed to read its keys.',
+    });
+    const onConfigsChange = vi.fn();
+    const { result } = renderHook(() => useAutoDetect(hookProps({ onConfigsChange })));
+
+    await act(async () => {
+      result.current.handleAddDetectedProviders([sampleDetectedProviders[2]]);
+    });
+
+    expect(onConfigsChange).toHaveBeenCalledWith({ providers: [] });
+    expect(result.current.addError).toContain('not allowed to read its keys');
+    expect(result.current.addingProviders).toBe(false);
+  });
+
+  it('saves the usable providers and keeps only the rejected ones listed', async () => {
+    detectionMocks.verifyAzureOpenAIAccess.mockResolvedValue({
+      ok: false,
+      reason: 'You are not allowed to read its keys.',
+    });
+    const onConfigsChange = vi.fn();
+    const { result } = renderHook(() => useAutoDetect(hookProps({ onConfigsChange })));
+
+    await act(async () => {
+      result.current.handleAddDetectedProviders([
+        sampleDetectedProviders[0],
+        sampleDetectedProviders[2],
+      ]);
+    });
+
+    const saved = onConfigsChange.mock.calls[0][0] as { providers: { providerId: string }[] };
+    expect(saved.providers.map(provider => provider.providerId)).toEqual([
+      sampleDetectedProviders[0].providerId,
+    ]);
+    expect(result.current.detectedProviders).toEqual([sampleDetectedProviders[2]]);
+    expect(result.current.showDetectedDialog).toBe(false);
+    expect(result.current.addError).toContain('not allowed to read its keys');
   });
 
   it('deduplicates dismissals and works without a persistence callback', () => {

@@ -37,6 +37,7 @@ import {
   HOLMES_SERVICE_NAMESPACE,
   HOLMES_SERVICE_PORT,
 } from '../../holmesClient';
+import { createPluginCommandRunner } from '../../pluginCommandRunner';
 import {
   getAllAvailableTools,
   isToolEnabled,
@@ -158,17 +159,11 @@ export default function Settings() {
   const [commandRunner, setCommandRunner] = React.useState<CommandRunner | null>(null);
   React.useEffect(() => {
     if (typeof pluginRunCommand !== 'undefined') {
-      setCommandRunner(() => async (command: string, args: string[]) => {
-        // pluginRunCommand returns an EventEmitter-like object; convert to
-        // the { stdout, exitCode } shape that CommandRunner expects.
-        return new Promise<{ stdout: string; exitCode: number }>(resolve => {
-          // @ts-ignore — 'gh' and 'az' are narrower than the declared type
-          const proc = pluginRunCommand(command as any, args, {});
-          let out = '';
-          proc.stdout.on('data', (d: any) => (out += String(d)));
-          proc.on('exit', (code: number | null) => resolve({ stdout: out, exitCode: code ?? -1 }));
-        });
-      });
+      setCommandRunner(() =>
+        createPluginCommandRunner((command, args, options) =>
+          pluginRunCommand(command as Parameters<typeof pluginRunCommand>[0], args, options)
+        )
+      );
     }
   }, []);
 

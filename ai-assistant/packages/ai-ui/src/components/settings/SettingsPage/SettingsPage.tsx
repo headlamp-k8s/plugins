@@ -461,6 +461,8 @@ export function SettingsPage({
           setShowDetectedDialog={autoDetect.setShowDetectedDialog}
           handleAddDetectedProviders={autoDetect.handleAddDetectedProviders}
           handleDismissDetectedProviders={autoDetect.handleDismissDetectedProviders}
+          addingProviders={autoDetect.addingProviders}
+          addError={autoDetect.addError}
         />
       )}
 

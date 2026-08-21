@@ -511,6 +511,26 @@ describe('ProviderConfigManager', () => {
       expect(isSameStoredConfig(a, b)).toBe(false);
     });
 
+    it('does not match same-named Azure accounts in different subscriptions', () => {
+      const a = {
+        providerId: 'azure',
+        config: {
+          azAccountName: 'shared',
+          azResourceGroup: 'rg',
+          azSubscriptionId: 'subscription-a',
+        },
+      };
+      const b = {
+        providerId: 'azure',
+        config: {
+          azAccountName: 'shared',
+          azResourceGroup: 'rg',
+          azSubscriptionId: 'subscription-b',
+        },
+      };
+      expect(isSameStoredConfig(a, b)).toBe(false);
+    });
+
     it('does not match an Azure account to a legacy config missing account metadata', () => {
       const account = {
         providerId: 'azure',
@@ -573,6 +593,33 @@ describe('ProviderConfigManager', () => {
       expect(result.providers![0].config.model).toBe('gpt-4o');
     });
 
+    it('backfills subscription metadata onto a legacy Azure config in place', () => {
+      const existing = {
+        providers: [
+          {
+            id: 'azure-1',
+            providerId: 'azure',
+            displayName: 'Azure OpenAI (myoai)',
+            config: {
+              apiKey: '__AZ_CLI_AUTH__',
+              azAccountName: 'myoai',
+              endpoint: 'https://myoai.openai.azure.com',
+            },
+          },
+        ],
+      };
+      const result = saveProviderConfig(existing, 'azure', {
+        apiKey: '__AZ_CLI_AUTH__',
+        azAccountName: 'myoai',
+        azResourceGroup: 'rg1',
+        azSubscriptionId: 'sub',
+        endpoint: 'https://myoai.openai.azure.com',
+      });
+      expect(result.providers).toHaveLength(1);
+      expect(result.providers![0].id).toBe('azure-1');
+      expect(result.providers![0].config.azSubscriptionId).toBe('sub');
+    });
+
     it('adds new Azure config when azAccountName differs', () => {
       const existing = {
         providers: [
@@ -588,6 +635,28 @@ describe('ProviderConfigManager', () => {
         apiKey: '__AZ_CLI_AUTH__',
         azAccountName: 'account2',
         model: 'gpt-4o',
+      });
+      expect(result.providers).toHaveLength(2);
+    });
+
+    it('keeps same-named Azure accounts in different subscriptions distinct', () => {
+      const existing = {
+        providers: [
+          {
+            id: 'azure-1',
+            providerId: 'azure',
+            config: {
+              azAccountName: 'shared',
+              azResourceGroup: 'rg',
+              azSubscriptionId: 'subscription-a',
+            },
+          },
+        ],
+      };
+      const result = saveProviderConfig(existing, 'azure', {
+        azAccountName: 'shared',
+        azResourceGroup: 'rg',
+        azSubscriptionId: 'subscription-b',
       });
       expect(result.providers).toHaveLength(2);
     });
