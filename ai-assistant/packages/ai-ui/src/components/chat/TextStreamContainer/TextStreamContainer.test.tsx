@@ -101,6 +101,14 @@ it('renders Storybook conversation semantics and passes axe', async () => {
   await expect(runAxe()).resolves.toEqual([]);
 });
 
+it('contains overscroll within the conversation log', () => {
+  renderStream();
+
+  expect(
+    getComputedStyle(screen.getByRole('log', { name: 'Conversation messages' })).overscrollBehavior
+  ).toBe('contain');
+});
+
 it('filters hidden messages and extracts validated tool follow-up text', () => {
   const history: ConversationMessage[] = [
     { role: 'system', content: 'hidden system' },
@@ -431,17 +439,20 @@ it('forwards prompt width to content renderers', () => {
 
 it('shows and operates the scroll-to-bottom control when the user scrolls away', async () => {
   vi.useFakeTimers();
+  const scrollTo = vi.fn();
   renderStream();
   const log = screen.getByRole('log', { name: 'Conversation messages' });
   Object.defineProperties(log, {
     scrollHeight: { configurable: true, value: 1000 },
     clientHeight: { configurable: true, value: 200 },
     scrollTop: { configurable: true, writable: true, value: 0 },
+    scrollTo: { configurable: true, value: scrollTo },
   });
   fireEvent.scroll(log);
   const button = screen.getByRole('button', { name: 'scroll to bottom' });
   fireEvent.click(button);
   expect(screen.queryByRole('button', { name: 'scroll to bottom' })).toBeNull();
+  expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
   vi.runOnlyPendingTimers();
 });
 
@@ -533,32 +544,59 @@ it('keeps following a tall append when the user was previously at the bottom', (
 
 it('recognizes a new user message when conversations have equal user counts', () => {
   vi.useFakeTimers();
-  const scrollIntoView = vi.fn();
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: scrollIntoView,
-  });
+  const scrollTo = vi.fn();
   const props = {
     isLoading: false,
     apiError: null,
     ContentRendererSlot: Renderer,
   };
-  const { rerender } = render(
+  const { container, rerender } = render(
     <TextStreamContainer
       {...props}
       history={[{ role: 'user', content: 'first conversation', requestId: 'first' }]}
     />
   );
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  Object.defineProperties(log, {
+    scrollHeight: { configurable: true, value: 1000 },
+    clientHeight: { configurable: true, value: 200 },
+    scrollTop: { configurable: true, writable: true, value: 100 },
+    scrollTo: { configurable: true, value: scrollTo },
+  });
+  log.getBoundingClientRect = () => ({
+    x: 0,
+    y: 0,
+    width: 300,
+    height: 200,
+    top: 0,
+    right: 300,
+    bottom: 200,
+    left: 0,
+    toJSON: () => ({}),
+  });
   vi.runOnlyPendingTimers();
-  scrollIntoView.mockClear();
+  scrollTo.mockClear();
   rerender(
     <TextStreamContainer
       {...props}
       history={[{ role: 'user', content: 'second conversation', requestId: 'second' }]}
     />
   );
+  const userMessage = container.querySelector('[data-message-index="0"]');
+  if (!(userMessage instanceof HTMLElement)) throw new Error('User message was not rendered');
+  userMessage.getBoundingClientRect = () => ({
+    x: 0,
+    y: 20,
+    width: 300,
+    height: 80,
+    top: 20,
+    right: 300,
+    bottom: 100,
+    left: 0,
+    toJSON: () => ({}),
+  });
   vi.runOnlyPendingTimers();
-  expect(scrollIntoView).toHaveBeenCalled();
+  expect(scrollTo).toHaveBeenCalledWith({ top: 120, behavior: 'smooth' });
 });
 
 it('ignores programmatic scroll events while following streamed appends', () => {

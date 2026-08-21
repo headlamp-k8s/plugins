@@ -160,9 +160,11 @@ const AIPanelComponent = React.memo(
         flexShrink={0}
         sx={{
           height: '100%',
+          minHeight: 0,
           width: width,
           borderLeft: '2px solid',
           position: 'relative',
+          overflow: 'hidden',
         }}
       >
         {hasValidConfig && clusterNotifier}

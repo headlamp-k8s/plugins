@@ -21,6 +21,7 @@ import LangChainAssistantSession from '@headlamp-k8s/ai-common/assistant/LangCha
 import type { ConversationMessage } from '@headlamp-k8s/ai-common/conversation/types';
 import { getProviderById } from '@headlamp-k8s/ai-common/providers/catalog';
 import {
+  BrowserSkillCache,
   createFetchHttpClient,
   createNoopFileSystem,
 } from '@headlamp-k8s/ai-common/skills/adapters/browser';
@@ -359,6 +360,7 @@ export default function AIPrompt(props: {
   const [showHolmesSetup, setShowHolmesSetup] = React.useState(false);
   const [isHolmesRetrying, setIsHolmesRetrying] = React.useState(false);
   const holmesHealthRequestGateRef = React.useRef(new HolmesHealthRequestGate());
+  const userSelectedChatRef = React.useRef(false);
 
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
@@ -636,6 +638,7 @@ export default function AIPrompt(props: {
     // Reuse existing SkillManager instance to preserve its in-memory cache
     if (!skillManagerRef.current) {
       skillManagerRef.current = new SkillManager(createNoopFileSystem(), createFetchHttpClient());
+      skillManagerRef.current.setSkillCache(new BrowserSkillCache());
     }
     (aiManager as LangChainAssistantSession).setSkillManager(skillManagerRef.current, skillsConfig);
   }, [aiManager, pluginSettings]);
@@ -1442,8 +1445,10 @@ export default function AIPrompt(props: {
   const handleToggleAgentModeRequest = React.useCallback(
     (enabled: boolean) => {
       if (enabled) {
+        userSelectedChatRef.current = false;
         void handleUseHolmes();
       } else {
+        userSelectedChatRef.current = true;
         holmesHealthRequestGateRef.current.invalidate();
         setIsHolmesRetrying(false);
         setShowHolmesSetup(false);
@@ -1459,7 +1464,7 @@ export default function AIPrompt(props: {
   // default to it regardless of whether a chat provider is also configured.
   // Fall back to chat mode only when Holmes is not reachable.
   React.useEffect(() => {
-    if (isAgentMode || holmesAgentRef.current) return;
+    if (userSelectedChatRef.current || isAgentMode || holmesAgentRef.current) return;
 
     // If mock agent is enabled, skip health check and go straight to agent mode
     if (pluginSettings?.devOptions?.enableMockAgent) {
@@ -1812,6 +1817,7 @@ export default function AIPrompt(props: {
         onRetry={handleUseHolmes}
         isRetrying={isHolmesRetrying}
         onDismiss={() => {
+          userSelectedChatRef.current = true;
           holmesHealthRequestGateRef.current.invalidate();
           setIsHolmesRetrying(false);
           setShowHolmesSetup(false);
@@ -1829,11 +1835,13 @@ export default function AIPrompt(props: {
     return (
       <Box
         sx={{
-          height: '100vh',
+          height: '100%',
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
+          overflow: 'hidden',
           p: 3,
           textAlign: 'center',
         }}
@@ -1874,10 +1882,11 @@ export default function AIPrompt(props: {
   }
 
   return (
-    <div ref={rootRef}>
+    <div ref={rootRef} style={{ height: '100%', minHeight: 0 }}>
       <Box
         sx={{
-          height: '100vh',
+          height: '100%',
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden', // Prevent horizontal overflow
@@ -1902,7 +1911,8 @@ export default function AIPrompt(props: {
           justifyContent="flex-end"
           alignItems="stretch"
           sx={{
-            height: '100%',
+            flex: '1 1 0',
+            minHeight: 0,
             padding: 1,
             overflow: 'hidden', // Prevent overflow
             maxWidth: '100%',
@@ -1916,9 +1926,10 @@ export default function AIPrompt(props: {
             item
             xs
             sx={{
-              height: '100%',
-              overflowY: 'auto',
-              overflowX: 'auto', // Allow horizontal scrolling when needed
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
               maxWidth: '100%',
               minWidth: 0,
             }}
