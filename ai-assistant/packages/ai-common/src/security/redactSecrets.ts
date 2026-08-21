@@ -44,11 +44,11 @@ export function redactSecrets(input: string): string {
 
   // PEM blocks — run first so private-key content is gone before the
   // generic key-value patterns could match individual lines inside them.
-  out = out.replace(/-----BEGIN [A-Z ]+-----[\s\S]*?-----END [A-Z ]+-----/g, '[REDACTED]');
+  out = redactPemBlocks(out);
 
   // JWT tokens: three base64url segments separated by dots.
   // The first two start with "eyJ" (base64 of '{"').
-  out = out.replace(/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED]');
+  out = redactJwtTokens(out);
 
   // AWS long-lived and temporary access key IDs.
   out = out.replace(/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, '[REDACTED]');
@@ -121,12 +121,157 @@ export function redactSecrets(input: string): string {
   //   passwd=s3cr3t    → passwd=[REDACTED]
   //   password: hunter → password: [REDACTED]
   // Negative lookahead prevents double-redacting already-replaced values.
-  out = out.replace(
-    /\b(password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?token|bearer)(?![^\S\r\n]*[:=][^\S\r\n]*\[REDACTED\])([^\S\r\n]*[:=][^\S\r\n]*)[^\r\n]+/gi,
-    '$1$2[REDACTED]'
-  );
+  out = redactCredentialLines(out);
 
   return out;
+}
+
+function redactPemBlocks(input: string): string {
+  let output = '';
+  let cursor = 0;
+  const beginMarker = '-----BEGIN ';
+  while (cursor < input.length) {
+    const begin = input.indexOf(beginMarker, cursor);
+    if (begin < 0) return output + input.slice(cursor);
+    const labelEnd = input.indexOf('-----', begin + beginMarker.length);
+    if (labelEnd < 0 || labelEnd - (begin + beginMarker.length) > 64) {
+      output += input.slice(cursor, begin + beginMarker.length);
+      cursor = begin + beginMarker.length;
+      continue;
+    }
+    const label = input.slice(begin + beginMarker.length, labelEnd);
+    const endMarker = `-----END ${label}-----`;
+    const end = input.indexOf(endMarker, labelEnd + 5);
+    if (end < 0) {
+      output += input.slice(cursor);
+      return output;
+    }
+    output += input.slice(cursor, begin) + '[REDACTED]';
+    cursor = end + endMarker.length;
+  }
+  return output;
+}
+
+function redactJwtTokens(input: string): string {
+  let output = '';
+  let cursor = 0;
+  while (cursor < input.length) {
+    const start = input.indexOf('eyJ', cursor);
+    if (start < 0) return output + input.slice(cursor);
+    output += input.slice(cursor, start);
+
+    const firstEnd = scanBase64UrlSegment(input, start);
+    if (firstEnd === input.length) return output + input.slice(start);
+    if (input[firstEnd] !== '.') {
+      output += input.slice(start, firstEnd + 1);
+      cursor = firstEnd + 1;
+      continue;
+    }
+
+    const secondStart = firstEnd + 1;
+    if (!input.startsWith('eyJ', secondStart)) {
+      output += input.slice(start, secondStart);
+      cursor = secondStart;
+      continue;
+    }
+    const secondEnd = scanBase64UrlSegment(input, secondStart);
+    if (secondEnd === input.length) return output + input.slice(start);
+    if (input[secondEnd] !== '.') {
+      output += input.slice(start, secondEnd + 1);
+      cursor = secondEnd + 1;
+      continue;
+    }
+
+    const thirdStart = secondEnd + 1;
+    const thirdEnd = scanBase64UrlSegment(input, thirdStart);
+    if (thirdEnd === thirdStart) {
+      output += input.slice(start, thirdStart);
+      cursor = thirdStart;
+      continue;
+    }
+    output += '[REDACTED]';
+    cursor = thirdEnd;
+  }
+  return output;
+}
+
+function scanBase64UrlSegment(input: string, start: number): number {
+  let end = start;
+  while (end < input.length) {
+    const code = input.charCodeAt(end);
+    const valid =
+      (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      input[end] === '_' ||
+      input[end] === '-';
+    if (!valid) break;
+    end++;
+  }
+  return end;
+}
+
+const CREDENTIAL_FIELD_NAMES = new Set([
+  'password',
+  'passwd',
+  'secret',
+  'token',
+  'api_key',
+  'api-key',
+  'access_key',
+  'access-key',
+  'private_key',
+  'private-key',
+  'client_secret',
+  'client-secret',
+  'auth_token',
+  'auth-token',
+  'bearer',
+]);
+
+function redactCredentialLines(input: string): string {
+  return input.split('\n').map(redactCredentialLine).join('\n');
+}
+
+// Every separator is examined, not just the first, so credentials embedded
+// mid-line (query strings, `export FOO=`) are still caught.
+function redactCredentialLine(line: string): string {
+  for (let index = 0; index < line.length; index++) {
+    const character = line[index];
+    if (character !== ':' && character !== '=') continue;
+
+    const fieldStart = fieldNameStart(line, index);
+    const field = line.slice(fieldStart, index).toLowerCase();
+    if (!CREDENTIAL_FIELD_NAMES.has(field)) continue;
+
+    const valueStart = index + 1;
+    if (line.slice(valueStart).trim() === '[REDACTED]') return line;
+
+    let prefixEnd = valueStart;
+    while (prefixEnd < line.length && (line[prefixEnd] === ' ' || line[prefixEnd] === '\t')) {
+      prefixEnd++;
+    }
+    if (prefixEnd === line.length) continue;
+    return `${line.slice(0, prefixEnd)}[REDACTED]`;
+  }
+  return line;
+}
+
+/** Walks back over the identifier characters immediately preceding a separator. */
+function fieldNameStart(line: string, separatorIndex: number): number {
+  let start = separatorIndex;
+  while (start > 0) {
+    const code = line.charCodeAt(start - 1);
+    const isIdentifier =
+      (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      line[start - 1] === '_' ||
+      line[start - 1] === '-';
+    if (!isIdentifier) break;
+    start--;
+  }
+  return start;
 }
 
 /**
@@ -147,16 +292,7 @@ function redactKubernetesSecretValues(input: string): string {
     return input;
   }
 
-  const fencedJson = input.replace(/```json\s*([\s\S]*?)```/gi, (block, body: string) => {
-    try {
-      const parsed: unknown = JSON.parse(body.trim());
-      return redactSecretsInParsedJson(parsed)
-        ? `\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\``
-        : block;
-    } catch {
-      return block;
-    }
-  });
+  const fencedJson = redactFencedJsonSecrets(input);
   if (fencedJson !== input) return fencedJson;
 
   const trimmed = input.trim();
@@ -173,6 +309,27 @@ function redactKubernetesSecretValues(input: string): string {
   }
 
   return redactKubernetesSecretValuesYaml(input);
+}
+
+function redactFencedJsonSecrets(input: string): string {
+  const lower = input.toLowerCase();
+  const marker = '```json';
+  const start = lower.indexOf(marker);
+  if (start < 0) return input;
+  const bodyStart = start + marker.length;
+  const end = input.indexOf('```', bodyStart);
+  if (end < 0) return input;
+  try {
+    const parsed: unknown = JSON.parse(input.slice(bodyStart, end).trim());
+    if (!redactSecretsInParsedJson(parsed)) return input;
+    return `${input.slice(0, start)}\`\`\`json\n${JSON.stringify(
+      parsed,
+      null,
+      2
+    )}\n\`\`\`${input.slice(end + 3)}`;
+  } catch {
+    return input;
+  }
 }
 
 /**
@@ -200,7 +357,12 @@ function redactSecretsInParsedJson(value: unknown): boolean {
         const bag = obj[field];
         if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
           for (const key of Object.keys(bag as Record<string, unknown>)) {
-            (bag as Record<string, unknown>)[key] = '[REDACTED]';
+            Object.defineProperty(bag, key, {
+              value: '[REDACTED]',
+              enumerable: true,
+              configurable: true,
+              writable: true,
+            });
             changed = true;
           }
         }
