@@ -1,0 +1,11 @@
+version: 0.1.8
+name: headlamp-dotnet-monitor
+displayName: Headlamp .NET Monitor Plugin
+createdAt: "2026-08-21T00:00:00Z"
+logoURL: https://raw.githubusercontent.com/headlamp-k8s/plugins/main/example-change-logo/logo.svg
+description: Headlamp plugin that adds .NET diagnostic actions for dotnet-monitor sidecars.
+annotations:
+  headlamp/plugin/archive-url: https://github.com/jorisdebock/headlamp-k8s-plugins/releases/download/v0.1.8/headlamp-dotnet-monitor-0.1.8.tar.gz
+  headlamp/plugin/archive-checksum: b7c9f2065df0f2d909986c7c3e35a15656caab0c7772c275a9543cb03a1bf67e
+  headlamp/plugin/version-compat: ">=0.14.0"
+  headlamp/plugin/distro-compat: "linux/amd64,linux/arm64"
