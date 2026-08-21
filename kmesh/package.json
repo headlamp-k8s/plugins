@@ -1,5 +1,5 @@
 {
-  "name": "kmesh",
+  "name": "@headlamp-k8s/kmesh",
   "version": "0.1.0",
   "description": "Headlamp plugin for viewing KMesh Waypoint (Gateway API) resources",
   "scripts": {
