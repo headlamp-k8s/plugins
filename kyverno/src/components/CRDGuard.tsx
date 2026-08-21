@@ -51,7 +51,7 @@ export function CRDGuard({ requires, children, message }: CRDGuardProps) {
     return <NotInstalledBanner loading />;
   }
 
-  if (!status[requires]) {
+  if (status[requires] === false) {
     return <NotInstalledBanner message={message || defaultMessages[requires]} />;
   }
 
