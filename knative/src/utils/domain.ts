@@ -25,7 +25,6 @@ export function getClusterDomainClaim(
   state: 'unknown' | 'missing' | 'present';
   claim: ClusterDomainClaim | null;
 } {
-  const clusters = [cluster];
   if (!clusterDomainClaims) {
     return { state: 'unknown', claim: null };
   }
@@ -34,22 +33,15 @@ export function getClusterDomainClaim(
     return { state: 'unknown', claim: null };
   }
 
-  // DomainMappingSection is single-cluster today, but keep this safe if it ever becomes multi-cluster.
   const effectiveCluster = dm.cluster || cluster;
-  const requireClusterMatch = clusters.length > 1;
 
   const claim =
     clusterDomainClaims.find(
       cdc =>
-        (!requireClusterMatch || cdc.cluster === effectiveCluster) &&
+        cdc.cluster === effectiveCluster &&
         cdc.metadata?.name === host &&
         cdc.targetNamespace === namespace
     ) ?? null;
-
-  if (claim && !claim.cluster && effectiveCluster) {
-    claim.cluster = effectiveCluster;
-  }
-
   return claim ? { state: 'present', claim } : { state: 'missing', claim: null };
 }
 
