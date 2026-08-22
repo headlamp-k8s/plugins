@@ -6,6 +6,7 @@ import {
 import { useParams } from 'react-router-dom';
 import { Template } from '../../resources/template';
 import { fallback, renderTextSection } from '../common/detailHelpers';
+import type { TinkerbellDetailProps } from '../common/detailTypes';
 
 /** Parsed summary for one task in a Tinkerbell template. */
 interface ParsedTemplateTask {
@@ -312,14 +313,17 @@ function parseTemplateData(data: string | undefined): ParsedTemplate {
  *
  * @returns Template detail page with summary, parsed tasks, actions, and raw data.
  */
-export function TemplateDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export function TemplateDetail(props: TinkerbellDetailProps = {}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <DetailsGrid
       resourceType={Template}
       name={name}
       namespace={namespace}
+      cluster={props.cluster}
       extraInfo={item => {
         const parsedTemplate = parseTemplateData(item?.data);
 
