@@ -61,4 +61,13 @@ describe('getAge', () => {
     const fiveDaysAgo = MOCK_NOW - 5 * 24 * 60 * 60 * 1000;
     expect(getAge(new Date(fiveDaysAgo).toISOString())).toBe('5d');
   });
+
+  it('should clamp a future timestamp to 0m', () => {
+    const fiveMinutesAhead = MOCK_NOW + 5 * 60 * 1000;
+    expect(getAge(new Date(fiveMinutesAhead).toISOString())).toBe('0m');
+  });
+
+  it('should return empty string for an unparsable timestamp', () => {
+    expect(getAge('not-a-date')).toBe('');
+  });
 });
