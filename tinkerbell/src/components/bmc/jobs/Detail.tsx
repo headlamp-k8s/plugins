@@ -8,20 +8,24 @@ import {
 import { useParams } from 'react-router-dom';
 import { BmcJob } from '../../../resources/bmcJob';
 import { fallback, renderUnknownValue } from '../../common/detailHelpers';
+import type { TinkerbellDetailProps } from '../../common/detailTypes';
 
 /**
  * Renders the Tinkerbell BMC Job detail view.
  *
  * @returns BMC Job detail page with machine reference, tasks, and timing.
  */
-export function BmcJobDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export function BmcJobDetail(props: TinkerbellDetailProps = {}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <DetailsGrid
       resourceType={BmcJob}
       name={name}
       namespace={namespace}
+      cluster={props.cluster}
       extraInfo={item =>
         item
           ? [

@@ -9,6 +9,7 @@ import { useParams } from 'react-router-dom';
 import { normalizeState } from '../../resources/common';
 import { Workflow, WorkflowActionStatus } from '../../resources/workflow';
 import { booleanValue, fallback, renderRecordSection, statusValue } from '../common/detailHelpers';
+import type { TinkerbellDetailProps } from '../common/detailTypes';
 import { getCurrentAction, getCurrentTask, getTaskState, getWorkflowState } from './helpers';
 
 /** Workflow action row enriched with its parent task name. */
@@ -114,14 +115,17 @@ function renderTemplateRendering(value: string | Record<string, any> | undefined
  *
  * @returns Workflow detail page with references, status, tasks, and actions.
  */
-export function WorkflowDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export function WorkflowDetail(props: TinkerbellDetailProps = {}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <DetailsGrid
       resourceType={Workflow}
       name={name}
       namespace={namespace}
+      cluster={props.cluster}
       extraInfo={item =>
         item
           ? [

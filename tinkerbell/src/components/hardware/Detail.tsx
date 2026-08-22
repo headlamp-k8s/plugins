@@ -14,6 +14,7 @@ import {
   renderTextSection,
   renderUnknownValue,
 } from '../common/detailHelpers';
+import type { TinkerbellDetailProps } from '../common/detailTypes';
 import { getHardwareAgentID } from './helpers';
 
 /** Controller-reported block device details from the agent attributes annotation. */
@@ -104,14 +105,17 @@ function hasRecord(value: Record<string, unknown> | undefined): boolean {
  *
  * @returns Hardware detail page with interfaces, disks, references, and data sections.
  */
-export function HardwareDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export function HardwareDetail(props: TinkerbellDetailProps = {}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <DetailsGrid
       resourceType={Hardware}
       name={name}
       namespace={namespace}
+      cluster={props.cluster}
       extraInfo={item =>
         item
           ? (() => {
