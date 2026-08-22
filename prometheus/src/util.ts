@@ -164,6 +164,7 @@ function getResourceApiVersion(resource?: ResourceIdentity): string | undefined 
 const resourceApiVersionRules: Record<string, RegExp> = {
   Job: /^batch\/v1$/,
   Queue: /^scheduling\.volcano\.sh\/v1beta1$/,
+  Application: /^argoproj\.io\/v1alpha1$/,
   Cluster: /^cluster\.x-k8s\.io\//,
   Machine: /^cluster\.x-k8s\.io\//,
   MachineDeployment: /^cluster\.x-k8s\.io\//,
@@ -207,6 +208,7 @@ const ChartEnabledKinds = [
   'Service',
   'Revision',
   'Queue',
+  'Application',
   'Cluster',
   'MachineDeployment',
   'MachineSet',
