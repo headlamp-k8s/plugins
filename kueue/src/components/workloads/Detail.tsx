@@ -17,6 +17,7 @@ import {
 } from '../../resources/workload';
 import {
   renderPodSetRequests,
+  renderPodSetUpdates,
   renderResourceList,
   renderStringMap,
   renderText,
@@ -70,6 +71,7 @@ interface AdmissionCheckRow {
   requeueAfterSeconds: number | string;
   /** Retry count. */
   retryCount: number | string;
+  podSetUpdates: string;
 }
 
 /** Row rendered for status.reclaimablePods. */
@@ -164,6 +166,7 @@ function getAdmissionCheckRows(admissionChecks: AdmissionCheckState[] = []): Adm
     message: renderText(admissionCheck.message),
     requeueAfterSeconds: admissionCheck.requeueAfterSeconds ?? '-',
     retryCount: admissionCheck.retryCount ?? '-',
+    podSetUpdates: renderPodSetUpdates(admissionCheck.podSetUpdates),
   }));
 }
 
@@ -339,6 +342,10 @@ function getAdmissionChecksSection(workload: Workload) {
             {
               label: 'Retry Count',
               getter: (row: AdmissionCheckRow) => row.retryCount,
+            },
+            {
+              label: 'Pod Set Updates',
+              getter: (row: AdmissionCheckRow) => row.podSetUpdates,
             },
           ]}
         />
