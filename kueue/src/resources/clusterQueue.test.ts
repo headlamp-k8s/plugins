@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getUniqueFlavorNames,
+  renderAdmissionChecks,
   renderClusterQueueStatus,
   renderLabelSelector,
   renderResourceGroupsSummary,
@@ -45,5 +46,23 @@ describe('ClusterQueue formatters', () => {
         matchExpressions: [{ key: 'environment', operator: 'In', values: ['dev', 'prod'] }],
       })
     ).toBe('environment In (dev, prod)');
+  });
+
+  it('formats admission checks across strategy shapes and per-flavor scoping', () => {
+    expect(renderAdmissionChecks()).toBe('-');
+    expect(renderAdmissionChecks({ admissionChecks: [] })).toBe('-');
+    expect(
+      renderAdmissionChecks({
+        admissionChecks: [{ name: 'prov-request' }],
+      })
+    ).toBe('prov-request (all flavors)');
+    expect(
+      renderAdmissionChecks({
+        admissionChecks: [
+          { name: 'prov-request', onFlavors: ['spot'] },
+          { name: 'quota-check', onFlavors: ['default', 'gpu-flavor'] },
+        ],
+      })
+    ).toBe('prov-request (spot); quota-check (default, gpu-flavor)');
   });
 });
