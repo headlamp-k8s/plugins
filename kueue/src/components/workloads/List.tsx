@@ -1,6 +1,8 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link as MuiLink } from '@mui/material';
 import { Workload } from '../../resources/workload';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { openWorkloadActivity } from './Detail';
 
 export default function WorkloadList() {
   return (
@@ -14,7 +16,26 @@ export default function WorkloadList() {
         title="Kueue Workloads"
         resourceClass={Workload}
         columns={[
-          'name',
+          {
+            id: 'name',
+            label: 'Name',
+            getValue: (workload: Workload) => workload.metadata.name,
+            render: (workload: Workload) => (
+              <MuiLink
+                component="button"
+                sx={{ textAlign: 'left' }}
+                onClick={() =>
+                  openWorkloadActivity(
+                    workload.metadata.namespace,
+                    workload.metadata.name,
+                    workload.cluster
+                  )
+                }
+              >
+                {workload.metadata.name}
+              </MuiLink>
+            ),
+          },
           'namespace',
           {
             id: 'queue',

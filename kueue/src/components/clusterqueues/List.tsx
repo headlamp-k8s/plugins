@@ -1,6 +1,8 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link as MuiLink } from '@mui/material';
 import { ClusterQueue } from '../../resources/clusterQueue';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { openClusterQueueActivity } from './Detail';
 
 export default function ClusterQueueList() {
   return (
@@ -13,7 +15,22 @@ export default function ClusterQueueList() {
         title="Kueue ClusterQueues"
         resourceClass={ClusterQueue}
         columns={[
-          'name',
+          {
+            id: 'name',
+            label: 'Name',
+            getValue: (clusterQueue: ClusterQueue) => clusterQueue.metadata.name,
+            render: (clusterQueue: ClusterQueue) => (
+              <MuiLink
+                component="button"
+                sx={{ textAlign: 'left' }}
+                onClick={() =>
+                  openClusterQueueActivity(clusterQueue.metadata.name, clusterQueue.cluster)
+                }
+              >
+                {clusterQueue.metadata.name}
+              </MuiLink>
+            ),
+          },
           {
             id: 'cohort',
             label: 'Cohort',
