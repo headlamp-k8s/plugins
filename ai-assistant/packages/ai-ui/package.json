@@ -54,6 +54,7 @@
     "./parsing/urlParsing": "./src/parsing/urlParsing.ts",
     "./parsing/yamlParser": "./src/parsing/yamlParser.ts",
     "./mcp/electron-client": "./src/mcp/electron-client.ts",
+    "./mcp/host": "./src/mcp/host.ts",
     "./types/electron": "./src/types/electron.d.ts",
     "./testing/i18nTestSetup": "./src/testing/i18nTestSetup.ts",
     "./i18n": "./src/i18n.ts"

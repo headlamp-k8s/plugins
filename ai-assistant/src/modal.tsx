@@ -38,6 +38,7 @@ import {
   PromptSuggestions,
 } from '@headlamp-k8s/ai-ui/components/assistant/PromptSuggestions';
 import ApiConfirmationDialog from '@headlamp-k8s/ai-ui/components/common/ApiConfirmationDialog';
+import { isAksDesktopHost } from '@headlamp-k8s/ai-ui/mcp/host';
 import {
   getProviderModels,
   parseSuggestionsFromResponse,
@@ -345,6 +346,9 @@ export default function AIPrompt(props: {
 
   // Test mode detection
   const isTestMode = isTestModeCheck() || pluginSettings?.testMode === true;
+
+  // AKS Desktop ships its own agent, so Holmes is not offered there.
+  const holmesEnabled = React.useMemo(() => !isAksDesktopHost(), []);
 
   // Agent mode state — default to chat mode; agent mode is only enabled
   // explicitly by the user or when Holmes is confirmed available.
@@ -1464,6 +1468,7 @@ export default function AIPrompt(props: {
   // default to it regardless of whether a chat provider is also configured.
   // Fall back to chat mode only when Holmes is not reachable.
   React.useEffect(() => {
+    if (!holmesEnabled) return;
     if (userSelectedChatRef.current || isAgentMode || holmesAgentRef.current) return;
 
     // If mock agent is enabled, skip health check and go straight to agent mode
@@ -1489,7 +1494,7 @@ export default function AIPrompt(props: {
         holmesHealthRequestGateRef.current.invalidate();
       }
     };
-  }, [handleToggleAgentMode, isAgentMode, pluginSettings]);
+  }, [handleToggleAgentMode, isAgentMode, pluginSettings, holmesEnabled]);
 
   // Agent mode: send a message to Holmes via the ag-ui HolmesAgent.
   // Events (text streaming, tool calls, errors) are handled by the subscriber
@@ -1807,7 +1812,7 @@ export default function AIPrompt(props: {
   // their cluster and configure the connection in Settings. Shown regardless of
   // provider config or agent-mode state so users are never stuck in a dead
   // agent mode.
-  if (showHolmesSetup) {
+  if (showHolmesSetup && holmesEnabled) {
     return (
       <HolmesSetupGuide
         onOpenSettings={() => {
@@ -1853,7 +1858,7 @@ export default function AIPrompt(props: {
           {t(
             'To use the AI Assistant, please configure your AI provider credentials in the settings page.'
           )}{' '}
-          {t('Or switch to Holmes Agent mode.')}
+          {holmesEnabled && t('Or switch to Holmes Agent mode.')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
@@ -1866,16 +1871,18 @@ export default function AIPrompt(props: {
           >
             {t('Go to Settings')}
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<Icon icon="mdi:robot" />}
-            disabled={agentModeStatus === 'checking'}
-            onClick={() => {
-              handleUseHolmes();
-            }}
-          >
-            {agentModeStatus === 'checking' ? t('Checking for Holmes…') : t('Use Holmes Agent')}
-          </Button>
+          {holmesEnabled && (
+            <Button
+              variant="outlined"
+              startIcon={<Icon icon="mdi:robot" />}
+              disabled={agentModeStatus === 'checking'}
+              onClick={() => {
+                handleUseHolmes();
+              }}
+            >
+              {agentModeStatus === 'checking' ? t('Checking for Holmes…') : t('Use Holmes Agent')}
+            </Button>
+          )}
         </Box>
       </Box>
     );
@@ -2019,18 +2026,22 @@ export default function AIPrompt(props: {
                 handleChangeConfig(config, model);
               }}
               onTestModeResponse={handleTestModeResponse}
-              onToggleAgentMode={handleToggleAgentModeRequest}
+              onToggleAgentMode={holmesEnabled ? handleToggleAgentModeRequest : undefined}
               onToolsChange={newEnabledTools => {
                 setEnabledTools(newEnabledTools);
                 // Recreate AI manager with new tools
                 handleChangeConfig(activeConfig, selectedModel);
               }}
               chatMode={chatMode}
-              onChatModeChange={mode => {
-                setChatMode(mode);
-                setPromptHistory([]);
-                setApiError(null);
-              }}
+              onChatModeChange={
+                holmesEnabled
+                  ? mode => {
+                      setChatMode(mode);
+                      setPromptHistory([]);
+                      setApiError(null);
+                    }
+                  : undefined
+              }
             />
           </Grid>
         </Grid>
