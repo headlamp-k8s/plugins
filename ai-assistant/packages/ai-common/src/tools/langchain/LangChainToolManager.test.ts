@@ -617,6 +617,22 @@ describe('ToolManager — initializeMCPTools via constructor', () => {
     expect(mgr.getMCPTools()).toHaveLength(0);
   });
 
+  it('loads no tools when MCP is globally disabled', async () => {
+    const adapter = makeMCPAdapter({
+      getConfig: async () => ({
+        success: true,
+        config: {
+          enabled: false,
+          servers: [{ name: 'test-server', command: 'test', args: [], enabled: true }],
+        },
+      }),
+    });
+    const mgr = new LangChainToolManager({ mcpClient: adapter });
+    await mgr.waitForMCPToolsInitialization();
+    expect(mgr.areMCPToolsInitialized()).toBe(true);
+    expect(mgr.getMCPTools()).toHaveLength(0);
+  });
+
   it('filters out disabled tools (enabled:false)', async () => {
     const adapter = makeMCPAdapter({
       getToolsConfig: async () => ({
