@@ -152,6 +152,27 @@ describe('reconcileBuiltinServers', () => {
     expect(result.config.servers[0].args).toEqual(createAksMcpServer().args);
   });
 
+  it('reports a state change when only the legacy state needs upgrading', () => {
+    const upToDate = configWithArgs(createAksMcpServer().args);
+
+    const result = reconcileBuiltinServers(upToDate, [createAksMcpServer()], [AKS_MCP_SERVER_NAME]);
+
+    expect(result.changed).toBe(false);
+    expect(result.stateChanged).toBe(true);
+    expect(result.state[AKS_MCP_SERVER_NAME]).toEqual({
+      command: 'aks-mcp',
+      args: createAksMcpServer().args,
+    });
+  });
+
+  it('reports no state change when the built-in is already up to date', () => {
+    const seeded = reconcileBuiltinServers(EMPTY, [createAksMcpServer()]);
+
+    const again = reconcileBuiltinServers(seeded.config, [createAksMcpServer()], seeded.state);
+
+    expect(again.stateChanged).toBe(false);
+  });
+
   it('preserves unrelated servers', () => {
     const existing: MCPSettings = {
       enabled: true,

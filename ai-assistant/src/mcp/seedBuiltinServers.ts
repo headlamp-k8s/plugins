@@ -43,14 +43,21 @@ export async function seedBuiltinMCPServers(): Promise<void> {
 
   try {
     const response = await mcpApi.getConfig();
-    const currentConfig =
-      response?.success && Array.isArray(response.config?.servers)
-        ? (response.config as MCPSettings)
-        : EMPTY_MCP_CONFIG;
+    // Seeding against a fallback config would drop servers the read failed to return.
+    if (!response?.success || !Array.isArray(response.config?.servers)) {
+      console.error('Failed to read MCP configuration before seeding:', response?.error);
+      return;
+    }
+    const currentConfig = { ...EMPTY_MCP_CONFIG, ...response.config } as MCPSettings;
 
     const previousState = pluginStore.get()?.seededBuiltinMCPServers;
     const result = reconcileBuiltinServers(currentConfig, builtinServers, previousState);
-    if (!result.changed) return;
+    if (!result.changed) {
+      if (result.stateChanged) {
+        pluginStore.update({ seededBuiltinMCPServers: result.state });
+      }
+      return;
+    }
 
     const updateResponse = await mcpApi.updateConfig(result.config);
     if (!updateResponse?.success) {

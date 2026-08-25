@@ -96,8 +96,10 @@ export interface ReconcileBuiltinServersResult {
   config: MCPSettings;
   /** Definitions to persist for the next reconciliation. */
   state: BuiltinServerState;
-  /** Whether anything changed and the result needs persisting. */
+  /** Whether the configuration changed and needs writing back to the host. */
   changed: boolean;
+  /** Whether the recorded definitions changed, which can happen without a config change. */
+  stateChanged: boolean;
 }
 
 /** @returns The comparison key for a server name. */
@@ -171,6 +173,7 @@ export function reconcileBuiltinServers(
   const servers = [...config.servers];
   let enabled = config.enabled;
   let changed = false;
+  let stateChanged = false;
 
   for (const builtin of builtinServers) {
     const key = toKey(builtin.name);
@@ -184,6 +187,7 @@ export function reconcileBuiltinServers(
       nextState[key] = toDefinition(builtin);
       enabled = true;
       changed = true;
+      stateChanged = true;
       continue;
     }
 
@@ -197,7 +201,10 @@ export function reconcileBuiltinServers(
     }
 
     const definition = toDefinition(builtin);
-    nextState[key] = definition;
+    if (lastWritten === null || !isSameDefinition(lastWritten, definition)) {
+      nextState[key] = definition;
+      stateChanged = true;
+    }
     if (isSameDefinition(toDefinition(existing), definition)) continue;
 
     servers[index] = applyDefinition(existing, definition);
@@ -205,6 +212,6 @@ export function reconcileBuiltinServers(
   }
 
   return changed
-    ? { config: { enabled, servers }, state: nextState, changed }
-    : { config, state: nextState, changed };
+    ? { config: { enabled, servers }, state: nextState, changed, stateChanged }
+    : { config, state: nextState, changed, stateChanged };
 }
