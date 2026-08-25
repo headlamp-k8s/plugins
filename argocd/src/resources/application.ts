@@ -36,6 +36,8 @@ export interface SourceSpec {
   targetRevision?: string;
   path?: string;
   chart?: string;
+  /** Preserve source-specific Helm, Kustomize, directory, and plugin settings from history. */
+  [key: string]: unknown;
 }
 
 /**
@@ -133,6 +135,10 @@ export interface ArgoApplicationStatus {
   sync?: {
     /** The sync status string (e.g., "Synced", "OutOfSync"). */
     status: string;
+    /** Resolved revision for a single-source Application. */
+    revision?: string;
+    /** Resolved revisions, ordered to match spec.sources, for a multi-source Application. */
+    revisions?: string[];
   };
   /** Kubernetes resources managed by this Application. */
   resources?: ManagedResource[];
@@ -150,8 +156,80 @@ export interface ArgoApplicationStatus {
 export interface KubeArgoApplication extends KubeObjectInterface {
   /** The desired state of the Argo CD Application. */
   spec: ArgoApplicationSpec;
+  /** A pending or running operation. Argo CD removes this after it is processed. */
+  operation?: {
+    sync?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
   /** The observed runtime state of the Argo CD Application, populated by the controller. */
   status?: ArgoApplicationStatus;
+}
+
+/** Sorts deployment history from newest to oldest, using the history ID as a stable fallback. */
+export function compareRevisionHistory(first: RevisionHistory, second: RevisionHistory): number {
+  const firstTime = Date.parse(first.deployedAt || first.deployStartedAt || '') || 0;
+  const secondTime = Date.parse(second.deployedAt || second.deployStartedAt || '') || 0;
+
+  if (firstTime !== secondTime) {
+    return secondTime - firstTime;
+  }
+
+  return (second.id ?? -1) - (first.id ?? -1);
+}
+
+/**
+ * Returns whether Argo CD automated sync is effectively enabled.
+ *
+ * Argo CD treats an `automated` object as enabled unless `enabled` is explicitly false.
+ */
+export function isAutomatedSyncEnabled(spec: ArgoApplicationSpec): boolean {
+  const automated = spec.syncPolicy?.automated;
+  return automated !== undefined && automated.enabled !== false;
+}
+
+function isCompleteSource(source: SourceSpec | undefined): source is SourceSpec {
+  return typeof source?.repoURL === 'string' && source.repoURL.trim().length > 0;
+}
+
+function isUsableHistoryEntry(entry: RevisionHistory): boolean {
+  if (!Number.isInteger(entry.id) || (entry.id ?? -1) < 0 || !entry.deployedAt) {
+    return false;
+  }
+
+  if (Number.isNaN(Date.parse(entry.deployedAt))) {
+    return false;
+  }
+
+  const hasPluralSnapshot = entry.revisions !== undefined || entry.sources !== undefined;
+  if (hasPluralSnapshot) {
+    return (
+      (entry.sources?.length ?? 0) > 0 &&
+      entry.revisions?.length === entry.sources?.length &&
+      entry.revisions.every(revision => revision.trim().length > 0) &&
+      entry.sources.every(isCompleteSource)
+    );
+  }
+
+  return !!entry.revision?.trim() && isCompleteSource(entry.source);
+}
+
+/**
+ * Returns safe rollback choices from Application status history.
+ *
+ * The newest unique history record represents the current deployment and is excluded. Older
+ * malformed, legacy, or source-incomplete records are not offered as rollback targets.
+ */
+export function getRollbackHistoryEntries(history: RevisionHistory[]): RevisionHistory[] {
+  const seenIds = new Set<number>();
+  const uniqueHistory = [...history].sort(compareRevisionHistory).filter(entry => {
+    if (!Number.isInteger(entry.id) || seenIds.has(entry.id as number)) {
+      return false;
+    }
+    seenIds.add(entry.id as number);
+    return true;
+  });
+
+  return uniqueHistory.slice(1).filter(isUsableHistoryEntry);
 }
 
 /**
@@ -248,6 +326,16 @@ export class ArgoApplication extends KubeObject<KubeArgoApplication> {
     return this.spec.syncPolicy;
   }
 
+  /** Whether Argo CD automated sync is currently effective for this Application. */
+  get isAutomatedSyncEnabled(): boolean {
+    return isAutomatedSyncEnabled(this.spec);
+  }
+
+  /** Whether Argo CD has a pending or running operation on this Application. */
+  get hasActiveOperation(): boolean {
+    return this.jsonData.operation !== undefined && this.jsonData.operation !== null;
+  }
+
   /** Returns the list of managed Kubernetes resources. */
   get managedResources(): ManagedResource[] {
     return this.status?.resources ?? [];
@@ -256,6 +344,11 @@ export class ArgoApplication extends KubeObject<KubeArgoApplication> {
   /** Returns the sync history entries recorded by Argo CD. */
   get syncHistory(): RevisionHistory[] {
     return this.status?.history ?? [];
+  }
+
+  /** Returns complete earlier deployments that can be used for a safe rollback operation. */
+  get rollbackHistory(): RevisionHistory[] {
+    return getRollbackHistoryEntries(this.syncHistory);
   }
 
   /** Returns the list of conditions set by the controller. */
