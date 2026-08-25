@@ -725,6 +725,7 @@ async function listAzureOpenAIDeploymentsWithApi(
   signal?: AbortSignal
 ): Promise<AzureOpenAIDeployment[] | null> {
   if (!account.id) return null;
+  const accountIdentity = azureAccountIdentity(account) ?? account.name ?? account.id;
   const deployments: AzureOpenAIDeployment[] = [];
   let url:
     | string
@@ -736,14 +737,21 @@ async function listAzureOpenAIDeploymentsWithApi(
         { headers: { Authorization: `Bearer ${token}` } },
         signal
       );
-      if (!response.ok) return null;
+      if (!response.ok) {
+        logAzureApiFailure(
+          `deployment listing for ${accountIdentity}`,
+          `${response.status} ${response.statusText}`
+        );
+        return null;
+      }
       const page: AzureManagementListResponse<AzureOpenAIDeployment> = await response.json();
       if (!Array.isArray(page.value)) return null;
       deployments.push(...page.value);
       url = page.nextLink;
     }
     return deployments;
-  } catch {
+  } catch (e) {
+    logAzureApiFailure(`deployment listing for ${accountIdentity}`, e);
     return null;
   }
 }
@@ -1061,13 +1069,15 @@ export interface AzureKeyResolution {
  * @param accountName - Azure account resource name.
  * @param commandRunner - Host-provided command executor.
  * @param subscriptionId - Subscription used to scope the key lookup.
+ * @param signal - Optional cancellation signal.
  * @returns The account key, or the reason it could not be read.
  */
 export async function refreshAzureOpenAIKey(
   resourceGroup: string,
   accountName: string,
   commandRunner: CommandRunner,
-  subscriptionId?: string
+  subscriptionId?: string,
+  signal?: AbortSignal
 ): Promise<AzureKeyResolution> {
   if (!subscriptionId) {
     return {
@@ -1081,7 +1091,8 @@ export async function refreshAzureOpenAIKey(
     resourceGroup,
     accountName,
     subscriptionId,
-    commandRunner
+    commandRunner,
+    signal
   );
   if (result.key) return { key: result.key };
   return { key: null, reason: describeAzureKeyFailure(accountName, result) };

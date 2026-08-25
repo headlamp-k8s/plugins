@@ -97,8 +97,8 @@ function normalizeProviderSettings(value: Record<string, unknown>): ProviderSett
   return settings;
 }
 
-/** Normalizes an Azure endpoint for persisted account identity comparisons. */
-function normalizeAzureEndpoint(endpoint: string | undefined): string | undefined {
+/** Normalises an Azure endpoint for persisted account identity comparisons. */
+function normaliseAzureEndpoint(endpoint: string | undefined): string | undefined {
   return endpoint?.trim().replace(/\/+$/, '').toLowerCase() || undefined;
 }
 
@@ -110,8 +110,8 @@ function isSameAzureAccount(a: ProviderSettings, b: ProviderSettings): boolean {
     return a.azSubscriptionId === b.azSubscriptionId && a.azResourceGroup === b.azResourceGroup;
   }
 
-  const aEndpoint = normalizeAzureEndpoint(a.endpoint);
-  const bEndpoint = normalizeAzureEndpoint(b.endpoint);
+  const aEndpoint = normaliseAzureEndpoint(a.endpoint);
+  const bEndpoint = normaliseAzureEndpoint(b.endpoint);
   if (aEndpoint && bEndpoint) return aEndpoint === bEndpoint;
 
   // A scoped account cannot safely backfill an endpoint-less legacy entry by name alone.
@@ -306,7 +306,7 @@ export function saveProviderConfig(
         isSameAzureAccount(p.config, config) &&
         (p.config.azSubscriptionId ||
           config.azSubscriptionId ||
-          normalizeAzureEndpoint(p.config.endpoint) !== undefined ||
+          normaliseAzureEndpoint(p.config.endpoint) !== undefined ||
           sameNamedAzureAccounts.length === 1)
       );
     }

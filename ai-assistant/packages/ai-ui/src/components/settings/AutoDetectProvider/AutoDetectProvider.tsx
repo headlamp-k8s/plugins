@@ -128,6 +128,7 @@ export function useAutoDetect({
 
   React.useEffect(
     () => () => {
+      detectionRun.current += 1;
       detectionController.current?.abort();
       verificationRun.current += 1;
       verificationController.current?.abort();

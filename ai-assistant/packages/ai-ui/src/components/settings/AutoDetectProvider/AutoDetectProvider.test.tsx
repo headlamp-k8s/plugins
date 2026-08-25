@@ -141,6 +141,23 @@ describe('useAutoDetect', () => {
     expect(result.current.autoDetecting).toBe(false);
   });
 
+  it('aborts detection on unmount and tolerates a late result', async () => {
+    const detection = deferred<DetectedProvider[]>();
+    detectionMocks.detectProviders.mockReturnValueOnce(detection.promise);
+    const { result, unmount } = renderHook(() => useAutoDetect(hookProps()));
+
+    let detectionRun: Promise<void> = Promise.resolve();
+    act(() => {
+      detectionRun = result.current.handleAutoDetect();
+    });
+    const signal = detectionMocks.detectProviders.mock.calls[0][3] as AbortSignal;
+
+    unmount();
+    expect(signal.aborted).toBe(true);
+    detection.resolve(sampleDetectedProviders);
+    await detectionRun;
+  });
+
   it('recovers from detection failure without opening stale results', async () => {
     detectionMocks.detectProviders.mockRejectedValue(new Error('offline'));
     vi.spyOn(console, 'error').mockImplementation(() => undefined);

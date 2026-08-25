@@ -789,6 +789,51 @@ describe('refreshAzureOpenAIKey', () => {
     expect(result.key).toBeNull();
     expect(result.reason).toContain('no subscription ID');
   });
+
+  it('forwards cancellation to CLI authentication', async () => {
+    const controller = new AbortController();
+    let runnerSignal: AbortSignal | undefined;
+    const runner = vi.fn(
+      async (_command: string, _args: string[], signal?: AbortSignal) =>
+        new Promise<{ stdout: string; exitCode: number }>(resolve => {
+          runnerSignal = signal;
+          signal?.addEventListener('abort', () => resolve({ stdout: '', exitCode: -1 }), {
+            once: true,
+          });
+        })
+    );
+
+    const refresh = refreshAzureOpenAIKey('rg1', 'account1', runner, 'sub', controller.signal);
+    await vi.waitFor(() => expect(runner).toHaveBeenCalled());
+    controller.abort();
+
+    expect((await refresh).key).toBeNull();
+    expect(runnerSignal?.aborted).toBe(true);
+  });
+
+  it('forwards cancellation to the key request', async () => {
+    const controller = new AbortController();
+    const runner = vi.fn(async () => ({ stdout: 'token', exitCode: 0 }));
+    let fetchSignal: AbortSignal | undefined;
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async (_url, options) =>
+        new Promise<Response>((_resolve, reject) => {
+          fetchSignal = options?.signal ?? undefined;
+          options?.signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true }
+          );
+        })
+    );
+
+    const refresh = refreshAzureOpenAIKey('rg1', 'account1', runner, 'sub', controller.signal);
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+    controller.abort();
+
+    expect((await refresh).key).toBeNull();
+    expect(fetchSignal?.aborted).toBe(true);
+  });
 });
 
 describe('verifyAzureOpenAIAccess', () => {
@@ -1277,6 +1322,43 @@ describe('collectAzureOpenAIProviders — error and skip branches', () => {
     });
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 403 }));
     expect(await collectAzureOpenAIProviders(runner)).toHaveLength(0);
+  });
+
+  it('logs the account identity when deployment listing is rejected', async () => {
+    const runner = makeAzureBaseRunner(CHAT_DEPLOYMENT_STDOUT);
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const originalImplementation = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation((url, options) =>
+      String(url).includes('/deployments?')
+        ? Promise.resolve(new Response('', { status: 403, statusText: 'Forbidden' }))
+        : originalImplementation!(url, options)
+    );
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    expect(await collectAzureOpenAIProviders(runner)).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[ai-assistant auto-detect] Azure deployment listing for sub/rg1/myoai failed:',
+      '403 Forbidden'
+    );
+  });
+
+  it('logs the account identity when deployment listing throws', async () => {
+    const runner = makeAzureBaseRunner(CHAT_DEPLOYMENT_STDOUT);
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const originalImplementation = fetchMock.getMockImplementation();
+    const failure = new Error('offline');
+    fetchMock.mockImplementation((url, options) =>
+      String(url).includes('/deployments?')
+        ? Promise.reject(failure)
+        : originalImplementation!(url, options)
+    );
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    expect(await collectAzureOpenAIProviders(runner)).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[ai-assistant auto-detect] Azure deployment listing for sub/rg1/myoai failed:',
+      failure
+    );
   });
 
   it('aborts subscription discovery when the Azure API times out', async () => {
