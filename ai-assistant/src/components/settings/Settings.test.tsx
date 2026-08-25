@@ -86,6 +86,50 @@ import { render } from '@testing-library/react';
 import Settings from './Settings';
 
 describe('Settings', () => {
+  it('logs when GitHub and Azure CLI auto-detection is available', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.stubGlobal('pluginRunCommand', vi.fn());
+    try {
+      render(React.createElement(Settings));
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        '[ai-assistant auto-detect] GitHub and Azure CLI command runner is available: ' +
+          'pluginRunCommand was injected.'
+      );
+    } finally {
+      vi.unstubAllGlobals();
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('logs when GitHub and Azure CLI auto-detection is unavailable', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(React.createElement(Settings));
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[ai-assistant auto-detect] GitHub and Azure CLI detection is unavailable: ' +
+          'pluginRunCommand was not injected. Ensure Headlamp grants runCmd-gh and runCmd-az permissions.'
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('logs when auto-detection is hidden outside app mode', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(React.createElement(Settings));
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[ai-assistant auto-detect] Auto Detect UI is unavailable: ' +
+          'Headlamp.isRunningAsApp() returned false.'
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('renders without crashing (guards against missing Holmes constant imports)', () => {
     capturedProps.length = 0;
     expect(() => render(React.createElement(Settings))).not.toThrow();

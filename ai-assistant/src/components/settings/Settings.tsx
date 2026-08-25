@@ -163,15 +163,31 @@ export default function Settings() {
 
   // Command runner for CLI-based provider detection
   const [commandRunner, setCommandRunner] = React.useState<CommandRunner | null>(null);
+  const isRunningAsApp = Headlamp.isRunningAsApp();
   React.useEffect(() => {
     if (typeof pluginRunCommand !== 'undefined') {
+      console.info(
+        '[ai-assistant auto-detect] GitHub and Azure CLI command runner is available: ' +
+          'pluginRunCommand was injected.'
+      );
       setCommandRunner(() =>
         createPluginCommandRunner((command, args, options) =>
           pluginRunCommand(command as Parameters<typeof pluginRunCommand>[0], args, options)
         )
       );
+    } else {
+      console.warn(
+        '[ai-assistant auto-detect] GitHub and Azure CLI detection is unavailable: ' +
+          'pluginRunCommand was not injected. Ensure Headlamp grants runCmd-gh and runCmd-az permissions.'
+      );
     }
-  }, []);
+    if (!isRunningAsApp) {
+      console.warn(
+        '[ai-assistant auto-detect] Auto Detect UI is unavailable: ' +
+          'Headlamp.isRunningAsApp() returned false.'
+      );
+    }
+  }, [isRunningAsApp]);
 
   const pluginSettings = savedConfigs;
   const isTestMode = isTestModeCheck() || savedConfigs?.testMode === true;
@@ -196,7 +212,7 @@ export default function Settings() {
           const updatedSettings = toggleTool(pluginSettings, toolId);
           pluginStore.update(updatedSettings);
         }}
-        isRunningAsApp={Headlamp.isRunningAsApp()}
+        isRunningAsApp={isRunningAsApp}
         configStore={pluginStore}
         loadSkills={loadSkills}
         onSkillsLoadComplete={handleSkillsLoadComplete}
