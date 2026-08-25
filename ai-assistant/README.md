@@ -30,7 +30,7 @@ The plugin supports multiple AI providers, allowing you to choose the one that b
 - **Anthropic** (Claude models)
 - **Mistral AI**
 - **Google** (Gemini models)
-- **DeepSeek** (DeepSeek-Chat, DeepSeek-Reasoner)
+- **DeepSeek** (deepseek-v4-flash, deepseek-v4-pro)
 - **OpenAI-Compatible** (vLLM, llama.cpp, and other OpenAI-compatible servers)
 - **Local Models** (via Ollama)
 
