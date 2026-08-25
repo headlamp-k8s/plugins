@@ -1,6 +1,8 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import ClusterQueueDetail from './components/clusterqueues/Detail';
 import ClusterQueueList from './components/clusterqueues/List';
+import CohortDetail from './components/cohorts/Detail';
+import CohortList from './components/cohorts/List';
 import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
@@ -22,6 +24,13 @@ registerSidebarEntry({
   name: 'kueue-clusterqueues',
   label: 'ClusterQueues',
   url: kueueRoutePaths.clusterQueuesList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-cohorts',
+  label: 'Cohorts',
+  url: kueueRoutePaths.cohortsList,
 });
 
 registerSidebarEntry({
@@ -59,6 +68,22 @@ registerRoute({
   name: kueueRouteNames.clusterQueueDetail,
   exact: true,
   component: () => <ClusterQueueDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.cohortsList,
+  sidebar: 'kueue-cohorts',
+  name: kueueRouteNames.cohortsList,
+  exact: true,
+  component: () => <CohortList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.cohortDetail,
+  sidebar: 'kueue-cohorts',
+  name: kueueRouteNames.cohortDetail,
+  exact: true,
+  component: () => <CohortDetail />,
 });
 
 registerRoute({
