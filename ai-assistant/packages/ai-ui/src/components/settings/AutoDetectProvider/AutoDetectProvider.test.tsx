@@ -1,4 +1,5 @@
 import type {
+  AzureAccessCheckResult,
   CommandRunner,
   DetectedProvider,
 } from '@headlamp-k8s/ai-common/providers/detectProvider';
@@ -256,6 +257,79 @@ describe('useAutoDetect', () => {
     expect(result.current.detectedProviders).toEqual([sampleDetectedProviders[2]]);
     expect(result.current.showDetectedDialog).toBe(false);
     expect(result.current.addError).toContain('not allowed to read its keys');
+  });
+
+  it('aborts verification on close and ignores a late result', async () => {
+    const verification = deferred<AzureAccessCheckResult>();
+    detectionMocks.verifyAzureOpenAIAccess.mockReturnValue(verification.promise);
+    const onConfigsChange = vi.fn();
+    const props = hookProps({ onConfigsChange });
+    const { result } = renderHook(() => useAutoDetect(props));
+
+    act(() => result.current.handleAddDetectedProviders([sampleDetectedProviders[2]]));
+    const signal = detectionMocks.verifyAzureOpenAIAccess.mock.calls[0][2] as AbortSignal;
+    expect(signal.aborted).toBe(false);
+
+    act(() => result.current.setShowDetectedDialog(false));
+    expect(signal.aborted).toBe(true);
+    await act(async () => verification.resolve({ ok: true }));
+
+    expect(onConfigsChange).not.toHaveBeenCalled();
+    expect(result.current.addingProviders).toBe(false);
+  });
+
+  it('aborts verification when a new detection starts', async () => {
+    const verification = deferred<AzureAccessCheckResult>();
+    detectionMocks.verifyAzureOpenAIAccess.mockReturnValue(verification.promise);
+    const onConfigsChange = vi.fn();
+    const props = hookProps({ onConfigsChange });
+    const { result } = renderHook(() => useAutoDetect(props));
+
+    act(() => result.current.handleAddDetectedProviders([sampleDetectedProviders[2]]));
+    const signal = detectionMocks.verifyAzureOpenAIAccess.mock.calls[0][2] as AbortSignal;
+    await act(async () => result.current.handleAutoDetect());
+
+    expect(signal.aborted).toBe(true);
+    await act(async () => verification.resolve({ ok: true }));
+    expect(onConfigsChange).not.toHaveBeenCalled();
+  });
+
+  it('aborts verification when saved configs change', async () => {
+    const verification = deferred<AzureAccessCheckResult>();
+    detectionMocks.verifyAzureOpenAIAccess.mockReturnValue(verification.promise);
+    const onConfigsChange = vi.fn();
+    const initialProps = hookProps({ onConfigsChange });
+    const { result, rerender } = renderHook(({ props }) => useAutoDetect(props), {
+      initialProps: { props: initialProps },
+    });
+
+    act(() => result.current.handleAddDetectedProviders([sampleDetectedProviders[2]]));
+    const signal = detectionMocks.verifyAzureOpenAIAccess.mock.calls[0][2] as AbortSignal;
+    rerender({
+      props: {
+        ...initialProps,
+        savedConfigs: {
+          providers: [{ providerId: 'openai', config: { apiKey: 'new-key' } }],
+        },
+      },
+    });
+
+    expect(signal.aborted).toBe(true);
+    await act(async () => verification.resolve({ ok: true }));
+    expect(onConfigsChange).not.toHaveBeenCalled();
+  });
+
+  it('aborts verification on unmount', () => {
+    const verification = deferred<AzureAccessCheckResult>();
+    detectionMocks.verifyAzureOpenAIAccess.mockReturnValue(verification.promise);
+    const props = hookProps();
+    const { result, unmount } = renderHook(() => useAutoDetect(props));
+
+    act(() => result.current.handleAddDetectedProviders([sampleDetectedProviders[2]]));
+    const signal = detectionMocks.verifyAzureOpenAIAccess.mock.calls[0][2] as AbortSignal;
+    unmount();
+
+    expect(signal.aborted).toBe(true);
   });
 
   it('deduplicates dismissals and works without a persistence callback', () => {

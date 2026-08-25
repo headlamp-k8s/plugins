@@ -111,15 +111,42 @@ export function useAutoDetect({
 } {
   const [autoDetecting, setAutoDetecting] = React.useState(false);
   const [detectedProviders, setDetectedProviders] = React.useState<DetectedProvider[]>([]);
-  const [showDetectedDialog, setShowDetectedDialog] = React.useState(false);
+  const [showDetectedDialog, setDialogVisible] = React.useState(false);
   const [addingProviders, setAddingProviders] = React.useState(false);
   const [addError, setAddError] = React.useState<string | null>(null);
   const detectionRun = React.useRef(0);
   const detectionController = React.useRef<AbortController | null>(null);
+  const verificationRun = React.useRef(0);
+  const verificationController = React.useRef<AbortController | null>(null);
 
-  React.useEffect(() => () => detectionController.current?.abort(), []);
+  const cancelVerification = React.useCallback((): void => {
+    verificationRun.current += 1;
+    verificationController.current?.abort();
+    verificationController.current = null;
+    setAddingProviders(false);
+  }, []);
+
+  React.useEffect(
+    () => () => {
+      detectionController.current?.abort();
+      verificationRun.current += 1;
+      verificationController.current?.abort();
+    },
+    []
+  );
+
+  React.useEffect(() => cancelVerification(), [savedConfigs, cancelVerification]);
+
+  const setShowDetectedDialog = React.useCallback(
+    (show: boolean): void => {
+      if (!show) cancelVerification();
+      setDialogVisible(show);
+    },
+    [cancelVerification]
+  );
 
   const handleAutoDetect = React.useCallback(async (): Promise<void> => {
+    cancelVerification();
     detectionController.current?.abort();
     const controller = new AbortController();
     detectionController.current = controller;
@@ -131,7 +158,12 @@ export function useAutoDetect({
     try {
       const existing = savedConfigs?.providers || [];
       // Dismissals suppress the automatic prompt only; an explicit run must show everything.
-      const detected = await detectProviders(existing, [], commandRunner ?? null, controller.signal);
+      const detected = await detectProviders(
+        existing,
+        [],
+        commandRunner ?? null,
+        controller.signal
+      );
       if (run === detectionRun.current) {
         setDetectedProviders(detected);
         setShowDetectedDialog(true);
@@ -141,10 +173,11 @@ export function useAutoDetect({
     } finally {
       if (run === detectionRun.current) setAutoDetecting(false);
     }
-  }, [savedConfigs, commandRunner]);
+  }, [savedConfigs, commandRunner, cancelVerification, setShowDetectedDialog]);
 
   const handleAddDetectedProviders = React.useCallback(
     (providers: DetectedProvider[]): void => {
+      cancelVerification();
       setAddError(null);
 
       /** Persists the providers that may be used. @param usable - Providers to save. */
@@ -180,6 +213,9 @@ export function useAutoDetect({
         return;
       }
 
+      const controller = new AbortController();
+      verificationController.current = controller;
+      const run = ++verificationRun.current;
       setAddingProviders(true);
       void (async () => {
         try {
@@ -188,10 +224,15 @@ export function useAutoDetect({
             providers.map(
               (provider): Promise<AzureAccessCheckResult> =>
                 provider.providerId === 'azure'
-                  ? verifyAzureOpenAIAccess(provider.config, commandRunner ?? null)
+                  ? verifyAzureOpenAIAccess(
+                      provider.config,
+                      commandRunner ?? null,
+                      controller.signal
+                    )
                   : Promise.resolve({ ok: true })
             )
           );
+          if (run !== verificationRun.current || controller.signal.aborted) return;
           const rejected = providers.filter((_, index) => !checks[index].ok);
           const failures = providers.flatMap((provider, index) =>
             checks[index].ok ? [] : [`${provider.displayName} — ${checks[index].reason}`]
@@ -207,12 +248,26 @@ export function useAutoDetect({
           }
           setShowDetectedDialog(false);
           setDetectedProviders([]);
+        } catch (error) {
+          if (run === verificationRun.current && !controller.signal.aborted) {
+            console.error('[AutoDetectProvider] provider verification failed:', error);
+          }
         } finally {
-          setAddingProviders(false);
+          if (run === verificationRun.current) {
+            verificationController.current = null;
+            setAddingProviders(false);
+          }
         }
       })();
     },
-    [savedConfigs, onConfigsChange, onActiveConfigChange, commandRunner]
+    [
+      savedConfigs,
+      onConfigsChange,
+      onActiveConfigChange,
+      commandRunner,
+      cancelVerification,
+      setShowDetectedDialog,
+    ]
   );
 
   const handleDismissDetectedProviders = React.useCallback(

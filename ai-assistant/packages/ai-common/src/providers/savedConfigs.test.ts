@@ -620,6 +620,66 @@ describe('ProviderConfigManager', () => {
       expect(result.providers![0].config.azSubscriptionId).toBe('sub');
     });
 
+    it('does not backfill a scoped account onto an endpoint-less legacy name match', () => {
+      const existing = {
+        providers: [
+          {
+            id: 'azure-legacy',
+            providerId: 'azure',
+            config: { apiKey: '__AZ_CLI_AUTH__', azAccountName: 'shared' },
+          },
+        ],
+      };
+      const result = saveProviderConfig(existing, 'azure', {
+        apiKey: '__AZ_CLI_AUTH__',
+        azAccountName: 'shared',
+        azResourceGroup: 'rg-b',
+        azSubscriptionId: 'subscription-b',
+        endpoint: 'https://shared-b.openai.azure.com',
+      });
+
+      expect(result.providers).toHaveLength(2);
+      expect(result.providers![0].id).toBe('azure-legacy');
+      expect(result.providers![1].config.azSubscriptionId).toBe('subscription-b');
+    });
+
+    it('uses the endpoint to disambiguate same-named legacy Azure configs', () => {
+      const existing = {
+        providers: [
+          {
+            id: 'azure-a',
+            providerId: 'azure',
+            config: {
+              apiKey: '__AZ_CLI_AUTH__',
+              azAccountName: 'shared',
+              endpoint: 'https://shared-a.openai.azure.com',
+            },
+          },
+          {
+            id: 'azure-b',
+            providerId: 'azure',
+            config: {
+              apiKey: '__AZ_CLI_AUTH__',
+              azAccountName: 'shared',
+              endpoint: 'https://shared-b.openai.azure.com/',
+            },
+          },
+        ],
+      };
+      const result = saveProviderConfig(existing, 'azure', {
+        apiKey: '__AZ_CLI_AUTH__',
+        azAccountName: 'shared',
+        azResourceGroup: 'rg-b',
+        azSubscriptionId: 'subscription-b',
+        endpoint: 'https://SHARED-B.openai.azure.com',
+      });
+
+      expect(result.providers).toHaveLength(2);
+      expect(result.providers![0].id).toBe('azure-a');
+      expect(result.providers![1].id).toBe('azure-b');
+      expect(result.providers![1].config.azSubscriptionId).toBe('subscription-b');
+    });
+
     it('adds new Azure config when azAccountName differs', () => {
       const existing = {
         providers: [
