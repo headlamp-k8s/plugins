@@ -18,7 +18,8 @@
  * Identifies which desktop distribution the plugin is running inside.
  *
  * Detection is feature based rather than name based: AKS Desktop is the only
- * host whose preload bridge exposes `registerAKSCluster`.
+ * host whose preload bridge exposes `registerAKSCluster`, and it also puts its
+ * bundled Azure tooling (`az`, `aks-mcp`) on the process `PATH`.
  *
  * @returns Whether the plugin is running inside AKS Desktop.
  */

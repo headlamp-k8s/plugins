@@ -153,6 +153,14 @@ export class LangChainToolManager {
       const serverConfigResponse = await this.mcpClient.getConfig();
       const configuredServerNames = new Set<string>();
 
+      // The global toggle wins: hosts keep per-tool metadata while MCP is off,
+      // so binding those tools would offer the model calls that always fail.
+      if (serverConfigResponse.success && serverConfigResponse.config?.enabled === false) {
+        this.mcpTools = [];
+        this.mcpToolsInitialized = true;
+        return;
+      }
+
       if (serverConfigResponse.success && serverConfigResponse.config?.servers) {
         for (const server of serverConfigResponse.config.servers) {
           if (server.enabled !== false && server.name) {

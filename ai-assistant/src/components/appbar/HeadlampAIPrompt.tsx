@@ -1,6 +1,7 @@
 import { getSavedConfigurations } from '@headlamp-k8s/ai-common/providers/savedConfigs';
 import { AiUiI18nProvider } from '@headlamp-k8s/ai-ui/AiUiI18nProvider';
 import AIAssistantToggle from '@headlamp-k8s/ai-ui/components/appbar/AIAssistantToggle';
+import { isAksDesktopHost } from '@headlamp-k8s/ai-ui/mcp/host';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { useTheme } from '@mui/material/styles';
@@ -43,6 +44,10 @@ export default function HeadlampAIPrompt() {
   const [isAgentAvailable, setIsAgentAvailable] = React.useState(false);
   React.useEffect(() => {
     let cancelled = false;
+    if (isAksDesktopHost()) {
+      setIsAgentAvailable(false);
+      return;
+    }
     const cluster = getCluster();
     if (!cluster) {
       setIsAgentAvailable(false);
