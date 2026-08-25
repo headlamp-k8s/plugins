@@ -18,6 +18,7 @@ import { getProviderById } from '@headlamp-k8s/ai-common/providers/catalog';
 import type { DetectedProvider } from '@headlamp-k8s/ai-common/providers/detectProvider';
 import { Icon } from '@iconify/react';
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -44,6 +45,10 @@ export interface DetectedProvidersDialogProps {
   onAddProviders: (providers: DetectedProvider[]) => void;
   /** Callback when the user dismisses all detected providers. */
   onDismiss?: (providers: DetectedProvider[]) => void;
+  /** Whether the selected providers are being verified. */
+  adding?: boolean;
+  /** Why the selected providers could not be added. */
+  errorMessage?: string | null;
   /** Component used to render the dialog shell. Falls back to MUI Dialog. */
   DialogSlot?: React.ElementType;
 }
@@ -61,6 +66,8 @@ export default function DetectedProvidersDialog({
   detectedProviders,
   onAddProviders,
   onDismiss,
+  adding = false,
+  errorMessage = null,
   DialogSlot = Dialog,
 }: DetectedProvidersDialogProps): React.ReactElement {
   const { t } = useTranslation();
@@ -71,6 +78,10 @@ export default function DetectedProvidersDialog({
     detectedProviders.map(provider => [provider.providerId, provider.displayName, provider.source])
   );
   const providerCount = detectedProviders.length;
+  const errorMessages = errorMessage
+    ?.split('\n')
+    .map(message => message.trim())
+    .filter(Boolean);
 
   useEffect(() => {
     if (open) {
@@ -108,9 +119,13 @@ export default function DetectedProvidersDialog({
       <DialogTitle>{t('Detected AI Providers')}</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
-          {t(
-            'The following AI providers were automatically detected on your system. Select which ones you would like to add.'
-          )}
+          {providerCount > 0
+            ? t(
+                'The following AI providers were automatically detected on your system. Select which ones you would like to add.'
+              )
+            : t(
+                'No new AI providers were detected. Providers you already added or dismissed are not listed. Otherwise, check that the provider CLI is installed and authenticated, then try again.'
+              )}
         </DialogContentText>
         {detectedProviders.map((provider, index) => {
           const providerInfo = getProviderById(provider.providerId);
@@ -136,14 +151,44 @@ export default function DetectedProvidersDialog({
             />
           );
         })}
+        {errorMessage ? (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {errorMessages && errorMessages.length > 1 ? (
+              <Box
+                component="ul"
+                sx={{ display: 'flex', flexDirection: 'column', gap: 1, m: 0, pl: 2.5 }}
+              >
+                {errorMessages.map(message => (
+                  <Box component="li" key={message}>
+                    {message}
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              errorMessages?.[0]
+            )}
+          </Alert>
+        ) : null}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleDismiss} color="inherit">
-          {t('Not Now')}
-        </Button>
-        <Button onClick={handleAdd} variant="contained" disabled={selected.size === 0}>
-          {t('Add Selected ({{count}})', { count: selected.size })}
-        </Button>
+        {providerCount === 0 ? (
+          <Button onClick={onClose}>{t('Close')}</Button>
+        ) : (
+          <>
+            <Button onClick={handleDismiss} color="inherit" disabled={adding}>
+              {t('Not Now')}
+            </Button>
+            <Button
+              onClick={handleAdd}
+              variant="contained"
+              disabled={selected.size === 0 || adding}
+            >
+              {adding
+                ? t('Checking access…')
+                : t('Add Selected ({{count}})', { count: selected.size })}
+            </Button>
+          </>
+        )}
       </DialogActions>
     </DialogSlot>
   );

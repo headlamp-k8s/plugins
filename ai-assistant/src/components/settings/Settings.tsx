@@ -39,6 +39,7 @@ import {
   HOLMES_SERVICE_NAMESPACE,
   HOLMES_SERVICE_PORT,
 } from '../../holmesClient';
+import { createPluginCommandRunner } from '../../pluginCommandRunner';
 import {
   getAllAvailableTools,
   isToolEnabled,
@@ -162,21 +163,31 @@ export default function Settings() {
 
   // Command runner for CLI-based provider detection
   const [commandRunner, setCommandRunner] = React.useState<CommandRunner | null>(null);
+  const isRunningAsApp = Headlamp.isRunningAsApp();
   React.useEffect(() => {
     if (typeof pluginRunCommand !== 'undefined') {
-      setCommandRunner(() => async (command: string, args: string[]) => {
-        // pluginRunCommand returns an EventEmitter-like object; convert to
-        // the { stdout, exitCode } shape that CommandRunner expects.
-        return new Promise<{ stdout: string; exitCode: number }>(resolve => {
-          // @ts-ignore — 'gh' and 'az' are narrower than the declared type
-          const proc = pluginRunCommand(command as any, args, {});
-          let out = '';
-          proc.stdout.on('data', (d: any) => (out += String(d)));
-          proc.on('exit', (code: number | null) => resolve({ stdout: out, exitCode: code ?? -1 }));
-        });
-      });
+      console.info(
+        '[ai-assistant auto-detect] GitHub and Azure CLI command runner is available: ' +
+          'pluginRunCommand was injected.'
+      );
+      setCommandRunner(() =>
+        createPluginCommandRunner((command, args, options) =>
+          pluginRunCommand(command as Parameters<typeof pluginRunCommand>[0], args, options)
+        )
+      );
+    } else {
+      console.warn(
+        '[ai-assistant auto-detect] GitHub and Azure CLI detection is unavailable: ' +
+          'pluginRunCommand was not injected. Ensure Headlamp grants runCmd-gh and runCmd-az permissions.'
+      );
     }
-  }, []);
+    if (!isRunningAsApp) {
+      console.warn(
+        '[ai-assistant auto-detect] Auto Detect UI is unavailable: ' +
+          'Headlamp.isRunningAsApp() returned false.'
+      );
+    }
+  }, [isRunningAsApp]);
 
   const pluginSettings = savedConfigs;
   const isTestMode = isTestModeCheck() || savedConfigs?.testMode === true;
@@ -201,7 +212,7 @@ export default function Settings() {
           const updatedSettings = toggleTool(pluginSettings, toolId);
           pluginStore.update(updatedSettings);
         }}
-        isRunningAsApp={Headlamp.isRunningAsApp()}
+        isRunningAsApp={isRunningAsApp}
         configStore={pluginStore}
         loadSkills={loadSkills}
         onSkillsLoadComplete={handleSkillsLoadComplete}

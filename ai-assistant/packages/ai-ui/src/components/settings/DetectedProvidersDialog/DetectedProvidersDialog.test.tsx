@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { runAxe } from '../../../testing/runAxe';
@@ -88,13 +88,29 @@ it('resets choices when the same provider list is reopened', async () => {
   );
 });
 
-it('renders an empty provider list with add disabled', () => {
+it('renders an actionable empty provider result', () => {
   const { rerender } = render(
     <DetectedProvidersDialog {...multipleProvidersArgs} detectedProviders={[]} open={false} />
   );
   expect(screen.queryByRole('dialog')).toBeNull();
   rerender(<DetectedProvidersDialog {...multipleProvidersArgs} detectedProviders={[]} open />);
-  expect(screen.getByRole('button', { name: 'Add Selected (0)' })).toHaveProperty('disabled', true);
+  expect(screen.getByText(/No new AI providers were detected/)).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Add Selected/ })).toBeNull();
+});
+
+it('renders multiple verification warnings as separate spaced items', () => {
+  render(
+    <DetectedProvidersDialog
+      {...multipleProvidersArgs}
+      errorMessage={'First provider is unavailable.\nSecond provider is unavailable.'}
+    />
+  );
+
+  const warnings = within(screen.getByRole('alert')).getAllByRole('listitem');
+  expect(warnings).toHaveLength(2);
+  expect(warnings[0].textContent).toBe('First provider is unavailable.');
+  expect(warnings[1].textContent).toBe('Second provider is unavailable.');
 });
 
 it('disables add when nothing is selected and supports re-selection', () => {

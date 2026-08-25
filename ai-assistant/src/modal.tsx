@@ -86,19 +86,10 @@ import { checkHolmesAgentHealth } from './holmesClient';
 import { HolmesHealthRequestGate } from './holmesHealthRequestGate';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
 import { fetchClusterWarnings, fetchWarningEventsForClusters } from './kubernetes/EventFetcher';
+import { createPluginCommandRunner } from './pluginCommandRunner';
 import { getSettingsURL, type PluginConfig, useGlobalState } from './pluginState';
 import { useDynamicPrompts } from './prompts/promptGenerator';
 import { resolveRuntimeProviderConfig } from './resolveRuntimeProviderConfig';
-
-interface CommandProcess {
-  /** Standard output stream emitted by the injected command. */
-  stdout: {
-    /** Registers a listener for command output chunks. */
-    on: (event: 'data', listener: (chunk: unknown) => void) => void;
-  };
-  /** Registers a listener for process exit. */
-  on: (event: 'exit', listener: (code: number | null) => void) => void;
-}
 
 interface HolmesTextEvent {
   /** Streamed message identifier. */
@@ -114,11 +105,8 @@ interface HolmesToolEvent {
   toolCallName?: string;
 }
 
-type PluginCommandRunner = (
-  command: string,
-  args: string[],
-  options: Record<string, unknown>
-) => CommandProcess;
+/** Stable fallback so a missing cluster config does not change identity each render. */
+const NO_CLUSTERS: NonNullable<ReturnType<typeof useClustersConf>> = {};
 
 export default function AIPrompt(props: {
   openPopup: boolean;
@@ -134,13 +122,9 @@ export default function AIPrompt(props: {
   const commandRunnerRef = React.useRef<CommandRunner | null>(null);
   React.useEffect(() => {
     if (typeof pluginRunCommand !== 'undefined') {
-      commandRunnerRef.current = (command: string, args: string[]) =>
-        new Promise<{ stdout: string; exitCode: number }>(resolve => {
-          const proc = (pluginRunCommand as unknown as PluginCommandRunner)(command, args, {});
-          let out = '';
-          proc.stdout.on('data', chunk => (out += String(chunk)));
-          proc.on('exit', (code: number | null) => resolve({ stdout: out, exitCode: code ?? -1 }));
-        });
+      commandRunnerRef.current = createPluginCommandRunner((command, args, options) =>
+        pluginRunCommand(command as Parameters<typeof pluginRunCommand>[0], args, options)
+      );
     }
   }, []);
 
@@ -165,7 +149,7 @@ export default function AIPrompt(props: {
   const [promptHistory, setPromptHistory] = React.useState<ConversationMessage[]>([]);
   const [suggestions, setSuggestions] = React.useState<PromptSuggestion[]>([]);
   const selectedClusters = useSelectedClusters();
-  const clusters = useClustersConf() || {};
+  const clusters = useClustersConf() || NO_CLUSTERS;
   const dynamicPrompts = useDynamicPrompts();
   const prompWidthContext = usePromptWidth();
   const { t } = useTranslation();
@@ -205,6 +189,10 @@ export default function AIPrompt(props: {
   // latest value without forcing the useCallback to re-create.
   const clusterNamesRef = useRef(clusterNames);
   clusterNamesRef.current = clusterNames;
+
+  // Effects key off this instead of the array so a new array with the same
+  // clusters does not re-trigger event fetching.
+  const clusterNamesKey = clusterNames.join(',');
 
   // Fetch cluster warnings on-demand for context generation (replaces
   // the continuous useClusterWarnings hook).
@@ -1729,15 +1717,14 @@ export default function AIPrompt(props: {
         }
         aiManager.setContext(fullContext);
       });
+  }, [_pluginSetting.event, aiManager, clusterNamesKey]);
 
-    // Configure AI manager with tools
-    if (aiManager.configureTools) {
-      aiManager.configureTools(
-        [], // No longer need to pass the tool definitions manually
-        kubernetesContext
-      );
-    }
-  }, [_pluginSetting.event, aiManager, clusterNames, selectedClusters, kubernetesContext]);
+  React.useEffect(() => {
+    aiManager?.configureTools?.(
+      [], // No longer need to pass the tool definitions manually
+      kubernetesContext
+    );
+  }, [aiManager, kubernetesContext]);
 
   useEffect(() => {
     if (openPopup && aiManager) {

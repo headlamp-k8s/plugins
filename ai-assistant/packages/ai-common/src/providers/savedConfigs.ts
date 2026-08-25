@@ -37,6 +37,10 @@ export interface ProviderSettings {
   endpoint?: string;
   /** Azure account label used to match CLI-authenticated configs. */
   azAccountName?: string;
+  /** Azure resource group containing a CLI-detected account. */
+  azResourceGroup?: string;
+  /** Azure subscription containing a CLI-detected account. */
+  azSubscriptionId?: string;
   /** Additional provider-specific persisted setting. */
   [key: string]: unknown;
 }
@@ -82,6 +86,8 @@ function normalizeProviderSettings(value: Record<string, unknown>): ProviderSett
     'deploymentName',
     'endpoint',
     'azAccountName',
+    'azResourceGroup',
+    'azSubscriptionId',
   ] as const;
   stringFields.forEach(fieldName => {
     if (settings[fieldName] !== undefined && typeof settings[fieldName] !== 'string') {
@@ -89,6 +95,28 @@ function normalizeProviderSettings(value: Record<string, unknown>): ProviderSett
     }
   });
   return settings;
+}
+
+/** Normalises an Azure endpoint for persisted account identity comparisons. */
+function normaliseAzureEndpoint(endpoint: string | undefined): string | undefined {
+  return endpoint?.trim().replace(/\/+$/, '').toLowerCase() || undefined;
+}
+
+/** Returns whether two named Azure configurations identify the same account. */
+function isSameAzureAccount(a: ProviderSettings, b: ProviderSettings): boolean {
+  if (!a.azAccountName || a.azAccountName !== b.azAccountName) return false;
+
+  if (a.azSubscriptionId && b.azSubscriptionId) {
+    return a.azSubscriptionId === b.azSubscriptionId && a.azResourceGroup === b.azResourceGroup;
+  }
+
+  const aEndpoint = normaliseAzureEndpoint(a.endpoint);
+  const bEndpoint = normaliseAzureEndpoint(b.endpoint);
+  if (aEndpoint && bEndpoint) return aEndpoint === bEndpoint;
+
+  // A scoped account cannot safely backfill an endpoint-less legacy entry by name alone.
+  if (a.azSubscriptionId || b.azSubscriptionId) return false;
+  return true;
 }
 
 /** Normalizes one persisted provider and backfills its stable ID when necessary. */
@@ -138,11 +166,7 @@ export function isSameStoredConfig(a: StoredProviderConfig, b: StoredProviderCon
   if (a.id && b.id) return a.id === b.id;
   if (a.providerId !== b.providerId) return false;
   if (a.providerId === 'azure' && (a.config.azAccountName || b.config.azAccountName)) {
-    return Boolean(
-      a.config.azAccountName &&
-        b.config.azAccountName &&
-        a.config.azAccountName === b.config.azAccountName
-    );
+    return isSameAzureAccount(a.config, b.config);
   }
   if (a.config.apiKey && b.config.apiKey) return a.config.apiKey === b.config.apiKey;
   return Boolean(
@@ -262,6 +286,12 @@ export function saveProviderConfig(
     safeConfigs?.providers?.map(p => ({
       ...p,
     })) ?? [];
+  const sameNamedAzureAccounts = providers.filter(
+    provider =>
+      provider.providerId === 'azure' &&
+      providerId === 'azure' &&
+      provider.config.azAccountName === config.azAccountName
+  );
 
   // Check if this exact configuration already exists (by comparing display name or key fields)
   const existingIndex = providers.findIndex(p => {
@@ -272,10 +302,12 @@ export function saveProviderConfig(
       providerId === 'azure' &&
       (p.config.azAccountName || config.azAccountName)
     ) {
-      return Boolean(
-        p.config.azAccountName &&
-          config.azAccountName &&
-          p.config.azAccountName === config.azAccountName
+      return (
+        isSameAzureAccount(p.config, config) &&
+        (p.config.azSubscriptionId ||
+          config.azSubscriptionId ||
+          normaliseAzureEndpoint(p.config.endpoint) !== undefined ||
+          sameNamedAzureAccounts.length === 1)
       );
     }
     // If displayName is provided, use that as primary matching criteria
