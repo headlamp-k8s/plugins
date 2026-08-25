@@ -18,8 +18,10 @@ import type { Storage } from '../persistence/Storage';
 import type { MCPToolsConfig } from '../types';
 import { parseMCPToolName } from './toolName';
 
+// Callers test config lookups by truthiness, so any inherited Object.prototype
+// member name (toString, hasOwnProperty, …) must be rejected too.
 function isSafeConfigKey(value: string): boolean {
-  return value !== '__proto__' && value !== 'constructor' && value !== 'prototype';
+  return value !== 'prototype' && !Object.prototype.hasOwnProperty.call(Object.prototype, value);
 }
 
 function setOwnConfigValue<T extends object, K extends keyof any, V>(

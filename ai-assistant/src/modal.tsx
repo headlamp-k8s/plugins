@@ -1045,7 +1045,7 @@ export default function AIPrompt(props: {
     const t = text.trim();
     if (!t) return false;
     // Common CLI error lines
-    if (t.toLowerCase().startsWith('error:')) return true;
+    if (t.split('\n').some(line => line.trimStart().toLowerCase().startsWith('error:'))) return true;
     // kubectl commands or output
     if (t.includes('kubectl ')) return true;
     // Tool-result emoji markers

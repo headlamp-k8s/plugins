@@ -19,6 +19,10 @@ export const isSpecificResourceRequestHelper = (url: string): boolean => {
       ? segments.slice(3)
       : segments;
   const namespaceIndex = apiSegments.lastIndexOf('namespaces');
+  // `/api/v1/namespaces/default` is a specific Namespace, not a namespace scope prefix.
+  if (namespaceIndex === 0 && apiSegments.length === 2 && apiSegments.every(isResourceSegment)) {
+    return true;
+  }
   const resourceSegments =
     namespaceIndex >= 0 ? apiSegments.slice(namespaceIndex + 2) : apiSegments;
   return resourceSegments.length >= 2 && resourceSegments.slice(-2).every(isResourceSegment);

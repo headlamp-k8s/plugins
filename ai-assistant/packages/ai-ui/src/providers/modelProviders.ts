@@ -114,11 +114,13 @@ export function parseSuggestionsFromResponse(content: unknown): {
     }
   }
 
-  const marker = 'SUGGESTIONS:';
-  const markerIndex = processedContent.toUpperCase().indexOf(marker);
+  // Match on the original string: case folding can change UTF-16 length (ß → SS)
+  // and shift the index away from the real marker position.
+  const markerMatch = /SUGGESTIONS:/i.exec(processedContent);
 
-  if (markerIndex >= 0) {
-    const valueStart = markerIndex + marker.length;
+  if (markerMatch) {
+    const markerIndex = markerMatch.index;
+    const valueStart = markerIndex + markerMatch[0].length;
     const lineEnd = processedContent.indexOf('\n', valueStart);
     const suggestionsText = processedContent.slice(
       valueStart,

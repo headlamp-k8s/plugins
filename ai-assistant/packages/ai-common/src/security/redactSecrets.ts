@@ -143,8 +143,10 @@ function redactPemBlocks(input: string): string {
     const endMarker = `-----END ${label}-----`;
     const end = input.indexOf(endMarker, labelEnd + 5);
     if (end < 0) {
-      output += input.slice(cursor);
-      return output;
+      // Incomplete block: keep the header and keep scanning for later PEM blocks.
+      output += input.slice(cursor, labelEnd + 5);
+      cursor = labelEnd + 5;
+      continue;
     }
     output += input.slice(cursor, begin) + '[REDACTED]';
     cursor = end + endMarker.length;
@@ -230,7 +232,11 @@ const CREDENTIAL_FIELD_NAMES = new Set([
 ]);
 
 function redactCredentialLines(input: string): string {
-  return input.split('\n').map(redactCredentialLine).join('\n');
+  // Keep every newline form (\r\n, \r, \n) so redaction never rewrites line endings.
+  return input
+    .split(/(\r\n|\r|\n)/)
+    .map((part, index) => (index % 2 === 0 ? redactCredentialLine(part) : part))
+    .join('');
 }
 
 // Every separator is examined, not just the first, so credentials embedded
@@ -245,7 +251,7 @@ function redactCredentialLine(line: string): string {
     if (!CREDENTIAL_FIELD_NAMES.has(field)) continue;
 
     const valueStart = index + 1;
-    if (line.slice(valueStart).trim() === '[REDACTED]') return line;
+    if (line.slice(valueStart).trim() === '[REDACTED]') continue;
 
     let prefixEnd = valueStart;
     while (prefixEnd < line.length && (line[prefixEnd] === ' ' || line[prefixEnd] === '\t')) {
@@ -312,11 +318,11 @@ function redactKubernetesSecretValues(input: string): string {
 }
 
 function redactFencedJsonSecrets(input: string): string {
-  const lower = input.toLowerCase();
-  const marker = '```json';
-  const start = lower.indexOf(marker);
-  if (start < 0) return input;
-  const bodyStart = start + marker.length;
+  // Search the original string: case folding can change UTF-16 length and shift the index.
+  const markerMatch = /```json/i.exec(input);
+  if (!markerMatch) return input;
+  const start = markerMatch.index;
+  const bodyStart = start + markerMatch[0].length;
   const end = input.indexOf('```', bodyStart);
   if (end < 0) return input;
   try {
