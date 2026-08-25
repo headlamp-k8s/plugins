@@ -78,6 +78,10 @@ export default function DetectedProvidersDialog({
     detectedProviders.map(provider => [provider.providerId, provider.displayName, provider.source])
   );
   const providerCount = detectedProviders.length;
+  const errorMessages = errorMessage
+    ?.split('\n')
+    .map(message => message.trim())
+    .filter(Boolean);
 
   useEffect(() => {
     if (open) {
@@ -148,8 +152,21 @@ export default function DetectedProvidersDialog({
           );
         })}
         {errorMessage ? (
-          <Alert severity="error" sx={{ mt: 2, whiteSpace: 'pre-line' }}>
-            {errorMessage}
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {errorMessages && errorMessages.length > 1 ? (
+              <Box
+                component="ul"
+                sx={{ display: 'flex', flexDirection: 'column', gap: 1, m: 0, pl: 2.5 }}
+              >
+                {errorMessages.map(message => (
+                  <Box component="li" key={message}>
+                    {message}
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              errorMessages?.[0]
+            )}
           </Alert>
         ) : null}
       </DialogContent>
