@@ -475,20 +475,22 @@ export class ToolStateStore {
     const newConfig: MCPToolsConfig = {};
 
     for (const [serverName, toolsInfo] of Object.entries(toolsByServer)) {
-      newConfig[serverName] = {};
+      if (!isSafeConfigKey(serverName)) continue;
+      setOwnConfigValue(newConfig, serverName, {});
 
       for (const toolInfo of toolsInfo) {
         const toolName = toolInfo.name;
+        if (!isSafeConfigKey(toolName)) continue;
 
         // Check if this tool existed in the old config to preserve enabled state and usage count
         const oldToolState = this.config[serverName]?.[toolName];
 
-        newConfig[serverName][toolName] = {
+        setOwnConfigValue(newConfig[serverName], toolName, {
           enabled: oldToolState?.enabled ?? true, // Preserve enabled state or default to true
           usageCount: oldToolState?.usageCount ?? 0, // Preserve usage count or default to 0
           inputSchema: toJsonSchema(toolInfo.inputSchema) ?? null,
           description: toolInfo.description || '',
-        };
+        });
       }
     }
 
@@ -547,11 +549,12 @@ export class ToolStateStore {
         /** User-facing tool description. */
         description?: string;
       }>
-    > = {};
+    > = Object.create(null);
 
     for (const tool of clientTools) {
       // Extract server name from tool name (format: "serverName__toolName")
       const { serverName, toolName } = parseMCPToolName(tool.name);
+      if (!isSafeConfigKey(serverName) || !isSafeConfigKey(toolName)) continue;
 
       // Prefer the explicit `inputSchema` field (already JSON Schema) over
       // `schema`, which LangChain tools expose as a Zod object. Zod schemas
@@ -561,7 +564,7 @@ export class ToolStateStore {
       const toolSchema = toJsonSchema(tool.inputSchema) ?? toJsonSchema(tool.schema) ?? null;
 
       if (!toolsByServer[serverName]) {
-        toolsByServer[serverName] = [];
+        setOwnConfigValue(toolsByServer, serverName, []);
       }
 
       toolsByServer[serverName].push({

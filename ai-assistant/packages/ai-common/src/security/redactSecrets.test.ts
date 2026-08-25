@@ -83,6 +83,11 @@ MIICpDCCAYwCCQDU+pQ4pHgSpDANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
     expect(out).toContain('[REDACTED]');
   });
 
+  it('preserves many unterminated PEM headers', () => {
+    const input = Array.from({ length: 2_000 }, () => '-----BEGIN CERTIFICATE-----').join('\n');
+    expect(redactSecrets(input)).toBe(input);
+  });
+
   it('redacts kubeconfig inline certificate data', () => {
     const yaml = `clusters:
 - cluster:
@@ -272,6 +277,21 @@ namespace: default`;
     const out = redactSecrets(input);
     expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
     expect(out).toContain('[REDACTED]');
+  });
+
+  it('redacts every fenced JSON Secret after malformed and non-secret blocks', () => {
+    const input = [
+      '```json\n{invalid}\n```',
+      '```json\n{"kind":"ConfigMap","data":{"visible":"yes"}}\n```',
+      '```json\n{"kind":"Secret","data":{"first":"c2VjcmV0MQ=="}}\n```',
+      '```json\n{"kind":"Secret","stringData":{"second":"secret2"}}\n```',
+    ].join('\n');
+    const out = redactSecrets(input);
+    expect(out).toContain('{invalid}');
+    expect(out).toContain('"visible":"yes"');
+    expect(out).not.toContain('c2VjcmV0MQ==');
+    expect(out).not.toContain('secret2');
+    expect(out.match(/\[REDACTED\]/g)).toHaveLength(2);
   });
 
   it('redacts all data values of a JSON Kubernetes Secret and List responses', () => {

@@ -32,6 +32,12 @@ describe('isSpecificResourceRequestHelper', () => {
     expect(isSpecificResourceRequestHelper('/api/v1/namespaces/default/pods/my-pod')).toBe(true);
   });
 
+  it('treats a resource named namespaces as a specific resource', () => {
+    expect(
+      isSpecificResourceRequestHelper('/api/v1/namespaces/default/configmaps/namespaces')
+    ).toBe(true);
+  });
+
   it('returns false for API roots', () => {
     expect(isSpecificResourceRequestHelper('/api/v1/namespaces')).toBe(false);
   });

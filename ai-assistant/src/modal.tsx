@@ -1045,13 +1045,14 @@ export default function AIPrompt(props: {
     const t = text.trim();
     if (!t) return false;
     // Common CLI error lines
-    if (t.split('\n').some(line => line.trimStart().toLowerCase().startsWith('error:'))) return true;
+    if (t.split('\n').some(line => line.trimStart().toLowerCase().startsWith('error:')))
+      return true;
     // kubectl commands or output
-    if (t.includes('kubectl ')) return true;
+    if (/kubectl[ \t]/.test(t)) return true;
     // Tool-result emoji markers
     if (t.includes('🔧')) return true;
     // Shell prompts
-    if (t.split('\n').some(line => line.trimStart().startsWith('$ '))) return true;
+    if (t.split('\n').some(line => /^\$[ \t]/.test(line.trimStart()))) return true;
     return false;
   };
 

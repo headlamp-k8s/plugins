@@ -130,28 +130,68 @@ function redactPemBlocks(input: string): string {
   let output = '';
   let cursor = 0;
   const beginMarker = '-----BEGIN ';
+  const endPositions = indexPemEndMarkers(input);
+  const nextEndByLabel = new Map<string, number>();
   while (cursor < input.length) {
     const begin = input.indexOf(beginMarker, cursor);
     if (begin < 0) return output + input.slice(cursor);
-    const labelEnd = input.indexOf('-----', begin + beginMarker.length);
-    if (labelEnd < 0 || labelEnd - (begin + beginMarker.length) > 64) {
+    const labelStart = begin + beginMarker.length;
+    const labelEnd = findPemLabelEnd(input, labelStart);
+    if (labelEnd < 0) {
       output += input.slice(cursor, begin + beginMarker.length);
       cursor = begin + beginMarker.length;
       continue;
     }
-    const label = input.slice(begin + beginMarker.length, labelEnd);
+    const label = input.slice(labelStart, labelEnd);
     const endMarker = `-----END ${label}-----`;
-    const end = input.indexOf(endMarker, labelEnd + 5);
-    if (end < 0) {
+    const positions = endPositions.get(label) ?? [];
+    let positionIndex = nextEndByLabel.get(label) ?? 0;
+    while (positionIndex < positions.length && positions[positionIndex] < labelEnd + 5) {
+      positionIndex++;
+    }
+    const end = positions[positionIndex];
+    if (end === undefined) {
       // Incomplete block: keep the header and keep scanning for later PEM blocks.
       output += input.slice(cursor, labelEnd + 5);
       cursor = labelEnd + 5;
+      nextEndByLabel.set(label, positionIndex);
       continue;
     }
+    nextEndByLabel.set(label, positionIndex + 1);
     output += input.slice(cursor, begin) + '[REDACTED]';
     cursor = end + endMarker.length;
   }
   return output;
+}
+
+function indexPemEndMarkers(input: string): Map<string, number[]> {
+  const positionsByLabel = new Map<string, number[]>();
+  const marker = '-----END ';
+  let cursor = 0;
+  while (cursor < input.length) {
+    const start = input.indexOf(marker, cursor);
+    if (start < 0) break;
+    const labelStart = start + marker.length;
+    const labelEnd = findPemLabelEnd(input, labelStart);
+    if (labelEnd >= 0) {
+      const label = input.slice(labelStart, labelEnd);
+      const positions = positionsByLabel.get(label) ?? [];
+      positions.push(start);
+      positionsByLabel.set(label, positions);
+      cursor = labelEnd + 5;
+    } else {
+      cursor = labelStart;
+    }
+  }
+  return positionsByLabel;
+}
+
+function findPemLabelEnd(input: string, labelStart: number): number {
+  const limit = Math.min(input.length, labelStart + 65);
+  for (let index = labelStart; index < limit; index++) {
+    if (input.startsWith('-----', index)) return index;
+  }
+  return -1;
 }
 
 function redactJwtTokens(input: string): string {
@@ -318,24 +358,29 @@ function redactKubernetesSecretValues(input: string): string {
 }
 
 function redactFencedJsonSecrets(input: string): string {
-  // Search the original string: case folding can change UTF-16 length and shift the index.
-  const markerMatch = /```json/i.exec(input);
-  if (!markerMatch) return input;
-  const start = markerMatch.index;
-  const bodyStart = start + markerMatch[0].length;
-  const end = input.indexOf('```', bodyStart);
-  if (end < 0) return input;
-  try {
-    const parsed: unknown = JSON.parse(input.slice(bodyStart, end).trim());
-    if (!redactSecretsInParsedJson(parsed)) return input;
-    return `${input.slice(0, start)}\`\`\`json\n${JSON.stringify(
-      parsed,
-      null,
-      2
-    )}\n\`\`\`${input.slice(end + 3)}`;
-  } catch {
-    return input;
+  let output = '';
+  let cursor = 0;
+  const markerPattern = /```json/gi;
+  for (let markerMatch = markerPattern.exec(input); markerMatch; markerMatch = markerPattern.exec(input)) {
+    const start = markerMatch.index;
+    const bodyStart = start + markerMatch[0].length;
+    const end = input.indexOf('```', bodyStart);
+    if (end < 0) break;
+    markerPattern.lastIndex = end + 3;
+    try {
+      const parsed: unknown = JSON.parse(input.slice(bodyStart, end).trim());
+      if (!redactSecretsInParsedJson(parsed)) continue;
+      output += `${input.slice(cursor, start)}${markerMatch[0]}\n${JSON.stringify(
+        parsed,
+        null,
+        2
+      )}\n\`\`\``;
+      cursor = end + 3;
+    } catch {
+      // Preserve malformed JSON and continue to later fenced blocks.
+    }
   }
+  return output + input.slice(cursor);
 }
 
 /**

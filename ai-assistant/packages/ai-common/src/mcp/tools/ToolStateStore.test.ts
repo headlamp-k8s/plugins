@@ -479,6 +479,31 @@ describe('initConfigFromClientTools', () => {
     expect(gn?.enabled).toBe(true);
   });
 
+  it('ignores unsafe server and tool names from client tools', async () => {
+    const toolState = makeStore(toolStatePath);
+    await toolState.initialize();
+
+    expect(() =>
+      toolState.initConfigFromClientTools([
+        { name: 'constructor__tool' },
+        { name: 'srv__constructor' },
+        { name: 'srv____proto__' },
+        { name: 'srv__safe-tool', description: 'safe' },
+      ])
+    ).not.toThrow();
+
+    expect(toolState.getConfig()).toEqual({
+      srv: {
+        'safe-tool': {
+          enabled: true,
+          usageCount: 0,
+          inputSchema: null,
+          description: 'safe',
+        },
+      },
+    });
+  });
+
   it('preserves enabled state and usageCount from existing config when tool still exists', async () => {
     const toolState = makeStore(toolStatePath);
     await toolState.initialize();
@@ -595,5 +620,20 @@ describe('initConfigFromClientTools', () => {
 
     expect(toolState.getToolStats('srv', 'zod-tool')?.inputSchema).toBeNull();
     expect(toolState.getToolStats('srv', 'json-tool')?.inputSchema).toEqual(jsonSchema);
+  });
+
+  it('replaceToolsConfig ignores unsafe server and tool names', async () => {
+    const toolState = makeStore(toolStatePath);
+    await toolState.initialize();
+
+    expect(() =>
+      toolState.replaceToolsConfig({
+        constructor: [{ name: 'tool' }],
+        srv: [{ name: '__proto__' }, { name: 'safe-tool' }],
+      })
+    ).not.toThrow();
+
+    expect(Object.keys(toolState.getConfig())).toEqual(['srv']);
+    expect(Object.keys(toolState.getConfig().srv)).toEqual(['safe-tool']);
   });
 });
