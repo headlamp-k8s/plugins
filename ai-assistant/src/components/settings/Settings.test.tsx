@@ -123,6 +123,19 @@ describe('Settings', () => {
     expect(capturedProps[0].proactiveDiagnosisEnabled).toBe(false);
   });
 
+  it('omits the Holmes settings section on AKS Desktop', () => {
+    capturedProps.length = 0;
+    window.desktopApi = {
+      registerAKSCluster: () => undefined,
+    } as unknown as typeof window.desktopApi;
+    try {
+      render(React.createElement(Settings));
+      expect(capturedProps[0].onHolmesConfigChange).toBeUndefined();
+    } finally {
+      delete window.desktopApi;
+    }
+  });
+
   it('loads one exact source identity without configuring ZIP extraction', async () => {
     capturedProps.length = 0;
     skillManagerMock.constructorArgs.length = 0;

@@ -25,6 +25,7 @@ import { SkillManager } from '@headlamp-k8s/ai-common/skills/SkillManager';
 import { AiUiI18nProvider } from '@headlamp-k8s/ai-ui/AiUiI18nProvider';
 import type { DeveloperOptionsConfig } from '@headlamp-k8s/ai-ui/components/settings/DeveloperSettings';
 import { SettingsPage } from '@headlamp-k8s/ai-ui/components/settings/SettingsPage';
+import { isAksDesktopHost } from '@headlamp-k8s/ai-ui/mcp/host';
 import { isTestModeCheck } from '@headlamp-k8s/ai-ui/testing/testMode';
 import { Headlamp, runCommand, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { useSnackbar } from 'notistack';
@@ -179,6 +180,8 @@ export default function Settings() {
 
   const pluginSettings = savedConfigs;
   const isTestMode = isTestModeCheck() || savedConfigs?.testMode === true;
+  // AKS Desktop ships its own agent, so Holmes is not offered there.
+  const holmesEnabled = !isAksDesktopHost();
 
   return (
     <AiUiI18nProvider i18n={i18n}>
@@ -202,10 +205,14 @@ export default function Settings() {
         configStore={pluginStore}
         loadSkills={loadSkills}
         onSkillsLoadComplete={handleSkillsLoadComplete}
-        onHolmesConfigChange={(patch: Record<string, any>) => {
-          const current = pluginStore.get() || {};
-          pluginStore.update({ ...current, ...patch });
-        }}
+        onHolmesConfigChange={
+          holmesEnabled
+            ? (patch: Record<string, any>) => {
+                const current = pluginStore.get() || {};
+                pluginStore.update({ ...current, ...patch });
+              }
+            : undefined
+        }
         defaultHolmesNamespace={HOLMES_SERVICE_NAMESPACE}
         defaultHolmesServiceName={HOLMES_SERVICE_NAME}
         defaultHolmesPort={HOLMES_SERVICE_PORT}
