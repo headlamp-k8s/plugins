@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { LocalQueue } from '../../resources/localQueue';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import { renderClusterQueueLink } from '../common/KueueResourceLinks';
+import { RelatedWorkloadsSection } from '../common/RelatedResources';
 
 /** Build the standard Headlamp conditions section for LocalQueue status. */
 function getConditionsSection(localQueue: LocalQueue) {
@@ -62,7 +63,20 @@ export default function LocalQueueDetail() {
             : []
         }
         extraSections={localQueue =>
-          localQueue ? [getConditionsSection(localQueue)].filter(Boolean) : []
+          localQueue
+            ? [
+                getConditionsSection(localQueue),
+                {
+                  id: 'related-workloads',
+                  section: (
+                    <RelatedWorkloadsSection
+                      namespace={localQueue.metadata.namespace}
+                      localQueueName={localQueue.metadata.name}
+                    />
+                  ),
+                },
+              ].filter(Boolean)
+            : []
         }
       />
     </KueueAdminResourceAccess>
