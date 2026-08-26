@@ -17,7 +17,7 @@ export function renderAdmissionCheckLink(admissionCheckName?: string) {
 
 /** Render a Cohort reference as a detail-page link when present. */
 export function renderCohortLink(cohortName?: string) {
-  if (!cohortName) {
+  if (!cohortName || cohortName === '-') {
     return '-';
   }
 
