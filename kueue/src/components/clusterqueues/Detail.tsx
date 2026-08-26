@@ -9,6 +9,7 @@ import { ClusterQueue, FlavorUsage } from '../../resources/clusterQueue';
 import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import { renderCohortLink, renderResourceFlavorLink } from '../common/KueueResourceLinks';
+import { RelatedLocalQueuesSection, RelatedWorkloadsSection } from '../common/RelatedResources';
 
 /** Flattened row rendered for status flavor reservations or flavor usage. */
 interface FlavorUsageRow {
@@ -293,6 +294,18 @@ export default function ClusterQueueDetail() {
                   'flavor-usage',
                   clusterQueue.status.flavorsUsage
                 ),
+                {
+                  id: 'related-local-queues',
+                  section: (
+                    <RelatedLocalQueuesSection clusterQueueName={clusterQueue.metadata.name} />
+                  ),
+                },
+                {
+                  id: 'related-workloads',
+                  section: (
+                    <RelatedWorkloadsSection clusterQueueName={clusterQueue.metadata.name} />
+                  ),
+                },
               ].filter(Boolean)
             : []
         }
