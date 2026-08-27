@@ -1,0 +1,52 @@
+version: 0.1.0-alpha
+name: headlamp_kueue
+displayName: Kueue
+createdAt: "2026-08-10T00:00:00Z"
+description: A Headlamp plugin for viewing Kueue batch workload queueing, admission, and resource usage.
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/kueue
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - kueue
+  - batch
+  - scheduling
+  - queueing
+  - workloads
+screenshots:
+  - title: Kueue Workloads
+    url: https://github.com/user-attachments/assets/2410ca41-5f66-4ed1-937a-3f6ecb47f9e8
+  - title: ClusterQueue details
+    url: https://github.com/user-attachments/assets/670db93b-12e6-4e1b-afc5-81f728d46a3e
+  - title: Cohort details
+    url: https://github.com/user-attachments/assets/96e71bb0-b277-4c2f-be2b-7d5558f96c01
+changes:
+  - kind: added
+    description: "Add Kueue sidebar navigation and list/detail routes for supported resources"
+  - kind: added
+    description: "Add Cohort views with parent and child Cohorts, member ClusterQueues, ResourceFlavor references, quotas, and fair sharing"
+  - kind: added
+    description: "Add ClusterQueue views with queue status, workload counts, resource groups, and ResourceFlavor links"
+  - kind: added
+    description: "Add ClusterQueue quota, borrowing and lending limits, flavor reservations, and resource usage"
+  - kind: added
+    description: "Add ClusterQueue preemption, flavor fungibility, fair sharing, admission settings, and conditions"
+  - kind: added
+    description: "Add LocalQueue views with workload counts, status, conditions, and ClusterQueue navigation"
+  - kind: added
+    description: "Add ResourceFlavor views for node labels, taints, tolerations, and topology configuration"
+  - kind: added
+    description: "Add Workload list and detail views with priority, admission, completion, and scheduling status"
+  - kind: added
+    description: "Add Workload PodSet, resource request, admission assignment, admission check, and requeue details"
+  - kind: added
+    description: "Add navigation and related-resource tables between Cohorts, ClusterQueues, LocalQueues, Workloads, and ResourceFlavors"
+  - kind: added
+    description: "Add Kubernetes RBAC-aware access handling for Kueue resource pages"
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/kueue-0.1.0-alpha/headlamp-k8s-kueue-0.1.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:2f8a896dd297a01d03be56bd0d61016194e37b9a8e6c91c583e240b7b7b8a120
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

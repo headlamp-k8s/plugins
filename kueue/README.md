@@ -10,7 +10,7 @@ This plugin currently reads Kueue `Cohort`, `ClusterQueue`, `LocalQueue`, `Resou
 
 The views are read-only. Cohort pages show parent and child Cohort relationships, member ClusterQueues, ResourceFlavor references, resource groups, and fair-sharing values.
 
-Additional queueing views will be added in later PRs.
+Related Cohorts, ClusterQueues, LocalQueues, ResourceFlavors, and Workloads are linked so users can follow the queueing path between resources. The plugin checks Kubernetes permissions before loading resource pages and shows an access message when the current user cannot view a resource.
 
 ## Prerequisites
 
