@@ -1,0 +1,28 @@
+version: 0.4.0-alpha
+name: headlamp_ai_assistant
+displayName: AI Assistant
+createdAt: '2026-08-25T00:00:00Z'
+logoURL: 'https://raw.githubusercontent.com/headlamp-k8s/plugins/main/ai-assistant/logo.png'
+description: 'The AI Assistant plugin for Headlamp provides an AI-powered assistant to help users interact with their Kubernetes clusters more efficiently.'
+changes:
+  - kind: added
+    description: 'Discover and verify Azure OpenAI and Azure AI Services chat deployments across all enabled Azure subscriptions.'
+  - kind: added
+    description: 'Preconfigure the read-only aks-mcp server and AKS skills on AKS Desktop, bind discovered MCP tools, and add project context.'
+  - kind: added
+    description: 'Localize the AI Assistant UI in 18 languages while keeping translated prompt labels separate from model input.'
+  - kind: changed
+    description: 'Update DeepSeek presets to deepseek-v4-pro and deepseek-v4-flash.'
+  - kind: changed
+    description: 'Reuse downloaded skills, queue diagnosis until ready, preserve explicit Chat mode selection, and improve sidebar scrolling.'
+  - kind: changed
+    description: 'Use the correct GitHub Copilot icon, improve theme-aware logos, and hide Holmes controls on AKS Desktop.'
+  - kind: fixed
+    description: 'Improve Azure provider detection, verification feedback, cancellation, legacy configuration recovery, and authorization errors.'
+  - kind: fixed
+    description: 'Keep model selection valid, avoid repeated event requests to unreachable clusters, and reject disabled queued diagnoses.'
+annotations:
+  headlamp/plugin/archive-url: https://github.com/headlamp-k8s/plugins/releases/download/ai-assistant-0.4.0-alpha/headlamp-k8s-ai-assistant-0.4.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: 'SHA256:3c969569432e7374975b6993ed7865087669dddaa54777106e0af32d8209068f'
+  headlamp/plugin/version-compat: '>=0.22'
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
