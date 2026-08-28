@@ -7,6 +7,7 @@ import {
 import { useParams } from 'react-router-dom';
 import { BmcTask } from '../../../resources/bmcTask';
 import { fallback, renderUnknownValue } from '../../common/detailHelpers';
+import type { TinkerbellDetailProps } from '../../common/detailTypes';
 
 /**
  * Gets the BMC operation name from the task data key.
@@ -26,14 +27,17 @@ function getTaskOperation(item: BmcTask): string {
  *
  * @returns BMC Task detail page with operation, connection, and timing.
  */
-export function BmcTaskDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export function BmcTaskDetail(props: TinkerbellDetailProps = {}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <DetailsGrid
       resourceType={BmcTask}
       name={name}
       namespace={namespace}
+      cluster={props.cluster}
       extraInfo={item =>
         item
           ? [

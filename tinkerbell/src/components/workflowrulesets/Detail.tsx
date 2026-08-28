@@ -7,6 +7,7 @@ import {
 import { useParams } from 'react-router-dom';
 import { WorkflowRuleSet } from '../../resources/workflowRuleSet';
 import { fallback, renderUnknownValue } from '../common/detailHelpers';
+import type { TinkerbellDetailProps } from '../common/detailTypes';
 
 /**
  * Gets the template reference from WorkflowRuleSet workflow config.
@@ -30,14 +31,17 @@ function getTemplateRef(item: WorkflowRuleSet): string {
  *
  * @returns WorkflowRuleSet detail page with rules and workflow config.
  */
-export function WorkflowRuleSetDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export function WorkflowRuleSetDetail(props: TinkerbellDetailProps = {}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <DetailsGrid
       resourceType={WorkflowRuleSet}
       name={name}
       namespace={namespace}
+      cluster={props.cluster}
       extraInfo={item =>
         item
           ? [
