@@ -41,6 +41,8 @@ interface SettingsProps {
       subPath?: string;
       defaultTimespan?: string;
       defaultResolution?: string;
+      /** Exact Prometheus job label for one Tinkerbell installation. */
+      tinkerbellJob?: string;
     }
   >;
   onDataChange: (newData: SettingsProps['data']) => void;
@@ -242,6 +244,22 @@ export function Settings(props: SettingsProps) {
               [selectedCluster]: { ...((data || {})[selectedCluster] || {}), subPath: newSubPath },
             });
           }}
+        />
+      ),
+    },
+    {
+      name: t('Tinkerbell Scrape Job'),
+      value: (
+        <TextField
+          inputProps={{ 'aria-label': t('Tinkerbell Scrape Job') }}
+          disabled={!isMetricsEnabled}
+          value={selectedClusterData.tinkerbellJob ?? 'tinkerbell'}
+          onChange={e =>
+            onDataChange({
+              ...(data || {}),
+              [selectedCluster]: { ...selectedClusterData, tinkerbellJob: e.target.value },
+            })
+          }
         />
       ),
     },

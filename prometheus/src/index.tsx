@@ -12,6 +12,7 @@ import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/Gene
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
 import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
+import { TinkerbellChart } from './components/Chart/TinkerbellChart/TinkerbellChart';
 import {
   getVolcanoQueueChartConfigs,
   VolcanoChart,
@@ -24,6 +25,7 @@ import {
   getMachinePoolChartConfigs,
   getMachineSetChartConfigs,
 } from './components/Config/capiChart/capiChartConfigs';
+import { getTinkerbellController } from './components/Config/tinkerbellChart/tinkerbellQueries';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import {
@@ -46,6 +48,11 @@ function PrometheusMetrics(resource: KubeObject) {
 
   if (!supportsPrometheusMetrics(resource)) {
     return null;
+  }
+
+  const tinkerbellController = getTinkerbellController(resource);
+  if (tinkerbellController) {
+    return <TinkerbellChart controller={tinkerbellController} />;
   }
 
   if (resourceKind === 'Pod' || resourceKind === 'Job' || resourceKind === 'CronJob') {

@@ -106,6 +106,19 @@ describe('getTimeRangeAndStepSize', () => {
 
 describe('supportsPrometheusMetrics', () => {
   test.each([
+    ['Workflow', 'tinkerbell.org/v1alpha1'],
+    ['Machine', 'bmc.tinkerbell.org/v1alpha1'],
+    ['Job', 'bmc.tinkerbell.org/v1alpha1'],
+    ['Task', 'bmc.tinkerbell.org/v1alpha1'],
+  ])('supports Tinkerbell %s in %s', (kind, apiVersion) => {
+    expect(supportsPrometheusMetrics({ kind, apiVersion })).toBe(true);
+  });
+
+  test.each(['Hardware', 'Template', 'WorkflowRuleSet'])('does not invent metrics for %s', kind => {
+    expect(supportsPrometheusMetrics({ kind, apiVersion: 'tinkerbell.org/v1alpha1' })).toBe(false);
+  });
+
+  test.each([
     ['supports Pods', { kind: 'Pod', jsonData: { kind: 'Pod', apiVersion: 'v1' } }, true],
     [
       'supports Kubernetes Jobs',
