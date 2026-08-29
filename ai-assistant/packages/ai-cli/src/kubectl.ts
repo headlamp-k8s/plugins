@@ -48,9 +48,11 @@ export function createKubectlTool(options: KubectlToolOptions = {}) {
   const description = readOnly
     ? `Make read-only GET requests to the Kubernetes API server to inspect resources.
 Use standard Kubernetes API URL paths like /api/v1/pods or /api/v1/namespaces/default/pods/my-pod.
+Query parameters such as ?labelSelector=app=nginx or ?limit=100 are supported.
 Only GET is supported. Mutating operations are not permitted.`
     : `Make requests to the Kubernetes API server to fetch, create, update or delete resources.
 Use standard Kubernetes API URL paths like /api/v1/pods or /api/v1/namespaces/default/pods/my-pod.
+Query parameters such as ?labelSelector=app=nginx or ?limit=100 are supported.
 Supported methods: ${methodList}.`;
 
   return tool(
@@ -82,7 +84,7 @@ Supported methods: ${methodList}.`;
         url: z
           .string()
           .describe(
-            'Kubernetes API URL path, e.g. /api/v1/pods or /api/v1/namespaces/default/pods/my-pod'
+            'Kubernetes API URL path, e.g. /api/v1/pods or /api/v1/namespaces/default/pods?labelSelector=app=nginx'
           ),
         method: z.string().describe(`HTTP method: ${methodList}`),
         body: z.string().optional().describe('Optional JSON request body for POST/PUT/PATCH'),
@@ -108,9 +110,10 @@ export function buildKubectlArgs(
     throw new Error(`Invalid API path: must start with "/", got "${url}"`);
   }
   // Reject paths with characters that could be used for injection or path traversal.
-  if (!/^\/[a-zA-Z0-9\/_.:@%~-]+$/.test(url)) {
+  // Query parameters (?, =, &, +, !, (), comma) are permitted after the path.
+  if (!/^\/[a-zA-Z0-9\/_.:@%~-]+(\?[a-zA-Z0-9\/_.:@%~=&+!(),-]*)?$/.test(url)) {
     throw new Error(
-      `Invalid API path: contains disallowed characters. Path must match /[a-zA-Z0-9/_.:@%~-]+`
+      `Invalid API path: contains disallowed characters. Path must match /[a-zA-Z0-9/_.:@%~-]+(\\?[a-zA-Z0-9/_.:@%~=&+!(),-]*)?`
     );
   }
 
