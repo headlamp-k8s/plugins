@@ -4,6 +4,7 @@ import { NodeClaimCreationChart } from './components/Chart/KarpenterNodeClaimCre
 import { KarpenterNodeClaimsProvisionChart } from './components/Chart/KarpenterNodeClaimProvisionChart/KarpenterNodeClaimProvisionChart';
 import { KarpenterNodePoolResourceChart } from './components/Chart/KarpenterNodePoolResourceChart/KarpenterNodePoolResourceChart';
 import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/KarpenterPendingPods';
+import { getTinkerbellController } from './components/Config/tinkerbellChart/tinkerbellQueries';
 import { isPrometheusInstalled, KubernetesType } from './request';
 
 export const PLUGIN_NAME = 'prometheus';
@@ -23,6 +24,8 @@ type ClusterData = {
   subPath?: string;
   defaultTimespan?: string;
   defaultResolution?: string;
+  /** Exact scrape job label for the selected Tinkerbell installation. */
+  tinkerbellJob?: string;
 };
 
 /**
@@ -187,6 +190,9 @@ export function isArgoCDApplication(resource?: ResourceIdentity): boolean {
 }
 
 export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean {
+  if (getTinkerbellController(resource)) {
+    return true;
+  }
   const kind = getResourceKind(resource);
 
   if (!kind || !ChartEnabledKinds.includes(kind)) {
