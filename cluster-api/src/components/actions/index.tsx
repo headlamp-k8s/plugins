@@ -1,6 +1,6 @@
 import { Headlamp } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Secret from '@kinvolk/headlamp-plugin/lib/K8s/secret';
+import Secret from '@kinvolk/headlamp-plugin/lib/k8s/secret';
 import {
   Alert,
   Box,
