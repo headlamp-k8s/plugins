@@ -1,6 +1,7 @@
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { Condition, IssuerReference, SecretKeySelector } from './common';
+import { isConditionTrue } from './conditions';
 
 export type KeyUsage =
   | 'signing'
@@ -122,10 +123,9 @@ export class Certificate extends KubeObject<CertManagerCertificate> {
   static apiVersion = 'cert-manager.io/v1';
   static isNamespaced = true;
 
+  /** True only when the 'Ready' condition status is 'True'. */
   get ready() {
-    return (
-      this.status?.conditions?.find(condition => condition.type === 'Ready')?.status === 'True'
-    );
+    return isConditionTrue(this.status?.conditions, 'Ready');
   }
 
   // Note: This workaround is needed to make the plugin compatible with older versions of Headlamp
