@@ -65,7 +65,7 @@ function checkArgoInstalled(cluster: string) {
       inFlight[cluster] = false;
     },
     () => {
-      argoInstalledByCluster[cluster] = false;
+      delete argoInstalledByCluster[cluster];
       lastCheckedAt[cluster] = Date.now();
       inFlight[cluster] = false;
     },
