@@ -177,6 +177,8 @@ export interface PurePluginListProps {
   onPageChange: (event: React.ChangeEvent<unknown>, page: number) => void;
   isOfficialSwitchChecked: boolean;
   onOfficialSwitchChange: (isChecked: boolean) => void;
+  isVerifiedSwitchChecked: boolean;
+  onVerifiedSwitchChange: (isChecked: boolean) => void;
 }
 
 interface OfficialSwitchProps {
@@ -220,6 +222,47 @@ function OfficialSwitch(props: OfficialSwitchProps) {
   );
 }
 
+interface VerifiedSwitchProps {
+  isChecked: boolean;
+  onChange: (isChecked: boolean) => void;
+}
+
+function VerifiedSwitch(props: VerifiedSwitchProps) {
+  const { onChange: onVerifiedSwitchChange, isChecked } = props;
+  const { t } = useTranslation();
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  return (
+    <>
+      <FormControlLabel
+        control={
+          <Switch defaultChecked size="small" inputProps={{ 'aria-label': t('Only Verified') }} />
+        }
+        label={<Typography>{t('Only Verified')}</Typography>}
+        checked={isChecked}
+        onChange={() => {
+          if (isChecked) {
+            setIsConfirmOpen(true);
+          } else {
+            onVerifiedSwitchChange(true);
+          }
+        }}
+      />
+      <ConfirmDialog
+        // @ts-ignore
+        open={isConfirmOpen}
+        title={t('Do you want to show plugins from unverified publishers?')}
+        description={t(
+          'Important: Plugins from unverified publishers have not had their publisher identity confirmed on Artifact Hub. Are you sure you want to show them?'
+        )}
+        handleClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          onVerifiedSwitchChange(false);
+        }}
+      />
+    </>
+  );
+}
+
 export function PurePluginList({
   plugins,
   totalPages,
@@ -229,6 +272,8 @@ export function PurePluginList({
   onPageChange,
   isOfficialSwitchChecked,
   onOfficialSwitchChange,
+  isVerifiedSwitchChecked,
+  onVerifiedSwitchChange,
 }: PurePluginListProps) {
   const { t } = useTranslation();
   return (
@@ -236,8 +281,9 @@ export function PurePluginList({
       <SectionHeader
         title={t('Plugins')}
         titleSideActions={[
-          <Box pl={2}>
+          <Box key="catalog-filters" pl={2} display="flex" flexWrap="wrap" gap={1} alignItems="center">
             <OfficialSwitch isChecked={isOfficialSwitchChecked} onChange={onOfficialSwitchChange} />
+            <VerifiedSwitch isChecked={isVerifiedSwitchChecked} onChange={onVerifiedSwitchChange} />
           </Box>,
         ]}
         actions={[
@@ -363,6 +409,10 @@ export function PluginList() {
       isOfficialSwitchChecked={conf?.displayOnlyOfficialPlugins ?? true}
       onOfficialSwitchChange={(isChecked: boolean) => {
         configStore.update({ displayOnlyOfficialPlugins: isChecked });
+      }}
+      isVerifiedSwitchChecked={conf?.displayOnlyVerifiedPlugins ?? true}
+      onVerifiedSwitchChange={(isChecked: boolean) => {
+        configStore.update({ displayOnlyVerifiedPlugins: isChecked });
       }}
     />
   );
