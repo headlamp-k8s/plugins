@@ -84,16 +84,14 @@ function NodePoolsList() {
             const data: ChartDataPoint[] = [
               {
                 name: 'CPU',
-                value: used,
+                value: limit > 0 ? used : 0,
               },
             ];
-
-            const effectiveLimit = limit > 0 ? limit : used || 1;
 
             return (
               <PercentageBar
                 data={data}
-                total={effectiveLimit}
+                total={limit > 0 ? limit : 1}
                 tooltipFunc={() => CPUtooltip(used, limit, t)}
               />
             );
