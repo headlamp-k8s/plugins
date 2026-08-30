@@ -292,7 +292,6 @@ export function PluginList() {
   const [search, setSearch] = useState('');
   const [allPlugins, setAllPlugins] = useState<PluginPackage[] | null>(null);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
   const conf = configStore.useConfig()();
   const [fetchSettings, setFetchSettings] = useState<conf | null>({
     displayOnlyOfficialPlugins: true,
@@ -301,10 +300,8 @@ export function PluginList() {
 
   useEffect(() => {
     const fetchAndProcessPlugins = async () => {
-      const { plugins, totalPages } = await processPlugins();
+      const { plugins } = await processPlugins();
       setAllPlugins(plugins);
-      setTotalPages(totalPages);
-      console.log(plugins, totalPages);
     };
     fetchAndProcessPlugins();
   }, [fetchSettings]);
@@ -330,12 +327,25 @@ export function PluginList() {
 
   const filteredPlugins = useMemo(() => {
     if (!allPlugins) return null;
+    const query = search.toLowerCase();
     return allPlugins.filter(
       plugin =>
-        plugin.name.toLowerCase().includes(search.toLowerCase()) ||
-        plugin.description.toLowerCase().includes(search.toLowerCase())
+        plugin.name.toLowerCase().includes(query) ||
+        plugin.description.toLowerCase().includes(query) ||
+        (plugin.display_name && plugin.display_name.toLowerCase().includes(query))
     );
   }, [allPlugins, search]);
+
+  const totalPages = useMemo(() => {
+    if (!filteredPlugins) return 0;
+    return Math.ceil(filteredPlugins.length / PAGE_SIZE);
+  }, [filteredPlugins]);
+
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      setPage(1);
+    }
+  }, [totalPages, page]);
 
   const paginatedPlugins = useMemo(() => {
     if (!filteredPlugins) return null;
