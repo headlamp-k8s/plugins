@@ -32,15 +32,26 @@ export interface ResultEntryLike {
 }
 
 export interface ReportLike {
+  kind?: string;
+  metadata?: {
+    namespace?: string;
+  };
   results: ResultEntryLike[];
 }
 
+const NAMESPACED_KYVERNO_REPORT_KINDS = new Set([
+  'AdmissionReport',
+  'BackgroundScanReport',
+  'EphemeralReport',
+]);
+
 /**
- * Splits PolicyReport result entries by policy scope.
+ * Splits normalized report result entries by policy scope.
  *
- * Kyverno prefixes namespaced-policy results with `<namespace>/<name>`; cluster
- * policies stay unprefixed. The two maps keep these spaces separate so a
- * ClusterPolicy and a same-named Policy in some namespace don't merge counts.
+ * Legacy reports can prefix namespaced-policy results with `<namespace>/<name>`;
+ * namespaced Kyverno report sources expose their namespace on the report. The
+ * two maps keep these spaces separate so a ClusterPolicy and a same-named
+ * Policy in some namespace don't merge counts.
  */
 export function bucketReportResults(reports: ReportLike[]): PolicyResultBuckets {
   const cluster = new Map<string, PolicyResultCounts>();
@@ -58,6 +69,12 @@ export function bucketReportResults(reports: ReportLike[]): PolicyResultBuckets 
       const isFail = r.result === 'fail' || r.result === 'error';
       if (r.policy.indexOf('/') > 0) {
         bump(namespaced, r.policy, isFail);
+      } else if (
+        report.kind &&
+        NAMESPACED_KYVERNO_REPORT_KINDS.has(report.kind) &&
+        report.metadata?.namespace
+      ) {
+        bump(namespaced, `${report.metadata.namespace}/${r.policy}`, isFail);
       } else {
         bump(cluster, r.policy, isFail);
       }
