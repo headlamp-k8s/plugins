@@ -442,6 +442,15 @@ export function getTimeRangeAndStepSize(
     step = Math.max(Math.floor(rangeMs / factor / 1000), 1);
   }
 
+  // Snap timestamps to step boundary to prevent X-axis flicker on refresh
+  if (to === now && step > 1) {
+    const remainder = now % step;
+    if (remainder > 0) {
+      to = now - remainder;
+      from = from - remainder;
+    }
+  }
+
   return { from, to, step };
 }
 
