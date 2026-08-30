@@ -18,24 +18,11 @@ import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link as MuiLink } from '@mui/material';
-import {
-  AdmissionReport,
-  BackgroundScanReport,
-  ClusterAdmissionReport,
-  ClusterBackgroundScanReport,
-  ClusterEphemeralReport,
-  EphemeralReport,
-} from '../resources/kyvernoReports';
+import { ClusterEphemeralReport, EphemeralReport } from '../resources/kyvernoReports';
 import { SummaryChips } from './common';
 import { ReportClass, ReportLike, ReportViewer } from './ReportViewer';
 
-export type AnyKyvernoReportClass =
-  | typeof AdmissionReport
-  | typeof ClusterAdmissionReport
-  | typeof BackgroundScanReport
-  | typeof ClusterBackgroundScanReport
-  | typeof EphemeralReport
-  | typeof ClusterEphemeralReport;
+export type AnyKyvernoReportClass = typeof EphemeralReport | typeof ClusterEphemeralReport;
 
 interface KyvernoReportListProps<T extends AnyKyvernoReportClass> {
   /** Untranslated title key, fed through useTranslation. */
