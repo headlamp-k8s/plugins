@@ -6,7 +6,7 @@ logoURL: "https://raw.githubusercontent.com/kro-run/kro/main/website/static/img/
 description: A UI for viewing kro (Kube Resource Orchestrator) ResourceGraphDefinitions and their instances.
 changes:
   - kind: added
-    description: "Embedded graphs on RGD and instance detail pages use Headlamp's own GraphView when the host exposes it to plugins (kubernetes-sigs/headlamp#6992, newer than Headlamp 0.44.0), with a built-in fallback renderer on older hosts."
+    description: "Embedded graphs on RGD and instance detail pages use Headlamp's own GraphView when the host exposes it to plugins (kubernetes-sigs/headlamp#6992, Headlamp 0.45.0 or newer), with a built-in fallback renderer on older hosts."
 annotations:
   headlamp/plugin/archive-url: "TBD - will be updated during release"
   headlamp/plugin/archive-checksum: "TBD - will be updated during release"

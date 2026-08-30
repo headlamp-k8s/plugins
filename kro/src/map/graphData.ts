@@ -199,7 +199,9 @@ export function getInstanceGraph(
         id: `dep-${dependency}-${resource.id}`,
         source: dependencyItem.metadata.uid,
         target: item.metadata.uid,
-        label: 'depends on',
+        // Arrow reads dependency -> dependent, so the label must state the
+        // relationship in that direction.
+        label: 'required by',
       });
       hasDependencyEdge.add(resource.id);
     }

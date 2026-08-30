@@ -28,7 +28,7 @@ watches.
   template DAG and the instance detail page renders the live resource graph.
   On hosts that expose Headlamp's Map renderer to plugins
   ([headlamp#6992](https://github.com/kubernetes-sigs/headlamp/pull/6992),
-  newer than Headlamp 0.44.0) these use
+  Headlamp 0.45.0 or newer) these use
   Headlamp's own GraphView — with KubeIcons and the standard node details
   panel; older hosts get a lightweight built-in renderer automatically.
 - **New Instance**: opens Headlamp's YAML editor pre-filled with a minimal
@@ -38,8 +38,8 @@ watches.
 
 ## Known limitations
 
-When the embedded graphs use Headlamp's native GraphView (hosts newer than
-Headlamp 0.44.0), the view behaves like the global Map it is built from:
+When the embedded graphs use Headlamp's native GraphView (Headlamp 0.45.0
+or newer), the view behaves like the global Map it is built from:
 
 - it adds `?node=` and `?group=` query parameters to the detail page URL
   (harmless to the plugin's routes, and node selection participates in
@@ -57,8 +57,8 @@ These are upstream behaviors of the exposed renderer, tracked in
 
 ## Screenshots
 
-The embedded graphs below show Headlamp's native GraphView (hosts newer than
-Headlamp 0.44.0); on older hosts the plugin renders the same graphs with its
+The embedded graphs below show Headlamp's native GraphView (Headlamp 0.45.0
+or newer); on older hosts the plugin renders the same graphs with its
 built-in fallback renderer.
 
 | ResourceGraphDefinitions | Embedded template graph (RGD detail) |

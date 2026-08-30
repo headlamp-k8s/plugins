@@ -1,7 +1,6 @@
 // The embedded-graph switch: Headlamp's native GraphView when the host
 // exposes it through pluginLib.ResourceMap (kubernetes-sigs/headlamp#6992,
-// unreleased as of Headlamp 0.44.0), the local fallback renderer
-// otherwise.
+// shipped in Headlamp v0.45.0), the local fallback renderer otherwise.
 //
 // Native-path caveats, accepted for this alpha and documented in the
 // README: the host merges every registered map source into the view

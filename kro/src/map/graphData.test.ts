@@ -185,7 +185,7 @@ describe('getInstanceGraph', () => {
     expect(graph.edges.find(edge => edge.id === 'dep-appConfig-deployment')).toMatchObject({
       source: 'uid-cm',
       target: 'uid-deploy',
-      label: 'depends on',
+      label: 'required by',
     });
   });
 

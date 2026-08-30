@@ -28,17 +28,28 @@ describe('getNativeGraphView', () => {
     expect(getNativeGraphView()).toBeNull();
   });
 
-  it('returns a plain function component', () => {
+  it('fails closed on objects that are not renderable components', () => {
+    // A bare object would reach React and throw "Element type is invalid";
+    // detection must reject it so the fallback renderer is used instead.
+    setPluginLib({ ResourceMap: { GraphView: {} } });
+    expect(getNativeGraphView()).toBeNull();
+    setPluginLib({ ResourceMap: { GraphView: { some: 'module-value' } } });
+    expect(getNativeGraphView()).toBeNull();
+    setPluginLib({ ResourceMap: { GraphView: { $$typeof: Symbol.for('react.element') } } });
+    expect(getNativeGraphView()).toBeNull();
+  });
+
+  it('returns a plain function component (the actual upstream shape)', () => {
     const GraphView = () => null;
     setPluginLib({ ResourceMap: { GraphView } });
     expect(getNativeGraphView()).toBe(GraphView);
   });
 
-  it('returns a React.lazy-style exotic component (an object)', () => {
-    // React.lazy/memo components are objects with a $$typeof tag, not
-    // functions — the real upstream export is a lazy wrapper.
-    const LazyGraphView = { $$typeof: Symbol.for('react.lazy') };
-    setPluginLib({ ResourceMap: { GraphView: LazyGraphView } });
-    expect(getNativeGraphView()).toBe(LazyGraphView);
+  it('returns recognized exotic components (lazy, memo, forwardRef)', () => {
+    for (const tag of ['react.lazy', 'react.memo', 'react.forward_ref']) {
+      const Exotic = { $$typeof: Symbol.for(tag) };
+      setPluginLib({ ResourceMap: { GraphView: Exotic } });
+      expect(getNativeGraphView()).toBe(Exotic);
+    }
   });
 });

@@ -2,8 +2,8 @@
 //
 // Headlamp exposes its own Map renderer to plugins as
 // window.pluginLib.ResourceMap.GraphView since
-// kubernetes-sigs/headlamp#6992 (closing #6556), but released hosts
-// (Headlamp <= 0.44.0) predate that export. On those hosts,
+// kubernetes-sigs/headlamp#6992 (closing #6556), shipped in Headlamp
+// v0.45.0. On hosts 0.44.0 and older,
 // EmbeddedGraphView falls back to this renderer: @xyflow/react — the
 // same library the Map uses, taken from headlamp-plugin's own
 // dependency tree, so it adds no runtime dependency — plus a small
