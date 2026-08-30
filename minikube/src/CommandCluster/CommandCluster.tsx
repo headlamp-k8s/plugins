@@ -73,7 +73,7 @@ type RunningCommandType = {
   props: CommandClusterProps;
 };
 
-const commandsRunning = [];
+const commandsRunning: RunningCommandType[] = [];
 
 /**
  * Runs a command on a cluster, and shows the output in a dialog.
@@ -101,7 +101,12 @@ export default function CommandCluster(props: CommandClusterProps) {
   const [minikubeAvailable, setMinikubeAvailable] = React.useState<boolean | null>(null);
 
   const allDataRef = React.useRef<string[]>([]);
-  const processRef = React.useRef<{ kill?: () => void } | null>(null);
+  const processRef = React.useRef<{
+    kill?: () => void;
+    stdout: { on: (event: string, listener: (chunk: any) => void) => void };
+    stderr: { on: (event: string, listener: (chunk: any) => void) => void };
+    on: (event: string, listener: (code: number | null) => void) => void;
+  } | null>(null);
 
   function killProcess() {
     try {
