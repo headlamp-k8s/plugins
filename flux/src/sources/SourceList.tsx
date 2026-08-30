@@ -15,6 +15,7 @@ import {
 } from '../common/Resources';
 import Table, { TableProps } from '../common/Table';
 import { useNamespaces } from '../helpers';
+import { PluralName } from '../helpers/pluralName';
 
 export function FluxSources() {
   const { t } = useTranslation();
@@ -125,15 +126,17 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
         if (sourceName) {
           return (
             <Link
-              routeName={'source'}
-              params={{
-                namespace: item.jsonData.metadata.namespace,
-                pluralName: item.jsonData.spec.sourceRef.kind,
-                name: sourceName,
-              }}
-            >
-              {sourceName}
-            </Link>
+            routeName={'source'}
+            params={{
+              namespace:
+                item.jsonData.spec.sourceRef.namespace ??
+                item.jsonData.metadata.namespace,
+              pluralName: PluralName(item.jsonData.spec.sourceRef.kind),
+              name: sourceName,
+            }}
+          >
+            {sourceName}
+          </Link>
           );
         }
         return '-';
