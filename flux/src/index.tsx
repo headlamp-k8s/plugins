@@ -1,6 +1,5 @@
 import { addIcon, Icon } from '@iconify/react';
 import {
-  K8s,
   registerKindIcon,
   registerMapSource,
   registerPluginSettings,
@@ -10,6 +9,7 @@ import {
   Utils,
 } from '@kinvolk/headlamp-plugin/lib';
 import { registerFluxHeaderActionsProcessor } from './actions/headerActionsProcessor';
+import { checkFluxInstalled, getFluxInstallStatus } from './checkFluxInstalled';
 import Canaries from './flagger/canaries';
 import CanaryDetails from './flagger/canarydetails';
 import { HelmReleases } from './helm-releases/HelmReleaseList';
@@ -32,41 +32,10 @@ import { TerraformDetailView } from './terraforms/TerraformSingle';
 registerHelmRelease();
 registerFluxHeaderActionsProcessor();
 
-// Track whether Flux CRDs exist per cluster to hide sidebar children.
-// The watch callback keeps `fluxInstalledByCluster` fresh while the page is open;
-// the TTL re-arms the check after `CHECK_TTL_MS` so the sidebar reflects
-// install/uninstall events that happen between sessions or after a watch drops.
-const fluxInstalledByCluster: Record<string, boolean> = {};
-const lastCheckedAt: Record<string, number> = {};
-const inFlight: Record<string, boolean> = {};
-const CHECK_TTL_MS = 30 * 1000;
-
-function checkFluxInstalled(cluster: string) {
-  const now = Date.now();
-  const fresh = now - (lastCheckedAt[cluster] ?? 0) < CHECK_TTL_MS;
-  if (inFlight[cluster] || fresh) {
-    return;
-  }
-  inFlight[cluster] = true;
-
-  const listFn = K8s.ResourceClasses.CustomResourceDefinition.apiList(
-    crds => {
-      fluxInstalledByCluster[cluster] = crds.some(crd =>
-        crd.jsonData?.metadata?.name?.includes('fluxcd.')
-      );
-      lastCheckedAt[cluster] = Date.now();
-      inFlight[cluster] = false;
-    },
-    () => {
-      fluxInstalledByCluster[cluster] = false;
-      lastCheckedAt[cluster] = Date.now();
-      inFlight[cluster] = false;
-    },
-    { cluster }
-  );
-  listFn();
-}
-
+// Top-level Flux sidebar entries that must remain reachable even when
+// the CRD probe reports Flux as absent. This keeps the parent entry
+// and the Overview page (which renders its own "not installed" empty
+// state) accessible to the user.
 const FLUX_SIDEBAR_ALWAYS_VISIBLE = new Set(['flux', 'overview']);
 
 registerSidebarEntryFilter(entry => {
@@ -80,7 +49,13 @@ registerSidebarEntryFilter(entry => {
   const cluster = Utils.getCluster() ?? '';
   checkFluxInstalled(cluster);
 
-  if (fluxInstalledByCluster[cluster] === false) {
+  // Hide Flux sidebar children ONLY when the CRD probe has confirmed
+  // Flux is genuinely absent on this cluster.
+  //
+  // 'error' (RBAC denial, transient API failure, network blip, 5xx, etc.)
+  // and 'unknown' (no completed probe yet) intentionally keep the entries
+  // visible. See issue #972.
+  if (getFluxInstallStatus(cluster) === 'absent') {
     return null;
   }
   return entry;
