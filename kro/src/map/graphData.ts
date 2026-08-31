@@ -37,13 +37,17 @@ export interface EmbeddedGraph {
 }
 
 /**
- * Id of the synthetic root node of the template graph. Deliberately
- * not the RGD's metadata.uid: the global map source emits an RGD node
- * under that uid with edges to every instance, and reusing it would
- * pull all instances into the embedded template view's connected
- * component.
+ * Id of the synthetic root node of the template graph. Two collisions
+ * are deliberately impossible:
+ * - not the RGD's metadata.uid — the global map source emits an RGD
+ *   node under that uid with edges to every instance, and reusing it
+ *   would pull all instances into the embedded template view's
+ *   connected component;
+ * - not inside the `template-<resource id>` namespace — resource ids
+ *   are CEL identifiers and can never contain ':', so no resource
+ *   (including one literally named "root") can produce this node id.
  */
-export const TEMPLATE_ROOT_ID = 'template-root';
+export const TEMPLATE_ROOT_ID = 'template:root';
 
 const KIND_ICONS: Record<string, string> = {
   Deployment: 'mdi:layers-triple',

@@ -134,6 +134,28 @@ describe('getTemplateGraph', () => {
     expect(rootEdges).toHaveLength(webappRgd.spec.resources!.length);
   });
 
+  it('never collides with a resource literally named "root"', () => {
+    // 'root' is a valid resource id; its node id is 'template-root'. The
+    // synthetic root must live outside the template-<id> namespace or the
+    // two ids collide (dedupe would drop the real resource and the root
+    // edge would become a self-loop).
+    const withRootResource: RgdData = {
+      metadata: { name: 'edge-case' },
+      spec: {
+        resources: [
+          { id: 'root', template: { apiVersion: 'v1', kind: 'ConfigMap' } },
+          { id: 'app', template: { apiVersion: 'apps/v1', kind: 'Deployment' } },
+        ],
+      },
+    };
+    const graph = getTemplateGraph(withRootResource);
+    const ids = graph.nodes.map(node => node.id);
+    expect(new Set(ids).size).toBe(ids.length); // all node ids unique
+    expect(ids).toContain(TEMPLATE_ROOT_ID);
+    expect(ids).toContain('template-root'); // the real resource survives
+    expect(graph.edges.every(edge => edge.source !== edge.target)).toBe(true); // no self-loop
+  });
+
   it('marks external references dashed with a distinct subtitle', () => {
     const graph = getTemplateGraph(webappRgd);
     const external = graph.nodes.find(node => node.id === 'template-platformConfig');
