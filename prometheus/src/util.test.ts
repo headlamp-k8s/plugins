@@ -152,12 +152,12 @@ describe('supportsPrometheusMetrics', () => {
     ],
     ['rejects Queues without apiVersion', { kind: 'Queue', jsonData: { kind: 'Queue' } }, false],
     [
-      'does not show Application metrics before the chart UI is available',
+      'supports Argo CD Applications when the chart UI is available',
       {
         kind: 'Application',
         jsonData: { kind: 'Application', apiVersion: 'argoproj.io/v1alpha1' },
       },
-      false,
+      true,
     ],
     [
       'rejects non-Argo Applications with the same kind',
