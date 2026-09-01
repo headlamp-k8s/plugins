@@ -639,16 +639,11 @@ export const handleActualApiRequest = async (
     } else if (response?.kind === 'Table') {
       // ...existing code...
       const extractKindFromUrl = (url: string) => {
-        // Extract from URLs like /api/v1/pods, /apis/apps/v1/deployments, etc.
-        const match = url.match(/\/(api\/v1\/[^\/]+|apis\/[^\/]+\/[^\/]+\/[^\/]+)/);
-        const kind = match ? match[1] : null;
-        if (kind?.length > 1) {
-          const kindParts = kind.split('/');
-          if (kindParts.length > 1) {
-            return kindParts[kindParts.length - 1]; // Return the last part as the kind
-          }
-        }
-        return kind;
+        const path = new URL(url, 'http://dummy.com').pathname;
+        const match = path.match(
+          /^\/(?:api\/[^/]+|apis\/[^/]+\/[^/]+)\/(?:namespaces\/[^/]+\/)?([^/]+)/
+        );
+        return match?.[1] ?? null;
       };
 
       const resourceKind = extractKindFromUrl(url);
@@ -668,14 +663,17 @@ export const handleActualApiRequest = async (
       const tableRows = itemsToShow.map((row: any) => {
         const cells = row.cells || [];
         const namespace = row.object?.metadata?.namespace;
+        const objectKind = row.object?.kind;
+        const kind =
+          objectKind && objectKind !== 'PartialObjectMetadata' ? objectKind : resourceKind;
 
         const paddedCells = columnHeaders.map((_, index) => {
           let cellValue = cells[index] || '-';
 
           // For the name column (first column), create a special link marker
-          if (index === 0 && resourceKind && cellValue !== '-') {
+          if (index === 0 && kind && cellValue !== '-') {
             const linkData = {
-              kind: resourceKind,
+              kind,
               name: cellValue,
               namespace: namespace,
             };
