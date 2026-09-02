@@ -9,6 +9,8 @@ import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
 import WorkloadDetail from './components/workloads/Detail';
 import WorkloadList from './components/workloads/List';
+import MultiKueueConfigDetail from './components/multikueueconfigs/Detail';
+import MultiKueueConfigList from './components/multikueueconfigs/List';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
 
 registerSidebarEntry({
@@ -52,6 +54,13 @@ registerSidebarEntry({
   name: 'kueue-workloads',
   label: 'Workloads',
   url: kueueRoutePaths.workloadsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-multikueueconfigs',
+  label: 'MultiKueueConfigs',
+  url: kueueRoutePaths.multiKueueConfigsList,
 });
 
 registerRoute({
@@ -132,4 +141,20 @@ registerRoute({
   name: kueueRouteNames.workloadDetail,
   exact: true,
   component: () => <WorkloadDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueConfigsList,
+  sidebar: 'kueue-multikueueconfigs',
+  name: kueueRouteNames.multiKueueConfigsList,
+  exact: true,
+  component: () => <MultiKueueConfigList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueConfigDetail,
+  sidebar: 'kueue-multikueueconfigs',
+  name: kueueRouteNames.multiKueueConfigDetail,
+  exact: true,
+  component: () => <MultiKueueConfigDetail />,
 });
