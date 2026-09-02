@@ -1,3 +1,4 @@
+import { Router } from '@kinvolk/headlamp-plugin/lib';
 import {
   ObjectEventList,
   SectionBox,
@@ -7,7 +8,9 @@ import {
 import { MainInfoSection } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { Waypoint } from '../../resources/waypoint';
-import { kmeshRoutePaths } from '../../utils/kmeshRoutes';
+import { kmeshRouteNames, kmeshRoutePaths } from '../../utils/kmeshRoutes';
+
+const { createRouteURL } = Router;
 
 /**
  * Props for the Waypoint Detail view component.
@@ -41,7 +44,7 @@ export default function WaypointDetail(props: WaypointDetailProps) {
         resource={null}
         title="Waypoint Details"
         error={MISSING_PARAMS_ERROR}
-        backLink={kmeshRoutePaths.waypointsList}
+        backLink={createRouteURL(kmeshRouteNames.waypointsList)}
       />
     );
   }
@@ -109,7 +112,7 @@ function WaypointDetailContent({
         resource={waypoint}
         error={error}
         title="Waypoint Details"
-        backLink={kmeshRoutePaths.waypointsList}
+        backLink={createRouteURL(kmeshRouteNames.waypointsList)}
         extraInfo={[
           {
             name: 'Gateway Class',
