@@ -396,11 +396,17 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
 
     const element = document.createElement('a');
     const file = new Blob([downloadLogs.join('')], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
+    const url = URL.createObjectURL(file);
+    element.href = url;
     element.download = `${downloadName}_${time}.txt`;
-    // Required for FireFox
-    document.body.appendChild(element);
-    element.click();
+    try {
+      // Required for FireFox
+      document.body.appendChild(element);
+      element.click();
+    } finally {
+      element.remove();
+      URL.revokeObjectURL(url);
+    }
   }
 
   React.useEffect(() => {
