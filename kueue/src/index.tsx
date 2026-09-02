@@ -10,6 +10,8 @@ import ResourceFlavorList from './components/resourceflavors/List';
 import WorkloadDetail from './components/workloads/Detail';
 import WorkloadList from './components/workloads/List';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
+import ProvisioningRequestConfigDetail from './components/provisioningrequestconfigs/Detail';
+import ProvisioningRequestConfigList from './components/provisioningrequestconfigs/List';
 
 registerSidebarEntry({
   parent: null,
@@ -52,6 +54,13 @@ registerSidebarEntry({
   name: 'kueue-workloads',
   label: 'Workloads',
   url: kueueRoutePaths.workloadsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-provisioningrequestconfigs',
+  label: 'ProvisioningRequestConfigs',
+  url: kueueRoutePaths.provisioningRequestConfigsList,
 });
 
 registerRoute({
@@ -132,4 +141,20 @@ registerRoute({
   name: kueueRouteNames.workloadDetail,
   exact: true,
   component: () => <WorkloadDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.provisioningRequestConfigsList,
+  sidebar: 'kueue-provisioningrequestconfigs',
+  name: kueueRouteNames.provisioningRequestConfigsList,
+  exact: true,
+  component: () => <ProvisioningRequestConfigList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.provisioningRequestConfigDetail,
+  sidebar: 'kueue-provisioningrequestconfigs',
+  name: kueueRouteNames.provisioningRequestConfigDetail,
+  exact: true,
+  component: () => <ProvisioningRequestConfigDetail />,
 });
