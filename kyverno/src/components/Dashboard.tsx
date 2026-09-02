@@ -18,20 +18,9 @@ import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Card, CardContent, Grid, Typography } from '@mui/material';
 import { useMemo } from 'react';
-import {
-  Bar,
-  BarChart,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
 import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
+import { AccessibleNamespaceChart, AccessiblePieChart } from './DashboardChart';
 
 const STATUS_COLORS: Record<PolicyResultStatus, string> = {
   pass: '#4caf50',
@@ -238,55 +227,33 @@ export function Dashboard() {
       <Grid container spacing={2}>
         {statusData.length > 0 && (
           <Grid item xs={12} md={6}>
-            <SectionBox title={t('Results by Status')}>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </SectionBox>
+            <AccessiblePieChart
+              headingId="kyverno-results-by-status-heading"
+              title={t('Results by Status')}
+              description={t(
+                'Donut chart of policy evaluation results grouped by status. Open View data for exact counts.'
+              )}
+              data={statusData}
+              viewDataLabel={t('View data')}
+              nameColumnHeader={t('Status')}
+              valueColumnHeader={t('Count')}
+            />
           </Grid>
         )}
 
         {severityData.length > 0 && (
           <Grid item xs={12} md={6}>
-            <SectionBox title={t('Results by Severity')}>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={severityData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {severityData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </SectionBox>
+            <AccessiblePieChart
+              headingId="kyverno-results-by-severity-heading"
+              title={t('Results by Severity')}
+              description={t(
+                'Donut chart of policy evaluation results grouped by severity. Open View data for exact counts.'
+              )}
+              data={severityData}
+              viewDataLabel={t('View data')}
+              nameColumnHeader={t('Severity')}
+              valueColumnHeader={t('Count')}
+            />
           </Grid>
         )}
 
@@ -337,23 +304,20 @@ export function Dashboard() {
 
         {namespaceData.length > 0 && (
           <Grid item xs={12}>
-            <SectionBox title={t('Compliance by Namespace (Top 10)')}>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={namespaceData} margin={{ top: 8, right: 16, left: 16, bottom: 8 }}>
-                  <XAxis dataKey="name" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="pass" fill={STATUS_COLORS.pass} name={t('Pass')} stackId="a" />
-                  <Bar
-                    dataKey="failAndError"
-                    fill={STATUS_COLORS.fail}
-                    name={t('Fail/Error')}
-                    stackId="a"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </SectionBox>
+            <AccessibleNamespaceChart
+              headingId="kyverno-compliance-by-namespace-heading"
+              title={t('Compliance by Namespace (Top 10)')}
+              description={t(
+                'Stacked bar chart of pass and fail or error counts for the ten namespaces with the most failures. Open View data for exact values per namespace.'
+              )}
+              data={namespaceData}
+              viewDataLabel={t('View data')}
+              namespaceColumnHeader={t('Namespace')}
+              passLabel={t('Pass')}
+              failErrorLabel={t('Fail/Error')}
+              passColor={STATUS_COLORS.pass}
+              failColor={STATUS_COLORS.fail}
+            />
           </Grid>
         )}
 
