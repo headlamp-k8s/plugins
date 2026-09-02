@@ -4,6 +4,7 @@ import { Link as HeadlampRouterLink } from '@kinvolk/headlamp-plugin/lib/CommonC
 import {
   Box,
   Card,
+  CardActionArea,
   CardActions,
   CardContent,
   CardMedia,
@@ -28,67 +29,150 @@ export function PluginCard(props: PluginCardProps) {
       <Card
         sx={{
           height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        <Box
-          height="60px"
-          display="flex"
-          alignItems="center"
-          marginTop="15px"
-          justifyContent="space-between"
+        <CardActionArea
+          component={HeadlampRouterLink}
+          routeName="/plugin-catalog/:repoName/:pluginName"
+          params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
+          sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start' }}
         >
-          {plugin.logo_image_id ? (
-            <CardMedia
-              image={`https://artifacthub.io/image/${plugin.logo_image_id}`}
-              sx={{
-                width: '60px',
-                margin: '1rem',
-                alignSelf: 'flex-start',
-              }}
-              component="img"
-              alt={`${plugin.display_name || plugin.name} logo`}
-            />
-          ) : (
-            <PluginIcon
-              style={{
-                height: '60px',
-                width: '60px',
-                margin: '1rem',
-                alignSelf: 'flex-start',
-              }}
-            />
-          )}
-          <Box display="flex" alignItems="center" justifyContent="space-around" marginRight="10px">
-            {(plugin.official || plugin.repository.official) && (
-              <Tooltip title={t('Official Chart')}>
-                <Icon
-                  icon="mdi:star-circle"
-                  style={{
-                    marginLeft: '0.5em',
-                    fontSize: '22px',
-                  }}
-                />
-              </Tooltip>
+          <Box
+            height="60px"
+            display="flex"
+            alignItems="center"
+            marginTop="15px"
+            justifyContent="space-between"
+          >
+            {plugin.logo_image_id ? (
+              <CardMedia
+                image={`https://artifacthub.io/image/${plugin.logo_image_id}`}
+                sx={{
+                  width: '60px',
+                  margin: '1rem',
+                  alignSelf: 'flex-start',
+                }}
+                component="img"
+                alt={`${plugin.display_name || plugin.name} logo`}
+              />
+            ) : (
+              <PluginIcon
+                style={{
+                  height: '60px',
+                  width: '60px',
+                  margin: '1rem',
+                  alignSelf: 'flex-start',
+                }}
+              />
             )}
-            {plugin.repository.verified_publisher && (
-              <Tooltip title={t('Verified Publisher')}>
-                <Icon
-                  icon="mdi:check-decagram"
-                  style={{
-                    marginLeft: '0.5em',
-                    fontSize: '22px',
-                  }}
-                />
-              </Tooltip>
-            )}
+            <Box display="flex" alignItems="center" justifyContent="space-around" marginRight="10px">
+              {(plugin.official || plugin.repository.official) && (
+                <Tooltip title={t('Official Chart')}>
+                  <Icon
+                    icon="mdi:star-circle"
+                    style={{
+                      marginLeft: '0.5em',
+                      fontSize: '22px',
+                    }}
+                  />
+                </Tooltip>
+              )}
+              {plugin.repository.verified_publisher && (
+                <Tooltip title={t('Verified Publisher')}>
+                  <Icon
+                    icon="mdi:check-decagram"
+                    style={{
+                      marginLeft: '0.5em',
+                      fontSize: '22px',
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Box>
           </Box>
-        </Box>
-        <CardContent
+          <CardContent
+            sx={{
+              margin: '1rem 0rem',
+              paddingTop: 0,
+              paddingBottom: 0,
+              marginBottom: 0,
+              width: '100%',
+            }}
+          >
+            <Box
+              sx={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Typography
+                component="div"
+                variant="h5"
+                sx={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {(() => {
+                  const displayName = plugin.display_name || plugin.name || '';
+                  const needsTooltip = displayName.length > 20;
+                  const textSpan = (
+                    <Box component="span" sx={{ display: 'inline-block' }}>
+                      {displayName}
+                    </Box>
+                  );
+                  return needsTooltip ? <Tooltip title={displayName}>{textSpan}</Tooltip> : textSpan;
+                })()}
+              </Typography>
+            </Box>
+            <Box display="flex" justifyContent="space-between" my={1}>
+              <Typography>v{plugin.version}</Typography>
+            </Box>
+            <Divider />
+            <Box mt={1}>
+              <Typography component="div">
+                {(() => {
+                  const desc = plugin?.description || '';
+                  const needsTooltip = desc.length >= 180;
+                  const content = (
+                    <Box
+                      component="span"
+                      sx={theme => ({
+                        display: 'block',
+                        lineHeight: '1.2',
+                        maxHeight: 'calc(1.2em * 5)', // max 5 lines
+                        overflow: 'hidden',
+                        position: 'relative',
+                        // Add a subtle fade at the bottom so users know the text is truncated.
+                        '&::after': needsTooltip && {
+                          content: '""',
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: '1.2em',
+                          pointerEvents: 'none',
+                          background: `linear-gradient(to bottom, rgba(0,0,0,0), ${theme.palette.background.paper})`,
+                        },
+                      })}
+                    >
+                      {desc}
+                    </Box>
+                  );
+
+                  return needsTooltip ? <Tooltip title={desc}>{content}</Tooltip> : content;
+                })()}
+              </Typography>
+            </Box>
+          </CardContent>
+        </CardActionArea>
+        <CardActions
           sx={{
-            margin: '1rem 0rem',
-            paddingTop: 0,
-            paddingBottom: 0,
-            marginBottom: 0,
+            justifyContent: 'space-between',
+            padding: '14px',
           }}
         >
           <Box
@@ -98,95 +182,15 @@ export function PluginCard(props: PluginCardProps) {
               whiteSpace: 'nowrap',
             }}
           >
-            <Typography
-              component="div"
-              variant="h5"
-              sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {(() => {
-                const displayName = plugin.display_name || plugin.name || '';
-                const needsTooltip = displayName.length > 20;
-                const link = (
-                  <Box component="span" sx={{ display: 'inline-block' }}>
-                    <HeadlampRouterLink
-                      routeName="/plugin-catalog/:repoName/:pluginName"
-                      params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
-                    >
-                      {displayName}
-                    </HeadlampRouterLink>
-                  </Box>
-                );
-                return needsTooltip ? <Tooltip title={displayName}>{link}</Tooltip> : link;
-              })()}
-            </Typography>
+            {plugin?.repository && (
+              <>
+                <InlineIcon icon="mdi:building" />{' '}
+                <Link href={plugin.repository.url} target="_blank" rel="noopener noreferrer">
+                  {plugin.repository.organization_name || plugin.repository.name}
+                </Link>
+              </>
+            )}
           </Box>
-          <Box display="flex" justifyContent="space-between" my={1}>
-            <Typography>v{plugin.version}</Typography>
-            <Box
-              marginLeft={1}
-              sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {plugin?.repository && (
-                <>
-                  <InlineIcon icon="mdi:building" />{' '}
-                  <Link href={plugin.repository.url} target="_blank" rel="noopener noreferrer">
-                    {plugin.repository.organization_name || plugin.repository.name}
-                  </Link>
-                </>
-              )}
-            </Box>
-          </Box>
-          <Divider />
-          <Box mt={1}>
-            <Typography>
-              {(() => {
-                const desc = plugin?.description || '';
-                const needsTooltip = desc.length >= 180;
-                const content = (
-                  <Box
-                    component="span"
-                    sx={theme => ({
-                      display: 'block',
-                      lineHeight: '1.2',
-                      maxHeight: 'calc(1.2em * 5)', // max 5 lines
-                      overflow: 'hidden',
-                      position: 'relative',
-                      // Add a subtle fade at the bottom so users know the text is truncated.
-                      '&::after': needsTooltip && {
-                        content: '""',
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        height: '1.2em',
-                        pointerEvents: 'none',
-                        background: `linear-gradient(to bottom, rgba(0,0,0,0), ${theme.palette.background.paper})`,
-                      },
-                    })}
-                  >
-                    {desc}
-                  </Box>
-                );
-
-                return needsTooltip ? <Tooltip title={desc}>{content}</Tooltip> : content;
-              })()}
-            </Typography>
-          </Box>
-        </CardContent>
-        <CardActions
-          sx={{
-            justifyContent: 'space-between',
-            padding: '14px',
-          }}
-        >
-          <span></span>
           {plugin.isInstalled && (
             <Typography>
               {plugin.isUpdateAvailable ? t('Update available') : t('Installed')}
