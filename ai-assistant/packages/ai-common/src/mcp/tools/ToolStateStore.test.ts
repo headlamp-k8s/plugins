@@ -63,6 +63,19 @@ describe('MCPToolStateStore', () => {
     expect(toolState.isToolEnabled('cluster-x', 'tool-a')).toBe(true);
   });
 
+  it('ignores prototype-sensitive server and tool names', async () => {
+    const toolState = makeStore(toolStatePath);
+    await toolState.initialize();
+
+    toolState.setToolEnabled('__proto__', 'tool', false);
+    toolState.setToolEnabled('server', '__proto__', false);
+    toolState.recordToolUsage('constructor', 'tool');
+    toolState.initializeToolsConfig('server', [{ name: 'prototype' }]);
+
+    expect(toolState.getConfig()).toEqual({});
+    expect(Object.prototype).not.toHaveProperty('enabled');
+  });
+
   it('contains synchronous errors from a debounced storage write', async () => {
     const storage: Storage = {
       read: async () => null,
@@ -466,6 +479,31 @@ describe('initConfigFromClientTools', () => {
     expect(gn?.enabled).toBe(true);
   });
 
+  it('ignores unsafe server and tool names from client tools', async () => {
+    const toolState = makeStore(toolStatePath);
+    await toolState.initialize();
+
+    expect(() =>
+      toolState.initConfigFromClientTools([
+        { name: 'constructor__tool' },
+        { name: 'srv__constructor' },
+        { name: 'srv____proto__' },
+        { name: 'srv__safe-tool', description: 'safe' },
+      ])
+    ).not.toThrow();
+
+    expect(toolState.getConfig()).toEqual({
+      srv: {
+        'safe-tool': {
+          enabled: true,
+          usageCount: 0,
+          inputSchema: null,
+          description: 'safe',
+        },
+      },
+    });
+  });
+
   it('preserves enabled state and usageCount from existing config when tool still exists', async () => {
     const toolState = makeStore(toolStatePath);
     await toolState.initialize();
@@ -582,5 +620,20 @@ describe('initConfigFromClientTools', () => {
 
     expect(toolState.getToolStats('srv', 'zod-tool')?.inputSchema).toBeNull();
     expect(toolState.getToolStats('srv', 'json-tool')?.inputSchema).toEqual(jsonSchema);
+  });
+
+  it('replaceToolsConfig ignores unsafe server and tool names', async () => {
+    const toolState = makeStore(toolStatePath);
+    await toolState.initialize();
+
+    expect(() =>
+      toolState.replaceToolsConfig({
+        constructor: [{ name: 'tool' }],
+        srv: [{ name: '__proto__' }, { name: 'safe-tool' }],
+      })
+    ).not.toThrow();
+
+    expect(Object.keys(toolState.getConfig())).toEqual(['srv']);
+    expect(Object.keys(toolState.getConfig().srv)).toEqual(['safe-tool']);
   });
 });
