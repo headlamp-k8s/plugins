@@ -12,7 +12,9 @@
     "tsc": "headlamp-plugin tsc",
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
-    "test": "headlamp-plugin test",
+    "test": "vitest run --config node_modules/@kinvolk/headlamp-plugin/config/vite.config.mjs --exclude \"**/node_modules/**\" --exclude \"e2e/**\"",
+    "e2e": "node --import tsx e2e/run-kmesh-e2e.ts",
+    "e2e:playwright": "playwright test --config e2e/playwright.config.ts",
     "i18n": "headlamp-plugin i18n"
   },
   "keywords": [
@@ -36,6 +38,9 @@
   },
   "devDependencies": {
     "@kinvolk/headlamp-plugin": "^0.13.1",
+    "@playwright/test": "1.61.1",
+    "js-yaml": "^4.1.0",
+    "tsx": "^4.22.4",
     "vitest": "^3.2.6"
   }
 }
