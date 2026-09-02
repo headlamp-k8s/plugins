@@ -5,18 +5,24 @@ import { useEffect, useRef, useState } from 'react';
 interface ReleaseFiltersProps {
   nameFilter: string;
   namespaceFilter: string;
+  statusFilter: string;
   /** Namespace strings derived from the currently loaded releases, used to populate the dropdown. */
   availableNamespaces: string[];
+  availableStatuses: string[];
   onNameFilterChange: (value: string) => void;
   onNamespaceFilterChange: (value: string) => void;
+  onStatusFilterChange: (value: string) => void;
 }
 
 export function ReleaseFilters({
   nameFilter,
   namespaceFilter,
+  statusFilter,
   availableNamespaces,
+  availableStatuses,
   onNameFilterChange,
   onNamespaceFilterChange,
+  onStatusFilterChange,
 }: ReleaseFiltersProps) {
   const [inputValue, setInputValue] = useState(nameFilter);
   const timeoutRef = useRef<NodeJS.Timeout>();
@@ -58,12 +64,22 @@ export function ReleaseFilters({
       <Autocomplete
         sx={{ width: { xs: '100%', sm: '200px', md: '250px' } }}
         options={availableNamespaces}
-        getOptionLabel={option => option || 'All'}
+        getOptionLabel={option => option || 'All Namespaces'}
         value={namespaceFilter || null}
         onChange={(event, newValue) => {
           onNamespaceFilterChange(newValue || '');
         }}
         renderInput={params => <TextField {...params} label="Namespace" size="small" />}
+      />
+      <Autocomplete
+        sx={{ width: { xs: '100%', sm: '200px', md: '250px' } }}
+        options={availableStatuses}
+        getOptionLabel={option => option || 'All Statuses'}
+        value={statusFilter || null}
+        onChange={(event, newValue) => {
+          onStatusFilterChange(newValue || '');
+        }}
+        renderInput={params => <TextField {...params} label="Status" size="small" />}
       />
     </Box>
   );
