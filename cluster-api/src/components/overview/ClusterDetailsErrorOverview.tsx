@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   EmptyContent,
   LightTooltip,
@@ -54,11 +55,15 @@ interface ClusterDetailsErrorOverviewProps {
  * @param priorityError - The highest priority error affecting the cluster, or null if none.
  * @returns A StatusLabel component colored according to the severity.
  */
-function renderClusterHealthStatus(healthy: boolean, priorityError: ClusterPriorityError | null) {
+function renderClusterHealthStatus(
+  healthy: boolean,
+  priorityError: ClusterPriorityError | null,
+  t: (key: string) => string
+) {
   const status = healthy
     ? 'success'
     : getStatusLabelStateForSeverity(priorityError?.errorDef.severity);
-  return <StatusLabel status={status}>{healthy ? 'Healthy' : 'Needs Attention'}</StatusLabel>;
+  return <StatusLabel status={status}>{healthy ? t('Healthy') : t('Needs Attention')}</StatusLabel>;
 }
 
 /**
@@ -77,6 +82,7 @@ function InlineSolutionPanel({
   priorityError: ClusterPriorityError;
   open: boolean;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { errorDef } = priorityError;
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
@@ -108,7 +114,7 @@ function InlineSolutionPanel({
         </Typography>
 
         <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-          Suggested steps
+          {t('Suggested steps')}
         </Typography>
         <Box component="ol" sx={{ m: 0, pl: 2.5 }}>
           {errorDef.solution.steps.map((step, index) => (
@@ -129,7 +135,7 @@ function InlineSolutionPanel({
               }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                {errorDef.solution.codeSnippet.description || 'Fix command'}
+                {errorDef.solution.codeSnippet.description || t('Fix command')}
               </Typography>
               <Button
                 size="small"
@@ -147,7 +153,7 @@ function InlineSolutionPanel({
                 onClick={() => handleCopy(errorDef.solution.codeSnippet!.code)}
                 sx={{ textTransform: 'none' }}
               >
-                {copiedCommand === errorDef.solution.codeSnippet.code ? 'Copied' : 'Copy'}
+                {copiedCommand === errorDef.solution.codeSnippet.code ? t('Copied') : t('Copy')}
               </Button>
             </Box>
             <Box
@@ -171,7 +177,7 @@ function InlineSolutionPanel({
         {errorDef.solution.quickFixCommands && errorDef.solution.quickFixCommands.length > 0 && (
           <Box sx={{ mt: 2 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-              Quick commands
+              {t('Quick commands')}
             </Typography>
             {errorDef.solution.quickFixCommands.map((cmd, index) => (
               <Box key={index} sx={{ mb: 1.25 }}>
@@ -245,6 +251,7 @@ function FullWidthClusterCard({
   kcps: any[];
   priorityError: ClusterPriorityError | null;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [solutionOpen, setSolutionOpen] = React.useState(false);
 
@@ -294,7 +301,7 @@ function FullWidthClusterCard({
 
   const statItems = [
     {
-      label: 'Control Plane',
+      label: t('Control Plane'),
       value: `${cpStatus?.readyReplicas || 0}/${cpStatus?.desiredReplicas || 0}`,
       sub: controlPlaneKind,
       ok:
@@ -303,39 +310,49 @@ function FullWidthClusterCard({
       icon: 'mdi:cog-outline',
     },
     {
-      label: 'Workers',
+      label: t('Workers'),
       value: `${workersStatus?.readyReplicas || 0}/${workersStatus?.desiredReplicas || 0}`,
-      sub: `${clusterMDs.length} deployment${clusterMDs.length !== 1 ? 's' : ''}`,
+      sub:
+        clusterMDs.length !== 1
+          ? t('{{count}} deployments', { count: clusterMDs.length })
+          : t('{{count}} deployment', { count: clusterMDs.length }),
       ok:
         (workersStatus?.desiredReplicas || 0) > 0 &&
         workersStatus?.readyReplicas === workersStatus?.desiredReplicas,
       icon: 'mdi:server-network',
     },
     {
-      label: 'Machine Pools',
+      label: t('Machine Pools'),
       value: `${poolReady}/${poolDesired}`,
-      sub: `${clusterPools.length} pool${clusterPools.length !== 1 ? 's' : ''}`,
+      sub:
+        clusterPools.length !== 1
+          ? t('{{count}} pools', { count: clusterPools.length })
+          : t('{{count}} pool', { count: clusterPools.length }),
       ok: poolDesired === 0 || poolReady === poolDesired,
       icon: 'mdi:layers-triple-outline',
     },
     {
-      label: 'Machines',
+      label: t('Machines'),
       value: `${clusterMachines.length}`,
-      sub: `${runningMachines} running`,
+      sub: t('{{count}} running', { count: runningMachines }),
       ok: clusterMachines.length === 0 || runningMachines === clusterMachines.length,
       icon: 'mdi:server',
     },
     {
-      label: 'Bootstrap',
+      label: t('Bootstrap'),
       value: bootstrapKind,
-      sub: 'bootstrap type',
+      sub: t('bootstrap type'),
       ok: bootstrapKind !== '-',
       icon: 'mdi:package-variant-closed',
     },
     {
-      label: 'Issues',
+      label: t('Issues'),
       value: `${issueCount}`,
-      sub: healthy ? 'cluster healthy' : issueCount === 1 ? '1 issue' : `${issueCount} issues`,
+      sub: healthy
+        ? t('cluster healthy')
+        : issueCount === 1
+        ? t('1 issue')
+        : t('{{count}} issues', { count: issueCount }),
       ok: healthy,
       icon: 'mdi:alert-circle-outline',
     },
@@ -361,7 +378,13 @@ function FullWidthClusterCard({
         >
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', minWidth: 0 }}>
             {/* Health ring */}
-            <LightTooltip title={`${totalReady}/${totalDesired} replicas ready`} interactive>
+            <LightTooltip
+              title={t('{{ready}}/{{desired}} replicas ready', {
+                ready: totalReady,
+                desired: totalDesired,
+              })}
+              interactive
+            >
               <Box sx={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
                 <CircularProgress
                   variant="determinate"
@@ -397,7 +420,7 @@ function FullWidthClusterCard({
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Link kubeObject={cluster}>{cluster.metadata.name}</Link>
                 <Chip label={provider} size="small" variant="outlined" />
-                {renderClusterHealthStatus(healthy, priorityError)}
+                {renderClusterHealthStatus(healthy, priorityError, t)}
               </Box>
               <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 0.75 }}>
                 <Chip
@@ -408,13 +431,15 @@ function FullWidthClusterCard({
                   sx={{ height: 20, fontSize: '0.7rem', '.MuiChip-icon': { ml: 0.5 } }}
                 />
                 <Chip
-                  label={`Class: ${blueprint}`}
+                  label={t('Class: {{blueprint}}', { blueprint })}
                   size="small"
                   variant="outlined"
                   sx={{ height: 20, fontSize: '0.7rem' }}
                 />
                 <Chip
-                  label={`Namespace: ${cluster.metadata.namespace || '-'}`}
+                  label={t('Namespace: {{namespace}}', {
+                    namespace: cluster.metadata.namespace || '-',
+                  })}
                   size="small"
                   variant="outlined"
                   sx={{ height: 20, fontSize: '0.7rem' }}
@@ -424,9 +449,17 @@ function FullWidthClusterCard({
           </Box>
 
           <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <Chip label={`${clusterMDs.length} Deployments`} size="small" variant="outlined" />
+            <Chip
+              label={t('{{count}} Deployments', { count: clusterMDs.length })}
+              size="small"
+              variant="outlined"
+            />
             {clusterPools.length > 0 && (
-              <Chip label={`${clusterPools.length} Pools`} size="small" variant="outlined" />
+              <Chip
+                label={t('{{count}} Pools', { count: clusterPools.length })}
+                size="small"
+                variant="outlined"
+              />
             )}
           </Box>
         </Box>
@@ -505,9 +538,9 @@ function FullWidthClusterCard({
                   <Box sx={{ minWidth: 250, maxWidth: 400, p: 0.5 }}>
                     <MetadataDictGrid
                       dict={{
-                        Condition: condition.type,
-                        Reason: condition.reason || 'Unknown',
-                        Message: condition.message || '-',
+                        [t('Condition')]: condition.type,
+                        [t('Reason')]: condition.reason || t('Unknown'),
+                        [t('Message')]: condition.message || '-',
                       }}
                       gridProps={{
                         direction: 'column',
@@ -593,7 +626,7 @@ function FullWidthClusterCard({
                   </StatusLabel>
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                  {priorityError.message || 'Open for guidance and suggested remediation.'}
+                  {priorityError.message || t('Open for guidance and suggested remediation.')}
                 </Typography>
               </Box>
               <Button
@@ -607,7 +640,7 @@ function FullWidthClusterCard({
                   />
                 }
               >
-                {solutionOpen ? 'Hide fix' : 'Show fix'}
+                {solutionOpen ? t('Hide fix') : t('Show fix')}
               </Button>
             </Box>
             <InlineSolutionPanel priorityError={priorityError} open={solutionOpen} />
@@ -640,6 +673,7 @@ export default function ClusterDetailsErrorOverview({
   kcps,
   resourcesData,
 }: ClusterDetailsErrorOverviewProps) {
+  const { t } = useTranslation();
   const [clusterFilter, setClusterFilter] = React.useState('');
 
   useEffect(() => {
@@ -682,10 +716,10 @@ export default function ClusterDetailsErrorOverview({
         >
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Clusters
+              {t('Clusters')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Per-cluster health and remediation details.
+              {t('Per-cluster health and remediation details.')}
             </Typography>
           </Box>
           <Select
@@ -720,7 +754,7 @@ export default function ClusterDetailsErrorOverview({
 
         {displayedClusters.length === 0 && (
           <Grid item xs={12}>
-            <EmptyContent>No clusters match the selected filter.</EmptyContent>
+            <EmptyContent>{t('No clusters match the selected filter.')}</EmptyContent>
           </Grid>
         )}
       </Grid>
