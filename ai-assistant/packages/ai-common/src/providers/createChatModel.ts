@@ -41,6 +41,51 @@ export type SupportedProviderId =
   | 'mock-testing-model';
 
 /**
+ * Copilot model families served only through the OpenAI Responses API.
+ *
+ * Each entry is matched as a lowercase prefix of the model ID, so `gpt-5.6`
+ * covers `gpt-5.6-sol`, `gpt-5.6-luna`, and `gpt-5.6-terra`. Refresh the list
+ * from `https://api.githubcopilot.com/models`: any chat model whose
+ * `supported_endpoints` omits `/chat/completions` belongs here.
+ */
+const COPILOT_RESPONSES_ONLY_FAMILIES: readonly string[] = [
+  'gpt-5.3-codex',
+  'gpt-5.4-mini',
+  'gpt-5.5',
+  'gpt-5.6',
+  'gpt-6',
+  'grok-',
+  'mai-',
+];
+
+/**
+ * Removes an optional vendor prefix from a Copilot model identifier.
+ *
+ * @param model - Model identifier, optionally prefixed (e.g. `openai/gpt-4o`).
+ * @returns The bare model identifier expected by the Copilot API.
+ */
+function stripCopilotModelPrefix(model: string): string {
+  return model.includes('/') ? model.split('/').pop()! : model;
+}
+
+/**
+ * Returns whether a GitHub Copilot model is only available through the
+ * OpenAI-compatible Responses API.
+ *
+ * These models reject `/chat/completions` with HTTP 400
+ * `unsupported_api_for_model`. LangChain does not derive the endpoint from the
+ * model ID, so select `/responses` explicitly while leaving models that still
+ * accept chat completions on their existing endpoint.
+ *
+ * @param model - Copilot model identifier, with or without a vendor prefix.
+ * @returns Whether LangChain must use the Responses API.
+ */
+export function copilotModelRequiresResponsesApi(model: string): boolean {
+  const id = stripCopilotModelPrefix(model).toLowerCase();
+  return COPILOT_RESPONSES_ONLY_FAMILIES.some(family => id.startsWith(family));
+}
+
+/**
  * Creates a LangChain `BaseChatModel` from a provider ID and configuration map.
  *
  * This is the single source of truth for provider → model mapping shared by
@@ -129,11 +174,11 @@ export function createChatModel(
             'Copilot token must be resolved before creating the model. ' +
               'Replace GH_CLI_AUTH_SENTINEL with the real token from `gh auth token`.'
           );
-        // Strip optional "provider/" prefix (e.g. "openai/gpt-4o" → "gpt-4o")
-        const model = c.model.includes('/') ? c.model.split('/').pop()! : c.model;
+        const model = stripCopilotModelPrefix(c.model);
         return new ChatOpenAI({
           apiKey: c.apiKey,
           model,
+          useResponsesApi: copilotModelRequiresResponsesApi(model),
           verbose,
           configuration: { baseURL: 'https://api.githubcopilot.com' },
         });
