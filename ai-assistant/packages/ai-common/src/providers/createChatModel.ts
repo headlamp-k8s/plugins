@@ -41,6 +41,21 @@ export type SupportedProviderId =
   | 'mock-testing-model';
 
 /**
+ * Returns whether a GitHub Copilot model is only available through the
+ * OpenAI-compatible Responses API.
+ *
+ * GPT-5.6 Sol rejects requests sent to `/chat/completions`. LangChain does not
+ * currently identify that model family automatically, so select `/responses`
+ * explicitly while leaving older Copilot models on their supported endpoint.
+ *
+ * @param model - Copilot model identifier after removing an optional provider prefix.
+ * @returns Whether LangChain must use the Responses API.
+ */
+export function copilotModelRequiresResponsesApi(model: string): boolean {
+  return /^gpt-5\.6(?:-|$)/i.test(model);
+}
+
+/**
  * Creates a LangChain `BaseChatModel` from a provider ID and configuration map.
  *
  * This is the single source of truth for provider → model mapping shared by
@@ -134,6 +149,7 @@ export function createChatModel(
         return new ChatOpenAI({
           apiKey: c.apiKey,
           model,
+          useResponsesApi: copilotModelRequiresResponsesApi(model),
           verbose,
           configuration: { baseURL: 'https://api.githubcopilot.com' },
         });
