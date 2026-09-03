@@ -79,6 +79,7 @@ export const modelProviders: ModelProvider[] = [
         type: 'select',
         required: true,
         options: [
+          'gpt-5.6-sol',
           'gpt-5.4',
           'gpt-5.2',
           'gpt-5.1',
