@@ -298,6 +298,7 @@ export default function CommandCluster(props: CommandClusterProps) {
       const runner = getPluginRunCommand();
       if (!runner) {
         console.error('pluginRunCommand is not available.');
+        setActing(false);
         return;
       }
 
