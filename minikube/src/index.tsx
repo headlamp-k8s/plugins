@@ -162,7 +162,7 @@ if (registerClusterStatus) {
   });
 }
 
-if (registerDetailsViewHeaderAction) {
+if (registerDetailsViewHeaderAction && isElectron()) {
   registerDetailsViewHeaderAction(MinikubeServiceAction);
 }
 

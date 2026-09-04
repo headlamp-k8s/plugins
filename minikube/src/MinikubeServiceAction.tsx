@@ -102,10 +102,9 @@ export function MinikubeServiceAction({ item }: MinikubeServiceActionProps) {
         }
       }, 30000);
 
-      cmd.stdout?.on('data', (data: any) => {
+      function handleData(data: any) {
         if (opened) return;
         const output = data.toString();
-        console.log('[Minikube] service output:', output);
         const match = output.match(/https?:\/\/[^\s\r\n]+/);
         if (match) {
           opened = true;
@@ -120,11 +119,16 @@ export function MinikubeServiceAction({ item }: MinikubeServiceActionProps) {
           });
           openUrl(url);
         }
+      }
+
+      cmd.stdout?.on('data', (data: any) => {
+        console.log('[Minikube] service output:', data.toString());
+        handleData(data);
       });
 
       cmd.stderr?.on('data', (data: any) => {
-        const errOutput = data.toString();
-        console.warn('[Minikube] service stderr:', errOutput);
+        console.warn('[Minikube] service stderr:', data.toString());
+        handleData(data);
       });
 
       cmd.on?.('exit', (code: number) => {

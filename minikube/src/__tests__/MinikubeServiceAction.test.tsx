@@ -137,4 +137,36 @@ describe('MinikubeServiceAction Component', () => {
       )
     ).toBeTruthy();
   });
+
+  it('opens URL when emitted on stderr stream', () => {
+    const stderrListeners: Record<string, Function> = {};
+    const mockCmd = {
+      stdout: { on: vi.fn() },
+      stderr: {
+        on: vi.fn((event: string, cb: Function) => {
+          stderrListeners[event] = cb;
+        }),
+      },
+      on: vi.fn(),
+    };
+
+    const mockRunner = vi.fn().mockReturnValue(mockCmd);
+    (window as any).pluginRunCommand = mockRunner;
+
+    const serviceItem = {
+      kind: 'Service',
+      getName: () => 'web-stderr',
+      getNamespace: () => 'default',
+    } as any;
+
+    render(<MinikubeServiceAction item={serviceItem} />);
+
+    const button = screen.getByTestId('action-button');
+    fireEvent.click(button);
+
+    // Simulate stderr output containing the URL
+    stderrListeners['data']('Forwarding to http://127.0.0.1:45678\n');
+
+    expect(window.open).toHaveBeenCalledWith('http://127.0.0.1:45678', '_blank');
+  });
 });

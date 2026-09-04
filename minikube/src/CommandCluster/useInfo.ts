@@ -56,8 +56,9 @@ export function useInfo(): DriverInfo | null {
     }
 
     let stdoutData = '';
+    let scriptjs: any = null;
     try {
-      const scriptjs = runner(
+      scriptjs = runner(
         //@ts-ignore
         'scriptjs',
         [`${packagePath}/manage-minikube.js`, '-headless', 'info'],
@@ -98,7 +99,13 @@ export function useInfo(): DriverInfo | null {
     }
 
     return () => {
-      // Cleanup if needed
+      try {
+        if (scriptjs && typeof scriptjs.kill === 'function') {
+          scriptjs.kill();
+        }
+      } catch {
+        // ignore cleanup error
+      }
     };
   }, []);
 
