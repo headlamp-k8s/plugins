@@ -1744,6 +1744,14 @@ export default function AIPrompt(props: {
     }
   }, [apiError, dynamicPrompts]);
 
+  // Set initial prompt when triggered by an external action (e.g. details view header action)
+  useEffect(() => {
+    if (_pluginSetting?.initialPrompt) {
+      setPromptVal(_pluginSetting.initialPrompt);
+      _pluginSetting.setInitialPrompt('');
+    }
+  }, [_pluginSetting?.initialPrompt]);
+
   const disableSettingsButton = useMemo(() => {
     // Compensate the @ symbol not getting encoded in the history's URL
     const currentURL = location.pathname.replace(/@/g, '%40');
