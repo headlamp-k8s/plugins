@@ -17,10 +17,81 @@
 import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Link as MuiLink } from '@mui/material';
+import {
+  DateLabel,
+  SectionHeader,
+  SimpleTable,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Link as MuiLink } from '@mui/material';
 import { ClusterPolicyReport } from '../resources/policyReport';
 import { SummaryChips } from './common';
+import { PolicyReportRow } from './PolicyReportList';
 import { ReportViewer } from './ReportViewer';
+
+// ── Pure component for Storybook (no API calls, accepts props directly) ───
+export function PureClusterPolicyReportTable({
+  items,
+  onNameClick,
+}: {
+  items: PolicyReportRow[];
+  onNameClick?: (item: PolicyReportRow) => void;
+}) {
+  return (
+    <Box>
+      <SectionHeader title="Cluster Policy Reports" />
+      <SimpleTable
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: PolicyReportRow) =>
+              onNameClick ? (
+                <MuiLink
+                  component="button"
+                  onClick={() => onNameClick(row)}
+                  sx={{ textAlign: 'left' }}
+                >
+                  {row.name}
+                </MuiLink>
+              ) : (
+                row.name
+              ),
+          },
+          { label: 'Scope', getter: (row: PolicyReportRow) => row.scope ?? '—' },
+          { label: 'Pass', getter: (row: PolicyReportRow) => row.pass },
+          { label: 'Fail', getter: (row: PolicyReportRow) => row.fail },
+          { label: 'Warn', getter: (row: PolicyReportRow) => row.warn },
+          { label: 'Error', getter: (row: PolicyReportRow) => row.error },
+          { label: 'Skip', getter: (row: PolicyReportRow) => row.skip },
+          {
+            label: 'Summary',
+            getter: (row: PolicyReportRow) => (
+              <SummaryChips
+                summary={{
+                  pass: row.pass,
+                  fail: row.fail,
+                  warn: row.warn,
+                  error: row.error,
+                  skip: row.skip,
+                }}
+              />
+            ),
+          },
+          {
+            label: 'Age',
+            getter: (row: PolicyReportRow) =>
+              row.creationTimestamp ? (
+                <DateLabel date={row.creationTimestamp} format="mini" />
+              ) : (
+                '—'
+              ),
+          },
+        ]}
+        data={items}
+        emptyMessage="No cluster policy reports found"
+      />
+    </Box>
+  );
+}
 
 function openClusterReportActivity(item: ClusterPolicyReport) {
   Activity.launch({

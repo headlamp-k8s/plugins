@@ -17,9 +17,84 @@
 import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Chip, Link as MuiLink } from '@mui/material';
+import {
+  DateLabel,
+  SectionHeader,
+  SimpleTable,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Chip, Link as MuiLink } from '@mui/material';
 import { PolicyException } from '../resources/policyException';
 import { ExceptionViewer } from './ExceptionViewer';
+
+// ── Pure component for Storybook (no API calls, accepts props directly) ───
+export interface PolicyExceptionRow {
+  name: string;
+  namespace?: string;
+  policyNames: string[];
+  exceptionCount: number;
+  background: boolean;
+  creationTimestamp?: string;
+}
+
+export function PurePolicyExceptionTable({
+  items,
+  onNameClick,
+}: {
+  items: PolicyExceptionRow[];
+  onNameClick?: (item: PolicyExceptionRow) => void;
+}) {
+  return (
+    <Box>
+      <SectionHeader title="Policy Exceptions" />
+      <SimpleTable
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: PolicyExceptionRow) =>
+              onNameClick ? (
+                <MuiLink
+                  component="button"
+                  onClick={() => onNameClick(row)}
+                  sx={{ textAlign: 'left' }}
+                >
+                  {row.name}
+                </MuiLink>
+              ) : (
+                row.name
+              ),
+          },
+          { label: 'Namespace', getter: (row: PolicyExceptionRow) => row.namespace ?? '—' },
+          {
+            label: 'Policies',
+            getter: (row: PolicyExceptionRow) => (
+              <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+                {row.policyNames.map(p => (
+                  <Chip key={p} label={p} size="small" variant="outlined" />
+                ))}
+              </span>
+            ),
+          },
+          { label: 'Rules', getter: (row: PolicyExceptionRow) => row.exceptionCount },
+          {
+            label: 'Background',
+            getter: (row: PolicyExceptionRow) => (row.background ? 'True' : 'False'),
+          },
+          {
+            label: 'Age',
+            getter: (row: PolicyExceptionRow) =>
+              row.creationTimestamp ? (
+                <DateLabel date={row.creationTimestamp} format="mini" />
+              ) : (
+                '—'
+              ),
+          },
+        ]}
+        data={items}
+        emptyMessage="No policy exceptions found"
+      />
+    </Box>
+  );
+}
 
 function openExceptionActivity(item: PolicyException) {
   Activity.launch({
