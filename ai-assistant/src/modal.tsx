@@ -1608,11 +1608,24 @@ export default function AIPrompt(props: {
     }
   };
 
+  // Same cluster fallback for reads and confirmed writes (which may omit `cluster`).
+  const resolveTargetCluster = React.useCallback(
+    (targetCluster?: string | null): string | undefined =>
+      targetCluster ||
+      (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : undefined) ||
+      getCluster() ||
+      // Only auto-pick when exactly one cluster is configured; with several, leave
+      // it unset so the caller must choose rather than guessing.
+      (Object.keys(clusters).length === 1 ? Object.keys(clusters)[0] : undefined) ||
+      undefined,
+    [selectedClusters, clusters]
+  );
+
   // Function to handle API confirmation dialog confirmation
   const handleApiConfirmation = async (body, resourceInfo) => {
     if (!kubernetesUI.apiRequest) return;
 
-    const { url, method } = kubernetesUI.apiRequest;
+    const { url, method, cluster } = kubernetesUI.apiRequest;
     kubernetesCallbacks.setApiRequest(null);
 
     await kubernetesCallbacks.handleActualApiRequest(
@@ -1622,7 +1635,7 @@ export default function AIPrompt(props: {
       handleApiDialogClose,
       aiManager,
       resourceInfo,
-      undefined, // targetCluster
+      resolveTargetCluster(cluster),
       handleOperationFailure
     );
   };
@@ -1650,12 +1663,7 @@ export default function AIPrompt(props: {
           resourceInfo,
           targetCluster
         ) => {
-          // If no specific cluster is provided, use the first available cluster
-          const clusterToUse =
-            targetCluster ||
-            (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : null) ||
-            getCluster() ||
-            (Object.keys(clusters).length > 0 ? Object.keys(clusters)[0] : null);
+          const clusterToUse = resolveTargetCluster(targetCluster);
 
           return kubernetesCallbacks.handleActualApiRequest(
             url,
@@ -1672,7 +1680,7 @@ export default function AIPrompt(props: {
       selectedClusters,
       aiManager, // Add the AI manager to the context
     }),
-    [kubernetesUI, kubernetesCallbacks, selectedClusters, aiManager, clusters]
+    [kubernetesUI, kubernetesCallbacks, selectedClusters, aiManager, resolveTargetCluster]
   );
 
   React.useEffect(() => {
@@ -1685,8 +1693,10 @@ export default function AIPrompt(props: {
     const currentClusterGroup = getClusterGroup();
 
     // Fetch warnings on-demand for context generation (one-shot, not continuous)
-    const clusters = clusterNames;
-    fetchClusterWarnings(clusters)
+    const clustersToFetch = clusterNames;
+    // All configured clusters (clusterNames collapses to just the current one).
+    const availableClusters = Object.keys(clusters);
+    fetchClusterWarnings(clustersToFetch)
       .then(warnings => {
         clusterWarningsRef.current = warnings;
 
@@ -1694,7 +1704,8 @@ export default function AIPrompt(props: {
           event,
           currentCluster,
           warnings,
-          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
+          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined,
+          availableClusters
         );
         let fullContext = contextDescription;
         if (currentClusterGroup && currentClusterGroup.length > 1) {
@@ -1709,7 +1720,8 @@ export default function AIPrompt(props: {
           event,
           currentCluster,
           undefined,
-          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
+          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined,
+          availableClusters
         );
         let fullContext = contextDescription;
         if (currentClusterGroup && currentClusterGroup.length > 1) {
@@ -2055,6 +2067,7 @@ export default function AIPrompt(props: {
         method={kubernetesUI.apiRequest?.method || ''}
         url={kubernetesUI.apiRequest?.url || ''}
         body={kubernetesUI.apiRequest?.body}
+        cluster={kubernetesUI.apiRequest?.cluster}
         onConfirm={handleApiConfirmation}
         isLoading={kubernetesUI.apiLoading}
         result={kubernetesUI.apiResponse}
