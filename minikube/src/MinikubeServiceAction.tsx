@@ -17,8 +17,11 @@ function getRunner() {
 
 function openUrl(url: string) {
   try {
-    const win = window.open(url, '_blank');
-    if (!win) {
+    if (typeof window !== 'undefined' && typeof window.open === 'function') {
+      const win = window.open(url, '_blank');
+      if (win) return;
+    }
+    if (typeof document !== 'undefined') {
       const link = document.createElement('a');
       link.href = url;
       link.target = '_blank';
@@ -127,10 +130,13 @@ export function MinikubeServiceAction({ item }: MinikubeServiceActionProps) {
       cmd.on?.('exit', (code: number) => {
         clearTimeout(timer);
         setLoading(false);
-        if (!opened && code !== 0) {
+        if (!opened) {
           setSnackbar({
             open: true,
-            message: `Minikube exited with code ${code}. Make sure Minikube is running.`,
+            message:
+              code !== 0
+                ? `Minikube exited with code ${code}. Make sure Minikube is running.`
+                : `No URL returned by Minikube for service "${name}". Does the service expose a port?`,
             severity: 'error',
           });
         }

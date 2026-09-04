@@ -162,5 +162,7 @@ if (registerClusterStatus) {
   });
 }
 
-registerDetailsViewHeaderAction(MinikubeServiceAction);
+if (registerDetailsViewHeaderAction) {
+  registerDetailsViewHeaderAction(MinikubeServiceAction);
+}
 

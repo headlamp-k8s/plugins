@@ -103,4 +103,38 @@ describe('MinikubeServiceAction Component', () => {
       screen.getByText('Command runner is not available in this environment.')
     ).toBeTruthy();
   });
+
+  it('shows error snackbar when minikube exits without emitting a URL', () => {
+    let exitHandler: Function | undefined;
+    const mockCmd = {
+      stdout: { on: vi.fn() },
+      stderr: { on: vi.fn() },
+      on: vi.fn((event: string, cb: Function) => {
+        if (event === 'exit') exitHandler = cb;
+      }),
+    };
+
+    const mockRunner = vi.fn().mockReturnValue(mockCmd);
+    (window as any).pluginRunCommand = mockRunner;
+
+    const serviceItem = {
+      kind: 'Service',
+      getName: () => 'backend-svc',
+      getNamespace: () => 'default',
+    } as any;
+
+    render(<MinikubeServiceAction item={serviceItem} />);
+
+    const button = screen.getByTestId('action-button');
+    fireEvent.click(button);
+
+    // Simulate process exiting with code 0 without any stdout URL
+    exitHandler?.(0);
+
+    expect(
+      screen.getByText(
+        'No URL returned by Minikube for service "backend-svc". Does the service expose a port?'
+      )
+    ).toBeTruthy();
+  });
 });
