@@ -89,5 +89,22 @@
   "Installed": "Installed",
   "Current Version": "Current Version",
   "Latest Version": "Latest Version",
-  "Version": "Version"
+  "Version": "Version",
+  "Compare Revisions": "Compare Revisions",
+  "View Values": "View Values",
+  "Compare with current": "Compare with current",
+  "Revision {{ version }} Values - {{ releaseName }}": "Revision {{ version }} Values - {{ releaseName }}",
+  "User defined values only": "User defined values only",
+  "Show user defined values only": "Show user defined values only",
+  "Values copied to clipboard": "Values copied to clipboard",
+  "Failed to copy values to clipboard": "Failed to copy values to clipboard",
+  "Copy to clipboard": "Copy to clipboard",
+  "Compare Revisions - {{ releaseName }}": "Compare Revisions - {{ releaseName }}",
+  "Base Revision": "Base Revision",
+  "Compare With": "Compare With",
+  "Swap revisions": "Swap revisions",
+  "Revision {{ version }}": "Revision {{ version }}",
+  "Both panes display the same revision": "Both panes display the same revision",
+  "Left: Revision {{ base }} | Right: Revision {{ target }}": "Left: Revision {{ base }} | Right: Revision {{ target }}",
+  "Actions": "Actions"
 }
