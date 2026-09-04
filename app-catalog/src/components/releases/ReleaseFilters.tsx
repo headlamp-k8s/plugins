@@ -1,23 +1,15 @@
-import { Autocomplete, Box, TextField } from '@mui/material';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { TextField } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 
 /** Props for the filter bar rendered in the releases list header. */
 interface ReleaseFiltersProps {
   nameFilter: string;
-  namespaceFilter: string;
-  /** Namespace strings derived from the currently loaded releases, used to populate the dropdown. */
-  availableNamespaces: string[];
   onNameFilterChange: (value: string) => void;
-  onNamespaceFilterChange: (value: string) => void;
 }
 
-export function ReleaseFilters({
-  nameFilter,
-  namespaceFilter,
-  availableNamespaces,
-  onNameFilterChange,
-  onNamespaceFilterChange,
-}: ReleaseFiltersProps) {
+export function ReleaseFilters({ nameFilter, onNameFilterChange }: ReleaseFiltersProps) {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState(nameFilter);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
@@ -42,29 +34,15 @@ export function ReleaseFilters({
   }, [inputValue, onNameFilterChange]);
 
   return (
-    <Box display="flex" gap={2} alignItems="center">
-      <TextField
-        sx={{
-          width: { xs: '100%', sm: '200px', md: '250px' },
-          margin: { xs: '0.5rem 0', sm: '0 1rem' },
-        }}
-        id="outlined-basic"
-        label="Search"
-        value={inputValue}
-        onChange={event => {
-          setInputValue(event.target.value);
-        }}
-      />
-      <Autocomplete
-        sx={{ width: { xs: '100%', sm: '200px', md: '250px' } }}
-        options={availableNamespaces}
-        getOptionLabel={option => option || 'All'}
-        value={namespaceFilter || null}
-        onChange={(event, newValue) => {
-          onNamespaceFilterChange(newValue || '');
-        }}
-        renderInput={params => <TextField {...params} label="Namespace" size="small" />}
-      />
-    </Box>
+    <TextField
+      sx={{ width: { xs: '100%', sm: '200px', md: '250px' } }}
+      id="outlined-basic"
+      label={t('Search')}
+      size="small"
+      value={inputValue}
+      onChange={event => {
+        setInputValue(event.target.value);
+      }}
+    />
   );
 }
