@@ -9,6 +9,16 @@ const MAX_OUTPUT_LINES = 200;
 
 declare const pluginRunCommand: typeof runCommand;
 declare const pluginPath: string;
+
+function getPluginRunCommand() {
+  if (typeof pluginRunCommand === 'function') {
+    return pluginRunCommand;
+  }
+  if (typeof window !== 'undefined' && typeof (window as any).pluginRunCommand === 'function') {
+    return (window as any).pluginRunCommand;
+  }
+  return null;
+}
 const packagePath =
   typeof pluginPath !== 'undefined'
     ? pluginPath.startsWith('plugins/') || pluginPath.startsWith('plugins\\')
@@ -226,7 +236,12 @@ export default function CommandCluster(props: CommandClusterProps) {
       if (!openDialog) return;
 
       try {
-        const proc = runCommand('minikube', ['version', '--short'], {});
+        const runner = getPluginRunCommand();
+        if (!runner) {
+          setMinikubeAvailable(false);
+          return;
+        }
+        const proc = runner('minikube', ['version', '--short'], {});
         proc.on('exit', code => {
           setMinikubeAvailable(code === 0);
         });
@@ -280,6 +295,13 @@ export default function CommandCluster(props: CommandClusterProps) {
         console.log({ minikubeProfiles, isHyperV, isVfkit, driver, existingProfile });
       }
 
+      const runner = getPluginRunCommand();
+      if (!runner) {
+        console.error('pluginRunCommand is not available.');
+        setActing(false);
+        return;
+      }
+
       if (isHyperV) {
         // If hyperv, we use the scriptjs to run the command because it needs to run with admin rights
         const commandHyperV = `${command}-minikube-hyperv`;
@@ -295,7 +317,7 @@ export default function CommandCluster(props: CommandClusterProps) {
         if (DEBUG) {
           console.log('runFunc 11.1, running commandHyperV:', commandHyperV, args);
         }
-        minikube = pluginRunCommand(
+        minikube = runner(
           // @ts-ignore
           'scriptjs',
           [`${packagePath}/manage-minikube.js`, ...args],
@@ -313,21 +335,21 @@ export default function CommandCluster(props: CommandClusterProps) {
           args.push('--container-runtime=containerd');
           args.push('--memory=3072');
           args.push('--addons=metallb,ingress-dns');
-          minikube = pluginRunCommand(
+          minikube = runner(
             // @ts-ignore
             'scriptjs',
             [`${packagePath}/manage-minikube.js`, ...args],
             {}
           );
         } else {
-          minikube = pluginRunCommand('minikube', args, {});
+          minikube = runner('minikube', args, {});
         }
       } else {
         if (driver) {
           args.push('--driver', driver);
         }
 
-        minikube = pluginRunCommand('minikube', args, {});
+        minikube = runner('minikube', args, {});
       }
       processRef.current = minikube;
 
