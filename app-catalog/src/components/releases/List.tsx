@@ -4,13 +4,14 @@ import {
   DateLabel,
   Link,
   SectionBox,
-  SectionHeader,
+  SectionFilterHeader,
   SimpleTable,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Checkbox } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { fetchLatestAppVersion } from '../../api/charts';
 import {
   deleteRelease,
@@ -101,6 +102,20 @@ function parseReleaseKey(key: string): { namespace: string; name: string } | nul
 }
 
 /**
+ * The globally selected namespaces (empty means all), read from Headlamp's shared
+ * filter store the way its list views do. Uses react-redux directly because the
+ * internal filter module is not exposed to plugins at runtime.
+ *
+ * @returns The selected namespace names, empty when no namespace filter is set.
+ */
+function useSelectedNamespaces(): string[] {
+  const namespaces = useSelector(
+    (state: { filter?: { namespaces?: Set<string> } }) => state.filter?.namespaces
+  );
+  return useMemo(() => (namespaces ? [...namespaces] : []), [namespaces]);
+}
+
+/**
  * @returns formatted version string
  * @param v - version string
  */
@@ -126,7 +141,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
   const [releases, setReleases] = useState<Release[] | null>(null);
   const [latestMap, setLatestMap] = useState<Record<string, string>>({});
   const [nameFilter, setNameFilter] = useState('');
-  const [namespaceFilter, setNamespaceFilter] = useState('');
+  const selectedNamespaces = useSelectedNamespaces();
   const [openDeleteAlert, setOpenDeleteAlert] = useState<boolean>(false);
   const [rollbackPopup, setRollbackPopup] = useState<boolean>(false);
   const [selectedRelease, setSelectedRelease] = useState<Release | null>(null);
@@ -191,18 +206,12 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
     return releases.filter(release => {
       const matchesName =
         !nameFilter || release.name.toLowerCase().includes(nameFilter.toLowerCase());
-      const matchesNamespace = !namespaceFilter || release.namespace === namespaceFilter;
+      const matchesNamespace =
+        selectedNamespaces.length === 0 || selectedNamespaces.includes(release.namespace);
 
       return matchesName && matchesNamespace;
     });
-  }, [releases, nameFilter, namespaceFilter]);
-
-  const availableNamespaces = useMemo(() => {
-    if (!releases) return [];
-
-    const namespaces = new Set(releases.map(r => r.namespace));
-    return Array.from(namespaces).sort();
-  }, [releases]);
+  }, [releases, nameFilter, selectedNamespaces]);
 
   // Count how many of the currently visible (filtered) releases are selected
   const selectedVisibleCount = useMemo(() => {
@@ -583,16 +592,13 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
         onConfirm={handleConfirmRollback}
         onCancel={() => setRollbackPopup(false)}
       />
-      <SectionHeader
+      <SectionFilterHeader
         title={t('Installed')}
         actions={[
           <ReleaseFilters
             key="filters"
             nameFilter={nameFilter}
-            namespaceFilter={namespaceFilter}
-            availableNamespaces={availableNamespaces}
             onNameFilterChange={setNameFilter}
-            onNamespaceFilterChange={setNamespaceFilter}
           />,
         ]}
       />
