@@ -72,3 +72,26 @@ it('forwards typed IconButton props through a custom action slot', () => {
   expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Settings' }).disabled).toBe(true);
   expect(screen.getByRole('button', { name: 'Close' }).getAttribute('data-size')).toBe('small');
 });
+
+it('renders export session action when onExport callback is provided', () => {
+  const onExport = vi.fn();
+  render(
+    <AIAssistantHeader {...defaultHeaderArgs} onExport={onExport} disableExportButton={false} />
+  );
+
+  const exportBtn = screen.getByRole<HTMLButtonElement>('button', { name: 'Export Session' });
+  expect(exportBtn.disabled).toBe(false);
+
+  fireEvent.click(exportBtn);
+  expect(onExport).toHaveBeenCalledOnce();
+});
+
+it('disables export session action when disableExportButton is true', () => {
+  const onExport = vi.fn();
+  render(
+    <AIAssistantHeader {...defaultHeaderArgs} onExport={onExport} disableExportButton={true} />
+  );
+
+  const exportBtn = screen.getByRole<HTMLButtonElement>('button', { name: 'Export Session' });
+  expect(exportBtn.disabled).toBe(true);
+});
