@@ -31,6 +31,11 @@
       "plugin:jsx-a11y/recommended"
     ]
   },
+  "headlamp": {
+    "i18n": [
+      "en"
+    ]
+  },
   "overrides": {
     "typescript": "5.6.2"
   },
