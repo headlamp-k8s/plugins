@@ -85,8 +85,15 @@ export function MetricsView({ rawMetrics, parsedMetrics, error, loading, onCopyR
       <Button variant="outlined" size="small" onClick={onCopyRaw} disabled={!rawMetrics}>
         Copy raw metrics
       </Button>
-      {parsedMetrics.length === 0 ? (
-        <Alert severity="info">The metrics payload was empty or could not be parsed.</Alert>
+      {rawMetrics.trim().length === 0 ? (
+        <Alert severity="info">The metrics endpoint returned no data.</Alert>
+      ) : parsedMetrics.length === 0 ? (
+        <Stack spacing={1}>
+          <Alert severity="warning">The metrics payload could not be parsed as Prometheus metrics.</Alert>
+          <Box component="pre" sx={{ m: 0, whiteSpace: 'pre-wrap', fontSize: 12 }}>
+            {rawMetrics}
+          </Box>
+        </Stack>
       ) : (
         parsedMetrics.map((family) => (
           <Paper key={family.name} variant="outlined" sx={{ p: 2 }}>
@@ -118,4 +125,3 @@ export function MetricsView({ rawMetrics, parsedMetrics, error, loading, onCopyR
     </Stack>
   );
 }
-

@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { Alert, Box, Button, Paper, Stack, Typography } from '@mui/material';
 
 export interface ParsedLogEntry {
   timestamp?: string;
@@ -65,29 +65,27 @@ export function LogsView({ rawLogs, entries, error, loading, onCopyRaw }: LogsVi
       {entries.length === 0 ? (
         <Alert severity="info">The logs payload was empty or could not be parsed.</Alert>
       ) : (
-        <Paper variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Time</TableCell>
-                <TableCell>Level</TableCell>
-                <TableCell>Category</TableCell>
-                <TableCell>Message</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {entries.slice(0, 50).map((entry, index) => (
-                <TableRow key={`${entry.timestamp ?? 'log'}-${index}`}>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{entry.timestamp ?? 'n/a'}</TableCell>
-                  <TableCell>{entry.level ?? 'n/a'}</TableCell>
-                  <TableCell>{entry.category ?? 'n/a'}</TableCell>
-                  <TableCell>
-                    <Box sx={{ whiteSpace: 'pre-wrap' }}>{entry.message ?? entry.exception ?? entry.raw}</Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <Paper variant="outlined" sx={{ p: 2 }}>
+          <Stack spacing={1}>
+            {entries.slice(0, 50).map((entry, index) => (
+              <Box
+                key={`${entry.timestamp ?? 'log'}-${index}`}
+                sx={{
+                  whiteSpace: 'pre-wrap',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  '& + &': {
+                    mt: 1,
+                    pt: 1,
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                  },
+                }}
+              >
+                {entry.message ?? entry.raw}
+              </Box>
+            ))}
+          </Stack>
         </Paper>
       )}
       {rawLogs ? (
@@ -103,4 +101,3 @@ export function LogsView({ rawLogs, entries, error, loading, onCopyRaw }: LogsVi
     </Stack>
   );
 }
-

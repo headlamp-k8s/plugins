@@ -1,4 +1,4 @@
-import { Alert, Box, Chip, FormControl, InputLabel, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { Alert, Box, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from '@mui/material';
 import type { DotnetMonitorProcess } from '../api/dotnetMonitor';
 
 export interface ProcessSelectionValue {
@@ -13,16 +13,6 @@ export interface ProcessSelectorProps {
   onSelect: (process: DotnetMonitorProcess) => void;
   loading?: boolean;
   error?: string | null;
-}
-
-function formatRuntime(process: DotnetMonitorProcess): string {
-  if (process.managedEntryPointAssemblyName) {
-    return process.managedEntryPointAssemblyName;
-  }
-  if (process.operatingSystem || process.processArchitecture) {
-    return [process.operatingSystem, process.processArchitecture].filter(Boolean).join(' ');
-  }
-  return '.NET process';
 }
 
 export function getProcessKey(process: DotnetMonitorProcess): string {
@@ -47,9 +37,6 @@ export function ProcessSelector({ processes, selected, onSelect, loading, error 
   return (
     <Stack spacing={2}>
       <Box>
-        <Typography variant="subtitle2" gutterBottom>
-          Selected process
-        </Typography>
         <FormControl fullWidth size="small">
           <InputLabel id="dotnet-monitor-process-select-label">Process</InputLabel>
           <Select
@@ -72,42 +59,6 @@ export function ProcessSelector({ processes, selected, onSelect, loading, error 
         </FormControl>
       </Box>
 
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>PID</TableCell>
-            <TableCell>Name</TableCell>
-            <TableCell>Runtime</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {processes.map((process) => {
-            const key = getProcessKey(process);
-            const active = key === selectedKey;
-            return (
-              <TableRow
-                key={key}
-                hover
-                selected={active}
-                onClick={() => onSelect(process)}
-                sx={{ cursor: 'pointer' }}
-              >
-                <TableCell>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="body2" fontWeight={active ? 700 : 400}>
-                      {process.pid}
-                    </Typography>
-                    {active ? <Chip size="small" label="Selected" color="primary" /> : null}
-                  </Stack>
-                </TableCell>
-                <TableCell>{process.name ?? 'Unknown'}</TableCell>
-                <TableCell>{formatRuntime(process)}</TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
     </Stack>
   );
 }
-

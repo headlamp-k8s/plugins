@@ -33,6 +33,7 @@ export interface DotnetMonitorRequestOptions {
   apiKey?: string;
   timeoutMs?: number;
   accept?: string;
+  signal?: AbortSignal;
 }
 
 export interface DotnetMonitorDumpOptions {
@@ -159,6 +160,16 @@ async function fetchMonitorResponse(
 
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), options.timeoutMs ?? 120000);
+  const externalSignal = options.signal;
+  const onExternalAbort = () => controller.abort();
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+  }
 
   try {
     const headers = new Headers(init.headers);
@@ -175,6 +186,9 @@ async function fetchMonitorResponse(
       cluster: ctx.clusterName,
     })) as Response;
   } finally {
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onExternalAbort);
+    }
     globalThis.clearTimeout(timeout);
   }
 }

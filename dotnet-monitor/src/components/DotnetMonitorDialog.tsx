@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import {
   Alert,
   Box,
@@ -40,7 +40,7 @@ import {
 import { dumpFileName } from '../api/dotnetMonitor';
 import { DumpActions } from './DumpActions';
 import { MetricsView, parsePrometheusMetrics, type ParsedMetricFamily } from './MetricsView';
-import { ProcessSelector } from './ProcessSelector';
+import { ProcessSelector, getProcessKey } from './ProcessSelector';
 import { isLikelyMonitorProcess, pickBestProcess } from '../detection/processSelection';
 import { TraceActions } from './TraceActions';
 import { ExceptionsView, parseExceptions, type ParsedExceptionItem } from './ExceptionsView';
@@ -54,7 +54,7 @@ export interface DotnetMonitorDialogProps {
   containerName: string;
 }
 
-type TabKey = 'process' | 'dumps' | 'trace' | 'metrics' | 'runtime';
+type TabKey = 'dumps' | 'trace' | 'metrics' | 'stacks' | 'exceptions' | 'logs' | 'info' | 'env';
 type BusyAction =
   | 'loading'
   | 'dump'
@@ -73,6 +73,14 @@ interface DialogError {
   detail: string;
 }
 
+interface PendingCapture {
+  title: string;
+  description: string;
+  fileName: string;
+  confirmLabel: string;
+  run: () => Promise<void>;
+}
+
 function formatError(error: unknown): DialogError {
   const rawDetail = error instanceof Error ? error.message : String(error);
   const proxyHint =
@@ -85,6 +93,19 @@ function formatError(error: unknown): DialogError {
   };
 }
 
+function isAbortError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'AbortError' || error.message.toLowerCase().includes('aborted'))
+  );
+}
+
+function assertNotAborted(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw new DOMException('The operation was cancelled.', 'AbortError');
+  }
+}
+
 function getBusyLabel(busy: BusyAction): string | null {
   switch (busy) {
     case 'loading':
@@ -95,6 +116,18 @@ function getBusyLabel(busy: BusyAction): string | null {
       return 'Generating GC dump and downloading the .gcdump file...';
     case 'trace':
       return 'Recording trace and downloading the .nettrace file...';
+    case 'metrics':
+      return 'Loading metrics...';
+    case 'stacks':
+      return 'Loading stacks...';
+    case 'exceptions':
+      return 'Loading exceptions...';
+    case 'logs':
+      return 'Loading logs...';
+    case 'info':
+      return 'Loading process info...';
+    case 'env':
+      return 'Loading environment...';
     default:
       return null;
   }
@@ -119,15 +152,38 @@ async function fetchProcessDetails(
   return detailed ?? process;
 }
 
+async function discoverProcesses(
+  context: DotnetMonitorPodContext,
+  containerName: string,
+  currentSelectionKey?: string,
+): Promise<{ processes: DotnetMonitorProcess[]; selected: DotnetMonitorProcess | null }> {
+  const discovered = await getProcesses(context, { timeoutMs: 20000 });
+  const detailed = await Promise.all(
+    discovered.map(async (process) => {
+      try {
+        return await fetchProcessDetails(context, process);
+      } catch {
+        return process;
+      }
+    }),
+  );
+  const filtered = detailed.filter((process) => !isLikelyMonitorProcess(process));
+  const selected =
+    (currentSelectionKey
+      ? filtered.find((process) => getProcessKey(process) === currentSelectionKey) ?? null
+      : null) ?? pickBestProcess(filtered, containerName);
+  return { processes: filtered, selected };
+}
+
 export function DotnetMonitorDialog({ open, onClose, context, containerName }: DotnetMonitorDialogProps) {
-  const [tab, setTab] = useState<TabKey>('process');
+  const [tab, setTab] = useState<TabKey>('dumps');
   const [busy, setBusy] = useState<BusyAction>(null);
   const [error, setError] = useState<DialogError | null>(null);
+  const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(null);
   const [processes, setProcesses] = useState<DotnetMonitorProcess[]>([]);
   const [selected, setSelected] = useState<DotnetMonitorProcess | null>(null);
   const [durationSeconds, setDurationSeconds] = useState(30);
   const [profiles, setProfiles] = useState<string[]>(['Cpu', 'Http', 'Metrics']);
-  const [pendingFullDump, setPendingFullDump] = useState(false);
   const [runtimeInfo, setRuntimeInfo] = useState<{ info?: string | null; environment?: string | null }>({});
   const [metrics, setMetrics] = useState<{ raw?: string | null; parsed?: ParsedMetricFamily[] }>({});
   const [runtimeLogs, setRuntimeLogs] = useState<{
@@ -138,6 +194,7 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
     logs?: string | null;
     logEntries?: ParsedLogEntry[];
   }>({});
+  const captureAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -145,8 +202,10 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
     }
 
     let cancelled = false;
+    setTab('dumps');
     setBusy('loading');
     setError(null);
+    setPendingCapture(null);
     setProcesses([]);
     setSelected(null);
     setRuntimeInfo({});
@@ -155,23 +214,12 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
 
     const load = async () => {
       try {
-        const discovered = await getProcesses(context, { timeoutMs: 20000 });
-        const detailed = await Promise.all(
-          discovered.map(async (process) => {
-            try {
-              return await fetchProcessDetails(context, process);
-            } catch {
-              return process;
-            }
-          }),
-        );
+        const { processes: nextProcesses, selected: nextSelected } = await discoverProcesses(context, containerName);
         if (cancelled) {
           return;
         }
-        const filtered = detailed.filter((process) => !isLikelyMonitorProcess(process));
-        const best = pickBestProcess(filtered, containerName);
-        setProcesses(filtered);
-        setSelected(best);
+        setProcesses(nextProcesses);
+        setSelected(nextSelected);
         setBusy(null);
       } catch (caught) {
         if (cancelled) {
@@ -207,10 +255,157 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
     }
   };
 
+  const startCaptureOperation = async (
+    operation: Extract<BusyAction, 'dump' | 'gcdump' | 'trace'>,
+    task: (signal: AbortSignal) => Promise<void>,
+  ) => {
+    const controller = new AbortController();
+    captureAbortRef.current = controller;
+    setBusy(operation);
+    setError(null);
+    try {
+      const cancelPromise = new Promise<never>((_, reject) => {
+        const onAbort = () => reject(new DOMException('The operation was cancelled.', 'AbortError'));
+        if (controller.signal.aborted) {
+          onAbort();
+          return;
+        }
+        controller.signal.addEventListener('abort', onAbort, { once: true });
+      });
+
+      const taskPromise = task(controller.signal).catch((caught) => {
+        if (controller.signal.aborted || isAbortError(caught)) {
+          return;
+        }
+        throw caught;
+      });
+
+      await Promise.race([taskPromise, cancelPromise]);
+    } catch (caught) {
+      if (!controller.signal.aborted && !isAbortError(caught)) {
+        setError(formatError(caught));
+      }
+    } finally {
+      if (captureAbortRef.current === controller) {
+        captureAbortRef.current = null;
+      }
+      setBusy(null);
+    }
+  };
+
   const selectedProcess = selected;
 
   const isBusy = busy !== null;
   const busyLabel = getBusyLabel(busy);
+  const cancelCapture = () => {
+    captureAbortRef.current?.abort();
+  };
+
+  const refreshProcessSelection = async (): Promise<DotnetMonitorProcess | null> => {
+    const currentSelectionKey = selectedProcess ? getProcessKey(selectedProcess) : undefined;
+    const { processes: nextProcesses, selected: nextSelected } = await discoverProcesses(
+      context,
+      containerName,
+      currentSelectionKey,
+    );
+    setProcesses(nextProcesses);
+    setSelected(nextSelected);
+    return nextSelected;
+  };
+
+  const handleMetrics = async () => {
+    await startOperation('metrics', async () => {
+      const raw = await getMetrics(context, { timeoutMs: 20000 });
+      setMetrics({ raw, parsed: parsePrometheusMetrics(raw) });
+      setError(null);
+    });
+  };
+
+  const handleStacks = async () => {
+    if (!selectedProcess) {
+      return;
+    }
+    await startOperation('stacks', async () => {
+      const result = await getStacks(context, {
+        pid: selectedProcess.pid,
+        uid: selectedProcess.uid,
+        name: selectedProcess.name,
+        timeoutMs: 120000,
+      });
+      setRuntimeLogs((current) => ({ ...current, stacks: result, stackThreads: parseStacks(result) }));
+      setError(null);
+    });
+  };
+
+  const handleExceptions = async () => {
+    if (!selectedProcess) {
+      return;
+    }
+    await startOperation('exceptions', async () => {
+      const result = await getExceptions(context, {
+        pid: selectedProcess.pid,
+        uid: selectedProcess.uid,
+        name: selectedProcess.name,
+        timeoutMs: 120000,
+      });
+      setRuntimeLogs((current) => ({ ...current, exceptions: result, exceptionItems: parseExceptions(result) }));
+      setError(null);
+    });
+  };
+
+  const handleLogs = async () => {
+    if (!selectedProcess) {
+      return;
+    }
+    await startOperation('logs', async () => {
+      const result = await getLogs(context, {
+        pid: selectedProcess.pid,
+        uid: selectedProcess.uid,
+        name: selectedProcess.name,
+        level: 'Information',
+        durationSeconds: 15,
+        timeoutMs: 120000,
+      });
+      setRuntimeLogs((current) => ({ ...current, logs: result, logEntries: parseLogs(result) }));
+      setError(null);
+    });
+  };
+
+  const handleInfo = async () => {
+    await startOperation('info', async () => {
+      const info = await getInfo(context, { timeoutMs: 20000 });
+      setRuntimeInfo((current) => ({ ...current, info: JSON.stringify(info, null, 2) }));
+      setError(null);
+    });
+  };
+
+  const handleEnvironment = async () => {
+    if (!selectedProcess) {
+      return;
+    }
+    await startOperation('env', async () => {
+      const env = await getProcessEnvironment(context, selectedProcess.pid, { timeoutMs: 20000 });
+      setRuntimeInfo((current) => ({ ...current, environment: JSON.stringify(env, null, 2) }));
+      setError(null);
+    });
+  };
+
+  const handleTabChange = async (_event: SyntheticEvent, value: TabKey) => {
+    setTab(value);
+    if (value === 'metrics') {
+      void handleMetrics();
+    } else if (value === 'stacks') {
+      void handleStacks();
+    } else if (value === 'exceptions') {
+      void handleExceptions();
+    } else if (value === 'logs') {
+      void handleLogs();
+    } else if (value === 'info') {
+      void handleInfo();
+    } else if (value === 'env') {
+      void handleEnvironment();
+    }
+  };
 
   const closeIfNotBusy = () => {
     if (isBusy) {
@@ -220,128 +415,92 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
   };
 
   const handleDump = async (type: 'Full' | 'WithHeap' | 'Mini') => {
-    if (!selectedProcess) {
+    const freshProcess = await refreshProcessSelection();
+    if (!freshProcess) {
+      setError({ title: 'dotnet-monitor request failed', detail: 'No .NET process is currently available. Refresh the dialog and try again.' });
       return;
     }
-    if (type === 'Full') {
-      setPendingFullDump(true);
-      return;
-    }
-    await startOperation('dump', async () => {
-      const response = await startDump(context, {
-        pid: selectedProcess.pid,
-        uid: selectedProcess.uid,
-        name: selectedProcess.name,
-        type,
-        timeoutMs: type === 'Mini' ? 120000 : 180000,
-      });
-      await downloadResponseAsFile(
-        response,
-        dumpFileName(context.podName, context.containerName, selectedProcess.pid, type),
-      );
-    });
-  };
-
-  const confirmFullDump = async () => {
-    if (!selectedProcess) {
-      return;
-    }
-    setPendingFullDump(false);
-    await startOperation('dump', async () => {
-      const response = await startDump(context, {
-        pid: selectedProcess.pid,
-        uid: selectedProcess.uid,
-        name: selectedProcess.name,
-        type: 'Full',
-        timeoutMs: 300000,
-      });
-      await downloadResponseAsFile(response, dumpFileName(context.podName, context.containerName, selectedProcess.pid, 'Full'));
+    const fileName = dumpFileName(context.podName, context.containerName, freshProcess.pid, type);
+    setPendingCapture({
+      title: `Start ${type === 'Full' ? 'full' : type === 'WithHeap' ? 'heap' : 'mini'} dump?`,
+      description:
+        'The dump will pause the target process while dotnet-monitor captures memory and writes the file back through the pod proxy.',
+      fileName,
+      confirmLabel: `Start ${type === 'Full' ? 'full' : type === 'WithHeap' ? 'heap' : 'mini'} dump`,
+      run: async () => {
+        await startCaptureOperation('dump', async (signal) => {
+          const response = await startDump(context, {
+            pid: freshProcess.pid,
+            uid: freshProcess.uid,
+            name: freshProcess.name,
+            type,
+            timeoutMs: type === 'Mini' ? 120000 : 180000,
+            signal,
+          });
+          assertNotAborted(signal);
+          await downloadResponseAsFile(response, fileName);
+        });
+      },
     });
   };
 
   const handleGcdump = async () => {
-    if (!selectedProcess) {
+    const freshProcess = await refreshProcessSelection();
+    if (!freshProcess) {
+      setError({ title: 'dotnet-monitor request failed', detail: 'No .NET process is currently available. Refresh the dialog and try again.' });
       return;
     }
-    await startOperation('gcdump', async () => {
-      const response = await startGcdump(context, {
-        pid: selectedProcess.pid,
-        uid: selectedProcess.uid,
-        name: selectedProcess.name,
-        timeoutMs: 240000,
-      });
-      await downloadResponseAsFile(response, gcdumpFileName(context.podName, context.containerName, selectedProcess.pid));
+    const fileName = gcdumpFileName(context.podName, context.containerName, freshProcess.pid);
+    setPendingCapture({
+      title: 'Start GC dump?',
+      description:
+        'The GC dump will collect managed heap data from the selected process and save it as a .gcdump file.',
+      fileName,
+      confirmLabel: 'Start GC dump',
+      run: async () => {
+        await startCaptureOperation('gcdump', async (signal) => {
+          const response = await startGcdump(context, {
+            pid: freshProcess.pid,
+            uid: freshProcess.uid,
+            name: freshProcess.name,
+            timeoutMs: 240000,
+            signal,
+          });
+          assertNotAborted(signal);
+          await downloadResponseAsFile(response, fileName);
+        });
+      },
     });
   };
 
   const handleTrace = async () => {
-    if (!selectedProcess) {
+    const freshProcess = await refreshProcessSelection();
+    if (!freshProcess) {
+      setError({ title: 'dotnet-monitor request failed', detail: 'No .NET process is currently available. Refresh the dialog and try again.' });
       return;
     }
-    await startOperation('trace', async () => {
-      const response = await startTrace(context, {
-        pid: selectedProcess.pid,
-        uid: selectedProcess.uid,
-        name: selectedProcess.name,
-        profiles,
-        durationSeconds,
-        timeoutMs: Math.max(300000, (durationSeconds + 120) * 1000),
-      });
-      await downloadResponseAsFile(response, traceFileName(context.podName, context.containerName, selectedProcess.pid));
-    });
-  };
-
-  const handleMetrics = async () => {
-    await startOperation('metrics', async () => {
-      const raw = await getMetrics(context, { timeoutMs: 20000 });
-      setMetrics({ raw, parsed: parsePrometheusMetrics(raw) });
-      setTab('metrics');
-    });
-  };
-
-  const handleRuntimeAction = async (action: 'stacks' | 'exceptions' | 'logs' | 'info' | 'env') => {
-    if (!selectedProcess) {
-      return;
-    }
-    await startOperation(action, async () => {
-      if (action === 'stacks') {
-        const result = await getStacks(context, {
-          pid: selectedProcess.pid,
-          uid: selectedProcess.uid,
-          name: selectedProcess.name,
-          timeoutMs: 120000,
+    const fileName = traceFileName(context.podName, context.containerName, freshProcess.pid);
+    setPendingCapture({
+      title: 'Start trace?',
+      description:
+        'The trace will record runtime events for the selected process and save the result as a .nettrace file.',
+      fileName,
+      confirmLabel: 'Start trace',
+      run: async () => {
+        await startCaptureOperation('trace', async (signal) => {
+          const response = await startTrace(context, {
+            pid: freshProcess.pid,
+            uid: freshProcess.uid,
+            name: freshProcess.name,
+            profiles,
+            durationSeconds,
+            timeoutMs: Math.max(300000, (durationSeconds + 120) * 1000),
+            signal,
+          });
+          assertNotAborted(signal);
+          await downloadResponseAsFile(response, fileName);
         });
-        setRuntimeLogs((current) => ({ ...current, stacks: result, stackThreads: parseStacks(result) }));
-        setTab('runtime');
-      } else if (action === 'exceptions') {
-        const result = await getExceptions(context, {
-          pid: selectedProcess.pid,
-          uid: selectedProcess.uid,
-          name: selectedProcess.name,
-          timeoutMs: 120000,
-        });
-        setRuntimeLogs((current) => ({ ...current, exceptions: result, exceptionItems: parseExceptions(result) }));
-        setTab('runtime');
-      } else if (action === 'logs') {
-        const result = await getLogs(context, {
-          pid: selectedProcess.pid,
-          uid: selectedProcess.uid,
-          name: selectedProcess.name,
-          level: 'Information',
-          durationSeconds: 15,
-          timeoutMs: 120000,
-        });
-        setRuntimeLogs((current) => ({ ...current, logs: result, logEntries: parseLogs(result) }));
-        setTab('runtime');
-      } else if (action === 'info') {
-        const info = await getInfo(context, { timeoutMs: 20000 });
-        setRuntimeInfo((current) => ({ ...current, info: JSON.stringify(info, null, 2) }));
-        setTab('runtime');
-      } else if (action === 'env') {
-        const env = await getProcessEnvironment(context, selectedProcess.pid, { timeoutMs: 20000 });
-        setRuntimeInfo((current) => ({ ...current, environment: JSON.stringify(env, null, 2) }));
-        setTab('runtime');
-      }
+      },
     });
   };
 
@@ -373,46 +532,49 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
               loading={busy === 'loading'}
             />
 
+            {selectedProcess ? null : (
+              <Alert severity="info">Select a process to enable dump, trace, and runtime tabs.</Alert>
+            )}
+
             <Divider />
 
-            <Tabs value={tab} onChange={(_, value) => setTab(value)}>
-              <Tab value="process" label="Process" />
+            <Tabs
+              value={tab}
+              onChange={(_, value) => void handleTabChange(_, value as TabKey)}
+              variant="scrollable"
+              scrollButtons="auto"
+              allowScrollButtonsMobile
+            >
               <Tab value="dumps" label="Dumps" />
               <Tab value="trace" label="Trace" />
               <Tab value="metrics" label="Metrics" />
-              <Tab value="runtime" label="Runtime" />
+              <Tab value="stacks" label="Stacks" disabled={!selectedProcess} />
+              <Tab value="exceptions" label="Exceptions" disabled={!selectedProcess} />
+              <Tab value="logs" label="Logs" disabled={!selectedProcess} />
+              <Tab value="info" label="Info" />
+              <Tab value="env" label="Environment" disabled={!selectedProcess} />
             </Tabs>
 
-            {tab === 'process' ? (
-              <Stack spacing={2}>
-                <Typography variant="subtitle2">Selected process</Typography>
-                <Typography variant="body2">{selected ? getProcessDisplayName(selected) : 'No process selected'}</Typography>
-                {selected?.commandLine ? (
-                  <Box component="pre" sx={{ m: 0, whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                    {selected.commandLine}
-                  </Box>
-                ) : null}
-              </Stack>
+            {tab === 'dumps' ? (
+              <DumpActions
+                selectedProcess={selectedProcess}
+                busy={isBusy}
+                loadingLabel={busyLabel}
+                onCancel={busy === 'dump' || busy === 'gcdump' ? cancelCapture : undefined}
+                onDump={handleDump}
+                onGcdump={handleGcdump}
+              />
             ) : null}
 
-            {tab === 'dumps' ? (
-            <DumpActions
-              selectedProcess={selectedProcess}
-              busy={isBusy}
-              loadingLabel={busyLabel}
-              onDump={handleDump}
-              onGcdump={handleGcdump}
-            />
-          ) : null}
-
             {tab === 'trace' ? (
-            <TraceActions
-              selectedProcess={selectedProcess}
-              busy={isBusy}
-              loadingLabel={busyLabel}
-              durationSeconds={durationSeconds}
-              profiles={profiles}
-              onDurationChange={setDurationSeconds}
+              <TraceActions
+                selectedProcess={selectedProcess}
+                busy={isBusy}
+                loadingLabel={busyLabel}
+                onCancel={busy === 'trace' ? cancelCapture : undefined}
+                durationSeconds={durationSeconds}
+                profiles={profiles}
+                onDurationChange={setDurationSeconds}
                 onProfilesChange={setProfiles}
                 onStartTrace={handleTrace}
               />
@@ -432,81 +594,96 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
               />
             ) : null}
 
-            {tab === 'runtime' ? (
+            {tab === 'stacks' ? (
               <Stack spacing={2}>
-                <Typography variant="body2" color="text.secondary">
-                  Runtime actions below use the selected process. Expensive or sensitive operations should be used
-                  carefully.
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  <Button size="small" variant="outlined" onClick={() => void handleRuntimeAction('stacks')} disabled={!selectedProcess || isBusy}>
-                    Stacks
-                  </Button>
-                  <Button size="small" variant="outlined" onClick={() => void handleRuntimeAction('exceptions')} disabled={!selectedProcess || isBusy}>
-                    Exceptions
-                  </Button>
-                  <Button size="small" variant="outlined" onClick={() => void handleRuntimeAction('logs')} disabled={!selectedProcess || isBusy}>
-                    Logs
-                  </Button>
-                  <Button size="small" variant="outlined" onClick={() => void handleRuntimeAction('info')} disabled={isBusy}>
-                    Process info
-                  </Button>
-                  <Button size="small" variant="outlined" onClick={() => void handleRuntimeAction('env')} disabled={!selectedProcess || isBusy}>
-                    Environment
-                  </Button>
-                </Stack>
-                <Stack spacing={2}>
-                  {runtimeInfo.info ? (
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Stack spacing={1}>
-                        <Typography variant="subtitle2">Monitor information</Typography>
-                        <Box component="pre" sx={{ m: 0, whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                          {runtimeInfo.info}
-                        </Box>
-                      </Stack>
-                    </Paper>
-                  ) : null}
-                  {runtimeInfo.environment ? (
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Stack spacing={1}>
-                        <Typography variant="subtitle2">Environment</Typography>
-                        <Box component="pre" sx={{ m: 0, whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                          {runtimeInfo.environment}
-                        </Box>
-                      </Stack>
-                    </Paper>
-                  ) : null}
-                  {runtimeLogs.stacks ? (
-                    <StacksView
-                      rawStacks={runtimeLogs.stacks}
-                      threads={runtimeLogs.stackThreads ?? []}
-                      loading={false}
-                      onCopyRaw={async () => {
-                        await navigator.clipboard.writeText(runtimeLogs.stacks ?? '');
-                      }}
-                    />
-                  ) : null}
-                  {runtimeLogs.exceptions ? (
-                    <ExceptionsView
-                      rawExceptions={runtimeLogs.exceptions}
-                      items={runtimeLogs.exceptionItems ?? []}
-                      loading={false}
-                      onCopyRaw={async () => {
-                        await navigator.clipboard.writeText(runtimeLogs.exceptions ?? '');
-                      }}
-                    />
-                  ) : null}
-                  {runtimeLogs.logs ? (
-                    <LogsView
-                      rawLogs={runtimeLogs.logs}
-                      entries={runtimeLogs.logEntries ?? []}
-                      loading={false}
-                      onCopyRaw={async () => {
-                        await navigator.clipboard.writeText(runtimeLogs.logs ?? '');
-                      }}
-                    />
-                  ) : null}
-                </Stack>
+                {runtimeLogs.stacks ? (
+                  <StacksView
+                    rawStacks={runtimeLogs.stacks}
+                    threads={runtimeLogs.stackThreads ?? []}
+                    loading={false}
+                    onCopyRaw={async () => {
+                      await navigator.clipboard.writeText(runtimeLogs.stacks ?? '');
+                    }}
+                  />
+                ) : error?.detail && busy !== 'exceptions' ? (
+                  <Alert severity="error">{error.detail}</Alert>
+                ) : (
+                  <Alert severity="info">Stacks will appear here after loading.</Alert>
+                )}
+              </Stack>
+            ) : null}
+
+            {tab === 'exceptions' ? (
+              <Stack spacing={2}>
+                {runtimeLogs.exceptions ? (
+                  <ExceptionsView
+                    rawExceptions={runtimeLogs.exceptions}
+                    items={runtimeLogs.exceptionItems ?? []}
+                    error={error?.detail ?? null}
+                    loading={false}
+                    onCopyRaw={async () => {
+                      await navigator.clipboard.writeText(runtimeLogs.exceptions ?? '');
+                    }}
+                  />
+                ) : error?.detail ? (
+                  <Alert severity="error">{error.detail}</Alert>
+                ) : (
+                  <Alert severity="info">Exceptions will appear here after loading.</Alert>
+                )}
+              </Stack>
+            ) : null}
+
+            {tab === 'logs' ? (
+              <Stack spacing={2}>
+                {runtimeLogs.logs ? (
+                  <LogsView
+                    rawLogs={runtimeLogs.logs}
+                    entries={runtimeLogs.logEntries ?? []}
+                    error={error?.detail ?? null}
+                    loading={false}
+                    onCopyRaw={async () => {
+                      await navigator.clipboard.writeText(runtimeLogs.logs ?? '');
+                    }}
+                  />
+                ) : error?.detail ? (
+                  <Alert severity="error">{error.detail}</Alert>
+                ) : (
+                  <Alert severity="info">Logs will appear here after loading.</Alert>
+                )}
+              </Stack>
+            ) : null}
+
+            {tab === 'info' ? (
+              <Stack spacing={2}>
+                {runtimeInfo.info ? (
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={1}>
+                      <Typography variant="subtitle2">Monitor information</Typography>
+                      <Box component="pre" sx={{ m: 0, whiteSpace: 'pre-wrap', fontSize: 12 }}>
+                        {runtimeInfo.info}
+                      </Box>
+                    </Stack>
+                  </Paper>
+                ) : (
+                  <Alert severity="info">Process information will appear here after loading.</Alert>
+                )}
+              </Stack>
+            ) : null}
+
+            {tab === 'env' ? (
+              <Stack spacing={2}>
+                {runtimeInfo.environment ? (
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={1}>
+                      <Typography variant="subtitle2">Environment</Typography>
+                      <Box component="pre" sx={{ m: 0, whiteSpace: 'pre-wrap', fontSize: 12 }}>
+                        {runtimeInfo.environment}
+                      </Box>
+                    </Stack>
+                  </Paper>
+                ) : (
+                  <Alert severity="info">Environment data will appear here after loading.</Alert>
+                )}
               </Stack>
             ) : null}
           </Stack>
@@ -516,18 +693,31 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
         </DialogActions>
       </Dialog>
 
-      <Dialog open={pendingFullDump} onClose={() => setPendingFullDump(false)}>
-        <DialogTitle>Confirm full dump</DialogTitle>
+      <Dialog open={pendingCapture !== null} onClose={() => setPendingCapture(null)}>
+        <DialogTitle>{pendingCapture?.title ?? 'Confirm action'}</DialogTitle>
         <DialogContent>
-          <Typography variant="body2">
-            Full dumps can be large and resource intensive. They can also contain secrets, tokens, and user data.
-            Continue?
-          </Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2">{pendingCapture?.description ?? ''}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Output file: {pendingCapture?.fileName ?? ''}
+            </Typography>
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPendingFullDump(false)}>Cancel</Button>
-          <Button variant="contained" color="warning" onClick={() => void confirmFullDump()} disabled={!selectedProcess || isBusy}>
-            Start full dump
+          <Button onClick={() => setPendingCapture(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              const action = pendingCapture;
+              setPendingCapture(null);
+              if (action) {
+                void action.run();
+              }
+            }}
+            disabled={!pendingCapture || isBusy}
+          >
+            {pendingCapture?.confirmLabel ?? 'Start'}
           </Button>
         </DialogActions>
       </Dialog>

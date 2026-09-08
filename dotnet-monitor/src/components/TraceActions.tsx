@@ -17,6 +17,7 @@ export interface TraceActionsProps {
   selectedProcess: DotnetMonitorProcess | null;
   busy?: boolean;
   loadingLabel?: string | null;
+  onCancel?: () => void;
   durationSeconds: number;
   profiles: string[];
   onDurationChange: (value: number) => void;
@@ -28,6 +29,7 @@ export function TraceActions({
   selectedProcess,
   busy,
   loadingLabel,
+  onCancel,
   durationSeconds,
   profiles,
   onDurationChange,
@@ -40,9 +42,16 @@ export function TraceActions({
         dotnet-monitor traces are downloaded as `.nettrace` files.
       </Typography>
       {busy && loadingLabel ? (
-        <Stack direction="row" spacing={1} alignItems="center">
-          <CircularProgress size={16} />
-          <Typography variant="body2">{loadingLabel}</Typography>
+        <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" flexWrap="wrap">
+          <Stack direction="row" spacing={1} alignItems="center">
+            <CircularProgress size={16} />
+            <Typography variant="body2">{loadingLabel}</Typography>
+          </Stack>
+          {onCancel ? (
+            <Button size="small" variant="outlined" color="error" onClick={onCancel}>
+              Cancel
+            </Button>
+          ) : null}
         </Stack>
       ) : null}
       <TextField
