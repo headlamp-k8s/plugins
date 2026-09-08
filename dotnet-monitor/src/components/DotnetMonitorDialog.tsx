@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -106,6 +105,10 @@ function assertNotAborted(signal: AbortSignal): void {
   }
 }
 
+function isFeatureDisabledError(detail: string): boolean {
+  return /feature is not enabled/i.test(detail);
+}
+
 function getBusyLabel(busy: BusyAction): string | null {
   switch (busy) {
     case 'loading':
@@ -194,7 +197,8 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
     logs?: string | null;
     logEntries?: ParsedLogEntry[];
   }>({});
-  const captureAbortRef = useRef<AbortController | null>(null);
+  const operationAbortRef = useRef<AbortController | null>(null);
+  const operationIdRef = useRef(0);
 
   useEffect(() => {
     if (!open) {
@@ -243,53 +247,28 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
     setProfiles((current) => (current.length === 0 ? ['Cpu', 'Http', 'Metrics'] : current));
   }, [open, selected]);
 
-  const startOperation = async (operation: BusyAction, task: () => Promise<void>) => {
-    setBusy(operation);
-    setError(null);
-    try {
-      await task();
-    } catch (caught) {
-      setError(formatError(caught));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const startCaptureOperation = async (
-    operation: Extract<BusyAction, 'dump' | 'gcdump' | 'trace'>,
+  const startOperation = async (
+    operation: BusyAction,
     task: (signal: AbortSignal) => Promise<void>,
   ) => {
     const controller = new AbortController();
-    captureAbortRef.current = controller;
+    const operationId = ++operationIdRef.current;
+    operationAbortRef.current = controller;
     setBusy(operation);
     setError(null);
     try {
-      const cancelPromise = new Promise<never>((_, reject) => {
-        const onAbort = () => reject(new DOMException('The operation was cancelled.', 'AbortError'));
-        if (controller.signal.aborted) {
-          onAbort();
-          return;
-        }
-        controller.signal.addEventListener('abort', onAbort, { once: true });
-      });
-
-      const taskPromise = task(controller.signal).catch((caught) => {
-        if (controller.signal.aborted || isAbortError(caught)) {
-          return;
-        }
-        throw caught;
-      });
-
-      await Promise.race([taskPromise, cancelPromise]);
+      await task(controller.signal);
     } catch (caught) {
       if (!controller.signal.aborted && !isAbortError(caught)) {
         setError(formatError(caught));
       }
     } finally {
-      if (captureAbortRef.current === controller) {
-        captureAbortRef.current = null;
+      if (operationAbortRef.current === controller && operationIdRef.current === operationId) {
+        operationAbortRef.current = null;
       }
-      setBusy(null);
+      if (operationIdRef.current === operationId) {
+        setBusy(null);
+      }
     }
   };
 
@@ -297,8 +276,18 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
 
   const isBusy = busy !== null;
   const busyLabel = getBusyLabel(busy);
+  const featureDisabledError = error && isFeatureDisabledError(error.detail) ? error.detail : null;
+  const showTopLevelError =
+    error !== null &&
+    !featureDisabledError &&
+    busy !== 'metrics' &&
+    busy !== 'stacks' &&
+    busy !== 'exceptions' &&
+    busy !== 'logs' &&
+    busy !== 'info' &&
+    busy !== 'env';
   const cancelCapture = () => {
-    captureAbortRef.current?.abort();
+    operationAbortRef.current?.abort();
   };
 
   const refreshProcessSelection = async (): Promise<DotnetMonitorProcess | null> => {
@@ -314,8 +303,11 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
   };
 
   const handleMetrics = async () => {
-    await startOperation('metrics', async () => {
-      const raw = await getMetrics(context, { timeoutMs: 20000 });
+    await startOperation('metrics', async (signal) => {
+      const raw = await getMetrics(context, { timeoutMs: 20000, signal });
+      if (signal.aborted) {
+        return;
+      }
       setMetrics({ raw, parsed: parsePrometheusMetrics(raw) });
       setError(null);
     });
@@ -325,13 +317,17 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
     if (!selectedProcess) {
       return;
     }
-    await startOperation('stacks', async () => {
+    await startOperation('stacks', async (signal) => {
       const result = await getStacks(context, {
         pid: selectedProcess.pid,
         uid: selectedProcess.uid,
         name: selectedProcess.name,
         timeoutMs: 120000,
+        signal,
       });
+      if (signal.aborted) {
+        return;
+      }
       setRuntimeLogs((current) => ({ ...current, stacks: result, stackThreads: parseStacks(result) }));
       setError(null);
     });
@@ -341,13 +337,17 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
     if (!selectedProcess) {
       return;
     }
-    await startOperation('exceptions', async () => {
+    await startOperation('exceptions', async (signal) => {
       const result = await getExceptions(context, {
         pid: selectedProcess.pid,
         uid: selectedProcess.uid,
         name: selectedProcess.name,
         timeoutMs: 120000,
+        signal,
       });
+      if (signal.aborted) {
+        return;
+      }
       setRuntimeLogs((current) => ({ ...current, exceptions: result, exceptionItems: parseExceptions(result) }));
       setError(null);
     });
@@ -357,7 +357,7 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
     if (!selectedProcess) {
       return;
     }
-    await startOperation('logs', async () => {
+    await startOperation('logs', async (signal) => {
       const result = await getLogs(context, {
         pid: selectedProcess.pid,
         uid: selectedProcess.uid,
@@ -365,15 +365,22 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
         level: 'Information',
         durationSeconds: 15,
         timeoutMs: 120000,
+        signal,
       });
+      if (signal.aborted) {
+        return;
+      }
       setRuntimeLogs((current) => ({ ...current, logs: result, logEntries: parseLogs(result) }));
       setError(null);
     });
   };
 
   const handleInfo = async () => {
-    await startOperation('info', async () => {
-      const info = await getInfo(context, { timeoutMs: 20000 });
+    await startOperation('info', async (signal) => {
+      const info = await getInfo(context, { timeoutMs: 20000, signal });
+      if (signal.aborted) {
+        return;
+      }
       setRuntimeInfo((current) => ({ ...current, info: JSON.stringify(info, null, 2) }));
       setError(null);
     });
@@ -383,14 +390,20 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
     if (!selectedProcess) {
       return;
     }
-    await startOperation('env', async () => {
-      const env = await getProcessEnvironment(context, selectedProcess.pid, { timeoutMs: 20000 });
+    await startOperation('env', async (signal) => {
+      const env = await getProcessEnvironment(context, selectedProcess.pid, { timeoutMs: 20000, signal });
+      if (signal.aborted) {
+        return;
+      }
       setRuntimeInfo((current) => ({ ...current, environment: JSON.stringify(env, null, 2) }));
       setError(null);
     });
   };
 
   const handleTabChange = async (_event: SyntheticEvent, value: TabKey) => {
+    if (value !== tab) {
+      operationAbortRef.current?.abort();
+    }
     setTab(value);
     if (value === 'metrics') {
       void handleMetrics();
@@ -428,7 +441,7 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
       fileName,
       confirmLabel: `Start ${type === 'Full' ? 'full' : type === 'WithHeap' ? 'heap' : 'mini'} dump`,
       run: async () => {
-        await startCaptureOperation('dump', async (signal) => {
+        await startOperation('dump', async (signal) => {
           const response = await startDump(context, {
             pid: freshProcess.pid,
             uid: freshProcess.uid,
@@ -437,6 +450,9 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
             timeoutMs: type === 'Mini' ? 120000 : 180000,
             signal,
           });
+          if (signal.aborted) {
+            return;
+          }
           assertNotAborted(signal);
           await downloadResponseAsFile(response, fileName);
         });
@@ -458,7 +474,7 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
       fileName,
       confirmLabel: 'Start GC dump',
       run: async () => {
-        await startCaptureOperation('gcdump', async (signal) => {
+        await startOperation('gcdump', async (signal) => {
           const response = await startGcdump(context, {
             pid: freshProcess.pid,
             uid: freshProcess.uid,
@@ -466,6 +482,9 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
             timeoutMs: 240000,
             signal,
           });
+          if (signal.aborted) {
+            return;
+          }
           assertNotAborted(signal);
           await downloadResponseAsFile(response, fileName);
         });
@@ -487,7 +506,7 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
       fileName,
       confirmLabel: 'Start trace',
       run: async () => {
-        await startCaptureOperation('trace', async (signal) => {
+        await startOperation('trace', async (signal) => {
           const response = await startTrace(context, {
             pid: freshProcess.pid,
             uid: freshProcess.uid,
@@ -497,6 +516,9 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
             timeoutMs: Math.max(300000, (durationSeconds + 120) * 1000),
             signal,
           });
+          if (signal.aborted) {
+            return;
+          }
           assertNotAborted(signal);
           await downloadResponseAsFile(response, fileName);
         });
@@ -512,13 +534,7 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
-            {error ? <Alert severity="error">{error.detail}</Alert> : null}
-            {busyLabel ? (
-              <Stack direction="row" spacing={1} alignItems="center">
-                <CircularProgress size={18} />
-                <Typography variant="body2">{busyLabel}</Typography>
-              </Stack>
-            ) : null}
+            {showTopLevelError ? <Alert severity="error">{error.detail}</Alert> : null}
 
             <Typography variant="body2" color="text.secondary">
               Linux PIDs and runtime IDs change after container restarts. This dialog always refreshes the process
@@ -605,8 +621,8 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
                       await navigator.clipboard.writeText(runtimeLogs.stacks ?? '');
                     }}
                   />
-                ) : error?.detail && busy !== 'exceptions' ? (
-                  <Alert severity="error">{error.detail}</Alert>
+                ) : featureDisabledError ? (
+                  <Alert severity="error">{featureDisabledError}</Alert>
                 ) : (
                   <Alert severity="info">Stacks will appear here after loading.</Alert>
                 )}
@@ -619,14 +635,14 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
                   <ExceptionsView
                     rawExceptions={runtimeLogs.exceptions}
                     items={runtimeLogs.exceptionItems ?? []}
-                    error={error?.detail ?? null}
+                    error={featureDisabledError}
                     loading={false}
                     onCopyRaw={async () => {
                       await navigator.clipboard.writeText(runtimeLogs.exceptions ?? '');
                     }}
                   />
-                ) : error?.detail ? (
-                  <Alert severity="error">{error.detail}</Alert>
+                ) : featureDisabledError ? (
+                  <Alert severity="error">{featureDisabledError}</Alert>
                 ) : (
                   <Alert severity="info">Exceptions will appear here after loading.</Alert>
                 )}
@@ -639,14 +655,14 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
                   <LogsView
                     rawLogs={runtimeLogs.logs}
                     entries={runtimeLogs.logEntries ?? []}
-                    error={error?.detail ?? null}
-                    loading={false}
+                    error={featureDisabledError}
+                    loading={busy === 'logs'}
                     onCopyRaw={async () => {
                       await navigator.clipboard.writeText(runtimeLogs.logs ?? '');
                     }}
                   />
-                ) : error?.detail ? (
-                  <Alert severity="error">{error.detail}</Alert>
+                ) : featureDisabledError ? (
+                  <Alert severity="error">{featureDisabledError}</Alert>
                 ) : (
                   <Alert severity="info">Logs will appear here after loading.</Alert>
                 )}
@@ -655,6 +671,7 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
 
             {tab === 'info' ? (
               <Stack spacing={2}>
+                {error ? <Alert severity="error">{error.detail}</Alert> : null}
                 {runtimeInfo.info ? (
                   <Paper variant="outlined" sx={{ p: 2 }}>
                     <Stack spacing={1}>
@@ -672,6 +689,7 @@ export function DotnetMonitorDialog({ open, onClose, context, containerName }: D
 
             {tab === 'env' ? (
               <Stack spacing={2}>
+                {error ? <Alert severity="error">{error.detail}</Alert> : null}
                 {runtimeInfo.environment ? (
                   <Paper variant="outlined" sx={{ p: 2 }}>
                     <Stack spacing={1}>

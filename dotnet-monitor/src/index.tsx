@@ -1,12 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import {
-  registerAppBarAction,
   registerDetailsViewHeaderActionsProcessor,
   registerPluginSettings,
   type PluginSettingsDetailsProps,
 } from '@kinvolk/headlamp-plugin/lib';
-import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material';
+import { Stack, TextField, Typography } from '@mui/material';
 import { DEFAULT_CONFIG, type DotnetMonitorPluginConfig } from './configDefaults';
 import { DotnetMonitorHeaderAction } from './components/DotnetMonitorHeaderAction';
 import { unwrapPodResource } from './detection/podResource';
@@ -65,35 +63,6 @@ function DotnetMonitorSettings({ data, onDataChange }: PluginSettingsDetailsProp
     </Stack>
   );
 }
-
-function DotnetMonitorAppBarAction() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      <ActionButton description="Headlamp .NET Monitor" icon="mdi:monitor" onClick={() => setOpen(true)} />
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Headlamp .NET Monitor</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2}>
-            <Typography variant="body2">
-              The plugin is loaded and this app-bar action is rendering.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              If you see this button, Headlamp is executing the plugin bundle even if the Pod detail section is not
-              visible yet.
-            </Typography>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-    </>
-  );
-}
-
-registerAppBarAction(DotnetMonitorAppBarAction);
 registerDetailsViewHeaderActionsProcessor((resource, actions) => {
   const pod = unwrapPodResource(resource);
   if (!pod || pod.kind !== 'Pod') {
