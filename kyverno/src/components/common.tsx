@@ -35,6 +35,17 @@ const severityColors: Record<string, 'error' | 'warning' | 'info' | 'default'> =
   info: 'default',
 };
 
+/**
+ * Headlamp's shared Table memoizes header cells by column id alone and body
+ * cells by accessorFn value alone, ignoring the translated header/cell text.
+ * If a column's first render happens to catch t() before its resources are
+ * loaded, the stale (blank) label sticks forever. Folding the live header
+ * text into the id busts that cache as soon as the real translation lands.
+ */
+export function columnId(key: string, header: string): string {
+  return `${key}-${header}`;
+}
+
 export function ResultStatusChip({ status }: { status: PolicyResultStatus }) {
   return <Chip label={status} color={statusColors[status] || 'default'} size="small" />;
 }
