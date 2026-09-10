@@ -19,6 +19,7 @@ import '@headlamp-k8s/ai-ui/icons/iconBundles';
 import { proactiveDiagnosisManager } from '@headlamp-k8s/ai-ui/diagnosis/ProactiveDiagnosisManager';
 import {
   registerAppBarAction,
+  registerDetailsViewHeaderAction,
   registerPluginSettings,
   registerResourceTableColumnsProcessor,
   registerUIPanel,
@@ -29,6 +30,7 @@ import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import React from 'react';
 import HeadlampAIPrompt from './components/appbar/HeadlampAIPrompt';
 import HeadlampEventHandler from './components/appbar/HeadlampEventHandler';
+import { ResourceAIAction } from './components/details/ResourceAIAction';
 import AIPanelComponent from './components/panel/AIPanelComponent';
 import Settings from './components/settings/Settings';
 import type { RawK8sEvent } from './kubernetes/EventFetcher';
@@ -49,6 +51,8 @@ registerUIPanel({
 registerAppBarAction(HeadlampAIPrompt);
 
 registerAppBarAction(HeadlampEventHandler);
+
+registerDetailsViewHeaderAction(ResourceAIAction);
 
 registerPluginSettings(PLUGIN_NAME, Settings);
 
@@ -123,3 +127,4 @@ registerResourceTableColumnsProcessor(function addAIDiagnosisToEvents({ id, colu
 
 // Export the cluster change notifier for external use
 export { useClusterChangeNotifier, ClusterChangeNotifier } from './hooks/useClusterChangeNotifier';
+export { ResourceAIAction } from './components/details/ResourceAIAction';
