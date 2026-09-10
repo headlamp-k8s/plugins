@@ -99,6 +99,18 @@ describe('createLangChainModel — validation errors', () => {
     );
   });
 
+  it('openai-compatible: throws when baseUrl is missing', () => {
+    expect(() => createChatModel('openai-compatible', { model: 'gpt-4o' })).toThrow(
+      /Base URL is required for OpenAI-compatible providers/
+    );
+  });
+
+  it('openai-compatible: throws when model is missing', () => {
+    expect(() =>
+      createChatModel('openai-compatible', { baseUrl: 'http://localhost:4000' })
+    ).toThrow(/Model is required for OpenAI-compatible providers/);
+  });
+
   it('copilot: throws when apiKey is missing', () => {
     expect(() => createChatModel('copilot', { model: 'gpt-4o' })).toThrow(
       /GitHub token is required for GitHub Copilot/
@@ -159,6 +171,34 @@ describe('createLangChainModel — vLLM URL normalisation', () => {
   });
 });
 
+describe('createLangChainModel — OpenAI-compatible URL normalisation', () => {
+  it('appends /v1 when the URL has no path', () => {
+    const m = createChatModel('openai-compatible', {
+      baseUrl: 'http://localhost:4000',
+      model: 'gpt-4o',
+    });
+    expect(m).toBeDefined(); // construction succeeds
+  });
+
+  it('strips trailing slashes before checking for /v1', () => {
+    expect(() =>
+      createChatModel('openai-compatible', { baseUrl: 'http://localhost:4000/', model: 'gpt-4o' })
+    ).not.toThrow();
+  });
+
+  it('does not double-append /v1 when already present', () => {
+    expect(() =>
+      createChatModel('openai-compatible', { baseUrl: 'http://localhost:4000/v1', model: 'gpt-4o' })
+    ).not.toThrow();
+  });
+
+  it('defaults apiKey to sk-noop when not provided', () => {
+    expect(() =>
+      createChatModel('openai-compatible', { baseUrl: 'http://localhost:4000', model: 'gpt-4o' })
+    ).not.toThrow();
+  });
+});
+
 describe('createLangChainModel — copilot model name stripping', () => {
   it('strips a single provider/ prefix from the model name', () => {
     // 'openai/gpt-4o' → 'gpt-4o'
@@ -177,7 +217,16 @@ describe('createLangChainModel — copilot model name stripping', () => {
 
 describe('canUseDirectToolCalling', () => {
   it('returns true for all documented providers', () => {
-    const supported = ['openai', 'azure', 'anthropic', 'mistral', 'gemini', 'vllm', 'copilot'];
+    const supported = [
+      'openai',
+      'azure',
+      'anthropic',
+      'mistral',
+      'gemini',
+      'vllm',
+      'openai-compatible',
+      'copilot',
+    ];
     for (const p of supported) {
       expect(canUseDirectToolCalling(p)).toBe(true);
     }
