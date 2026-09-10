@@ -12,6 +12,7 @@ import { useParams } from 'react-router-dom';
 import YAML from 'yaml';
 import {
   ForceReconciliationAction,
+  ForceSyncAction,
   ResumeAction,
   SuspendAction,
   SyncWithoutSourceAction,
@@ -197,6 +198,7 @@ function CustomResourceDetails(props) {
     const actions = [];
     actions.push(<SyncWithSourceAction resource={cr} />);
     actions.push(<SyncWithoutSourceAction resource={cr} />);
+    actions.push(<ForceSyncAction resource={cr} />);
     actions.push(<SuspendAction resource={cr} />);
     actions.push(<ResumeAction resource={cr} />);
     actions.push(<ForceReconciliationAction resource={cr} />);
