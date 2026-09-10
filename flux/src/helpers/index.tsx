@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   HoverInfoLabel,
   Link,
@@ -63,40 +64,41 @@ export function ObjectEvents(props: {
 
 export function ObjectEventsRenderer(props: { events?: Event[] }) {
   const { events } = props;
+  const { t } = useTranslation();
 
   if (!events) {
     return <></>;
   }
 
   return (
-    <SectionBox title={'Events'}>
+    <SectionBox title={t('Events')}>
       <Table
         // @ts-ignore -- TODO Update the sorting param
         defaultSortingColumn={4}
         columns={[
           {
-            header: 'Type',
+            header: t('Type'),
             gridTemplate: 'min-content',
             accessorFn: item => {
               return item.type;
             },
           },
           {
-            header: 'Reason',
+            header: t('Reason'),
             gridTemplate: 'min-content',
             accessorFn: item => {
               return item.reason;
             },
           },
           {
-            header: 'From',
+            header: t('From'),
             gridTemplate: 'min-content',
             accessorFn: item => {
               return item.source.component;
             },
           },
           {
-            header: 'Message',
+            header: t('Message'),
             accessorFn: item => {
               return (
                 item && (
@@ -109,7 +111,7 @@ export function ObjectEventsRenderer(props: { events?: Event[] }) {
           },
           {
             id: 'age',
-            header: 'Age',
+            header: t('Age'),
             accessorFn: item => {
               if (item.count > 1) {
                 return `${timeAgo(item.lastOccurrence)} (${item.count} times over ${timeAgo(
@@ -178,14 +180,14 @@ export function parseDuration(duration) {
   return totalMilliseconds;
 }
 
-export function NameLink(resourceClass: KubeObjectClass) {
+export function NameLink(resourceClass: KubeObjectClass, t?: (key: string) => string) {
   const apiVersion = new String(resourceClass.apiVersion); // explicit String cast is needed for string methods
   const slashIndex = apiVersion.lastIndexOf('/');
   const groupName = slashIndex > 0 ? apiVersion.substring(0, slashIndex) : apiVersion;
   const pluralName = PluralName(resourceClass.kind);
 
   return {
-    header: 'Name',
+    header: t ? t('Name') : 'Name',
     accessorKey: 'metadata.name',
     Cell: ({ cell, row }) => (
       <Link

@@ -96,7 +96,7 @@ export function FluxSettings() {
 
   return (
     <Box style={{ paddingTop: '8vh' }}>
-      <Typography variant="h6">Map settings</Typography>
+      <Typography variant="h6">{t('Map settings')}</Typography>
       <NameValueTable rows={settingsRows} />
     </Box>
   );
