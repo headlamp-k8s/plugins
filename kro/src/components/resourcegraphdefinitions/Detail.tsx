@@ -5,6 +5,8 @@ import {
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
+// embedded template DAG (native GraphView when available, local fallback otherwise)
+import TemplateGraphSection from '../../map/TemplateGraphSection';
 import ViewInMapLink from '../../map/ViewInMapLink';
 import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition';
 import {
@@ -154,6 +156,11 @@ export default function ResourceGraphDefinitionDetail() {
         rgd
           ? [
               getConditionsSection(rgd),
+              // embedded template DAG (native GraphView when available)
+              {
+                id: 'kro-template-graph',
+                section: <TemplateGraphSection rgd={rgd} />,
+              },
               {
                 id: 'kro-instances',
                 section: <InstancesSection rgd={rgd} />,
