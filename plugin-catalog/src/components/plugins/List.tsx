@@ -9,6 +9,7 @@ import { isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import semver from 'semver';
 import { getExternalProxyEndpoint } from './externalProxy';
+import { fetchAllPages } from './pagination';
 import { PluginCard } from './PluginCard';
 
 const PAGE_SIZE = 60; // Maximum allowed by the API
@@ -21,6 +22,11 @@ type conf = {
 };
 
 const configStore = new ConfigStore<conf>('@headlamp-k8s/plugin-catalog');
+type PluginSearchResult = {
+  packages: PluginPackage[];
+  total?: number;
+};
+
 export interface PluginPackage {
   package_id: string;
   name: string;
@@ -52,7 +58,7 @@ export interface PluginPackage {
   isUpdateAvailable?: boolean;
 }
 
-async function fetchPlugins(offset: number, org?: string) {
+async function fetchPlugins(offset: number, org?: string): Promise<PluginSearchResult> {
   const url = 'https://artifacthub.io/api/v1/packages/search';
 
   const params: Record<string, string> = {
@@ -85,29 +91,19 @@ async function fetchPlugins(offset: number, org?: string) {
 
   if (response.ok) {
     const data = await response.json();
-    return { packages: data.packages, total: data?.metadata?.total ?? 0 };
+    const total = data?.metadata?.total;
+
+    return {
+      packages: data.packages,
+      total: Number.isFinite(total) && total > 0 ? total : undefined,
+    };
   } else {
     throw new Error('Request failed');
   }
 }
 
 async function fetchAllPlugins() {
-  let allPlugins: PluginPackage[] = [];
-  let offset = 0;
-  let total = Infinity;
-
-  while (offset < total) {
-    const { packages, total: newTotal } = await fetchPlugins(offset);
-    allPlugins = [...allPlugins, ...packages];
-    total = newTotal;
-    offset += PAGE_SIZE;
-
-    if (packages.length < PAGE_SIZE) {
-      break;
-    }
-  }
-
-  return allPlugins;
+  return fetchAllPages(fetchPlugins, PAGE_SIZE);
 }
 
 async function fetchOrgPlugins(org: string) {
@@ -163,9 +159,7 @@ async function processPlugins() {
     // Reorder so plugins with logos show first.
     .sort((a, b) => (!!b.logo_image_id ? 1 : 0) - (!!a.logo_image_id ? 1 : 0));
 
-  const totalPages = Math.ceil(pluginsWithInstallStatus.length / PAGE_SIZE);
-
-  return { plugins: pluginsWithInstallStatus, totalPages };
+  return { plugins: pluginsWithInstallStatus };
 }
 
 export interface PurePluginListProps {
@@ -292,7 +286,6 @@ export function PluginList() {
   const [search, setSearch] = useState('');
   const [allPlugins, setAllPlugins] = useState<PluginPackage[] | null>(null);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
   const conf = configStore.useConfig()();
   const [fetchSettings, setFetchSettings] = useState<conf | null>({
     displayOnlyOfficialPlugins: true,
@@ -301,10 +294,8 @@ export function PluginList() {
 
   useEffect(() => {
     const fetchAndProcessPlugins = async () => {
-      const { plugins, totalPages } = await processPlugins();
+      const { plugins } = await processPlugins();
       setAllPlugins(plugins);
-      setTotalPages(totalPages);
-      console.log(plugins, totalPages);
     };
     fetchAndProcessPlugins();
   }, [fetchSettings]);
@@ -342,6 +333,11 @@ export function PluginList() {
     const startIndex = (page - 1) * PAGE_SIZE;
     return filteredPlugins.slice(startIndex, startIndex + PAGE_SIZE);
   }, [filteredPlugins, page]);
+
+  const totalPages = useMemo(() => {
+    if (!filteredPlugins) return 0;
+    return Math.ceil(filteredPlugins.length / PAGE_SIZE);
+  }, [filteredPlugins]);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(event.target.value);
