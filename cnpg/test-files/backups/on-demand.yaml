@@ -1,0 +1,15 @@
+# A backup that should succeed. Apply once `pg-backed` is ready.
+#
+# What it is for: `Cluster.status.lastSuccessfulBackup` is documented upstream as
+# not set for backup plugins, so the plugin derives the last backup time from
+# Backup objects instead. Until a Backup object completes, there is nothing to
+# derive it from and every backup view honestly reports none.
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: pg-backed-manual-1
+  namespace: cnpg-headlamp-test
+spec:
+  method: volumeSnapshot
+  cluster:
+    name: pg-backed

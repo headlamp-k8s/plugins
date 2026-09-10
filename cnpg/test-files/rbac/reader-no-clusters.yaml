@@ -1,0 +1,41 @@
+# Can reach the API and list namespaces, but holds no CloudNativePG permissions
+# at all.
+#
+# Reaches the top-level denials, on the list and on the detail view. The detail
+# view is the one to watch: Headlamp's DetailsGrid surfaces its own errors by
+# default, so the plugin has to intercept the denial to name the missing rule
+# instead of showing a generic failure.
+#
+# The CRD read is granted on purpose. Without it the plugin's installed-check
+# cannot answer, and the test becomes about discovery rather than about the
+# Cluster objects.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cnpg-reader-no-clusters
+  namespace: cnpg-headlamp-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cnpg-reader-no-clusters
+rules:
+  - apiGroups: ['']
+    resources: ['namespaces']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['apiextensions.k8s.io']
+    resources: ['customresourcedefinitions']
+    verbs: ['get', 'list']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cnpg-reader-no-clusters
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cnpg-reader-no-clusters
+subjects:
+  - kind: ServiceAccount
+    name: cnpg-reader-no-clusters
+    namespace: cnpg-headlamp-test
