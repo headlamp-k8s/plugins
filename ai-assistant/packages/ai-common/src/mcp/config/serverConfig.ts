@@ -93,10 +93,12 @@ export function expandEnvAndResolvePaths(
 
     // Handle Docker volume mount format and ensure proper Windows path format
     if (expandedArg.includes('type=bind,src=')) {
-      const match = expandedArg.match(/type=bind,src=(.+?),dst=(.+)/);
-      if (match) {
-        let srcPath = match[1];
-        const dstPath = match[2];
+      const sourceStart = expandedArg.indexOf('type=bind,src=') + 'type=bind,src='.length;
+      const destinationMarker = ',dst=';
+      const destinationStart = expandedArg.indexOf(destinationMarker, sourceStart);
+      if (destinationStart >= 0) {
+        let srcPath = expandedArg.slice(sourceStart, destinationStart);
+        const dstPath = expandedArg.slice(destinationStart + destinationMarker.length);
 
         // Resolve the source path — Node only; in browser this branch is unreachable
         // because effectivePlatform will never be 'win32' in a browser context.

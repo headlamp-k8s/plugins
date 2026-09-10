@@ -140,6 +140,14 @@ describe('modelProviders helpers', () => {
         suggestions: [],
       });
     });
+
+    it('handles a long marker line without backtracking', () => {
+      const padding = ' '.repeat(100_000);
+      expect(parseSuggestionsFromResponse(`Summary\nSUGGESTIONS:${padding}First`)).toEqual({
+        cleanContent: 'Summary',
+        suggestions: ['First'],
+      });
+    });
   });
 
   describe('getModelDisplayName', () => {
