@@ -17,6 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canUseDirectToolCalling,
+  copilotModelRequiresResponsesApi,
   createChatModel,
   DIRECT_TOOL_CALLING_PROVIDERS,
 } from './createChatModel';
@@ -172,6 +173,25 @@ describe('createLangChainModel — copilot model name stripping', () => {
     expect(() =>
       createChatModel('copilot', { apiKey: 'ghp_tok', model: 'org/team/gpt-4o' })
     ).not.toThrow();
+  });
+});
+
+describe('createLangChainModel — Copilot Responses API routing', () => {
+  it('uses the Responses API for GPT-5.6 Sol', () => {
+    const model = createChatModel('copilot', {
+      apiKey: 'ghp_tok',
+      model: 'openai/gpt-5.6-sol',
+    });
+
+    expect(copilotModelRequiresResponsesApi('gpt-5.6-sol')).toBe(true);
+    expect((model as { useResponsesApi?: boolean }).useResponsesApi).toBe(true);
+  });
+
+  it('keeps existing Copilot models on the chat completions endpoint', () => {
+    const model = createChatModel('copilot', { apiKey: 'ghp_tok', model: 'gpt-5.4' });
+
+    expect(copilotModelRequiresResponsesApi('gpt-5.4')).toBe(false);
+    expect((model as { useResponsesApi?: boolean }).useResponsesApi).toBe(false);
   });
 });
 
