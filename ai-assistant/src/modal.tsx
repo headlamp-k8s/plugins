@@ -1612,7 +1612,7 @@ export default function AIPrompt(props: {
   const handleApiConfirmation = async (body, resourceInfo) => {
     if (!kubernetesUI.apiRequest) return;
 
-    const { url, method } = kubernetesUI.apiRequest;
+    const { url, method, cluster } = kubernetesUI.apiRequest;
     kubernetesCallbacks.setApiRequest(null);
 
     await kubernetesCallbacks.handleActualApiRequest(
@@ -1622,7 +1622,7 @@ export default function AIPrompt(props: {
       handleApiDialogClose,
       aiManager,
       resourceInfo,
-      undefined, // targetCluster
+      cluster,
       handleOperationFailure
     );
   };
@@ -1650,12 +1650,13 @@ export default function AIPrompt(props: {
           resourceInfo,
           targetCluster
         ) => {
-          // If no specific cluster is provided, use the first available cluster
+          // If no specific cluster is provided, fall back to the only configured cluster
           const clusterToUse =
             targetCluster ||
             (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : null) ||
             getCluster() ||
-            (Object.keys(clusters).length > 0 ? Object.keys(clusters)[0] : null);
+            // Picking among several could silently answer about the wrong cluster.
+            (Object.keys(clusters).length === 1 ? Object.keys(clusters)[0] : null);
 
           return kubernetesCallbacks.handleActualApiRequest(
             url,
@@ -1694,7 +1695,8 @@ export default function AIPrompt(props: {
           event,
           currentCluster,
           warnings,
-          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
+          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined,
+          clusterNames
         );
         let fullContext = contextDescription;
         if (currentClusterGroup && currentClusterGroup.length > 1) {
@@ -1709,7 +1711,8 @@ export default function AIPrompt(props: {
           event,
           currentCluster,
           undefined,
-          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined
+          selectedClusters && selectedClusters.length > 0 ? selectedClusters : undefined,
+          clusterNames
         );
         let fullContext = contextDescription;
         if (currentClusterGroup && currentClusterGroup.length > 1) {
