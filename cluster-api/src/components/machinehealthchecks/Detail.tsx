@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -22,6 +23,7 @@ interface MachineHealthCheckNode {
  * @param props - Component properties including optional node from a list.
  */
 export function MachineHealthCheckDetail({ node }: { node?: MachineHealthCheckNode }) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -38,7 +40,7 @@ export function MachineHealthCheckDetail({ node }: { node?: MachineHealthCheckNo
     [apiVersion]
   );
 
-  if (!apiVersion) return <Loader title="Detecting MachineHealthCheck version" />;
+  if (!apiVersion) return <Loader title={t('Detecting MachineHealthCheck version')} />;
 
   return (
     <>
@@ -51,11 +53,11 @@ export function MachineHealthCheckDetail({ node }: { node?: MachineHealthCheckNo
         extraInfo={item => {
           return [
             {
-              name: 'Cluster Name',
+              name: t('Cluster Name'),
               value: item.spec?.clusterName,
             },
             {
-              name: 'Node Startup Timeout',
+              name: t('Node Startup Timeout'),
               value: item.spec?.checks?.nodeStartupTimeoutSeconds
                 ? `${item.spec.checks.nodeStartupTimeoutSeconds}s`
                 : item.spec?.nodeStartupTimeout
@@ -63,15 +65,15 @@ export function MachineHealthCheckDetail({ node }: { node?: MachineHealthCheckNo
                 : 'Not set',
             },
             {
-              name: 'Expected Machines',
+              name: t('Expected Machines'),
               value: item.status?.expectedMachines,
             },
             {
-              name: 'Current Healthy',
+              name: t('Current Healthy'),
               value: item.status?.currentHealthy,
             },
             {
-              name: 'Selector',
+              name: t('Selector'),
               value: item.spec?.selector && (
                 <MetadataDictGrid
                   dict={item.spec?.selector.matchLabels as Record<string, string>}
@@ -79,19 +81,19 @@ export function MachineHealthCheckDetail({ node }: { node?: MachineHealthCheckNo
               ),
             },
             {
-              name: 'Targets',
+              name: t('Targets'),
               value: item.status?.targets?.join(', '),
             },
             {
-              name: 'Remediations Allowed',
+              name: t('Remediations Allowed'),
               value: item.status?.remediationsAllowed,
             },
             {
-              name: 'Remediation Template',
+              name: t('Remediation Template'),
               value: item.spec?.remediationTemplate?.metadata?.name,
             },
             {
-              name: 'Observed Generation',
+              name: t('Observed Generation'),
               value:
                 item.status?.observedGeneration !== undefined
                   ? `${item.status.observedGeneration} / ${item.metadata?.generation ?? '-'}`
@@ -107,7 +109,7 @@ export function MachineHealthCheckDetail({ node }: { node?: MachineHealthCheckNo
               section: (
                 <HealthCheckSection
                   machineHealthCheck={item.spec}
-                  title="Health Check Configuration"
+                  title={t('Health Check Configuration')}
                 />
               ),
             },

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -34,13 +35,14 @@ interface ClusterNode {
  * Handles API version detection and data fetching wrappers.
  */
 export function ClusterDetail({ node }: { node: ClusterNode }) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
   }>();
   const crName = nameParam || node?.kubeObject?.metadata?.name;
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
-  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+  if (!crName) return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
 
   return <ClusterDetailContent crName={crName} namespace={namespace} crdName={Cluster.crdName} />;
 }
@@ -73,13 +75,14 @@ interface ClusterDetailWithVersionProps extends ClusterDetailContentProps {
  * @param props - Component properties.
  */
 function ClusterDetailContent(props: ClusterDetailContentProps) {
+  const { t } = useTranslation();
   const { crName, namespace, crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedCluster = useMemo(
     () => (apiVersion ? Cluster.withApiVersion(apiVersion) : Cluster),
     [apiVersion]
   );
-  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  if (!apiVersion) return <Loader title={t('Detecting Cluster API version')} />;
   return (
     <ClusterDetailWithData
       crName={crName}
@@ -97,6 +100,7 @@ function ClusterDetailContent(props: ClusterDetailContentProps) {
  * @param props - Component properties including the versioned class and version.
  */
 function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
+  const { t } = useTranslation();
   const { crName, namespace, VersionedCluster, crdName } = props;
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedCluster.useGet(crName, namespace ?? undefined);
@@ -104,11 +108,14 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading Cluster {crName}: {itemError?.message}
+        {t('Error loading Cluster {{name}}: {{message}}', {
+          name: crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
-  if (!item) return <Loader title="Loading Cluster details" />;
+  if (!item) return <Loader title={t('Loading Cluster details')} />;
 
   const spec = item.spec;
 
@@ -140,7 +147,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
       },
       upToDateReplicas: status.upToDateReplicas,
     };
-    return renderReplicas(replicaLike) ?? '-';
+    return renderReplicas(replicaLike, t) ?? '-';
   };
 
   return (
@@ -155,7 +162,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
 
         return [
           {
-            name: 'Definition',
+            name: t('Definition'),
             value: (
               <Link routeName="crd" params={{ name: crdName }}>
                 {crdName}
@@ -164,7 +171,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
             hide: !crd,
           },
           {
-            name: 'Cluster Class',
+            name: t('Cluster Class'),
             value: clusterClassName ? (
               <Link
                 routeName="clusterclass"
@@ -181,7 +188,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
           },
 
           {
-            name: 'Phase',
+            name: t('Phase'),
             value: (
               <StatusLabel status={getPhaseStatus(item.status?.phase)}>
                 {item.status?.phase}
@@ -191,7 +198,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
             priority: 1,
           },
           {
-            name: 'Control Plane Ready',
+            name: t('Control Plane Ready'),
             value:
               item.status?.controlPlaneReady === undefined ? (
                 '-'
@@ -203,7 +210,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
             hide: item.status?.controlPlaneReady === undefined,
           },
           {
-            name: 'Infrastructure Ready',
+            name: t('Infrastructure Ready'),
             value:
               item.status?.infrastructureReady === undefined ? (
                 '-'
@@ -215,7 +222,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
             hide: item.status?.infrastructureReady === undefined,
           },
           {
-            name: 'Control Plane Initialized',
+            name: t('Control Plane Initialized'),
             value:
               initialization?.controlPlaneInitialized === undefined ? (
                 '-'
@@ -229,7 +236,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
             hide: initialization?.controlPlaneInitialized === undefined,
           },
           {
-            name: 'Infrastructure Provisioned',
+            name: t('Infrastructure Provisioned'),
             value:
               initialization?.infrastructureProvisioned === undefined ? (
                 '-'
@@ -243,7 +250,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
             hide: initialization?.infrastructureProvisioned === undefined,
           },
           {
-            name: 'Paused',
+            name: t('Paused'),
             value: renderConditionStatus(spec?.paused ? 'true' : 'false', undefined, {
               trueLabel: 'true',
               falseLabel: 'false',
@@ -252,41 +259,41 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
             }),
           },
           {
-            name: 'API Server Port',
-            value: spec?.clusterNetwork?.apiServerPort ?? 'default (6443)',
+            name: t('API Server Port'),
+            value: spec?.clusterNetwork?.apiServerPort ?? t('default (6443)'),
           },
           {
-            name: 'Pod CIDR Blocks',
+            name: t('Pod CIDR Blocks'),
             value: podsCidr ?? '-',
           },
           {
-            name: 'Service CIDR Blocks',
+            name: t('Service CIDR Blocks'),
             value: servicesCidr ?? '-',
           },
           {
-            name: 'Service Domain',
-            value: spec?.clusterNetwork?.serviceDomain ?? 'default (cluster.local)',
+            name: t('Service Domain'),
+            value: spec?.clusterNetwork?.serviceDomain ?? t('default (cluster.local)'),
           },
           {
-            name: 'Control Plane Endpoint',
+            name: t('Control Plane Endpoint'),
             value: controlPlaneEndpoint,
           },
           {
-            name: 'Version',
+            name: t('Version'),
             value: spec?.topology?.version ?? '-',
           },
           {
-            name: 'Control Plane Replicas',
+            name: t('Control Plane Replicas'),
             value: renderReplicaValue(controlPlaneStatus),
             hide: !controlPlaneStatus,
           },
           {
-            name: 'Worker Replicas',
+            name: t('Worker Replicas'),
             value: renderReplicaValue(workerStatus),
             hide: !workerStatus,
           },
           {
-            name: 'Observed Generation',
+            name: t('Observed Generation'),
             value:
               observedGeneration !== undefined
                 ? `${observedGeneration} / ${item.metadata?.generation ?? '-'}`
@@ -327,35 +334,35 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
           const topologyVariables = spec.topology?.variables ?? [];
 
           const clusterSpecRows = [
-            { name: 'Pods CIDRs', value: podsCidr ?? '-' },
-            { name: 'Services CIDRs', value: servicesCidr ?? '-' },
+            { name: t('Pods CIDRs'), value: podsCidr ?? '-' },
+            { name: t('Services CIDRs'), value: servicesCidr ?? '-' },
             {
-              name: 'Service Domain',
-              value: spec.clusterNetwork?.serviceDomain ?? 'default (cluster.local)',
+              name: t('Service Domain'),
+              value: spec.clusterNetwork?.serviceDomain ?? t('default (cluster.local)'),
             },
             {
-              name: 'API Server Port',
-              value: spec.clusterNetwork?.apiServerPort ?? 'default (6443)',
+              name: t('API Server Port'),
+              value: spec.clusterNetwork?.apiServerPort ?? t('default (6443)'),
             },
-            { name: 'Control Plane Endpoint', value: controlPlaneEndpoint },
-            { name: 'Control Plane Ref', value: renderReference(spec.controlPlaneRef) },
-            { name: 'Infrastructure Ref', value: renderReference(spec.infrastructureRef) },
-            { name: 'Topology Class', value: topologyClass ?? '-' },
-            { name: 'Topology Version', value: spec.topology?.version ?? '-' },
+            { name: t('Control Plane Endpoint'), value: controlPlaneEndpoint },
+            { name: t('Control Plane Ref'), value: renderReference(spec.controlPlaneRef, t) },
+            { name: t('Infrastructure Ref'), value: renderReference(spec.infrastructureRef, t) },
+            { name: t('Topology Class'), value: topologyClass ?? '-' },
+            { name: t('Topology Version'), value: spec.topology?.version ?? '-' },
             {
-              name: 'Topology Control Plane Replicas',
+              name: t('Topology Control Plane Replicas'),
               value: spec.topology?.controlPlane?.replicas ?? '-',
             },
             {
-              name: 'Topology Machine Deployments',
+              name: t('Topology Machine Deployments'),
               value:
                 machineDeployments.length > 0 ? (
                   <SimpleTable
                     columns={[
-                      { label: 'Name', getter: (row: { name: string }) => row.name },
-                      { label: 'Class', getter: (row: { class: string }) => row.class },
+                      { label: t('Name'), getter: (row: { name: string }) => row.name },
+                      { label: t('Class'), getter: (row: { class: string }) => row.class },
                       {
-                        label: 'Replicas',
+                        label: t('Replicas'),
                         getter: (row: { replicas?: number }) => row.replicas ?? '-',
                       },
                     ]}
@@ -366,15 +373,15 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
                 ),
             },
             {
-              name: 'Topology Machine Pools',
+              name: t('Topology Machine Pools'),
               value:
                 machinePools.length > 0 ? (
                   <SimpleTable
                     columns={[
-                      { label: 'Name', getter: (row: { name: string }) => row.name },
-                      { label: 'Class', getter: (row: { class: string }) => row.class },
+                      { label: t('Name'), getter: (row: { name: string }) => row.name },
+                      { label: t('Class'), getter: (row: { class: string }) => row.class },
                       {
-                        label: 'Replicas',
+                        label: t('Replicas'),
                         getter: (row: { replicas?: number }) => row.replicas ?? '-',
                       },
                     ]}
@@ -385,14 +392,14 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
                 ),
             },
             {
-              name: 'Topology Variables',
+              name: t('Topology Variables'),
               value:
                 topologyVariables.length > 0 ? (
                   <SimpleTable
                     columns={[
-                      { label: 'Name', getter: (row: { name: string }) => row.name },
+                      { label: t('Name'), getter: (row: { name: string }) => row.name },
                       {
-                        label: 'Value',
+                        label: t('Value'),
                         getter: (row: { value: unknown }) =>
                           typeof row.value === 'object' ? (
                             <Typography
@@ -422,7 +429,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
           sections.push({
             id: 'cluster-api.cluster-spec',
             section: (
-              <SectionBox title="Cluster Spec">
+              <SectionBox title={t('Cluster Spec')}>
                 <NameValueTable rows={clusterSpecRows} />
               </SectionBox>
             ),

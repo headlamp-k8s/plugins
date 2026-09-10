@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import { Box } from '@mui/system';
@@ -19,6 +20,7 @@ import { getPhaseStatus } from '../common/util';
  * @param props.node - The map node containing the resource.
  */
 export function ClusterGlance({ node }: { node: GraphNode }) {
+  const { t } = useTranslation();
   if (node.kubeObject?.kind !== Cluster.kind) {
     return null;
   }
@@ -52,28 +54,41 @@ export function ClusterGlance({ node }: { node: GraphNode }) {
 
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="cluster-glance">
-      {clusterClassName && <StatusLabel status="">{`Class: ${clusterClassName}`}</StatusLabel>}
+      {clusterClassName && (
+        <StatusLabel status="">
+          {t('Class: {{className}}', { className: clusterClassName })}
+        </StatusLabel>
+      )}
       {k8sVersion && <StatusLabel status="">{`${k8sVersion}`}</StatusLabel>}
       <StatusLabel status={getPhaseStatus(phase)}>{`${phase}`}</StatusLabel>
-      {providerName && <StatusLabel status="">{`Provider: ${providerName}`}</StatusLabel>}
-      {endpointStr && <StatusLabel status="">{`Endpoint: ${endpointStr}`}</StatusLabel>}
+      {providerName && (
+        <StatusLabel status="">
+          {t('Provider: {{provider}}', { provider: providerName })}
+        </StatusLabel>
+      )}
+      {endpointStr && (
+        <StatusLabel status="">
+          {t('Endpoint: {{endpoint}}', { endpoint: endpointStr })}
+        </StatusLabel>
+      )}
       {infraProvisioned !== undefined && (
         <StatusLabel status={infraProvisioned ? 'success' : 'warning'}>
-          {infraProvisioned ? 'Infra: Provisioned' : 'Infra: Not Provisioned'}
+          {infraProvisioned ? t('Infra: Provisioned') : t('Infra: Not Provisioned')}
         </StatusLabel>
       )}
       {cpInitialized !== undefined && (
         <StatusLabel status={cpInitialized ? 'success' : 'warning'}>
-          {cpInitialized ? 'CP: Initialized' : 'CP: Not Initialized'}
+          {cpInitialized ? t('CP: Initialized') : t('CP: Not Initialized')}
         </StatusLabel>
       )}
       {cpStatus && (
         <StatusLabel
           status={cpStatus.readyReplicas === cpStatus.desiredReplicas ? 'success' : 'warning'}
         >
-          {`CPs: ${cpStatus.readyReplicas ?? 0} / ${
-            cpStatus.desiredReplicas ?? cpStatus.replicas ?? '?'
-          }`}
+          {t('CPs: {{ready}} / {{desired}}', {
+            ready: cpStatus.readyReplicas ?? 0,
+            desired: cpStatus.desiredReplicas ?? cpStatus.replicas ?? '?',
+          })}
         </StatusLabel>
       )}
       {workerStatus && (
@@ -82,17 +97,18 @@ export function ClusterGlance({ node }: { node: GraphNode }) {
             workerStatus.readyReplicas === workerStatus.desiredReplicas ? 'success' : 'warning'
           }
         >
-          {`Workers: ${workerStatus.readyReplicas ?? 0}/${
-            workerStatus.desiredReplicas ?? workerStatus.replicas ?? '?'
-          }`}
+          {t('Workers: {{ready}}/{{desired}}', {
+            ready: workerStatus.readyReplicas ?? 0,
+            desired: workerStatus.desiredReplicas ?? workerStatus.replicas ?? '?',
+          })}
         </StatusLabel>
       )}
       {readyCondition && (
         <StatusLabel status={isReady ? 'success' : 'error'}>
-          {isReady ? 'Ready' : 'Not Ready'}
+          {isReady ? t('Ready') : t('Not Ready')}
         </StatusLabel>
       )}
-      {paused && <StatusLabel status="warning">Paused</StatusLabel>}
+      {paused && <StatusLabel status="warning">{t('Paused')}</StatusLabel>}
     </Box>
   );
 }

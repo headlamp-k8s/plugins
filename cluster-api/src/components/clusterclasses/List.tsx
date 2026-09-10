@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Loader,
   ResourceListView,
@@ -14,26 +15,27 @@ interface ClusterClassesListWithDataProps {
 }
 
 function ClusterClassesListWithData({ ClusterClassType }: ClusterClassesListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Cluster Classes"
+      title={t('Cluster Classes')}
       resourceClass={ClusterClassType}
       columns={[
         'name',
         'namespace',
         {
           id: 'controlplane',
-          label: 'Control Plane',
+          label: t('Control Plane'),
           getValue: (cc: ClusterClass) => (cc.spec?.controlPlane ? 'Defined' : 'Missing'),
           render: (cc: ClusterClass) => (
             <StatusLabel status={cc.spec?.controlPlane ? 'success' : 'warning'}>
-              {cc.spec?.controlPlane ? 'Defined' : 'Missing'}
+              {cc.spec?.controlPlane ? t('Defined') : t('Missing')}
             </StatusLabel>
           ),
         },
         {
           id: 'workers',
-          label: 'Workers',
+          label: t('Workers'),
           getValue: (cc: ClusterClass) => {
             const md = cc.spec?.workers?.machineDeployments?.length ?? 0;
             const mp = cc.spec?.workers?.machinePools?.length ?? 0;
@@ -42,17 +44,17 @@ function ClusterClassesListWithData({ ClusterClassType }: ClusterClassesListWith
         },
         {
           id: 'variables',
-          label: 'Variables',
+          label: t('Variables'),
           getValue: (cc: ClusterClass) => cc.spec?.variables?.length ?? 0,
         },
         {
           id: 'patches',
-          label: 'Patches',
+          label: t('Patches'),
           getValue: (cc: ClusterClass) => cc.spec?.patches?.length ?? 0,
         },
         {
           id: 'variablesReady',
-          label: 'Variables Ready',
+          label: t('Variables Ready'),
           getValue: (cc: ClusterClass) => {
             const cond = getCondition(cc.conditions, 'VariablesReady');
             if (!cond) return 'Unknown';
@@ -60,15 +62,15 @@ function ClusterClassesListWithData({ ClusterClassType }: ClusterClassesListWith
           },
           render: (cc: ClusterClass) =>
             renderConditionStatus(undefined, getCondition(cc.conditions, 'VariablesReady'), {
-              trueLabel: 'Ready',
-              falseLabel: 'Not Ready',
+              trueLabel: t('Ready'),
+              falseLabel: t('Not Ready'),
               trueStatus: 'success',
               falseStatus: 'error',
             }),
         },
         {
           id: 'paused',
-          label: 'Paused',
+          label: t('Paused'),
           getValue: (cc: ClusterClass) => {
             const cond = getCondition(cc.conditions, 'Paused');
             if (!cond) return 'Unknown';
@@ -89,12 +91,13 @@ function ClusterClassesListWithData({ ClusterClassType }: ClusterClassesListWith
 }
 
 export function ClusterClassesList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(ClusterClass.crdName, 'v1beta1');
 
   const VersionedClusterClass = useMemo(
     () => (version ? ClusterClass.withApiVersion(version) : ClusterClass),
     [version]
   );
-  if (!version) return <Loader title="Detecting Cluster API version" />;
+  if (!version) return <Loader title={t('Detecting Cluster API version')} />;
   return <ClusterClassesListWithData ClusterClassType={VersionedClusterClass} />;
 }

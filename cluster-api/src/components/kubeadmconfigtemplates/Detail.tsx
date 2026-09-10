@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DetailsGrid,
   EmptyContent,
@@ -22,6 +23,7 @@ type KubeadmConfigTemplateNode = { kubeObject: KubeadmConfigTemplate };
  * @param props - Component properties including optional node from a list.
  */
 export function KubeadmConfigTemplateDetail({ node }: { node?: KubeadmConfigTemplateNode }) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -30,7 +32,7 @@ export function KubeadmConfigTemplateDetail({ node }: { node?: KubeadmConfigTemp
   const crName = nameParam || node?.kubeObject?.metadata?.name;
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
 
-  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+  if (!crName) return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
 
   return (
     <KubeadmConfigTemplateDetailContent
@@ -61,6 +63,7 @@ interface KCTDetailWithVersionProps extends KCTProps {
 }
 
 function KubeadmConfigTemplateDetailContent(props: KCTProps) {
+  const { t } = useTranslation();
   const { crName, namespace, crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedKCT = useMemo(
@@ -68,7 +71,7 @@ function KubeadmConfigTemplateDetailContent(props: KCTProps) {
     [apiVersion]
   );
 
-  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  if (!apiVersion) return <Loader title={t('Detecting Cluster API version')} />;
 
   return (
     <KubeadmConfigTemplateDetailWithData
@@ -82,6 +85,7 @@ function KubeadmConfigTemplateDetailContent(props: KCTProps) {
 }
 
 function KubeadmConfigTemplateDetailWithData(props: KCTDetailWithVersionProps) {
+  const { t } = useTranslation();
   const { crName, namespace, crdName, VersionedKCT } = props;
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedKCT.useGet(crName, namespace ?? undefined);
@@ -89,11 +93,14 @@ function KubeadmConfigTemplateDetailWithData(props: KCTDetailWithVersionProps) {
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading KubeadmConfigTemplate {crName}: {itemError?.message}
+        {t('Error loading KubeadmConfigTemplate {{name}}: {{message}}', {
+          name: crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
-  if (!item) return <Loader title="Loading KubeadmConfigTemplate details" />;
+  if (!item) return <Loader title={t('Loading KubeadmConfigTemplate details')} />;
 
   const failure = getKCTFailure(item.jsonData);
   const configSpec = item.configSpec;
@@ -101,7 +108,7 @@ function KubeadmConfigTemplateDetailWithData(props: KCTDetailWithVersionProps) {
 
   const extraInfo: NameValueTableRow[] = [
     {
-      name: 'Definition',
+      name: t('Definition'),
       value: (
         <Link routeName="crd" params={{ name: crdName }}>
           {crdName}
@@ -110,11 +117,11 @@ function KubeadmConfigTemplateDetailWithData(props: KCTDetailWithVersionProps) {
       hide: !crd,
     },
     {
-      name: 'Cluster',
+      name: t('Cluster'),
       value: item.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] ?? '-',
     },
     {
-      name: 'Observed Generation',
+      name: t('Observed Generation'),
       value:
         item.observedGeneration !== undefined
           ? `${item.observedGeneration} / ${item.metadata?.generation ?? '-'}`
@@ -124,7 +131,7 @@ function KubeadmConfigTemplateDetailWithData(props: KCTDetailWithVersionProps) {
     ...(templateMeta?.labels && Object.keys(templateMeta.labels).length
       ? [
           {
-            name: 'Template Labels',
+            name: t('Template Labels'),
             value: (
               <Typography component="span">
                 {Object.entries(templateMeta.labels)
@@ -138,7 +145,7 @@ function KubeadmConfigTemplateDetailWithData(props: KCTDetailWithVersionProps) {
     ...(templateMeta?.annotations && Object.keys(templateMeta.annotations).length
       ? [
           {
-            name: 'Template Annotations',
+            name: t('Template Annotations'),
             value: (
               <Typography component="span">
                 {Object.entries(templateMeta.annotations)
@@ -150,29 +157,29 @@ function KubeadmConfigTemplateDetailWithData(props: KCTDetailWithVersionProps) {
         ]
       : []),
     {
-      name: 'Config Format',
+      name: t('Config Format'),
       value: configSpec?.format ?? '-',
       hide: !configSpec?.format,
     },
     {
-      name: 'NTP Servers',
+      name: t('NTP Servers'),
       value: configSpec?.ntp?.servers?.join(', ') ?? '-',
       hide: !configSpec?.ntp?.servers?.length,
     },
     {
-      name: 'Users',
+      name: t('Users'),
       value: configSpec?.users?.map(u => u.name).join(', ') ?? '-',
       hide: !configSpec?.users?.length,
     },
     {
-      name: 'Verbosity',
+      name: t('Verbosity'),
       value: configSpec?.verbosity !== undefined ? String(configSpec.verbosity) : '-',
       hide: configSpec?.verbosity === undefined,
     },
     ...(failure?.failureReason
       ? [
           {
-            name: 'Failure Reason',
+            name: t('Failure Reason'),
             value: <StatusLabel status="error">{failure.failureReason}</StatusLabel>,
           },
         ]
@@ -180,7 +187,7 @@ function KubeadmConfigTemplateDetailWithData(props: KCTDetailWithVersionProps) {
     ...(failure?.failureMessage
       ? [
           {
-            name: 'Failure Message',
+            name: t('Failure Message'),
             value: (
               <Typography component="span" sx={{ color: 'error.main' }}>
                 {failure.failureMessage}

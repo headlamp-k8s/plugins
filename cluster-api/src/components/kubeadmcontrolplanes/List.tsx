@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   Loader,
@@ -26,16 +27,17 @@ interface KubeadmControlPlanesListWithDataProps {
 function KubeadmControlPlanesListWithData({
   KubeadmControlPlaneClass,
 }: KubeadmControlPlanesListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Kubeadm Control Planes"
+      title={t('Kubeadm Control Planes')}
       resourceClass={KubeadmControlPlaneClass}
       columns={[
         'name',
         'namespace',
         {
           id: 'cluster',
-          label: 'Cluster',
+          label: t('Cluster'),
           getValue: kcp => kcp.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] ?? '-',
           render: kcp => {
             const cluster = kcp.metadata?.labels?.['cluster.x-k8s.io/cluster-name'];
@@ -52,7 +54,7 @@ function KubeadmControlPlanesListWithData({
         },
         {
           id: 'initialized',
-          label: 'Initialized',
+          label: t('Initialized'),
           // v1beta1: status.initialized / v1beta2: status.initialization.controlPlaneInitialized
           getValue: kcp => {
             const init = getKCPInitialized(kcp.jsonData);
@@ -63,14 +65,14 @@ function KubeadmControlPlanesListWithData({
             if (init === undefined) return '-';
             return (
               <StatusLabel status={init ? 'success' : 'warning'}>
-                {init ? 'True' : 'False'}
+                {init ? t('True') : t('False')}
               </StatusLabel>
             );
           },
         },
         {
           id: 'ready',
-          label: 'Ready',
+          label: t('Ready'),
           getValue: kcp => {
             const ready = kcp.status?.readyReplicas ?? 0;
             const desired = kcp.spec?.replicas ?? 0;
@@ -89,7 +91,7 @@ function KubeadmControlPlanesListWithData({
         },
         {
           id: 'availableReplicas',
-          label: 'Available',
+          label: t('Available'),
           getValue: kcp => {
             const val = getKCPAvailableReplicas(kcp.jsonData);
             return val !== undefined ? String(val) : '-';
@@ -97,7 +99,7 @@ function KubeadmControlPlanesListWithData({
         },
         {
           id: 'uptodate',
-          label: 'Up-to-date',
+          label: t('Up-to-date'),
           getValue: kcp => {
             const val = getKCPUpToDateReplicas(kcp.jsonData);
             return val !== undefined ? String(val) : '-';
@@ -105,16 +107,18 @@ function KubeadmControlPlanesListWithData({
         },
         {
           id: 'failure',
-          label: 'Failure',
+          label: t('Failure'),
           getValue: kcp => kcp.failure?.failureReason ?? '-',
           render: kcp => {
             if (!kcp.failure) return '-';
-            return <StatusLabel status="error">{kcp.failure.failureReason || 'Error'}</StatusLabel>;
+            return (
+              <StatusLabel status="error">{kcp.failure.failureReason || t('Error')}</StatusLabel>
+            );
           },
         },
         {
           id: 'version',
-          label: 'Version',
+          label: t('Version'),
           getValue: kcp => kcp.spec?.version ?? '-',
         },
         'age',
@@ -128,12 +132,13 @@ function KubeadmControlPlanesListWithData({
  * Detects the CAPI version and renders the list with the correct resource class.
  */
 export function KubeadmControlPlanesList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(KubeadmControlPlane.crdName, 'v1beta1');
   const VersionedKubeadmControlPlane = useMemo(
     () => (version ? KubeadmControlPlane.withApiVersion(version) : KubeadmControlPlane),
     [version]
   );
-  if (!version) return <Loader title="Detecting Cluster API version" />;
+  if (!version) return <Loader title={t('Detecting Cluster API version')} />;
 
   return (
     <KubeadmControlPlanesListWithData KubeadmControlPlaneClass={VersionedKubeadmControlPlane} />

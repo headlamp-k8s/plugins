@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   EmptyContent,
@@ -111,11 +112,12 @@ function CapiConditionsTable({
   rows: CapiConditionRow[];
   resourceLabel: { [key: string]: string };
 }) {
+  const { t } = useTranslation();
   return (
     <SimpleTable
       columns={[
         {
-          label: 'Resource',
+          label: t('Resource'),
           getter: (row: CapiConditionRow) => (
             <Chip
               label={resourceLabel[row.resourceKind] ?? row.resourceKind}
@@ -125,7 +127,7 @@ function CapiConditionsTable({
           ),
         },
         {
-          label: 'Name',
+          label: t('Name'),
           getter: (row: CapiConditionRow) => (
             <Link
               routeName={row.detailRoute}
@@ -136,11 +138,11 @@ function CapiConditionsTable({
           ),
         },
         {
-          label: 'Cluster',
+          label: t('Cluster'),
           getter: (row: CapiConditionRow) => row.clusterName || '-',
         },
         {
-          label: 'Condition',
+          label: t('Condition'),
           getter: (row: CapiConditionRow) => (
             <LightTooltip title={row.type}>
               <Typography variant="body2" noWrap>
@@ -157,7 +159,7 @@ function CapiConditionsTable({
           ),
         },
         {
-          label: 'Severity',
+          label: t('Severity'),
           getter: (row: CapiConditionRow) => (
             <StatusLabel status={getStatusLabelStateForSeverity(row.severity)}>
               {row.severity}
@@ -165,11 +167,11 @@ function CapiConditionsTable({
           ),
         },
         {
-          label: 'Last Transition',
+          label: t('Last Transition'),
           getter: (row: CapiConditionRow) => (row.time ? <DateLabel date={row.time} /> : '-'),
         },
         {
-          label: 'Reason',
+          label: t('Reason'),
           getter: (row: CapiConditionRow) =>
             row.reason ? <HoverInfoLabel label={row.reason} hoverInfo={row.message} /> : '-',
         },
@@ -210,8 +212,9 @@ function ResourceCircleChart({
   notReadyLabel?: string;
   showReadyBar?: boolean;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
-  if (!resourceData) return <Loader title="Loading chart..." />;
+  if (!resourceData) return <Loader title={t('Loading chart...')} />;
 
   const total = resourceData.length;
   const healthy = resourceData.filter(item =>
@@ -329,7 +332,9 @@ function ResourceCircleChart({
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 1.5 }}>
               <Box sx={{ textAlign: 'center' }}>
-                <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>Ready Cond.</Typography>
+                <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+                  {t('Ready Cond.')}
+                </Typography>
                 <Typography
                   sx={{ fontSize: 12, fontWeight: 500, color: theme.palette.success.main }}
                 >
@@ -352,6 +357,7 @@ function ResourceCircleChart({
  * @returns The complete Cluster API dashboard page grid.
  */
 export default function ClusterApiOverview() {
+  const { t } = useTranslation();
   const capiVersion = useCapiApiVersion(Cluster.crdName, 'v1beta1');
 
   const VersionedCluster = useMemo(
@@ -445,12 +451,12 @@ export default function ClusterApiOverview() {
 
   const resourceLabel: { [key: string]: string } = useMemo(
     () => ({
-      [VersionedCluster.className]: 'Clusters',
-      [VersionedMachine.className]: 'Machines',
-      [VersionedMachineDeployment.className]: 'Machine Deployments',
-      [VersionedMachinePool.className]: 'Machine Pools',
-      [VersionedMachineSet.className]: 'Machine Sets',
-      [VersionedKCP.className]: 'Control Planes',
+      [VersionedCluster.className]: t('Clusters'),
+      [VersionedMachine.className]: t('Machines'),
+      [VersionedMachineDeployment.className]: t('Machine Deployments'),
+      [VersionedMachinePool.className]: t('Machine Pools'),
+      [VersionedMachineSet.className]: t('Machine Sets'),
+      [VersionedKCP.className]: t('Control Planes'),
     }),
     [
       VersionedCluster.className,
@@ -459,6 +465,7 @@ export default function ClusterApiOverview() {
       VersionedMachinePool.className,
       VersionedMachineSet.className,
       VersionedKCP.className,
+      t,
     ]
   );
 
@@ -521,12 +528,12 @@ export default function ClusterApiOverview() {
 
   const readyLabelMap: { [key: string]: string } = useMemo(
     () => ({
-      [VersionedCluster.className]: 'Healthy',
-      [VersionedMachine.className]: 'Running',
-      [VersionedMachineDeployment.className]: 'Available',
-      [VersionedMachinePool.className]: 'Available',
-      [VersionedMachineSet.className]: 'Available',
-      [VersionedKCP.className]: 'Available',
+      [VersionedCluster.className]: t('Healthy'),
+      [VersionedMachine.className]: t('Running'),
+      [VersionedMachineDeployment.className]: t('Available'),
+      [VersionedMachinePool.className]: t('Available'),
+      [VersionedMachineSet.className]: t('Available'),
+      [VersionedKCP.className]: t('Available'),
     }),
     [
       VersionedCluster.className,
@@ -535,17 +542,18 @@ export default function ClusterApiOverview() {
       VersionedMachinePool.className,
       VersionedMachineSet.className,
       VersionedKCP.className,
+      t,
     ]
   );
 
   const notReadyLabelMap: { [key: string]: string } = useMemo(
     () => ({
-      [VersionedCluster.className]: 'Unhealthy',
-      [VersionedMachine.className]: 'Not Running',
-      [VersionedMachineDeployment.className]: 'Degraded',
-      [VersionedMachinePool.className]: 'Degraded',
-      [VersionedMachineSet.className]: 'Degraded',
-      [VersionedKCP.className]: 'Degraded',
+      [VersionedCluster.className]: t('Unhealthy'),
+      [VersionedMachine.className]: t('Not Running'),
+      [VersionedMachineDeployment.className]: t('Degraded'),
+      [VersionedMachinePool.className]: t('Degraded'),
+      [VersionedMachineSet.className]: t('Degraded'),
+      [VersionedKCP.className]: t('Degraded'),
     }),
     [
       VersionedCluster.className,
@@ -554,6 +562,7 @@ export default function ClusterApiOverview() {
       VersionedMachinePool.className,
       VersionedMachineSet.className,
       VersionedKCP.className,
+      t,
     ]
   );
 
@@ -682,7 +691,7 @@ export default function ClusterApiOverview() {
     [allErrors, errorResourceFilter, clusterErrorFilter, severityFilter]
   );
 
-  if (capiVersion === null) return <Loader title="Detecting Cluster API version…" />;
+  if (capiVersion === null) return <Loader title={t('Detecting Cluster API version…')} />;
   if (
     clusters === null ||
     machines === null ||
@@ -690,13 +699,13 @@ export default function ClusterApiOverview() {
     machineSets === null ||
     kcps === null
   ) {
-    return <Loader title="Loading Cluster API overview…" />;
+    return <Loader title={t('Loading Cluster API overview…')} />;
   }
   if (clusters.length === 0) {
     return (
       <PageGrid>
-        <SectionBox title="Overview">
-          <EmptyContent>No Cluster API resources found</EmptyContent>
+        <SectionBox title={t('Overview')}>
+          <EmptyContent>{t('No Cluster API resources found')}</EmptyContent>
         </SectionBox>
       </PageGrid>
     );
@@ -715,7 +724,7 @@ export default function ClusterApiOverview() {
 
   return (
     <PageGrid>
-      <SectionBox py={2} mt={1} title="Overview">
+      <SectionBox py={2} mt={1} title={t('Overview')}>
         <Grid container justifyContent="flex-start" alignItems="flex-start" spacing={2}>
           {resources.map(resource => (
             <Grid item lg={3} md={4} xs={6} key={resource.className} style={{ minWidth: 0 }}>
@@ -762,7 +771,7 @@ export default function ClusterApiOverview() {
                   {uniqueProviders.length}
                 </Typography>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Unique Providers
+                  {t('Unique Providers')}
                 </Typography>
                 {uniqueProviders.length > 0 && (
                   <Box
@@ -795,7 +804,7 @@ export default function ClusterApiOverview() {
                   {totalTemplates}
                 </Typography>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Configuration Templates
+                  {t('Configuration Templates')}
                 </Typography>
                 {totalTemplates > 0 && (
                   <Box
@@ -808,10 +817,10 @@ export default function ClusterApiOverview() {
                     }}
                   >
                     <Typography variant="caption" color="text.secondary">
-                      <b>Control Plane:</b> {kcpTemplates?.length ?? 0}
+                      <b>{t('Control Plane:')}</b> {kcpTemplates?.length ?? 0}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      <b>Worker:</b> {kcTemplates?.length ?? 0}
+                      <b>{t('Worker:')}</b> {kcTemplates?.length ?? 0}
                     </Typography>
                   </Box>
                 )}
@@ -834,7 +843,7 @@ export default function ClusterApiOverview() {
                   {allErrors.length}
                 </Typography>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Active Condition Issues
+                  {t('Active Condition Issues')}
                 </Typography>
                 <Typography
                   variant="caption"
@@ -842,7 +851,7 @@ export default function ClusterApiOverview() {
                   display="block"
                   sx={{ mt: 0.5 }}
                 >
-                  False or Unknown conditions across all resources
+                  {t('False or Unknown conditions across all resources')}
                 </Typography>
               </Paper>
             </Grid>
@@ -860,7 +869,7 @@ export default function ClusterApiOverview() {
         resourcesData={resourcesData}
       />
 
-      <SectionBox title="Conditions">
+      <SectionBox title={t('Conditions')}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
           <Select
             size="small"
@@ -880,7 +889,7 @@ export default function ClusterApiOverview() {
             onChange={e => setErrorResourceFilter(e.target.value)}
             sx={{ minWidth: 220 }}
           >
-            <MenuItem value="All">All Resources</MenuItem>
+            <MenuItem value="All">{t('All Resources')}</MenuItem>
             {resources.map(resource => (
               <MenuItem key={resource.className} value={resource.className}>
                 {resourceLabel[resource.className]}
@@ -893,23 +902,26 @@ export default function ClusterApiOverview() {
             onChange={e => setSeverityFilter(e.target.value as 'All' | ErrorSeverity)}
             sx={{ minWidth: 160 }}
           >
-            <MenuItem value="All">All Severities</MenuItem>
-            <MenuItem value="critical">Critical</MenuItem>
-            <MenuItem value="warning">Warning</MenuItem>
-            <MenuItem value="info">Info</MenuItem>
+            <MenuItem value="All">{t('All Severities')}</MenuItem>
+            <MenuItem value="critical">{t('Critical')}</MenuItem>
+            <MenuItem value="warning">{t('Warning')}</MenuItem>
+            <MenuItem value="info">{t('Info')}</MenuItem>
           </Select>
         </Box>
         <CapiConditionsTable rows={filteredErrors} resourceLabel={resourceLabel} />
       </SectionBox>
 
       <ResourceListView
-        title="Events"
+        title={t('Events')}
         data={capiEvents}
         headerProps={{
           noNamespaceFilter: true,
           titleSideActions: [
             <FormControlLabel
-              label={`Only warnings (${capiWarningsCount} / ${totalCapiEventsCount})`}
+              label={t('Only warnings ({{warnings}} / {{total}})', {
+                warnings: capiWarningsCount,
+                total: totalCapiEventsCount,
+              })}
               control={
                 <Switch
                   color="primary"
@@ -923,13 +935,13 @@ export default function ClusterApiOverview() {
         }}
         columns={[
           {
-            label: 'Type',
+            label: t('Type'),
             gridTemplate: 'min-content',
             filterVariant: 'multi-select',
             getValue: (event: any) => event.involvedObject.kind,
           },
           {
-            label: 'Name',
+            label: t('Name'),
             getValue: (event: any) =>
               event.involvedObjectInstance?.getName() ?? event.involvedObject.name,
             render: (event: any) => makeObjectLink(event),
@@ -938,7 +950,7 @@ export default function ClusterApiOverview() {
           'namespace',
           'cluster',
           {
-            label: 'Reason',
+            label: t('Reason'),
             gridTemplate: 'min-content',
             filterVariant: 'multi-select',
             getValue: (event: any) => event.reason,
@@ -949,7 +961,7 @@ export default function ClusterApiOverview() {
             ),
           },
           {
-            label: 'Message',
+            label: t('Message'),
             getValue: (event: any) => event.message ?? '',
             render: (event: any) => (
               <ShowHideLabel labelId={event.metadata?.uid || ''}>
@@ -960,7 +972,7 @@ export default function ClusterApiOverview() {
           },
           {
             id: 'count',
-            label: 'Count',
+            label: t('Count'),
             gridTemplate: 'min-content',
             cellProps: { align: 'right' },
             getValue: (event: any) => event.count ?? null,
@@ -968,7 +980,7 @@ export default function ClusterApiOverview() {
           },
           {
             id: 'last-seen',
-            label: 'Last Seen',
+            label: t('Last Seen'),
             gridTemplate: 'min-content',
             cellProps: { align: 'right' },
             getValue: (event: any) => -new Date(event.lastOccurrence).getTime(),

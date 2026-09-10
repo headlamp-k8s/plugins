@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -82,9 +83,13 @@ const poolBadge = (
  * @param ref - The template reference object.
  * @returns A NameValueTableRow object.
  */
-const templateRow = (name: string, ref?: LocalObjectTemplate): NameValueTableRow => ({
+const templateRow = (
+  name: string,
+  ref: LocalObjectTemplate | undefined,
+  t: (key: string) => string
+): NameValueTableRow => ({
   name,
-  value: renderReference(ref),
+  value: renderReference(ref, t),
   hide: !ref,
 });
 
@@ -114,6 +119,7 @@ interface UsedClustersSectionProps {
  * @returns SectionBox with clusters using the ClusterClass
  */
 function UsedClustersSection({ clusterClassName, namespace }: UsedClustersSectionProps) {
+  const { t } = useTranslation();
   const [clusters, error] = Cluster.useList({ namespace });
 
   const usedBy = useMemo(() => {
@@ -126,24 +132,24 @@ function UsedClustersSection({ clusterClassName, namespace }: UsedClustersSectio
   }, [clusters, clusterClassName]);
 
   if (error) return null;
-  if (!clusters) return <Loader title="Checking for clusters..." />;
+  if (!clusters) return <Loader title={t('Checking for clusters...')} />;
   if (usedBy.length === 0) return null;
 
   return (
-    <SectionBox title="Clusters">
+    <SectionBox title={t('Clusters')}>
       <SimpleTable
         data={usedBy}
         columns={[
           {
-            label: 'Name',
+            label: t('Name'),
             getter: (c: Cluster) => <Link kubeObject={c}>{c.metadata.name}</Link>,
           },
           {
-            label: 'Namespace',
+            label: t('Namespace'),
             getter: (c: Cluster) => c.metadata.namespace,
           },
           {
-            label: 'Phase',
+            label: t('Phase'),
             getter: (c: Cluster) => (
               <StatusLabel status={getPhaseStatus(c.status?.phase)}>
                 {c.status?.phase || 'Unknown'}
@@ -182,6 +188,7 @@ interface WorkerSectionProps {
  * @returns SectionBox with worker topology
  */
 function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSectionProps) {
+  const { t } = useTranslation();
   if (machineDeployments.length === 0 && machinePools.length === 0) return null;
 
   const dividerStyle: React.CSSProperties = {
@@ -213,9 +220,9 @@ function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSecti
     const hasHealthCheck = !!(healthCheckV2 || healthCheckV1);
 
     const infoRows: NameValueTableRow[] = [
-      templateRow('Bootstrap Template', bootstrap),
-      templateRow('Infrastructure Template', infrastructure),
-      { name: 'Health Check', value: <HealthCheckBadge present={hasHealthCheck} /> },
+      templateRow(t('Bootstrap Template'), bootstrap, t),
+      templateRow(t('Infrastructure Template'), infrastructure, t),
+      { name: t('Health Check'), value: <HealthCheckBadge present={hasHealthCheck} /> },
     ];
 
     return (
@@ -240,7 +247,7 @@ function WorkerTopologySection({ machineDeployments, machinePools }: WorkerSecti
   }
 
   return (
-    <SectionBox title="Worker Topology">
+    <SectionBox title={t('Worker Topology')}>
       {machineDeployments.map((row, i) => renderWorker(row, deploymentBadge, i))}
       {machinePools.map((row, i) => renderWorker(row, poolBadge, machineDeployments.length + i))}
     </SectionBox>
@@ -265,6 +272,7 @@ type ClusterClassNode = {
  * @returns ClusterClassDetailContent or error/empty state
  */
 export function ClusterClassDetail({ node }: { node?: ClusterClassNode }) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -273,7 +281,7 @@ export function ClusterClassDetail({ node }: { node?: ClusterClassNode }) {
   const crName = nameParam || node?.kubeObject?.metadata?.name;
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
 
-  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+  if (!crName) return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
 
   return (
     <ClusterClassDetailContent
@@ -323,6 +331,7 @@ interface ClusterClassDetailContentWithVersionProps extends ClusterClassDetailCo
  * @returns ClusterClassDetailWithData or Loader
  */
 function ClusterClassDetailContent(props: ClusterClassDetailContentProps) {
+  const { t } = useTranslation();
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedClusterClass = useMemo(
@@ -330,7 +339,7 @@ function ClusterClassDetailContent(props: ClusterClassDetailContentProps) {
     [apiVersion]
   );
 
-  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  if (!apiVersion) return <Loader title={t('Detecting Cluster API version')} />;
 
   return (
     <ClusterClassDetailWithData
@@ -358,17 +367,21 @@ function ClusterClassDetailWithData({
   apiVersion,
   crdName,
 }: ClusterClassDetailContentWithVersionProps) {
+  const { t } = useTranslation();
   const [crd, crdError] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedClusterClass.useGet(crName, namespace);
 
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading ClusterClass {crName}: {itemError?.message}
+        {t('Error loading ClusterClass {{name}}: {{message}}', {
+          name: crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
-  if (!item) return <Loader title="Loading ClusterClass details" />;
+  if (!item) return <Loader title={t('Loading ClusterClass details')} />;
 
   const spec = item.spec;
   const patches = spec?.patches ?? [];
@@ -395,27 +408,30 @@ function ClusterClassDetailWithData({
   const extraInfo = () => {
     const info: NameValueTableRow[] = [
       {
-        name: 'Variables',
-        value: specVariables.length > 0 ? `${specVariables.length} defined` : '—',
+        name: t('Variables'),
+        value:
+          specVariables.length > 0 ? t('{{count}} defined', { count: specVariables.length }) : '—',
       },
       {
-        name: 'Patches',
-        value: patches.length > 0 ? `${patches.length} defined` : '—',
+        name: t('Patches'),
+        value: patches.length > 0 ? t('{{count}} defined', { count: patches.length }) : '—',
       },
       {
-        name: 'Machine Deployments',
+        name: t('Machine Deployments'),
         value:
           workerMachineDeployments.length > 0
-            ? `${workerMachineDeployments.length} class${
-                workerMachineDeployments.length > 1 ? 'es' : ''
-              }`
+            ? workerMachineDeployments.length > 1
+              ? t('{{count}} classes', { count: workerMachineDeployments.length })
+              : t('{{count}} class', { count: workerMachineDeployments.length })
             : '—',
       },
       {
-        name: 'Machine Pools',
+        name: t('Machine Pools'),
         value:
           workerMachinePools.length > 0
-            ? `${workerMachinePools.length} class${workerMachinePools.length > 1 ? 'es' : ''}`
+            ? workerMachinePools.length > 1
+              ? t('{{count}} classes', { count: workerMachinePools.length })
+              : t('{{count}} class', { count: workerMachinePools.length })
             : '—',
         hide: workerMachinePools.length === 0,
       },
@@ -423,7 +439,7 @@ function ClusterClassDetailWithData({
 
     if (crd) {
       info.unshift({
-        name: 'Definition',
+        name: t('Definition'),
         value: (
           <Link routeName="crd" params={{ name: crdName }}>
             {crdName}
@@ -435,8 +451,8 @@ function ClusterClassDetailWithData({
       );
     } else if (crdError) {
       info.push({
-        name: 'Additional info',
-        value: 'Some extra details could not be loaded.',
+        name: t('Additional info'),
+        value: t('Some extra details could not be loaded.'),
       });
     }
 
@@ -475,26 +491,30 @@ function ClusterClassDetailWithData({
           {
             id: 'cluster-api.cluster-class-overview',
             section: (
-              <SectionBox title="Overview">
+              <SectionBox title={t('Overview')}>
                 <NameValueTable
                   rows={[
-                    templateRow('Infrastructure Template', infrastructureRef),
-                    templateRow('Control Plane Template', controlPlaneRef),
-                    templateRow('Control Plane Machine Infra', controlPlaneMachineInfraRef),
+                    templateRow(t('Infrastructure Template'), infrastructureRef, t),
+                    templateRow(t('Control Plane Template'), controlPlaneRef, t),
+                    templateRow(t('Control Plane Machine Infra'), controlPlaneMachineInfraRef, t),
                     {
-                      name: 'Availability Gates',
+                      name: t('Availability Gates'),
                       value: availabilityGates.length
                         ? availabilityGates.map(g => g.conditionType).join(', ')
                         : '—',
                       hide: availabilityGates.length === 0,
                     },
                     {
-                      name: 'Variables',
-                      value: specVariables.length ? `${specVariables.length} defined` : '—',
+                      name: t('Variables'),
+                      value: specVariables.length
+                        ? t('{{count}} defined', { count: specVariables.length })
+                        : '—',
                     },
                     {
-                      name: 'Patches',
-                      value: patches.length ? `${patches.length} defined` : '—',
+                      name: t('Patches'),
+                      value: patches.length
+                        ? t('{{count}} defined', { count: patches.length })
+                        : '—',
                     },
                   ]}
                 />
@@ -507,13 +527,13 @@ function ClusterClassDetailWithData({
                 {
                   id: 'cluster-api.cluster-class-control-plane',
                   section: (
-                    <SectionBox title="Control Plane">
+                    <SectionBox title={t('Control Plane')}>
                       <NameValueTable
                         rows={[
-                          templateRow('Template', controlPlaneRef),
-                          templateRow('Machine Infrastructure', controlPlaneMachineInfraRef),
+                          templateRow(t('Template'), controlPlaneRef, t),
+                          templateRow(t('Machine Infrastructure'), controlPlaneMachineInfraRef, t),
                           {
-                            name: 'Health Check',
+                            name: t('Health Check'),
                             value: <HealthCheckBadge present={hasControlPlaneHealthCheck} />,
                           },
                         ]}
@@ -550,21 +570,25 @@ function ClusterClassDetailWithData({
                 {
                   id: 'cluster-api.cluster-class-variables',
                   section: (
-                    <SectionBox title="Variables">
+                    <SectionBox title={t('Variables')}>
                       <SimpleTable
                         columns={[
-                          { label: 'Name', getter: r => r.name },
+                          { label: t('Name'), getter: r => r.name },
                           {
-                            label: 'Required',
+                            label: t('Required'),
                             getter: r =>
-                              r.required ? <StatusLabel status="success">Yes</StatusLabel> : 'No',
+                              r.required ? (
+                                <StatusLabel status="success">{t('Yes')}</StatusLabel>
+                              ) : (
+                                t('No')
+                              ),
                           },
                           {
-                            label: 'Type',
+                            label: t('Type'),
                             getter: r => r.schema?.openAPIV3Schema?.type ?? '—',
                           },
                           {
-                            label: 'Default',
+                            label: t('Default'),
                             getter: r => String(r.schema?.openAPIV3Schema?.default ?? '—'),
                           },
                         ]}
@@ -581,18 +605,18 @@ function ClusterClassDetailWithData({
           sections.push({
             id: 'cluster-api.cluster-class-advanced',
             section: (
-              <SectionBox title="Advanced">
+              <SectionBox title={t('Advanced')}>
                 {patches.length > 0 && (
-                  <SectionBox title="Patches">
+                  <SectionBox title={t('Patches')}>
                     <SimpleTable
                       columns={[
-                        { label: 'Name', getter: r => r.name },
+                        { label: t('Name'), getter: r => r.name },
                         {
-                          label: 'Definitions',
+                          label: t('Definitions'),
                           getter: r => String(r.definitions?.length ?? 0),
                         },
                         {
-                          label: 'Enabled If',
+                          label: t('Enabled If'),
                           getter: r => r.enabledIf ?? r.enableIf ?? '—',
                         },
                       ]}
@@ -602,17 +626,17 @@ function ClusterClassDetailWithData({
                 )}
 
                 {statusVariables.length > 0 && (
-                  <SectionBox title="Status Variables">
+                  <SectionBox title={t('Status Variables')}>
                     <SimpleTable
                       columns={[
-                        { label: 'Name', getter: r => r.name },
+                        { label: t('Name'), getter: r => r.name },
                         {
-                          label: 'Conflict',
+                          label: t('Conflict'),
                           getter: r =>
                             r.definitionsConflict ? (
-                              <StatusLabel status="error">Yes</StatusLabel>
+                              <StatusLabel status="error">{t('Yes')}</StatusLabel>
                             ) : (
-                              <StatusLabel status="success">No</StatusLabel>
+                              <StatusLabel status="success">{t('No')}</StatusLabel>
                             ),
                         },
                       ]}

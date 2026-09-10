@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import { Box } from '@mui/system';
@@ -11,6 +12,7 @@ import { ClusterApiMachineDrainRule, MachineDrainRule } from '../../resources/ma
  * @param props.node - The map node containing the resource.
  */
 export function MachineDrainRuleGlance({ node }: { node: GraphNode }) {
+  const { t } = useTranslation();
   const kubeObject = node?.kubeObject;
   if (!kubeObject || kubeObject.kind !== MachineDrainRule.kind || !kubeObject.jsonData) {
     return null;
@@ -25,8 +27,8 @@ export function MachineDrainRuleGlance({ node }: { node: GraphNode }) {
 
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="mdr-glance">
-      <StatusLabel status="">{`Behavior: ${behavior}`}</StatusLabel>
-      <StatusLabel status="">{`Order: ${order}`}</StatusLabel>
+      <StatusLabel status="">{t('Behavior: {{behavior}}', { behavior })}</StatusLabel>
+      <StatusLabel status="">{t('Order: {{order}}', { order })}</StatusLabel>
     </Box>
   );
 }

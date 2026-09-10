@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Loader, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
 import { MachineDrainRule } from '../../resources/machinedrainrule';
@@ -16,21 +17,22 @@ interface MachineDrainRulesListWithDataProps {
 function MachineDrainRulesListWithData({
   MachineDrainRuleClass,
 }: MachineDrainRulesListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Machine Drain Rules"
+      title={t('Machine Drain Rules')}
       resourceClass={MachineDrainRuleClass}
       columns={[
         'name',
         'namespace',
         {
           id: 'behavior',
-          label: 'Behavior',
+          label: t('Behavior'),
           getValue: mdr => mdr.spec.drain.behavior,
         },
         {
           id: 'order',
-          label: 'Order',
+          label: t('Order'),
           getValue: mdr => mdr.spec.drain.order,
         },
         'age',
@@ -44,11 +46,12 @@ function MachineDrainRulesListWithData({
  * Detects the CAPI version and renders the list with the correct resource class.
  */
 export function MachineDrainRulesList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(MachineDrainRule.crdName, 'v1beta1');
   const VersionedMachineDrainRule = useMemo(
     () => (version ? MachineDrainRule.withApiVersion(version) : MachineDrainRule),
     [version]
   );
-  if (!version) return <Loader title="Detecting MachineDrainRule version" />;
+  if (!version) return <Loader title={t('Detecting MachineDrainRule version')} />;
   return <MachineDrainRulesListWithData MachineDrainRuleClass={VersionedMachineDrainRule} />;
 }
