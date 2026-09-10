@@ -274,7 +274,7 @@ async function fetchResources(
  * @param {Object} item - A Kubernetes resource object.
  * @returns {React.ReactNode} - A link to the resource.
  */
-function inventoryNameLink(item: HelmResourceKind): React.ReactNode {
+export function inventoryNameLink(item: HelmResourceKind): React.ReactNode {
   const kind = item.kind;
   const groupName = item.groupName;
   const pluralName = PluralName(kind);
@@ -303,7 +303,9 @@ function inventoryNameLink(item: HelmResourceKind): React.ReactNode {
   const resourceClass = K8s.ResourceClasses[kind];
   if (resourceClass) {
     const resource = new resourceClass(item);
-    if (resource?.getDetailsLink?.()) {
+    // skip namespaced details link when cluster-scoped resource has no namespace
+    const canBuildLink = !(resource.isNamespaced && !item.metadata.namespace);
+    if (canBuildLink && resource?.getDetailsLink?.()) {
       return <Link kubeObject={resource}>{item.metadata.name}</Link>;
     }
     return item.metadata.name;
