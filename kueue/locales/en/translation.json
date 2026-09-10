@@ -1,0 +1,19 @@
+{
+  "Drain (HoldAndDrain)": "Drain (HoldAndDrain)",
+  "Paused (Hold)": "Paused (Hold)",
+  "Active (None)": "Active (None)",
+  "Queue is in Drain mode: new admissions are blocked and running workloads are evicted.": "Queue is in Drain mode: new admissions are blocked and running workloads are evicted.",
+  "Queue is in Pause mode: new admissions are blocked. In-flight workloads continue running.": "Queue is in Pause mode: new admissions are blocked. In-flight workloads continue running.",
+  "Queue is Active and admitting pending workloads normally.": "Queue is Active and admitting pending workloads normally.",
+  "Custom stop policy: {{policy}}": "Custom stop policy: {{policy}}",
+  "Failed to update queue stop policy.": "Failed to update queue stop policy.",
+  "Queue Maintenance & Stop Policy": "Queue Maintenance & Stop Policy",
+  "Current State": "Current State",
+  "Resume Admissions (Active)": "Resume Admissions (Active)",
+  "Pause Admissions (Hold)": "Pause Admissions (Hold)",
+  "Drain Queue (HoldAndDrain)": "Drain Queue (HoldAndDrain)",
+  "Confirm Queue Drainage": "Confirm Queue Drainage",
+  "Are you sure you want to set {{queueType}} \"{{name}}\" to HoldAndDrain? This will pause all new admissions and immediately evict all running workloads admitted to this queue.": "Are you sure you want to set {{queueType}} \"{{name}}\" to HoldAndDrain? This will pause all new admissions and immediately evict all running workloads admitted to this queue.",
+  "Cancel": "Cancel",
+  "Confirm & Drain": "Confirm & Drain"
+}
