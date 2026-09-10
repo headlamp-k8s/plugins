@@ -5,6 +5,7 @@ import {
   registerClusterProviderMenuItem,
   // @ts-ignore
   registerClusterStatus,
+  registerDetailsViewHeaderAction,
   registerRoute,
   runCommand,
 } from '@kinvolk/headlamp-plugin/lib';
@@ -14,39 +15,11 @@ import ClusterStatus from './ClusterStatus';
 import CommandCluster from './CommandCluster/CommandCluster';
 import CreateClusterPage from './CreateClusterPage';
 import MinikubeIcon from './minikube.svg?react';
+import MinikubeServiceAction from './MinikubeServiceAction';
 
 const DEBUG = false;
-
-export function isElectron(): boolean {
-  // Renderer process
-  if (
-    typeof window !== 'undefined' &&
-    typeof window.process === 'object' &&
-    (window.process as any).type === 'renderer'
-  ) {
-    return true;
-  }
-
-  // Main process
-  if (
-    typeof process !== 'undefined' &&
-    typeof process.versions === 'object' &&
-    !!(process.versions as any).electron
-  ) {
-    return true;
-  }
-
-  // Detect the user agent when the `nodeIntegration` option is set to true
-  if (
-    typeof navigator === 'object' &&
-    typeof navigator.userAgent === 'string' &&
-    navigator.userAgent.indexOf('Electron') >= 0
-  ) {
-    return true;
-  }
-
-  return false;
-}
+import { isElectron, isMinikube } from './isElectron';
+export { isElectron, isMinikube };
 
 registerRoute({
   path: '/create-cluster-minikube',
@@ -61,15 +34,6 @@ registerRoute({
   noAuthRequired: true,
   disabled: !isElectron(),
 });
-
-/**
- * @returns true if the cluster is a minikube cluster
- */
-export function isMinikube(cluster: {
-  meta_data?: { extensions?: { context_info?: { provider?: string } } };
-}): boolean {
-  return cluster.meta_data?.extensions?.context_info?.provider === 'minikube.sigs.k8s.io';
-}
 
 const minikubeCommands = [
   {
@@ -149,8 +113,20 @@ const packagePath =
 
 function Command() {
   function handleClick() {
+    const runner =
+      typeof pluginRunCommand === 'function'
+        ? pluginRunCommand
+        : typeof (window as any)?.pluginRunCommand === 'function'
+        ? (window as any).pluginRunCommand
+        : null;
+
+    if (!runner) {
+      console.warn('pluginRunCommand is not available');
+      return;
+    }
+
     console.log('Running manage-minikube.js script with package path:', packagePath);
-    const scriptjs = pluginRunCommand(
+    const scriptjs = runner(
       //@ts-ignore
       'scriptjs',
       [`${packagePath}/manage-minikube.js`, 'info'],
@@ -185,3 +161,8 @@ if (registerClusterStatus) {
     return <ClusterStatus cluster={cluster} error={error} />;
   });
 }
+
+if (registerDetailsViewHeaderAction && isElectron()) {
+  registerDetailsViewHeaderAction(MinikubeServiceAction);
+}
+
