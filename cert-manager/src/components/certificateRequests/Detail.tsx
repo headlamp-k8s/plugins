@@ -13,11 +13,11 @@ import {
 export function CertificateRequestDetail() {
   const { t } = useTranslation();
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const { notInstalled, isLoading } = useCertManagerInstalled();
 
   return (
     <>
-      {isManagerInstalled ? (
+      {!notInstalled && !isLoading ? (
         <DetailsGrid
           resourceType={CertificateRequest}
           name={name}
@@ -94,7 +94,7 @@ export function CertificateRequestDetail() {
           }
         />
       ) : (
-        <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+        <NotInstalledBanner isLoading={isLoading} />
       )}
     </>
   );

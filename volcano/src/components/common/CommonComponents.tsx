@@ -54,23 +54,23 @@ interface VolcanoApiInstallCheckProps {
 }
 
 export function VolcanoCoreInstallCheck({ children, fallback }: VolcanoApiInstallCheckProps) {
-  const { isVolcanoCoreInstalled, isVolcanoCoreCheckLoading } = useVolcanoCoreInstalled();
+  const { notInstalled, isLoading } = useVolcanoCoreInstalled();
 
-  if (!isVolcanoCoreInstalled) {
-    return fallback || <NotInstalledBanner isLoading={isVolcanoCoreCheckLoading} />;
+  if (notInstalled || isLoading) {
+    return fallback || <NotInstalledBanner isLoading={isLoading} />;
   }
 
   return <>{children}</>;
 }
 
 export function VolcanoFlowInstallCheck({ children, fallback }: VolcanoApiInstallCheckProps) {
-  const { isVolcanoFlowInstalled, isVolcanoFlowCheckLoading } = useVolcanoFlowInstalled();
+  const { notInstalled, isLoading } = useVolcanoFlowInstalled();
 
-  if (!isVolcanoFlowInstalled) {
+  if (notInstalled || isLoading) {
     return (
       fallback || (
         <NotInstalledBanner
-          isLoading={isVolcanoFlowCheckLoading}
+          isLoading={isLoading}
           message="Volcano Flow API was not detected on this cluster. Install or enable the JobFlow and JobTemplate CRDs to view these resources."
           linkText="Volcano Flow"
         />
