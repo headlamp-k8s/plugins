@@ -127,6 +127,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
   const [latestMap, setLatestMap] = useState<Record<string, string>>({});
   const [nameFilter, setNameFilter] = useState('');
   const [namespaceFilter, setNamespaceFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [openDeleteAlert, setOpenDeleteAlert] = useState<boolean>(false);
   const [rollbackPopup, setRollbackPopup] = useState<boolean>(false);
   const [selectedRelease, setSelectedRelease] = useState<Release | null>(null);
@@ -189,19 +190,31 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
     if (!releases) return null;
 
     return releases.filter(release => {
+      const searchTerm = nameFilter.toLowerCase();
       const matchesName =
-        !nameFilter || release.name.toLowerCase().includes(nameFilter.toLowerCase());
+        !searchTerm ||
+        release.name.toLowerCase().includes(searchTerm) ||
+        release.namespace.toLowerCase().includes(searchTerm) ||
+        (release.chart?.metadata?.name || '').toLowerCase().includes(searchTerm);
       const matchesNamespace = !namespaceFilter || release.namespace === namespaceFilter;
+      const matchesStatus = !statusFilter || release.info.status === statusFilter;
 
-      return matchesName && matchesNamespace;
+      return matchesName && matchesNamespace && matchesStatus;
     });
-  }, [releases, nameFilter, namespaceFilter]);
+  }, [releases, nameFilter, namespaceFilter, statusFilter]);
 
   const availableNamespaces = useMemo(() => {
     if (!releases) return [];
 
     const namespaces = new Set(releases.map(r => r.namespace));
     return Array.from(namespaces).sort();
+  }, [releases]);
+
+  const availableStatuses = useMemo(() => {
+    if (!releases) return [];
+
+    const statuses = new Set(releases.map(r => r.info.status));
+    return Array.from(statuses).sort();
   }, [releases]);
 
   // Count how many of the currently visible (filtered) releases are selected
@@ -590,9 +603,12 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
             key="filters"
             nameFilter={nameFilter}
             namespaceFilter={namespaceFilter}
+            statusFilter={statusFilter}
             availableNamespaces={availableNamespaces}
+            availableStatuses={availableStatuses}
             onNameFilterChange={setNameFilter}
             onNamespaceFilterChange={setNamespaceFilter}
+            onStatusFilterChange={setStatusFilter}
           />,
         ]}
       />
@@ -664,6 +680,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
                   </Box>
                 </Box>
               ),
+              sort: (a: Release, b: Release) => a.name.localeCompare(b.name),
             },
             {
               label: t('Namespace'),
@@ -672,6 +689,11 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
             {
               label: t('Current Version'),
               getter: release => formatVersion(release.chart.metadata.appVersion),
+              sort: (a: Release, b: Release) => {
+                const vA = formatVersion(a.chart.metadata.appVersion);
+                const vB = formatVersion(b.chart.metadata.appVersion);
+                return vA.localeCompare(vB);
+              },
             },
             {
               label: t('Latest Version'),
@@ -689,6 +711,7 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
                   {release.info.status}
                 </StatusLabel>
               ),
+              sort: (a: Release, b: Release) => a.info.status.localeCompare(b.info.status),
             },
             {
               label: t('Updated'),
