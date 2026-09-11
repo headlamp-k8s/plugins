@@ -415,6 +415,20 @@ export interface PodSetRequest {
 }
 
 /**
+ * Pod set modifications suggested by an AdmissionCheck for a Workload pod set.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#podsetupdate
+ */
+export interface PodSetUpdate {
+  name: string;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  nodeSelector?: Record<string, string>;
+  tolerations?: unknown[];
+  schedulingGates?: { name: string }[];
+}
+
+/**
  * Admission check state reported for a Workload.
  *
  * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#admissioncheckstate
@@ -456,6 +470,9 @@ export interface AdmissionCheckState {
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#admissioncheckstate
    */
   retryCount?: number;
+
+  /** Pod set modifications suggested by this AdmissionCheck. */
+  podSetUpdates?: PodSetUpdate[];
 }
 
 /**

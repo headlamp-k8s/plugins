@@ -2,6 +2,7 @@ import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluste
 import type {
   Admission,
   PodSet,
+  PodSetUpdate,
   ReclaimablePod,
   RequeueState,
   ResourceList,
@@ -270,6 +271,29 @@ export function renderRequeueState(requeueState?: RequeueState) {
   ].filter(Boolean);
 
   return values.length > 0 ? values.join('; ') : '-';
+}
+
+/** Render the pod set modifications suggested by an AdmissionCheck. */
+export function renderPodSetUpdates(podSetUpdates: PodSetUpdate[] = []) {
+  if (podSetUpdates.length === 0) {
+    return '-';
+  }
+
+  return podSetUpdates
+    .map(update => {
+      const parts = [
+        renderStringMap(update.labels) !== '-' ? `labels ${renderStringMap(update.labels)}` : '',
+        renderStringMap(update.annotations) !== '-'
+          ? `annotations ${renderStringMap(update.annotations)}`
+          : '',
+        renderStringMap(update.nodeSelector) !== '-'
+          ? `nodeSelector ${renderStringMap(update.nodeSelector)}`
+          : '',
+      ].filter(Boolean);
+
+      return parts.length ? `${update.name}: ${parts.join('; ')}` : `${update.name}: -`;
+    })
+    .join(' | ');
 }
 
 /** Render owner references without dumping raw objects. */
