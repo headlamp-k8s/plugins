@@ -49,6 +49,24 @@ describe('buildKubectlArgs', () => {
     expect(result.args).toEqual(['get', '--raw', '/api/v1/pods']);
   });
 
+  it('allows query parameters for label selectors and field selectors', () => {
+    const url = '/api/v1/namespaces/default/pods?labelSelector=app=nginx&fieldSelector=status.phase=Running';
+    const result = buildKubectlArgs(url, 'GET');
+    expect(result.args).toEqual(['get', '--raw', url]);
+  });
+
+  it('allows pagination and limit query parameters', () => {
+    const url = '/api/v1/pods?limit=100&continue=eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9';
+    const result = buildKubectlArgs(url, 'GET');
+    expect(result.args).toEqual(['get', '--raw', url]);
+  });
+
+  it('allows URL-encoded query parameters and set-based selectors', () => {
+    const url = '/api/v1/pods?labelSelector=tier+in+(frontend,backend),!deprecated';
+    const result = buildKubectlArgs(url, 'GET');
+    expect(result.args).toEqual(['get', '--raw', url]);
+  });
+
   it('POST produces kubectl create --raw with stdin', () => {
     const body = '{"apiVersion":"v1","kind":"Pod"}';
     const result = buildKubectlArgs('/api/v1/namespaces/default/pods', 'POST', body);
@@ -114,6 +132,18 @@ describe('buildKubectlArgs', () => {
 
   it('rejects paths with shell metacharacters', () => {
     expect(() => buildKubectlArgs('/api/v1/pods;echo hacked', 'GET')).toThrow(
+      'contains disallowed characters'
+    );
+  });
+
+  it('rejects query strings containing dangerous shell characters', () => {
+    expect(() => buildKubectlArgs('/api/v1/pods?filter=x;rm -rf /', 'GET')).toThrow(
+      'contains disallowed characters'
+    );
+    expect(() => buildKubectlArgs('/api/v1/pods?filter=`whoami`', 'GET')).toThrow(
+      'contains disallowed characters'
+    );
+    expect(() => buildKubectlArgs('/api/v1/pods?filter=$PATH', 'GET')).toThrow(
       'contains disallowed characters'
     );
   });
