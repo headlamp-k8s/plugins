@@ -25,6 +25,7 @@ import {
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, CircularProgress, Typography } from '@mui/material';
+import { filterResultsForPolicy } from '../hooks/policyResultBucket';
 import {
   KyvernoClusterPolicy,
   KyvernoPolicy,
@@ -181,7 +182,13 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
   );
 }
 
-function AssociatedReportsSection({ policyName }: { policyName: string }) {
+function AssociatedReportsSection({
+  policyName,
+  namespace,
+}: {
+  policyName: string;
+  namespace?: string;
+}) {
   const { t } = useTranslation();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
@@ -198,31 +205,23 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
     );
   }
 
-  const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] =
-    [];
-
-  for (const report of policyReports) {
+  // A ClusterPolicy's results can land in either a namespaced PolicyReport
+  // (for namespaced resource matches) or a ClusterPolicyReport (for
+  // cluster-scoped resource matches), so both lists are merged and matched
+  // uniformly against the same namespace/name-prefixed key that
+  // usePolicyResultCounts already relies on elsewhere in this plugin.
+  const allResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] = [];
+  for (const report of [...policyReports, ...clusterPolicyReports]) {
     for (const result of report.results) {
-      if (result.policy === policyName) {
-        matchingResults.push({
-          ...result,
-          reportName: report.jsonData.metadata.name,
-          reportNamespace: report.jsonData.metadata.namespace,
-        });
-      }
+      allResults.push({
+        ...result,
+        reportName: report.jsonData.metadata.name,
+        reportNamespace: report.jsonData.metadata.namespace,
+      });
     }
   }
 
-  for (const report of clusterPolicyReports) {
-    for (const result of report.results) {
-      if (result.policy === policyName) {
-        matchingResults.push({
-          ...result,
-          reportName: report.jsonData.metadata.name,
-        });
-      }
-    }
-  }
+  const matchingResults = filterResultsForPolicy(allResults, policyName, namespace);
 
   return (
     <SectionBox
@@ -318,7 +317,10 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
       <SectionBox title={t('Rules ({{count}})', { count: policy.rules.length })}>
         <RulesTable rules={policy.rules} />
       </SectionBox>
-      <AssociatedReportsSection policyName={policy.jsonData.metadata.name} />
+      <AssociatedReportsSection
+        policyName={policy.jsonData.metadata.name}
+        namespace={policy.jsonData.metadata.namespace}
+      />
       <YamlSection jsonData={policy.jsonData} />
     </Box>
   );
