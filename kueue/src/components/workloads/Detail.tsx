@@ -112,8 +112,11 @@ function getPodSetRows(podSets: PodSet[]): PodSetRow[] {
 
 /** Convert admission assignments into table rows. */
 function getAdmissionAssignmentRows(
-  assignments: PodSetAssignment[] = []
+  assignments?: PodSetAssignment[] | null
 ): AdmissionAssignmentRow[] {
+  if (!assignments) {
+    return [];
+  }
   return assignments.map(assignment => ({
     name: assignment.name || 'main',
     count: assignment.count ?? '-',
@@ -124,7 +127,12 @@ function getAdmissionAssignmentRows(
 }
 
 /** Convert admission checks into table rows. */
-function getAdmissionCheckRows(admissionChecks: AdmissionCheckState[] = []): AdmissionCheckRow[] {
+function getAdmissionCheckRows(
+  admissionChecks?: AdmissionCheckState[] | null
+): AdmissionCheckRow[] {
+  if (!admissionChecks) {
+    return [];
+  }
   return admissionChecks.map(admissionCheck => ({
     name: admissionCheck.name,
     state: renderText(admissionCheck.state),
@@ -136,7 +144,12 @@ function getAdmissionCheckRows(admissionChecks: AdmissionCheckState[] = []): Adm
 }
 
 /** Convert reclaimable pods into table rows. */
-function getReclaimablePodRows(reclaimablePods: ReclaimablePod[] = []): ReclaimablePodRow[] {
+function getReclaimablePodRows(
+  reclaimablePods?: ReclaimablePod[] | null
+): ReclaimablePodRow[] {
+  if (!reclaimablePods) {
+    return [];
+  }
   return reclaimablePods.map(reclaimablePod => ({
     name: reclaimablePod.name,
     count: reclaimablePod.count,
@@ -144,7 +157,12 @@ function getReclaimablePodRows(reclaimablePods: ReclaimablePod[] = []): Reclaima
 }
 
 /** Convert resource request status entries into table rows. */
-function getResourceRequestRows(resourceRequests: PodSetRequest[] = []): ResourceRequestRow[] {
+function getResourceRequestRows(
+  resourceRequests?: PodSetRequest[] | null
+): ResourceRequestRow[] {
+  if (!resourceRequests) {
+    return [];
+  }
   return resourceRequests.map(request => ({
     name: request.name,
     resources: renderResourceList(request.resources),
@@ -152,7 +170,12 @@ function getResourceRequestRows(resourceRequests: PodSetRequest[] = []): Resourc
 }
 
 /** Convert scheduling eviction stats into table rows. */
-function getEvictionRows(evictions: WorkloadSchedulingStatsEviction[] = []): EvictionRow[] {
+function getEvictionRows(
+  evictions?: WorkloadSchedulingStatsEviction[] | null
+): EvictionRow[] {
+  if (!evictions) {
+    return [];
+  }
   return evictions.map(eviction => ({
     reason: eviction.reason,
     underlyingCause: renderText(eviction.underlyingCause),
