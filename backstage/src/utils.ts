@@ -39,3 +39,18 @@ export function getClusterConfig(cluster: string): ClusterLevelConf | null {
   }
   return conf[cluster] || null;
 }
+
+/**
+ * Checks whether a string is a URL that the Backstage plugin can actually use
+ * (i.e. the WHATWG URL constructor can parse it).
+ * @param {string} url - The URL to validate.
+ * @returns {boolean} True if the URL can be parsed, false otherwise.
+ */
+export function validateUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}

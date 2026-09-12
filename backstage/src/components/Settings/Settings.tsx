@@ -1,15 +1,7 @@
 import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
 import React, { useCallback, useEffect, useState } from 'react';
+import { validateUrl } from '../../utils';
 import { SettingsData, SettingsPure } from './SettingsPure';
-
-function validateUrl(url: string): boolean {
-  try {
-    new URL(url);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
 
 interface SettingsProps {
   data?: SettingsData;
