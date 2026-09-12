@@ -22,6 +22,7 @@ interface ReadyStatusLabelProps {
   reason?: string;
   message?: string;
   isReadyType?: boolean;
+  isScaledToZero?: boolean;
 }
 
 export function ReadyStatusLabel({
@@ -29,11 +30,15 @@ export function ReadyStatusLabel({
   reason,
   message,
   isReadyType = true,
+  isScaledToZero = false,
 }: ReadyStatusLabelProps) {
   let headlampStatus: 'success' | 'error' | 'warning' | '' = '';
   let labelText = 'Unknown';
 
-  if (status === 'True') {
+  if (isScaledToZero && status === 'True') {
+    headlampStatus = 'warning';
+    labelText = 'Scaled to Zero';
+  } else if (status === 'True') {
     headlampStatus = 'success';
     labelText = isReadyType ? 'Ready' : 'True';
   } else if (status === 'False') {
@@ -44,6 +49,9 @@ export function ReadyStatusLabel({
   }
 
   const tooltipLines = [labelText];
+  if (isScaledToZero) {
+    tooltipLines.push('Status: Idle (0 active pods, wakes on request)');
+  }
   if (reason) tooltipLines.push(`Reason: ${reason}`);
   if (message) tooltipLines.push(`Message: ${message}`);
 
