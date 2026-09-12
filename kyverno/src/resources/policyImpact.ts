@@ -191,7 +191,7 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
 
   if (reasons.length > 0) return reasons;
   return [
-    `No rule in this policy explicitly lists kind "${kind}" in its match block; it was likely reached through a generated rule, a wildcard selector, or a background scan.`,
+    `No rule in this policy explicitly lists kind "${kind}" in its match block; it was likely reached through a generated rule or a background scan.`,
   ];
 }
 
