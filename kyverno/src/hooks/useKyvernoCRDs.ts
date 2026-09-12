@@ -22,6 +22,7 @@ export interface KyvernoCRDStatus {
   cel: boolean; // policies.kyverno.io/v1 (ValidatingPolicy, MutatingPolicy, etc.)
   cleanup: boolean; // kyverno.io/v2 (CleanupPolicy, ClusterCleanupPolicy)
   reports: boolean; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
+  reportSources: boolean; // Any report source included by aggregate views
   exceptions: boolean; // kyverno.io/v2 (PolicyException)
   kyvernoV2Reports: boolean; // kyverno.io/v2 (Admission/BackgroundScan reports)
   ephemeralReports: boolean; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
@@ -33,6 +34,7 @@ const initialStatus: KyvernoCRDStatus = {
   cel: false,
   cleanup: false,
   reports: false,
+  reportSources: false,
   exceptions: false,
   kyvernoV2Reports: false,
   ephemeralReports: false,
@@ -91,6 +93,7 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
       cel,
       cleanup,
       reports,
+      reportSources: reports || ephemeralReports,
       exceptions,
       kyvernoV2Reports,
       ephemeralReports,
