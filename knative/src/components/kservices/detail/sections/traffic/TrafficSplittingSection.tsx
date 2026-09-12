@@ -204,7 +204,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
   const combinedValidationError = trafficValidationError || pendingTagError;
   const isTrafficValid = !combinedValidationError;
 
-  function resetSection() {
+  const resetSection = React.useCallback(() => {
     initializeFromKService();
     setPendingTagInputs({});
 
@@ -218,7 +218,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
     if (latestTagInputRef.current) {
       latestTagInputRef.current.value = '';
     }
-  }
+  }, [initializeFromKService]);
 
   async function onSaveTraffic() {
     if (!kservice || !revisions) return;
