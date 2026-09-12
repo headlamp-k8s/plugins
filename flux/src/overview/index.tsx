@@ -45,6 +45,8 @@ import {
 import Table from '../common/Table';
 import { useFluxCheck } from '../helpers';
 import { store } from '../settings';
+import { ControllerActions } from './ControllerActions';
+import { getPodsForController } from './controllerPods';
 
 // Helper to get failed count for a resource class
 function getFailedCount(items: KubeObject[] | null) {
@@ -527,7 +529,7 @@ export function FluxOverview() {
           </AccordionSummary>
           <AccordionDetails>
             <Box p={2}>
-              <Controllers controllers={controllers} />
+              <Controllers controllers={controllers} namespace={namespace} />
             </Box>
           </AccordionDetails>
         </Accordion>
@@ -797,8 +799,12 @@ function FluxOverviewChart({ resourceClass }) {
   );
 }
 
-function Controllers({ controllers }) {
+function Controllers({ controllers, namespace }) {
   const { t } = useTranslation();
+  // Listed once for the whole table rather than per row: each row needs the
+  // pods behind its Deployment, and hooks cannot be called per row.
+  const [pods] = K8s.ResourceClasses.Pod.useList({ namespace });
+
   return (
     <Table
       data={controllers}
@@ -828,6 +834,13 @@ function Controllers({ controllers }) {
           header: t('Image'),
           accessorFn: item => (
             <SourceLink url={item.jsonData?.spec?.template?.spec?.containers?.[0]?.image} />
+          ),
+        },
+        {
+          header: t('Actions'),
+          enableSorting: false,
+          Cell: ({ row: { original: item } }) => (
+            <ControllerActions controller={item} pods={getPodsForController(pods, item)} />
           ),
         },
       ]}
