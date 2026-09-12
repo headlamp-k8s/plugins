@@ -19,7 +19,7 @@ import {
   Select,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router';
 import {
   deleteRelease,
@@ -46,22 +46,43 @@ export default function ReleaseDetail() {
   const { enqueueSnackbar } = useSnackbar();
   const history = useHistory();
 
-  useEffect(() => {
-    getRelease(namespace, releaseName).then(response => {
-      setRelease(response);
-    });
-  }, [update]);
+  const deleteStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    getReleaseHistory(namespace, releaseName).then(response => {
-      setReleaseHistory(response);
+    return () => {
+      isMountedRef.current = false;
+      if (deleteStatusTimeoutRef.current) {
+        clearTimeout(deleteStatusTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    getRelease(namespace, releaseName).then(response => {
+      if (isMounted) setRelease(response);
     });
-  }, [update]);
+    return () => {
+      isMounted = false;
+    };
+  }, [update, namespace, releaseName]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getReleaseHistory(namespace, releaseName).then(response => {
+      if (isMounted) setReleaseHistory(response);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [update, namespace, releaseName]);
 
   function checkDeleteReleaseStatus(name: string) {
     getActionStatus(name, 'uninstall').then(response => {
+      if (!isMountedRef.current) return;
       if (response.status === 'processing') {
-        setTimeout(() => checkDeleteReleaseStatus(name), 1000);
+        deleteStatusTimeoutRef.current = setTimeout(() => checkDeleteReleaseStatus(name), 1000);
       } else if (response.status !== 'success') {
         enqueueSnackbar(
           t('Failed to delete release {{ name }}{{ message }}', {
