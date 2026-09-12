@@ -113,6 +113,7 @@ function getContainerDisplayStatus(container: PodContainerStatus) {
 
   return {
     color,
+    label,
     tooltip: <span style={{ whiteSpace: 'pre-line' }}>{tooltipLines.join('\n')}</span>,
   };
 }
@@ -126,11 +127,14 @@ function makePodStatusLabel(pod: Pod) {
     containerStatuses.length > 0 ? (
       <Box display="flex" gap={0.5}>
         {containerStatuses.map((cs, index) => {
-          const { color, tooltip } = getContainerDisplayStatus(cs);
+          const { color, label, tooltip } = getContainerDisplayStatus(cs);
           return (
             <LightTooltip title={tooltip} key={`${cs.name}-${index}`}>
               <Box
                 component="span"
+                role="img"
+                aria-label={`${cs.name}: ${label}`}
+                tabIndex={0}
                 sx={{
                   width: '0.9rem',
                   height: '0.9rem',
