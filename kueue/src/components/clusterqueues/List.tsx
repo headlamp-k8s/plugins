@@ -1,54 +1,57 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { ClusterQueue } from '../../resources/clusterQueue';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import { renderCohortLink } from '../common/KueueResourceLinks';
 
 export default function ClusterQueueList() {
+  const { t } = useTranslation();
+
   return (
     <KueueAdminResourceAccess
       resourceClass={ClusterQueue}
-      resourceLabel="ClusterQueues"
+      resourceLabel={t('ClusterQueues')}
       verb="list"
     >
       <ResourceListView
-        title="Kueue ClusterQueues"
+        title={t('ClusterQueues')}
         resourceClass={ClusterQueue}
         columns={[
           'name',
           {
             id: 'cohort',
-            label: 'Cohort',
+            label: t('Cohort'),
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.cohortName,
             render: (clusterQueue: ClusterQueue) => renderCohortLink(clusterQueue.spec.cohortName),
           },
           {
             id: 'queueingStrategy',
-            label: 'Queueing Strategy',
+            label: t('Queueing Strategy'),
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.queueingStrategy,
           },
           {
             id: 'resourceGroups',
-            label: 'Resource Groups',
+            label: t('Resource Groups'),
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.resourceGroupsDisplay,
           },
           {
             id: 'resourceFlavors',
-            label: 'Resource Flavors',
+            label: t('Resource Flavors'),
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.referencedFlavorNamesDisplay,
           },
           {
             id: 'pendingWorkloads',
-            label: 'Pending Workloads',
+            label: t('Pending Workloads'),
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.pendingWorkloads,
           },
           {
             id: 'admittedWorkloads',
-            label: 'Admitted Workloads',
+            label: t('Admitted Workloads'),
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.admittedWorkloads,
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.statusDisplay,
           },
           'age',
