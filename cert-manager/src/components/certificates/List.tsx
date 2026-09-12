@@ -1,6 +1,6 @@
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { useTranslation, Utils } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { DateLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { HoverInfoLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useCertManagerInstalled } from '../../hooks/useCertManagerInstalled';
 import { Certificate } from '../../resources/certificate';
 import { NotInstalledBanner } from '../common/CommonComponents';
@@ -30,9 +30,18 @@ export function CertificatesList() {
           id: 'expiresIn',
           label: t('Expires In (Not After)'),
           render: item => {
-            return item?.status?.notAfter ? (
-              <DateLabel date={item.status.notAfter} format="mini" />
-            ) : null;
+            const notAfter = item?.status?.notAfter;
+            if (!notAfter) {
+              return null;
+            }
+            // notAfter is a future expiry date, so we need the time remaining until it
+            // (not time elapsed since it, which is what DateLabel/TimeAgo compute).
+            const remainingMs = new Date(notAfter).getTime() - Date.now();
+            const label =
+              remainingMs <= 0 ? t('Expired') : Utils.formatDuration(remainingMs, { format: 'mini' });
+            return (
+              <HoverInfoLabel label={label} hoverInfo={Utils.localeDate(notAfter)} icon="mdi:calendar" />
+            );
           },
           getValue: item => item.status?.notAfter ?? '',
           sort: (a, b) => {
