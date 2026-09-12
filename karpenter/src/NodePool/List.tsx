@@ -3,6 +3,7 @@ import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonCompo
 import { PercentageBar } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { getResourceStr } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { parseCpu } from '../helpers/parseCpu';
 import { parseRam } from '../helpers/parseRam';
 import { CPUtooltip, Memorytooltip } from '../helpers/tooltip';
 
@@ -73,14 +74,14 @@ function NodePoolsList() {
           id: 'nodepool-cpu',
           label: t('CPU'),
           getValue: nodePool => {
-            const used = parseInt(nodePool.jsonData.status?.resources?.cpu || '0');
-            const limit = parseInt(nodePool.jsonData.spec?.limits?.cpu || '0');
+            const used = parseCpu(nodePool.jsonData.status?.resources?.cpu || '0');
+            const limit = parseCpu(nodePool.jsonData.spec?.limits?.cpu || '0');
 
             return limit > 0 ? `${used}/${limit}` : t('{{used}} (No limit)', { used });
           },
           render: nodePool => {
-            const used = parseInt(nodePool.jsonData.status?.resources?.cpu || 0);
-            const limit = parseInt(nodePool.jsonData.spec?.limits?.cpu || 0);
+            const used = parseCpu(nodePool.jsonData.status?.resources?.cpu || 0);
+            const limit = parseCpu(nodePool.jsonData.spec?.limits?.cpu || 0);
             const data: ChartDataPoint[] = [
               {
                 name: 'CPU',
