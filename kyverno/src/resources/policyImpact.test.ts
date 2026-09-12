@@ -270,6 +270,68 @@ describe('collectPolicyImpact', () => {
 
     expect(impact.resources[0].name).toBe('from-resources-array');
   });
+
+  test('keeps every resource when a single result references more than one, found via Copilot review', () => {
+    // resources[] is typed as an array. The original code only ever read
+    // resources[0], silently dropping every later resource a result
+    // referenced.
+    const multiResourceReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'multi-resource',
+        namespace: 'team-checkout',
+        uid: 'r-3',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'fail',
+          resources: [
+            { kind: 'Pod', name: 'first', namespace: 'team-checkout', uid: 'uid-first' },
+            { kind: 'Pod', name: 'second', namespace: 'team-checkout', uid: 'uid-second' },
+          ],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', [multiResourceReport], []);
+
+    expect(impact.resources.map(r => r.name).sort()).toEqual(['first', 'second']);
+  });
+
+  test('prefers the UID over the name-based key so same-named resources from different API groups do not collapse, found via Copilot review', () => {
+    const crossGroupReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'cross-group',
+        namespace: 'team-checkout',
+        uid: 'r-4',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'fail',
+          resources: [{ kind: 'Widget', name: 'shared-name', namespace: 'team-checkout', uid: 'widget-a' }],
+        },
+        {
+          policy: 'p',
+          result: 'pass',
+          resources: [{ kind: 'Widget', name: 'shared-name', namespace: 'team-checkout', uid: 'widget-b' }],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', [crossGroupReport], []);
+
+    expect(impact.resources).toHaveLength(2);
+    expect(impact.resources.map(r => r.uid).sort()).toEqual(['widget-a', 'widget-b']);
+  });
 });
 
 describe('describeMatchReasons', () => {
@@ -294,6 +356,31 @@ describe('describeMatchReasons', () => {
     const reasons = describeMatchReasons(rules, 'Deployment');
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Deployment"');
+  });
+
+  test('recognizes a wildcard kind as an explicit match, found via Copilot review', () => {
+    const wildcardRules: PolicyRule[] = [
+      { name: 'check-everything', match: { any: [{ resources: { kinds: ['*'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(wildcardRules, 'Deployment');
+
+    expect(reasons[0]).toContain('Rule "check-everything" matches kind "Deployment"');
+  });
+
+  test('mentions a namespace label selector, not just a resource label selector, found via Copilot review', () => {
+    const namespaceSelectorRules: PolicyRule[] = [
+      {
+        name: 'check-team-namespaces',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], namespaceSelector: { team: 'checkout' } } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(namespaceSelectorRules, 'Pod');
+
+    expect(reasons[0]).toContain('a namespace label selector');
   });
 });
 

@@ -68,27 +68,36 @@ function ingest(
     // Background-scan reports put the resource identity on the report's
     // `scope` rather than per-result `resources[]` (Kyverno emits one
     // PolicyReport per scanned resource in that mode), so `resources[]` is
-    // the primary source and `scope` is the fallback.
-    const res = result.resources?.[0];
-    const kind = res?.kind || reportScope?.kind || 'Unknown';
-    const name = res?.name || reportScope?.name || '(unscoped)';
-    const namespace = res?.namespace || reportScope?.namespace || reportNamespace;
-    const uid = res?.uid || reportScope?.uid;
-    const key = `${kind}/${namespace || ''}/${name}`;
-    const existing = byResource.get(key);
+    // the primary source and `scope` is the fallback. A result can reference
+    // more than one resource, so every entry gets its own map slot, not just
+    // the first, otherwise later resources are silently dropped.
+    const resourceRefs =
+      result.resources && result.resources.length > 0 ? result.resources : [reportScope];
 
-    if (!existing || STATUS_RANK[result.result] > STATUS_RANK[existing.status]) {
-      byResource.set(key, {
-        policy: policyName,
-        kind,
-        name,
-        namespace,
-        uid,
-        status: result.result,
-        rule: result.rule,
-        message: result.message,
-        severity: result.severity,
-      });
+    for (const res of resourceRefs) {
+      const kind = res?.kind || reportScope?.kind || 'Unknown';
+      const name = res?.name || reportScope?.name || '(unscoped)';
+      const namespace = res?.namespace || reportScope?.namespace || reportNamespace;
+      const uid = res?.uid || reportScope?.uid;
+      // Prefer the UID when it's available. The name-based key alone can
+      // collide for distinct objects that share kind, namespace, and name,
+      // for example the same name used by two different API groups.
+      const key = uid || `${kind}/${namespace || ''}/${name}`;
+      const existing = byResource.get(key);
+
+      if (!existing || STATUS_RANK[result.result] > STATUS_RANK[existing.status]) {
+        byResource.set(key, {
+          policy: policyName,
+          kind,
+          name,
+          namespace,
+          uid,
+          status: result.result,
+          rule: result.rule,
+          message: result.message,
+          severity: result.severity,
+        });
+      }
     }
   }
 }
@@ -162,7 +171,9 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
     const selectors = [...(rule.match?.any || []), ...(rule.match?.all || [])];
     for (const selector of selectors) {
       const kinds = selector.resources?.kinds || [];
-      if (!kinds.includes(kind)) continue;
+      // Kyverno match kinds support "*" as a wildcard for every kind, an
+      // exact-membership check alone would reject a kind matched this way.
+      if (!kinds.includes(kind) && !kinds.includes('*')) continue;
 
       const parts = [`kind "${kind}"`];
       if (selector.resources?.namespaces?.length) {
@@ -170,6 +181,9 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
       }
       if (selector.resources?.selector) {
         parts.push('a label selector');
+      }
+      if (selector.resources?.namespaceSelector) {
+        parts.push('a namespace label selector');
       }
       reasons.push(`Rule "${rule.name}" matches ${parts.join(' and ')}.`);
     }
