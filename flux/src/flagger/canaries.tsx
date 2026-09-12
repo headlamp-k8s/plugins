@@ -139,11 +139,11 @@ function CanaryList({ canaryResourceClass }) {
               const kind = item?.spec?.targetRef?.kind;
               const namespace = item?.spec?.targetRef?.namespace || item?.metadata?.namespace;
               const name = item?.spec?.targetRef?.name;
-              return (
+              return kind ? (
                 <Link routeName={`${kind.toLowerCase()}`} params={{ name, namespace }}>
                   {name}
                 </Link>
-              );
+              ) : null;
             },
           },
           {
