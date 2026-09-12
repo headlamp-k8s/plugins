@@ -6,6 +6,8 @@ const CUSTOM_HEADLAMP_LABEL = 'headlamp-prometheus=true';
 const COMMON_PROMETHEUS_POD_LABEL = 'app.kubernetes.io/name=prometheus';
 const COMMON_PROMETHEUS_SERVICE_LABEL =
   'app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server';
+const COMMON_VICTORIAMETRICS_VMSINGLE_LABEL = 'app.kubernetes.io/name=vmsingle';
+const COMMON_VICTORIAMETRICS_VMSELECT_LABEL = 'app.kubernetes.io/name=vmselect';
 const DEFAULT_PROMETHEUS_PORT = '9090';
 
 type KubernetesPodListResponseItem = {
@@ -134,7 +136,43 @@ export async function isPrometheusInstalled(): Promise<PrometheusEndpoint> {
     return serviceSearchResponse;
   }
 
-  // No Prometheus pod or service found
+  // Search by VictoriaMetrics vmsingle label for a pod
+  const vmSinglePodResponse = await searchKubernetesByLabel(
+    KubernetesType.pods,
+    COMMON_VICTORIAMETRICS_VMSINGLE_LABEL
+  );
+  if (vmSinglePodResponse.type !== KubernetesType.none) {
+    return vmSinglePodResponse;
+  }
+
+  // Search by VictoriaMetrics vmsingle label for a service
+  const vmSingleServiceResponse = await searchKubernetesByLabel(
+    KubernetesType.services,
+    COMMON_VICTORIAMETRICS_VMSINGLE_LABEL
+  );
+  if (vmSingleServiceResponse.type !== KubernetesType.none) {
+    return vmSingleServiceResponse;
+  }
+
+  // Search by VictoriaMetrics vmselect label for a pod (cluster mode)
+  const vmSelectPodResponse = await searchKubernetesByLabel(
+    KubernetesType.pods,
+    COMMON_VICTORIAMETRICS_VMSELECT_LABEL
+  );
+  if (vmSelectPodResponse.type !== KubernetesType.none) {
+    return vmSelectPodResponse;
+  }
+
+  // Search by VictoriaMetrics vmselect label for a service (cluster mode)
+  const vmSelectServiceResponse = await searchKubernetesByLabel(
+    KubernetesType.services,
+    COMMON_VICTORIAMETRICS_VMSELECT_LABEL
+  );
+  if (vmSelectServiceResponse.type !== KubernetesType.none) {
+    return vmSelectServiceResponse;
+  }
+
+  // No Prometheus or VictoriaMetrics pod or service found
   return createPrometheusEndpoint();
 }
 
