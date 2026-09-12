@@ -302,7 +302,11 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
       fetchIcons();
     }
   }, [charts]);
-
+  const chartList = charts
+    ? Object.values(charts)
+        .flatMap((value: any) => (Array.isArray(value) ? value?.slice?.(0, 1) || [] : [value]))
+        .filter(Boolean)
+    : [];
   return (
     <>
       <EditorDialog
@@ -342,7 +346,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
           >
             <Loader title="" />
           </Box>
-        ) : charts.length === 0 ? (
+        ) : chartList.length === 0 ? (
           <Box mt={2} mx={2}>
             <Typography variant="h5" component="h2">
               {search
@@ -370,10 +374,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
               // filter by the search term against the chart name. Filtering on the chart name
               // rather than the map key keeps search working now that the map is keyed by a
               // unique id (e.g. package_id) instead of the name.
-              Object.values(charts)
-                .flatMap((value: any) =>
-                  Array.isArray(value) ? value?.slice?.(0, 1) || [] : [value]
-                )
+              chartList
                 .filter((chart: any) => (chart?.name ?? '').includes(search))
                 .map((chart: any) => {
                   return (
@@ -592,7 +593,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
           </Box>
         )}
       </Box>
-      {charts && charts.length !== 0 && (
+      {chartList.length !== 0 && (
         <Box mt={2} mx="auto" maxWidth="max-content">
           <Pagination
             size="large"
