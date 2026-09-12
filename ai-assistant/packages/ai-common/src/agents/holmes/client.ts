@@ -305,11 +305,21 @@ export function getHolmesProxyBaseUrl(cluster: string, config?: HolmesPluginConf
 }
 
 /**
+ * Configuration options for HolmesAgent.
+ */
+export interface HolmesAgentOptions {
+  /** Optional user authentication bearer token (e.g. id_token) to forward for per-user RBAC. */
+  authToken?: string;
+  /** Custom HTTP headers to include with AG-UI HTTP requests. */
+  headers?: Record<string, string>;
+}
+
+/**
  * HolmesAgent wraps @ag-ui/client's HttpAgent to communicate with the
  * Holmes ag-ui server via SSE.
  *
  * Usage:
- *   const agent = new HolmesAgent(getHolmesProxyBaseUrl(cluster));
+ *   const agent = new HolmesAgent(getHolmesProxyBaseUrl(cluster), { authToken: userToken });
  *   agent.subscribe({ onTextMessageContentEvent: ... });
  *   agent.addMessage({ id: '1', role: 'user', content: 'What pods are failing?' });
  *   await agent.runAgent({ runId: 'run-1' });
@@ -318,6 +328,8 @@ export class HolmesAgent {
   private agent: HttpAgent;
   private baseUrl: string;
   private threadId: string;
+  private authToken?: string;
+  private customHeaders?: Record<string, string>;
   private subscriberList: Array<{
     subscriber: AgentSubscriber;
     unsubscribe: () => void;
@@ -332,10 +344,13 @@ export class HolmesAgent {
    * Creates a Holmes agent client for the provided ag-ui base URL.
    *
    * @param baseUrl - Holmes service or proxy base URL.
+   * @param options - Additional options including user authentication token and custom headers.
    */
-  constructor(baseUrl: string = DEFAULT_AGUI_URL) {
+  constructor(baseUrl: string = DEFAULT_AGUI_URL, options?: HolmesAgentOptions) {
     this.baseUrl = baseUrl;
     this.threadId = `thread-${Date.now()}`;
+    this.authToken = options?.authToken;
+    this.customHeaders = options?.headers;
     this.agent = this.createAgent();
   }
 
@@ -347,12 +362,19 @@ export class HolmesAgent {
   private createAgent(): HttpAgent {
     const url = `${this.baseUrl}/api/agui/chat`;
     console.debug('[HolmesAgent] Creating HttpAgent with URL:', url);
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...this.customHeaders,
+    };
+
+    if (this.authToken && !headers['Authorization'] && !headers['authorization']) {
+      headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+
     return new HttpAgent({
       url,
       threadId: this.threadId,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
   }
 
