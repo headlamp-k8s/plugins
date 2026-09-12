@@ -94,7 +94,7 @@ export function Dashboard() {
     const allReports = [...(policyReports || []), ...(clusterPolicyReports || [])];
 
     for (const report of allReports) {
-      for (const result of report.results) {
+      for (const result of report.results || []) {
         counts[result.result] = (counts[result.result] || 0) + 1;
 
         if (result.result === 'fail' || result.result === 'error') {
@@ -107,7 +107,7 @@ export function Dashboard() {
         }
 
         const ns =
-          result.resources?.[0]?.namespace || report.jsonData.metadata.namespace || 'cluster';
+          result.resources?.[0]?.namespace || report.jsonData?.metadata?.namespace || 'cluster';
         const nsStats = byNamespace.get(ns) || { pass: 0, fail: 0 };
         if (result.result === 'pass') nsStats.pass++;
         if (result.result === 'fail' || result.result === 'error') nsStats.fail++;
