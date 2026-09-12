@@ -149,6 +149,41 @@ describe('collectPolicyImpact', () => {
     expect(impact.namespaces).toEqual(new Set(['team-checkout']));
   });
 
+  test('a namespaced Policy is invisible without policyNamespace, found via Copilot review on real cluster data', () => {
+    // Real report from a namespaced Policy (kyverno.io/v1 Policy, not
+    // ClusterPolicy) installed on the live cluster. Kyverno encodes its
+    // identity in result.policy as "team-checkout/require-cost-center-label",
+    // the same <namespace>/<name> convention bucketReportResults already
+    // documents. Passing just policy.metadata.name, the obvious thing a
+    // caller holding a Policy object would do, silently returns zero impact
+    // even though this exact report has real failures.
+    const reports = [
+      report('team-checkout', badPod, [
+        {
+          policy: 'team-checkout/require-cost-center-label',
+          rule: 'check-for-cost-center-label',
+          result: 'fail',
+          message:
+            "validation error: the 'cost-center' label is required on all Pods in this namespace.",
+        },
+      ]),
+    ];
+
+    const withoutNamespace = collectPolicyImpact('require-cost-center-label', reports, []);
+    expect(withoutNamespace.resources).toEqual([]);
+
+    const withNamespace = collectPolicyImpact(
+      'require-cost-center-label',
+      reports,
+      [],
+      'team-checkout'
+    );
+    expect(withNamespace.counts.fail).toBe(1);
+    expect(withNamespace.resources[0]).toEqual(
+      expect.objectContaining({ kind: 'Pod', name: 'bad-pod', status: 'fail' })
+    );
+  });
+
   test('groups by kind across both namespaced and cluster-scoped reports', () => {
     const policyReports = [report('team-checkout', badPod, [{ policy: 'p', result: 'fail' }])];
     const clusterReports = [

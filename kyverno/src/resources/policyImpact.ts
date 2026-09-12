@@ -98,19 +98,34 @@ function ingest(
  * the live PolicyReport / ClusterPolicyReport results already on the cluster.
  * This reflects what Kyverno evaluated rather than a static re-implementation
  * of its match logic, so it stays correct across selector, CEL, and autogen rules.
+ *
+ * Kyverno encodes a namespaced policy's identity in report results as
+ * `<namespace>/<name>` (see bucketReportResults), cluster policies stay
+ * unprefixed. Pass `policyNamespace` for a namespaced Policy so this matches
+ * the qualified form, otherwise every result is silently filtered out even
+ * when real data exists, `policyName` alone is never enough for a namespaced
+ * policy.
  */
 export function collectPolicyImpact(
   policyName: string,
   policyReports: PolicyReport[] | null,
-  clusterPolicyReports: ClusterPolicyReport[] | null
+  clusterPolicyReports: ClusterPolicyReport[] | null,
+  policyNamespace?: string
 ): PolicyImpactSummary {
+  const qualifiedName = policyNamespace ? `${policyNamespace}/${policyName}` : policyName;
   const byResource = new Map<string, ImpactedResource>();
 
   for (const report of policyReports || []) {
-    ingest(policyName, report.results, report.scope, report.jsonData.metadata.namespace, byResource);
+    ingest(
+      qualifiedName,
+      report.results,
+      report.scope,
+      report.jsonData.metadata.namespace,
+      byResource
+    );
   }
   for (const report of clusterPolicyReports || []) {
-    ingest(policyName, report.results, report.scope, undefined, byResource);
+    ingest(qualifiedName, report.results, report.scope, undefined, byResource);
   }
 
   const resources = Array.from(byResource.values());
