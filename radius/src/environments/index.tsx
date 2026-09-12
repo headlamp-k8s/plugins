@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { CircularProgress, Typography } from '@mui/material';
 import { RadiusStatusLabel } from '../components/RadiusStatusLabel';
@@ -36,6 +37,7 @@ interface TableRowProps {
  * Environments component displays a list of all Radius environments
  */
 export default function Environments() {
+  const { t } = useTranslation();
   const [environments, error, loading] = useRadiusEnvironments();
 
   // Show loading state
@@ -59,7 +61,7 @@ export default function Environments() {
     return (
       <SectionBox>
         <Typography color="error" variant="h6">
-          Error loading environments
+          {t('Error loading environments')}
         </Typography>
         <Typography color="error">{error.message}</Typography>
       </SectionBox>
@@ -93,12 +95,12 @@ export default function Environments() {
   });
 
   return (
-    <SectionBox title={`Environments (${tableData.length})`}>
+    <SectionBox title={t('Environments ({{count}})', { count: tableData.length })}>
       <Table
         data={tableData}
         columns={[
           {
-            header: 'Name',
+            header: t('Name'),
             accessorKey: 'name',
             gridTemplate: 'auto',
             Cell: ({ row }: TableRowProps) => {
@@ -111,22 +113,22 @@ export default function Environments() {
             },
           },
           {
-            header: 'Namespace',
+            header: t('Namespace'),
             accessorKey: 'namespace',
           },
           {
-            header: 'Kind',
+            header: t('Kind'),
             accessorKey: 'compute',
           },
           {
-            header: 'Provisioning State',
+            header: t('Provisioning State'),
             accessorKey: 'provisioningState',
             accessorFn: item => {
               return <RadiusStatusLabel status={item.provisioningState} />;
             },
           },
           {
-            header: 'Recipes',
+            header: t('Recipes'),
             accessorKey: 'recipesCount',
           },
         ]}
