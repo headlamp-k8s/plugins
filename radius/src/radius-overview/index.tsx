@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
+import { Utils } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { TileChart } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, CircularProgress, Grid, Typography, useTheme } from '@mui/material';
@@ -83,27 +85,14 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
   const theme = useTheme();
   const total = resources.length;
 
-  if (total === 0) {
-    return (
-      <Box sx={{ textAlign: 'center', p: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          0
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {title}
-        </Typography>
-      </Box>
-    );
-  }
-
   const status = getResourceStatus(resources);
 
   // Calculate percentages ensuring they sum to 100%
   const percentages = [
-    Math.round((status.success / total) * 100),
-    Math.round((status.failed / total) * 100),
-    Math.round((status.processing / total) * 100),
-    Math.round((status.suspended / total) * 100),
+    total > 0 ? Math.round((status.success / total) * 100) : 100,
+    total > 0 ? Math.round((status.failed / total) * 100) : 0,
+    total > 0 ? Math.round((status.processing / total) * 100) : 0,
+    total > 0 ? Math.round((status.suspended / total) * 100) : 0,
   ];
 
   // Adjust to ensure total is 100% by modifying the largest percentage
@@ -226,14 +215,22 @@ export default function Overview() {
 
   if (appError || envError || resError) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography color="error" variant="h6">
-          Error loading Radius resources
-        </Typography>
-        {appError && <Typography color="error">{appError.message}</Typography>}
-        {envError && <Typography color="error">{envError.message}</Typography>}
-        {resError && <Typography color="error">{resError.message}</Typography>}
-      </Box>
+      <SectionBox title="Radius Overview">
+        <Box p={3} display="flex" flexDirection="column" alignItems="center" gap={2}>
+          <Icon icon="radius:logo" width={48} height={48} />
+          <Typography variant="h6">Radius is not installed</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Radius is an open-source cloud-native application platform.{' '}
+            <a
+              href="https://docs.radapp.io/installation/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn how to install Radius
+            </a>
+          </Typography>
+        </Box>
+      </SectionBox>
     );
   }
 
@@ -319,7 +316,11 @@ export default function Overview() {
               Cell: ({ row }: { row: { original: ApplicationTableData } }) => {
                 const appName = row.original.name;
                 return (
-                  <Link routeName="application-detail" params={{ applicationName: appName }}>
+                  <Link
+                    routeName="application-detail"
+                    params={{ applicationName: appName }}
+                    activeCluster={Utils.getCluster()}
+                  >
                     {appName}
                   </Link>
                 );
@@ -334,7 +335,11 @@ export default function Overview() {
                   return <Typography variant="body2">{envName}</Typography>;
                 }
                 return (
-                  <Link routeName="environment-detail" params={{ environmentName: envName }}>
+                  <Link
+                    routeName="environment-detail"
+                    params={{ environmentName: envName }}
+                    activeCluster={Utils.getCluster()}
+                  >
                     {envName}
                   </Link>
                 );
@@ -365,7 +370,11 @@ export default function Overview() {
               Cell: ({ row }: { row: { original: EnvironmentTableData } }) => {
                 const envName = row.original.name;
                 return (
-                  <Link routeName="environment-detail" params={{ environmentName: envName }}>
+                  <Link
+                    routeName="environment-detail"
+                    params={{ environmentName: envName }}
+                    activeCluster={Utils.getCluster()}
+                  >
                     {envName}
                   </Link>
                 );
