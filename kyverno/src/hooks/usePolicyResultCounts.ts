@@ -34,8 +34,18 @@ export interface PolicyResultLookup {
  * unit-tested without the Headlamp SDK shim.
  */
 export function usePolicyResultCounts(): PolicyResultLookup {
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const policyReportQuery = PolicyReport.useList();
+  const clusterPolicyReportQuery = ClusterPolicyReport.useList();
+
+  const policyReports = policyReportQuery.items;
+  const clusterPolicyReports = clusterPolicyReportQuery.items;
+
+  // `items` stays null when a list never resolves — including when the
+  // PolicyReport CRDs are absent or RBAC denies them — so deriving loading from
+  // `items === null` would leave callers stuck on a spinner forever. Use the
+  // query's own state instead, which settles on error too; an errored list then
+  // contributes no results and the caller can fall back to its empty state.
+  const loading = policyReportQuery.isLoading || clusterPolicyReportQuery.isLoading;
 
   return useMemo(() => {
     const { cluster, namespaced } = bucketReportResults([
@@ -46,8 +56,7 @@ export function usePolicyResultCounts(): PolicyResultLookup {
     return {
       forCluster: name => cluster.get(name),
       forNamespaced: (name, namespace) => namespaced.get(`${namespace}/${name}`),
-      // Loading until BOTH streams resolve — partial data would undercount per-row totals.
-      loading: policyReports === null || clusterPolicyReports === null,
+      loading,
     };
-  }, [policyReports, clusterPolicyReports]);
+  }, [policyReports, clusterPolicyReports, loading]);
 }
