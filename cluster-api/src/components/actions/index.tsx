@@ -50,9 +50,10 @@ export function getErrorMessage(error: unknown): string {
  * Connect a Cluster to Headlamp using its kubeconfig Secret.
  *
  * Contract: secret.jsonData.data.value is a base64-encoded kubeconfig YAML
- * (standard Kubernetes Secret encoding). We decode it via TextDecoder so that
- * binary cert bytes in the base64 payload do not cause atob() to throw
- * InvalidCharacterError.
+ * (standard Kubernetes Secret encoding), and Headlamp.setCluster() also
+ * expects the kubeconfig as base64 (see ClusterRequest.kubeconfig and
+ * KubeConfigLoader's own `encodeBase64(yaml.dump(...))` call in Headlamp
+ * core), so it is passed through unchanged.
  */
 async function connectClusterToHeadlamp(
   resource: Cluster,
@@ -96,10 +97,7 @@ async function connectClusterToHeadlamp(
     loadingRef.current = true;
     enqueueSnackbar('Connecting to cluster...', { variant: 'info' });
 
-    const bytes = Uint8Array.from(atob(kubeconfigBase64), c => c.charCodeAt(0));
-    const kubeconfig = new TextDecoder('utf-8').decode(bytes);
-
-    await Headlamp.setCluster({ kubeconfig });
+    await Headlamp.setCluster({ kubeconfig: kubeconfigBase64 });
     enqueueSnackbar('Cluster connected successfully', { variant: 'success' });
   } catch (error) {
     enqueueSnackbar(`Failed to connect: ${getErrorMessage(error)}`, { variant: 'error' });
