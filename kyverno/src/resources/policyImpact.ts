@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { PolicyRule } from './kyvernoPolicy';
+import { MatchSelectorEntry, PolicyRule } from './kyvernoPolicy';
 import {
   ClusterPolicyReport,
   PolicyReport,
@@ -29,6 +29,7 @@ export interface DrillDownTarget {
   policy: string;
   rule?: string;
   kind?: string;
+  apiVersion?: string;
   name?: string;
   namespace?: string;
   message?: string;
@@ -68,27 +69,40 @@ function ingest(
     // Background-scan reports put the resource identity on the report's
     // `scope` rather than per-result `resources[]` (Kyverno emits one
     // PolicyReport per scanned resource in that mode), so `resources[]` is
-    // the primary source and `scope` is the fallback. A result can reference
-    // more than one resource, so every entry gets its own map slot, not just
-    // the first, otherwise later resources are silently dropped.
+    // the primary source and the whole `scope` object is the fallback, used
+    // only when there are no resources[] entries at all. A result can
+    // reference more than one resource, so every entry gets its own map
+    // slot. Individual fields are never borrowed from `scope` for a genuine
+    // resources[] entry, `scope` describes the report's own subject, not
+    // necessarily the resource in this specific entry, borrowing its uid (or
+    // any other field) would attribute one resource's identity to another.
+    // When there is truly no identity at all (no resources[], no scope),
+    // iterate zero times rather than fabricate a placeholder resource.
     const resourceRefs =
-      result.resources && result.resources.length > 0 ? result.resources : [reportScope];
+      result.resources && result.resources.length > 0
+        ? result.resources
+        : reportScope
+          ? [reportScope]
+          : [];
 
     for (const res of resourceRefs) {
-      const kind = res?.kind || reportScope?.kind || 'Unknown';
-      const name = res?.name || reportScope?.name || '(unscoped)';
-      const namespace = res?.namespace || reportScope?.namespace || reportNamespace;
-      const uid = res?.uid || reportScope?.uid;
+      const kind = res?.kind || 'Unknown';
+      const name = res?.name || '(unscoped)';
+      const namespace = res?.namespace || reportNamespace;
+      const uid = res?.uid;
+      const apiVersion = res?.apiVersion;
       // Prefer the UID when it's available. The name-based key alone can
       // collide for distinct objects that share kind, namespace, and name,
-      // for example the same name used by two different API groups.
-      const key = uid || `${kind}/${namespace || ''}/${name}`;
+      // for example the same name used by two different API groups, so the
+      // fallback also folds in apiVersion.
+      const key = uid || `${apiVersion || ''}/${kind}/${namespace || ''}/${name}`;
       const existing = byResource.get(key);
 
       if (!existing || STATUS_RANK[result.result] > STATUS_RANK[existing.status]) {
         byResource.set(key, {
           policy: policyName,
           kind,
+          apiVersion,
           name,
           namespace,
           uid,
@@ -159,34 +173,82 @@ export function collectPolicyImpact(
   return { resources, byKind, namespaces, counts };
 }
 
+function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boolean {
+  const kinds = selector.resources?.kinds || [];
+  // Kyverno match kinds support "*" as a wildcard for every kind, an
+  // exact-membership check alone would reject a kind matched this way.
+  return kinds.includes(kind) || kinds.includes('*');
+}
+
+function describeConstraints(selectors: MatchSelectorEntry[], kind: string): string {
+  const parts = [`kind "${kind}"`];
+  const namespaces = selectors.flatMap(s => s.resources?.namespaces || []);
+  if (namespaces.length > 0) {
+    parts.push(`namespaces [${namespaces.join(', ')}]`);
+  }
+  if (selectors.some(s => s.resources?.selector)) {
+    parts.push('a label selector');
+  }
+  if (selectors.some(s => s.resources?.namespaceSelector)) {
+    parts.push('a namespace label selector');
+  }
+  return parts.join(' and ');
+}
+
 /**
  * Explains, in plain language, which rule and selector caused a policy to
  * consider a given resource kind. Read directly from the policy spec so the
  * explanation stays accurate even for policies with several rules.
  */
 export function describeMatchReasons(rules: PolicyRule[], kind: string): string[] {
+  // An empty or missing rules array is also how a policy type this function
+  // was not written for (a CEL ValidatingPolicy has no rules[] at all, only
+  // validations[]) reaches here, that is not the same as "rules exist but
+  // none of them matched", so it needs its own honest message rather than
+  // implying provenance this function has no basis to claim.
+  if (!rules || rules.length === 0) {
+    return [
+      `This policy's rules could not be read in a format this explanation understands; provenance for kind "${kind}" is unknown.`,
+    ];
+  }
+
   const reasons: string[] = [];
 
   for (const rule of rules) {
-    const selectors = [...(rule.match?.any || []), ...(rule.match?.all || [])];
-    for (const selector of selectors) {
-      const kinds = selector.resources?.kinds || [];
-      // Kyverno match kinds support "*" as a wildcard for every kind, an
-      // exact-membership check alone would reject a kind matched this way.
-      if (!kinds.includes(kind) && !kinds.includes('*')) continue;
+    const ruleReasons: string[] = [];
 
-      const parts = [`kind "${kind}"`];
-      if (selector.resources?.namespaces?.length) {
-        parts.push(`namespaces [${selector.resources.namespaces.join(', ')}]`);
-      }
-      if (selector.resources?.selector) {
-        parts.push('a label selector');
-      }
-      if (selector.resources?.namespaceSelector) {
-        parts.push('a namespace label selector');
-      }
-      reasons.push(`Rule "${rule.name}" matches ${parts.join(' and ')}.`);
+    // match.any is OR, any single entry matching is sufficient on its own.
+    for (const selector of rule.match?.any || []) {
+      if (!selectorMentionsKind(selector, kind)) continue;
+      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints([selector], kind)}.`);
     }
+
+    // match.all is AND, every entry has to hold at once, so the kind check
+    // has to pass for all of them together, concatenating any and all into
+    // one OR'd list (the previous approach) would report a match whenever a
+    // single all[] entry happened to name this kind, even when another entry
+    // in the same all[] block restricts it to a different kind entirely,
+    // something no single resource could ever satisfy.
+    const allSelectors = rule.match?.all || [];
+    if (allSelectors.length > 0 && allSelectors.every(s => selectorMentionsKind(s, kind))) {
+      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints(allSelectors, kind)}.`);
+    }
+
+    // exclude overrides a positive match at runtime for a resource it also
+    // covers. This function only has a kind, not a full resource, so it
+    // cannot know for certain whether a given resource would actually be
+    // excluded, but staying silent about an exclude block that plausibly
+    // covers this kind would let the reason above overstate certainty.
+    if (ruleReasons.length > 0 && rule.exclude) {
+      const excludeSelectors = [...(rule.exclude.any || []), ...(rule.exclude.all || [])];
+      if (excludeSelectors.some(s => selectorMentionsKind(s, kind))) {
+        ruleReasons.push(
+          `Rule "${rule.name}" also has an exclude block covering kind "${kind}"; a specific resource matching it would not actually be affected by this rule.`
+        );
+      }
+    }
+
+    reasons.push(...ruleReasons);
   }
 
   if (reasons.length > 0) return reasons;

@@ -332,6 +332,95 @@ describe('collectPolicyImpact', () => {
     expect(impact.resources).toHaveLength(2);
     expect(impact.resources.map(r => r.uid).sort()).toEqual(['widget-a', 'widget-b']);
   });
+
+  test('does not borrow the report scope UID for resources[] entries that omit their own, found via Copilot review', () => {
+    // Two distinct resources[] entries, neither with its own uid. Both used
+    // to fall back to reportScope.uid, colliding into one entry and losing
+    // one of them, even though the multi-resource loop should keep both.
+    const scopedReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'scoped',
+        namespace: 'team-checkout',
+        uid: 'r-5',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      scope: { kind: 'Pod', name: 'scope-subject', namespace: 'team-checkout', uid: 'scope-uid' },
+      results: [
+        {
+          policy: 'p',
+          result: 'fail',
+          resources: [
+            { kind: 'Pod', name: 'no-own-uid-1', namespace: 'team-checkout' },
+            { kind: 'Pod', name: 'no-own-uid-2', namespace: 'team-checkout' },
+          ],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', [scopedReport], []);
+
+    expect(impact.resources.map(r => r.name).sort()).toEqual(['no-own-uid-1', 'no-own-uid-2']);
+  });
+
+  test('folds apiVersion into the fallback key so same kind/name resources from different API groups do not collapse, found via Copilot review', () => {
+    const differentApiGroupsReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'different-groups',
+        namespace: 'team-checkout',
+        uid: 'r-6',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'fail',
+          resources: [
+            { apiVersion: 'group-a/v1', kind: 'Widget', name: 'shared-name', namespace: 'team-checkout' },
+          ],
+        },
+        {
+          policy: 'p',
+          result: 'pass',
+          resources: [
+            { apiVersion: 'group-b/v1', kind: 'Widget', name: 'shared-name', namespace: 'team-checkout' },
+          ],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', [differentApiGroupsReport], []);
+
+    expect(impact.resources).toHaveLength(2);
+    expect(impact.resources.map(r => r.apiVersion).sort()).toEqual(['group-a/v1', 'group-b/v1']);
+  });
+
+  test('produces no entry at all when a result has neither resources[] nor a report scope, found via Copilot review', () => {
+    // Previously this iterated once anyway and fabricated an
+    // "Unknown/(unscoped)" resource, collapsing every identity-less result
+    // from any policy into one fake entry instead of reporting nothing.
+    const noIdentityReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'no-identity',
+        namespace: 'team-checkout',
+        uid: 'r-7',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [{ policy: 'p', result: 'fail' }],
+    } as any);
+
+    const impact = collectPolicyImpact('p', [noIdentityReport], []);
+
+    expect(impact.resources).toEqual([]);
+  });
 });
 
 describe('describeMatchReasons', () => {
@@ -381,6 +470,69 @@ describe('describeMatchReasons', () => {
     const reasons = describeMatchReasons(namespaceSelectorRules, 'Pod');
 
     expect(reasons[0]).toContain('a namespace label selector');
+  });
+
+  test('gives an honest unknown-provenance message for an empty rules array instead of implying autogen or a background scan, found via Copilot review', () => {
+    // An empty rules array is also how a policy type this function was not
+    // written for (a CEL ValidatingPolicy has no rules[] at all) can reach
+    // here, that is not the same as "rules exist but none matched".
+    const reasons = describeMatchReasons([], 'Pod');
+
+    expect(reasons[0]).toContain('provenance for kind "Pod" is unknown');
+    expect(reasons[0]).not.toContain('background scan');
+  });
+
+  test('requires every entry in match.all to cover the kind, not just any one of them, found via Copilot review', () => {
+    // An all[] block requiring both Pod and Deployment kinds can never be
+    // satisfied by any single resource. Concatenating any and all into one
+    // OR'd list used to report this as a match for Pod anyway.
+    const impossibleAllRules: PolicyRule[] = [
+      {
+        name: 'impossible',
+        match: {
+          all: [{ resources: { kinds: ['Pod'] } }, { resources: { kinds: ['Deployment'] } }],
+        },
+      },
+    ];
+
+    expect(describeMatchReasons(impossibleAllRules, 'Pod')).toEqual([
+      expect.stringContaining('No rule in this policy explicitly lists kind "Pod"'),
+    ]);
+  });
+
+  test('reports a match when every entry in match.all genuinely covers the kind', () => {
+    const satisfiableAllRules: PolicyRule[] = [
+      {
+        name: 'namespaced-pods',
+        match: {
+          all: [
+            { resources: { kinds: ['Pod'], namespaces: ['team-checkout'] } },
+            { resources: { kinds: ['Pod'], selector: { matchLabels: { team: 'checkout' } } } },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(satisfiableAllRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "namespaced-pods" matches kind "Pod"');
+    expect(reasons[0]).toContain('namespaces [team-checkout]');
+    expect(reasons[0]).toContain('a label selector');
+  });
+
+  test('notes when a rule also has an exclude block that plausibly covers the same kind, found via Copilot review', () => {
+    const excludedRules: PolicyRule[] = [
+      {
+        name: 'require-labels',
+        match: { any: [{ resources: { kinds: ['Pod'] } }] },
+        exclude: { any: [{ resources: { kinds: ['Pod'], namespaces: ['kube-system'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(excludedRules, 'Pod');
+
+    expect(reasons).toHaveLength(2);
+    expect(reasons[1]).toContain('exclude block covering kind "Pod"');
   });
 });
 
