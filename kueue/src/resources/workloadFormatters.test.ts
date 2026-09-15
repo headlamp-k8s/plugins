@@ -24,6 +24,7 @@ import {
   renderResourceList,
   renderStringMap,
   renderText,
+  renderTopologyAssignment,
   renderWorkloadStatus,
 } from './workloadFormatters';
 
@@ -241,6 +242,22 @@ describe('Workload formatters', () => {
     );
     expect(renderOwnerReferences()).toBe('-');
     expect(renderOwnerReferences(ownerReferences)).toBe('Job/sample-kueue-workload');
+  });
+
+  it('renders topology assignments without dumping raw nested objects', () => {
+    expect(renderTopologyAssignment()).toBe('-');
+    expect(renderTopologyAssignment({ levels: ['kubernetes.io/hostname'], domains: [] })).toBe('-');
+    expect(
+      renderTopologyAssignment({
+        levels: ['cloud.provider.com/topology-block', 'kubernetes.io/hostname'],
+        domains: [
+          { values: ['block-1', 'node-1'], count: 2 },
+          { values: ['block-1', 'node-2'], count: 1 },
+        ],
+      })
+    ).toBe(
+      'cloud.provider.com/topology-block > kubernetes.io/hostname: block-1/node-1 (2), block-1/node-2 (1)'
+    );
   });
 
   it('builds namespaced detail route params', () => {

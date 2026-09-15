@@ -291,6 +291,47 @@ export interface WorkloadSpec {
 }
 
 /**
+ * One topology domain a Workload pod set was assigned to.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologydomainassignment
+ */
+export interface TopologyDomainAssignment {
+  /**
+   * Node selector values for this domain, ordered from the highest to the
+   * lowest topology level.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologydomainassignment
+   */
+  values: string[];
+  /**
+   * Number of pods scheduled in this topology domain.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologydomainassignment
+   */
+  count: number;
+}
+
+/**
+ * Topology placement result for one Workload pod set.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignment
+ */
+export interface TopologyAssignment {
+  /**
+   * Ordered topology level keys, from the highest to the lowest level.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignment
+   */
+  levels: string[];
+  /**
+   * Per-domain pod placement within the assigned topology.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignment
+   */
+  domains: TopologyDomainAssignment[];
+}
+
+/**
  * Admission assignment for one Workload pod set.
  *
  * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#podsetassignment
@@ -325,7 +366,7 @@ export interface PodSetAssignment {
    *
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#podsetassignment
    */
-  topologyAssignment?: unknown;
+  topologyAssignment?: TopologyAssignment;
   /**
    * Whether topology assignment is delayed.
    *

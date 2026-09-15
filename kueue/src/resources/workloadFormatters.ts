@@ -5,6 +5,7 @@ import type {
   ReclaimablePod,
   RequeueState,
   ResourceList,
+  TopologyAssignment,
   WorkloadConditionLike,
 } from './workload';
 
@@ -256,6 +257,19 @@ export function renderReclaimablePodsSummary(reclaimablePods: ReclaimablePod[] =
   return reclaimablePods
     .map(reclaimablePod => `${reclaimablePod.name}: ${reclaimablePod.count}`)
     .join(', ');
+}
+
+/** Render a Workload pod set assignment's topology placement without dumping raw nested objects. */
+export function renderTopologyAssignment(topologyAssignment?: TopologyAssignment) {
+  if (!topologyAssignment || (topologyAssignment.domains?.length ?? 0) === 0) {
+    return '-';
+  }
+
+  const domains = topologyAssignment.domains
+    .map(domain => `${domain.values.join('/')} (${domain.count})`)
+    .join(', ');
+
+  return `${topologyAssignment.levels.join(' > ')}: ${domains}`;
 }
 
 /** Render requeue state as count and next requeue time. */
