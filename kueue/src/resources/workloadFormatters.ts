@@ -6,6 +6,9 @@ import type {
   RequeueState,
   ResourceList,
   TopologyAssignment,
+  TopologyAssignmentSlice,
+  TopologyAssignmentSliceLevelValues,
+  TopologyAssignmentSlicePodCounts,
   WorkloadConditionLike,
 } from './workload';
 
@@ -259,17 +262,55 @@ export function renderReclaimablePodsSummary(reclaimablePods: ReclaimablePod[] =
     .join(', ');
 }
 
+/** Expand a slice's per-level values to one value per domain, resolving universal vs individual. */
+function expandSliceLevelValues(level: TopologyAssignmentSliceLevelValues, domainCount: number) {
+  if (level.universal !== undefined) {
+    return Array(domainCount).fill(level.universal);
+  }
+
+  const individual = level.individual;
+  const prefix = individual?.prefix ?? '';
+  const suffix = individual?.suffix ?? '';
+
+  return (individual?.roots ?? []).map(root => `${prefix}${root}${suffix}`);
+}
+
+/** Expand a slice's pod counts to one count per domain, resolving universal vs individual. */
+function expandSlicePodCounts(podCounts: TopologyAssignmentSlicePodCounts, domainCount: number) {
+  if (podCounts.universal !== undefined) {
+    return Array(domainCount).fill(podCounts.universal);
+  }
+
+  return podCounts.individual ?? [];
+}
+
+/** Render one topology assignment slice as one "values (count)" entry per domain. */
+function renderTopologyAssignmentSlice(slice: TopologyAssignmentSlice) {
+  const domainCount = slice.domainCount ?? 0;
+  const valuesByLevel = (slice.valuesPerLevel ?? []).map(level =>
+    expandSliceLevelValues(level, domainCount)
+  );
+  const counts = expandSlicePodCounts(slice.podCounts ?? {}, domainCount);
+
+  return Array.from({ length: domainCount }, (_, domainIndex) => {
+    const values = valuesByLevel.map(levelValues => levelValues[domainIndex] ?? '-');
+    return `${values.join('/')} (${counts[domainIndex] ?? '-'})`;
+  });
+}
+
 /** Render a Workload pod set assignment's topology placement without dumping raw nested objects. */
 export function renderTopologyAssignment(topologyAssignment?: TopologyAssignment) {
-  if (!topologyAssignment || (topologyAssignment.domains?.length ?? 0) === 0) {
+  if (!topologyAssignment || (topologyAssignment.slices?.length ?? 0) === 0) {
     return '-';
   }
 
-  const domains = topologyAssignment.domains
-    .map(domain => `${domain.values.join('/')} (${domain.count})`)
-    .join(', ');
+  const domains = topologyAssignment.slices.flatMap(renderTopologyAssignmentSlice);
 
-  return `${topologyAssignment.levels.join(' > ')}: ${domains}`;
+  if (domains.length === 0) {
+    return '-';
+  }
+
+  return `${topologyAssignment.levels.join(' > ')}: ${domains.join(', ')}`;
 }
 
 /** Render requeue state as count and next requeue time. */

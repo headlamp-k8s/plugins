@@ -246,18 +246,38 @@ describe('Workload formatters', () => {
 
   it('renders topology assignments without dumping raw nested objects', () => {
     expect(renderTopologyAssignment()).toBe('-');
-    expect(renderTopologyAssignment({ levels: ['kubernetes.io/hostname'], domains: [] })).toBe('-');
+    expect(renderTopologyAssignment({ levels: ['kubernetes.io/hostname'], slices: [] })).toBe('-');
+
     expect(
       renderTopologyAssignment({
         levels: ['cloud.provider.com/topology-block', 'kubernetes.io/hostname'],
-        domains: [
-          { values: ['block-1', 'node-1'], count: 2 },
-          { values: ['block-1', 'node-2'], count: 1 },
+        slices: [
+          {
+            domainCount: 2,
+            valuesPerLevel: [
+              { universal: 'block-1' },
+              { individual: { roots: ['node-1', 'node-2'] } },
+            ],
+            podCounts: { individual: [2, 1] },
+          },
         ],
       })
     ).toBe(
       'cloud.provider.com/topology-block > kubernetes.io/hostname: block-1/node-1 (2), block-1/node-2 (1)'
     );
+
+    expect(
+      renderTopologyAssignment({
+        levels: ['kubernetes.io/hostname'],
+        slices: [
+          {
+            domainCount: 3,
+            valuesPerLevel: [{ individual: { prefix: 'node-', roots: ['1', '2', '3'] } }],
+            podCounts: { universal: 1 },
+          },
+        ],
+      })
+    ).toBe('kubernetes.io/hostname: node-1 (1), node-2 (1), node-3 (1)');
   });
 
   it('builds namespaced detail route params', () => {
