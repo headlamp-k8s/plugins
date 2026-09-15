@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import type { PersistedBuiltinServerState } from '@headlamp-k8s/ai-common/mcp/config/builtinServers';
 import {
   SavedConfigurations,
   StoredProviderConfig,
@@ -38,6 +37,7 @@ import type {
 } from '@kinvolk/headlamp-plugin/lib/plugin/registry';
 import React from 'react';
 import { useBetween } from 'use-between';
+import type { PersistedBuiltinServerState } from './mcp/removeSeededAksMcpServer';
 
 export const PLUGIN_NAME = '@headlamp-k8s/ai-assistant';
 export const getSettingsURL = () => `/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`;
@@ -238,8 +238,10 @@ export interface PluginConfig extends SavedConfigurations {
   /** MCP configuration */
   mcpConfig?: MCPConfig;
   /**
-   * Definitions last written for host-provided built-in MCP servers, keyed by
-   * trimmed lowercase server name. Older installs persisted a plain name list.
+   * Definitions last written for host-provided built-in MCP servers.
+   *
+   * @deprecated Built-in MCP servers are no longer seeded. Kept so the removal
+   * migration can find and clear what upgraded installs still have persisted.
    */
   seededBuiltinMCPServers?: PersistedBuiltinServerState;
   /** Skills configuration */
