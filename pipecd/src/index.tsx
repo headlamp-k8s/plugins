@@ -1,5 +1,6 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
+import { ApplicationList } from './components/ApplicationList';
 import { SettingsPage } from './components/SettingsPage';
 
 const pipecdIcon = {
@@ -10,10 +11,19 @@ const pipecdIcon = {
 
 registerSidebarEntry({
   name: 'pipecd',
-  url: '/pipecd/settings',
+  url: '/pipecd/applications',
   label: 'PipeCD',
   icon: pipecdIcon,
   parent: null,
+  sidebar: 'IN-CLUSTER',
+});
+
+registerSidebarEntry({
+  name: 'pipecd-applications',
+  url: '/pipecd/applications',
+  label: 'Applications',
+  icon: 'mdi:layers-outline',
+  parent: 'pipecd',
   sidebar: 'IN-CLUSTER',
 });
 
@@ -24,6 +34,15 @@ registerSidebarEntry({
   icon: 'mdi:cog-outline',
   parent: 'pipecd',
   sidebar: 'IN-CLUSTER',
+});
+
+registerRoute({
+  path: '/pipecd/applications',
+  sidebar: 'pipecd-applications',
+  name: 'PipeCDApplications',
+  component: () => <ApplicationList />,
+  exact: true,
+  noAuthRequired: false,
 });
 
 registerRoute({
