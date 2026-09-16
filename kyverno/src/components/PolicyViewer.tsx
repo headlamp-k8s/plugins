@@ -35,6 +35,7 @@ import {
 } from '../resources/kyvernoPolicy';
 import { ClusterPolicyReport, PolicyReport, PolicyReportResult } from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
+import { PolicyImpactPanel } from './PolicyImpactPanel';
 
 interface PolicyViewerProps {
   name: string;
@@ -234,7 +235,13 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
   );
 }
 
-function AssociatedReportsSection({ policyName }: { policyName: string }) {
+function AssociatedReportsSection({
+  policyName,
+  policyNamespace,
+}: {
+  policyName: string;
+  policyNamespace?: string;
+}) {
   const { t } = useTranslation();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
@@ -251,12 +258,18 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
     );
   }
 
+  // Kyverno encodes a namespaced policy's identity in report results as
+  // <namespace>/<name> (see bucketReportResults and policyImpact.ts),
+  // cluster policies stay unprefixed. Comparing against the bare name alone
+  // silently matched nothing for every namespaced Policy.
+  const qualifiedName = policyNamespace ? `${policyNamespace}/${policyName}` : policyName;
+
   const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] =
     [];
 
   for (const report of policyReports) {
     for (const result of report.results) {
-      if (result.policy === policyName) {
+      if (result.policy === qualifiedName) {
         matchingResults.push({
           ...result,
           reportName: report.jsonData.metadata.name,
@@ -268,7 +281,7 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
 
   for (const report of clusterPolicyReports) {
     for (const result of report.results) {
-      if (result.policy === policyName) {
+      if (result.policy === qualifiedName) {
         matchingResults.push({
           ...result,
           reportName: report.jsonData.metadata.name,
@@ -408,7 +421,15 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
       <SectionBox title={t('Rules ({{count}})', { count: policy.rules.length })}>
         <RulesTable rules={policy.rules} />
       </SectionBox>
-      <AssociatedReportsSection policyName={policy.jsonData.metadata.name} />
+      <PolicyImpactPanel
+        policyName={policy.jsonData.metadata.name}
+        policyNamespace={policy.jsonData.metadata.namespace}
+        rules={policy.rules}
+      />
+      <AssociatedReportsSection
+        policyName={policy.jsonData.metadata.name}
+        policyNamespace={policy.jsonData.metadata.namespace}
+      />
       <YamlSection jsonData={policy.jsonData} />
     </Box>
   );
