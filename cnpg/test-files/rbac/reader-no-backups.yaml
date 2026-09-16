@@ -1,0 +1,40 @@
+# Can read Clusters and ScheduledBackups, but not Backups.
+#
+# The denial that matters most, because Backups feed the one column and several
+# facts that the rest of the UI does not depend on. Expected: the cluster rows
+# still render in full, only the Last Backup column degrades to Unknown, and
+# every view that goes quiet names `list backups.postgresql.cnpg.io` rather than
+# reporting zero backups or a bare "forbidden".
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cnpg-reader-no-backups
+  namespace: cnpg-headlamp-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cnpg-reader-no-backups
+rules:
+  - apiGroups: ['postgresql.cnpg.io']
+    resources: ['clusters', 'scheduledbackups']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['']
+    resources: ['namespaces']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['apiextensions.k8s.io']
+    resources: ['customresourcedefinitions']
+    verbs: ['get', 'list']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cnpg-reader-no-backups
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cnpg-reader-no-backups
+subjects:
+  - kind: ServiceAccount
+    name: cnpg-reader-no-backups
+    namespace: cnpg-headlamp-test
