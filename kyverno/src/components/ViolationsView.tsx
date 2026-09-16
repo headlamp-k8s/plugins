@@ -36,7 +36,7 @@ import {
   PolicyReportResult,
   PolicyResultStatus,
 } from '../resources/policyReport';
-import { ResultStatusChip, SeverityChip } from './common';
+import { columnId, ResultStatusChip, SeverityChip } from './common';
 
 type GroupBy = 'none' | 'policy' | 'namespace' | 'kind';
 
@@ -160,51 +160,60 @@ export function ViolationsView() {
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
 
-  // Column definitions depend on t() so they're built inside the component.
-  const violationColumns = useMemo(
-    () => [
-      {
-        header: t('Resource'),
-        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
-      },
-      {
-        header: t('Kind'),
-        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
-      },
-      {
-        header: t('Namespace'),
-        accessorFn: (v: ViolationEntry) =>
-          v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
-      },
-      {
-        header: t('Policy'),
-        accessorFn: (v: ViolationEntry) => v.policy,
-      },
-      {
-        header: t('Rule'),
-        accessorFn: (v: ViolationEntry) => v.rule || '-',
-      },
-      {
-        header: t('Severity'),
-        accessorFn: (v: ViolationEntry) => v.severity || '',
-        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
-          <SeverityChip severity={row.original.severity} />
-        ),
-      },
-      {
-        header: t('Result'),
-        accessorFn: (v: ViolationEntry) => v.result,
-        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
-          <ResultStatusChip status={row.original.result} />
-        ),
-      },
-      {
-        header: t('Message'),
-        accessorFn: (v: ViolationEntry) => v.message || '-',
-      },
-    ],
-    [t]
-  );
+  // Rebuilt every render (not memoized on `t`, whose reference doesn't change
+  // when the translation backend finishes loading) and each column carries
+  // an id derived from its own live header text, so Table's memoized header
+  // and body cells (keyed on column id and on accessorFn value) can't get
+  // stuck showing a blank label from an early pre-translation render.
+  const violationColumns = [
+    {
+      header: t('Resource'),
+      id: columnId('resource', t('Resource')),
+      accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
+    },
+    {
+      header: t('Kind'),
+      id: columnId('kind', t('Kind')),
+      accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
+    },
+    {
+      header: t('Namespace'),
+      id: columnId('namespace', t('Namespace')),
+      accessorFn: (v: ViolationEntry) =>
+        v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
+    },
+    {
+      header: t('Policy'),
+      id: columnId('policy', t('Policy')),
+      accessorFn: (v: ViolationEntry) => v.policy,
+    },
+    {
+      header: t('Rule'),
+      id: columnId('rule', t('Rule')),
+      accessorFn: (v: ViolationEntry) => v.rule || '-',
+    },
+    {
+      header: t('Severity'),
+      id: columnId('severity', t('Severity')),
+      accessorFn: (v: ViolationEntry) => v.severity || '',
+      Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+        <SeverityChip severity={row.original.severity} />
+      ),
+    },
+    {
+      header: t('Result'),
+      id: columnId('result', t('Result')),
+      accessorFn: (v: ViolationEntry) => v.result,
+      Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+        <ResultStatusChip status={row.original.result} />
+      ),
+    },
+    {
+      header: t('Message'),
+      id: columnId('message', t('Message')),
+      accessorFn: (v: ViolationEntry) => v.message || '-',
+    },
+  ];
 
   const allViolations = useMemo(
     () => collectViolations(policyReports, clusterPolicyReports),
