@@ -14,12 +14,34 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   canUseDirectToolCalling,
+  copilotModelRequiresResponsesApi,
   createChatModel,
   DIRECT_TOOL_CALLING_PROVIDERS,
 } from './createChatModel';
+
+const { chatOpenAIOptions } = vi.hoisted(() => ({
+  chatOpenAIOptions: [] as Record<string, unknown>[],
+}));
+
+// Record constructor options so endpoint routing is asserted on what we hand to
+// LangChain rather than on instance properties it may stop exposing.
+vi.mock('@langchain/openai', async importOriginal => {
+  const actual = await importOriginal<typeof import('@langchain/openai')>();
+  class RecordingChatOpenAI extends actual.ChatOpenAI {
+    constructor(fields: ConstructorParameters<typeof actual.ChatOpenAI>[0]) {
+      super(fields);
+      chatOpenAIOptions.push({ ...fields });
+    }
+  }
+  return { ...actual, ChatOpenAI: RecordingChatOpenAI };
+});
+
+beforeEach(() => {
+  chatOpenAIOptions.length = 0;
+});
 
 // createLangChainModel is a factory that instantiates real SDK objects.
 // We only test the validation / error paths — those run before any network
@@ -172,6 +194,52 @@ describe('createLangChainModel — copilot model name stripping', () => {
     expect(() =>
       createChatModel('copilot', { apiKey: 'ghp_tok', model: 'org/team/gpt-4o' })
     ).not.toThrow();
+  });
+});
+
+describe('createLangChainModel — Copilot Responses API routing', () => {
+  const responsesOnlyModels = [
+    'gpt-5.3-codex',
+    'gpt-5.4-mini',
+    'gpt-5.5',
+    'gpt-5.6-sol',
+    'gpt-5.6-luna',
+    'gpt-5.6-terra',
+    'gpt-6-astra',
+    'grok-4.6',
+    'mai-code-1.1-flash',
+  ];
+  const chatCompletionsModels = [
+    'gpt-5.4',
+    'gpt-4o',
+    'gpt-4.1',
+    'claude-opus-5',
+    'claude-haiku-4.5',
+  ];
+
+  it.each(responsesOnlyModels)('requests the Responses API for %s', modelId => {
+    createChatModel('copilot', { apiKey: 'ghp_tok', model: `openai/${modelId}` });
+
+    expect(chatOpenAIOptions.at(-1)).toMatchObject({ model: modelId, useResponsesApi: true });
+  });
+
+  it.each(chatCompletionsModels)('keeps %s on the chat completions endpoint', modelId => {
+    createChatModel('copilot', { apiKey: 'ghp_tok', model: modelId });
+
+    expect(chatOpenAIOptions.at(-1)).toMatchObject({ model: modelId, useResponsesApi: false });
+  });
+
+  it.each(responsesOnlyModels)('classifies %s as Responses-only', modelId => {
+    expect(copilotModelRequiresResponsesApi(modelId)).toBe(true);
+  });
+
+  it.each(chatCompletionsModels)('classifies %s as chat-completions capable', modelId => {
+    expect(copilotModelRequiresResponsesApi(modelId)).toBe(false);
+  });
+
+  it('ignores an optional vendor prefix and model ID casing', () => {
+    expect(copilotModelRequiresResponsesApi('openai/GPT-5.6-Sol')).toBe(true);
+    expect(copilotModelRequiresResponsesApi('openai/gpt-4o')).toBe(false);
   });
 });
 
