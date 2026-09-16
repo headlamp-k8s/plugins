@@ -135,13 +135,15 @@ export function minimizeResourceList(resources: unknown): MinimizedResource[] {
  * @param currentCluster - Cluster currently displayed by the host.
  * @param clusterWarnings - Warning and loading-error details keyed by cluster.
  * @param selectedClusters - Clusters explicitly selected for the current request.
+ * @param availableClusters - Clusters configured on the host, used when none is selected.
  * @returns A multiline description the assistant can use as prompt context.
  */
 export function generateContextDescription(
   event: ContextEventPayload | null,
   currentCluster?: string,
   clusterWarnings?: ClusterWarnings,
-  selectedClusters?: string[]
+  selectedClusters?: string[],
+  availableClusters?: string[]
 ): string {
   const contextParts: string[] = [];
   // Add cluster context - be clear about what clusters are in scope
@@ -153,6 +155,11 @@ export function generateContextDescription(
     }
   } else if (currentCluster) {
     contextParts.push(`You are viewing cluster: ${currentCluster}`);
+  } else if (availableClusters && availableClusters.length > 0) {
+    contextParts.push(
+      `No cluster is currently selected. Available clusters: ${availableClusters.join(', ')}. ` +
+        'Pass the cluster argument to kubernetes_api_request to choose one.'
+    );
   }
 
   // Add current view context

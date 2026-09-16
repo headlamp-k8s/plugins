@@ -98,6 +98,29 @@ describe('contextGenerator', () => {
       expect(result).toContain('Current view: Overview');
     });
 
+    it('lists the available clusters when none is selected', () => {
+      const result = generateContextDescription({ type: 'Home' }, undefined, undefined, undefined, [
+        'cluster-a',
+        'cluster-b',
+      ]);
+
+      expect(result).toContain('No cluster is currently selected');
+      expect(result).toContain('cluster-a, cluster-b');
+    });
+
+    it('omits the available cluster list once a cluster is selected', () => {
+      const result = generateContextDescription(
+        { type: 'Overview' },
+        'cluster-a',
+        undefined,
+        [],
+        ['cluster-a', 'cluster-b']
+      );
+
+      expect(result).toContain('You are viewing cluster: cluster-a');
+      expect(result).not.toContain('No cluster is currently selected');
+    });
+
     it('describes a pod resource with status and container readiness', () => {
       const result = generateContextDescription(
         {
