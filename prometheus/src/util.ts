@@ -7,7 +7,12 @@ import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/Ka
 import { getTinkerbellController } from './components/Config/tinkerbellChart/tinkerbellQueries';
 import { isPrometheusInstalled, KubernetesType } from './request';
 
-export const PLUGIN_NAME = 'prometheus';
+export const PLUGIN_NAME = '@headlamp-k8s/prometheus';
+
+// PLUGIN_NAME changed from 'prometheus' to '@headlamp-k8s/prometheus'. This key is
+// used to store the plugin's config in local storage, so it's kept as 'prometheus'
+// so existing users' saved config is not lost.
+export const PLUGIN_CONFIG_KEY = 'prometheus';
 
 /**
  * ClusterData type represents the configuration data for a cluster.
@@ -41,7 +46,7 @@ type Conf = {
  * @returns {ConfigStore<Conf>} The config store.
  */
 export function getConfigStore(): ConfigStore<Conf> {
-  return new ConfigStore<Conf>(PLUGIN_NAME);
+  return new ConfigStore<Conf>(PLUGIN_CONFIG_KEY);
 }
 
 /**
