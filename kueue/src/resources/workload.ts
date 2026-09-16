@@ -291,6 +291,79 @@ export interface WorkloadSpec {
 }
 
 /**
+ * Per-domain node selector values for one topology level, within a slice.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignmentslicelevelindividualvalues
+ */
+export interface TopologyAssignmentSliceLevelIndividualValues {
+  /** Common prefix for every value in this slice's assignment. */
+  prefix?: string;
+  /** Common suffix for every value in this slice's assignment. */
+  suffix?: string;
+  /** Per-domain values, excluding the prefix and suffix. Length equals the slice's domainCount. */
+  roots: string[];
+}
+
+/**
+ * Node selector values for one topology level, within a slice.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignmentslicelevelvalues
+ */
+export interface TopologyAssignmentSliceLevelValues {
+  /** A single value applied to every domain in the slice. */
+  universal?: string;
+  /** Distinct values per domain in the slice. */
+  individual?: TopologyAssignmentSliceLevelIndividualValues;
+}
+
+/**
+ * Pod counts per domain, within a slice.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignmentslicepodcounts
+ */
+export interface TopologyAssignmentSlicePodCounts {
+  /** The same pod count applied to every domain in the slice. */
+  universal?: number;
+  /** Distinct pod count per domain in the slice. Length equals the slice's domainCount. */
+  individual?: number[];
+}
+
+/**
+ * Topology assignment for a subset of a pod set's pods. The full assignment
+ * is the union of all of a TopologyAssignment's slices.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignmentslice
+ */
+export interface TopologyAssignmentSlice {
+  /** Number of domains covered by this slice. */
+  domainCount: number;
+  /** One entry per TopologyAssignment level, in the same order. */
+  valuesPerLevel: TopologyAssignmentSliceLevelValues[];
+  /** Pods allocated per domain in this slice. */
+  podCounts: TopologyAssignmentSlicePodCounts;
+}
+
+/**
+ * Topology placement result for one Workload pod set.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignment
+ */
+export interface TopologyAssignment {
+  /**
+   * Ordered topology level keys, from the highest to the lowest level.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignment
+   */
+  levels: string[];
+  /**
+   * Slices whose union makes up the full topology placement.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignment
+   */
+  slices: TopologyAssignmentSlice[];
+}
+
+/**
  * Admission assignment for one Workload pod set.
  *
  * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#podsetassignment
@@ -325,7 +398,7 @@ export interface PodSetAssignment {
    *
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#podsetassignment
    */
-  topologyAssignment?: unknown;
+  topologyAssignment?: TopologyAssignment;
   /**
    * Whether topology assignment is delayed.
    *
