@@ -55,7 +55,11 @@
     ]
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.14.0"
+    "@kinvolk/headlamp-plugin": "^0.14.0",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "jsdom": "^30.0.1",
+    "vitest": "^3.2.7"
   },
   "dependencies": {
     "react-syntax-highlighter": "^15.6.6",
