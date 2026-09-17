@@ -14,35 +14,44 @@
  * limitations under the License.
  */
 
+import { render, waitFor } from '@testing-library/react';
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const registerHeadlampEventCallback = vi.fn();
 const setEvent = vi.fn();
+const useGlobalState = vi.fn(() => ({ event: null, setEvent }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   registerHeadlampEventCallback: (callback: unknown) => registerHeadlampEventCallback(callback),
 }));
 
 vi.mock('../../pluginState', () => ({
-  useGlobalState: () => ({ event: null, setEvent }),
+  useGlobalState,
 }));
 
 /** Renders the handler and returns the callback it registered. */
 async function getEventCallback() {
   const { default: HeadlampEventHandler } = await import('./HeadlampEventHandler');
-  HeadlampEventHandler();
+  render(<HeadlampEventHandler />);
+  await waitFor(() => expect(registerHeadlampEventCallback).toHaveBeenCalledTimes(1));
   return registerHeadlampEventCallback.mock.calls.at(-1)![0] as (event: {
     type: string;
     data?: unknown;
-  }) => null;
+  }) => void;
 }
 
 const project = { id: 'my-project', namespaces: ['dev'], clusters: ['minikube'] };
 
 describe('HeadlampEventHandler', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
+    useGlobalState.mockImplementation(() => ({ event: null, setEvent }));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('stores the project list from the project list view event', async () => {
@@ -55,6 +64,83 @@ describe('HeadlampEventHandler', () => {
       title: 'Projects',
       projects: [project],
     });
+  });
+
+  it('keeps one active callback through StrictMode rerenders and removes it on unmount', async () => {
+    const { default: HeadlampEventHandler } = await import('./HeadlampEventHandler');
+    const { rerender, unmount } = render(
+      <React.StrictMode>
+        <HeadlampEventHandler />
+      </React.StrictMode>
+    );
+    await waitFor(() => expect(registerHeadlampEventCallback).toHaveBeenCalledTimes(1));
+    const callback = registerHeadlampEventCallback.mock.calls[0][0] as (event: {
+      type: string;
+      data?: unknown;
+    }) => void;
+
+    rerender(
+      <React.StrictMode>
+        <HeadlampEventHandler />
+      </React.StrictMode>
+    );
+    callback({ type: 'headlamp.project-list-view', data: { projects: [project] } });
+
+    expect(registerHeadlampEventCallback).toHaveBeenCalledTimes(1);
+    expect(setEvent).toHaveBeenCalledTimes(1);
+
+    unmount();
+    setEvent.mockClear();
+    callback({ type: 'headlamp.project-list-view', data: { projects: [project] } });
+
+    expect(setEvent).not.toHaveBeenCalled();
+  });
+
+  it('dispatches to a snapshot when a subscriber unmounts another subscriber', async () => {
+    const firstSetEvent = vi.fn();
+    const secondSetEvent = vi.fn();
+    useGlobalState
+      .mockReturnValueOnce({ event: null, setEvent: firstSetEvent })
+      .mockReturnValueOnce({ event: null, setEvent: secondSetEvent });
+    const { default: HeadlampEventHandler } = await import('./HeadlampEventHandler');
+    render(<HeadlampEventHandler />);
+    const secondHandler = render(<HeadlampEventHandler />);
+    await waitFor(() => expect(registerHeadlampEventCallback).toHaveBeenCalledTimes(1));
+    firstSetEvent.mockImplementation(() => secondHandler.unmount());
+    const callback = registerHeadlampEventCallback.mock.calls[0][0] as (event: {
+      type: string;
+      data?: unknown;
+    }) => void;
+
+    callback({ type: 'headlamp.project-list-view', data: { projects: [project] } });
+
+    expect(firstSetEvent).toHaveBeenCalledTimes(1);
+    expect(secondSetEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('continues dispatching when a subscriber throws', async () => {
+    const error = new Error('subscriber failed');
+    const firstSetEvent = vi.fn(() => {
+      throw error;
+    });
+    const secondSetEvent = vi.fn();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    useGlobalState
+      .mockReturnValueOnce({ event: null, setEvent: firstSetEvent })
+      .mockReturnValueOnce({ event: null, setEvent: secondSetEvent });
+    const { default: HeadlampEventHandler } = await import('./HeadlampEventHandler');
+    render(<HeadlampEventHandler />);
+    render(<HeadlampEventHandler />);
+    await waitFor(() => expect(registerHeadlampEventCallback).toHaveBeenCalledTimes(1));
+    const callback = registerHeadlampEventCallback.mock.calls[0][0] as (event: {
+      type: string;
+      data?: unknown;
+    }) => void;
+
+    callback({ type: 'headlamp.project-list-view', data: { projects: [project] } });
+
+    expect(secondSetEvent).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith('Failed to handle Headlamp event:', error);
   });
 
   it('defaults to an empty project list when none are provided', async () => {
