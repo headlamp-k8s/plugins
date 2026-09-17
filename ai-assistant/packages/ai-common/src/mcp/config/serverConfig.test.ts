@@ -76,6 +76,11 @@ describe('expandEnvAndResolvePaths', () => {
     expect(result).toEqual([arg]);
   });
 
+  it('preserves commas inside Docker destination paths', () => {
+    const arg = 'type=bind,src=/home/user/dir,dst=/data,with,commas';
+    expect(expandEnvAndResolvePaths([arg], null, 'linux')).toEqual([arg]);
+  });
+
   it('uses empty environment values when process is polyfilled without env', () => {
     const originalProcess = globalThis.process;
     vi.stubGlobal('process', { platform: 'linux', cwd: () => '/tmp' });

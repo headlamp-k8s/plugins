@@ -32,6 +32,12 @@ describe('isSpecificResourceRequestHelper', () => {
     expect(isSpecificResourceRequestHelper('/api/v1/namespaces/default/pods/my-pod')).toBe(true);
   });
 
+  it('treats a resource named namespaces as a specific resource', () => {
+    expect(
+      isSpecificResourceRequestHelper('/api/v1/namespaces/default/configmaps/namespaces')
+    ).toBe(true);
+  });
+
   it('returns false for API roots', () => {
     expect(isSpecificResourceRequestHelper('/api/v1/namespaces')).toBe(false);
   });
@@ -40,5 +46,17 @@ describe('isSpecificResourceRequestHelper', () => {
     expect(
       isSpecificResourceRequestHelper('/apis/apps/v1/namespaces/default/deployments/my-deploy')
     ).toBe(true);
+  });
+
+  it('handles absolute URLs, queries, invalid segments, and long paths', () => {
+    expect(
+      isSpecificResourceRequestHelper(
+        'https://cluster.test/api/v1/namespaces/default/pods/my-pod?watch=false'
+      )
+    ).toBe(true);
+    expect(isSpecificResourceRequestHelper('/api/v1/namespaces/default/pods/my.pod')).toBe(false);
+    expect(isSpecificResourceRequestHelper(`/api/v1/${'segment/'.repeat(10_000)}pods/my-pod`)).toBe(
+      true
+    );
   });
 });
