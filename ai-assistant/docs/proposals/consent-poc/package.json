@@ -1,0 +1,14 @@
+{
+  "name": "consent-poc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "COOP popup consent proof of concept with Playwright e2e tests",
+  "scripts": {
+    "start": "node server.cjs",
+    "test": "playwright test",
+    "test:install": "playwright install chromium firefox webkit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.42.1"
+  }
+}
