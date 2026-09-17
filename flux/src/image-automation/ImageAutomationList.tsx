@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   SectionBox,
@@ -24,6 +25,7 @@ export function ImageAutomation() {
 }
 
 function ImageUpdateAutomationList() {
+  const { t } = useTranslation();
   const filterFunction = useFilterFunc();
   const [resources, error] = ImageUpdateAutomation.useList({ namespace: useNamespaces() });
 
@@ -32,21 +34,21 @@ function ImageUpdateAutomationList() {
   }
 
   return (
-    <SectionBox title="Image Update Automations">
+    <SectionBox title={t('Image Update Automations')}>
       <Table
         data={resources}
         columns={[
-          NameLink(ImageUpdateAutomation),
+          NameLink(ImageUpdateAutomation, t),
           'namespace',
           'status',
           {
-            header: 'Last Push',
+            header: t('Last Push'),
             accessorFn: item => (
               <DateLabel date={item.jsonData.status?.lastPushTime} format="mini" />
             ),
           },
           {
-            header: 'Git',
+            header: t('Git'),
             accessorFn: item =>
               item.jsonData.spec.git?.checkout?.ref && (
                 <ShowHideLabel labelId={item?.metadata.uid}>
@@ -55,12 +57,12 @@ function ImageUpdateAutomationList() {
               ),
           },
           {
-            header: 'Interval',
+            header: t('Interval'),
             accessorFn: item => item.jsonData.spec.interval,
             gridTemplate: 'min-content',
           },
           {
-            header: 'Update',
+            header: t('Update'),
             accessorFn: item =>
               item.jsonData.spec.update && YAML.stringify(item.jsonData.spec.update),
           },
@@ -73,28 +75,29 @@ function ImageUpdateAutomationList() {
 }
 
 function ImagePolicyList() {
+  const { t } = useTranslation();
   const filterFunction = useFilterFunc();
   const [resources, error] = ImagePolicy.useList({ namespace: useNamespaces() });
 
   if (error?.status === 404) {
-    return <NotSupported typeName="Image Update Policies" />;
+    return <NotSupported typeName={t('Image Update Policies')} />;
   }
 
   return (
-    <SectionBox title="Image Policies">
+    <SectionBox title={t('Image Policies')}>
       <Table
         data={resources}
         columns={[
-          NameLink(ImagePolicy),
+          NameLink(ImagePolicy, t),
           'namespace',
           'status',
           {
-            header: 'Policy',
+            header: t('Policy'),
             accessorFn: item =>
               item.jsonData.spec.policy && YAML.stringify(item.jsonData.spec.policy),
           },
           {
-            header: 'Latest',
+            header: t('Latest'),
             accessorFn: item => item.jsonData.status?.latestImage,
           },
           'age',
@@ -106,6 +109,7 @@ function ImagePolicyList() {
 }
 
 function ImageRepositoryList() {
+  const { t } = useTranslation();
   const filterFunction = useFilterFunc();
   const [resources, error] = ImageRepository.useList({ namespace: useNamespaces() });
 
@@ -114,28 +118,28 @@ function ImageRepositoryList() {
   }
 
   return (
-    <SectionBox title={<SectionFilterHeader title="Image Repositories" />}>
+    <SectionBox title={<SectionFilterHeader title={t('Image Repositories')} />}>
       <Table
         data={resources}
         columns={[
-          NameLink(ImageRepository),
+          NameLink(ImageRepository, t),
           'namespace',
           'status',
           {
-            header: 'Image',
+            header: t('Image'),
             accessorFn: item => <SourceLink wrap url={item.jsonData.spec.image} />,
           },
           {
-            header: 'Tags',
+            header: t('Tags'),
             accessorFn: item => item.jsonData.status.lastScanResult?.tagCount,
             gridTemplate: 'min-content',
           },
           {
-            header: 'Secret Ref',
+            header: t('Secret Ref'),
             accessorFn: item => item.jsonData.spec?.secretRef?.name || '-',
           },
           {
-            header: 'Interval',
+            header: t('Interval'),
             accessorFn: item => item.jsonData.spec.interval,
             gridTemplate: 'min-content',
           },

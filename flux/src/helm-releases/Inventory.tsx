@@ -1,4 +1,4 @@
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
@@ -22,6 +22,7 @@ import { PluralName } from '../helpers/pluralName';
 export function HelmInventory(props: Readonly<{ name: string; namespace: string }>) {
   const { name: chartName, namespace } = props;
   const [resources, setResources] = React.useState([]);
+  const { t } = useTranslation();
 
   // Fetch the secrets for the helm chart
   const [secrets] = K8s.ResourceClasses.Secret.useList({
@@ -81,12 +82,12 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
       data={Array.from(resources)}
       columns={[
         {
-          header: 'Name',
+          header: t('Name'),
           accessorKey: 'metadata.name',
           Cell: ({ row: { original: item } }) => inventoryNameLink(item),
         },
         {
-          header: 'Namespace',
+          header: t('Namespace'),
           accessorFn: item => item.metadata?.namespace ?? '',
           Cell: ({ cell }) => {
             if (cell.getValue())
@@ -103,24 +104,24 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
           },
         },
         {
-          header: 'Kind',
+          header: t('Kind'),
           accessorFn: item => item.kind,
         },
         {
-          header: 'Ready',
+          header: t('Ready'),
           accessorFn: item => {
             if (item.status) {
               return item.status.conditions?.findIndex(
                 c => c.type === 'Ready' || c.type === 'Available' || c.type === 'NamesAccepted'
               ) !== -1
-                ? 'True'
-                : 'False';
+                ? t('True')
+                : t('False');
             }
             return '';
           },
         },
         {
-          header: 'Age',
+          header: t('Age'),
           accessorFn: item => {
             if (item.metadata.creationTimestamp) {
               return <DateLabel date={item.metadata?.creationTimestamp} />;

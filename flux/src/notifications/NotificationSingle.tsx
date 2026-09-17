@@ -18,6 +18,7 @@ import { AlertNotification, ProviderNotification, ReceiverNotification } from '.
 import { ObjectEvents } from '../helpers/index';
 
 export function Notification() {
+  const { t } = useTranslation();
   const { namespace, pluralName, name } = useParams<{
     namespace: string;
     pluralName: string;
@@ -38,7 +39,7 @@ export function Notification() {
   })();
 
   if (!resourceClass) {
-    return <Flux404 message={`Unknown type ${pluralName}`} />;
+    return <Flux404 message={t('Unknown type {{pluralName}}', { pluralName })} />;
   }
 
   return (
