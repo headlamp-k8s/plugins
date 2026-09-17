@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import { Box } from '@mui/system';
@@ -13,6 +14,7 @@ import { getPhaseStatus } from '../common/util';
  * @param props.node - The map node containing the resource.
  */
 export function MachineGlance({ node }: { node: GraphNode }) {
+  const { t } = useTranslation();
   const kubeObject = node?.kubeObject;
   if (!kubeObject || kubeObject.kind !== Machine.kind || !kubeObject.jsonData) {
     return null;
@@ -41,23 +43,27 @@ export function MachineGlance({ node }: { node: GraphNode }) {
   const provider = infraRef?.kind;
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="machine-glance">
-      <StatusLabel status="">{`Cluster: ${clusterName}`}</StatusLabel>
+      <StatusLabel status="">{t('Cluster: {{name}}', { name: clusterName })}</StatusLabel>
       <StatusLabel status={getPhaseStatus(status?.phase ?? '')}>
         {`${status?.phase ?? 'Unknown'}`}
       </StatusLabel>
       {!readyCondition || readyCondition.status === 'Unknown' ? (
-        <StatusLabel status="warning">Unknown</StatusLabel>
+        <StatusLabel status="warning">{t('Unknown')}</StatusLabel>
       ) : (
         <StatusLabel status={readyCondition.status === 'True' ? 'success' : 'error'}>
-          {readyCondition.status === 'True' ? 'Ready' : 'Not Ready'}
+          {readyCondition.status === 'True' ? t('Ready') : t('Not Ready')}
         </StatusLabel>
       )}
-      {version && <StatusLabel status="">{`k8s: ${version}`}</StatusLabel>}
-      {provider && <StatusLabel status="">{`Provider: ${provider}`}</StatusLabel>}
-      {osImage && <StatusLabel status="">{`OS: ${osImage}`}</StatusLabel>}
-      {nodeRef && <StatusLabel status="">{`Node: ${nodeRef}`}</StatusLabel>}
-      {internalIP && <StatusLabel status="">{`Internal IP: ${internalIP}`}</StatusLabel>}
-      {externalIP && <StatusLabel status="">{`External IP: ${externalIP}`}</StatusLabel>}
+      {version && <StatusLabel status="">{t('k8s: {{version}}', { version })}</StatusLabel>}
+      {provider && <StatusLabel status="">{t('Provider: {{provider}}', { provider })}</StatusLabel>}
+      {osImage && <StatusLabel status="">{t('OS: {{osImage}}', { osImage })}</StatusLabel>}
+      {nodeRef && <StatusLabel status="">{t('Node: {{node}}', { node: nodeRef })}</StatusLabel>}
+      {internalIP && (
+        <StatusLabel status="">{t('Internal IP: {{ip}}', { ip: internalIP })}</StatusLabel>
+      )}
+      {externalIP && (
+        <StatusLabel status="">{t('External IP: {{ip}}', { ip: externalIP })}</StatusLabel>
+      )}
     </Box>
   );
 }

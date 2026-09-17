@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   Loader,
@@ -21,16 +22,17 @@ interface MachineSetsListWithDataProps {
  * @param props.MachineSetClass - The MachineSet resource class bound to a specific API version.
  */
 function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Machine Sets"
+      title={t('Machine Sets')}
       resourceClass={MachineSetClass}
       columns={[
         'name',
         'namespace',
         {
           id: 'cluster',
-          label: 'Cluster',
+          label: t('Cluster'),
           getValue: ms => ms.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] ?? '-',
           render: ms => {
             const cluster = ms.metadata?.labels?.['cluster.x-k8s.io/cluster-name'];
@@ -47,7 +49,7 @@ function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataPro
         },
         {
           id: 'ready',
-          label: 'Ready',
+          label: t('Ready'),
           getValue: ms => `${ms.status?.readyReplicas ?? 0}/${ms.spec?.replicas ?? 0}`,
           render: ms => {
             const ready = ms.status?.readyReplicas ?? 0;
@@ -62,17 +64,17 @@ function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataPro
         },
         {
           id: 'available',
-          label: 'Available',
+          label: t('Available'),
           getValue: ms => ms.status?.availableReplicas ?? 0,
         },
         {
           id: 'uptodate',
-          label: 'Up-to-date',
+          label: t('Up-to-date'),
           getValue: ms => ms.upToDateReplicas ?? '-',
         },
         {
           id: 'Paused',
-          label: 'Paused',
+          label: t('Paused'),
           getValue: (ms: MachineSet) => {
             const cond = getCondition(ms.conditions, 'Paused');
             if (!cond) return 'Unknown';
@@ -88,7 +90,7 @@ function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataPro
         },
         {
           id: 'version',
-          label: 'Version',
+          label: t('Version'),
           getValue: ms => ms.spec?.template?.spec?.version ?? '-',
         },
         'age',
@@ -102,11 +104,12 @@ function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataPro
  * Detects the CAPI version and renders the list with the correct resource class.
  */
 export function MachineSetsList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(MachineSet.crdName, 'v1beta1');
   const VersionedMachineSet = useMemo(
     () => (version ? MachineSet.withApiVersion(version) : MachineSet),
     [version]
   );
-  if (!version) return <Loader title="Detecting Cluster API version" />;
+  if (!version) return <Loader title={t('Detecting Cluster API version')} />;
   return <MachineSetsListWithData MachineSetClass={VersionedMachineSet} />;
 }

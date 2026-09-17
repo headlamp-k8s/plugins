@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   Loader,
@@ -28,16 +29,17 @@ interface MachineDeploymentsListWithDataProps {
 function MachineDeploymentsListWithData({
   MachineDeploymentClass,
 }: MachineDeploymentsListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Machine Deployments"
+      title={t('Machine Deployments')}
       resourceClass={MachineDeploymentClass}
       columns={[
         'name',
         'namespace',
         {
           id: 'cluster',
-          label: 'Cluster',
+          label: t('Cluster'),
           getValue: deployment =>
             deployment.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] ?? '-',
           render: deployment => {
@@ -58,7 +60,7 @@ function MachineDeploymentsListWithData({
         },
         {
           id: 'ready',
-          label: 'Ready',
+          label: t('Ready'),
           getValue: deployment =>
             `${deployment.status?.readyReplicas ?? 0}/${deployment.spec?.replicas ?? 0}`,
           render: deployment => {
@@ -74,17 +76,17 @@ function MachineDeploymentsListWithData({
         },
         {
           id: 'available',
-          label: 'Available',
+          label: t('Available'),
           getValue: deployment => deployment.status?.availableReplicas ?? 0,
         },
         {
           id: 'uptodate',
-          label: 'Up-to-date',
+          label: t('Up-to-date'),
           getValue: deployment => deployment.upToDateReplicas ?? '-',
         },
         {
           id: 'phase',
-          label: 'Phase',
+          label: t('Phase'),
           getValue: deployment => deployment.status?.phase,
           render: deployment => {
             const phase = deployment.status?.phase;
@@ -94,7 +96,7 @@ function MachineDeploymentsListWithData({
         },
         {
           id: 'paused',
-          label: 'Paused',
+          label: t('Paused'),
           getValue: deployment => (deployment.spec?.paused ? 'true' : 'false'),
           render: deployment =>
             renderConditionStatus(deployment.spec?.paused ? 'true' : 'false', undefined, {
@@ -106,7 +108,7 @@ function MachineDeploymentsListWithData({
         },
         {
           id: 'version',
-          label: 'Version',
+          label: t('Version'),
           getValue: deployment => deployment.spec?.template?.spec?.version ?? '-',
         },
         'age',
@@ -120,12 +122,13 @@ function MachineDeploymentsListWithData({
  * Handles API version detection and passes the versioned class to the renderer.
  */
 export function MachineDeploymentsList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(MachineDeployment.crdName, 'v1beta1');
   const VersionedMachineDeployment = useMemo(
     () => (version ? MachineDeployment.withApiVersion(version) : MachineDeployment),
     [version]
   );
-  if (!version) return <Loader title="Detecting Cluster API version" />;
+  if (!version) return <Loader title={t('Detecting Cluster API version')} />;
 
   return <MachineDeploymentsListWithData MachineDeploymentClass={VersionedMachineDeployment} />;
 }

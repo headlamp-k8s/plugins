@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   NameValueTable,
   type NameValueTableRow,
@@ -79,18 +80,21 @@ export function rowsToDict(rows: Array<{ name: string; value: string }>) {
  * @param ref - The KubeReference object.
  * @returns A React component showing the ref details.
  */
-export function renderReference(ref?: KubeReference): ReactNode {
+export function renderReference(
+  ref: KubeReference | undefined,
+  t: (key: string) => string
+): ReactNode {
   if (!ref) return '-';
   const rows: NameValueTableRow[] = [];
   if (ref.apiVersion) {
-    rows.push({ name: 'API Version', value: ref.apiVersion });
+    rows.push({ name: t('API Version'), value: ref.apiVersion });
   } else {
-    rows.push({ name: 'API Group', value: ref.apiGroup ?? '-' });
+    rows.push({ name: t('API Group'), value: ref.apiGroup ?? '-' });
   }
   rows.push(
-    { name: 'Kind', value: ref.kind ?? '-' },
-    { name: 'Name', value: ref.name ?? '-' },
-    { name: 'Namespace', value: ref.namespace ?? '-', hide: !ref.namespace }
+    { name: t('Kind'), value: ref.kind ?? '-' },
+    { name: t('Name'), value: ref.name ?? '-' },
+    { name: t('Namespace'), value: ref.namespace ?? '-', hide: !ref.namespace }
   );
   return <NameValueTable rows={rows} />;
 }
@@ -148,6 +152,7 @@ export function renderConditionStatus(
  * Shows a warning icon and tooltip explaining that manual changes may be overwritten.
  */
 export function TopologyControlledAction() {
+  const { t } = useTranslation();
   return (
     <Tooltip
       title={
@@ -161,7 +166,7 @@ export function TopologyControlledAction() {
               mb: 0.5,
             }}
           >
-            Topology-controlled (ClusterClass)
+            {t('Topology-controlled (ClusterClass)')}
           </Typography>
           <Typography
             variant="body2"
@@ -171,7 +176,9 @@ export function TopologyControlledAction() {
               lineHeight: 1.5,
             }}
           >
-            Manual changes like scaling may be automatically overwritten by the topology controller.
+            {t(
+              'Manual changes like scaling may be automatically overwritten by the topology controller.'
+            )}
           </Typography>
         </Box>
       }
