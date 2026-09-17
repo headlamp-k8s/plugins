@@ -1,0 +1,23 @@
+{
+  "ClusterQueues": "ClusterQueues",
+  "Cohort": "Cohort",
+  "Queueing Strategy": "Queueing Strategy",
+  "Resource Groups": "Resource Groups",
+  "Resource Flavors": "Resource Flavors",
+  "Pending Workloads": "Pending Workloads",
+  "Admitted Workloads": "Admitted Workloads",
+  "Status": "Status",
+  "Kueue {{resourceLabel}} are cluster-scoped admin resources.": "Kueue {{resourceLabel}} are cluster-scoped admin resources.",
+  "Checking access to Kueue {{resourceLabel}}": "Checking access to Kueue {{resourceLabel}}",
+  "Kueue {{resourceLabel}}": "Kueue {{resourceLabel}}",
+  "{{description}} Your current Kubernetes credentials are not authorized to {{action}} this page.": "{{description}} Your current Kubernetes credentials are not authorized to {{action}} this page.",
+  "LocalQueues": "LocalQueues",
+  "Kueue LocalQueues are namespaced user queue resources.": "Kueue LocalQueues are namespaced user queue resources.",
+  "Stop Policy": "Stop Policy",
+  "Reserving Workloads": "Reserving Workloads",
+  "ResourceFlavors": "ResourceFlavors",
+  "Node Labels": "Node Labels",
+  "Node Taints": "Node Taints",
+  "Tolerations": "Tolerations",
+  "Topology": "Topology"
+}
