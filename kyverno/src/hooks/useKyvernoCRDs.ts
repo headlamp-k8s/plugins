@@ -17,34 +17,36 @@
 import { ApiProxy, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { useEffect, useState } from 'react';
 
+export type CRDAvailability = boolean | undefined;
+
 export interface KyvernoCRDStatus {
-  legacy: boolean; // kyverno.io/v1 (ClusterPolicy, Policy)
-  cel: boolean; // policies.kyverno.io/v1 (ValidatingPolicy, MutatingPolicy, etc.)
-  cleanup: boolean; // kyverno.io/v2 (CleanupPolicy, ClusterCleanupPolicy)
-  reports: boolean; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
-  exceptions: boolean; // kyverno.io/v2 (PolicyException)
-  kyvernoV2Reports: boolean; // kyverno.io/v2 (Admission/BackgroundScan reports)
-  ephemeralReports: boolean; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
+  legacy: CRDAvailability; // kyverno.io/v1 (ClusterPolicy, Policy)
+  cel: CRDAvailability; // policies.kyverno.io/v1 (ValidatingPolicy, MutatingPolicy, etc.)
+  cleanup: CRDAvailability; // kyverno.io/v2 (CleanupPolicy, ClusterCleanupPolicy)
+  reports: CRDAvailability; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
+  exceptions: CRDAvailability; // kyverno.io/v2 (PolicyException)
+  kyvernoV2Reports: CRDAvailability; // kyverno.io/v2 (Admission/BackgroundScan reports)
+  ephemeralReports: CRDAvailability; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
   loading: boolean;
 }
 
 const initialStatus: KyvernoCRDStatus = {
-  legacy: false,
-  cel: false,
-  cleanup: false,
-  reports: false,
-  exceptions: false,
-  kyvernoV2Reports: false,
-  ephemeralReports: false,
+  legacy: undefined,
+  cel: undefined,
+  cleanup: undefined,
+  reports: undefined,
+  exceptions: undefined,
+  kyvernoV2Reports: undefined,
+  ephemeralReports: undefined,
   loading: true,
 };
 
-async function checkAPIGroup(path: string): Promise<boolean> {
+async function checkAPIGroup(path: string): Promise<CRDAvailability> {
   try {
     await ApiProxy.request(path, { method: 'GET' });
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    return (error as { status?: number }).status === 404 ? false : undefined;
   }
 }
 
