@@ -23,7 +23,7 @@ export function RevisionDeleteHeaderButton({ revision }: { revision: KRevision }
   const { deleteRevision, isSafeToDelete } = useRevisionActions();
   const { canDeleteRevision } = useRevisionPermissions();
 
-  const [kservice] = KService.useGet(
+  const kserviceQuery = KService.useGet(
     revision.parentService || '',
     revision.metadata.namespace || '',
     { cluster: revision.cluster }
@@ -34,14 +34,18 @@ export function RevisionDeleteHeaderButton({ revision }: { revision: KRevision }
     return null;
   }
 
+  const [kservice, kserviceError] = kserviceQuery;
   const hasParentService = !!revision.parentService;
-  const isLoadingKService = hasParentService && typeof kservice === 'undefined';
+  const parentNotFound = kserviceError?.status === 404;
+  const isParentTrafficUnavailable = hasParentService && !kservice && !parentNotFound;
 
   let { safe, reason } = isSafeToDelete(revision, kservice ?? null);
 
-  if (isLoadingKService) {
+  if (isParentTrafficUnavailable) {
     safe = false;
-    reason = 'Loading Traffic...';
+    reason = kserviceQuery.isLoading
+      ? 'Loading Traffic...'
+      : 'Unable to verify traffic for this Revision.';
   }
 
   return (
