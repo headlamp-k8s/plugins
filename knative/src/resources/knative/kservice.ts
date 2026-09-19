@@ -19,7 +19,18 @@ import {
   KubeObject,
   type KubeObjectInterface,
 } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import {
+  annNumOrClear,
+  annStrOrClear,
+  type AutoscalingParams,
+  type AutoscalingPatchBody,
+  buildAutoscalingPatch,
+  specNumOrClear,
+} from './autoscalingPatch';
 import type { Condition } from './common';
+
+export { annNumOrClear, annStrOrClear, specNumOrClear };
+export type { AutoscalingParams, AutoscalingPatchBody };
 
 export type Traffic = {
   percent?: number;
@@ -28,33 +39,6 @@ export type Traffic = {
   configurationName?: string;
   tag?: string;
   url?: string;
-};
-
-type AutoscalingParams = {
-  metric?: 'concurrency' | 'rps';
-  target?: number;
-  targetUtilization?: number;
-  containerConcurrency?: number;
-  minScale?: number;
-  maxScale?: number;
-  initialScale?: number;
-  activationScale?: number;
-  scaleDownDelay?: string;
-  stableWindow?: string;
-};
-
-type AutoscalingPatchBody = {
-  spec: {
-    template: {
-      metadata?: {
-        name?: string | null;
-        annotations?: Record<string, string>;
-      };
-      spec?: {
-        containerConcurrency?: number;
-      };
-    };
-  };
 };
 
 interface KServiceResource extends KubeObjectInterface {
@@ -146,62 +130,7 @@ export class KService extends KubeObject<KServiceResource> {
   }
 
   static buildAutoscalingPatch(params: AutoscalingParams): AutoscalingPatchBody | null {
-    const {
-      metric,
-      target,
-      targetUtilization,
-      minScale,
-      maxScale,
-      initialScale,
-      activationScale,
-      scaleDownDelay,
-      stableWindow,
-      containerConcurrency,
-    } = params;
-
-    const annotationSources: Record<string, string | number | undefined> = {
-      'autoscaling.knative.dev/metric': metric,
-      'autoscaling.knative.dev/target': target,
-      'autoscaling.knative.dev/target-utilization-percentage': targetUtilization,
-      'autoscaling.knative.dev/min-scale': minScale,
-      'autoscaling.knative.dev/max-scale': maxScale,
-      'autoscaling.knative.dev/initial-scale': initialScale,
-      'autoscaling.knative.dev/activation-scale': activationScale,
-      'autoscaling.knative.dev/scale-down-delay': scaleDownDelay,
-      'autoscaling.knative.dev/window': stableWindow,
-    };
-
-    const annotationsPatch: Record<string, string> = {};
-    for (const [key, value] of Object.entries(annotationSources)) {
-      if (typeof value === 'undefined') {
-        continue;
-      }
-      annotationsPatch[key] = String(value);
-    }
-
-    const templateSpecPatch: { containerConcurrency?: number } = {};
-    if (typeof containerConcurrency !== 'undefined') {
-      templateSpecPatch.containerConcurrency = containerConcurrency;
-    }
-
-    const hasAnnotationsPatch = Object.keys(annotationsPatch).length > 0;
-    const hasTemplateSpecPatch = Object.keys(templateSpecPatch).length > 0;
-
-    if (!hasAnnotationsPatch && !hasTemplateSpecPatch) {
-      return null;
-    }
-
-    return {
-      spec: {
-        template: {
-          metadata: {
-            name: null as any,
-            ...(hasAnnotationsPatch ? { annotations: annotationsPatch } : {}),
-          },
-          ...(hasTemplateSpecPatch ? { spec: templateSpecPatch } : {}),
-        },
-      },
-    };
+    return buildAutoscalingPatch(params);
   }
 
   static getBaseObject(): KServiceResource {
