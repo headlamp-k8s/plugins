@@ -1,21 +1,13 @@
+const DECIMAL_UNITS = ['', 'K', 'M', 'G', 'T', 'P', 'E'];
+
 export function parseRam(ramStr: string): number {
   if (!ramStr) return 0;
-  const match = ramStr.match(/^(\d+)([KMGT]i?)?$/i);
+
+  const match = `${ramStr}`.trim().match(/^(\d+(?:\.\d+)?)(?:([KMGTPE])(i)?)?$/i);
   if (!match) return 0;
 
-  const num = parseInt(match[1]);
-  const unit = match[2]?.toUpperCase();
+  const num = parseFloat(match[1]);
+  const exponent = DECIMAL_UNITS.indexOf(match[2]?.toUpperCase() ?? '');
 
-  const units: Record<string, number> = {
-    K: 1024,
-    KI: 1024,
-    M: 1024 * 1024,
-    MI: 1024 * 1024,
-    G: 1024 * 1024 * 1024,
-    GI: 1024 * 1024 * 1024,
-    T: 1024 * 1024 * 1024 * 1024,
-    TI: 1024 * 1024 * 1024 * 1024,
-  };
-
-  return num * (units[unit] || 1);
+  return num * (match[3] ? 1024 : 1000) ** exponent;
 }
