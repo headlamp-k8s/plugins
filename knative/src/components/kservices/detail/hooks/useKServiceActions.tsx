@@ -20,111 +20,13 @@ import { useSnackbar } from 'notistack';
 import React from 'react';
 import type { KService } from '../../../../resources/knative';
 import { useNotify } from '../../../common/notifications/useNotify';
+import { restartKServicePods } from './restartKServicePods';
 
 type KServiceActionId = 'redeploy' | 'restart';
 
 type UseKServiceActionsOptions = {
   onDone?: () => void;
 };
-
-/**
- * Restart a KService by deleting its pods one by one.
- *
- * We intentionally avoid "rollout restart" via Deployment patching here, because the Knative
- * control plane may reconcile it back quickly and it may not create an observable change.
- * Deleting pods directly triggers the controller to recreate them.
- */
-const POD_DELETE_DELAY_MS = 2000;
-const POD_DELETION_TIMEOUT_MS = 600_000;
-const POD_DELETION_POLL_INTERVAL_MS = 1_000;
-const POD_RECOVERY_TIMEOUT_MS = 60_000;
-const POD_RECOVERY_POLL_INTERVAL_MS = 2_000;
-
-function sleep(ms: number) {
-  return new Promise<void>(resolve => setTimeout(resolve, ms));
-}
-
-function countRunningPods(pods: Pod[]) {
-  return pods.filter(p => !p.metadata.deletionTimestamp && (p.status?.phase ?? '') === 'Running')
-    .length;
-}
-
-async function waitForPodDeletion(params: {
-  cluster: string;
-  namespace: string;
-  labelSelector: string;
-  podName: string;
-  timeoutMs?: number;
-  pollIntervalMs?: number;
-}) {
-  const {
-    cluster,
-    namespace,
-    labelSelector,
-    podName,
-    timeoutMs = POD_DELETION_TIMEOUT_MS,
-    pollIntervalMs = POD_DELETION_POLL_INTERVAL_MS,
-  } = params;
-
-  const deadline = Date.now() + timeoutMs;
-
-  while (Date.now() < deadline) {
-    try {
-      const pods = await listPodsByLabelSelector({ cluster, namespace, labelSelector });
-      const stillExists = pods.some(p => p.metadata.name === podName);
-      if (!stillExists) {
-        return true;
-      }
-    } catch {
-      // Ignore transient list errors and retry until timeout.
-    }
-
-    await sleep(pollIntervalMs);
-  }
-
-  return false;
-}
-
-async function waitForRunningPodRecovery(params: {
-  cluster: string;
-  namespace: string;
-  labelSelector: string;
-  targetRunningCount: number;
-  timeoutMs?: number;
-  pollIntervalMs?: number;
-  onTick?: (info: { runningCount: number }) => void;
-}) {
-  const {
-    cluster,
-    namespace,
-    labelSelector,
-    targetRunningCount,
-    timeoutMs = POD_RECOVERY_TIMEOUT_MS,
-    pollIntervalMs = POD_RECOVERY_POLL_INTERVAL_MS,
-    onTick,
-  } = params;
-
-  const deadline = Date.now() + timeoutMs;
-
-  while (Date.now() < deadline) {
-    try {
-      const pods = await listPodsByLabelSelector({ cluster, namespace, labelSelector });
-      const runningCount = countRunningPods(pods);
-      if (onTick) {
-        onTick({ runningCount });
-      }
-      if (runningCount >= targetRunningCount) {
-        return true;
-      }
-    } catch {
-      // Ignore transient list errors and retry until timeout.
-    }
-
-    await sleep(pollIntervalMs);
-  }
-
-  return false;
-}
 
 async function listPodsByLabelSelector(params: {
   cluster: string;
@@ -271,107 +173,22 @@ export function useKServiceActions(
         return;
       }
 
-      // Knative sets this label on pods for all revisions of the KService.
-      const labelSelector = `serving.knative.dev/service=${serviceName}`;
-
-      const pods = await listPodsByLabelSelector({
+      await restartKServicePods({
+        clearProgress,
         cluster: kservice.cluster,
+        listPodsByLabelSelector,
         namespace,
-        labelSelector,
+        notifyError,
+        notifyInfo,
+        onDone,
+        serviceName,
+        setProgress,
       });
-
-      const deletablePods = pods
-        .filter(pod => !pod.metadata.deletionTimestamp)
-        .sort((a, b) => {
-          const aCreationTime = new Date(a.metadata.creationTimestamp).getTime();
-          const bCreationTime = new Date(b.metadata.creationTimestamp).getTime();
-          return aCreationTime - bCreationTime;
-        });
-
-      if (deletablePods.length === 0) {
-        notifyInfo('No pods found for KService');
-        return;
-      }
-
-      let failedCount = 0;
-
-      for (let i = 0; i < deletablePods.length; i += 1) {
-        const podName = deletablePods[i].metadata.name!;
-
-        let runningBefore = 0;
-        let podToDelete: Pod | null = null;
-        try {
-          const currentPods = await listPodsByLabelSelector({
-            cluster: kservice.cluster,
-            namespace,
-            labelSelector,
-          });
-          runningBefore = countRunningPods(currentPods);
-          podToDelete = currentPods.find(p => p.metadata.name === podName) ?? null;
-        } catch {
-          // Fall back to deleting the original instance if listing failed.
-          podToDelete = deletablePods[i];
-        }
-
-        if (!podToDelete || podToDelete.metadata.deletionTimestamp) {
-          continue;
-        }
-
-        try {
-          setProgress(
-            `Restart in progress: deleting pod ${podName} (${i + 1}/${deletablePods.length})`
-          );
-          await podToDelete.delete();
-          const deleted = await waitForPodDeletion({
-            cluster: kservice.cluster,
-            namespace,
-            labelSelector,
-            podName,
-          });
-          if (!deleted) {
-            notifyError(`Timed out waiting for pod deletion: ${podName}`);
-          }
-        } catch (err: unknown) {
-          failedCount += 1;
-          const error = err as { message?: string } | undefined;
-          const detail = error?.message?.trim();
-          notifyError(
-            detail
-              ? `Failed to delete pod ${podName}: ${detail}`
-              : `Failed to delete pod ${podName}`
-          );
-        }
-
-        const recovered = await waitForRunningPodRecovery({
-          cluster: kservice.cluster,
-          namespace,
-          labelSelector,
-          targetRunningCount: runningBefore,
-        });
-
-        if (!recovered) {
-          notifyError(`Timed out waiting for replacement pod after deleting ${podName}`);
-        }
-
-        if (i < deletablePods.length - 1) {
-          await sleep(POD_DELETE_DELAY_MS);
-        }
-      }
-
-      if (failedCount > 0) {
-        notifyError(`Restart completed with errors (${failedCount}/${deletablePods.length})`);
-      } else {
-        notifyInfo('Restart completed successfully');
-      }
-      if (onDone) {
-        onDone();
-      }
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
       const detail = error?.message?.trim();
       notifyError(detail ? `Restart failed: ${detail}` : 'Restart failed');
     } finally {
-      clearProgress();
       setActing(null);
     }
   }
