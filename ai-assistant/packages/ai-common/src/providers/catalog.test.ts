@@ -54,15 +54,7 @@ describe('modelConfig', () => {
 
   it('does not suggest models excluded by the lifecycle policy', () => {
     const excludedModelsByProvider = {
-      openai: [
-        'gpt-5.1-mini',
-        'gpt-5-mini',
-        'o4-mini',
-        'o3',
-        'o3-mini',
-        'o1',
-        'o1-mini',
-      ],
+      openai: ['gpt-5.1-mini', 'gpt-5-mini', 'o4-mini', 'o3', 'o3-mini', 'o1', 'o1-mini'],
       anthropic: ['claude-3-7-sonnet-20250219'],
       mistral: ['magistral-medium-2507', 'magistral-small-2507'],
       gemini: ['gemini-3-pro-preview', 'gemini-3.1-flash-lite'],
