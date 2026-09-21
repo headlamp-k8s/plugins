@@ -3,6 +3,7 @@ import { CertificateRequestDetail } from './components/certificateRequests/Detai
 import { CertificateRequestsList } from './components/certificateRequests/List';
 import { CertificateDetail } from './components/certificates/Detail';
 import { CertificatesList } from './components/certificates/List';
+import { CertificatesOverview } from './components/certificates/Overview';
 import { ChallengeDetail } from './components/challenges/Detail';
 import { ChallengesList } from './components/challenges/List';
 import { ClusterIssuerDetail } from './components/clusterIssuers/Detail';
@@ -51,10 +52,25 @@ function registerCertManagerResource(config: ResourceRegistrationConfig) {
 // Main Cert-manager sidebar entry
 registerSidebarEntry({
   name: 'Cert-manager',
-  url: '/cert-manager/certificates',
+  url: '/cert-manager/overview',
   icon: 'mdi:certificate',
   parent: '',
   label: 'cert-manager',
+});
+
+registerSidebarEntry({
+  name: 'Overview',
+  url: '/cert-manager/overview',
+  parent: 'Cert-manager',
+  label: 'Overview',
+});
+
+registerRoute({
+  path: '/cert-manager/overview',
+  sidebar: 'Overview',
+  name: 'Overview',
+  exact: true,
+  component: () => <CertificatesOverview />,
 });
 
 // Register all resources
