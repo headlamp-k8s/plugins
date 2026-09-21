@@ -15,9 +15,9 @@
  */
 
 import LangChainAssistantSession from '@headlamp-k8s/ai-common/assistant/LangChainAssistantSession';
+import { DEFAULT_SKILLS_CONFIG } from '@headlamp-k8s/ai-common/skills/config';
 import { createMockSkillManager } from '@headlamp-k8s/ai-common/skills/testing/MockSkillManager';
 import { createMockKubernetesToolManager } from '@headlamp-k8s/ai-common/tools/testing/MockToolManager';
-import { DEFAULT_SKILLS_CONFIG } from '@headlamp-k8s/ai-common/skills/config';
 import * as readline from 'readline';
 import { createKubectlTool } from './kubectl.js';
 import { loadSkillsFromUrls } from './skills.js';
@@ -37,7 +37,12 @@ import { loadSkillsFromUrls } from './skills.js';
 export async function createManager(
   providerId: string,
   config: Record<string, any>,
-  options: { allowMutations?: boolean; skillSources?: string[]; mockSkills?: boolean; mockTools?: boolean } = {}
+  options: {
+    allowMutations?: boolean;
+    skillSources?: string[];
+    mockSkills?: boolean;
+    mockTools?: boolean;
+  } = {}
 ): Promise<LangChainAssistantSession> {
   const toolManager = options.mockTools ? createMockKubernetesToolManager() : undefined;
   const manager = new LangChainAssistantSession(
