@@ -19,6 +19,7 @@ import {
   registerPluginSettings,
   registerRoute,
   registerSidebarEntry,
+  useTranslation,
 } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, TextField, Typography } from '@mui/material';
@@ -182,6 +183,7 @@ function RadiusPluginSettingsComponent(
     onDataChange?: (data: RadiusPluginSettings) => void;
   }>
 ) {
+  const { t } = useTranslation();
   const { data, onDataChange } = props;
 
   function handleApiVersionChange(value: string) {
@@ -195,8 +197,8 @@ function RadiusPluginSettingsComponent(
       <TextField
         value={data?.ucpApiVersion || DEFAULT_UCP_API_VERSION}
         onChange={e => handleApiVersionChange(e.target.value)}
-        label="UCP API Version"
-        helperText="The Radius UCP API version to use (e.g., 2023-10-01-preview)"
+        label={t('UCP API Version')}
+        helperText={t('The Radius UCP API version to use (e.g., 2023-10-01-preview)')}
         variant="outlined"
         fullWidth
       />
