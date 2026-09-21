@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { modelProviders } from '@headlamp-k8s/ai-common/providers/catalog';
 import type {
   CommandRunner,
   DetectedProvider,
@@ -677,6 +678,10 @@ describe('ModelSelector configuration editing', () => {
   });
 
   it('resets a custom model to the provider default', async () => {
+    const defaultModel = modelProviders
+      .find(provider => provider.id === 'openai')
+      ?.fields.find(field => field.name === 'model')?.default;
+    expect(defaultModel).toBeTruthy();
     renderSelector(withMultipleProvidersArgs, {
       config: { apiKey: 'sk-example', model: 'custom-model' },
       savedConfigs: {
@@ -694,7 +699,7 @@ describe('ModelSelector configuration editing', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset to default model' }));
 
-    await waitFor(() => expect(screen.getByDisplayValue('gpt-4.1')).toBeTruthy());
+    await waitFor(() => expect(screen.getByDisplayValue(defaultModel as string)).toBeTruthy());
   });
 });
 
