@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   CreateResourceButton,
   Link,
@@ -67,10 +68,11 @@ export interface MachineListRendererProps {
  * @param props.showCreateButton - Whether to show the resource creation button.
  */
 export function MachineListRenderer(props: MachineListRendererProps) {
+  const { t } = useTranslation();
   const { MachineClass, machines, errors, hideColumns = [], showCreateButton = false } = props;
   return (
     <ResourceListView
-      title="Machines"
+      title={t('Machines')}
       hideColumns={hideColumns}
       data={machines}
       headerProps={
@@ -87,7 +89,7 @@ export function MachineListRenderer(props: MachineListRendererProps) {
         'namespace',
         {
           id: 'cluster',
-          label: 'Cluster',
+          label: t('Cluster'),
           getValue: machine => machine.metadata?.labels?.['cluster.x-k8s.io/cluster-name'],
           render: machine => (
             <Link
@@ -103,7 +105,7 @@ export function MachineListRenderer(props: MachineListRendererProps) {
         },
         {
           id: 'role',
-          label: 'Role',
+          label: t('Role'),
           getValue: machine => {
             const owners = machine.metadata?.ownerReferences ?? [];
             const isControlPlane = owners.some(
@@ -114,12 +116,12 @@ export function MachineListRenderer(props: MachineListRendererProps) {
         },
         {
           id: 'providerID',
-          label: 'Provider ID',
+          label: t('Provider ID'),
           getValue: machine => machine.spec?.providerID ?? '-',
         },
         {
           id: 'phase',
-          label: 'Phase',
+          label: t('Phase'),
           getValue: machine => machine.status?.phase ?? '-',
           render: machine => {
             const phase = machine.status?.phase;
@@ -129,7 +131,7 @@ export function MachineListRenderer(props: MachineListRendererProps) {
         },
         {
           id: 'ready',
-          label: 'Ready',
+          label: t('Ready'),
           getValue: (m: Machine) => {
             const cond = getCondition(m.conditions, 'Ready');
             if (!cond) return '0/1';
@@ -147,13 +149,13 @@ export function MachineListRenderer(props: MachineListRendererProps) {
         },
         {
           id: 'owner',
-          label: 'Owner',
+          label: t('Owner'),
           getValue: machine => machine.metadata?.ownerReferences?.[0]?.name ?? '-',
           render: machine => getOwnerLink(machine) ?? '-',
         },
         {
           id: 'version',
-          label: 'Version',
+          label: t('Version'),
           getValue: machine => machine.spec?.version ?? '-',
         },
         'age',
@@ -190,12 +192,13 @@ function MachinesListWithData({ MachineClass }: MachinesListWithDataProps) {
  * Detects the CAPI version and renders the list with the correct resource class.
  */
 export function MachinesList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(Machine.crdName, 'v1beta1');
   const VersionedMachine = useMemo(
     () => (version ? Machine.withApiVersion(version) : Machine),
     [version]
   );
-  if (!version) return <Loader title="Detecting Cluster API version" />;
+  if (!version) return <Loader title={t('Detecting Cluster API version')} />;
 
   return <MachinesListWithData MachineClass={VersionedMachine} />;
 }

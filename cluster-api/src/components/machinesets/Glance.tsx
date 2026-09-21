@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import { Box } from '@mui/system';
@@ -17,6 +18,7 @@ import {
  * @param props.node - The map node containing the resource.
  */
 export function MachineSetGlance({ node }: { node: GraphNode }) {
+  const { t } = useTranslation();
   if (node.kubeObject?.kind !== MachineSet.kind) {
     return null;
   }
@@ -39,22 +41,26 @@ export function MachineSetGlance({ node }: { node: GraphNode }) {
 
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="ms-glance">
-      {clusterName && <StatusLabel status="">{`Cluster: ${clusterName}`}</StatusLabel>}
-      {provider && <StatusLabel status="">{`Provider: ${provider}`}</StatusLabel>}
-      <StatusLabel status="">{`Replicas: ${ready}/${desired}`}</StatusLabel>
+      {clusterName && (
+        <StatusLabel status="">{t('Cluster: {{clusterName}}', { clusterName })}</StatusLabel>
+      )}
+      {provider && <StatusLabel status="">{t('Provider: {{provider}}', { provider })}</StatusLabel>}
+      <StatusLabel status="">
+        {t('Replicas: {{ready}}/{{desired}}', { ready, desired })}
+      </StatusLabel>
       {available !== undefined && (
         <StatusLabel status={available >= desired ? 'success' : 'warning'}>
-          {`Available: ${available}`}
+          {t('Available: {{available}}', { available })}
         </StatusLabel>
       )}
       {upToDate !== undefined && (
         <StatusLabel status={upToDate >= desired ? 'success' : 'warning'}>
-          {`Up-to-date: ${upToDate}`}
+          {t('Up-to-date: {{upToDate}}', { upToDate })}
         </StatusLabel>
       )}
       {readyCondition && (
         <StatusLabel status={isReady ? 'success' : 'error'}>
-          {isReady ? 'Ready' : 'Not Ready'}
+          {isReady ? t('Ready') : t('Not Ready')}
         </StatusLabel>
       )}
     </Box>
