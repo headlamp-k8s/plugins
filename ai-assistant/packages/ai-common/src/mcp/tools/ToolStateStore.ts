@@ -18,6 +18,25 @@ import type { Storage } from '../persistence/Storage';
 import type { MCPToolsConfig } from '../types';
 import { parseMCPToolName } from './toolName';
 
+// Callers test config lookups by truthiness, so any inherited Object.prototype
+// member name (toString, hasOwnProperty, …) must be rejected too.
+function isSafeConfigKey(value: string): boolean {
+  return value !== 'prototype' && !Object.prototype.hasOwnProperty.call(Object.prototype, value);
+}
+
+function setOwnConfigValue<T extends object, K extends keyof any, V>(
+  target: T,
+  key: K,
+  value: V
+): void {
+  Object.defineProperty(target, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+}
+
 /**
  * Manages persisted MCP tool state, including enablement, schemas, descriptions,
  * and usage statistics.
@@ -231,15 +250,16 @@ export class ToolStateStore {
    * @returns No value.
    */
   setToolEnabled(serverName: string, toolName: string, enabled: boolean): void {
+    if (!isSafeConfigKey(serverName) || !isSafeConfigKey(toolName)) return;
     if (!this.config[serverName]) {
-      this.config[serverName] = {};
+      setOwnConfigValue(this.config, serverName, {});
     }
 
     if (!this.config[serverName][toolName]) {
-      this.config[serverName][toolName] = {
+      setOwnConfigValue(this.config[serverName], toolName, {
         enabled: true,
         usageCount: 0,
-      };
+      });
     }
 
     this.config[serverName][toolName].enabled = enabled;
@@ -288,15 +308,16 @@ export class ToolStateStore {
    * @returns No value.
    */
   recordToolUsage(serverName: string, toolName: string): void {
+    if (!isSafeConfigKey(serverName) || !isSafeConfigKey(toolName)) return;
     if (!this.config[serverName]) {
-      this.config[serverName] = {};
+      setOwnConfigValue(this.config, serverName, {});
     }
 
     if (!this.config[serverName][toolName]) {
-      this.config[serverName][toolName] = {
+      setOwnConfigValue(this.config[serverName], toolName, {
         enabled: true,
         usageCount: 0,
-      };
+      });
     }
 
     const toolState = this.config[serverName][toolName];
@@ -356,23 +377,26 @@ export class ToolStateStore {
       description?: string;
     }>
   ): void {
+    if (!isSafeConfigKey(serverName)) return;
+    const safeToolsInfo = toolsInfo.filter(toolInfo => isSafeConfigKey(toolInfo.name));
+    if (safeToolsInfo.length === 0) return;
     if (!this.config[serverName]) {
-      this.config[serverName] = {};
+      setOwnConfigValue(this.config, serverName, {});
     }
 
     const serverConfig = this.config[serverName];
     let hasChanges = false;
 
-    for (const toolInfo of toolsInfo) {
+    for (const toolInfo of safeToolsInfo) {
       const toolName = toolInfo.name;
 
       if (!serverConfig[toolName]) {
-        serverConfig[toolName] = {
+        setOwnConfigValue(serverConfig, toolName, {
           enabled: true,
           usageCount: 0,
           inputSchema: toJsonSchema(toolInfo.inputSchema) ?? null,
           description: toolInfo.description || '',
-        };
+        });
         hasChanges = true;
       } else {
         // Always update schema and description for existing tools
@@ -451,20 +475,22 @@ export class ToolStateStore {
     const newConfig: MCPToolsConfig = {};
 
     for (const [serverName, toolsInfo] of Object.entries(toolsByServer)) {
-      newConfig[serverName] = {};
+      if (!isSafeConfigKey(serverName)) continue;
+      setOwnConfigValue(newConfig, serverName, {});
 
       for (const toolInfo of toolsInfo) {
         const toolName = toolInfo.name;
+        if (!isSafeConfigKey(toolName)) continue;
 
         // Check if this tool existed in the old config to preserve enabled state and usage count
         const oldToolState = this.config[serverName]?.[toolName];
 
-        newConfig[serverName][toolName] = {
+        setOwnConfigValue(newConfig[serverName], toolName, {
           enabled: oldToolState?.enabled ?? true, // Preserve enabled state or default to true
           usageCount: oldToolState?.usageCount ?? 0, // Preserve usage count or default to 0
           inputSchema: toJsonSchema(toolInfo.inputSchema) ?? null,
           description: toolInfo.description || '',
-        };
+        });
       }
     }
 
@@ -523,11 +549,12 @@ export class ToolStateStore {
         /** User-facing tool description. */
         description?: string;
       }>
-    > = {};
+    > = Object.create(null);
 
     for (const tool of clientTools) {
       // Extract server name from tool name (format: "serverName__toolName")
       const { serverName, toolName } = parseMCPToolName(tool.name);
+      if (!isSafeConfigKey(serverName) || !isSafeConfigKey(toolName)) continue;
 
       // Prefer the explicit `inputSchema` field (already JSON Schema) over
       // `schema`, which LangChain tools expose as a Zod object. Zod schemas
@@ -537,7 +564,7 @@ export class ToolStateStore {
       const toolSchema = toJsonSchema(tool.inputSchema) ?? toJsonSchema(tool.schema) ?? null;
 
       if (!toolsByServer[serverName]) {
-        toolsByServer[serverName] = [];
+        setOwnConfigValue(toolsByServer, serverName, []);
       }
 
       toolsByServer[serverName].push({
