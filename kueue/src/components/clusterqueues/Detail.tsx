@@ -9,25 +9,26 @@ import { ClusterQueue, FlavorUsage } from '../../resources/clusterQueue';
 import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import { renderCohortLink, renderResourceFlavorLink } from '../common/KueueResourceLinks';
+import QueueMaintenanceControl from '../common/QueueMaintenanceControl';
 import { RelatedLocalQueuesSection, RelatedWorkloadsSection } from '../common/RelatedResources';
 
-/** Flattened row rendered for status flavor reservations or flavor usage. */
+/** Flattened row rendered in the ClusterQueue flavor reservations and usage tables. */
 interface FlavorUsageRow {
-  /** ResourceFlavor name reported by ClusterQueue status. */
+  /** ResourceFlavor name associated with this reservation or usage. */
   flavor: string;
-  /** Resource name reported under the flavor. */
+  /** Resource name within the flavor, for example cpu or memory. */
   resource: string;
-  /** Total reserved or used quantity for the resource. */
+  /** Total quota used or reserved by this resource and flavor pair. */
   total?: string | number;
-  /** Quantity currently borrowed from the cohort. */
+  /** Optional quota borrowed from the cohort for this resource. */
   borrowed?: string | number;
 }
 
-/** Admission check row from spec.admissionChecksStrategy. */
+/** Flattened row rendered in the ClusterQueue admission checks table. */
 interface AdmissionCheckRow {
-  /** AdmissionCheck resource name. */
+  /** AdmissionCheck name configured on the ClusterQueue. */
   name: string;
-  /** Flavor names this AdmissionCheck applies to; empty means all flavors. */
+  /** Specific ResourceFlavor names this check applies to, or all if empty. */
   flavors: string[];
 }
 
@@ -60,6 +61,14 @@ function getAdmissionCheckRows(clusterQueue: ClusterQueue): AdmissionCheckRow[] 
       flavors: check.onFlavors || [],
     })) || []
   );
+}
+
+/** Build the queue maintenance control section. */
+function getMaintenanceControlSection(clusterQueue: ClusterQueue) {
+  return {
+    id: 'maintenance-controls',
+    section: <QueueMaintenanceControl queue={clusterQueue} queueClass={ClusterQueue} queueType="ClusterQueue" />,
+  };
 }
 
 /** Build the extra detail section that shows spec.resourceGroups as a table. */
@@ -281,6 +290,7 @@ export default function ClusterQueueDetail() {
         extraSections={clusterQueue =>
           clusterQueue
             ? [
+                getMaintenanceControlSection(clusterQueue),
                 getConditionsSection(clusterQueue),
                 getResourceGroupsSection(clusterQueue),
                 getAdmissionChecksSection(clusterQueue),
