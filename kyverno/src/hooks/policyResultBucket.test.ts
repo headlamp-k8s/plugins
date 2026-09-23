@@ -79,6 +79,19 @@ describe('bucketReportResults', () => {
     expect(cluster.get('p')).toEqual({ fail: 1, total: 3 });
   });
 
+  test('buckets unprefixed namespaced Kyverno report results by report namespace', () => {
+    const { cluster, namespaced } = bucketReportResults([
+      {
+        kind: 'EphemeralReport',
+        metadata: { namespace: 'lfx-demo' },
+        results: [{ policy: 'v2-aggregate-gap-demo', result: 'fail' }],
+      },
+    ]);
+
+    expect(namespaced.get('lfx-demo/v2-aggregate-gap-demo')).toEqual({ fail: 1, total: 1 });
+    expect(cluster.get('v2-aggregate-gap-demo')).toBeUndefined();
+  });
+
   test('returns empty buckets for empty input', () => {
     const { cluster, namespaced } = bucketReportResults([]);
     expect(cluster.size).toBe(0);

@@ -29,9 +29,8 @@ import {
   Typography,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
+import { PolicyReportSource, usePolicyReportSources } from '../hooks/usePolicyReportSources';
 import {
-  ClusterPolicyReport,
-  PolicyReport,
   PolicyReportInterface,
   PolicyReportResult,
   PolicyResultStatus,
@@ -47,30 +46,16 @@ interface ViolationEntry extends PolicyReportResult {
 
 const VIOLATION_STATUSES: PolicyResultStatus[] = ['fail', 'warn', 'error'];
 
-function collectViolations(
-  policyReports: PolicyReport[] | null,
-  clusterPolicyReports: ClusterPolicyReport[] | null
-): ViolationEntry[] {
+function collectViolations(reports: PolicyReportSource[]): ViolationEntry[] {
   const violations: ViolationEntry[] = [];
 
-  for (const report of policyReports || []) {
+  for (const report of reports) {
     for (const result of report.results) {
       if (VIOLATION_STATUSES.includes(result.result)) {
         violations.push({
           ...result,
-          reportNamespace: report.jsonData.metadata.namespace,
-          scope: report.jsonData.scope,
-        });
-      }
-    }
-  }
-
-  for (const report of clusterPolicyReports || []) {
-    for (const result of report.results) {
-      if (VIOLATION_STATUSES.includes(result.result)) {
-        violations.push({
-          ...result,
-          scope: report.jsonData.scope,
+          reportNamespace: report.metadata.namespace,
+          scope: report.scope,
         });
       }
     }
@@ -154,8 +139,7 @@ function StatusFilterChips({
 
 export function ViolationsView() {
   const { t } = useTranslation();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { reports, loading: reportsLoading } = usePolicyReportSources();
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
@@ -206,10 +190,7 @@ export function ViolationsView() {
     [t]
   );
 
-  const allViolations = useMemo(
-    () => collectViolations(policyReports, clusterPolicyReports),
-    [policyReports, clusterPolicyReports]
-  );
+  const allViolations = useMemo(() => collectViolations(reports), [reports]);
 
   const filteredViolations = useMemo(() => {
     return allViolations.filter(v => {
@@ -241,10 +222,7 @@ export function ViolationsView() {
     return Array.from(set).sort();
   }, [allViolations]);
 
-  // Wait for BOTH streams — partial data here would silently undercount violations.
-  const isLoading = policyReports === null || clusterPolicyReports === null;
-
-  if (isLoading) {
+  if (reportsLoading) {
     return (
       <SectionBox title={t('Violations')}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
