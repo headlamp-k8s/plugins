@@ -54,23 +54,23 @@ function collectViolations(
   const violations: ViolationEntry[] = [];
 
   for (const report of policyReports || []) {
-    for (const result of report.results) {
+    for (const result of report.results || []) {
       if (VIOLATION_STATUSES.includes(result.result)) {
         violations.push({
           ...result,
-          reportNamespace: report.jsonData.metadata.namespace,
-          scope: report.jsonData.scope,
+          reportNamespace: report.jsonData?.metadata?.namespace,
+          scope: report.jsonData?.scope,
         });
       }
     }
   }
 
   for (const report of clusterPolicyReports || []) {
-    for (const result of report.results) {
+    for (const result of report.results || []) {
       if (VIOLATION_STATUSES.includes(result.result)) {
         violations.push({
           ...result,
-          scope: report.jsonData.scope,
+          scope: report.jsonData?.scope,
         });
       }
     }

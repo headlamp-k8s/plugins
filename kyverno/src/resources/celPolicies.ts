@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { PolicyCondition } from './kyvernoPolicy';
 
 // Shared interfaces for CEL-based policies (policies.kyverno.io/v1)
@@ -92,19 +92,19 @@ export class ValidatingPolicy extends KubeObject<ValidatingPolicyInterface> {
   }
 
   get validationActions(): string[] {
-    return this.spec.validationActions || ['Audit'];
+    return this.spec?.validationActions || ['Audit'];
   }
 
   get validationCount(): number {
-    return this.spec.validations?.length || 0;
+    return this.spec?.validations?.length || 0;
   }
 
   get isAdmissionEnabled(): boolean {
-    return this.spec.evaluation?.admission?.enabled ?? true;
+    return this.spec?.evaluation?.admission?.enabled ?? true;
   }
 
   get isBackgroundEnabled(): boolean {
-    return this.spec.evaluation?.background?.enabled ?? true;
+    return this.spec?.evaluation?.background?.enabled ?? true;
   }
 
   get ready(): boolean {
@@ -148,15 +148,15 @@ export class MutatingPolicy extends KubeObject<MutatingPolicyInterface> {
   }
 
   get mutationCount(): number {
-    return this.spec.mutations?.length || 0;
+    return this.spec?.mutations?.length || 0;
   }
 
   get isAdmissionEnabled(): boolean {
-    return this.spec.evaluation?.admission?.enabled ?? true;
+    return this.spec?.evaluation?.admission?.enabled ?? true;
   }
 
   get isBackgroundEnabled(): boolean {
-    return this.spec.evaluation?.background?.enabled ?? true;
+    return this.spec?.evaluation?.background?.enabled ?? true;
   }
 
   get ready(): boolean {
@@ -199,7 +199,7 @@ export class GeneratingPolicy extends KubeObject<GeneratingPolicyInterface> {
   }
 
   get generateCount(): number {
-    return this.spec.generate?.length || 0;
+    return this.spec?.generate?.length || 0;
   }
 
   get ready(): boolean {
@@ -238,7 +238,7 @@ export class DeletingPolicy extends KubeObject<DeletingPolicyInterface> {
   }
 
   get schedule(): string {
-    return this.spec.schedule || '-';
+    return this.spec?.schedule || '-';
   }
 
   get ready(): boolean {
@@ -300,11 +300,11 @@ export class ImageValidatingPolicy extends KubeObject<ImageValidatingPolicyInter
   }
 
   get imagePatterns(): string[] {
-    return (this.spec.matchImageReferences || []).map(r => r.glob || r.expression || '');
+    return (this.spec?.matchImageReferences || []).map(r => r.glob || r.expression || '');
   }
 
   get attestorCount(): number {
-    return this.spec.attestors?.length || 0;
+    return this.spec?.attestors?.length || 0;
   }
 
   get ready(): boolean {

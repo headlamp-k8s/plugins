@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 
 // Shape of a single match/exclude selector in Kyverno's spec. Kyverno groups
 // these with `any` (OR) or `all` (AND). Captures the fields the UI reads;
@@ -134,7 +134,7 @@ abstract class KyvernoPolicyBase extends KubeObject<KyvernoPolicyInterface> {
   }
 
   get rules(): PolicyRule[] {
-    return this.spec.rules || [];
+    return this.spec?.rules || [];
   }
 
   get ruleTypes(): string[] {
@@ -142,11 +142,11 @@ abstract class KyvernoPolicyBase extends KubeObject<KyvernoPolicyInterface> {
   }
 
   get validationFailureAction(): string {
-    return this.spec.validationFailureAction || 'Audit';
+    return this.spec?.validationFailureAction || 'Audit';
   }
 
   get background(): boolean {
-    return this.spec.background ?? true;
+    return this.spec?.background ?? true;
   }
 }
 

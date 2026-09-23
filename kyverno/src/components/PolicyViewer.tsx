@@ -202,23 +202,23 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
     [];
 
   for (const report of policyReports) {
-    for (const result of report.results) {
+    for (const result of report.results || []) {
       if (result.policy === policyName) {
         matchingResults.push({
           ...result,
-          reportName: report.jsonData.metadata.name,
-          reportNamespace: report.jsonData.metadata.namespace,
+          reportName: report.jsonData?.metadata?.name || '',
+          reportNamespace: report.jsonData?.metadata?.namespace,
         });
       }
     }
   }
 
   for (const report of clusterPolicyReports) {
-    for (const result of report.results) {
+    for (const result of report.results || []) {
       if (result.policy === policyName) {
         matchingResults.push({
           ...result,
-          reportName: report.jsonData.metadata.name,
+          reportName: report.jsonData?.metadata?.name || '',
         });
       }
     }
