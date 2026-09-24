@@ -27,7 +27,7 @@ import {
 import { SummaryChips } from './common';
 import { ResultsTable } from './ResultsTable';
 
-// Any report class (PolicyReport, ClusterPolicyReport, AdmissionReport, EphemeralReport, ...)
+// Any report class (PolicyReport, ClusterPolicyReport, EphemeralReport, ...)
 // must expose these accessors. They normalise the wgpolicyk8s and kyverno.io schema differences.
 export interface ReportLike {
   jsonData: PolicyReportInterface;
@@ -37,7 +37,7 @@ export interface ReportLike {
 }
 
 // Generic over the item type so we don't need an `unknown as ReportLike` cast at the
-// use site. Each concrete class (PolicyReport, AdmissionReport, ...) exposes the
+// use site. Each concrete class (PolicyReport, EphemeralReport, ...) exposes the
 // required summary/results/scope getters via a shared base — they all satisfy
 // `ReportClass<T extends ReportLike>`.
 export interface ReportClass<T extends ReportLike> {
@@ -48,7 +48,7 @@ interface ReportViewerProps<T extends ReportLike = ReportLike> {
   name: string;
   namespace?: string;
   isClusterScoped?: boolean;
-  /** Override the resource class (e.g. for AdmissionReport / EphemeralReport). */
+  /** Override the resource class (e.g. for ClusterEphemeralReport / EphemeralReport). */
   resourceClass?: ReportClass<T>;
 }
 
