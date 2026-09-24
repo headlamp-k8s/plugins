@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, test } from 'vitest';
-import { bucketReportResults } from './policyResultBucket';
+import { bucketReportResults, filterResultsForPolicy } from './policyResultBucket';
 
 describe('bucketReportResults', () => {
   test('separates cluster-scoped from namespaced policies by slash prefix', () => {
@@ -83,5 +83,47 @@ describe('bucketReportResults', () => {
     const { cluster, namespaced } = bucketReportResults([]);
     expect(cluster.size).toBe(0);
     expect(namespaced.size).toBe(0);
+  });
+});
+
+describe('filterResultsForPolicy', () => {
+  test('matches a namespaced policy by its namespace/name-prefixed key', () => {
+    const results = [
+      { policy: 'default/require-labels', result: 'fail', rule: 'check-labels' },
+      { policy: 'default/require-labels', result: 'pass', rule: 'check-labels' },
+    ];
+
+    expect(filterResultsForPolicy(results, 'require-labels', 'default')).toHaveLength(2);
+  });
+
+  test('does not match the same-named policy in a different namespace', () => {
+    const results = [{ policy: 'team-a/require-labels', result: 'fail' }];
+
+    expect(filterResultsForPolicy(results, 'require-labels', 'team-b')).toEqual([]);
+  });
+
+  test('a same-named ClusterPolicy does not leak into a namespaced lookup', () => {
+    // Regression guard: a bare-name comparison (no prefix) would wrongly match
+    // this, since 'restrict-images' === 'restrict-images'.
+    const results = [{ policy: 'restrict-images', result: 'fail' }];
+
+    expect(filterResultsForPolicy(results, 'restrict-images', 'default')).toEqual([]);
+  });
+
+  test('matches a cluster-scoped policy by its bare name', () => {
+    const results = [
+      { policy: 'restrict-images', result: 'fail' },
+      { policy: 'default/restrict-images', result: 'pass' },
+    ];
+
+    expect(filterResultsForPolicy(results, 'restrict-images')).toEqual([
+      { policy: 'restrict-images', result: 'fail' },
+    ]);
+  });
+
+  test('returns an empty array when nothing matches', () => {
+    const results = [{ policy: 'default/other-policy', result: 'pass' }];
+
+    expect(filterResultsForPolicy(results, 'require-labels', 'default')).toEqual([]);
   });
 });

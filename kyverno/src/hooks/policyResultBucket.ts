@@ -66,3 +66,22 @@ export function bucketReportResults(reports: ReportLike[]): PolicyResultBuckets 
 
   return { cluster, namespaced };
 }
+
+/**
+ * Filters a flat list of report results down to the ones belonging to one
+ * specific policy, using the same `<namespace>/<name>` (or bare `<name>` for
+ * cluster-scoped) key as {@link bucketReportResults}.
+ *
+ * A ClusterPolicy's results can land in either a namespaced PolicyReport (for
+ * namespaced resource matches) or a ClusterPolicyReport (for cluster-scoped
+ * resource matches), so callers should pass results merged from both report
+ * lists rather than filtering them separately.
+ */
+export function filterResultsForPolicy<T extends ResultEntryLike>(
+  results: T[],
+  policyName: string,
+  namespace?: string
+): T[] {
+  const key = namespace ? `${namespace}/${policyName}` : policyName;
+  return results.filter(r => r.policy === key);
+}
