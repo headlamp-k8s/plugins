@@ -22,18 +22,27 @@ import {
   DeletingPolicy,
   GeneratingPolicy,
   MutatingPolicy,
+  NamespacedDeletingPolicy,
+  NamespacedGeneratingPolicy,
+  NamespacedMutatingPolicy,
+  NamespacedValidatingPolicy,
   ValidatingPolicy,
 } from '../resources/celPolicies';
 import { CELPolicyViewer } from './CELPolicyViewer';
 
+// Namespaced* extends its cluster-scoped counterpart (see celPolicies.ts), so
+// instances of either are already assignable to this union, no widening needed.
 type CELPolicy = ValidatingPolicy | MutatingPolicy | GeneratingPolicy | DeletingPolicy;
 
 function openCELPolicyActivity(item: CELPolicy) {
+  const namespace = item.jsonData.metadata.namespace;
   Activity.launch({
-    id: `kyverno-cel-${item.jsonData.metadata.uid || item.jsonData.metadata.name}`,
+    id: `kyverno-cel-${namespace ? namespace + '-' : ''}${
+      item.jsonData.metadata.uid || item.jsonData.metadata.name
+    }`,
     location: 'split-right',
     icon: <Icon icon="mdi:shield-edit" />,
-    title: item.jsonData.metadata.name,
+    title: namespace ? `${namespace}/${item.jsonData.metadata.name}` : item.jsonData.metadata.name,
     content: <CELPolicyViewer policy={item} />,
   });
 }
@@ -188,6 +197,174 @@ export function DeletingPolicyList() {
             </MuiLink>
           ),
         },
+        {
+          id: 'ready',
+          label: t('Ready'),
+          getValue: item => (item.ready ? 'True' : 'False'),
+          render: item => <ReadyChip ready={item.ready} />,
+          gridTemplate: '0.5fr',
+        },
+        {
+          id: 'schedule',
+          label: t('Schedule'),
+          getValue: item => item.schedule,
+        },
+        'age',
+      ]}
+    />
+  );
+}
+
+export function NamespacedValidatingPolicyList() {
+  const { t } = useTranslation();
+  return (
+    <ResourceListView
+      title={t('Namespaced Validating Policies')}
+      resourceClass={NamespacedValidatingPolicy}
+      columns={[
+        {
+          id: 'name',
+          label: t('Name'),
+          getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openCELPolicyActivity(item as NamespacedValidatingPolicy)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
+        },
+        'namespace',
+        {
+          id: 'ready',
+          label: t('Ready'),
+          getValue: item => (item.ready ? 'True' : 'False'),
+          render: item => <ReadyChip ready={item.ready} />,
+          gridTemplate: '0.5fr',
+        },
+        {
+          id: 'actions',
+          label: t('Actions'),
+          getValue: item => item.validationActions.join(', '),
+        },
+        {
+          id: 'validations',
+          label: t('Validations'),
+          getValue: item => item.validationCount,
+          gridTemplate: '0.5fr',
+        },
+        'age',
+      ]}
+    />
+  );
+}
+
+export function NamespacedMutatingPolicyList() {
+  const { t } = useTranslation();
+  return (
+    <ResourceListView
+      title={t('Namespaced Mutating Policies')}
+      resourceClass={NamespacedMutatingPolicy}
+      columns={[
+        {
+          id: 'name',
+          label: t('Name'),
+          getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openCELPolicyActivity(item as NamespacedMutatingPolicy)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
+        },
+        'namespace',
+        {
+          id: 'ready',
+          label: t('Ready'),
+          getValue: item => (item.ready ? 'True' : 'False'),
+          render: item => <ReadyChip ready={item.ready} />,
+          gridTemplate: '0.5fr',
+        },
+        {
+          id: 'mutations',
+          label: t('Mutations'),
+          getValue: item => item.mutationCount,
+          gridTemplate: '0.5fr',
+        },
+        'age',
+      ]}
+    />
+  );
+}
+
+export function NamespacedGeneratingPolicyList() {
+  const { t } = useTranslation();
+  return (
+    <ResourceListView
+      title={t('Namespaced Generating Policies')}
+      resourceClass={NamespacedGeneratingPolicy}
+      columns={[
+        {
+          id: 'name',
+          label: t('Name'),
+          getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openCELPolicyActivity(item as NamespacedGeneratingPolicy)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
+        },
+        'namespace',
+        {
+          id: 'ready',
+          label: t('Ready'),
+          getValue: item => (item.ready ? 'True' : 'False'),
+          render: item => <ReadyChip ready={item.ready} />,
+          gridTemplate: '0.5fr',
+        },
+        {
+          id: 'generators',
+          label: t('Generators'),
+          getValue: item => item.generateCount,
+          gridTemplate: '0.5fr',
+        },
+        'age',
+      ]}
+    />
+  );
+}
+
+export function NamespacedDeletingPolicyList() {
+  const { t } = useTranslation();
+  return (
+    <ResourceListView
+      title={t('Namespaced Deleting Policies')}
+      resourceClass={NamespacedDeletingPolicy}
+      columns={[
+        {
+          id: 'name',
+          label: t('Name'),
+          getValue: item => item.jsonData.metadata.name,
+          render: item => (
+            <MuiLink
+              component="button"
+              onClick={() => openCELPolicyActivity(item as NamespacedDeletingPolicy)}
+              sx={{ textAlign: 'left' }}
+            >
+              {item.jsonData.metadata.name}
+            </MuiLink>
+          ),
+        },
+        'namespace',
         {
           id: 'ready',
           label: t('Ready'),

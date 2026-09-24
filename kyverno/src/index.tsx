@@ -23,6 +23,10 @@ import {
   DeletingPolicyList,
   GeneratingPolicyList,
   MutatingPolicyList,
+  NamespacedDeletingPolicyList,
+  NamespacedGeneratingPolicyList,
+  NamespacedMutatingPolicyList,
+  NamespacedValidatingPolicyList,
   ValidatingPolicyList,
 } from './components/CELPolicyList';
 import { CleanupPolicyList, ClusterCleanupPolicyList } from './components/CleanupPolicyList';
@@ -31,7 +35,10 @@ import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
 import { ComplianceBadge } from './components/ComplianceBadge';
 import { CRDGroup, CRDGuard } from './components/CRDGuard';
 import { Dashboard } from './components/Dashboard';
-import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
+import {
+  ImageValidatingPolicyList,
+  NamespacedImageValidatingPolicyList,
+} from './components/ImageValidatingPolicyList';
 import { KyvernoReportList } from './components/KyvernoReportList';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
@@ -179,6 +186,51 @@ registerKyvernoPage({
   path: '/kyverno/imagevalidatingpolicies',
   requires: 'cel',
   component: () => <ImageValidatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedValidatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Validating Policies',
+  path: '/kyverno/namespacedvalidatingpolicies',
+  requires: 'cel',
+  component: () => <NamespacedValidatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedMutatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Mutating Policies',
+  path: '/kyverno/namespacedmutatingpolicies',
+  requires: 'cel',
+  component: () => <NamespacedMutatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedGeneratingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Generating Policies',
+  path: '/kyverno/namespacedgeneratingpolicies',
+  requires: 'cel',
+  component: () => <NamespacedGeneratingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedDeletingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Deleting Policies',
+  path: '/kyverno/namespaceddeletingpolicies',
+  requires: 'cel',
+  component: () => <NamespacedDeletingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedImageValidatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Image Validating Policies',
+  path: '/kyverno/namespacedimagevalidatingpolicies',
+  requires: 'cel',
+  component: () => <NamespacedImageValidatingPolicyList />,
 });
 
 registerKyvernoPage({

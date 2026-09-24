@@ -311,3 +311,45 @@ export class ImageValidatingPolicy extends KubeObject<ImageValidatingPolicyInter
     return this.status?.conditionStatus?.ready ?? false;
   }
 }
+
+// --- Namespaced variants ---
+//
+// Kyverno reuses the exact same spec type for a namespaced policy as its
+// cluster-scoped counterpart (confirmed directly against the live CRDs,
+// `kubectl explain namespacedvalidatingpolicy.spec` describes itself as
+// "ValidatingPolicySpec", not a distinct type), so these extend the
+// cluster-scoped classes above rather than redefining every getter.
+// KubeObject's static methods (useList, useGet, apiEndpoint) all read
+// `this.apiName` / `this.isNamespaced` dynamically, so overriding just the
+// three identity fields is enough for every inherited method to behave
+// correctly for the namespaced kind.
+
+export class NamespacedValidatingPolicy extends ValidatingPolicy {
+  static kind = 'NamespacedValidatingPolicy';
+  static apiName = 'namespacedvalidatingpolicies';
+  static isNamespaced = true;
+}
+
+export class NamespacedMutatingPolicy extends MutatingPolicy {
+  static kind = 'NamespacedMutatingPolicy';
+  static apiName = 'namespacedmutatingpolicies';
+  static isNamespaced = true;
+}
+
+export class NamespacedGeneratingPolicy extends GeneratingPolicy {
+  static kind = 'NamespacedGeneratingPolicy';
+  static apiName = 'namespacedgeneratingpolicies';
+  static isNamespaced = true;
+}
+
+export class NamespacedDeletingPolicy extends DeletingPolicy {
+  static kind = 'NamespacedDeletingPolicy';
+  static apiName = 'namespaceddeletingpolicies';
+  static isNamespaced = true;
+}
+
+export class NamespacedImageValidatingPolicy extends ImageValidatingPolicy {
+  static kind = 'NamespacedImageValidatingPolicy';
+  static apiName = 'namespacedimagevalidatingpolicies';
+  static isNamespaced = true;
+}
