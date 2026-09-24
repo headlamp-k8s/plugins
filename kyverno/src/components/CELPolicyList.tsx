@@ -37,7 +37,10 @@ type CELPolicy = ValidatingPolicy | MutatingPolicy | GeneratingPolicy | Deleting
 function openCELPolicyActivity(item: CELPolicy) {
   const namespace = item.jsonData.metadata.namespace;
   Activity.launch({
-    id: `kyverno-cel-${namespace ? namespace + '-' : ''}${
+    // ':' can't appear in a namespace or name (DNS-1123 label rules), '-' can,
+    // so joining with '-' let two distinct (namespace, name) pairs collide on
+    // the same id.
+    id: `kyverno-cel:${namespace ?? ''}:${
       item.jsonData.metadata.uid || item.jsonData.metadata.name
     }`,
     location: 'split-right',

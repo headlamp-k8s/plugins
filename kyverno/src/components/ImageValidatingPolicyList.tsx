@@ -27,7 +27,10 @@ import { ImageValidatingPolicyViewer } from './ImageValidatingPolicyViewer';
 function openActivity(item: ImageValidatingPolicy | NamespacedImageValidatingPolicy) {
   const namespace = item.jsonData.metadata.namespace;
   Activity.launch({
-    id: `kyverno-ivpol-${namespace ? namespace + '-' : ''}${item.jsonData.metadata.name}`,
+    // ':' can't appear in a namespace or name (DNS-1123 label rules), '-' can,
+    // so joining with '-' let two distinct (namespace, name) pairs collide on
+    // the same id.
+    id: `kyverno-ivpol:${namespace ?? ''}:${item.jsonData.metadata.name}`,
     location: 'split-right',
     icon: <Icon icon="mdi:shield-lock" />,
     title: namespace ? `${namespace}/${item.jsonData.metadata.name}` : item.jsonData.metadata.name,
