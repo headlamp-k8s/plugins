@@ -504,6 +504,9 @@ export function useRadiusResources(): [UCPResource[] | null, Error | null, boole
         // Build promises for all resource types across all providers
         const promises: Promise<UCPResource[]>[] = [];
 
+        let successCount = 0;
+        let lastError: Error | null = null;
+
         // Helper function to fetch resources for a provider
         const fetchProviderResources = async (
           provider: string,
@@ -512,12 +515,14 @@ export function useRadiusResources(): [UCPResource[] | null, Error | null, boole
           try {
             const path = `/apis/api.ucp.dev/v1alpha3/planes/radius/local/providers/${provider}/${resourceType}?api-version=${apiVersion}`;
             const data: UCPListResponse<UCPResource> = await ApiProxy.request(path, {}, true, true);
+            successCount++;
             return data.value || [];
           } catch (err) {
             const message = `Failed to fetch ${provider}/${resourceType}: ${
               err instanceof Error ? err.message : String(err)
             }`;
             console.warn(message);
+            lastError = err instanceof Error ? err : new Error(String(err));
             return [];
           }
         };
@@ -545,9 +550,12 @@ export function useRadiusResources(): [UCPResource[] | null, Error | null, boole
         const results = await Promise.all(promises);
         const allResources = results.flat();
 
-        if (allResources.length === 0) {
-          throw new Error(
-            'Failed to fetch Radius resources from all configured providers and resource types.'
+        if (successCount === 0 && promises.length > 0) {
+          throw (
+            lastError ||
+            new Error(
+              'Failed to fetch Radius resources from all configured providers and resource types.'
+            )
           );
         }
 
