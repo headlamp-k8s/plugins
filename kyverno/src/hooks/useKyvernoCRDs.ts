@@ -59,7 +59,7 @@ function notify(cluster: string, status: KyvernoCRDStatus) {
   listeners.get(cluster)?.forEach(fn => fn(status));
 }
 
-async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
+export async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
   const existing = inFlight.get(cluster);
   if (existing) return existing;
 
@@ -104,6 +104,16 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
 
   inFlight.set(cluster, promise);
   return promise;
+}
+
+/**
+ * Synchronously returns the last known CRD status for a cluster, or undefined
+ * if it hasn't been probed yet. registerSidebarEntryFilter runs outside React
+ * (Headlamp calls it directly while building the sidebar tree), so it can't
+ * use the useKyvernoCRDs hook — this is how it reads the same cache instead.
+ */
+export function peekKyvernoCRDs(cluster: string): KyvernoCRDStatus | undefined {
+  return probeCache.get(cluster);
 }
 
 export function useKyvernoCRDs(): KyvernoCRDStatus {

@@ -18,6 +18,8 @@ import {
   registerAppBarAction,
   registerRoute,
   registerSidebarEntry,
+  registerSidebarEntryFilter,
+  Utils,
 } from '@kinvolk/headlamp-plugin/lib';
 import {
   DeletingPolicyList,
@@ -37,6 +39,8 @@ import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
 import { ViolationsView } from './components/ViolationsView';
+import { shouldHideSidebarEntry } from './hooks/kyvernoSidebarVisibility';
+import { peekKyvernoCRDs, probeCluster } from './hooks/useKyvernoCRDs';
 import { registerKyvernoIcon } from './kyvernoIcon';
 import {
   AdmissionReport,
@@ -70,6 +74,11 @@ interface KyvernoPageOptions {
   requires?: CRDGroup;
 }
 
+// Which CRD group each sidebar entry needs, so the filter below can hide
+// entries for groups that aren't on the cluster without every call site
+// having to register its own filter.
+const sidebarRequirements = new Map<string, CRDGroup>();
+
 // Centralises the sidebar + route pair that every Kyverno page needs so each
 // call site stays one block. `requires` makes CRDGuard wrapping a single field
 // instead of a per-call-site `<CRDGuard>` block.
@@ -85,11 +94,30 @@ export function registerKyvernoPage({
   requires,
 }: KyvernoPageOptions) {
   registerSidebarEntry({ name, url: url ?? path, parent, label, icon });
+  if (requires) {
+    sidebarRequirements.set(name, requires);
+  }
   const wrapped = requires
     ? () => <CRDGuard requires={requires}>{component()}</CRDGuard>
     : component;
   registerRoute({ path, sidebar: name, name, exact, component: wrapped });
 }
+
+// CRDGuard (above) only gates what renders once you're on a page — the
+// sidebar entry that links to it is registered unconditionally and stays
+// there either way. This hides entries for CRD groups confirmed absent on
+// the current cluster, once probeCluster has actually resolved for it.
+registerSidebarEntryFilter(entry => {
+  const requires = sidebarRequirements.get(entry.name);
+  if (!requires) {
+    return entry;
+  }
+
+  const cluster = Utils.getCluster() ?? '';
+  void probeCluster(cluster);
+
+  return shouldHideSidebarEntry(peekKyvernoCRDs(cluster), requires) ? null : entry;
+});
 
 registerSidebarEntry({
   name: 'Kyverno',
