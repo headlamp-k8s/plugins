@@ -1,32 +1,191 @@
 import { Icon, InlineIcon } from '@iconify/react';
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { PluginManager, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link as HeadlampRouterLink } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
   Box,
+  Button,
   Card,
   CardActions,
   CardContent,
   CardMedia,
+  CircularProgress,
   Divider,
   Link,
+  Snackbar,
   Tooltip,
   Typography,
 } from '@mui/material';
+import React, { useEffect, useState } from 'react';
 import { PluginPackage } from './List';
 import PluginIcon from './plugin-icon.svg';
+import { pollPluginManagerStatus } from './pluginManagerAction';
 
 export interface PluginCardProps {
   plugin: PluginPackage;
 }
 
+function pluginSnackbarAction(closeCallback: () => void, t: (key: string) => string) {
+  return (
+    <>
+      <Button
+        color="inherit"
+        onClick={() => {
+          window.location.reload();
+        }}
+      >
+        {t('Reload Now')}
+      </Button>
+      <Button color="inherit" onClick={closeCallback}>
+        {t('Close')}
+      </Button>
+    </>
+  );
+}
+
+const actionButtonSx = {
+  backgroundColor: '#000',
+  color: 'white',
+  textTransform: 'none' as const,
+  '&:hover': {
+    color: 'inherit',
+  },
+};
+
 export function PluginCard(props: PluginCardProps) {
   const { plugin } = props;
   const { t } = useTranslation();
+  const [currentAction, setCurrentAction] = useState<'Install' | 'Update' | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+
+  const repoName = plugin.repository?.name || '';
+  const identifier = `${repoName}_${plugin.name}`;
+  const artifactHubURL = `https://artifacthub.io/packages/headlamp/${repoName}/${plugin.name}`;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function pollStatus() {
+      if (!currentAction) {
+        return;
+      }
+
+      try {
+        const status = await pollPluginManagerStatus(identifier, {
+          isCancelled: () => cancelled,
+          shouldContinue: () => !!currentAction,
+        });
+
+        if (cancelled || !status) {
+          return;
+        }
+
+        if (status.type === 'error' && status.message === 'No such operation in progress') {
+          setCurrentAction(null);
+          return;
+        }
+
+        if (status.type === 'error' || status.type === 'success') {
+          setCurrentAction(null);
+          setAlertMessage(
+            status.type === 'success'
+              ? t('{{action}} completed successfully.', { action: t(currentAction) })
+              : t('Error: {{message}}', { message: status.message })
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setCurrentAction(null);
+          setAlertMessage(t('An unexpected error occurred: {{error}}', { error: String(error) }));
+        }
+      }
+    }
+
+    pollStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentAction, identifier, t]);
+
+  const handleInstall = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setCurrentAction('Install');
+    PluginManager.install(identifier, plugin.display_name || plugin.name, artifactHubURL);
+  };
+
+  const handleUpdate = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setCurrentAction('Update');
+    // Prefer the name from List's install scan so we do not call PluginManager.list() again.
+    PluginManager.update(
+      identifier,
+      plugin.installedPluginName || plugin.display_name || plugin.name
+    );
+  };
+
+  const handleCancel = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    PluginManager.cancel(identifier);
+    setCurrentAction(null);
+  };
+
+  let actionContent: React.ReactNode;
+  if (currentAction) {
+    actionContent = (
+      <Button
+        variant="contained"
+        onClick={handleCancel}
+        sx={actionButtonSx}
+        size="small"
+        aria-label={t('Cancel')}
+      >
+        <CircularProgress color="inherit" size={18} aria-hidden />
+      </Button>
+    );
+  } else if (!plugin.isInstalled) {
+    actionContent = (
+      <Button variant="contained" onClick={handleInstall} sx={actionButtonSx} size="small">
+        {t('Install')}
+      </Button>
+    );
+  } else if (plugin.isUpdateAvailable) {
+    actionContent = (
+      <Button variant="contained" onClick={handleUpdate} sx={actionButtonSx} size="small">
+        {t('Update')}
+      </Button>
+    );
+  } else {
+    actionContent = <Typography>{t('Installed')}</Typography>;
+  }
 
   return (
     <Box maxWidth="30%" width="400px" m={1}>
+      <Snackbar
+        sx={{
+          '& .MuiSnackbarContent-root': {
+            backgroundColor: 'rgb(49, 49, 49)',
+            color: '#fff',
+          },
+        }}
+        open={!!alertMessage}
+        onClose={() => setAlertMessage(null)}
+        message={
+          <Tooltip title={alertMessage || ''} arrow>
+            <Typography>
+              {alertMessage ? alertMessage.substring(0, Math.min(50, alertMessage.length)) : null}
+            </Typography>
+          </Tooltip>
+        }
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        action={pluginSnackbarAction(() => setAlertMessage(null), t)}
+      />
       <Card
         sx={{
+          display: 'flex',
+          flexDirection: 'column',
           height: '100%',
         }}
       >
@@ -89,6 +248,7 @@ export function PluginCard(props: PluginCardProps) {
             paddingTop: 0,
             paddingBottom: 0,
             marginBottom: 0,
+            flex: 1,
           }}
         >
           <Box
@@ -182,16 +342,12 @@ export function PluginCard(props: PluginCardProps) {
         </CardContent>
         <CardActions
           sx={{
-            justifyContent: 'space-between',
+            justifyContent: 'flex-end',
+            marginTop: 'auto',
             padding: '14px',
           }}
         >
-          <span></span>
-          {plugin.isInstalled && (
-            <Typography>
-              {plugin.isUpdateAvailable ? t('Update available') : t('Installed')}
-            </Typography>
-          )}
+          {actionContent}
         </CardActions>
       </Card>
     </Box>
