@@ -23,6 +23,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { CRDGuard } from '../common/CRDGuard';
+import { formatDiskType } from './diskType';
 import { bareMetalHostClass } from './List';
 
 /** Bytes as a short size string, terabytes when large, gigabytes otherwise. */
@@ -151,7 +152,7 @@ export function BareMetalHostDetail(props: { name?: string; namespace?: string }
                     { label: 'Disk', getter: (d: any) => d.name || '-' },
                     { label: 'Model', getter: (d: any) => d.model || '-' },
                     { label: 'Size', getter: (d: any) => formatBytes(d.sizeBytes) },
-                    { label: 'Type', getter: (d: any) => (d.rotational ? 'HDD' : 'SSD') },
+                    { label: 'Type', getter: (d: any) => formatDiskType(d) },
                   ]}
                   data={hw.storage}
                 />
