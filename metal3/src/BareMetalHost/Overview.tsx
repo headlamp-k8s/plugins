@@ -31,7 +31,13 @@ import { CRDGuard } from '../common/CRDGuard';
 import { HostStatusLabel } from './HostStatusLabel';
 import { bareMetalHostClass } from './List';
 import type { InProgressHost } from './overviewStats';
-import { computeOverview, groupByLabel, inProgressHosts, labelKeys } from './overviewStats';
+import {
+  computeOverview,
+  fleetNameFor,
+  groupByLabel,
+  inProgressHosts,
+  labelKeys,
+} from './overviewStats';
 
 /**
  * The globally selected namespaces (empty means all), read from Headlamp's shared
@@ -118,10 +124,9 @@ function OverviewContent() {
   const allInProgress = inProgressHosts(hosts, now);
 
   // Which fleet a host belongs to under the current grouping, for the list columns.
+  // Shares its naming with groupByLabel so the Fleets table and these columns agree.
   const fleetOf = (host: KubeObject): string =>
-    effectiveGroupKey
-      ? host.jsonData.metadata?.labels?.[effectiveGroupKey] ?? `(no ${effectiveGroupKey})`
-      : 'All hosts';
+    fleetNameFor(host.jsonData.metadata?.labels, effectiveGroupKey);
 
   const fleetRows: FleetRow[] = fleets.map(fleet => {
     const s = computeOverview(fleet.hosts);

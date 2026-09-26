@@ -18,6 +18,7 @@ import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { describe, expect, it } from 'vitest';
 import {
   computeOverview,
+  fleetNameFor,
   groupByLabel,
   inProgressHosts,
   labelKeys,
@@ -202,5 +203,40 @@ describe('computeOverview', () => {
     ];
     const s = computeOverview(hosts);
     expect(s.attention.map(h => h.metadata.name)).toEqual(['broken']);
+  });
+});
+
+describe('fleetNameFor', () => {
+  it('returns the label value when it is set', () => {
+    expect(fleetNameFor({ rack: 'r1' }, 'rack')).toBe('r1');
+  });
+
+  it('names a missing label distinctly', () => {
+    expect(fleetNameFor({ other: 'x' }, 'rack')).toBe('(no rack)');
+    expect(fleetNameFor(undefined, 'rack')).toBe('(no rack)');
+  });
+
+  it('names a present-but-empty label distinctly, never blank', () => {
+    expect(fleetNameFor({ rack: '' }, 'rack')).toBe('(empty)');
+  });
+
+  it('returns the all-hosts fleet when no grouping label is given', () => {
+    expect(fleetNameFor({ rack: 'r1' }, '')).toBe('All hosts');
+  });
+
+  it('agrees with the fleet names groupByLabel produces', () => {
+    const hosts = [
+      host({ name: 'a', labels: { rack: 'r1' } }),
+      host({ name: 'b', labels: { rack: '' } }),
+      host({ name: 'c' }),
+    ];
+    const fleets = groupByLabel(hosts, 'rack');
+    // Every host's computed fleet name must match the fleet it was grouped into.
+    hosts.forEach(h => {
+      const name = fleetNameFor(h.jsonData.metadata?.labels, 'rack');
+      const owning = fleets.find(f => f.hosts.includes(h));
+      expect(owning?.name).toBe(name);
+    });
+    expect(fleets.map(f => f.name).sort()).toEqual(['(empty)', '(no rack)', 'r1']);
   });
 });
