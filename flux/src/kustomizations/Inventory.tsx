@@ -108,12 +108,11 @@ export function GetResourcesFromInventory(
         {
           header: t('Ready'),
           accessorFn: (item: KubeObject) => {
-            if (item.jsonData?.status) {
-              return item.jsonData.status.conditions?.findIndex(c => c.type === 'Ready') !== -1
-                ? t('True')
-                : t('False');
+            const ready = item.jsonData?.status?.conditions?.find(c => c.type === 'Ready');
+            if (!ready) {
+              return t('Unknown');
             }
-            return t('Unknown');
+            return ready.status === 'True' ? t('True') : t('False');
           },
         },
         {
