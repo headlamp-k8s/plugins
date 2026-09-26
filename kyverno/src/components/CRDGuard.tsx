@@ -21,15 +21,18 @@ import { NotInstalledBanner } from './common';
 
 export type CRDGroup = keyof Omit<KyvernoCRDStatus, 'loading'>;
 
-interface CRDGuardProps {
+export interface CRDGuardProps {
   requires: CRDGroup;
   children: ReactNode;
   message?: string;
 }
 
-export function CRDGuard({ requires, children, message }: CRDGuardProps) {
+export interface PureCRDGuardProps extends CRDGuardProps {
+  status: KyvernoCRDStatus;
+}
+
+export function PureCRDGuard({ requires, status, children, message }: PureCRDGuardProps) {
   const { t } = useTranslation();
-  const status = useKyvernoCRDs();
 
   const defaultMessages: Record<CRDGroup, string> = {
     legacy: t('Kyverno (kyverno.io/v1) was not detected on this cluster.'),
@@ -56,4 +59,10 @@ export function CRDGuard({ requires, children, message }: CRDGuardProps) {
   }
 
   return <>{children}</>;
+}
+
+export function CRDGuard(props: CRDGuardProps) {
+  const status = useKyvernoCRDs();
+
+  return <PureCRDGuard {...props} status={status} />;
 }
