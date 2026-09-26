@@ -36,7 +36,7 @@ import {
   PolicyReportResult,
   PolicyResultStatus,
 } from '../resources/policyReport';
-import { ResultStatusChip, SeverityChip } from './common';
+import { columnId, ResultStatusChip, SeverityChip } from './common';
 
 type GroupBy = 'none' | 'policy' | 'namespace' | 'kind';
 
@@ -160,50 +160,85 @@ export function ViolationsView() {
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
 
-  // Column definitions depend on t() so they're built inside the component.
+  // Each header string is computed once and reused for both `header` and
+  // `id`, rather than calling t() twice per column. The column array is
+  // memoized on those header strings specifically, not on `t` itself (whose
+  // reference doesn't change when the translation backend finishes loading,
+  // so depending on it directly would never actually refresh anything).
+  // Keying id off the live header text means it changes exactly when the
+  // header text does, so Table's memoized header cells (keyed on column id)
+  // refresh instead of keeping a blank label from an early pre-translation
+  // render. Body cells here render resource data, not translated labels, so
+  // they aren't affected by this.
+  const resourceHeader = t('Resource');
+  const kindHeader = t('Kind');
+  const namespaceHeader = t('Namespace');
+  const policyHeader = t('Policy');
+  const ruleHeader = t('Rule');
+  const severityHeader = t('Severity');
+  const resultHeader = t('Result');
+  const messageHeader = t('Message');
+
   const violationColumns = useMemo(
     () => [
       {
-        header: t('Resource'),
+        header: resourceHeader,
+        id: columnId('resource', resourceHeader),
         accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
       },
       {
-        header: t('Kind'),
+        header: kindHeader,
+        id: columnId('kind', kindHeader),
         accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
       },
       {
-        header: t('Namespace'),
+        header: namespaceHeader,
+        id: columnId('namespace', namespaceHeader),
         accessorFn: (v: ViolationEntry) =>
           v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
       },
       {
-        header: t('Policy'),
+        header: policyHeader,
+        id: columnId('policy', policyHeader),
         accessorFn: (v: ViolationEntry) => v.policy,
       },
       {
-        header: t('Rule'),
+        header: ruleHeader,
+        id: columnId('rule', ruleHeader),
         accessorFn: (v: ViolationEntry) => v.rule || '-',
       },
       {
-        header: t('Severity'),
+        header: severityHeader,
+        id: columnId('severity', severityHeader),
         accessorFn: (v: ViolationEntry) => v.severity || '',
         Cell: ({ row }: { row: { original: ViolationEntry } }) => (
           <SeverityChip severity={row.original.severity} />
         ),
       },
       {
-        header: t('Result'),
+        header: resultHeader,
+        id: columnId('result', resultHeader),
         accessorFn: (v: ViolationEntry) => v.result,
         Cell: ({ row }: { row: { original: ViolationEntry } }) => (
           <ResultStatusChip status={row.original.result} />
         ),
       },
       {
-        header: t('Message'),
+        header: messageHeader,
+        id: columnId('message', messageHeader),
         accessorFn: (v: ViolationEntry) => v.message || '-',
       },
     ],
-    [t]
+    [
+      resourceHeader,
+      kindHeader,
+      namespaceHeader,
+      policyHeader,
+      ruleHeader,
+      severityHeader,
+      resultHeader,
+      messageHeader,
+    ]
   );
 
   const allViolations = useMemo(
