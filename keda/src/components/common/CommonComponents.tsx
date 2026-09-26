@@ -81,10 +81,10 @@ interface KedaInstallCheckProps {
 }
 
 export function KedaInstallCheck({ children, fallback }: KedaInstallCheckProps) {
-  const { isKedaInstalled, isKedaCheckLoading } = useKedaInstalled();
+  const { notInstalled, isLoading } = useKedaInstalled();
 
-  if (!isKedaInstalled) {
-    return fallback || <NotInstalledBanner isLoading={isKedaCheckLoading} />;
+  if (notInstalled || isLoading) {
+    return fallback || <NotInstalledBanner isLoading={isLoading} />;
   }
 
   return <>{children}</>;
