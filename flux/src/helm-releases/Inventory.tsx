@@ -109,14 +109,13 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
         {
           header: 'Ready',
           accessorFn: item => {
-            if (item.status) {
-              return item.status.conditions?.findIndex(
-                c => c.type === 'Ready' || c.type === 'Available' || c.type === 'NamesAccepted'
-              ) !== -1
-                ? 'True'
-                : 'False';
+            const condition = item.status?.conditions?.find(
+              c => c.type === 'Ready' || c.type === 'Available' || c.type === 'NamesAccepted'
+            );
+            if (!condition) {
+              return item.status ? 'False' : '';
             }
-            return '';
+            return condition.status === 'True' ? 'True' : 'False';
           },
         },
         {
