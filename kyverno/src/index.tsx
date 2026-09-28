@@ -210,7 +210,7 @@ registerKyvernoPage({
   requires: 'cel',
   requiresResource: 'namespacedvalidatingpolicies',
   resourceMessage:
-    'NamespacedValidatingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.16+ is required.',
+    'NamespacedValidatingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.17+ is required.',
   component: () => <NamespacedValidatingPolicyList />,
 });
 
@@ -246,7 +246,7 @@ registerKyvernoPage({
   requires: 'cel',
   requiresResource: 'namespaceddeletingpolicies',
   resourceMessage:
-    'NamespacedDeletingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.16+ is required.',
+    'NamespacedDeletingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.17+ is required.',
   component: () => <NamespacedDeletingPolicyList />,
 });
 
@@ -258,7 +258,7 @@ registerKyvernoPage({
   requires: 'cel',
   requiresResource: 'namespacedimagevalidatingpolicies',
   resourceMessage:
-    'NamespacedImageValidatingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.16+ is required.',
+    'NamespacedImageValidatingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.17+ is required.',
   component: () => <NamespacedImageValidatingPolicyList />,
 });
 

@@ -18,10 +18,7 @@ import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip, Link as MuiLink } from '@mui/material';
-import {
-  ImageValidatingPolicy,
-  NamespacedImageValidatingPolicy,
-} from '../resources/celPolicies';
+import { ImageValidatingPolicy, NamespacedImageValidatingPolicy } from '../resources/celPolicies';
 import { ImageValidatingPolicyViewer } from './ImageValidatingPolicyViewer';
 
 function openActivity(item: ImageValidatingPolicy | NamespacedImageValidatingPolicy) {
