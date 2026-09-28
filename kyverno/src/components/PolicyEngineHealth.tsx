@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { EmptyContent, Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Grid, Link, useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -139,7 +139,10 @@ function LatencyChart({ data }: { data: ChartDataPoint[] }) {
   const theme = useTheme();
   const accent = theme.palette.mode === 'dark' ? '#3987e5' : '#2a78d6';
 
-  if (data.length === 0) {
+  // histogram_quantile returns NaN for a window with zero observations, and rangeSeries turns
+  // those into { y: null }, so the array can be non-empty while every point is still null. A
+  // plain length check would render an empty-looking chart instead of the "no data" state.
+  if (!data.some(point => point.y !== null)) {
     return (
       <Box width="100%" height={220} display="flex" justifyContent="center" alignItems="center">
         <EmptyContent>{t('No data yet.')}</EmptyContent>
@@ -187,6 +190,7 @@ function LatencyChart({ data }: { data: ChartDataPoint[] }) {
 
 export function PolicyEngineHealth() {
   const { t } = useTranslation();
+  const cluster = K8s.useCluster();
   const prometheus = usePrometheus();
   const [health, setHealth] = useState<HealthQueries | null>(null);
   const [state, setState] = useState<FetchState>('loading');
@@ -209,6 +213,7 @@ export function PolicyEngineHealth() {
     };
 
     setState('loading');
+    setHealth(null);
     void load();
     const interval = setInterval(load, REFRESH_INTERVAL_MS);
 
@@ -216,7 +221,14 @@ export function PolicyEngineHealth() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [prometheus.prefix]);
+    // `cluster` is deliberately in these deps even though `prometheus.prefix` usually changes
+    // with it: two different clusters can discover the identical prefix string (e.g. both have
+    // Prometheus at the conventional monitoring/services/prometheus:9090), which would leave
+    // this effect keyed only on prefix never rerunning across that switch, showing the old
+    // cluster's health data under the new cluster. Keying on `cluster` too forces a refetch (and
+    // cancels the outgoing cluster's in-flight request) on every switch, matching the same cache
+    // key useKyvernoCRDs and usePrometheus already use for exactly this reason.
+  }, [cluster, prometheus.prefix]);
 
   if (prometheus.loading) {
     return (
