@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { UCPResourceType, useRadiusResourceTypes } from '../models/radius';
@@ -27,6 +28,7 @@ interface ResourceTypeTableRow {
  * from the UCP API for all known resource providers
  */
 export default function ResourceTypes() {
+  const { t } = useTranslation();
   const [resourceTypes, error, loading] = useRadiusResourceTypes();
 
   if (loading) {
@@ -48,7 +50,7 @@ export default function ResourceTypes() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography color="error" variant="h6">
-          Error loading Resource Types
+          {t('Error loading Resource Types')}
         </Typography>
         <Typography color="error">{error.message}</Typography>
       </Box>
@@ -56,15 +58,15 @@ export default function ResourceTypes() {
   }
 
   return (
-    <SectionBox title="Resource Types">
+    <SectionBox title={t('Resource Types')}>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Available Radius resource types from all providers
+        {t('Available Radius resource types from all providers')}
       </Typography>
       <Table
         data={resourceTypes || []}
         columns={[
           {
-            header: 'Type',
+            header: t('Type'),
             accessorKey: 'name',
             Cell: ({ row }: { row: ResourceTypeTableRow }) => {
               const rt = row.original;
@@ -81,11 +83,11 @@ export default function ResourceTypes() {
             },
           },
           {
-            header: 'Resource Provider',
+            header: t('Resource Provider'),
             accessorKey: 'resourceProvider',
           },
           {
-            header: 'API Versions',
+            header: t('API Versions'),
             accessorKey: 'apiVersions',
             Cell: ({ row }: { row: ResourceTypeTableRow }) => {
               const rt = row.original;

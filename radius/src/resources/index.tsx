@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { RadiusStatusLabel } from '../components/RadiusStatusLabel';
@@ -33,6 +34,7 @@ interface ResourceTableData {
  * Resources component displays a list of all Radius resources
  */
 export default function Resources() {
+  const { t } = useTranslation();
   const [resources, resError, resLoading] = useRadiusResources();
   const [applications, appError, appLoading] = useRadiusApplications();
 
@@ -60,7 +62,7 @@ export default function Resources() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography color="error" variant="h6">
-          Error loading resources
+          {t('Error loading resources')}
         </Typography>
         <Typography color="error">{error.message}</Typography>
       </Box>
@@ -108,12 +110,12 @@ export default function Resources() {
   });
 
   return (
-    <SectionBox title={`Resources (${tableData.length})`}>
+    <SectionBox title={t('Resources ({{count}})', { count: tableData.length })}>
       <Table
         data={tableData}
         columns={[
           {
-            header: 'Resource Name',
+            header: t('Resource Name'),
             accessorKey: 'name',
             gridTemplate: 'auto',
             Cell: ({ row }: { row: { original: ResourceTableData } }) => {
@@ -126,15 +128,15 @@ export default function Resources() {
             },
           },
           {
-            header: 'Resource Group',
+            header: t('Resource Group'),
             accessorKey: 'resourceGroup',
           },
           {
-            header: 'Type',
+            header: t('Type'),
             accessorKey: 'type',
           },
           {
-            header: 'Application',
+            header: t('Application'),
             accessorKey: 'application',
             Cell: ({ row }: { row: { original: ResourceTableData } }) => {
               const appName = row.original.application;
@@ -149,7 +151,7 @@ export default function Resources() {
             },
           },
           {
-            header: 'Environment',
+            header: t('Environment'),
             accessorKey: 'environment',
             Cell: ({ row }: { row: { original: ResourceTableData } }) => {
               const envName = row.original.environment;
@@ -164,7 +166,7 @@ export default function Resources() {
             },
           },
           {
-            header: 'Status',
+            header: t('Status'),
             accessorKey: 'provisioningState',
             accessorFn: (item: ResourceTableData) => {
               return <RadiusStatusLabel status={item.provisioningState} />;
