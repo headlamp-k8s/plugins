@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   AuthVisible,
   EmptyContent,
@@ -24,20 +25,37 @@ export default function KueueAdminResourceAccess({
   resourceClass,
   resourceLabel,
   verb,
-  accessDescription = `Kueue ${resourceLabel} are cluster-scoped admin resources.`,
+  accessDescription,
   children,
 }: KueueAdminResourceAccessProps) {
+  const { t } = useTranslation();
   const [allowed, setAllowed] = useState<boolean | null>(null);
+
+  const defaultDescription = accessDescription
+    ? t(accessDescription)
+    : t('Kueue {{resourceLabel}} are cluster-scoped admin resources.', { resourceLabel });
 
   return (
     <>
-      {allowed === null && <Loader title={`Checking access to Kueue ${resourceLabel}`} />}
+      {allowed === null && (
+        <Loader title={t('Checking access to Kueue {{resourceLabel}}', { resourceLabel })} />
+      )}
       {allowed === false && (
-        <SectionBox title={`Kueue ${resourceLabel}`}>
+        <SectionBox title={t('Kueue {{resourceLabel}}', { resourceLabel })}>
           <EmptyContent color="text.secondary">
-            {`${accessDescription} Your current Kubernetes credentials are not authorized to ${
-              verb === 'get' ? 'view' : 'list'
-            } this page.`}
+            {verb === 'get'
+              ? t(
+                  '{{description}} Your current Kubernetes credentials are not authorized to view this page.',
+                  {
+                    description: defaultDescription,
+                  }
+                )
+              : t(
+                  '{{description}} Your current Kubernetes credentials are not authorized to list this page.',
+                  {
+                    description: defaultDescription,
+                  }
+                )}
           </EmptyContent>
         </SectionBox>
       )}
