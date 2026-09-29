@@ -129,7 +129,7 @@ describe('findAuthenticationEdges', () => {
     ]);
 
     // useList returns null before the first response resolves.
-    expect(findAuthenticationEdges(source, null as any, [])).toEqual([]);
-    expect(findAuthenticationEdges(source, [], null as any)).toEqual([]);
+    expect(findAuthenticationEdges(source, null, [])).toEqual([]);
+    expect(findAuthenticationEdges(source, [], null)).toEqual([]);
   });
 });

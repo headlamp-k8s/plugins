@@ -1,20 +1,11 @@
 import type { ClusterTriggerAuthentication } from './resources/clusterTriggerAuthentication';
+import {
+  CLUSTER_TRIGGER_AUTHENTICATION_KIND,
+  TRIGGER_AUTHENTICATION_KIND,
+} from './resources/common';
 import type { ScaledJob } from './resources/scaledjob';
 import type { ScaledObject } from './resources/scaledobject';
 import type { TriggerAuthentication } from './resources/triggerAuthentication';
-
-/**
- * Kinds an `authenticationRef` can name.
- *
- * These mirror the `kind` statics on TriggerAuthentication and
- * ClusterTriggerAuthentication. They are repeated here rather than imported so
- * that this module carries no runtime dependency on the resource classes, which
- * reach `@kinvolk/headlamp-plugin/lib/k8s/cluster`. That specifier is supplied
- * by Headlamp at runtime and is not resolvable on disk, so importing it here
- * would make this logic impossible to unit test.
- */
-const TRIGGER_AUTHENTICATION_KIND = 'TriggerAuthentication';
-const CLUSTER_TRIGGER_AUTHENTICATION_KIND = 'ClusterTriggerAuthentication';
 
 /**
  * Build a map edge between two Kubernetes objects.
@@ -54,8 +45,8 @@ export const makeKubeToKubeEdge = (from: any, to: any): any => ({
  */
 export const findAuthenticationEdges = (
   sourceObject: ScaledObject | ScaledJob,
-  triggerAuthentications: TriggerAuthentication[],
-  clusterTriggerAuthentications: ClusterTriggerAuthentication[]
+  triggerAuthentications: TriggerAuthentication[] | null,
+  clusterTriggerAuthentications: ClusterTriggerAuthentication[] | null
 ) => {
   const edges = [];
   const { triggers } = sourceObject.spec;
