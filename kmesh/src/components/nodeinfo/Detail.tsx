@@ -2,11 +2,14 @@
  * Detail view for a single KmeshNodeInfo resource.
  * Shows full IPsec security state for one node: SPI, addresses, Pod CIDRs, and boot ID.
  */
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   MainInfoSection,
+  SectionBox,
   SimpleTable,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link as HeadlampLink } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -15,7 +18,53 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import { useParams } from 'react-router-dom';
+import { useKmeshDaemonPods } from '../../hooks/useKmeshDaemonPods';
 import { KmeshNodeInfo } from '../../resources/kmeshNodeInfo';
+
+/** Related resources for a KmeshNodeInfo: the underlying Node and the kmesh-daemon Pod on it. */
+function NodeInfoRelatedResources({ nodeName }: { nodeName: string }) {
+  const [node] = K8s.ResourceClasses.Node.useGet(nodeName);
+  const { pods: daemonPods } = useKmeshDaemonPods();
+  const daemonPod = daemonPods.find(p => p.nodeName === nodeName) ?? null;
+  const [daemonPodObject] = K8s.ResourceClasses.Pod.useGet(
+    daemonPod?.name ?? '',
+    daemonPod?.namespace ?? ''
+  );
+
+  return (
+    <SectionBox title="Related Resources">
+      <SimpleTable
+        data={[
+          { label: 'Node', resources: node ? [node] : [] },
+          { label: 'Kmesh Daemon Pod', resources: daemonPodObject ? [daemonPodObject] : [] },
+        ]}
+        columns={[
+          {
+            label: 'Resource Type',
+            getter: (row: { label: string; resources: any[] }) => row.label,
+          },
+          {
+            label: 'Resource',
+            getter: (row: { label: string; resources: any[] }) =>
+              row.resources.length > 0 ? (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {row.resources.map(resource => (
+                    <HeadlampLink key={resource.metadata.uid} kubeObject={resource}>
+                      {resource.getName()}
+                    </HeadlampLink>
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Not found
+                </Typography>
+              ),
+          },
+        ]}
+      />
+    </SectionBox>
+  );
+}
 
 /**
  * Detail view for a single KmeshNodeInfo resource.
@@ -168,6 +217,10 @@ export default function KmeshNodeInfoDetail() {
             },
           ]}
         />
+      </Box>
+
+      <Box sx={{ mt: 2 }}>
+        <NodeInfoRelatedResources nodeName={nodeInfo.getName()} />
       </Box>
     </Box>
   );
