@@ -23,7 +23,6 @@ export interface KyvernoCRDStatus {
   cleanup: boolean; // kyverno.io/v2 (CleanupPolicy, ClusterCleanupPolicy)
   reports: boolean; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
   exceptions: boolean; // kyverno.io/v2 (PolicyException)
-  kyvernoV2Reports: boolean; // kyverno.io/v2 (Admission/BackgroundScan reports)
   ephemeralReports: boolean; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
   loading: boolean;
 }
@@ -34,7 +33,6 @@ const initialStatus: KyvernoCRDStatus = {
   cleanup: false,
   reports: false,
   exceptions: false,
-  kyvernoV2Reports: false,
   ephemeralReports: false,
   loading: true,
 };
@@ -71,18 +69,16 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
       checkAPIGroup('/apis/reports.kyverno.io/v1'),
     ]);
 
-    // kyverno.io/v2 hosts cleanup, exceptions, and admission/background scan reports.
-    // The API-group-level probe doesn't tell us *which* CRDs are inside, so we treat
-    // all v2 features as available together, matching what stock Kyverno installs.
+    // kyverno.io/v2 hosts cleanup and exceptions. The API-group-level probe
+    // doesn't tell us *which* CRDs are inside, so we treat both v2 features
+    // as available together, matching what stock Kyverno installs.
     let cleanup = false;
     let exceptions = false;
-    let kyvernoV2Reports = false;
     if (legacy) {
       const v2 = await checkAPIGroup('/apis/kyverno.io/v2');
       if (v2) {
         cleanup = true;
         exceptions = true;
-        kyvernoV2Reports = true;
       }
     }
 
@@ -92,7 +88,6 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
       cleanup,
       reports,
       exceptions,
-      kyvernoV2Reports,
       ephemeralReports,
       loading: false,
     };
