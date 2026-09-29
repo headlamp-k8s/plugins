@@ -23,7 +23,7 @@ export function Kustomizations() {
         // @ts-ignore -- TODO Update the sorting param
         defaultSortingColumn={2}
         columns={[
-          NameLink(Kustomization),
+          NameLink(Kustomization, t),
           'namespace',
           'status',
           'source',
