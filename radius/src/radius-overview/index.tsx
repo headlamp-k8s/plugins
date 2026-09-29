@@ -83,28 +83,20 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
   const theme = useTheme();
   const total = resources.length;
 
-  if (total === 0) {
-    return (
-      <Box sx={{ textAlign: 'center', p: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          0
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {title}
-        </Typography>
-      </Box>
-    );
-  }
+  const isEmpty = total === 0;
 
   const status = getResourceStatus(resources);
 
   // Calculate percentages ensuring they sum to 100%
-  const percentages = [
-    Math.round((status.success / total) * 100),
-    Math.round((status.failed / total) * 100),
-    Math.round((status.processing / total) * 100),
-    Math.round((status.suspended / total) * 100),
-  ];
+  const percentages =
+    total === 0
+      ? [100, 0, 0, 0]
+      : [
+          Math.round((status.success / total) * 100),
+          Math.round((status.failed / total) * 100),
+          Math.round((status.processing / total) * 100),
+          Math.round((status.suspended / total) * 100),
+        ];
 
   // Adjust to ensure total is 100% by modifying the largest percentage
   const sum = percentages.reduce((a, b) => a + b, 0);
@@ -154,6 +146,11 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
       <Typography variant="body2" fontWeight="medium" gutterBottom>
         {title}
       </Typography>
+      {isEmpty && (
+        <Typography variant="caption" display="block" color="text.secondary">
+          No resources in this category
+        </Typography>
+      )}
       {status.success > 0 && (
         <Typography variant="caption" display="block" color="text.secondary">
           {status.success} Succeeded
