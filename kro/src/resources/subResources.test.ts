@@ -16,6 +16,25 @@ describe('getSubResourceHealth', () => {
     });
   });
 
+  it('defaults omitted replicas to 1 (Kubernetes API default)', () => {
+    // When spec.replicas is omitted, Kubernetes defaults to 1.
+    // A single ready pod should be success, not error.
+    expect(
+      getSubResourceHealth('Deployment', { spec: {}, status: { readyReplicas: 1 } })
+    ).toEqual({ status: 'success', label: '1/1 ready' });
+    expect(
+      getSubResourceHealth('StatefulSet', { spec: {}, status: { readyReplicas: 1 } })
+    ).toEqual({ status: 'success', label: '1/1 ready' });
+    // Pod not yet ready with omitted replicas should be error.
+    expect(
+      getSubResourceHealth('Deployment', { spec: {}, status: { readyReplicas: 0 } })
+    ).toEqual({ status: 'error', label: '0/1 ready' });
+    // No status at all with omitted replicas.
+    expect(
+      getSubResourceHealth('Deployment', { spec: {}, status: {} })
+    ).toEqual({ status: 'error', label: '0/1 ready' });
+  });
+
   it('maps PVC phases', () => {
     expect(getSubResourceHealth('PersistentVolumeClaim', { status: { phase: 'Bound' } })).toEqual({
       status: 'success',
@@ -70,6 +89,19 @@ describe('getResolvedValues', () => {
       getResolvedValues('Service', { spec: { type: 'ClusterIP', clusterIP: '10.0.0.1' } })
     ).toBe('type: ClusterIP, clusterIP: 10.0.0.1');
     expect(getResolvedValues('Service', { spec: { clusterIP: 'None' } })).toBe('type: ClusterIP');
+  });
+
+  it('defaults omitted replicas to 1 in resolved values', () => {
+    // When spec.replicas is omitted, should show /1 not /0.
+    expect(
+      getResolvedValues('Deployment', { spec: {}, status: { readyReplicas: 1 } })
+    ).toBe('replicas: 1/1');
+    expect(
+      getResolvedValues('StatefulSet', { spec: {}, status: { readyReplicas: 1 } })
+    ).toBe('replicas: 1/1');
+    expect(
+      getResolvedValues('Deployment', { spec: {}, status: {} })
+    ).toBe('replicas: 0/1');
   });
 
   it('returns empty for kinds without resolved values', () => {
