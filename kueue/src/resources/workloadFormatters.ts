@@ -1,6 +1,7 @@
 import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import type {
   Admission,
+  AdmissionCheckState,
   PodSet,
   ReclaimablePod,
   RequeueState,
@@ -349,6 +350,192 @@ export function renderOwnerReferences(ownerReferences: KubeOwnerReference[] = []
   }
 
   return ownerReferences.map(reference => `${reference.kind}/${reference.name}`).join(', ');
+}
+
+const WAITING_FOR_PODS_READY =
+  'Kueue is waiting for other admitted Workloads to become ready first.';
+
+const QUOTA_RESERVED_REASONS: Record<string, string> = {
+  Pending: 'Kueue has not reserved quota for this Workload yet.',
+  WaitingForQuota: 'There is not enough unused quota in the ClusterQueue or its Cohort right now.',
+  ExceedsMaxQuota:
+    'The Workload requests more than the ClusterQueue could ever provide, even with borrowing.',
+  NoMatchingFlavor:
+    "No ResourceFlavor in the ClusterQueue matches this Workload's node selectors or tolerations.",
+  TopologyPlacementFailed: "The Workload's topology request cannot be satisfied.",
+  WaitingForPreemptedWorkloads:
+    'Kueue preempted other Workloads to make room and is waiting for them to release quota.',
+  Misconfigured:
+    'Kueue cannot admit this Workload because required queue or Workload configuration is missing, invalid, or inactive.',
+  Inadmissible:
+    'Kueue considers this Workload inadmissible because required configuration is missing, invalid, or inactive.',
+  Suspended: 'The LocalQueue or ClusterQueue is stopped or otherwise inactive.',
+  PendingEvaluation: 'The Workload is queued but Kueue has not evaluated it yet.',
+  WaitingForPodsReady: WAITING_FOR_PODS_READY,
+  // Reported instead of WaitingForPodsReady while UnadmittedWorkloadsObservability is off.
+  Waiting: WAITING_FOR_PODS_READY,
+  OnHold: 'The Workload is intentionally on hold.',
+  AdmissionGated: 'An admission or preemption gate is blocking this Workload.',
+};
+
+const UNSATISFIED_CHECKS =
+  'Quota is reserved, but not every AdmissionCheck on the ClusterQueue has passed.';
+
+const ADMITTED_REASONS: Record<string, string> = {
+  UnsatisfiedAdmissionChecks: UNSATISFIED_CHECKS,
+  // Reported instead of UnsatisfiedAdmissionChecks while UnadmittedWorkloadsObservability is off.
+  UnsatisfiedChecks: UNSATISFIED_CHECKS,
+  PendingDelayedTopologyRequests:
+    'Quota is reserved, and Kueue is still computing the delayed topology assignment.',
+};
+
+const EVICTED_REASONS: Record<string, string> = {
+  Preempted: 'A higher-priority Workload or quota reclamation preempted this Workload.',
+  PodsReadyTimeout: 'The pods did not become ready within the waitForPodsReady timeout.',
+  AdmissionCheck: 'An AdmissionCheck asked Kueue to evict this Workload.',
+  ClusterQueueStopped: 'The ClusterQueue was stopped.',
+  LocalQueueStopped: 'The LocalQueue was stopped.',
+  Deactivated: 'The Workload was deactivated (spec.active is false).',
+  InactiveWorkload: 'The Workload was deactivated (spec.active is false).',
+  NodeFailures: 'Nodes running the Workload failed.',
+  MaximumExecutionTimeExceeded: 'The Workload ran longer than its maximum execution time.',
+};
+
+/** What is currently stopping a Workload from being admitted, derived from its status. */
+export interface WorkloadBlocker {
+  /** Short stage label. */
+  stage:
+    | 'Evicted'
+    | 'Deactivated'
+    | 'Not evaluated'
+    | 'Waiting for quota'
+    | 'Admission checks'
+    | 'Topology assignment';
+  /** Condition reason reported by Kueue. */
+  reason?: string;
+  /** Plain-English meaning of the reason, when known. */
+  explanation?: string;
+  /** Kueue's own condition message. */
+  message?: string;
+  /** Admission checks that are not Ready yet. */
+  pendingAdmissionChecks: AdmissionCheckState[];
+  /** When Kueue will requeue the Workload after a backoff. */
+  requeueAt?: string;
+}
+
+/**
+ * Explain why a Workload is not admitted, or return null when nothing is blocking it.
+ * A missing QuotaReserved condition means Kueue has not looked at the Workload yet,
+ * which is different from QuotaReserved=False where Kueue looked and refused.
+ */
+export function getWorkloadBlocker(
+  conditions: WorkloadConditionLike[] = [],
+  admissionChecks: AdmissionCheckState[] = [],
+  requeueState?: RequeueState,
+  active?: boolean,
+  admission?: Admission
+): WorkloadBlocker | null {
+  if (isConditionTrue(conditions, CONDITION_TYPES.finished)) {
+    return null;
+  }
+
+  const base = { pendingAdmissionChecks: [], requeueAt: requeueState?.requeueAt };
+
+  const evicted = findWorkloadCondition(conditions, CONDITION_TYPES.evicted);
+
+  const deactivationTarget = findWorkloadCondition(conditions, CONDITION_TYPES.deactivationTarget);
+
+  // Kueue sets DeactivationTarget first and only later patches spec.active to false.
+  if (active === false || deactivationTarget?.status === 'True') {
+    const details = evicted?.status === 'True' ? evicted : deactivationTarget;
+    const byAdmissionCheck =
+      details?.reason === 'AdmissionCheck' || details?.reason === 'DeactivatedDueToAdmissionCheck';
+    return {
+      ...base,
+      stage: 'Deactivated',
+      reason: details?.reason,
+      explanation:
+        active === false
+          ? 'spec.active is false, so Kueue will not admit this Workload.'
+          : 'Kueue is deactivating this Workload and will set spec.active to false.',
+      message: details?.message,
+      // Eviction resets every check to Pending, so a Rejected one is no longer marked as such.
+      pendingAdmissionChecks: byAdmissionCheck
+        ? admissionChecks.filter(check => check.state !== 'Ready')
+        : [],
+    };
+  }
+
+  if (evicted?.status === 'True') {
+    return {
+      ...base,
+      stage: 'Evicted',
+      reason: evicted.reason,
+      explanation: evicted.reason ? EVICTED_REASONS[evicted.reason] : undefined,
+      message: evicted.message,
+      // A check moving to Retry evicts the Workload, so show which checks are still not Ready.
+      pendingAdmissionChecks:
+        evicted.reason === 'AdmissionCheck'
+          ? admissionChecks.filter(check => check.state !== 'Ready')
+          : [],
+    };
+  }
+
+  if (isConditionTrue(conditions, CONDITION_TYPES.admitted)) {
+    return null;
+  }
+
+  const quotaReserved = findWorkloadCondition(conditions, CONDITION_TYPES.quotaReserved);
+
+  if (!quotaReserved) {
+    return {
+      ...base,
+      stage: 'Not evaluated',
+      explanation:
+        'Kueue has not tried to reserve quota for this Workload yet, so it has not been refused. ' +
+        'It is usually queued behind other Workloads.',
+    };
+  }
+
+  if (quotaReserved.status !== 'True') {
+    return {
+      ...base,
+      stage: quotaReserved.reason === 'PendingEvaluation' ? 'Not evaluated' : 'Waiting for quota',
+      reason: quotaReserved.reason,
+      explanation: quotaReserved.reason ? QUOTA_RESERVED_REASONS[quotaReserved.reason] : undefined,
+      message: quotaReserved.message,
+    };
+  }
+
+  const admitted = findWorkloadCondition(conditions, CONDITION_TYPES.admitted);
+  const pendingAdmissionChecks = admissionChecks.filter(check => check.state !== 'Ready');
+  // With UnadmittedWorkloadsObservability off, Kueue leaves Admitted unset, so read the assignments.
+  const topologyPending = admission?.podSetAssignments?.some(
+    assignment => !assignment.topologyAssignment && assignment.delayedTopologyRequest === 'Pending'
+  );
+
+  if (
+    admitted?.reason === 'PendingDelayedTopologyRequests' ||
+    (topologyPending && pendingAdmissionChecks.length === 0)
+  ) {
+    return {
+      ...base,
+      stage: 'Topology assignment',
+      reason: admitted?.reason,
+      explanation: ADMITTED_REASONS.PendingDelayedTopologyRequests,
+      message: admitted?.message,
+    };
+  }
+
+  return {
+    ...base,
+    stage: 'Admission checks',
+    reason: admitted?.reason,
+    // Kueue leaves Admitted unset while checks are pending, so fall back to that explanation.
+    explanation: ADMITTED_REASONS[admitted?.reason || 'UnsatisfiedAdmissionChecks'],
+    message: admitted?.message,
+    pendingAdmissionChecks,
+  };
 }
 
 /** Build route params for a namespaced Workload detail link. */
