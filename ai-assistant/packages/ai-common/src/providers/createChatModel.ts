@@ -36,6 +36,7 @@ export type SupportedProviderId =
   | 'gemini'
   | 'deepseek'
   | 'vllm'
+  | 'openai-compatible'
   | 'copilot'
   | 'local'
   | 'mock-testing-model';
@@ -167,6 +168,20 @@ export function createChatModel(
         });
       }
 
+      case 'openai-compatible': {
+        if (!c.baseUrl)
+          throw new Error('Base URL is required for OpenAI-compatible providers');
+        if (!c.model) throw new Error('Model is required for OpenAI-compatible providers');
+        let url = c.baseUrl.replace(/\/+$/, '');
+        if (!url.endsWith('/v1')) url = `${url}/v1`;
+        return new ChatOpenAI({
+          apiKey: c.apiKey || 'sk-noop',
+          model: c.model,
+          verbose,
+          configuration: { baseURL: url },
+        });
+      }
+
       case 'copilot': {
         if (!c.apiKey) throw new Error('GitHub token is required for GitHub Copilot');
         if (c.apiKey === GH_CLI_AUTH_SENTINEL)
@@ -206,7 +221,8 @@ export function createChatModel(
       default:
         throw new Error(
           `Unsupported provider: ${providerId}. ` +
-            'Supported: openai, azure, anthropic, mistral, gemini, deepseek, vllm, copilot, local, mock-testing-model'
+            'Supported: openai, azure, anthropic, mistral, gemini, deepseek, vllm, ' +
+            'openai-compatible, copilot, local, mock-testing-model'
         );
     }
   } catch (err) {
@@ -233,6 +249,7 @@ export const DIRECT_TOOL_CALLING_PROVIDERS: ReadonlySet<string> = new Set([
   'mistral',
   'gemini',
   'vllm',
+  'openai-compatible',
   'copilot',
   'local', // Ollama — many models (llama3, qwen2.5, …) support bindTools
 ]);
