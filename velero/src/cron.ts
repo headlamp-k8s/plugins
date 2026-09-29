@@ -1,7 +1,7 @@
 import { CronExpressionParser } from 'cron-parser';
 
 /** Optional Velero prefix: `CRON_TZ=<IANA timezone> <cron fields>`. */
-const CRON_TZ_PREFIX = /^CRON_TZ=(\S+)\s+(.+)$/s;
+const CRON_TZ_PREFIX = /^CRON_TZ=(\S+)\s+(.+)$/;
 
 /**
  * Splits an optional CRON_TZ= prefix from a Velero schedule expression.
