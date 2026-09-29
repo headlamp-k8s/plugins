@@ -1,6 +1,7 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { kueueApiVersions } from '../utils/kueueApi';
 import { kueueRoutePaths } from '../utils/kueueRoutes';
+import { renderNodeLabels, renderTaints, renderTolerations } from './resourceFlavorFormatters';
 
 /**
  * Node label selector values associated with a Kueue ResourceFlavor.
@@ -153,13 +154,7 @@ export class ResourceFlavor extends KubeObject<KubeResourceFlavor> {
   }
 
   get nodeLabelsDisplay() {
-    const labels = Object.entries(this.nodeLabels);
-
-    if (labels.length === 0) {
-      return '-';
-    }
-
-    return labels.map(([key, value]) => `${key}=${value}`).join(', ');
+    return renderNodeLabels(this.nodeLabels);
   }
 
   get nodeTaints() {
@@ -181,39 +176,4 @@ export class ResourceFlavor extends KubeObject<KubeResourceFlavor> {
   get topologyName() {
     return this.spec.topologyName || '-';
   }
-}
-
-function renderTaints(taints: ResourceFlavorTaint[]) {
-  if (taints.length === 0) {
-    return '-';
-  }
-
-  return taints.map(renderTaint).join(', ');
-}
-
-function renderTaint(taint: ResourceFlavorTaint) {
-  const value = taint.value ? `=${taint.value}` : '';
-
-  return `${taint.key}${value}:${taint.effect}`;
-}
-
-function renderTolerations(tolerations: ResourceFlavorToleration[]) {
-  if (tolerations.length === 0) {
-    return '-';
-  }
-
-  return tolerations.map(renderToleration).join(', ');
-}
-
-function renderToleration(toleration: ResourceFlavorToleration) {
-  const key = toleration.key || '*';
-  const value =
-    toleration.operator === 'Exists' || toleration.value === undefined
-      ? ''
-      : `=${toleration.value}`;
-  const effect = toleration.effect ? `:${toleration.effect}` : '';
-  const seconds =
-    toleration.tolerationSeconds === undefined ? '' : ` (${toleration.tolerationSeconds}s)`;
-
-  return `${key}${value}${effect}${seconds}`;
 }
