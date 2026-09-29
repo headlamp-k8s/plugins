@@ -77,7 +77,10 @@ export function SummaryChips({ summary }: { summary: PolicyReportSummary }) {
       {items
         .filter(item => item.count > 0)
         .map(item => (
-          <Tooltip key={item.label} title={item.label}>
+          // Keyed on the untranslated status enum, not the translated label: unlike a Table
+          // column id, a list key has no reason to be derived from translated text at all here,
+          // and status is already stable and unique per item regardless of i18n load state.
+          <Tooltip key={item.status} title={item.label}>
             <Chip
               label={`${item.label}: ${item.count}`}
               color={statusColors[item.status]}

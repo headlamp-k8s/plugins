@@ -24,6 +24,7 @@ import {
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, CircularProgress, Typography } from '@mui/material';
+import { useMemo } from 'react';
 import {
   Attestor,
   CELValidation,
@@ -31,6 +32,7 @@ import {
   ImageMatchReference,
   ImageValidatingPolicy,
 } from '../resources/celPolicies';
+import { columnId } from './common';
 
 interface ImageValidatingPolicyViewerProps {
   name: string;
@@ -48,6 +50,100 @@ function attestorType(attestor: Attestor): string {
 function PolicyContent({ policy }: { policy: ImageValidatingPolicy }) {
   const { t } = useTranslation();
   const annotations = policy.jsonData.metadata.annotations || {};
+
+  // See ViolationsView for why headers are computed once and id is derived from
+  // the live header text, applied here to every Table in this viewer.
+  const patternHeader = t('Pattern');
+  const imageRefTypeHeader = t('Type');
+  const attestorNameHeader = t('Name');
+  const attestorTypeHeader = t('Type');
+  const attestationNameHeader = t('Name');
+  const attestationTypeHeader = t('Type');
+  const formatHeader = t('Format');
+  const expressionHeader = t('Expression');
+  const validationMessageHeader = t('Message');
+
+  const imageReferenceColumns = useMemo(
+    () => [
+      {
+        header: patternHeader,
+        id: columnId('pattern', patternHeader),
+        accessorFn: (r: ImageMatchReference) => r.glob || r.expression || '-',
+      },
+      {
+        header: imageRefTypeHeader,
+        id: columnId('imageRefType', imageRefTypeHeader),
+        accessorFn: (r: ImageMatchReference) => (r.glob ? 'Glob' : 'CEL Expression'),
+        Cell: ({ row }: { row: { original: ImageMatchReference } }) => (
+          <Chip label={row.original.glob ? 'Glob' : 'CEL'} size="small" variant="outlined" />
+        ),
+      },
+    ],
+    [patternHeader, imageRefTypeHeader]
+  );
+
+  const attestorColumns = useMemo(
+    () => [
+      {
+        header: attestorNameHeader,
+        id: columnId('attestorName', attestorNameHeader),
+        accessorFn: (a: Attestor) => a.name || '-',
+      },
+      {
+        header: attestorTypeHeader,
+        id: columnId('attestorType', attestorTypeHeader),
+        accessorFn: (a: Attestor) => attestorType(a),
+        Cell: ({ row }: { row: { original: Attestor } }) => (
+          <Chip label={attestorType(row.original)} size="small" variant="outlined" />
+        ),
+      },
+    ],
+    [attestorNameHeader, attestorTypeHeader]
+  );
+
+  const attestationColumns = useMemo(
+    () => [
+      {
+        header: attestationNameHeader,
+        id: columnId('attestationName', attestationNameHeader),
+        accessorFn: (a: ImageAttestation) => a.name,
+      },
+      {
+        header: attestationTypeHeader,
+        id: columnId('attestationType', attestationTypeHeader),
+        accessorFn: (a: ImageAttestation) => a.intoto?.type || a.referrer?.type || '-',
+      },
+      {
+        header: formatHeader,
+        id: columnId('format', formatHeader),
+        accessorFn: (a: ImageAttestation) => (a.intoto ? 'In-Toto' : a.referrer ? 'Referrer' : '-'),
+        Cell: ({ row }: { row: { original: ImageAttestation } }) => (
+          <Chip
+            label={row.original.intoto ? 'In-Toto' : row.original.referrer ? 'Referrer' : '-'}
+            size="small"
+            variant="outlined"
+          />
+        ),
+      },
+    ],
+    [attestationNameHeader, attestationTypeHeader, formatHeader]
+  );
+
+  const validationColumns = useMemo(
+    () => [
+      {
+        header: expressionHeader,
+        id: columnId('expression', expressionHeader),
+        accessorFn: (v: CELValidation) => v.expression,
+      },
+      {
+        header: validationMessageHeader,
+        id: columnId('validationMessage', validationMessageHeader),
+        accessorFn: (v: CELValidation) => v.message || '-',
+      },
+    ],
+    [expressionHeader, validationMessageHeader]
+  );
 
   return (
     <Box sx={{ p: 2 }}>
@@ -109,19 +205,7 @@ function PolicyContent({ policy }: { policy: ImageValidatingPolicy }) {
         })}
       >
         <Table
-          columns={[
-            {
-              header: t('Pattern'),
-              accessorFn: (r: ImageMatchReference) => r.glob || r.expression || '-',
-            },
-            {
-              header: t('Type'),
-              accessorFn: (r: ImageMatchReference) => (r.glob ? 'Glob' : 'CEL Expression'),
-              Cell: ({ row }: { row: { original: ImageMatchReference } }) => (
-                <Chip label={row.original.glob ? 'Glob' : 'CEL'} size="small" variant="outlined" />
-              ),
-            },
-          ]}
+          columns={imageReferenceColumns}
           data={policy.spec.matchImageReferences || []}
           emptyMessage={t('No image references defined.')}
         />
@@ -129,16 +213,7 @@ function PolicyContent({ policy }: { policy: ImageValidatingPolicy }) {
 
       <SectionBox title={t('Attestors ({{count}})', { count: policy.spec.attestors?.length || 0 })}>
         <Table
-          columns={[
-            { header: t('Name'), accessorFn: (a: Attestor) => a.name || '-' },
-            {
-              header: t('Type'),
-              accessorFn: (a: Attestor) => attestorType(a),
-              Cell: ({ row }: { row: { original: Attestor } }) => (
-                <Chip label={attestorType(row.original)} size="small" variant="outlined" />
-              ),
-            },
-          ]}
+          columns={attestorColumns}
           data={policy.spec.attestors || []}
           emptyMessage={t('No attestors defined.')}
         />
@@ -148,42 +223,13 @@ function PolicyContent({ policy }: { policy: ImageValidatingPolicy }) {
         <SectionBox
           title={t('Attestations ({{count}})', { count: policy.spec.attestations.length })}
         >
-          <Table
-            columns={[
-              { header: t('Name'), accessorFn: (a: ImageAttestation) => a.name },
-              {
-                header: t('Type'),
-                accessorFn: (a: ImageAttestation) => a.intoto?.type || a.referrer?.type || '-',
-              },
-              {
-                header: t('Format'),
-                accessorFn: (a: ImageAttestation) =>
-                  a.intoto ? 'In-Toto' : a.referrer ? 'Referrer' : '-',
-                Cell: ({ row }: { row: { original: ImageAttestation } }) => (
-                  <Chip
-                    label={
-                      row.original.intoto ? 'In-Toto' : row.original.referrer ? 'Referrer' : '-'
-                    }
-                    size="small"
-                    variant="outlined"
-                  />
-                ),
-              },
-            ]}
-            data={policy.spec.attestations}
-          />
+          <Table columns={attestationColumns} data={policy.spec.attestations} />
         </SectionBox>
       )}
 
       {policy.spec.validations && policy.spec.validations.length > 0 && (
         <SectionBox title={t('Validations ({{count}})', { count: policy.spec.validations.length })}>
-          <Table
-            columns={[
-              { header: t('Expression'), accessorFn: (v: CELValidation) => v.expression },
-              { header: t('Message'), accessorFn: (v: CELValidation) => v.message || '-' },
-            ]}
-            data={policy.spec.validations}
-          />
+          <Table columns={validationColumns} data={policy.spec.validations} />
         </SectionBox>
       )}
     </Box>
