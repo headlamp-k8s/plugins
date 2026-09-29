@@ -1,5 +1,18 @@
 import { describe, expect, test } from 'vitest';
-import { formatNextScheduledRun, getNextScheduledRun } from './cron';
+import { formatNextScheduledRun, getNextScheduledRun, parseVeleroCron } from './cron';
+
+describe('parseVeleroCron', () => {
+  test('returns UTC when no CRON_TZ prefix is present', () => {
+    expect(parseVeleroCron('0 7 * * *')).toEqual({ cron: '0 7 * * *', tz: 'UTC' });
+  });
+
+  test('extracts CRON_TZ prefix and remaining cron fields', () => {
+    expect(parseVeleroCron('CRON_TZ=America/New_York 0 12 * * *')).toEqual({
+      cron: '0 12 * * *',
+      tz: 'America/New_York',
+    });
+  });
+});
 
 describe('getNextScheduledRun', () => {
   test('returns the next occurrence for a standard cron', () => {
@@ -7,6 +20,13 @@ describe('getNextScheduledRun', () => {
     const next = getNextScheduledRun('0 7 * * *', from);
 
     expect(next?.toISOString()).toBe('2026-07-05T07:00:00.000Z');
+  });
+
+  test('parses CRON_TZ= schedules instead of returning undefined', () => {
+    const from = new Date('2026-07-05T06:00:00Z');
+    const next = getNextScheduledRun('CRON_TZ=UTC 0 8 * * *', from);
+
+    expect(next?.toISOString()).toBe('2026-07-05T08:00:00.000Z');
   });
 
   test('returns undefined for invalid cron expressions', () => {

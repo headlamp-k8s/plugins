@@ -1,6 +1,22 @@
 import { CronExpressionParser } from 'cron-parser';
 
-/** Returns the next UTC run time for a Velero cron schedule, or undefined when invalid. */
+/** Optional Velero prefix: `CRON_TZ=<IANA timezone> <cron fields>`. */
+const CRON_TZ_PREFIX = /^CRON_TZ=(\S+)\s+(.+)$/s;
+
+/**
+ * Splits an optional CRON_TZ= prefix from a Velero schedule expression.
+ * Returns the cron fields and timezone (UTC when no prefix is present).
+ */
+export function parseVeleroCron(cronSchedule: string): { cron: string; tz: string } {
+  const expression = cronSchedule.trim();
+  const match = expression.match(CRON_TZ_PREFIX);
+  if (match) {
+    return { tz: match[1], cron: match[2].trim() };
+  }
+  return { cron: expression, tz: 'UTC' };
+}
+
+/** Returns the next run time for a Velero cron schedule, or undefined when invalid. */
 export function getNextScheduledRun(
   cronSchedule: string | undefined,
   from: Date = new Date()
@@ -10,10 +26,12 @@ export function getNextScheduledRun(
     return undefined;
   }
 
+  const { cron, tz } = parseVeleroCron(expression);
+
   try {
-    return CronExpressionParser.parse(expression, {
+    return CronExpressionParser.parse(cron, {
       currentDate: from,
-      tz: 'UTC',
+      tz,
     })
       .next()
       .toDate();

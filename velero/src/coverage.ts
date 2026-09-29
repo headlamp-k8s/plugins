@@ -45,11 +45,7 @@ export interface ScheduleCoverageResult {
 
 const DEPLOYMENT_ALIASES = new Set(['deployments', 'deployments.apps']);
 const STATEFULSET_ALIASES = new Set(['statefulsets', 'statefulsets.apps']);
-const PVC_ALIASES = new Set(['persistentvolumeclaims', 'persistentvolumeclaims', 'pvcs']);
-
-function normalizeResourceName(name: string): string {
-  return name.split('.')[0].toLowerCase();
-}
+const PVC_ALIASES = new Set(['persistentvolumeclaims', 'pvcs']);
 
 function resourceAliases(kind: WorkloadTarget['resourceKind']): Set<string> {
   switch (kind) {
@@ -64,22 +60,33 @@ function resourceAliases(kind: WorkloadTarget['resourceKind']): Set<string> {
   }
 }
 
+/**
+ * True when a Velero included/excluded resource name refers to this workload kind.
+ * Only known short names and apps/core aliases match — do not strip arbitrary
+ * API groups (e.g. deployments.example.com must not match apps Deployments).
+ */
+function resourceNameMatchesKind(
+  resourceName: string,
+  kind: WorkloadTarget['resourceKind']
+): boolean {
+  return resourceAliases(kind).has(resourceName.toLowerCase());
+}
+
 function resourceIncluded(
   template: VeleroBackupTemplate,
   kind: WorkloadTarget['resourceKind']
 ): boolean {
-  const excluded = (template.excludedResources ?? []).map(normalizeResourceName);
-  if (excluded.includes(kind)) {
+  const excluded = template.excludedResources ?? [];
+  if (excluded.some(name => resourceNameMatchesKind(name, kind))) {
     return false;
   }
 
-  const included = (template.includedResources ?? []).map(normalizeResourceName);
-  if (included.length === 0 || included.includes('*')) {
+  const included = template.includedResources ?? [];
+  if (included.length === 0 || included.some(name => name === '*')) {
     return true;
   }
 
-  const aliases = resourceAliases(kind);
-  return included.some(name => aliases.has(name) || included.includes(kind));
+  return included.some(name => resourceNameMatchesKind(name, kind));
 }
 
 /**
@@ -245,7 +252,8 @@ export function getLatestBackupForSchedule(
 }
 
 function backupTimestamp(backup: BackupCoverageInput): number {
-  const value = backup.completionTimestamp ?? backup.startTimestamp;
+  // Prefer start time so a newer in-progress backup outranks an older completed one.
+  const value = backup.startTimestamp ?? backup.completionTimestamp;
   return value ? Date.parse(value) : 0;
 }
 

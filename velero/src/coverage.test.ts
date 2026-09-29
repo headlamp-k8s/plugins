@@ -206,6 +206,31 @@ describe('scheduleCoversWorkload', () => {
     ).toBe(false);
   });
 
+  test('matches known apps-group aliases but not cross-group resources', () => {
+    const appsAlias = {
+      name: 'apps-alias',
+      template: {
+        includedNamespaces: ['default'],
+        includedResources: ['deployments.apps'],
+      },
+    };
+    const crossGroup = {
+      name: 'cross-group',
+      template: {
+        includedNamespaces: ['default'],
+        includedResources: ['deployments.example.com'],
+      },
+    };
+    const target = {
+      namespace: 'default',
+      labels: {},
+      resourceKind: 'deployments' as const,
+    };
+
+    expect(scheduleCoversWorkload(appsAlias, target)).toBe(true);
+    expect(scheduleCoversWorkload(crossGroup, target)).toBe(false);
+  });
+
   test('rejects resource type listed in excludedResources', () => {
     expect(
       scheduleCoversWorkload(
@@ -340,6 +365,27 @@ describe('getLatestBackupForSchedule', () => {
     );
 
     expect(latest?.name).toBe('new');
+  });
+
+  test('prefers startTimestamp so a newer in-progress backup wins', () => {
+    const latest = getLatestBackupForSchedule(
+      [
+        {
+          name: 'older-completed',
+          scheduleName: 'daily',
+          startTimestamp: '2026-07-01T10:00:00Z',
+          completionTimestamp: '2026-07-02T12:00:00Z',
+        },
+        {
+          name: 'newer-in-progress',
+          scheduleName: 'daily',
+          startTimestamp: '2026-07-02T11:00:00Z',
+        },
+      ],
+      'daily'
+    );
+
+    expect(latest?.name).toBe('newer-in-progress');
   });
 });
 

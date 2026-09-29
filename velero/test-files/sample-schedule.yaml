@@ -13,3 +13,26 @@ spec:
     labelSelector:
       matchLabels:
         backup: enabled
+---
+# Covered by default-deployments-daily (backup=enabled in default)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-demo
+  namespace: default
+  labels:
+    app: nginx-demo
+    backup: enabled
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-demo
+  template:
+    metadata:
+      labels:
+        app: nginx-demo
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
