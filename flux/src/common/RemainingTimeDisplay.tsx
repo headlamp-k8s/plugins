@@ -46,6 +46,12 @@ function getNextReconciliationAttempt(item: KubeObject) {
 
   const intervalInMs = parseDuration(interval);
 
+  // Without a usable interval there is nothing to project the next attempt from.
+  // This also keeps a zero interval from turning the division below into NaN.
+  if (!(intervalInMs > 0)) {
+    return -1;
+  }
+
   // Calculate the last reconciliation attempt assuming there was an attempt at every interval,
   // starting from the last ready state.
   const nowAndLastReadyDiff = new Date().getTime() - lastRecordedCheck.getTime();
