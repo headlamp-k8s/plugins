@@ -1,5 +1,6 @@
 import { Router, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
+  EmptyContent,
   Loader,
   NameValueTable,
   SectionBox,
@@ -20,6 +21,19 @@ type ChartDetailsProps = {
   vanillaHelmRepo: string;
 };
 
+type ChartDetail = {
+  name: string;
+  description: string;
+  logo_image_id?: string; // optional just in case
+  readme: string;
+  app_version: string;
+  maintainers: Array<{ name: string; email: string }>;
+  home_url: string;
+  package_id: string;
+  version: string;
+  icon?: string; // used when VANILLA_HELM_REPO
+};
+
 /**
  * Displays the details of a chart, including its name, description, maintainers, and readme.
  * The component fetches the chart details from the Artifact repository based on the provided chart name and repository name.
@@ -31,18 +45,15 @@ type ChartDetailsProps = {
 export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
   const { t } = useTranslation();
   const { chartName, repoName } = useParams<{ chartName: string; repoName: string }>();
-  const [chart, setChart] = useState<{
-    name: string;
-    description: string;
-    logo_image_id?: string; // optional just in case
-    readme: string;
-    app_version: string;
-    maintainers: Array<{ name: string; email: string }>;
-    home_url: string;
-    package_id: string;
-    version: string;
-    icon?: string; // used when VANILLA_HELM_REPO
+  const chartKey = `${repoName}/${chartName}`;
+  const [result, setResult] = useState<{
+    key: string;
+    chart?: ChartDetail;
+    error?: Error;
   } | null>(null);
+  const current = result?.key === chartKey ? result : null;
+  const chart = current?.chart ?? null;
+  const error = current?.error ?? null;
   const [openEditor, setOpenEditor] = useState(false);
   const chartCfg = getCatalogConfig();
 
@@ -53,10 +64,40 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
     // An API to get details about a particular chart is required to achieve this. For example, take a look at the response
     // from https://artifacthub.io/api/v1/packages/helm/grafana/grafana
     // Easiest thing is to fetch index.yaml, get the details for chartName and fill the details
-    fetchChartDetailFromArtifact(chartName, repoName).then(response => {
-      setChart(response);
-    });
-  }, [chartName, repoName]);
+    let ignore = false;
+
+    fetchChartDetailFromArtifact(chartName, repoName)
+      .then(response => {
+        // A request for a chart we have since navigated away from must not
+        // overwrite the details of the chart currently being viewed.
+        if (!ignore) {
+          setResult({ key: chartKey, chart: response });
+        }
+      })
+      .catch(err => {
+        if (!ignore) {
+          console.error(`Failed to fetch details for chart ${chartName} in repo ${repoName}:`, err);
+          setResult({ key: chartKey, error: err instanceof Error ? err : new Error(String(err)) });
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [chartName, repoName, chartKey]);
+
+  // Without this the loader below spins forever on a failed fetch, with the
+  // reason only in the console. Install is deliberately not offered for a
+  // chart whose details could not be read.
+  if (error) {
+    return (
+      <SectionBox title={<SectionHeader title={chartName} />} backLink={createRouteURL('Charts')}>
+        <EmptyContent color="error">
+          {t('Error fetching chart details {{ error }}', { error: error.message })}
+        </EmptyContent>
+      </SectionBox>
+    );
+  }
 
   return (
     <>
