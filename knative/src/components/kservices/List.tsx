@@ -613,7 +613,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
 export function KServicesList() {
   const clusters = useClusters();
-  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
+  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
 
   return isKnativeInstalled ? (
     <KServicesListContents clusters={clusters} />

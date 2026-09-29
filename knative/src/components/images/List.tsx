@@ -31,7 +31,7 @@ import {
 
 export function ImagesList() {
   const clusters = useClusters();
-  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
+  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
   const showClusterColumn = clusters.length > 1;
   const columns = React.useMemo<
     (ResourceTableColumn<KnativeImage> | 'name' | 'namespace' | 'cluster' | 'age')[]

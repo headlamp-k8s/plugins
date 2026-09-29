@@ -298,7 +298,7 @@ export function ClusterNetworkingCard({
 export function NetworkingConfiguration() {
   const clusters = useClusters();
   const hasCluster = clusters.length > 0;
-  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
+  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
 
   if (!hasCluster) {
     return (
