@@ -37,7 +37,13 @@ export function PluginCard(props: PluginCardProps) {
           component={HeadlampRouterLink}
           routeName="/plugin-catalog/:repoName/:pluginName"
           params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
-          sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start' }}
+          sx={{
+            flexGrow: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            justifyContent: 'flex-start',
+          }}
         >
           <Box
             height="60px"
@@ -67,7 +73,12 @@ export function PluginCard(props: PluginCardProps) {
                 }}
               />
             )}
-            <Box display="flex" alignItems="center" justifyContent="space-around" marginRight="10px">
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="space-around"
+              marginRight="10px"
+            >
               {(plugin.official || plugin.repository.official) && (
                 <Tooltip title={t('Official Chart')}>
                   <Icon
@@ -124,7 +135,11 @@ export function PluginCard(props: PluginCardProps) {
                       {displayName}
                     </Box>
                   );
-                  return needsTooltip ? <Tooltip title={displayName}>{textSpan}</Tooltip> : textSpan;
+                  return needsTooltip ? (
+                    <Tooltip title={displayName}>{textSpan}</Tooltip>
+                  ) : (
+                    textSpan
+                  );
                 })()}
               </Typography>
             </Box>
