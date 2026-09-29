@@ -15,21 +15,20 @@ export function GrafanaButtonPure({ dashboard, grafanaUrl }: GrafanaButtonPurePr
       }
 
       const base = new URL(grafanaUrl);
-             let url: URL;
-       // Keep absolute URLs and protocol-relative URLs unchanged.
-       // /^[a-zA-Z][a-zA-Z\d+.-]*:/ matches absolute URLs
-       // dashboard.startsWith('//') matches protocol-relative URLs
-       if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(dashboard) || dashboard.startsWith('//')) {
-         url = new URL(dashboard, base);
-       } else {
-       
-         const baseWithSlash = new URL(base.toString());
-         if (!baseWithSlash.pathname.endsWith('/')) {
-           baseWithSlash.pathname = baseWithSlash.pathname + '/';
-         }
-         const relativeDashboard = dashboard.startsWith('/') ? dashboard.slice(1) : dashboard;
-         url = new URL(relativeDashboard, baseWithSlash);
-       }
+      let url: URL;
+      // Keep absolute URLs and protocol-relative URLs unchanged.
+      // /^[a-zA-Z][a-zA-Z\d+.-]*:/ matches absolute URLs
+      // dashboard.startsWith('//') matches protocol-relative URLs
+      if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(dashboard) || dashboard.startsWith('//')) {
+        url = new URL(dashboard, base);
+      } else {
+        const baseWithSlash = new URL(base.toString());
+        if (!baseWithSlash.pathname.endsWith('/')) {
+          baseWithSlash.pathname = baseWithSlash.pathname + '/';
+        }
+        const relativeDashboard = dashboard.startsWith('/') ? dashboard.slice(1) : dashboard;
+        url = new URL(relativeDashboard, baseWithSlash);
+      }
 
       if (url.protocol !== 'http:' && url.protocol !== 'https:') {
         return null;
@@ -37,6 +36,17 @@ export function GrafanaButtonPure({ dashboard, grafanaUrl }: GrafanaButtonPurePr
 
       // Only allow navigation within the configured Grafana instance.
       if (url.origin !== base.origin) {
+        return null;
+      }
+
+      // Keep the link inside a Grafana instance hosted under a sub-path.
+      // e.g. base https://example.com/grafana + ../admin -> https://example.com/admin must be rejected.
+      const basePath = base.pathname.endsWith('/') ? base.pathname : base.pathname + '/';
+      if (
+        basePath !== '/' &&
+        url.pathname !== base.pathname &&
+        !url.pathname.startsWith(basePath)
+      ) {
         return null;
       }
 

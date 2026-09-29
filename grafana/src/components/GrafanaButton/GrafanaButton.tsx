@@ -1,5 +1,4 @@
 import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
-import { useEffect, useState } from 'react';
 import { getConfigStore } from '../../utils';
 import { GrafanaButtonPure, GrafanaButtonPureProps } from './GrafanaButtonPure';
 
@@ -16,15 +15,12 @@ interface GrafanaButtonProps {
  */
 export function GrafanaButton({ dashboard }: GrafanaButtonProps) {
   const cluster = useCluster();
-  const [grafanaUrl, setGrafanaUrl] = useState('');
 
   const configStore = getConfigStore();
   const useConfig = configStore.useConfig();
   const conf = useConfig();
 
-  useEffect(() => {
-    setGrafanaUrl(conf?.[cluster]?.grafanaUrl || '');
-  }, [conf, cluster]);
+  const grafanaUrl = conf?.[cluster]?.grafanaUrl || '';
 
   const pureProps: GrafanaButtonPureProps = {
     dashboard,
