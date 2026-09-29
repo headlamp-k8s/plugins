@@ -27,6 +27,7 @@ interface RollbackDialogProps {
   onVersionChange: (version: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  disabled?: boolean;
 }
 
 export function RollbackDialog({
@@ -36,6 +37,7 @@ export function RollbackDialog({
   onVersionChange,
   onConfirm,
   onCancel,
+  disabled = false,
 }: RollbackDialogProps) {
   return (
     <Dialog open={open} maxWidth="xs" onClose={onCancel} title="Rollback">
@@ -65,7 +67,7 @@ export function RollbackDialog({
         </Select>
       </DialogContent>
       <DialogActions>
-        <Button variant="contained" onClick={onConfirm}>
+        <Button variant="contained" onClick={onConfirm} disabled={disabled}>
           Revert
         </Button>
         <Button variant="outlined" onClick={onCancel}>
