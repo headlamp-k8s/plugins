@@ -15,6 +15,7 @@
  */
 
 import { CustomResourceDefinition } from './resources/k8s/customResourceDefinition';
+import { isNotFoundError } from './utils/error';
 
 /**
  * Knative components install independently of each other, so a cluster may
@@ -55,7 +56,9 @@ function hasCrdInCluster(cluster: string, crdName: string): Promise<boolean> {
       () => settle(true),
       crdName,
       undefined,
-      () => settle(false),
+      // Only a confirmed 404 means the CRD is genuinely absent.
+      // Other failures (403, 5xx, network) do not prove absence.
+      err => settle(!isNotFoundError(err)),
       { cluster }
     );
 
