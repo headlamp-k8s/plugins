@@ -371,11 +371,17 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
     }
   }
 
+  // Reset whenever we leave edit mode. resetSection is intentionally not a dependency:
+  // it is redeclared on every render, so including it would re-run this effect after every
+  // render, and the state it writes (setPendingTagInputs({}) in particular) always has a
+  // fresh identity, so React never bails out and the component re-renders forever.
+  // Matches ScaleBoundsSection and AutoscalingSettings, which key this effect on isEditMode.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (!isEditMode) {
       resetSection();
     }
-  }, [isEditMode, resetSection]);
+  }, [isEditMode]);
 
   const getTagUrl = (tagName: string) => {
     const trafficEntry = kservice.status?.traffic?.find(t => t.tag === tagName);
