@@ -1,6 +1,5 @@
 import { Icon, InlineIcon } from '@iconify/react';
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { Link as HeadlampRouterLink } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Router, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Box,
   Card,
@@ -12,6 +11,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { useHistory } from 'react-router-dom';
 import { PluginPackage } from './List';
 import PluginIcon from './plugin-icon.svg';
 
@@ -22,12 +22,31 @@ export interface PluginCardProps {
 export function PluginCard(props: PluginCardProps) {
   const { plugin } = props;
   const { t } = useTranslation();
+  const history = useHistory();
+
+  const detailsURL = Router.createRouteURL('/plugin-catalog/:repoName/:pluginName', {
+    repoName: plugin.repository?.name,
+    pluginName: plugin.name,
+  });
 
   return (
     <Box maxWidth="30%" width="400px" m={1}>
       <Card
+        onClick={() => history.push(detailsURL)}
+        role="link"
+        tabIndex={0}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            history.push(detailsURL);
+          }
+        }}
         sx={{
           height: '100%',
+          cursor: 'pointer',
+          '&:hover': {
+            boxShadow: 6,
+          },
         }}
       >
         <Box
@@ -109,17 +128,8 @@ export function PluginCard(props: PluginCardProps) {
               {(() => {
                 const displayName = plugin.display_name || plugin.name || '';
                 const needsTooltip = displayName.length > 20;
-                const link = (
-                  <Box component="span" sx={{ display: 'inline-block' }}>
-                    <HeadlampRouterLink
-                      routeName="/plugin-catalog/:repoName/:pluginName"
-                      params={{ repoName: plugin.repository?.name, pluginName: plugin.name }}
-                    >
-                      {displayName}
-                    </HeadlampRouterLink>
-                  </Box>
-                );
-                return needsTooltip ? <Tooltip title={displayName}>{link}</Tooltip> : link;
+                const name = <Box component="span">{displayName}</Box>;
+                return needsTooltip ? <Tooltip title={displayName}>{name}</Tooltip> : name;
               })()}
             </Typography>
           </Box>
@@ -136,7 +146,12 @@ export function PluginCard(props: PluginCardProps) {
               {plugin?.repository && (
                 <>
                   <InlineIcon icon="mdi:building" />{' '}
-                  <Link href={plugin.repository.url} target="_blank" rel="noopener noreferrer">
+                  <Link
+                    href={plugin.repository.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                  >
                     {plugin.repository.organization_name || plugin.repository.name}
                   </Link>
                 </>
