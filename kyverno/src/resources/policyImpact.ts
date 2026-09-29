@@ -82,8 +82,8 @@ function ingest(
       result.resources && result.resources.length > 0
         ? result.resources
         : reportScope
-          ? [reportScope]
-          : [];
+        ? [reportScope]
+        : [];
 
     for (const res of resourceRefs) {
       const kind = res?.kind || 'Unknown';
@@ -173,11 +173,34 @@ export function collectPolicyImpact(
   return { resources, byKind, namespaces, counts };
 }
 
+// Matches a real Kubernetes API version segment (v1, v2, v1alpha1, v1beta2, ...),
+// used below to find the kind inside a qualified pattern regardless of how many
+// other segments (group, subresource) surround it.
+const K8S_VERSION_SEGMENT = /^v\d+((alpha|beta)\d*)?$/;
+
+// Kyverno kind patterns can be a bare kind ("Pod"), version-qualified ("v1/Pod"),
+// group+version-qualified ("apps/v1/Deployment"), and any of those forms can also
+// carry a trailing "/subresource" segment ("Pod/status", "apps/v1/Deployment/scale").
+// Report results only ever carry the bare kind, so this walks the pattern to the
+// segment right after whatever looks like a real API version, rather than assuming
+// the kind is always the last segment (which a subresource suffix would break) or
+// always the first (which group/version qualification would break).
+function normalizeKindPattern(pattern: string): string {
+  const segments = pattern.split('/');
+  const versionIndex = segments.findIndex(s => K8S_VERSION_SEGMENT.test(s));
+  if (versionIndex !== -1 && versionIndex + 1 < segments.length) {
+    return segments[versionIndex + 1];
+  }
+  // No version segment found: either a bare kind, or "Kind/subresource".
+  return segments[0];
+}
+
 function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boolean {
   const kinds = selector.resources?.kinds || [];
   // Kyverno match kinds support "*" as a wildcard for every kind, an
   // exact-membership check alone would reject a kind matched this way.
-  return kinds.includes(kind) || kinds.includes('*');
+  if (kinds.includes('*')) return true;
+  return kinds.some(pattern => normalizeKindPattern(pattern) === kind);
 }
 
 function describeConstraints(selectors: MatchSelectorEntry[], kind: string): string {
@@ -270,13 +293,26 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
   const ruleLabel = rule.name ? `rule "${rule.name}"` : 'this rule';
 
   if (rule.validate?.pattern) {
-    return `This rule enforces the pattern below on ${target.kind || 'the resource'}. Update the manifest so every field matches the pattern, then re-apply it.`;
+    return `This rule enforces the pattern below on ${
+      target.kind || 'the resource'
+    }. Update the manifest so every field matches the pattern, then re-apply it.`;
   }
   if (rule.validate?.anyPattern) {
     return `This rule requires the resource to satisfy at least one of several patterns. Compare the resource against each entry in validate.anyPattern and adjust it to match one of them.`;
   }
   if (rule.validate?.deny) {
-    return `This rule denies matching resources outright rather than asking for a change. Check the match and exclude blocks on ${ruleLabel} to see whether this resource should be excluded instead of edited.`;
+    // deny.conditions (any/all, confirmed against the real CRD schema) is what
+    // actually decides whether a given matched resource gets denied, a deny rule
+    // is conditional far more often than not, and commonly references editable
+    // resource fields. Pointing straight at match/exclude here would tell users
+    // to change the policy's scope when the real fix is usually to change the
+    // resource so the conditions no longer hold; reserve match/exclude for a
+    // resource that is genuinely meant to be out of scope entirely.
+    const deny = rule.validate.deny as { conditions?: unknown };
+    if (deny.conditions) {
+      return `This rule denies matching resources when validate.deny.conditions on ${ruleLabel} evaluates to true. Review those conditions and adjust the resource so they evaluate to false; only use the match and exclude blocks if this resource should be out of scope entirely.`;
+    }
+    return `This rule denies every matching resource outright, with no conditions attached. Check the match and exclude blocks on ${ruleLabel} to see whether this resource should be excluded instead.`;
   }
   if (rule.validate?.cel) {
     return `This rule is enforced with a CEL expression. Review validate.cel.expressions on ${ruleLabel} and adjust the resource so the expression evaluates to true.`;

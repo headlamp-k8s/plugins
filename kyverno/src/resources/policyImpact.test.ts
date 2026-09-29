@@ -45,8 +45,8 @@ vi.mock('./policyReport', () => {
       return this.jsonData.scope;
     }
   }
-  class PolicyReport extends PolicyReportBase { }
-  class ClusterPolicyReport extends PolicyReportBase { }
+  class PolicyReport extends PolicyReportBase {}
+  class ClusterPolicyReport extends PolicyReportBase {}
   return { PolicyReport, ClusterPolicyReport };
 });
 
@@ -209,7 +209,9 @@ describe('collectPolicyImpact', () => {
   });
 
   test('returns an empty summary for a policy with zero results, not an error', () => {
-    const reports = [report('team-checkout', badPod, [{ policy: 'require-app-label', result: 'fail' }])];
+    const reports = [
+      report('team-checkout', badPod, [{ policy: 'require-app-label', result: 'fail' }]),
+    ];
 
     const impact = collectPolicyImpact('a-policy-nothing-matches', reports, []);
 
@@ -317,12 +319,16 @@ describe('collectPolicyImpact', () => {
         {
           policy: 'p',
           result: 'fail',
-          resources: [{ kind: 'Widget', name: 'shared-name', namespace: 'team-checkout', uid: 'widget-a' }],
+          resources: [
+            { kind: 'Widget', name: 'shared-name', namespace: 'team-checkout', uid: 'widget-a' },
+          ],
         },
         {
           policy: 'p',
           result: 'pass',
-          resources: [{ kind: 'Widget', name: 'shared-name', namespace: 'team-checkout', uid: 'widget-b' }],
+          resources: [
+            { kind: 'Widget', name: 'shared-name', namespace: 'team-checkout', uid: 'widget-b' },
+          ],
         },
       ],
     } as any);
@@ -381,14 +387,24 @@ describe('collectPolicyImpact', () => {
           policy: 'p',
           result: 'fail',
           resources: [
-            { apiVersion: 'group-a/v1', kind: 'Widget', name: 'shared-name', namespace: 'team-checkout' },
+            {
+              apiVersion: 'group-a/v1',
+              kind: 'Widget',
+              name: 'shared-name',
+              namespace: 'team-checkout',
+            },
           ],
         },
         {
           policy: 'p',
           result: 'pass',
           resources: [
-            { apiVersion: 'group-b/v1', kind: 'Widget', name: 'shared-name', namespace: 'team-checkout' },
+            {
+              apiVersion: 'group-b/v1',
+              kind: 'Widget',
+              name: 'shared-name',
+              namespace: 'team-checkout',
+            },
           ],
         },
       ],
@@ -534,6 +550,54 @@ describe('describeMatchReasons', () => {
     expect(reasons).toHaveLength(2);
     expect(reasons[1]).toContain('exclude block covering kind "Pod"');
   });
+
+  test('recognizes a group+version-qualified kind pattern as a match, found via Copilot review', () => {
+    // Confirmed against kubectl explain: report results only ever carry the
+    // bare kind, but a policy's match kinds can be fully qualified.
+    const qualifiedRules: PolicyRule[] = [
+      {
+        name: 'check-deployments',
+        match: { any: [{ resources: { kinds: ['apps/v1/Deployment'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(qualifiedRules, 'Deployment');
+
+    expect(reasons[0]).toContain('Rule "check-deployments" matches kind "Deployment"');
+  });
+
+  test('recognizes a version-qualified kind pattern as a match, found via Copilot review', () => {
+    const versionQualifiedRules: PolicyRule[] = [
+      { name: 'check-pods', match: { any: [{ resources: { kinds: ['v1/Pod'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(versionQualifiedRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pods" matches kind "Pod"');
+  });
+
+  test('recognizes a subresource-qualified kind pattern as a match, found via Copilot review', () => {
+    const subresourceRules: PolicyRule[] = [
+      { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['Pod/status'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(subresourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('does not let a qualified pattern for a different kind falsely match, found via Copilot review', () => {
+    const qualifiedRules: PolicyRule[] = [
+      {
+        name: 'check-deployments',
+        match: { any: [{ resources: { kinds: ['apps/v1/Deployment'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(qualifiedRules, 'Pod');
+
+    expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Pod"');
+  });
 });
 
 describe('suggestFix', () => {
@@ -567,5 +631,36 @@ describe('suggestFix', () => {
 
     expect(result).not.toContain('undefined');
     expect(result).toContain('this rule');
+  });
+
+  test('points at deny.conditions for a conditional deny rule, found via Copilot review', () => {
+    // Confirmed against kubectl explain (clusterpolicy.spec.rules.validate.deny):
+    // conditions is the real field a deny rule is evaluated against, and a deny
+    // rule is conditional far more often than it is unconditional.
+    const rule: PolicyRule = {
+      name: 'deny-privileged',
+      validate: {
+        deny: {
+          conditions: {
+            any: [{ key: '{{ request.object.spec.privileged }}', operator: 'Equals', value: true }],
+          },
+        },
+      },
+    };
+
+    const result = suggestFix(rule, target);
+
+    expect(result).toContain('deny.conditions');
+    expect(result).toContain('rule "deny-privileged"');
+    expect(result).not.toContain('outright');
+  });
+
+  test('falls back to an outright-deny message when a deny rule has no conditions, found via Copilot review', () => {
+    const rule: PolicyRule = { name: 'deny-everything', validate: { deny: {} } };
+
+    const result = suggestFix(rule, target);
+
+    expect(result).toContain('outright');
+    expect(result).toContain('match and exclude blocks');
   });
 });
