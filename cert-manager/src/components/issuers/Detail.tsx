@@ -14,9 +14,9 @@ import { processIssuerExtraInfo } from '../common/processIssuerExtraInfo';
 export function IssuerDetail() {
   const { t } = useTranslation();
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const { notInstalled, isLoading } = useCertManagerInstalled();
 
-  return isManagerInstalled ? (
+  return !notInstalled && !isLoading ? (
     <DetailsGrid
       resourceType={Issuer}
       name={name}
@@ -45,6 +45,6 @@ export function IssuerDetail() {
       }
     />
   ) : (
-    <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+    <NotInstalledBanner isLoading={isLoading} />
   );
 }
