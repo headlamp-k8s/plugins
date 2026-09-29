@@ -5,6 +5,9 @@ import type {
   ReclaimablePod,
   RequeueState,
   ResourceList,
+  TopologyAssignment,
+  TopologyAssignmentSliceLevelValues,
+  TopologyAssignmentSlicePodCounts,
   WorkloadConditionLike,
 } from './workload';
 
@@ -256,6 +259,73 @@ export function renderReclaimablePodsSummary(reclaimablePods: ReclaimablePod[] =
   return reclaimablePods
     .map(reclaimablePod => `${reclaimablePod.name}: ${reclaimablePod.count}`)
     .join(', ');
+}
+
+/** Maximum number of topology domains rendered before summarising the rest. */
+const MAX_TOPOLOGY_DOMAINS = 20;
+
+/** Resolve one domain's value for a slice level, without expanding the whole level. */
+function getSliceLevelValue(level: TopologyAssignmentSliceLevelValues, domainIndex: number) {
+  if (level.universal !== undefined) {
+    return level.universal;
+  }
+
+  const individual = level.individual;
+  const root = individual?.roots?.[domainIndex];
+
+  return root === undefined ? '-' : `${individual?.prefix ?? ''}${root}${individual?.suffix ?? ''}`;
+}
+
+/** Resolve one domain's pod count for a slice, without expanding the whole list. */
+function getSlicePodCount(podCounts: TopologyAssignmentSlicePodCounts | undefined, index: number) {
+  return podCounts?.universal ?? podCounts?.individual?.[index] ?? '-';
+}
+
+/** Render one domain as "values (count)". */
+function renderTopologyDomain(values: string[], count: number | string) {
+  return `${values.length === 0 ? '-' : values.join('/')} (${count})`;
+}
+
+/**
+ * Render a Workload pod set assignment's topology placement, from either the v1beta2 slices
+ * or the v1beta1 domains shape. A slice's domainCount can be huge while the object stays tiny
+ * (universal values), so only the first MAX_TOPOLOGY_DOMAINS domains are resolved.
+ */
+export function renderTopologyAssignment(topologyAssignment?: TopologyAssignment) {
+  if (!topologyAssignment) {
+    return '-';
+  }
+
+  const rendered: string[] = [];
+  let total = 0;
+
+  for (const slice of topologyAssignment.slices ?? []) {
+    const domainCount = Math.max(slice.domainCount ?? 0, 0);
+    total += domainCount;
+
+    for (let i = 0; i < domainCount && rendered.length < MAX_TOPOLOGY_DOMAINS; i++) {
+      const values = (slice.valuesPerLevel ?? []).map(level => getSliceLevelValue(level, i));
+      rendered.push(renderTopologyDomain(values, getSlicePodCount(slice.podCounts, i)));
+    }
+  }
+
+  for (const domain of topologyAssignment.domains ?? []) {
+    total++;
+
+    if (rendered.length < MAX_TOPOLOGY_DOMAINS) {
+      rendered.push(renderTopologyDomain(domain.values ?? [], domain.count ?? '-'));
+    }
+  }
+
+  if (rendered.length === 0) {
+    return '-';
+  }
+
+  const omitted = total - rendered.length;
+  const domains = rendered.join(', ') + (omitted > 0 ? `, +${omitted} more` : '');
+  const levels = (topologyAssignment.levels ?? []).join(' > ');
+
+  return levels ? `${levels}: ${domains}` : domains;
 }
 
 /** Render requeue state as count and next requeue time. */
