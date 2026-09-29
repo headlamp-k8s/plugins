@@ -864,6 +864,7 @@ export default function ClusterApiOverview() {
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
           <Select
             size="small"
+            inputProps={{ 'aria-label': 'Filter conditions by cluster' }}
             value={clusterErrorFilter}
             onChange={e => setClusterErrorFilter(e.target.value)}
             sx={{ minWidth: 200 }}
@@ -876,6 +877,7 @@ export default function ClusterApiOverview() {
           </Select>
           <Select
             size="small"
+            inputProps={{ 'aria-label': 'Filter conditions by resource' }}
             value={errorResourceFilter}
             onChange={e => setErrorResourceFilter(e.target.value)}
             sx={{ minWidth: 220 }}
@@ -889,6 +891,7 @@ export default function ClusterApiOverview() {
           </Select>
           <Select
             size="small"
+            inputProps={{ 'aria-label': 'Filter conditions by severity' }}
             value={severityFilter}
             onChange={e => setSeverityFilter(e.target.value as 'All' | ErrorSeverity)}
             sx={{ minWidth: 160 }}
