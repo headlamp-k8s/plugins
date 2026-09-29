@@ -21,7 +21,7 @@ import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import { HelmRelease } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
-import { HelmInventory } from './Inventory';
+import { GetResourcesFromInventory } from '../kustomizations/Inventory';
 
 export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: string }) {
   const params = useParams<{ namespace: string; name: string }>();
@@ -58,7 +58,7 @@ export const registerHelmRelease = () => {
         )}
 
         <SectionBox title="Inventory">
-          <HelmInventory name={resource.metadata.name} namespace={resource.metadata.namespace} />
+          <GetResourcesFromInventory inventory={resource?.jsonData?.status?.inventory?.entries} />
         </SectionBox>
 
         <SectionBox title="Dependencies">
@@ -226,7 +226,7 @@ function CustomResourceDetails(props) {
       )}
 
       <SectionBox title={t('Inventory')}>
-        <HelmInventory name={name} namespace={namespace} />
+        <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
       </SectionBox>
 
       <SectionBox title={t('Dependencies')}>
