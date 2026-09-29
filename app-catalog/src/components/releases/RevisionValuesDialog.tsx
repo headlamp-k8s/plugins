@@ -12,10 +12,11 @@ import {
   IconButton,
   Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import React, { useMemo, useState } from 'react';
-import { jsonToYAML } from '../../helpers';
+import { jsonToYAML, mergeHelmValues } from '../../helpers';
 
 export interface RevisionValuesDialogProps {
   open: boolean;
@@ -38,15 +39,13 @@ export function RevisionValuesDialog({
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const [isUserValuesOnly, setIsUserValuesOnly] = useState(false);
-
-  const themeName =
-    typeof window !== 'undefined' ? localStorage.getItem('headlampThemePreference') : null;
+  const theme = useTheme();
 
   const yamlContent = useMemo(() => {
     if (!revision) return '';
     const userConfig = revision.config || {};
     const chartValues = revision.chart?.values || {};
-    const valuesObj = isUserValuesOnly ? userConfig : Object.assign({}, chartValues, userConfig);
+    const valuesObj = isUserValuesOnly ? userConfig : mergeHelmValues(chartValues, userConfig);
     return jsonToYAML(valuesObj);
   }, [revision, isUserValuesOnly]);
 
@@ -129,7 +128,7 @@ export function RevisionValuesDialog({
           value={yamlContent}
           language="yaml"
           height="100%"
-          theme={themeName === 'dark' ? 'vs-dark' : 'light'}
+          theme={theme.palette.mode === 'dark' ? 'vs-dark' : 'light'}
           options={{
             readOnly: true,
             lineNumbers: 'on',

@@ -17,9 +17,10 @@ import {
   Select,
   Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
-import { jsonToYAML } from '../../helpers';
+import { jsonToYAML, mergeHelmValues } from '../../helpers';
 
 export interface RevisionDiffDialogProps {
   open: boolean;
@@ -65,6 +66,7 @@ export function RevisionDiffDialog({
   const [baseVersion, setBaseVersion] = useState<number>(defaultBase);
   const [targetVersion, setTargetVersion] = useState<number>(defaultTarget);
   const [isUserValuesOnly, setIsUserValuesOnly] = useState(false);
+  const theme = useTheme();
 
   useEffect(() => {
     if (open) {
@@ -72,9 +74,6 @@ export function RevisionDiffDialog({
       setTargetVersion(defaultTarget);
     }
   }, [open, defaultBase, defaultTarget]);
-
-  const themeName =
-    typeof window !== 'undefined' ? localStorage.getItem('headlampThemePreference') : null;
 
   const baseRelease = useMemo(
     () => sortedReleases.find(r => r.version === baseVersion),
@@ -90,7 +89,7 @@ export function RevisionDiffDialog({
     if (!baseRelease) return '';
     const userConfig = baseRelease.config || {};
     const chartValues = baseRelease.chart?.values || {};
-    const valuesObj = isUserValuesOnly ? userConfig : Object.assign({}, chartValues, userConfig);
+    const valuesObj = isUserValuesOnly ? userConfig : mergeHelmValues(chartValues, userConfig);
     return jsonToYAML(valuesObj);
   }, [baseRelease, isUserValuesOnly]);
 
@@ -98,7 +97,7 @@ export function RevisionDiffDialog({
     if (!targetRelease) return '';
     const userConfig = targetRelease.config || {};
     const chartValues = targetRelease.chart?.values || {};
-    const valuesObj = isUserValuesOnly ? userConfig : Object.assign({}, chartValues, userConfig);
+    const valuesObj = isUserValuesOnly ? userConfig : mergeHelmValues(chartValues, userConfig);
     return jsonToYAML(valuesObj);
   }, [targetRelease, isUserValuesOnly]);
 
@@ -205,7 +204,7 @@ export function RevisionDiffDialog({
           modified={targetYaml}
           language="yaml"
           height="100%"
-          theme={themeName === 'dark' ? 'vs-dark' : 'light'}
+          theme={theme.palette.mode === 'dark' ? 'vs-dark' : 'light'}
           options={{
             readOnly: true,
             renderSideBySide: true,

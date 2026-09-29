@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -35,7 +36,9 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
 }));
 
 vi.mock('@monaco-editor/react', () => ({
-  default: ({ value }: any) => <textarea data-testid="mock-monaco-editor" value={value} readOnly />,
+  default: ({ value, theme }: any) => (
+    <textarea data-testid="mock-monaco-editor" data-theme={theme} value={value} readOnly />
+  ),
 }));
 
 describe('RevisionValuesDialog', () => {
@@ -49,11 +52,12 @@ describe('RevisionValuesDialog', () => {
       },
       values: {
         replicaCount: 1,
-        image: { repository: 'nginx', tag: 'latest' },
+        image: { repository: 'nginx', tag: 'latest', pullPolicy: 'IfNotPresent' },
       },
     },
     config: {
       replicaCount: 3,
+      image: { tag: '1.25.0' },
     },
     info: {
       description: 'Upgrade release to 1.2.0',
@@ -88,7 +92,7 @@ describe('RevisionValuesDialog', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('renders dialog with revision details and computed values', () => {
+  it('renders dialog with revision details and recursively coalesced Helm values', () => {
     render(
       <RevisionValuesDialog
         open
@@ -106,7 +110,42 @@ describe('RevisionValuesDialog', () => {
 
     const editor = screen.getByTestId('mock-monaco-editor') as HTMLTextAreaElement;
     expect(editor.value).toContain('replicaCount: 3');
+    expect(editor.value).toContain('tag: 1.25.0');
     expect(editor.value).toContain('repository: nginx');
+    expect(editor.value).toContain('pullPolicy: IfNotPresent');
+    expect(editor.getAttribute('data-theme')).toBe('light');
+  });
+
+  it('uses vs-dark theme when MUI theme mode is dark', () => {
+    const darkTheme = createTheme({ palette: { mode: 'dark' } });
+    render(
+      <ThemeProvider theme={darkTheme}>
+        <RevisionValuesDialog
+          open
+          onClose={vi.fn()}
+          releaseName="test-release"
+          releaseNamespace="default"
+          revision={mockRevision}
+        />
+      </ThemeProvider>
+    );
+
+    const editor = screen.getByTestId('mock-monaco-editor') as HTMLTextAreaElement;
+    expect(editor.getAttribute('data-theme')).toBe('vs-dark');
+  });
+
+  it('renders title with namespace when releaseNamespace is provided', () => {
+    render(
+      <RevisionValuesDialog
+        open
+        onClose={vi.fn()}
+        releaseName="test-release"
+        releaseNamespace="prod"
+        revision={mockRevision}
+      />
+    );
+
+    expect(screen.getByText('Revision 2 Values - test-release (prod)')).toBeDefined();
   });
 
   it('toggles user defined values only', () => {
@@ -128,6 +167,7 @@ describe('RevisionValuesDialog', () => {
 
     const editor = screen.getByTestId('mock-monaco-editor') as HTMLTextAreaElement;
     expect(editor.value).toContain('replicaCount: 3');
+    expect(editor.value).toContain('tag: 1.25.0');
     expect(editor.value).not.toContain('repository: nginx');
   });
 
