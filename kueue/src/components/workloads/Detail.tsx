@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -422,14 +423,15 @@ function getConditionsSection(workload: Workload) {
 }
 
 export default function WorkloadDetail() {
+  const { t } = useTranslation();
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
 
   return (
     <KueueAdminResourceAccess
       resourceClass={Workload}
-      resourceLabel="Workloads"
+      resourceLabel={t('Workloads')}
       verb="get"
-      accessDescription="Kueue Workloads are namespaced user workload resources."
+      accessDescription={t('Kueue Workloads are namespaced user workload resources.')}
     >
       <DetailsGrid
         resourceType={Workload}

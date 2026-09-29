@@ -1,0 +1,21 @@
+{
+  "ClusterQueues": "ClusterQueues",
+  "Cohort": "Cohort",
+  "Queueing Strategy": "Queueing Strategy",
+  "Resource Groups": "Resource Groups",
+  "Resource Flavors": "Resource Flavors",
+  "Pending Workloads": "Pending Workloads",
+  "Admitted Workloads": "Admitted Workloads",
+  "Status": "Status",
+  "LocalQueues": "LocalQueues",
+  "Kueue LocalQueues are namespaced user queue resources.": "Kueue LocalQueues are namespaced user queue resources.",
+  "Stop Policy": "Stop Policy",
+  "Reserving Workloads": "Reserving Workloads",
+  "ResourceFlavors": "ResourceFlavors",
+  "Node Labels": "Node Labels",
+  "Node Taints": "Node Taints",
+  "Tolerations": "Tolerations",
+  "Topology": "Topology",
+  "Workloads": "Workloads",
+  "Kueue Workloads are namespaced user workload resources.": "Kueue Workloads are namespaced user workload resources."
+}

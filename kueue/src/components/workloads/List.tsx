@@ -1,14 +1,16 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Workload } from '../../resources/workload';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 export default function WorkloadList() {
+  const { t } = useTranslation();
   return (
     <KueueAdminResourceAccess
       resourceClass={Workload}
-      resourceLabel="Workloads"
+      resourceLabel={t('Workloads')}
       verb="list"
-      accessDescription="Kueue Workloads are namespaced user workload resources."
+      accessDescription={t('Kueue Workloads are namespaced user workload resources.')}
     >
       <ResourceListView
         title="Kueue Workloads"

@@ -1,0 +1,21 @@
+{
+  "ClusterQueues": "",
+  "Cohort": "",
+  "Queueing Strategy": "",
+  "Resource Groups": "",
+  "Resource Flavors": "",
+  "Pending Workloads": "",
+  "Admitted Workloads": "",
+  "Status": "",
+  "LocalQueues": "",
+  "Kueue LocalQueues are namespaced user queue resources.": "",
+  "Stop Policy": "",
+  "Reserving Workloads": "",
+  "ResourceFlavors": "",
+  "Node Labels": "",
+  "Node Taints": "",
+  "Tolerations": "",
+  "Topology": "",
+  "Workloads": "",
+  "Kueue Workloads are namespaced user workload resources.": ""
+}
