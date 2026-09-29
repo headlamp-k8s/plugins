@@ -17,9 +17,82 @@
 import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Chip, Link as MuiLink } from '@mui/material';
+import {
+  DateLabel,
+  SectionHeader,
+  SimpleTable,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Chip, Link as MuiLink } from '@mui/material';
 import { ImageValidatingPolicy } from '../resources/celPolicies';
 import { ImageValidatingPolicyViewer } from './ImageValidatingPolicyViewer';
+
+// ── Pure component for Storybook (no API calls, accepts props directly) ───
+export interface ImageValidatingPolicyRow {
+  name: string;
+  ready: boolean;
+  imagePatterns: string[];
+  attestorCount: number;
+  creationTimestamp?: string;
+}
+
+export function PureImageValidatingPolicyTable({
+  items,
+  onNameClick,
+}: {
+  items: ImageValidatingPolicyRow[];
+  onNameClick?: (item: ImageValidatingPolicyRow) => void;
+}) {
+  return (
+    <Box>
+      <SectionHeader title="Image Validating Policies" />
+      <SimpleTable
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: ImageValidatingPolicyRow) =>
+              onNameClick ? (
+                <MuiLink
+                  component="button"
+                  onClick={() => onNameClick(row)}
+                  sx={{ textAlign: 'left' }}
+                >
+                  {row.name}
+                </MuiLink>
+              ) : (
+                row.name
+              ),
+          },
+          {
+            label: 'Ready',
+            getter: (row: ImageValidatingPolicyRow) => (
+              <Chip
+                label={row.ready ? 'True' : 'False'}
+                color={row.ready ? 'success' : 'error'}
+                size="small"
+              />
+            ),
+          },
+          {
+            label: 'Image Patterns',
+            getter: (row: ImageValidatingPolicyRow) => row.imagePatterns.join(', ') || '-',
+          },
+          { label: 'Attestors', getter: (row: ImageValidatingPolicyRow) => row.attestorCount },
+          {
+            label: 'Age',
+            getter: (row: ImageValidatingPolicyRow) =>
+              row.creationTimestamp ? (
+                <DateLabel date={row.creationTimestamp} format="mini" />
+              ) : (
+                '—'
+              ),
+          },
+        ]}
+        data={items}
+        emptyMessage="No image validating policies found"
+      />
+    </Box>
+  );
+}
 
 function openActivity(item: ImageValidatingPolicy) {
   Activity.launch({

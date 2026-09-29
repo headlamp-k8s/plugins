@@ -17,7 +17,12 @@
 import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Link as MuiLink } from '@mui/material';
+import {
+  DateLabel,
+  SectionHeader,
+  SimpleTable,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Link as MuiLink } from '@mui/material';
 import {
   AdmissionReport,
   BackgroundScanReport,
@@ -28,6 +33,90 @@ import {
 } from '../resources/kyvernoReports';
 import { SummaryChips } from './common';
 import { ReportClass, ReportLike, ReportViewer } from './ReportViewer';
+
+// ── Pure component for Storybook (no API calls, accepts props directly) ───
+export interface KyvernoReportRow {
+  name: string;
+  namespace?: string;
+  owner?: string;
+  pass: number;
+  fail: number;
+  warn: number;
+  error: number;
+  skip: number;
+  creationTimestamp?: string;
+}
+
+export function PureKyvernoReportTable({
+  title,
+  isNamespaced,
+  items,
+  onNameClick,
+}: {
+  title: string;
+  isNamespaced: boolean;
+  items: KyvernoReportRow[];
+  onNameClick?: (item: KyvernoReportRow) => void;
+}) {
+  return (
+    <Box>
+      <SectionHeader title={title} />
+      <SimpleTable
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: KyvernoReportRow) =>
+              onNameClick ? (
+                <MuiLink
+                  component="button"
+                  onClick={() => onNameClick(row)}
+                  sx={{ textAlign: 'left' }}
+                >
+                  {row.name}
+                </MuiLink>
+              ) : (
+                row.name
+              ),
+          },
+          ...(isNamespaced
+            ? [{ label: 'Namespace', getter: (row: KyvernoReportRow) => row.namespace ?? '—' }]
+            : []),
+          { label: 'Owner', getter: (row: KyvernoReportRow) => row.owner ?? '—' },
+          { label: 'Pass', getter: (row: KyvernoReportRow) => row.pass },
+          { label: 'Fail', getter: (row: KyvernoReportRow) => row.fail },
+          { label: 'Warn', getter: (row: KyvernoReportRow) => row.warn },
+          { label: 'Error', getter: (row: KyvernoReportRow) => row.error },
+          { label: 'Skip', getter: (row: KyvernoReportRow) => row.skip },
+          {
+            label: 'Summary',
+            getter: (row: KyvernoReportRow) => (
+              <SummaryChips
+                summary={{
+                  pass: row.pass,
+                  fail: row.fail,
+                  warn: row.warn,
+                  error: row.error,
+                  skip: row.skip,
+                }}
+              />
+            ),
+          },
+          {
+            label: 'Age',
+            getter: (row: KyvernoReportRow) =>
+              row.creationTimestamp ? (
+                <DateLabel date={row.creationTimestamp} format="mini" />
+              ) : (
+                '—'
+              ),
+          },
+        ]}
+        data={items}
+        emptyMessage={`No ${title.toLowerCase()} found`}
+      />
+    </Box>
+  );
+}
 
 export type AnyKyvernoReportClass =
   | typeof AdmissionReport
@@ -142,3 +231,51 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
     />
   );
 }
+
+export const AdmissionReportList = () => (
+  <KyvernoReportList
+    titleKey="Admission Reports"
+    resourceClass={AdmissionReport}
+    activityIdPrefix="kyverno-admrpt"
+  />
+);
+
+export const ClusterAdmissionReportList = () => (
+  <KyvernoReportList
+    titleKey="Cluster Admission Reports"
+    resourceClass={ClusterAdmissionReport}
+    activityIdPrefix="kyverno-cadmrpt"
+  />
+);
+
+export const BackgroundScanReportList = () => (
+  <KyvernoReportList
+    titleKey="Background Scan Reports"
+    resourceClass={BackgroundScanReport}
+    activityIdPrefix="kyverno-bgscan"
+  />
+);
+
+export const ClusterBackgroundScanReportList = () => (
+  <KyvernoReportList
+    titleKey="Cluster Background Scan Reports"
+    resourceClass={ClusterBackgroundScanReport}
+    activityIdPrefix="kyverno-cbgscan"
+  />
+);
+
+export const EphemeralReportList = () => (
+  <KyvernoReportList
+    titleKey="Ephemeral Reports"
+    resourceClass={EphemeralReport}
+    activityIdPrefix="kyverno-ephrpt"
+  />
+);
+
+export const ClusterEphemeralReportList = () => (
+  <KyvernoReportList
+    titleKey="Cluster Ephemeral Reports"
+    resourceClass={ClusterEphemeralReport}
+    activityIdPrefix="kyverno-cephrpt"
+  />
+);

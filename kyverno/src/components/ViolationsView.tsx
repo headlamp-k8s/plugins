@@ -40,7 +40,7 @@ import { ResultStatusChip, SeverityChip } from './common';
 
 type GroupBy = 'none' | 'policy' | 'namespace' | 'kind';
 
-interface ViolationEntry extends PolicyReportResult {
+export interface ViolationEntry extends PolicyReportResult {
   reportNamespace?: string;
   scope?: PolicyReportInterface['scope'];
 }
@@ -152,10 +152,13 @@ function StatusFilterChips({
   );
 }
 
-export function ViolationsView() {
+export interface PureViolationsViewProps {
+  isLoading: boolean;
+  violations: ViolationEntry[];
+}
+
+export function PureViolationsView({ isLoading, violations }: PureViolationsViewProps) {
   const { t } = useTranslation();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
@@ -206,18 +209,13 @@ export function ViolationsView() {
     [t]
   );
 
-  const allViolations = useMemo(
-    () => collectViolations(policyReports, clusterPolicyReports),
-    [policyReports, clusterPolicyReports]
-  );
-
   const filteredViolations = useMemo(() => {
-    return allViolations.filter(v => {
+    return violations.filter(v => {
       if (!statusFilter.includes(v.result)) return false;
       if (severityFilter !== 'all' && v.severity !== severityFilter) return false;
       return true;
     });
-  }, [allViolations, statusFilter, severityFilter]);
+  }, [violations, statusFilter, severityFilter]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<PolicyResultStatus, number> = {
@@ -227,22 +225,19 @@ export function ViolationsView() {
       pass: 0,
       skip: 0,
     };
-    for (const v of allViolations) {
+    for (const v of violations) {
       counts[v.result] = (counts[v.result] || 0) + 1;
     }
     return counts;
-  }, [allViolations]);
+  }, [violations]);
 
   const severities = useMemo(() => {
     const set = new Set<string>();
-    for (const v of allViolations) {
+    for (const v of violations) {
       if (v.severity) set.add(v.severity);
     }
     return Array.from(set).sort();
-  }, [allViolations]);
-
-  // Wait for BOTH streams — partial data here would silently undercount violations.
-  const isLoading = policyReports === null || clusterPolicyReports === null;
+  }, [violations]);
 
   if (isLoading) {
     return (
@@ -318,4 +313,18 @@ export function ViolationsView() {
       </SectionBox>
     </Box>
   );
+}
+
+export function ViolationsView() {
+  const { items: policyReports } = PolicyReport.useList();
+  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+
+  const allViolations = useMemo(
+    () => collectViolations(policyReports, clusterPolicyReports),
+    [policyReports, clusterPolicyReports]
+  );
+
+  const isLoading = policyReports === null || clusterPolicyReports === null;
+
+  return <PureViolationsView isLoading={isLoading} violations={allViolations} />;
 }
