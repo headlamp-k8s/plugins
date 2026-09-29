@@ -17,7 +17,7 @@
 import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { EmptyContent, Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Grid, Link, useTheme } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Trans } from 'react-i18next';
 import {
   Area,
@@ -29,6 +29,13 @@ import {
   YAxis,
 } from 'recharts';
 import { usePrometheus } from '../hooks/usePrometheus';
+import {
+  DeletingPolicy,
+  GeneratingPolicy,
+  ImageValidatingPolicy,
+  MutatingPolicy,
+  ValidatingPolicy,
+} from '../resources/celPolicies';
 import {
   ChartDataPoint,
   instantValue,
@@ -54,7 +61,12 @@ interface HealthQueries {
   requestRate: number | null;
   denyCount: number | null;
   breakerTrips: number | null;
-  rulesNotReady: number | null;
+  // kyverno_policy_rule_info_total only ever covers legacy kyverno.io/v1 Policy/ClusterPolicy
+  // rules, current Kyverno does not emit it for any policies.kyverno.io CEL kind at all. Named
+  // explicitly so it's never mistaken for full coverage; the "Rules Not Ready" tile combines this
+  // with celPoliciesNotReady (derived straight from the K8s API below) to actually cover every
+  // policy kind this plugin supports.
+  legacyRulesNotReady: number | null;
   requeueCount: number | null;
   latency: ChartDataPoint[];
 }
@@ -69,7 +81,7 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     requestRateRes,
     denyCountRes,
     breakerTripsRes,
-    rulesNotReadyRes,
+    legacyRulesNotReadyRes,
     requeueCountRes,
     latencyRes,
   ] = await Promise.all([
@@ -105,7 +117,7 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     requestRate: instantValue(requestRateRes),
     denyCount: instantValue(denyCountRes),
     breakerTrips: instantValue(breakerTripsRes),
-    rulesNotReady: instantValue(rulesNotReadyRes),
+    legacyRulesNotReady: instantValue(legacyRulesNotReadyRes),
     requeueCount: instantValue(requeueCountRes),
     latency: rangeSeries(latencyRes),
   };
@@ -194,6 +206,38 @@ export function PolicyEngineHealth() {
   const prometheus = usePrometheus();
   const [health, setHealth] = useState<HealthQueries | null>(null);
   const [state, setState] = useState<FetchState>('loading');
+
+  // Prometheus has no readiness signal at all for CEL policy kinds (see the comment on
+  // legacyRulesNotReady), but every one of these classes already exposes `ready` straight from
+  // its own K8s object, read directly here instead, no Prometheus involved.
+  const [validatingPolicies] = ValidatingPolicy.useList();
+  const [mutatingPolicies] = MutatingPolicy.useList();
+  const [generatingPolicies] = GeneratingPolicy.useList();
+  const [deletingPolicies] = DeletingPolicy.useList();
+  const [imageValidatingPolicies] = ImageValidatingPolicy.useList();
+
+  const celPoliciesNotReady = useMemo(() => {
+    const lists = [
+      validatingPolicies,
+      mutatingPolicies,
+      generatingPolicies,
+      deletingPolicies,
+      imageValidatingPolicies,
+    ];
+    let count = 0;
+    for (const list of lists) {
+      for (const policy of list || []) {
+        if (!policy.ready) count++;
+      }
+    }
+    return count;
+  }, [
+    validatingPolicies,
+    mutatingPolicies,
+    generatingPolicies,
+    deletingPolicies,
+    imageValidatingPolicies,
+  ]);
 
   useEffect(() => {
     if (!prometheus.prefix) return;
@@ -296,6 +340,11 @@ export function PolicyEngineHealth() {
     );
   }
 
+  // Combines the legacy-rule count Prometheus actually tracks with the CEL-policy count read
+  // straight from the K8s API, so this tile covers every policy kind this plugin supports instead
+  // of silently reporting green whenever only CEL policies are broken.
+  const rulesNotReady = (health.legacyRulesNotReady ?? 0) + celPoliciesNotReady;
+
   return (
     <SectionBox title={t('Policy Engine Health')}>
       <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -319,8 +368,8 @@ export function PolicyEngineHealth() {
         <Grid item xs={6} sm={2.4}>
           <MetricCard
             title={t('Rules Not Ready')}
-            value={formatCount(health.rulesNotReady)}
-            color={goodIfZeroElseBad(health.rulesNotReady)}
+            value={formatCount(rulesNotReady)}
+            color={goodIfZeroElseBad(rulesNotReady)}
           />
         </Grid>
         <Grid item xs={6} sm={2.4}>
