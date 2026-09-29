@@ -97,3 +97,16 @@ export class ClusterPolicyReport extends PolicyReportBase {
   static apiVersion = 'wgpolicyk8s.io/v1alpha2';
   static isNamespaced = false;
 }
+ export class Report extends PolicyReportBase {
+  static kind = 'Report';
+  static apiName = 'reports';
+  static apiVersion = 'openreports.io/v1alpha1';
+  static isNamespaced = true;
+}
+
+export class ClusterReport extends PolicyReportBase {
+  static kind = 'ClusterReport';
+  static apiName = 'clusterreports';
+  static apiVersion = 'openreports.io/v1alpha1';
+  static isNamespaced = false;
+}

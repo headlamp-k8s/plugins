@@ -21,7 +21,9 @@ export interface KyvernoCRDStatus {
   legacy: boolean; // kyverno.io/v1 (ClusterPolicy, Policy)
   cel: boolean; // policies.kyverno.io/v1 (ValidatingPolicy, MutatingPolicy, etc.)
   cleanup: boolean; // kyverno.io/v2 (CleanupPolicy, ClusterCleanupPolicy)
-  reports: boolean; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
+  reports: boolean; // true if EITHER wgpolicyk8s.io/v1alpha2 OR openreports.io/v1alpha1 is present
+  wgPolicyReports: boolean; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
+  openReports: boolean; // openreports.io/v1alpha1 (Report, ClusterReport)
   exceptions: boolean; // kyverno.io/v2 (PolicyException)
   kyvernoV2Reports: boolean; // kyverno.io/v2 (Admission/BackgroundScan reports)
   ephemeralReports: boolean; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
@@ -33,6 +35,8 @@ const initialStatus: KyvernoCRDStatus = {
   cel: false,
   cleanup: false,
   reports: false,
+  wgPolicyReports: false,
+  openReports: false,
   exceptions: false,
   kyvernoV2Reports: false,
   ephemeralReports: false,
@@ -64,10 +68,11 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
   if (existing) return existing;
 
   const promise = (async () => {
-    const [legacy, cel, reports, ephemeralReports] = await Promise.all([
+    const [legacy, cel, wgPolicyReports, openReports, ephemeralReports] = await Promise.all([
       checkAPIGroup('/apis/kyverno.io/v1'),
       checkAPIGroup('/apis/policies.kyverno.io/v1'),
       checkAPIGroup('/apis/wgpolicyk8s.io/v1alpha2'),
+      checkAPIGroup('/apis/openreports.io/v1alpha1'),
       checkAPIGroup('/apis/reports.kyverno.io/v1'),
     ]);
 
@@ -90,7 +95,9 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
       legacy,
       cel,
       cleanup,
-      reports,
+      reports: wgPolicyReports || openReports,
+      wgPolicyReports,
+      openReports,
       exceptions,
       kyvernoV2Reports,
       ephemeralReports,
