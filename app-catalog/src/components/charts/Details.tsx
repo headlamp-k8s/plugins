@@ -21,6 +21,19 @@ type ChartDetailsProps = {
   vanillaHelmRepo: string;
 };
 
+type ChartDetail = {
+  name: string;
+  description: string;
+  logo_image_id?: string; // optional just in case
+  readme: string;
+  app_version: string;
+  maintainers: Array<{ name: string; email: string }>;
+  home_url: string;
+  package_id: string;
+  version: string;
+  icon?: string; // used when VANILLA_HELM_REPO
+};
+
 /**
  * Displays the details of a chart, including its name, description, maintainers, and readme.
  * The component fetches the chart details from the Artifact repository based on the provided chart name and repository name.
@@ -32,19 +45,15 @@ type ChartDetailsProps = {
 export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
   const { t } = useTranslation();
   const { chartName, repoName } = useParams<{ chartName: string; repoName: string }>();
-  const [chart, setChart] = useState<{
-    name: string;
-    description: string;
-    logo_image_id?: string; // optional just in case
-    readme: string;
-    app_version: string;
-    maintainers: Array<{ name: string; email: string }>;
-    home_url: string;
-    package_id: string;
-    version: string;
-    icon?: string; // used when VANILLA_HELM_REPO
+  const chartKey = `${repoName}/${chartName}`;
+  const [result, setResult] = useState<{
+    key: string;
+    chart?: ChartDetail;
+    error?: Error;
   } | null>(null);
-  const [error, setError] = useState<Error | null>(null);
+  const current = result?.key === chartKey ? result : null;
+  const chart = current?.chart ?? null;
+  const error = current?.error ?? null;
   const [openEditor, setOpenEditor] = useState(false);
   const chartCfg = getCatalogConfig();
 
@@ -57,30 +66,25 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
     // Easiest thing is to fetch index.yaml, get the details for chartName and fill the details
     let ignore = false;
 
-    // Clear the previous chart so the loader shows instead of the details of
-    // the chart we just navigated away from.
-    setChart(null);
-    setError(null);
-
     fetchChartDetailFromArtifact(chartName, repoName)
       .then(response => {
         // A request for a chart we have since navigated away from must not
         // overwrite the details of the chart currently being viewed.
         if (!ignore) {
-          setChart(response);
+          setResult({ key: chartKey, chart: response });
         }
       })
       .catch(err => {
         if (!ignore) {
           console.error(`Failed to fetch details for chart ${chartName} in repo ${repoName}:`, err);
-          setError(err instanceof Error ? err : new Error(String(err)));
+          setResult({ key: chartKey, error: err instanceof Error ? err : new Error(String(err)) });
         }
       });
 
     return () => {
       ignore = true;
     };
-  }, [chartName, repoName]);
+  }, [chartName, repoName, chartKey]);
 
   // Without this the loader below spins forever on a failed fetch, with the
   // reason only in the console. Install is deliberately not offered for a
