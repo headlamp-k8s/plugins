@@ -60,10 +60,13 @@ export function ResourceAIAction({ item }: ResourceAIActionProps): React.ReactEl
 
     const prompt =
       resourceKind && resourceName
-        ? `Diagnose status of ${resourceKind} ${resourceName}`
+        ? t('Diagnose status of {{resourceKind}} {{resourceName}}', {
+            resourceKind,
+            resourceName,
+          })
         : resourceKind
-        ? `Diagnose status of this ${resourceKind}`
-        : 'Diagnose status of this resource';
+        ? t('Diagnose status of this {{resourceKind}}', { resourceKind })
+        : t('Diagnose status of this resource');
 
     pluginState.setInitialPrompt?.(prompt);
     pluginState.setIsUIPanelOpen(true);

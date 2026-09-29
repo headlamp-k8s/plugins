@@ -24,8 +24,15 @@ const mockSetIsUIPanelOpen = vi.fn();
 const mockSetInitialPrompt = vi.fn();
 let mockPluginConfig: { previewEnabled?: boolean } = { previewEnabled: true };
 
+const defaultT = (key: string, params?: Record<string, string>) => {
+  if (!params) return key;
+  return Object.entries(params).reduce((acc, [k, v]) => acc.replace(`{{${k}}}`, v), key);
+};
+
+const mockT = vi.fn(defaultT);
+
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: mockT }),
 }));
 
 vi.mock('../../pluginState', () => ({
@@ -43,6 +50,7 @@ vi.mock('../../pluginState', () => ({
 describe('ResourceAIAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockT.mockImplementation(defaultT);
     mockPluginConfig = { previewEnabled: true };
   });
 
@@ -78,6 +86,17 @@ describe('ResourceAIAction', () => {
     expect(mockSetIsUIPanelOpen).toHaveBeenCalledWith(true);
   });
 
+  it('pre-populates kind-only prompt when item has kind but no name', () => {
+    const item = { kind: 'StatefulSet' };
+    render(<ResourceAIAction item={item} />);
+
+    const button = screen.getByRole('button', { name: 'Ask AI' });
+    fireEvent.click(button);
+
+    expect(mockSetInitialPrompt).toHaveBeenCalledWith('Diagnose status of this StatefulSet');
+    expect(mockSetIsUIPanelOpen).toHaveBeenCalledWith(true);
+  });
+
   it('falls back gracefully when item has no kind or name', () => {
     const item = {};
     render(<ResourceAIAction item={item} />);
@@ -95,6 +114,28 @@ describe('ResourceAIAction', () => {
     );
     expect(mockSetInitialPrompt).toHaveBeenCalledWith('Diagnose status of this resource');
     expect(mockSetIsUIPanelOpen).toHaveBeenCalledWith(true);
+  });
+
+  it('formats prompt using localized template when translation dictionary changes', () => {
+    mockT.mockImplementation((key: string, params?: Record<string, string>) => {
+      if (key === 'Diagnose status of {{resourceKind}} {{resourceName}}') {
+        return `Diagnostiquer le statut de ${params?.resourceKind} ${params?.resourceName}`;
+      }
+      return defaultT(key, params);
+    });
+
+    const item = {
+      kind: 'Pod',
+      metadata: { name: 'frontend-pod' },
+    };
+    render(<ResourceAIAction item={item} />);
+
+    const button = screen.getByRole('button', { name: 'Ask AI' });
+    fireEvent.click(button);
+
+    expect(mockSetInitialPrompt).toHaveBeenCalledWith(
+      'Diagnostiquer le statut de Pod frontend-pod'
+    );
   });
 
   it('returns null when item is undefined', () => {
