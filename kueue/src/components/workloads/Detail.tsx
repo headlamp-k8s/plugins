@@ -19,6 +19,7 @@ import {
   renderResourceList,
   renderStringMap,
   renderText,
+  renderTopologyAssignment,
 } from '../../resources/workloadFormatters';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import { renderClusterQueueLink, renderLocalQueueLink } from '../common/KueueResourceLinks';
@@ -53,6 +54,8 @@ interface AdmissionAssignmentRow {
   resourceUsage: string;
   /** Delayed topology request state. */
   delayedTopologyRequest: string;
+  /** Topology domains the pod set was actually placed in. */
+  topologyAssignment: string;
 }
 
 /** Row rendered for Workload status.admissionChecks. */
@@ -120,6 +123,7 @@ function getAdmissionAssignmentRows(
     flavors: renderResourceList(assignment.flavors),
     resourceUsage: renderResourceList(assignment.resourceUsage),
     delayedTopologyRequest: renderText(assignment.delayedTopologyRequest),
+    topologyAssignment: renderTopologyAssignment(assignment.topologyAssignment),
   }));
 }
 
@@ -261,6 +265,10 @@ function getAdmissionSection(workload: Workload) {
             {
               label: 'Delayed Topology',
               getter: (row: AdmissionAssignmentRow) => row.delayedTopologyRequest,
+            },
+            {
+              label: 'Topology Assignment',
+              getter: (row: AdmissionAssignmentRow) => row.topologyAssignment,
             },
           ]}
         />
