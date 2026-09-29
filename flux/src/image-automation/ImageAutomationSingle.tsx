@@ -95,14 +95,14 @@ function CustomResourceDetails(props) {
           <HeadlampLink
             routeName="image"
             params={{
-              name: resource.jsonData.spec?.imageRepositoryRef.name,
+              name: resource.jsonData.spec?.imageRepositoryRef?.name,
               namespace:
-                resource.jsonData.spec.imageRepositoryRef.namespace ??
-                resource.jsonData.metadata.namespace,
+                resource.jsonData.spec?.imageRepositoryRef?.namespace ??
+                resource.jsonData.metadata?.namespace,
               pluralName: 'imagerepositories',
             }}
           >
-            {resource.jsonData.spec?.imageRepositoryRef.name}
+            {resource.jsonData.spec?.imageRepositoryRef?.name}
           </HeadlampLink>
         ),
       });
@@ -149,7 +149,7 @@ function CustomResourceDetails(props) {
       if (resource.jsonData?.spec?.interval) {
         extraInfo.push({
           name: 'Interval',
-          value: resource.jsonData.spec.interval,
+          value: resource.jsonData.spec?.interval,
         });
       }
 
@@ -228,7 +228,7 @@ function Policies(props: { resource }) {
                 routeName="image"
                 params={{
                   name: cell.getValue(),
-                  namespace: resource.metadata.namespace,
+                  namespace: resource?.metadata?.namespace,
                   pluralName: 'imagepolicies',
                 }}
               >
@@ -238,11 +238,11 @@ function Policies(props: { resource }) {
           },
           {
             header: 'Image',
-            accessorFn: item => item[1].name,
+            accessorFn: item => item[1]?.name,
           },
           {
             header: 'Tag',
-            accessorFn: item => item[1].tag,
+            accessorFn: item => item[1]?.tag,
           },
         ]}
       />
