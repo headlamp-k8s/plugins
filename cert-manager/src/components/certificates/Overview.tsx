@@ -1,6 +1,6 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Card, CardContent, CircularProgress, Grid, Typography } from '@mui/material';
+import { Alert, Box, Card, CardContent, CircularProgress, Grid, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { useCertManagerInstalled } from '../../hooks/useCertManagerInstalled';
 import { Certificate } from '../../resources/certificate';
@@ -65,6 +65,10 @@ export function CertificatesOverview() {
         <Typography sx={{ ml: 2 }}>{t('Loading certificates')}</Typography>
       </Box>
     );
+  }
+
+  if (certificatesError) {
+    return <Alert severity="error">{t('Failed to load certificates')}</Alert>;
   }
 
   return (
