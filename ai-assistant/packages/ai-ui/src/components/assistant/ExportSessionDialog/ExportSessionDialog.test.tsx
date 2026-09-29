@@ -106,4 +106,35 @@ describe('ExportSessionDialog', () => {
     expect(clickSpy).toHaveBeenCalledOnce();
     expect(revokeObjectURLMock).toHaveBeenCalledOnce();
   });
+
+  it('recomputes markdown report when open state changes', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-04T10:00:00.000Z'));
+
+    const { rerender } = render(
+      <ExportSessionDialog
+        open={false}
+        onClose={vi.fn()}
+        messages={sampleMessages}
+        cluster="test-cluster"
+      />
+    );
+
+    vi.setSystemTime(new Date('2026-09-04T12:00:00.000Z'));
+
+    rerender(
+      <ExportSessionDialog
+        open
+        onClose={vi.fn()}
+        messages={sampleMessages}
+        cluster="test-cluster"
+      />
+    );
+
+    const textarea = screen.getByRole<HTMLTextAreaElement>('textbox', {
+      name: 'Exported session report in Markdown',
+    });
+    expect(textarea.value).toContain('2026-09-04 12:00:00 UTC');
+    vi.useRealTimers();
+  });
 });

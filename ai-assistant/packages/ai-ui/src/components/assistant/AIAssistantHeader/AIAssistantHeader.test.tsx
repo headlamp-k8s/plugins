@@ -88,9 +88,7 @@ it('renders export session action when onExport callback is provided', () => {
 
 it('disables export session action when disableExportButton is true', () => {
   const onExport = vi.fn();
-  render(
-    <AIAssistantHeader {...defaultHeaderArgs} onExport={onExport} disableExportButton={true} />
-  );
+  render(<AIAssistantHeader {...defaultHeaderArgs} onExport={onExport} disableExportButton />);
 
   const exportBtn = screen.getByRole<HTMLButtonElement>('button', { name: 'Export Session' });
   expect(exportBtn.disabled).toBe(true);

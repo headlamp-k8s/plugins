@@ -15,6 +15,7 @@
  */
 
 import type { ConversationMessage } from '@headlamp-k8s/ai-common/conversation/types';
+import { redactSecrets } from '@headlamp-k8s/ai-common/security/redactSecrets';
 
 export interface SessionExportOptions {
   messages: ConversationMessage[];
@@ -23,8 +24,47 @@ export interface SessionExportOptions {
   timestamp?: Date;
 }
 
+interface ExtractedToolCall {
+  name: string;
+  args?: unknown;
+}
+
+function extractToolCall(raw: unknown): ExtractedToolCall | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const tc = raw as Record<string, unknown>;
+
+  if (tc.function && typeof tc.function === 'object') {
+    const fn = tc.function as Record<string, unknown>;
+    const name = typeof fn.name === 'string' ? fn.name : 'unknown_tool';
+    let args = fn.arguments;
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch {
+        // Keep string if not valid JSON
+      }
+    }
+    return { name, args };
+  }
+
+  if (typeof tc.name === 'string') {
+    let args = tc.arguments ?? tc.args;
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch {
+        // Keep string if not valid JSON
+      }
+    }
+    return { name: tc.name, args };
+  }
+
+  return null;
+}
+
 /**
  * Generates a structured Markdown report from an assistant conversation session.
+ * Redacts secrets from messages, tool calls, and activity traces.
  *
  * @param options - Session export configuration including messages and cluster metadata.
  * @returns Clean, formatted Markdown content suitable for issue attachments or incident logs.
@@ -32,7 +72,8 @@ export interface SessionExportOptions {
 export function generateSessionMarkdown(options: SessionExportOptions): string {
   const { messages, cluster, clusters, timestamp = new Date() } = options;
 
-  const clusterList = cluster ? [cluster] : clusters && clusters.length > 0 ? clusters : ['N/A'];
+  // Prefer the selected list when non-empty, then fall back to single active cluster
+  const clusterList = clusters && clusters.length > 0 ? clusters : cluster ? [cluster] : ['N/A'];
 
   const dateString = timestamp.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
 
@@ -53,7 +94,14 @@ export function generateSessionMarkdown(options: SessionExportOptions): string {
     lines.push('_No messages in this session._', '');
   } else {
     for (const msg of messages) {
-      if (msg.isDisplayOnly && !msg.content) continue;
+      if (
+        msg.isDisplayOnly &&
+        !msg.content &&
+        !msg.toolCalls?.length &&
+        !msg.agentThinkingSteps?.length
+      ) {
+        continue;
+      }
 
       const role = msg.role || 'unknown';
       let roleTitle = 'Message';
@@ -70,8 +118,57 @@ export function generateSessionMarkdown(options: SessionExportOptions): string {
       lines.push(`### ${roleTitle}`);
       lines.push('');
 
-      if (msg.content) {
-        lines.push(msg.content.trim());
+      const hasContent = Boolean(msg.content && msg.content.trim());
+      const hasToolCalls = Boolean(
+        msg.toolCalls && Array.isArray(msg.toolCalls) && msg.toolCalls.length > 0
+      );
+      const hasThinkingSteps = Boolean(msg.agentThinkingSteps && msg.agentThinkingSteps.length > 0);
+
+      if (hasContent) {
+        lines.push(redactSecrets(msg.content.trim()));
+        lines.push('');
+      }
+
+      // Serialize executed tool calls
+      if (hasToolCalls && msg.toolCalls) {
+        for (const tc of msg.toolCalls) {
+          const extracted = extractToolCall(tc);
+          if (extracted) {
+            lines.push(`**Executed Tool Call:** \`${extracted.name}\``);
+            lines.push('');
+            if (extracted.args !== undefined && extracted.args !== null) {
+              const formattedArgs =
+                typeof extracted.args === 'string'
+                  ? extracted.args
+                  : JSON.stringify(extracted.args, null, 2);
+              lines.push('```json');
+              lines.push(redactSecrets(formattedArgs.trim()));
+              lines.push('```');
+              lines.push('');
+            }
+          }
+        }
+      }
+
+      // Serialize agent activity / thinking steps
+      if (hasThinkingSteps && msg.agentThinkingSteps) {
+        lines.push('**Agent Activity:**');
+        lines.push('');
+        for (const step of msg.agentThinkingSteps) {
+          const stepText = (
+            step.content ??
+            (step as unknown as { label?: string }).label ??
+            ''
+          ).trim();
+          if (stepText) {
+            lines.push(`- ${redactSecrets(stepText)}`);
+          }
+        }
+        lines.push('');
+      }
+
+      if (!hasContent && !hasToolCalls && !hasThinkingSteps && !msg.error) {
+        lines.push('_No content._');
         lines.push('');
       }
 

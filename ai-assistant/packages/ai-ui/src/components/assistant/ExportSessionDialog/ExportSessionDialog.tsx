@@ -64,7 +64,7 @@ export default function ExportSessionDialog({
 
   const markdown = React.useMemo(() => {
     return generateSessionMarkdown({ messages, cluster, clusters });
-  }, [messages, cluster, clusters]);
+  }, [open, messages, cluster, clusters]);
 
   const handleCopy = React.useCallback(async () => {
     try {
