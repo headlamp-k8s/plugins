@@ -22,7 +22,11 @@ import {
   renderTopologyAssignment,
 } from '../../resources/workloadFormatters';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
-import { renderClusterQueueLink, renderLocalQueueLink } from '../common/KueueResourceLinks';
+import {
+  renderAdmissionCheckLink,
+  renderClusterQueueLink,
+  renderLocalQueueLink,
+} from '../common/KueueResourceLinks';
 
 /** Row rendered for Workload spec.podSets. */
 interface PodSetRow {
@@ -294,7 +298,7 @@ function getAdmissionChecksSection(workload: Workload) {
           columns={[
             {
               label: 'Name',
-              getter: (row: AdmissionCheckRow) => row.name,
+              getter: (row: AdmissionCheckRow) => renderAdmissionCheckLink(row.name),
             },
             {
               label: 'State',
