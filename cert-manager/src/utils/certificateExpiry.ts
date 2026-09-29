@@ -25,15 +25,16 @@ export function getCertificateExpiry(
     return { level: 'unknown', daysRemaining: null, statusLabelStatus: '' };
   }
 
-  const daysRemaining = Math.floor((expiry - now) / MS_PER_DAY);
+  const remainingMs = expiry - now;
+  const daysRemaining = Math.floor(remainingMs / MS_PER_DAY);
 
-  if (daysRemaining < 0) {
+  if (remainingMs < 0) {
     return { level: 'expired', daysRemaining, statusLabelStatus: 'error' };
   }
-  if (daysRemaining < CRITICAL_DAYS) {
+  if (remainingMs < CRITICAL_DAYS * MS_PER_DAY) {
     return { level: 'critical', daysRemaining, statusLabelStatus: 'error' };
   }
-  if (daysRemaining <= WARNING_DAYS) {
+  if (remainingMs <= WARNING_DAYS * MS_PER_DAY) {
     return { level: 'warning', daysRemaining, statusLabelStatus: 'warning' };
   }
   return { level: 'ok', daysRemaining, statusLabelStatus: 'success' };

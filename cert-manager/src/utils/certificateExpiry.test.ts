@@ -40,6 +40,21 @@ describe('getCertificateExpiry', () => {
     expect(getCertificateExpiry(isoFromDays(30), NOW).level).toBe('warning');
   });
 
+  it('uses the precise duration for expiry thresholds', () => {
+    expect(
+      getCertificateExpiry(
+        new Date(NOW + 7 * 24 * 60 * 60 * 1000 + 23 * 60 * 60 * 1000).toISOString(),
+        NOW
+      ).level
+    ).toBe('warning');
+    expect(
+      getCertificateExpiry(
+        new Date(NOW + 30 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
+        NOW
+      ).level
+    ).toBe('ok');
+  });
+
   it('marks past notAfter as expired', () => {
     const expiry = getCertificateExpiry(isoFromDays(-1), NOW);
     expect(expiry.level).toBe('expired');
