@@ -647,10 +647,15 @@ export default class LangChainAssistantSession extends AssistantSession {
    *
    * @param toolName - Built-in or MCP tool name.
    * @param isMCPTool - Whether MCP-specific fallback wording should be used.
+   * @param catalogDescription - Optional description from the MCP server manifest.
    * @returns Human-readable tool description.
    */
-  private getToolDescription(toolName: string, isMCPTool: boolean): string {
-    return getToolDescription(toolName, isMCPTool);
+  private getToolDescription(
+    toolName: string,
+    isMCPTool: boolean,
+    catalogDescription?: string
+  ): string {
+    return getToolDescription(toolName, isMCPTool, catalogDescription);
   }
 
   /**
@@ -1520,7 +1525,8 @@ Please analyze this data and provide a specific, detailed response that directly
       toolCalls.map(async tc => {
         const toolName = tc.function.name;
         const mcpTools = this.toolManager.getMCPTools();
-        const isMCPTool = mcpTools.some(tool => tool.name === toolName);
+        const mcpToolEntry = mcpTools.find(tool => tool.name === toolName);
+        const isMCPTool = Boolean(mcpToolEntry);
         let processedArguments = parseSerializedToolArguments(tc.function.arguments);
 
         // Use AI to enhance arguments for MCP tools
@@ -1558,7 +1564,7 @@ Please analyze this data and provide a specific, detailed response that directly
         return {
           id: tc.id,
           name: toolName,
-          description: this.getToolDescription(toolName, isMCPTool),
+          description: this.getToolDescription(toolName, isMCPTool, mcpToolEntry?.description),
           arguments: processedArguments,
           type: isMCPTool ? 'mcp' : 'regular',
         };
@@ -1681,7 +1687,8 @@ Please analyze this data and provide a specific, detailed response that directly
       enabledToolCalls.map(async tc => {
         const toolName = tc.function.name;
         const mcpTools = this.toolManager.getMCPTools();
-        const isMCPTool = mcpTools.some(tool => tool.name === toolName);
+        const mcpToolEntry = mcpTools.find(tool => tool.name === toolName);
+        const isMCPTool = Boolean(mcpToolEntry);
         let processedArguments = parseSerializedToolArguments(tc.function.arguments);
 
         // Use AI to enhance arguments for MCP tools
@@ -1713,7 +1720,7 @@ Please analyze this data and provide a specific, detailed response that directly
         return {
           id: tc.id,
           name: toolName,
-          description: this.getToolDescription(toolName, isMCPTool),
+          description: this.getToolDescription(toolName, isMCPTool, mcpToolEntry?.description),
           arguments: processedArguments,
           type: isMCPTool ? 'mcp' : 'regular',
         };
