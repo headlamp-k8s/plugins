@@ -48,11 +48,20 @@ export function commitPluginVersionChange(pluginName: string, version: string): 
 
 export function commitArtifactHubChange(pluginName: string, version: string, isTemplate: boolean = false): void {
   const repoRoot = getRepoRoot();
-  const pluginPath = path.join(repoRoot, pluginName);
-  const artifactHubPath = path.join(pluginPath, 'artifacthub-pkg.yml');
+  const versionDir = path.join(repoRoot, pluginName, version);
+  const legacyPath = path.join(repoRoot, pluginName, 'artifacthub-pkg.yml');
 
   try {
-    execFileSync('git', ['add', artifactHubPath], { cwd: repoRoot });
+    execFileSync('git', ['add', versionDir], { cwd: repoRoot });
+
+    // Stage removal of legacy top-level file if it was tracked
+    if (!fs.existsSync(legacyPath)) {
+      try {
+        execFileSync('git', ['rm', '--cached', '--ignore-unmatch', legacyPath], { cwd: repoRoot });
+      } catch (_) {
+        // Safe to ignore: file was never tracked
+      }
+    }
 
     const action = isTemplate ? 'Create' : 'Update';
     const message = `${pluginName}: ${action} artifacthub-pkg.yml for version ${version}`;
