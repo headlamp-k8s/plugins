@@ -192,7 +192,7 @@ export default function DriverSelect({ setDriver, driver, info }: DriverSelectPr
           <Select
             labelId="driver-select-label"
             id="driver-select"
-            value={driver}
+            value={driver ?? ''}
             label="Driver"
             displayEmpty
             onChange={handleChange}
