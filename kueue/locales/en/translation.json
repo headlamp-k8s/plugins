@@ -1,0 +1,9 @@
+{
+  "AdmissionChecks": "AdmissionChecks",
+  "Kueue AdmissionChecks are cluster-scoped admission policy resources.": "Kueue AdmissionChecks are cluster-scoped admission policy resources.",
+  "Controller Name": "Controller Name",
+  "Retry Delay": "Retry Delay",
+  "Parameters Reference": "Parameters Reference",
+  "Status": "Status",
+  "Parameters": "Parameters"
+}

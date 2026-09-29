@@ -1,0 +1,33 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: AdmissionCheck
+metadata:
+  name: prov-req-gpu-check
+spec:
+  controllerName: kueue.x-k8s.io/provisioning-request
+  retryDelayMinutes: 15
+  parameters:
+    apiGroup: autoscaling.x-k8s.io
+    kind: ProvisioningRequestConfig
+    name: default-gpu-config
+status:
+  conditions:
+  - type: Active
+    status: "True"
+    lastTransitionTime: "2026-08-13T12:00:00Z"
+    reason: Ready
+    message: "ProvisioningRequest controller is active and ready"
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: AdmissionCheck
+metadata:
+  name: multikueue-dispatch-check
+spec:
+  controllerName: kueue.x-k8s.io/multikueue
+  retryDelayMinutes: 30
+status:
+  conditions:
+  - type: Active
+    status: "True"
+    lastTransitionTime: "2026-08-13T12:00:00Z"
+    reason: Ready
+    message: "MultiKueue cluster check is active"
