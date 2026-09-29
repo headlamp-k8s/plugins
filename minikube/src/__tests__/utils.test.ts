@@ -1,6 +1,7 @@
+import { afterEach, describe, expect, it } from 'vitest';
 import { generateClusterName, isValidClusterName } from '../CommandCluster/CommandDialog';
 import { detectOS } from '../CommandCluster/DriverSelect';
-import { isElectron, isMinikube } from '../index';
+import { isElectron, isMinikube } from '../isElectron';
 
 describe('isElectron', () => {
   it('returns false in a standard browser environment', () => {
