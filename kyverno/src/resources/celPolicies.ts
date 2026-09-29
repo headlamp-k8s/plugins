@@ -117,7 +117,7 @@ export class ValidatingPolicy extends KubeObject<ValidatingPolicyInterface> {
 export interface CELMutation {
   patchType?: string;
   applyConfiguration?: { expression: string };
-  rfc6902?: { expression: string };
+  jsonPatch?: { expression: string };
 }
 
 export interface MutatingPolicySpec {
