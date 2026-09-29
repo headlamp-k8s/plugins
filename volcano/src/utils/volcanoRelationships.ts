@@ -148,12 +148,18 @@ export function getRelatedPodGroup(
   }
 
   // Owner refs are authoritative; name fallback keeps older objects connected when refs are absent.
+  // podGroups can span every namespace (e.g. the cluster-wide map view), so the name match has to
+  // stay within the Job's own namespace or same-named Jobs in different namespaces will cross-link.
   const jobName = job.metadata.name;
   const jobUid = job.metadata.uid;
+  const jobNamespace = job.metadata.namespace;
 
   if (jobName && jobUid) {
     const canonicalName = `${jobName}-${jobUid}`;
-    const byCanonicalName = podGroups.find(podGroup => podGroup.metadata.name === canonicalName);
+    const byCanonicalName = podGroups.find(
+      podGroup =>
+        podGroup.metadata.name === canonicalName && podGroup.metadata.namespace === jobNamespace
+    );
 
     if (byCanonicalName) {
       return byCanonicalName;
@@ -161,7 +167,12 @@ export function getRelatedPodGroup(
   }
 
   if (jobName) {
-    return podGroups.find(podGroup => podGroup.metadata.name === jobName) || null;
+    return (
+      podGroups.find(
+        podGroup =>
+          podGroup.metadata.name === jobName && podGroup.metadata.namespace === jobNamespace
+      ) || null
+    );
   }
 
   return null;
