@@ -593,7 +593,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
           </Box>
         )}
       </Box>
-      {chartList.length !== 0 && (
+      {(chartList.length !== 0 || page > 1) && (
         <Box mt={2} mx="auto" maxWidth="max-content">
           <Pagination
             size="large"
