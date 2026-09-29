@@ -58,19 +58,24 @@ export function KarpenterChart(props: KarpenterChartProps) {
   const [isVisible, setIsVisible] = useState<boolean>(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const isEnabled = clusterConfig?.[cluster]?.isMetricsEnabled || false;
     setIsVisible(isEnabled);
 
     if (!isEnabled) {
       setState(prometheusState.UNKNOWN);
       setPrometheusPrefix(null);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     setState(prometheusState.LOADING);
     (async () => {
       try {
         const prefix = await getPrometheusPrefix(cluster);
+        if (cancelled) return;
         if (prefix) {
           setPrometheusPrefix(prefix);
           setState(prometheusState.INSTALLED);
@@ -78,10 +83,16 @@ export function KarpenterChart(props: KarpenterChartProps) {
           setState(prometheusState.UNKNOWN);
         }
       } catch (e) {
-        console.error('Error checking Prometheus installation:', e);
-        setState(prometheusState.ERROR);
+        if (!cancelled) {
+          console.error('Error checking Prometheus installation:', e);
+          setState(prometheusState.ERROR);
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [clusterConfig, cluster]);
 
   const interval = getPrometheusInterval(cluster);
