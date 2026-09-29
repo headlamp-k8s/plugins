@@ -17,7 +17,7 @@
 import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
-import { KService } from '../../../../../resources/knative';
+import { annNumOrClear, annStrOrClear, KService } from '../../../../../resources/knative';
 import { useNotify } from '../../../../common/notifications/useNotify';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
@@ -146,13 +146,28 @@ export default function ScaleBoundsSection({
     if (!isValid() || !cluster) return;
     try {
       setSaving(true);
+
+      const prevAnns = kservice.spec.template.metadata?.annotations ?? {};
+
       const patchBody = KService.buildAutoscalingPatch({
-        minScale: minScale === '' ? undefined : Number(minScale),
-        maxScale: maxScale === '' ? undefined : Number(maxScale),
-        initialScale: initialScale === '' ? undefined : Number(initialScale),
-        activationScale: activationScale === '' ? undefined : Number(activationScale),
-        scaleDownDelay: scaleDownDelay === '' ? undefined : scaleDownDelay,
-        stableWindow: stableWindow === '' ? undefined : stableWindow,
+        minScale: annNumOrClear(prevAnns, 'autoscaling.knative.dev/min-scale', minScale),
+        maxScale: annNumOrClear(prevAnns, 'autoscaling.knative.dev/max-scale', maxScale),
+        initialScale: annNumOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/initial-scale',
+          initialScale
+        ),
+        activationScale: annNumOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/activation-scale',
+          activationScale
+        ),
+        scaleDownDelay: annStrOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/scale-down-delay',
+          scaleDownDelay
+        ),
+        stableWindow: annStrOrClear(prevAnns, 'autoscaling.knative.dev/window', stableWindow),
       });
 
       if (patchBody) {

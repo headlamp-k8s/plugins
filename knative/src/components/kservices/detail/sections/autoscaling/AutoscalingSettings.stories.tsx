@@ -109,7 +109,6 @@ function PureAutoscalingSettings({
             value={targetState}
             onChange={e => setTarget(e.target.value)}
             inputProps={{ min: 1, step: 1 }}
-            disabled={!metricState}
             sx={{ maxWidth: 400 }}
           />
         ),
