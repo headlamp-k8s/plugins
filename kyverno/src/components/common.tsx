@@ -35,6 +35,17 @@ const severityColors: Record<string, 'error' | 'warning' | 'info' | 'default'> =
   info: 'default',
 };
 
+/**
+ * Headlamp's shared Table memoizes header cells by column id alone and body
+ * cells by accessorFn value alone, ignoring the translated header/cell text.
+ * If a column's first render happens to catch t() before its resources are
+ * loaded, the stale (blank) label sticks forever. Folding the live header
+ * text into the id busts that cache as soon as the real translation lands.
+ */
+export function columnId(key: string, header: string): string {
+  return `${key}-${header}`;
+}
+
 export function ResultStatusChip({ status }: { status: PolicyResultStatus }) {
   return <Chip label={status} color={statusColors[status] || 'default'} size="small" />;
 }
@@ -66,7 +77,10 @@ export function SummaryChips({ summary }: { summary: PolicyReportSummary }) {
       {items
         .filter(item => item.count > 0)
         .map(item => (
-          <Tooltip key={item.label} title={item.label}>
+          // Keyed on the untranslated status enum, not the translated label: unlike a Table
+          // column id, a list key has no reason to be derived from translated text at all here,
+          // and status is already stable and unique per item regardless of i18n load state.
+          <Tooltip key={item.status} title={item.label}>
             <Chip
               label={`${item.label}: ${item.count}`}
               color={statusColors[item.status]}
