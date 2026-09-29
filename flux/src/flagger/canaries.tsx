@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   Link,
@@ -31,6 +31,7 @@ export default function Canaries() {
 }
 
 function CanaryList({ canaryResourceClass }) {
+  const { t } = useTranslation();
   const [canaries] = canaryResourceClass.useList();
   const [deployments] = K8s.ResourceClasses.Deployment.useList();
 
@@ -108,7 +109,7 @@ function CanaryList({ canaryResourceClass }) {
                 >
                   <Box alignItems="center" display="flex">
                     <Box mr={0.5}>{item.metadata.name}</Box>
-                    <Icon icon="mdi:bird" color="#fff200" width={'20'} />
+                    <Icon icon="mdi:bird" color="#fff200" width={'20'} aria-hidden="true" />
                   </Box>
                 </Link>
               );
@@ -163,11 +164,11 @@ function CanaryList({ canaryResourceClass }) {
             Cell: ({ row: { original: item } }) =>
               item?.hasAbTesting ? (
                 <Box display="flex" alignItems="center">
-                  <Icon icon="mdi:check" color="#4caf50" width="20" />
+                  <Icon icon="mdi:check" color="#4caf50" width="20" aria-label={t('Enabled')} />
                 </Box>
               ) : (
                 <Box display="flex" alignItems="center">
-                  <Icon icon="mdi:close" color="#f44336" width="20" />
+                  <Icon icon="mdi:close" color="#f44336" width="20" aria-label={t('Disabled')} />
                 </Box>
               ),
           },
