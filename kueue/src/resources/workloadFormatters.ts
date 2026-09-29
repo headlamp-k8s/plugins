@@ -53,6 +53,34 @@ export function renderPriorityClassName(priorityClassName?: string) {
   return renderText(priorityClassName);
 }
 
+/** Priority class fields present on either the v1beta2 or v1beta1 WorkloadSpec shape. */
+export interface PriorityClassCompatSpec {
+  /** v1beta2 priority class reference. */
+  priorityClassRef?: { name?: string };
+  /** v1beta1 priority class name, replaced by `priorityClassRef.name` in v1beta2. */
+  priorityClassName?: string;
+}
+
+/** Resolve the priority class name from the v1beta2 or v1beta1 WorkloadSpec shape. */
+export function resolvePriorityClassName(spec: PriorityClassCompatSpec) {
+  return spec.priorityClassRef?.name || spec.priorityClassName;
+}
+
+/** Accumulated past execution time fields present on either API version's WorkloadStatus. */
+export interface AccumulatedPastExecutionTimeCompatStatus {
+  /** v1beta2 accumulated past execution time, correctly spelled. */
+  accumulatedPastExecutionTimeSeconds?: number;
+  /** v1beta1 accumulated past execution time, misspelled in Kueue's own wire format. */
+  accumulatedPastExexcutionTimeSeconds?: number;
+}
+
+/** Resolve accumulated past execution time from the v1beta2 or v1beta1 WorkloadStatus shape. */
+export function resolveAccumulatedPastExecutionTimeSeconds(
+  status: AccumulatedPastExecutionTimeCompatStatus
+) {
+  return status.accumulatedPastExecutionTimeSeconds ?? status.accumulatedPastExexcutionTimeSeconds;
+}
+
 /** Find a named Workload condition from status.conditions. */
 export function findWorkloadCondition(conditions: WorkloadConditionLike[] = [], type: string) {
   return conditions.find(condition => condition.type === type);

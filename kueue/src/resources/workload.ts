@@ -25,6 +25,8 @@ import {
   renderRequeueState,
   renderText,
   renderWorkloadStatus,
+  resolveAccumulatedPastExecutionTimeSeconds,
+  resolvePriorityClassName,
 } from './workloadFormatters';
 
 const WORKLOAD_API_DOCS = 'https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#workload';
@@ -264,6 +266,12 @@ export interface WorkloadSpec {
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#workloadspec
    */
   priorityClassRef?: PriorityClassRef;
+  /**
+   * v1beta1 priority class name, replaced by `priorityClassRef.name` in v1beta2.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta1/#workloadspec
+   */
+  priorityClassName?: string;
   /**
    * Numeric priority used for admission ordering.
    *
@@ -568,6 +576,13 @@ export interface WorkloadStatus {
    */
   accumulatedPastExecutionTimeSeconds?: number;
   /**
+   * v1beta1 spelling of `accumulatedPastExecutionTimeSeconds`, misspelled in Kueue's own
+   * v1beta1 wire format.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta1/#workloadstatus
+   */
+  accumulatedPastExexcutionTimeSeconds?: number;
+  /**
    * Scheduling statistics.
    *
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#workloadstatus
@@ -657,7 +672,7 @@ export class Workload extends KubeObject<KubeWorkload> {
   }
 
   get priorityClassName() {
-    return this.spec.priorityClassRef?.name;
+    return resolvePriorityClassName(this.spec);
   }
 
   get priorityClassDisplay() {
@@ -737,7 +752,7 @@ export class Workload extends KubeObject<KubeWorkload> {
   }
 
   get accumulatedPastExecutionTimeSecondsDisplay() {
-    return renderNumber(this.status.accumulatedPastExecutionTimeSeconds);
+    return renderNumber(resolveAccumulatedPastExecutionTimeSeconds(this.status));
   }
 
   get clusterNameDisplay() {

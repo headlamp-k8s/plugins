@@ -25,6 +25,8 @@ import {
   renderStringMap,
   renderText,
   renderWorkloadStatus,
+  resolveAccumulatedPastExecutionTimeSeconds,
+  resolvePriorityClassName,
 } from './workloadFormatters';
 
 describe('Workload formatters', () => {
@@ -52,6 +54,39 @@ describe('Workload formatters', () => {
     expect(renderPriority()).toBe('-');
     expect(renderPriorityClassName('high-priority')).toBe('high-priority');
     expect(renderPriorityClassName()).toBe('-');
+  });
+
+  it('resolves priority class name from either the v1beta2 or v1beta1 Workload shape', () => {
+    expect(resolvePriorityClassName({ priorityClassRef: { name: 'high-priority' } })).toBe(
+      'high-priority'
+    );
+    expect(resolvePriorityClassName({ priorityClassName: 'high-priority' })).toBe('high-priority');
+    expect(
+      resolvePriorityClassName({
+        priorityClassRef: { name: 'v1beta2-priority' },
+        priorityClassName: 'v1beta1-priority',
+      })
+    ).toBe('v1beta2-priority');
+    expect(resolvePriorityClassName({})).toBeUndefined();
+  });
+
+  it('resolves accumulated past execution time from either the v1beta2 or v1beta1 Workload shape', () => {
+    expect(
+      resolveAccumulatedPastExecutionTimeSeconds({ accumulatedPastExecutionTimeSeconds: 120 })
+    ).toBe(120);
+    expect(
+      resolveAccumulatedPastExecutionTimeSeconds({ accumulatedPastExexcutionTimeSeconds: 120 })
+    ).toBe(120);
+    expect(
+      resolveAccumulatedPastExecutionTimeSeconds({ accumulatedPastExexcutionTimeSeconds: 0 })
+    ).toBe(0);
+    expect(
+      resolveAccumulatedPastExecutionTimeSeconds({
+        accumulatedPastExecutionTimeSeconds: 200,
+        accumulatedPastExexcutionTimeSeconds: 100,
+      })
+    ).toBe(200);
+    expect(resolveAccumulatedPastExecutionTimeSeconds({})).toBeUndefined();
   });
 
   it('finds Workload conditions by type', () => {
