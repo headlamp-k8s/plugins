@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -67,7 +68,7 @@ function getAdmissionCheckRows(clusterQueue: ClusterQueue): AdmissionCheckRow[] 
 }
 
 /** Build the extra detail section that shows spec.resourceGroups as a table. */
-function getResourceGroupsSection(clusterQueue: ClusterQueue) {
+function getResourceGroupsSection(clusterQueue: ClusterQueue, t: (key: string) => string) {
   const rows = getResourceGroupRows(clusterQueue.resourceGroups);
 
   if (rows.length === 0) {
@@ -77,37 +78,37 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
   return {
     id: 'resource-groups',
     section: (
-      <SectionBox title="Resource Groups">
+      <SectionBox title={t('Resource Groups')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Group',
+              label: t('Group'),
               getter: (row: ResourceGroupRow) => row.group,
             },
             {
-              label: 'Covered Resources',
+              label: t('Covered Resources'),
               getter: (row: ResourceGroupRow) => row.coveredResources,
             },
             {
-              label: 'ResourceFlavor',
+              label: t('ResourceFlavor'),
               getter: (row: ResourceGroupRow) =>
                 row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
             },
             {
-              label: 'Resource',
+              label: t('Resource'),
               getter: (row: ResourceGroupRow) => row.resource,
             },
             {
-              label: 'Nominal Quota',
+              label: t('Nominal Quota'),
               getter: (row: ResourceGroupRow) => row.nominalQuota,
             },
             {
-              label: 'Borrowing Limit',
+              label: t('Borrowing Limit'),
               getter: (row: ResourceGroupRow) => row.borrowingLimit ?? '-',
             },
             {
-              label: 'Lending Limit',
+              label: t('Lending Limit'),
               getter: (row: ResourceGroupRow) => row.lendingLimit ?? '-',
             },
           ]}
@@ -118,7 +119,12 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
 }
 
 /** Build a table section for ClusterQueue status flavor reservations or usage. */
-function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUsage[]) {
+function getFlavorUsageSection(
+  title: string,
+  id: string,
+  flavorUsage: FlavorUsage[] | undefined,
+  t: (key: string) => string
+) {
   const rows = getFlavorUsageRows(flavorUsage);
 
   if (rows.length === 0) {
@@ -133,20 +139,20 @@ function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUs
           data={rows}
           columns={[
             {
-              label: 'ResourceFlavor',
+              label: t('ResourceFlavor'),
               getter: (row: FlavorUsageRow) =>
                 row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
             },
             {
-              label: 'Resource',
+              label: t('Resource'),
               getter: (row: FlavorUsageRow) => row.resource,
             },
             {
-              label: 'Total',
+              label: t('Total'),
               getter: (row: FlavorUsageRow) => row.total ?? '-',
             },
             {
-              label: 'Borrowed',
+              label: t('Borrowed'),
               getter: (row: FlavorUsageRow) => row.borrowed ?? '-',
             },
           ]}
@@ -157,7 +163,7 @@ function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUs
 }
 
 /** Build the extra detail section for configured admission checks. */
-function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
+function getAdmissionChecksSection(clusterQueue: ClusterQueue, t: (key: string) => string) {
   const rows = getAdmissionCheckRows(clusterQueue);
 
   if (rows.length === 0) {
@@ -167,16 +173,16 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
   return {
     id: 'admission-checks',
     section: (
-      <SectionBox title="Admission Checks">
+      <SectionBox title={t('Admission Checks')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Name',
+              label: t('Name'),
               getter: (row: AdmissionCheckRow) => renderAdmissionCheckLink(row.name),
             },
             {
-              label: 'ResourceFlavors',
+              label: t('ResourceFlavors'),
               getter: (row: AdmissionCheckRow) =>
                 row.flavors.length ? (
                   <>
@@ -188,7 +194,7 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
                     ))}
                   </>
                 ) : (
-                  'All flavors'
+                  t('All flavors')
                 ),
             },
           ]}
@@ -212,10 +218,15 @@ function getConditionsSection(clusterQueue: ClusterQueue) {
 
 /** Detail view for a cluster-scoped Kueue ClusterQueue resource. */
 export default function ClusterQueueDetail() {
+  const { t } = useTranslation();
   const { name } = useParams<{ name: string }>();
 
   return (
-    <KueueAdminResourceAccess resourceClass={ClusterQueue} resourceLabel="ClusterQueues" verb="get">
+    <KueueAdminResourceAccess
+      resourceClass={ClusterQueue}
+      resourceLabel={t('ClusterQueues')}
+      verb="get"
+    >
       <DetailsGrid
         resourceType={ClusterQueue}
         name={name}
@@ -224,59 +235,59 @@ export default function ClusterQueueDetail() {
           clusterQueue
             ? [
                 {
-                  name: 'Cohort',
+                  name: t('Cohort'),
                   value: renderCohortLink(clusterQueue.spec.cohortName),
                 },
                 {
-                  name: 'Queueing Strategy',
+                  name: t('Queueing Strategy'),
                   value: clusterQueue.queueingStrategy,
                 },
                 {
-                  name: 'Stop Policy',
+                  name: t('Stop Policy'),
                   value: clusterQueue.stopPolicy,
                 },
                 {
-                  name: 'Namespace Selector',
+                  name: t('Namespace Selector'),
                   value: clusterQueue.namespaceSelectorDisplay,
                 },
                 {
-                  name: 'Pending Workloads',
+                  name: t('Pending Workloads'),
                   value: clusterQueue.pendingWorkloads,
                 },
                 {
-                  name: 'Admitted Workloads',
+                  name: t('Admitted Workloads'),
                   value: clusterQueue.admittedWorkloads,
                 },
                 {
-                  name: 'Reserving Workloads',
+                  name: t('Reserving Workloads'),
                   value: clusterQueue.reservingWorkloads,
                 },
                 {
-                  name: 'Status',
+                  name: t('Status'),
                   value: clusterQueue.statusDisplay,
                 },
                 {
-                  name: 'Referenced ResourceFlavors',
+                  name: t('Referenced ResourceFlavors'),
                   value: clusterQueue.referencedFlavorNamesDisplay,
                 },
                 {
-                  name: 'Preemption',
+                  name: t('Preemption'),
                   value: clusterQueue.preemptionDisplay,
                 },
                 {
-                  name: 'Flavor Fungibility',
+                  name: t('Flavor Fungibility'),
                   value: clusterQueue.flavorFungibilityDisplay,
                 },
                 {
-                  name: 'Fair Sharing',
+                  name: t('Fair Sharing'),
                   value: clusterQueue.fairSharingDisplay,
                 },
                 {
-                  name: 'Admission Scope',
+                  name: t('Admission Scope'),
                   value: clusterQueue.admissionScopeDisplay,
                 },
                 {
-                  name: 'Concurrent Admission',
+                  name: t('Concurrent Admission'),
                   value: clusterQueue.concurrentAdmissionPolicyDisplay,
                 },
               ]
@@ -286,17 +297,19 @@ export default function ClusterQueueDetail() {
           clusterQueue
             ? [
                 getConditionsSection(clusterQueue),
-                getResourceGroupsSection(clusterQueue),
-                getAdmissionChecksSection(clusterQueue),
+                getResourceGroupsSection(clusterQueue, t),
+                getAdmissionChecksSection(clusterQueue, t),
                 getFlavorUsageSection(
-                  'Flavor Reservations',
+                  t('Flavor Reservations'),
                   'flavor-reservations',
-                  clusterQueue.status.flavorsReservation
+                  clusterQueue.status.flavorsReservation,
+                  t
                 ),
                 getFlavorUsageSection(
-                  'Flavor Usage',
+                  t('Flavor Usage'),
                   'flavor-usage',
-                  clusterQueue.status.flavorsUsage
+                  clusterQueue.status.flavorsUsage,
+                  t
                 ),
                 {
                   id: 'related-local-queues',
