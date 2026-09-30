@@ -17,34 +17,36 @@
 import { ApiProxy, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { useEffect, useState } from 'react';
 
+export type CRDAvailability = boolean | undefined;
+
 export interface KyvernoCRDStatus {
-  legacy: boolean; // kyverno.io/v1 (ClusterPolicy, Policy)
-  cel: boolean; // policies.kyverno.io/v1 (ValidatingPolicy, MutatingPolicy, etc.)
-  cleanup: boolean; // kyverno.io/v2 (CleanupPolicy, ClusterCleanupPolicy)
-  reports: boolean; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
-  exceptions: boolean; // kyverno.io/v2 (PolicyException)
-  kyvernoV2Reports: boolean; // kyverno.io/v2 (Admission/BackgroundScan reports)
-  ephemeralReports: boolean; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
+  legacy: CRDAvailability; // kyverno.io/v1 (ClusterPolicy, Policy)
+  cel: CRDAvailability; // policies.kyverno.io/v1 (ValidatingPolicy, MutatingPolicy, etc.)
+  cleanup: CRDAvailability; // kyverno.io/v2 (CleanupPolicy, ClusterCleanupPolicy)
+  reports: CRDAvailability; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
+  exceptions: CRDAvailability; // kyverno.io/v2 (PolicyException)
+  kyvernoV2Reports: CRDAvailability; // kyverno.io/v2 (Admission/BackgroundScan reports)
+  ephemeralReports: CRDAvailability; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
   loading: boolean;
 }
 
 const initialStatus: KyvernoCRDStatus = {
-  legacy: false,
-  cel: false,
-  cleanup: false,
-  reports: false,
-  exceptions: false,
-  kyvernoV2Reports: false,
-  ephemeralReports: false,
+  legacy: undefined,
+  cel: undefined,
+  cleanup: undefined,
+  reports: undefined,
+  exceptions: undefined,
+  kyvernoV2Reports: undefined,
+  ephemeralReports: undefined,
   loading: true,
 };
 
-async function checkAPIGroup(path: string): Promise<boolean> {
+async function checkAPIGroup(path: string): Promise<CRDAvailability> {
   try {
     await ApiProxy.request(path, { method: 'GET' });
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    return (error as { status?: number }).status === 404 ? false : undefined;
   }
 }
 
@@ -74,25 +76,19 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
     // kyverno.io/v2 hosts cleanup, exceptions, and admission/background scan reports.
     // The API-group-level probe doesn't tell us *which* CRDs are inside, so we treat
     // all v2 features as available together, matching what stock Kyverno installs.
-    let cleanup = false;
-    let exceptions = false;
-    let kyvernoV2Reports = false;
-    if (legacy) {
-      const v2 = await checkAPIGroup('/apis/kyverno.io/v2');
-      if (v2) {
-        cleanup = true;
-        exceptions = true;
-        kyvernoV2Reports = true;
-      }
-    }
+    // The v2 features are only known to be absent when the legacy group is
+    // confirmed absent. If the legacy probe is unavailable, or the v2 probe
+    // itself is unavailable, preserve that uncertainty instead of showing a
+    // misleading not-installed banner.
+    const v2 = legacy === false ? false : await checkAPIGroup('/apis/kyverno.io/v2');
 
     const status: KyvernoCRDStatus = {
       legacy,
       cel,
-      cleanup,
+      cleanup: v2,
       reports,
-      exceptions,
-      kyvernoV2Reports,
+      exceptions: v2,
+      kyvernoV2Reports: v2,
       ephemeralReports,
       loading: false,
     };
