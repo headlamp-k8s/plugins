@@ -1,48 +1,66 @@
 # PipeCD Headlamp Plugin
 
-This plugin adds a Headlamp UI for [PipeCD](https://pipecd.dev/), a continuous
-delivery system for Kubernetes, Terraform, Cloud Run, Lambda, and ECS.
+[PipeCD](https://pipecd.dev/) is a continuous delivery tool for Kubernetes,
+Terraform, Cloud Run, Lambda and ECS. This plugin shows your PipeCD
+applications inside Headlamp, so you can check what was deployed without
+switching to the PipeCD console.
 
-It shows the delivery state of your PipeCD applications alongside the Kubernetes
-resources in Headlamp.
+## What it does
 
-## Current Scope
+The plugin is read-only. It adds a PipeCD section to the sidebar with two
+pages, Applications and Settings.
 
-The plugin is read-only. It adds a PipeCD section to the sidebar with
-Applications and Settings pages.
+The Applications page lists your applications with their sync status, platform,
+last synced time and Git repository. You can search by name or repository and
+filter by platform.
 
-- **Applications** — a list of applications with sync status, platform kind,
-  last synced time, and Git repository, with search and a platform filter.
-- **Application detail** — repository, path, piped, platform provider, labels,
-  last synced time, and recent deployments.
-- **Deployment detail** — status, commit, who triggered it, duration, and the
-  pipeline stages.
-- **Stage logs** — logs for each pipeline stage, with timestamps.
-- **Settings** — PipeCD server URL and API key, with a connection test.
+Clicking an application opens its details: repository, path, piped, platform
+provider, labels and its recent deployments. Clicking a deployment shows its
+status, commit, who triggered it, how long it took, and the pipeline stages.
+Each stage can be opened to read its logs.
 
-Actions that change state, such as triggering a sync, are not supported. Use the
-PipeCD console for those.
+You cannot trigger a sync or anything else that changes state. Those actions
+need a read-write API key, so use the PipeCD console for them.
 
-## Prerequisites
+## Before you start
 
-A running PipeCD control plane and an API key for your project.
+You need a PipeCD control plane that your browser can reach, and an API key.
 
-Create the key in the PipeCD console under **Settings → API Keys**. A read-only
-key is sufficient.
+Create the key in the PipeCD console under Settings → API Keys. A read-only key
+is enough.
 
-## Configuration
+You also need to let the browser talk to PipeCD. The plugin calls PipeCD's
+`APIService` straight from the browser over gRPC-Web, and a default PipeCD
+install will block that, so two things need setting up in the gateway:
 
-Open **PipeCD → Settings** in Headlamp and enter:
+- gRPC-Web has to be turned on for the route that serves `APIService`. PipeCD
+  uses Envoy for this.
+- CORS has to allow the origin Headlamp runs on. The browser sends a preflight
+  request before every call.
 
-| Field             | Example                      |
-| ----------------- | ---------------------------- |
-| PipeCD server URL | `https://pipecd.example.com` |
-| API key           | the key created above        |
+For CORS, allow the `POST` and `OPTIONS` methods, allow the `authorization`,
+`content-type`, `x-grpc-web` and `x-user-agent` headers, and expose
+`grpc-status` and `grpc-message`.
 
-Use **Test connection** to check that the server is reachable and the key is
-accepted. The settings are stored in the browser's local storage.
+If this is missing, the browser blocks the call before it reaches PipeCD. The
+settings page then says the connection failed, even though the server is fine
+and the key is valid. It is worth checking this first if the connection test
+does not work.
 
-The PipeCD server must accept gRPC-Web requests from the Headlamp origin.
+See the [PipeCD installation docs](https://pipecd.dev/docs/installation/) for
+where to change the gateway config.
+
+## Setting it up
+
+Go to PipeCD → Settings in Headlamp and fill in the server URL and your API
+key, for example `https://pipecd.example.com`.
+
+The URL has to be `https://`. Plain `http://` is rejected because the API key
+is sent in a header and would not be encrypted. The exception is localhost, so
+you can still point it at a local server while developing.
+
+Use Test connection to check it works. The settings are saved in the browser's
+local storage.
 
 ## Development
 
@@ -56,7 +74,6 @@ npm run tsc
 npm test
 ```
 
-The API client in `src/generated` is generated from PipeCD's protocol buffer
-definitions using [buf](https://buf.build/) and `protoc-gen-es`. It is committed
-so that the plugin builds without a generation step, and it is excluded from
-formatting.
+The code in `src/generated` is generated from PipeCD's protobuf definitions
+with [buf](https://buf.build/) and `protoc-gen-es`. It is committed so the
+plugin builds without a generation step, and it is skipped when formatting.
