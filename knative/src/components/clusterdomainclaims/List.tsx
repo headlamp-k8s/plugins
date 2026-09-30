@@ -41,7 +41,7 @@ export function useClusterDomainClaimColumns(
         gridTemplate: 'auto',
         getValue: item => {
           const cdc = item as ClusterDomainClaim;
-          return cdc.spec.namespace || '';
+          return cdc.spec?.namespace || '';
         },
         render: item => {
           const cdc = item as ClusterDomainClaim;
