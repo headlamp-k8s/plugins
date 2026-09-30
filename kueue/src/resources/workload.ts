@@ -780,7 +780,7 @@ export class Workload extends KubeObject<KubeWorkload> {
   }
 
   get admittedDisplay() {
-    return renderAdmittedStatus(this.admission, this.conditions);
+    return renderAdmittedStatus(this.conditions);
   }
 
   get finishedDisplay() {
@@ -788,7 +788,7 @@ export class Workload extends KubeObject<KubeWorkload> {
   }
 
   get statusDisplay() {
-    return renderWorkloadStatus(this.conditions, this.spec.active, this.admission);
+    return renderWorkloadStatus(this.conditions, this.spec.active);
   }
 
   get admissionClusterQueue() {

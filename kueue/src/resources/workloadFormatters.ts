@@ -62,26 +62,19 @@ export function findWorkloadCondition(conditions: WorkloadConditionLike[] = [], 
   return conditions.find(condition => condition.type === type);
 }
 
-/** Render whether Kueue has admitted a Workload. */
-export function renderAdmittedStatus(
-  admission?: Admission,
-  conditions: WorkloadConditionLike[] = []
-) {
-  if (admission) {
+/**
+ * Render whether Kueue has admitted a Workload. status.admission is set on quota
+ * reservation, before admission checks pass, so only the Admitted condition counts.
+ * Kueue does not add that condition until it admits, so a missing one means No.
+ */
+export function renderAdmittedStatus(conditions: WorkloadConditionLike[] = []) {
+  const status = findWorkloadCondition(conditions, CONDITION_TYPES.admitted)?.status;
+
+  if (status === 'True') {
     return 'Yes';
   }
 
-  const admittedCondition = findWorkloadCondition(conditions, CONDITION_TYPES.admitted);
-
-  if (!admittedCondition) {
-    return 'Unknown';
-  }
-
-  if (admittedCondition.status === 'True') {
-    return 'Yes';
-  }
-
-  if (admittedCondition.status === 'False') {
+  if (status === undefined || status === 'False') {
     return 'No';
   }
 
@@ -108,11 +101,7 @@ export function renderFinishedStatus(conditions: WorkloadConditionLike[] = []) {
 }
 
 /** Render a readable Workload status from Kueue condition types and reasons. */
-export function renderWorkloadStatus(
-  conditions: WorkloadConditionLike[] = [],
-  active?: boolean,
-  admission?: Admission
-) {
+export function renderWorkloadStatus(conditions: WorkloadConditionLike[] = [], active?: boolean) {
   if (active === false) {
     return 'Deactivated';
   }
@@ -134,7 +123,7 @@ export function renderWorkloadStatus(
     return 'Deactivated';
   }
 
-  if (admission || isConditionTrue(conditions, CONDITION_TYPES.admitted)) {
+  if (isConditionTrue(conditions, CONDITION_TYPES.admitted)) {
     return isConditionTrue(conditions, CONDITION_TYPES.podsReady) ? 'Running' : 'Admitted';
   }
 

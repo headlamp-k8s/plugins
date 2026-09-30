@@ -70,14 +70,12 @@ describe('Workload formatters', () => {
     expect(findWorkloadCondition(conditions, 'Finished')).toBeUndefined();
   });
 
-  it('derives admitted and finished display values from admission and conditions', () => {
-    expect(renderAdmittedStatus({ clusterQueue: 'sample-cluster-queue' })).toBe('Yes');
-    expect(renderAdmittedStatus(undefined, [{ type: 'Admitted', status: 'True' }])).toBe('Yes');
-    expect(renderAdmittedStatus(undefined, [{ type: 'Admitted', status: 'False' }])).toBe('No');
-    expect(renderAdmittedStatus(undefined, [{ type: 'Admitted', status: 'Unknown' }])).toBe(
-      'Unknown'
-    );
-    expect(renderAdmittedStatus()).toBe('Unknown');
+  it('derives admitted and finished display values from conditions', () => {
+    expect(renderAdmittedStatus([{ type: 'Admitted', status: 'True' }])).toBe('Yes');
+    expect(renderAdmittedStatus([{ type: 'Admitted', status: 'False' }])).toBe('No');
+    expect(renderAdmittedStatus([{ type: 'QuotaReserved', status: 'True' }])).toBe('No');
+    expect(renderAdmittedStatus([{ type: 'Admitted', status: 'Unknown' }])).toBe('Unknown');
+    expect(renderAdmittedStatus()).toBe('No');
 
     expect(renderFinishedStatus([{ type: 'Finished', status: 'True' }])).toBe('Yes');
     expect(renderFinishedStatus([{ type: 'Finished', status: 'False' }])).toBe('No');
@@ -106,11 +104,6 @@ describe('Workload formatters', () => {
       )
     ).toBe('Running');
     expect(renderWorkloadStatus([{ type: 'Admitted', status: 'True' }], true)).toBe('Admitted');
-    expect(
-      renderWorkloadStatus([], true, {
-        clusterQueue: 'sample-cluster-queue',
-      })
-    ).toBe('Admitted');
     expect(renderWorkloadStatus([{ type: 'QuotaReserved', status: 'True' }], true)).toBe('Pending');
     expect(renderWorkloadStatus([{ type: 'Requeued', status: 'True' }], true)).toBe('Pending');
     expect(renderWorkloadStatus([{ type: 'Admitted', status: 'False' }], true)).toBe('Pending');
