@@ -242,8 +242,10 @@ export function renderStringList(values: string[]) {
 
 /** Render a Kubernetes label selector as compact detail text. */
 export function renderLabelSelector(selector?: LabelSelectorLike) {
+  // Kueue defaults namespaceSelector to nil, meaning no namespaces are eligible.
+  // An explicit empty selector ({}) is what matches every namespace.
   if (!selector) {
-    return 'All namespaces';
+    return 'No namespaces';
   }
 
   const labels = Object.entries(selector.matchLabels || {}).map(
