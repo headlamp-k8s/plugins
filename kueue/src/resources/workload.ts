@@ -291,6 +291,97 @@ export interface WorkloadSpec {
 }
 
 /**
+ * Per-domain node selector values for one topology level, within a slice.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignmentslicelevelindividualvalues
+ */
+export interface TopologyAssignmentSliceLevelIndividualValues {
+  /** Common prefix for every value in this slice's assignment. */
+  prefix?: string;
+  /** Common suffix for every value in this slice's assignment. */
+  suffix?: string;
+  /** Per-domain values, excluding the prefix and suffix. Length equals the slice's domainCount. */
+  roots?: string[];
+}
+
+/**
+ * Node selector values for one topology level, within a slice.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignmentslicelevelvalues
+ */
+export interface TopologyAssignmentSliceLevelValues {
+  /** A single value applied to every domain in the slice. */
+  universal?: string;
+  /** Distinct values per domain in the slice. */
+  individual?: TopologyAssignmentSliceLevelIndividualValues;
+}
+
+/**
+ * Pod counts per domain, within a slice.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignmentslicepodcounts
+ */
+export interface TopologyAssignmentSlicePodCounts {
+  /** The same pod count applied to every domain in the slice. */
+  universal?: number;
+  /** Distinct pod count per domain in the slice. Length equals the slice's domainCount. */
+  individual?: number[];
+}
+
+/**
+ * Topology assignment for a subset of a pod set's pods. The full assignment
+ * is the union of all of a TopologyAssignment's slices.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignmentslice
+ */
+export interface TopologyAssignmentSlice {
+  /** Number of domains covered by this slice. */
+  domainCount?: number;
+  /** One entry per TopologyAssignment level, in the same order. */
+  valuesPerLevel?: TopologyAssignmentSliceLevelValues[];
+  /** Pods allocated per domain in this slice. */
+  podCounts?: TopologyAssignmentSlicePodCounts;
+}
+
+/**
+ * One topology domain and its pod count, as served by the v1beta1 API.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta1/#topologydomainassignment
+ */
+export interface TopologyDomainAssignment {
+  /** Node selector values for each TopologyAssignment level, in the same order. */
+  values?: string[];
+  /** Number of pods assigned to this domain. */
+  count?: number;
+}
+
+/**
+ * Topology placement result for one Workload pod set.
+ *
+ * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignment
+ */
+export interface TopologyAssignment {
+  /**
+   * Ordered topology level keys, from the highest to the lowest level.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignment
+   */
+  levels?: string[];
+  /**
+   * Slices whose union makes up the full topology placement (v1beta2).
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#topologyassignment
+   */
+  slices?: TopologyAssignmentSlice[];
+  /**
+   * Flat list of domains, used instead of slices by the v1beta1 API.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta1/#topologyassignment
+   */
+  domains?: TopologyDomainAssignment[];
+}
+
+/**
  * Admission assignment for one Workload pod set.
  *
  * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#podsetassignment
@@ -325,7 +416,7 @@ export interface PodSetAssignment {
    *
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#podsetassignment
    */
-  topologyAssignment?: unknown;
+  topologyAssignment?: TopologyAssignment;
   /**
    * Whether topology assignment is delayed.
    *
@@ -689,7 +780,7 @@ export class Workload extends KubeObject<KubeWorkload> {
   }
 
   get admittedDisplay() {
-    return renderAdmittedStatus(this.admission, this.conditions);
+    return renderAdmittedStatus(this.conditions);
   }
 
   get finishedDisplay() {
@@ -697,7 +788,7 @@ export class Workload extends KubeObject<KubeWorkload> {
   }
 
   get statusDisplay() {
-    return renderWorkloadStatus(this.conditions, this.spec.active, this.admission);
+    return renderWorkloadStatus(this.conditions, this.spec.active);
   }
 
   get admissionClusterQueue() {
