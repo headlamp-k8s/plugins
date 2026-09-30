@@ -1,5 +1,5 @@
 {
-  "name": "prometheus",
+  "name": "@headlamp-k8s/prometheus",
   "version": "0.9.1",
   "description": "Prometheus plugin for Headlamp",
   "scripts": {
