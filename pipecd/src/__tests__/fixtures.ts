@@ -1,0 +1,210 @@
+import type { Application, Deployment, ListApplicationsResponse, StageLog } from '../types/pipecd';
+
+export const appKubernetesSynced: Application = {
+  id: 'app-k8s-001',
+  name: 'frontend-prod',
+  pipedId: 'piped-prod-001',
+  projectId: 'myproject',
+  kind: 'KUBERNETES',
+  gitPath: {
+    repo: {
+      id: 'github.com/myorg/frontend',
+      remote: 'https://github.com/myorg/frontend.git',
+      branch: 'main',
+    },
+    path: 'k8s/overlays/prod',
+    configFilename: 'app.pipecd.yaml',
+    url: 'https://github.com/myorg/frontend/tree/main/k8s/overlays/prod',
+  },
+  cloudProvider: 'k8s-prod',
+  description: 'Production frontend deployment',
+  labels: { env: 'prod', team: 'frontend' },
+  syncState: {
+    status: 'SYNCED',
+    shortReason: '',
+    reason: '',
+    timestamp: 1722000000,
+  },
+  mostRecentSuccessfulDeployment: {
+    deploymentId: 'deploy-001',
+    trigger: {
+      commit: {
+        hash: 'a1b2c3d4',
+        message: 'feat: add dark mode support',
+        author: 'Alice Dev',
+        branch: 'main',
+        url: 'https://github.com/myorg/frontend/commit/a1b2c3d4',
+        createdAt: 1721990000,
+      },
+      commander: '',
+      timestamp: 1721990000,
+    },
+    summary: 'feat: add dark mode support',
+    version: 'v1.4.2',
+    startedAt: 1721990100,
+    completedAt: 1721990300,
+  },
+  disabled: false,
+  createdAt: 1700000000,
+  updatedAt: 1722000000,
+};
+
+export const appTerraformOutOfSync: Application = {
+  id: 'app-tf-001',
+  name: 'infra-staging',
+  pipedId: 'piped-staging-001',
+  projectId: 'myproject',
+  kind: 'TERRAFORM',
+  gitPath: {
+    repo: {
+      id: 'github.com/myorg/infra',
+      remote: 'https://github.com/myorg/infra.git',
+      branch: 'main',
+    },
+    path: 'terraform/staging',
+    configFilename: 'app.pipecd.yaml',
+    url: 'https://github.com/myorg/infra/tree/main/terraform/staging',
+  },
+  cloudProvider: 'aws-staging',
+  description: 'Staging infrastructure',
+  labels: { env: 'staging', team: 'platform' },
+  syncState: {
+    status: 'OUT_OF_SYNC',
+    shortReason: 'Terraform plan shows 3 resources to change',
+    reason: 'aws_s3_bucket.logs: configuration changed',
+    timestamp: 1722001000,
+  },
+  mostRecentSuccessfulDeployment: {
+    deploymentId: 'deploy-tf-001',
+    trigger: { commander: 'bob@example.com', timestamp: 1721900000 },
+    summary: 'chore: bump EC2 instance type to t3.medium',
+    version: '',
+    startedAt: 1721900000,
+    completedAt: 1721900600,
+  },
+  disabled: false,
+  createdAt: 1700000000,
+  updatedAt: 1722001000,
+};
+
+export const appCloudRunDeploying: Application = {
+  id: 'app-cr-001',
+  name: 'api-service-prod',
+  pipedId: 'piped-gcp-001',
+  projectId: 'myproject',
+  kind: 'CLOUD_RUN',
+  gitPath: {
+    repo: {
+      id: 'github.com/myorg/api',
+      remote: 'https://github.com/myorg/api.git',
+      branch: 'main',
+    },
+    path: 'cloudrun/api-service',
+    configFilename: 'app.pipecd.yaml',
+    url: '',
+  },
+  cloudProvider: 'gcp-prod',
+  description: 'Main API service on Cloud Run',
+  labels: { env: 'prod', team: 'backend' },
+  syncState: {
+    status: 'DEPLOYING',
+    shortReason: 'Canary 20% traffic shift in progress',
+    reason: '',
+    timestamp: 1722005000,
+  },
+  disabled: false,
+  createdAt: 1700000000,
+  updatedAt: 1722005000,
+};
+
+export const mockListResponse: ListApplicationsResponse = {
+  applications: [appKubernetesSynced, appTerraformOutOfSync, appCloudRunDeploying],
+  cursor: '',
+};
+
+export const deploymentCompleted: Deployment = {
+  id: 'deploy-001',
+  applicationId: 'app-k8s-001',
+  applicationName: 'frontend-prod',
+  pipedId: 'piped-prod-001',
+  projectId: 'myproject',
+  kind: 'KUBERNETES',
+  gitPath: appKubernetesSynced.gitPath,
+  cloudProvider: 'k8s-prod',
+  trigger: appKubernetesSynced.mostRecentSuccessfulDeployment!.trigger,
+  summary: 'feat: add dark mode support',
+  labels: {},
+  status: 'DEPLOYMENT_SUCCESS',
+  statusReason: 'The deployment was completed successfully',
+  stages: [
+    {
+      id: 'stage-wait',
+      name: 'WAIT_APPROVAL',
+      desc: 'Wait for approval',
+      index: 0,
+      requiresList: [],
+      rollback: false,
+      retriedCount: 0,
+      status: 'STAGE_SUCCESS',
+      statusReason: '',
+      metadata: {},
+      retrievedAt: 0,
+      startedAt: 1721990100,
+      completedAt: 1721990150,
+    },
+    {
+      id: 'stage-k8s-sync',
+      name: 'K8S_SYNC',
+      desc: 'Sync Kubernetes manifests',
+      index: 1,
+      requiresList: ['stage-wait'],
+      rollback: false,
+      retriedCount: 0,
+      status: 'STAGE_SUCCESS',
+      statusReason: '',
+      metadata: {},
+      retrievedAt: 0,
+      startedAt: 1721990150,
+      completedAt: 1721990300,
+    },
+    {
+      id: 'stage-rollback',
+      name: 'ROLLBACK',
+      desc: 'Rollback the deployment',
+      index: 2,
+      requiresList: [],
+      rollback: true,
+      retriedCount: 0,
+      // piped creates the rollback stage up front and leaves it unstarted.
+      status: 'STAGE_NOT_STARTED_YET',
+      statusReason: '',
+      metadata: {},
+      retrievedAt: 0,
+      startedAt: 1721990300,
+      completedAt: 1721990300,
+    },
+  ],
+  deployStageSummary: '',
+  completedAt: 1721990300,
+  createdAt: 1721990100,
+  updatedAt: 1721990300,
+};
+
+export const stageLogsCompleted: Record<string, StageLog> = {
+  'stage-wait': {
+    blocks: [{ index: 0, log: 'Approved by alice', severity: 'SUCCESS', createdAt: 1721990140 }],
+    completed: true,
+  },
+  'stage-k8s-sync': {
+    blocks: [
+      { index: 0, log: 'Applying manifests...', severity: 'INFO', createdAt: 1721990160 },
+      {
+        index: 1,
+        log: 'deployment.apps/frontend configured',
+        severity: 'SUCCESS',
+        createdAt: 1721990290,
+      },
+    ],
+    completed: true,
+  },
+};

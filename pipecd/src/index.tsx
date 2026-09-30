@@ -2,6 +2,7 @@ import { addIcon } from '@iconify/react';
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import { Box, Typography } from '@mui/material';
 import React from 'react';
+import { SettingsPage } from './components/SettingsPage';
 
 const PIPECD_ICON_NAME = 'pipecd:logo';
 
@@ -11,15 +12,15 @@ const pipecdIcon = {
   height: 86.07,
 };
 
-function PipeCDPlaceholder(): JSX.Element {
+function ApplicationsPlaceholder(): JSX.Element {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" fontWeight={700} gutterBottom>
-        PipeCD
+        PipeCD Applications
       </Typography>
       <Typography color="text.secondary">
-        This plugin is being added in stages. Application and deployment views are not available
-        yet.
+        The applications view is not available yet. Configure the connection under PipeCD →
+        Settings.
       </Typography>
     </Box>
   );
@@ -45,11 +46,29 @@ registerSidebarEntry({
   sidebar: 'IN-CLUSTER',
 });
 
+registerSidebarEntry({
+  name: 'pipecd-settings',
+  url: '/pipecd/settings',
+  label: 'Settings',
+  icon: 'mdi:cog-outline',
+  parent: 'pipecd',
+  sidebar: 'IN-CLUSTER',
+});
+
 registerRoute({
   path: '/pipecd/applications',
   sidebar: 'pipecd-applications',
   name: 'PipeCDApplications',
-  component: () => <PipeCDPlaceholder />,
+  component: () => <ApplicationsPlaceholder />,
+  exact: true,
+  noAuthRequired: false,
+});
+
+registerRoute({
+  path: '/pipecd/settings',
+  sidebar: 'pipecd-settings',
+  name: 'PipeCDSettings',
+  component: () => <SettingsPage />,
   exact: true,
   noAuthRequired: false,
 });
