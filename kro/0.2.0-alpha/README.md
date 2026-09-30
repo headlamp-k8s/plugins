@@ -63,15 +63,15 @@ built-in fallback renderer.
 
 | ResourceGraphDefinitions | Embedded template graph (RGD detail) |
 | --- | --- |
-| ![RGD list](./docs/rgd-list.png) | ![Template graph](./docs/template-graph.png) |
+| ![RGD list](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/rgd-list.png) | ![Template graph](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/template-graph.png) |
 
 | Embedded instance graph | Node details opened from the graph |
 | --- | --- |
-| ![Instance graph](./docs/instance-graph.png) | ![Instance node details](./docs/instance-node-details.png) |
+| ![Instance graph](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/instance-graph.png) | ![Instance node details](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/instance-node-details.png) |
 
 | Instance sub-resources (resolved storageClass) | Map view |
 | --- | --- |
-| ![Instance sub-resources](./docs/instance-subresources.png) | ![Map](./docs/map.png) |
+| ![Instance sub-resources](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/instance-subresources.png) | ![Map](https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kro/docs/map.png) |
 
 ## Installation
 
