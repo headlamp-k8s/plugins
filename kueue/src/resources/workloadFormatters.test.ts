@@ -5,6 +5,7 @@ import type { PodSet, WorkloadConditionLike } from './workload';
 import {
   findWorkloadCondition,
   getAdmissionFlavorNames,
+  getWorkloadBlocker,
   getWorkloadDetailRouteParams,
   renderAdmissionClusterQueue,
   renderAdmissionFlavors,
@@ -24,6 +25,7 @@ import {
   renderResourceList,
   renderStringMap,
   renderText,
+  renderTopologyAssignment,
   renderWorkloadStatus,
 } from './workloadFormatters';
 
@@ -243,6 +245,67 @@ describe('Workload formatters', () => {
     expect(renderOwnerReferences(ownerReferences)).toBe('Job/sample-kueue-workload');
   });
 
+  it('renders topology assignments without dumping raw nested objects', () => {
+    expect(renderTopologyAssignment()).toBe('-');
+    expect(renderTopologyAssignment({ levels: ['kubernetes.io/hostname'], slices: [] })).toBe('-');
+
+    expect(
+      renderTopologyAssignment({
+        levels: ['cloud.provider.com/topology-block', 'kubernetes.io/hostname'],
+        slices: [
+          {
+            domainCount: 2,
+            valuesPerLevel: [
+              { universal: 'block-1' },
+              { individual: { roots: ['node-1', 'node-2'] } },
+            ],
+            podCounts: { individual: [2, 1] },
+          },
+        ],
+      })
+    ).toBe(
+      'cloud.provider.com/topology-block > kubernetes.io/hostname: block-1/node-1 (2), block-1/node-2 (1)'
+    );
+
+    expect(
+      renderTopologyAssignment({
+        levels: ['kubernetes.io/hostname'],
+        slices: [
+          {
+            domainCount: 3,
+            valuesPerLevel: [{ individual: { prefix: 'node-', roots: ['1', '2', '3'] } }],
+            podCounts: { universal: 1 },
+          },
+        ],
+      })
+    ).toBe('kubernetes.io/hostname: node-1 (1), node-2 (1), node-3 (1)');
+
+    const huge = renderTopologyAssignment({
+      levels: ['kubernetes.io/hostname'],
+      slices: [
+        {
+          domainCount: 2_000_000_000,
+          valuesPerLevel: [{ universal: 'node' }],
+          podCounts: { universal: 1 },
+        },
+      ],
+    });
+    expect(huge.split(', ')).toHaveLength(21);
+    expect(huge.endsWith(', +1999999980 more')).toBe(true);
+
+    expect(
+      renderTopologyAssignment({
+        levels: ['cloud.provider.com/topology-block', 'kubernetes.io/hostname'],
+        domains: [
+          { values: ['block-1', 'node-1'], count: 2 },
+          { values: ['block-1', 'node-2'], count: 1 },
+        ],
+      })
+    ).toBe(
+      'cloud.provider.com/topology-block > kubernetes.io/hostname: block-1/node-1 (2), block-1/node-2 (1)'
+    );
+  });
+
   it('builds namespaced detail route params', () => {
     expect(kueueRoutePaths.workloadDetail).toBe('/kueue/workloads/:namespace/:name');
     expect(getWorkloadDetailRouteParams('default', 'sample-job')).toEqual({
@@ -252,6 +315,93 @@ describe('Workload formatters', () => {
     expect(getWorkloadDetailRouteParams(undefined, undefined)).toEqual({
       namespace: '',
       name: '',
+    });
+  });
+
+  it('explains what is blocking a Workload from admission', () => {
+    const condition = (
+      type: string,
+      status: WorkloadConditionLike['status'],
+      reason?: string,
+      message?: string
+    ): WorkloadConditionLike => ({
+      type,
+      status,
+      reason,
+      message,
+    });
+
+    expect(getWorkloadBlocker([condition('Finished', 'True')])).toBeNull();
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'True'), condition('Admitted', 'True')])
+    ).toBeNull();
+
+    expect(getWorkloadBlocker([])?.stage).toBe('Not evaluated');
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'PendingEvaluation')])?.stage
+    ).toBe('Not evaluated');
+    expect(
+      getWorkloadBlocker([condition('Evicted', 'True', 'Deactivated')], [], undefined, false)?.stage
+    ).toBe('Deactivated');
+    expect(
+      getWorkloadBlocker(
+        [condition('Evicted', 'True', 'DeactivatedDueToAdmissionCheck', 'check rejected')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'bad-check', state: 'Rejected', message: 'no capacity' },
+        ],
+        undefined,
+        false
+      )
+    ).toMatchObject({
+      stage: 'Deactivated',
+      reason: 'DeactivatedDueToAdmissionCheck',
+      message: 'check rejected',
+      pendingAdmissionChecks: [{ name: 'bad-check', state: 'Rejected', message: 'no capacity' }],
+    });
+
+    expect(
+      getWorkloadBlocker([
+        condition('QuotaReserved', 'False', 'NoMatchingFlavor', 'no flavor fits'),
+      ])
+    ).toMatchObject({
+      stage: 'Waiting for quota',
+      reason: 'NoMatchingFlavor',
+      message: 'no flavor fits',
+      explanation: expect.stringContaining('ResourceFlavor'),
+    });
+
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'SomethingNew')])?.explanation
+    ).toBeUndefined();
+
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'slow-check', state: 'Pending' },
+        ]
+      )
+    ).toMatchObject({
+      stage: 'Admission checks',
+      explanation: expect.stringContaining('AdmissionCheck'),
+      pendingAdmissionChecks: [{ name: 'slow-check', state: 'Pending' }],
+    });
+
+    expect(
+      getWorkloadBlocker(
+        [
+          condition('QuotaReserved', 'False', 'Pending'),
+          condition('Evicted', 'True', 'PodsReadyTimeout', 'pods not ready'),
+        ],
+        [],
+        { count: 2, requeueAt: '2026-09-29T10:00:00Z' }
+      )
+    ).toMatchObject({
+      stage: 'Evicted',
+      reason: 'PodsReadyTimeout',
+      requeueAt: '2026-09-29T10:00:00Z',
     });
   });
 });
