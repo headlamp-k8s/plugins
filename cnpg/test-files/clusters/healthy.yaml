@@ -1,0 +1,18 @@
+# The "everything is fine" baseline: three instances, no backup configuration.
+#
+# Also the cluster to look at for the backup views' honest-negative states — it
+# reports no backup destination and no completed Backup objects, which is a
+# different answer from "backups are fine".
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-healthy
+  namespace: cnpg-headlamp-test
+spec:
+  instances: 3
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi

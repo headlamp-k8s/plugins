@@ -1,0 +1,40 @@
+# Can read Clusters, and nothing else in the CloudNativePG group.
+#
+# The both-denials-at-once case: the cluster list and detail render normally
+# while every backup-derived fact is unavailable. The insights panel has two
+# denied rules to name at the same time, and has to give each its own line —
+# run end to end they read as one malformed rule, because each already starts
+# with a verb and ends with a scope clause.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cnpg-reader-clusters-only
+  namespace: cnpg-headlamp-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cnpg-reader-clusters-only
+rules:
+  - apiGroups: ['postgresql.cnpg.io']
+    resources: ['clusters']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['']
+    resources: ['namespaces']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['apiextensions.k8s.io']
+    resources: ['customresourcedefinitions']
+    verbs: ['get', 'list']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cnpg-reader-clusters-only
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cnpg-reader-clusters-only
+subjects:
+  - kind: ServiceAccount
+    name: cnpg-reader-clusters-only
+    namespace: cnpg-headlamp-test

@@ -1,0 +1,19 @@
+# A schedule that is not running.
+#
+# The state worth checking: a suspended schedule has to be reported as suspended.
+# Its existence is not evidence that backups are happening, and a view that lists
+# it without saying so is worse than one that does not list it at all.
+#
+# Needs volume-snapshot support on the cluster — see the README. It never
+# actually runs, being suspended.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pg-backed-nightly
+  namespace: cnpg-headlamp-test
+spec:
+  suspend: true
+  schedule: '0 0 3 * * *'
+  method: volumeSnapshot
+  cluster:
+    name: pg-backed

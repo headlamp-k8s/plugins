@@ -1,0 +1,18 @@
+# A deliberately single-instance cluster.
+#
+# The case a readiness check gets wrong: 1/1 is fully ready, not degraded. The
+# plugin should say so, while still noting separately that a single instance has
+# no replica to fail over to.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-single
+  namespace: cnpg-headlamp-test
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
