@@ -45,24 +45,9 @@ export interface ScheduleCoverageResult {
 
 // Include Velero/kubectl short names (ShortcutExpander) so includedResources like
 // "deploy", "sts", and "pvc" match the same kinds as the plural/group forms.
-const DEPLOYMENT_ALIASES = new Set([
-  'deployments',
-  'deployment',
-  'deploy',
-  'deployments.apps',
-]);
-const STATEFULSET_ALIASES = new Set([
-  'statefulsets',
-  'statefulset',
-  'sts',
-  'statefulsets.apps',
-]);
-const PVC_ALIASES = new Set([
-  'persistentvolumeclaims',
-  'persistentvolumeclaim',
-  'pvc',
-  'pvcs',
-]);
+const DEPLOYMENT_ALIASES = new Set(['deployments', 'deployment', 'deploy', 'deployments.apps']);
+const STATEFULSET_ALIASES = new Set(['statefulsets', 'statefulset', 'sts', 'statefulsets.apps']);
+const PVC_ALIASES = new Set(['persistentvolumeclaims', 'persistentvolumeclaim', 'pvc', 'pvcs']);
 
 function resourceAliases(kind: WorkloadTarget['resourceKind']): Set<string> {
   switch (kind) {
