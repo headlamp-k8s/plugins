@@ -231,6 +231,28 @@ describe('scheduleCoversWorkload', () => {
     expect(scheduleCoversWorkload(crossGroup, target)).toBe(false);
   });
 
+  test('matches Velero short names deploy, sts, and pvc', () => {
+    const ns = ['default'];
+    expect(
+      scheduleCoversWorkload(
+        { name: 'deploy-short', template: { includedNamespaces: ns, includedResources: ['deploy'] } },
+        { namespace: 'default', labels: {}, resourceKind: 'deployments' }
+      )
+    ).toBe(true);
+    expect(
+      scheduleCoversWorkload(
+        { name: 'sts-short', template: { includedNamespaces: ns, includedResources: ['sts'] } },
+        { namespace: 'default', labels: {}, resourceKind: 'statefulsets' }
+      )
+    ).toBe(true);
+    expect(
+      scheduleCoversWorkload(
+        { name: 'pvc-short', template: { includedNamespaces: ns, includedResources: ['pvc'] } },
+        { namespace: 'default', labels: {}, resourceKind: 'persistentvolumeclaims' }
+      )
+    ).toBe(true);
+  });
+
   test('rejects resource type listed in excludedResources', () => {
     expect(
       scheduleCoversWorkload(
