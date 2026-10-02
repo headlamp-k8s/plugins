@@ -235,7 +235,10 @@ describe('scheduleCoversWorkload', () => {
     const ns = ['default'];
     expect(
       scheduleCoversWorkload(
-        { name: 'deploy-short', template: { includedNamespaces: ns, includedResources: ['deploy'] } },
+        {
+          name: 'deploy-short',
+          template: { includedNamespaces: ns, includedResources: ['deploy'] },
+        },
         { namespace: 'default', labels: {}, resourceKind: 'deployments' }
       )
     ).toBe(true);
