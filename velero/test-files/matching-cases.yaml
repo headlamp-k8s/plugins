@@ -1,0 +1,165 @@
+# Subtle matching logic demo — apply with:
+#   kubectl apply -f matching-cases.yaml
+#
+# Open in Headlamp and check "Velero backup coverage" on each resource.
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apps
+---
+# Case 1: Not covered — in "default" (not "apps"), and no backup=enabled label
+#   (so default-deployments-daily does not match either)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: case-wrong-namespace
+  namespace: default
+  labels:
+    app: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: case-wrong-namespace
+  template:
+    metadata:
+      labels:
+        app: case-wrong-namespace
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: apps-namespace-only
+  namespace: velero
+spec:
+  schedule: '0 9 * * *'
+  template:
+    includedNamespaces:
+      - apps
+    includedResources:
+      - deployments
+---
+# Covered counterpart in apps namespace (proves schedule works elsewhere)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: case-apps-covered
+  namespace: apps
+  labels:
+    app: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: case-apps-covered
+  template:
+    metadata:
+      labels:
+        app: case-apps-covered
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+---
+# Case 2: Label mismatch — schedule wants app=api, this has app=web
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: case-label-web
+  namespace: default
+  labels:
+    app: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: case-label-web
+  template:
+    metadata:
+      labels:
+        app: case-label-web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: api-label-only
+  namespace: velero
+spec:
+  schedule: '0 10 * * *'
+  template:
+    includedNamespaces:
+      - default
+    includedResources:
+      - deployments
+    labelSelector:
+      matchLabels:
+        app: api
+---
+# Covered: app=api matches api-label-only schedule
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: case-label-api
+  namespace: default
+  labels:
+    app: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: case-label-api
+  template:
+    metadata:
+      labels:
+        app: case-label-api
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+---
+# Case 3: PVC vs Deployment — deployment schedule does not cover PVCs
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: case-pvc-only
+  namespace: default
+  labels:
+    backup: enabled
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Case 4: Partial namespace — same namespace, only labeled workloads covered
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: case-partial-uncovered
+  namespace: default
+  labels:
+    app: partial-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: case-partial-uncovered
+  template:
+    metadata:
+      labels:
+        app: case-partial-uncovered
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
