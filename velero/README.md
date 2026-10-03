@@ -1,8 +1,10 @@
 # Velero plugin for Headlamp
 
-Contextual Velero backup coverage panels for Headlamp ([Phase 1](https://github.com/kubernetes-sigs/headlamp/issues/5198)).
+Contextual Velero backup coverage for Headlamp ([issue #5198](https://github.com/kubernetes-sigs/headlamp/issues/5198)).
 
 ## What it does
+
+### Phase 1 — Detail coverage panels
 
 Shows whether a workload or namespace is covered by a Velero backup schedule — directly on the resource detail page in Headlamp.
 
@@ -11,6 +13,16 @@ Shows whether a workload or namespace is covered by a Velero backup schedule —
 - Coverage matching uses Schedule template include/exclude filters and label selectors (`matchLabels`, `matchExpressions`, `orLabelSelectors`). Unknown selector operators fail closed (not reported as covered).
 - **Read-only** — no backup or restore actions
 - **Velero not installed** — clear empty state
+
+### Phase 2 — Cluster-wide Velero views
+
+Sidebar entry **Velero** with:
+
+- **Schedules** — cron, status, next run, last backup
+- **Backups** — phase, triggered by schedule or manual, namespace scope
+- **Coverage gaps** — namespaces and Deployments/StatefulSets with no matching schedule
+
+Coverage panels and schedule views load Backups with a `velero.io/schedule-name` label selector (latest per schedule only). The Backups sidebar list still shows the full Backup table.
 
 ## Plugin settings
 
@@ -43,7 +55,10 @@ Copy the built plugin into Headlamp, or load from this folder per the [plugin de
 
 ## Manual testing
 
-Apply the fixtures under `test-files/` to a cluster with Velero installed, then open the listed resources in Headlamp.
+Apply the fixtures under `test-files/` to a cluster with Velero installed, then:
+
+1. Open a Deployment / StatefulSet / Namespace detail page for Phase 1 panels
+2. Open sidebar **Velero → Schedules / Backups / Coverage gaps** for Phase 2
 
 ## Screenshots
 
