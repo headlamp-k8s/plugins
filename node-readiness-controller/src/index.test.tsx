@@ -1,13 +1,29 @@
-import { describe, expect, it, vi } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 
-const { mockRegisterRoute, mockRegisterSidebarEntry } = vi.hoisted(() => ({
-  mockRegisterRoute: vi.fn(),
-  mockRegisterSidebarEntry: vi.fn(),
-}));
+const { mockRegisterRoute, mockRegisterSidebarEntry, mockMakeCustomResourceClass } = vi.hoisted(
+  () => ({
+    mockRegisterRoute: vi.fn(),
+    mockRegisterSidebarEntry: vi.fn(),
+    mockMakeCustomResourceClass: vi.fn(() => class MockCustomResource {}),
+  })
+);
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   registerRoute: mockRegisterRoute,
   registerSidebarEntry: mockRegisterSidebarEntry,
+}));
+
+vi.mock('@kinvolk/headlamp-plugin/lib/lib/k8s/crd', () => ({
+  makeCustomResourceClass: mockMakeCustomResourceClass,
+  default: class MockCRD {},
+}));
+
+vi.mock('./NodeReadinessRuleList', () => ({
+  default: () => 'MockList',
+}));
+
+vi.mock('./NodeReadinessRuleDetails', () => ({
+  default: () => 'MockDetails',
 }));
 
 // Import the index file to trigger the registrations
