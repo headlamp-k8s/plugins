@@ -1,7 +1,7 @@
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useVeleroNamespace } from '../../config';
-import { formatNextScheduledRun } from '../../cron';
 import { getLatestBackupForSchedule } from '../../coverage';
+import { formatNextScheduledRun } from '../../cron';
 import { useVeleroData } from '../../hooks/useVeleroData';
 import { VeleroSchedule } from '../../resources/velero';
 import { getBackupStatusColor } from '../../utils/status';

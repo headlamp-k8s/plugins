@@ -12,14 +12,14 @@ import type Deployment from '@kinvolk/headlamp-plugin/lib/K8s/deployment';
 import type Namespace from '@kinvolk/headlamp-plugin/lib/K8s/namespace';
 import type PersistentVolumeClaim from '@kinvolk/headlamp-plugin/lib/K8s/persistentVolumeClaim';
 import type StatefulSet from '@kinvolk/headlamp-plugin/lib/K8s/statefulSet';
-import BackupDetail from './components/backups/Detail';
-import BackupList from './components/backups/List';
 import {
   DeploymentBackupCoveragePanel,
   NamespaceVeleroBackupCoveragePanel,
   PersistentVolumeClaimBackupCoveragePanel,
   StatefulSetBackupCoveragePanel,
 } from './components/BackupCoveragePanel';
+import BackupDetail from './components/backups/Detail';
+import BackupList from './components/backups/List';
 import CoverageGaps from './components/coverage/CoverageGaps';
 import ScheduleDetail from './components/schedules/Detail';
 import ScheduleList from './components/schedules/List';

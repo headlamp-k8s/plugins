@@ -5,8 +5,8 @@ import {
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import Deployment from '@kinvolk/headlamp-plugin/lib/K8s/deployment';
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import Deployment from '@kinvolk/headlamp-plugin/lib/K8s/deployment';
 import Namespace from '@kinvolk/headlamp-plugin/lib/K8s/namespace';
 import StatefulSet from '@kinvolk/headlamp-plugin/lib/K8s/statefulSet';
 import { Paper, Typography } from '@mui/material';
