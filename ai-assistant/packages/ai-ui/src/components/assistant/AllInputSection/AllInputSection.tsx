@@ -156,11 +156,29 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
     }
   };
 
+  /**
+   * The active config is often a copy of the saved one, so reference equality
+   * would report -1 and make the Select value fall outside its options.
+   */
+  const activeConfigIndex = React.useMemo(() => {
+    if (!activeConfig) return -1;
+    const byReference = availableConfigs.indexOf(activeConfig);
+    if (byReference !== -1) return byReference;
+    if (activeConfig.id) {
+      const byId = availableConfigs.findIndex(config => config.id === activeConfig.id);
+      if (byId !== -1) return byId;
+    }
+    return availableConfigs.findIndex(
+      config =>
+        config.providerId === activeConfig.providerId &&
+        config.displayName === activeConfig.displayName
+    );
+  }, [activeConfig, availableConfigs]);
+
   const getCurrentValue = (): string => {
-    if (!activeConfig) return JSON.stringify(['default', 'default']);
-    const configIndex = availableConfigs.indexOf(activeConfig);
-    const modelName = selectedModel;
-    return JSON.stringify([configIndex, modelName]);
+    // An empty value keeps MUI quiet while the configs are still loading.
+    if (activeConfigIndex === -1) return '';
+    return JSON.stringify([activeConfigIndex, selectedModel]);
   };
 
   const renderSelectValue = (selected: string): React.ReactNode => {
@@ -352,11 +370,11 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
                       <MenuItem
                         key={`${configIndex}-${model}`}
                         value={JSON.stringify([configIndex, model])}
-                        selected={activeConfig === config && selectedModel === model}
+                        selected={activeConfigIndex === configIndex && selectedModel === model}
                         sx={{ paddingLeft: 2 }}
                       >
                         <Typography variant="body2">{getModelDisplayName(model)}</Typography>
-                        {activeConfig === config && selectedModel === model && (
+                        {activeConfigIndex === configIndex && selectedModel === model && (
                           <Typography
                             component="span"
                             variant="caption"

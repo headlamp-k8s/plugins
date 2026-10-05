@@ -17,6 +17,10 @@ async function loadGeneratePrompts() {
     useLocation: vi.fn(() => ({ pathname: '/' })),
   }));
 
+  vi.doMock('@kinvolk/headlamp-plugin/lib', () => ({
+    useTranslation: vi.fn(() => ({ t: (key: string) => key })),
+  }));
+
   vi.doMock('../pluginState', () => ({
     useGlobalState: vi.fn(() => ({ event: null })),
   }));
@@ -118,6 +122,38 @@ describe('generatePrompts', () => {
     expect(result[0]).toBe('Explain the recent events');
     expect(result[1]).toBe('What do these warnings mean?');
     expect(result[2]).toBe('What pods need my attention?');
+  });
+
+  it('returns project prompts when a project is in context', async () => {
+    const { generatePrompts } = await loadGeneratePrompts();
+    const result = generatePrompts({ project: { id: 'my-project' } });
+    expect(result).toHaveLength(3);
+    expect(result[0]).toBe('Is everything healthy in this project?');
+    expect(result[1]).toBe('Summarize the resources in this project');
+    expect(result[2]).toBe('What pods need my attention?');
+  });
+
+  it('returns a tab-specific prompt when a project tab is selected', async () => {
+    const { generatePrompts } = await loadGeneratePrompts();
+    const result = generatePrompts({ project: { id: 'my-project' }, projectTab: 'Workloads' });
+    expect(result[2]).toBe('What should I check in the Workloads tab?');
+  });
+
+  it('returns project list prompts when projects are in context', async () => {
+    const { generatePrompts } = await loadGeneratePrompts();
+    const result = generatePrompts({ projects: [{ id: 'alpha' }] });
+    expect(result).toHaveLength(3);
+    expect(result[0]).toBe('Which projects need my attention?');
+    expect(result[1]).toBe('Summarize the status of these projects');
+  });
+
+  it('prioritizes project prompts over resource list prompts', async () => {
+    const { generatePrompts } = await loadGeneratePrompts();
+    const result = generatePrompts({
+      project: { id: 'my-project' },
+      resources: [{ kind: 'Pod' }],
+    });
+    expect(result[0]).toBe('Is everything healthy in this project?');
   });
 
   it('prioritizes context prompts over base prompts', async () => {

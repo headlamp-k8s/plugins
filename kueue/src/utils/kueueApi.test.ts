@@ -17,4 +17,14 @@ describe('Kueue API constants', () => {
     expect(kueueRoutePaths.clusterQueuesList).toBe('/kueue/clusterqueues');
     expect(kueueRoutePaths.clusterQueueDetail).toBe('/kueue/clusterqueues/:name');
   });
+
+  it('defines Cohort list and detail routes', () => {
+    expect(kueueRoutePaths.cohortsList).toBe('/kueue/cohorts');
+    expect(kueueRoutePaths.cohortDetail).toBe('/kueue/cohorts/:name');
+  });
+
+  it('defines Workload list and namespaced detail routes', () => {
+    expect(kueueRoutePaths.workloadsList).toBe('/kueue/workloads');
+    expect(kueueRoutePaths.workloadDetail).toBe('/kueue/workloads/:namespace/:name');
+  });
 });

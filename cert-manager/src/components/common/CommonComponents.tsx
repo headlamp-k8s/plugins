@@ -39,6 +39,7 @@ export function CopyToClipboard({ text, maxDisplayLength = 30 }: CopyToClipboard
           <span>{displayText}</span>
         </Tooltip>
         <IconButton
+          aria-label={t('Copy to clipboard')}
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(text);
@@ -332,7 +333,7 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
-        <CircularProgress />
+        <CircularProgress aria-label={t('Checking cert-manager installation status')} />
       </Box>
     );
   }

@@ -17,16 +17,31 @@
 /**
  * Ingress class constants for Knative networking configuration.
  *
- * These values correspond to the ingress.class setting in the config-network ConfigMap.
+ * These values correspond to the ingress-class setting in the config-network ConfigMap.
  */
 
 const INGRESS_CLASS_SUFFIX = '.ingress.networking.knative.dev';
 
+const INGRESS_CLASS_CONFIG_KEY = 'ingress-class';
+const LEGACY_INGRESS_CLASS_CONFIG_KEY = 'ingress.class';
 export const INGRESS_CLASS_GATEWAY_API = `gateway-api${INGRESS_CLASS_SUFFIX}`;
 
 // Future ingress classes (commented out for reference)
 // export const INGRESS_CLASS_CONTOUR = `contour${INGRESS_CLASS_SUFFIX}`;
 // export const INGRESS_CLASS_ISTIO = `istio${INGRESS_CLASS_SUFFIX}`;
+
+export function readIngressClass(
+  configData: Record<string, string | undefined> | null | undefined
+): { raw: string | null; value: string | null } {
+  const raw =
+    configData?.[INGRESS_CLASS_CONFIG_KEY] ?? configData?.[LEGACY_INGRESS_CLASS_CONFIG_KEY] ?? null;
+  const trimmed = raw?.trim();
+
+  return {
+    raw,
+    value: trimmed ? trimmed : null,
+  };
+}
 
 /**
  * Helper function to format ingress class for display.

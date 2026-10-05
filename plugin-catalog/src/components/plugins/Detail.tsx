@@ -23,6 +23,7 @@ import Markdown from 'markdown-to-jsx';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import semver from 'semver';
+import { getExternalProxyEndpoint } from './externalProxy';
 import LoadingButton from './LoadingButton';
 
 const { createRouteURL } = Router;
@@ -345,7 +346,7 @@ function fetchHeadlampPluginDetail(repoName: string, pluginName: string, version
   )}/${encodeURIComponent(pluginName)}`;
   const url = version ? `${basePath}/${encodeURIComponent(version)}` : basePath;
 
-  return fetch(`http://localhost:4466/externalproxy`, {
+  return fetch(getExternalProxyEndpoint(), {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -456,8 +457,6 @@ export function PluginDetail() {
         // has already picked (this runs again whenever currentAction changes).
         setSelectedVersion(prev => prev || enrichedPluginData.version);
       }
-
-      fetchStatus();
     };
 
     initialize();

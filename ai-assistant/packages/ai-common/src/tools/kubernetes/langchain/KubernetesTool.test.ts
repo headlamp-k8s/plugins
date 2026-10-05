@@ -128,6 +128,50 @@ describe('KubernetesTool.isContextDifferent', () => {
   });
 });
 
+describe('KubernetesTool.handler — cluster targeting', () => {
+  it('sends the request to the cluster the model asked for', async () => {
+    const ctx = makeCtx([]);
+    let targetCluster: string | undefined;
+    // Unused leading params put `cluster` on the targetCluster position.
+    ctx.callbacks.handleActualApiRequest = async (
+      _url,
+      _method,
+      _body,
+      _onClose,
+      _aiManager,
+      _resourceInfo,
+      cluster
+    ) => {
+      targetCluster = cluster;
+      return '{}';
+    };
+    const tool = new KubernetesTool();
+    tool.setContext(ctx);
+
+    await tool.handler({ url: '/api/v1/pods', method: 'GET', cluster: 'test-cluster' });
+
+    expect(targetCluster).toBe('test-cluster');
+  });
+
+  it('POST confirmation includes the target cluster', async () => {
+    const ctx = makeCtx([]);
+    const requests: KubernetesToolUIState['apiRequest'][] = [];
+    ctx.callbacks.setApiRequest = request => {
+      requests.push(request);
+    };
+    const tool = new KubernetesTool();
+    tool.setContext(ctx);
+
+    await tool.handler({
+      url: '/api/v1/namespaces/default/pods',
+      method: 'POST',
+      cluster: 'test-cluster',
+    });
+
+    expect(requests[0]?.cluster).toBe('test-cluster');
+  });
+});
+
 describe('KubernetesTool.handleApiConfirmation — toolCallId tagging', () => {
   it('tags the history entry with the toolCallId captured before clearing apiRequest', async () => {
     const tool = new KubernetesTool();
@@ -228,6 +272,28 @@ describe('KubernetesTool.handleApiConfirmation — toolCallId tagging', () => {
       const parsed = JSON.parse(result.content);
       expect(Object.prototype.hasOwnProperty.call(parsed, 'fullResource')).toBe(false);
     });
+  });
+
+  it('forwards the stored cluster to handleActualApiRequest on confirmation', async () => {
+    // Queuing the cluster in apiRequest is not enough: confirmation must forward
+    // it as the 7th argument or the mutation targets the wrong cluster.
+    const tool = new KubernetesTool();
+    const ctx = makeCtx([]);
+    let forwardedArgs: unknown[] = [];
+    ctx.callbacks.handleActualApiRequest = async (...args: unknown[]) => {
+      forwardedArgs = args;
+    };
+    tool.setContext(ctx);
+
+    ctx.ui.apiRequest = {
+      url: '/api/v1/namespaces/default/pods/foo',
+      method: 'DELETE',
+      cluster: 'prod-west',
+    };
+
+    await tool.handleApiConfirmation('', {});
+
+    expect(forwardedArgs[6]).toBe('prod-west');
   });
 });
 

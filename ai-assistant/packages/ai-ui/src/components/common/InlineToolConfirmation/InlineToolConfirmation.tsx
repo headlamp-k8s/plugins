@@ -592,9 +592,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
             {t('Tool Execution Required')}
           </Typography>
           <Chip
-            label={t(toolCalls.length === 1 ? '{{count}} tool' : '{{count}} tools', {
-              count: toolCalls.length,
-            })}
+            label={t('{{count}} tool', { count: toolCalls.length })}
             size="small"
             variant="outlined"
             color="primary"
@@ -603,12 +601,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
 
         {/* Summary */}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t(
-            toolCalls.length === 1
-              ? 'The assistant wants to execute {{count}} tool:'
-              : 'The assistant wants to execute {{count}} tools:',
-            { count: toolCalls.length }
-          )}
+          {t('The assistant wants to execute {{count}} tool:', { count: toolCalls.length })}
         </Typography>
 
         {/* Collapsible tool list */}
@@ -790,9 +783,7 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
           >
             {isApproving
               ? t('Executing...')
-              : t(toolCalls.length > 1 ? 'Execute {{count}} Tools' : 'Execute {{count}} Tool', {
-                  count: toolCalls.length,
-                })}
+              : t('Execute {{count}} Tool', { count: toolCalls.length })}
           </Button>
         </Box>
       </CardContent>

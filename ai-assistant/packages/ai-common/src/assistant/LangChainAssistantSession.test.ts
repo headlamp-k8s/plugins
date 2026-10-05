@@ -28,6 +28,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { sanitizeToolAlignment } from '../conversation/history';
 import { convertPromptsToMessages } from '../conversation/langchain/messages';
 import type { ConversationMessage as Prompt } from '../conversation/types';
+import type { ToolClient } from '../mcp/client/ToolClient';
 import type { UserContext } from '../mcp/tools/types';
 import { DEFAULT_SKILLS_CONFIG } from '../skills/config';
 import type { SkillManager } from '../skills/SkillManager';
@@ -1119,6 +1120,63 @@ describe('userSend — with MockKubernetesToolManager', () => {
     const response = await manager.userSend('list pods');
     expect(response.content).toContain('pods');
     expect(response.error).toBeFalsy();
+  });
+});
+
+// =============================================================================
+// Injected MCP client
+// =============================================================================
+
+describe('mcpClient option', () => {
+  /**
+   * Build a minimal MCP bridge that reports itself as available.
+   *
+   * @returns A ToolClient usable as an injected MCP bridge.
+   */
+  function makeToolClient(): ToolClient {
+    return {
+      isAvailable: () => true,
+      getConfig: async () => ({ success: true, config: { enabled: true, servers: [] } }),
+      getToolsConfig: async () => ({ success: true, config: {} }),
+      executeTool: async () => null,
+      isToolEnabled: async () => true,
+      setToolEnabled: async () => true,
+      getToolStats: async () => null,
+      updateToolsConfig: async () => true,
+      parseToolName: name => ({ serverName: 'default', toolName: name }),
+    };
+  }
+
+  /**
+   * Read the MCP bridge held by a session's tool manager.
+   *
+   * @param manager - Session whose tool manager should be inspected.
+   * @returns The MCP bridge in use.
+   */
+  function mcpClientOf(manager: LangChainAssistantSession): ToolClient {
+    return (
+      privateManager(manager).toolManager as unknown as { getMCPClient(): ToolClient }
+    ).getMCPClient();
+  }
+
+  it('falls back to an unavailable bridge when no client is injected', () => {
+    const manager = new LangChainAssistantSession('mock-testing-model', {});
+    expect(mcpClientOf(manager).isAvailable()).toBe(false);
+  });
+
+  it('forwards the injected client to the tool manager', () => {
+    const mcpClient = makeToolClient();
+    const manager = new LangChainAssistantSession('mock-testing-model', {}, [], { mcpClient });
+    expect(mcpClientOf(manager)).toBe(mcpClient);
+  });
+
+  it('prefers an explicit tool manager over the injected client', () => {
+    const toolManager = createMockToolManager({ enabledToolNames: [] });
+    const manager = new LangChainAssistantSession('mock-testing-model', {}, [], {
+      toolManager,
+      mcpClient: makeToolClient(),
+    });
+    expect(privateManager(manager).toolManager).toBe(toolManager);
   });
 });
 

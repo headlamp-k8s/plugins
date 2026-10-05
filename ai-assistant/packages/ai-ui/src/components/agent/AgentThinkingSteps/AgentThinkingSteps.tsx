@@ -288,15 +288,10 @@ const AgentThinkingSteps: React.FC<AgentThinkingStepsProps> = React.memo(
           <ButtonBase
             aria-controls={`agent-thinking-${phase}-steps`}
             aria-expanded={!collapsed}
-            aria-label={t(
-              items.length === 1
-                ? 'Toggle {{phase}}: {{count}} step'
-                : 'Toggle {{phase}}: {{count}} steps',
-              {
-                phase: done ? meta.doneLabel : meta.activeLabel,
-                count: items.length,
-              }
-            )}
+            aria-label={t('Toggle {{phase}}: {{count}} step', {
+              phase: done ? meta.doneLabel : meta.activeLabel,
+              count: items.length,
+            })}
             sx={{
               display: 'flex',
               alignItems: 'center',
@@ -333,9 +328,7 @@ const AgentThinkingSteps: React.FC<AgentThinkingStepsProps> = React.memo(
               variant="caption"
               sx={{ color: 'text.disabled', fontSize: '0.6rem', ml: 0.5 }}
             >
-              {t(items.length === 1 ? '{{count}} step' : '{{count}} steps', {
-                count: items.length,
-              })}
+              {t('{{count}} step', { count: items.length })}
             </Typography>
             <Icon
               icon={collapsed ? 'mdi:chevron-right' : 'mdi:chevron-down'}

@@ -1,0 +1,22 @@
+version: 0.4.1-alpha
+name: headlamp_ai_assistant
+displayName: AI Assistant
+createdAt: '2026-09-21T00:00:00Z'
+logoURL: 'https://raw.githubusercontent.com/headlamp-k8s/plugins/main/ai-assistant/logo.png'
+description: 'The AI Assistant plugin for Headlamp provides an AI-powered assistant to help users interact with their Kubernetes clusters more efficiently.'
+changes:
+  - kind: added
+    description: 'Let the assistant target a named Kubernetes cluster when prompts are sent from views without an active cluster.'
+  - kind: changed
+    description: 'Refresh provider model catalogs and defaults to remove retired models and add current tool-capable models.'
+  - kind: changed
+    description: 'Route GitHub Copilot models that do not support chat completions through the Responses API.'
+  - kind: fixed
+    description: 'Open Kubernetes resource links inside Headlamp instead of sending them to the external browser.'
+  - kind: removed
+    description: 'Remove the unreleased built-in AKS-MCP server integration while preserving generic MCP support and AKS skills.'
+annotations:
+  headlamp/plugin/archive-url: https://github.com/headlamp-k8s/plugins/releases/download/ai-assistant-0.4.1-alpha/headlamp-k8s-ai-assistant-0.4.1-alpha.tar.gz
+  headlamp/plugin/archive-checksum: 'SHA256:a91984fa15682a4109088803a6265d5caf49fe1f0931870716169b14d99e98ef'
+  headlamp/plugin/version-compat: '>=0.22'
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

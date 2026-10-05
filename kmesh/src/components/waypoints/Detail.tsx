@@ -1,7 +1,16 @@
+import { Router } from '@kinvolk/headlamp-plugin/lib';
+import {
+  ObjectEventList,
+  SectionBox,
+  SimpleTable,
+  StatusLabel,
+} from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { MainInfoSection } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { Waypoint } from '../../resources/waypoint';
-import { kmeshRoutePaths } from '../../utils/kmeshRoutes';
+import { kmeshRouteNames, kmeshRoutePaths } from '../../utils/kmeshRoutes';
+
+const { createRouteURL } = Router;
 
 /**
  * Props for the Waypoint Detail view component.
@@ -35,12 +44,55 @@ export default function WaypointDetail(props: WaypointDetailProps) {
         resource={null}
         title="Waypoint Details"
         error={MISSING_PARAMS_ERROR}
-        backLink={kmeshRoutePaths.waypointsList}
+        backLink={createRouteURL(kmeshRouteNames.waypointsList)}
       />
     );
   }
 
   return <WaypointDetailContent name={name} namespace={namespace} cluster={cluster} />;
+}
+
+function ConditionsTable({ conditions }: { conditions?: any[] }) {
+  if (!conditions || conditions.length === 0) {
+    return null;
+  }
+
+  return (
+    <SectionBox title="Conditions">
+      <SimpleTable
+        data={conditions}
+        columns={[
+          {
+            label: 'Type',
+            getter: (c: any) => c.type,
+          },
+          {
+            label: 'Status',
+            getter: (c: any) => {
+              const statusType =
+                c.status === 'True' ? 'success' : c.status === 'False' ? 'error' : 'warning';
+              return <StatusLabel status={statusType}>{c.status}</StatusLabel>;
+            },
+          },
+          {
+            label: 'Reason',
+            getter: (c: any) => c.reason,
+          },
+          {
+            label: 'Message',
+            getter: (c: any) => c.message,
+          },
+          {
+            label: 'Last Transition',
+            getter: (c: any) =>
+              c.lastTransitionTime && !c.lastTransitionTime.startsWith('1970-01-01')
+                ? new Date(c.lastTransitionTime).toLocaleString()
+                : '-',
+          },
+        ]}
+      />
+    </SectionBox>
+  );
 }
 
 function WaypointDetailContent({
@@ -55,25 +107,29 @@ function WaypointDetailContent({
   const [waypoint, error] = Waypoint.useGet(name, namespace, { cluster });
 
   return (
-    <MainInfoSection
-      resource={waypoint}
-      error={error}
-      title="Waypoint Details"
-      backLink={kmeshRoutePaths.waypointsList}
-      extraInfo={[
-        {
-          name: 'Gateway Class',
-          value: waypoint?.spec?.gatewayClassName,
-        },
-        {
-          name: 'Image',
-          value: waypoint?.image,
-        },
-        {
-          name: 'Current Status',
-          value: waypoint?.currentStatus,
-        },
-      ]}
-    />
+    <>
+      <MainInfoSection
+        resource={waypoint}
+        error={error}
+        title="Waypoint Details"
+        backLink={createRouteURL(kmeshRouteNames.waypointsList)}
+        extraInfo={[
+          {
+            name: 'Gateway Class',
+            value: waypoint?.spec?.gatewayClassName,
+          },
+          {
+            name: 'Image',
+            value: waypoint?.image,
+          },
+          {
+            name: 'Current Status',
+            value: waypoint?.currentStatus,
+          },
+        ]}
+      />
+      {waypoint && <ConditionsTable conditions={waypoint.status?.conditions} />}
+      {waypoint && <ObjectEventList object={waypoint as any} />}
+    </>
   );
 }

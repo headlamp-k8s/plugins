@@ -1,0 +1,33 @@
+version: 0.1.0-alpha
+name: headlamp_metal3
+displayName: Metal3
+createdAt: "2026-08-26T00:00:00Z"
+description: A Headlamp plugin for viewing Metal3 bare-metal hosts and infrastructure
+logoURL: https://avatars.githubusercontent.com/u/49879880?s=200&v=4
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/metal3
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - metal3
+  - bare-metal
+  - infrastructure
+maintainers:
+  - name: mastermaxx03
+    email: srivastavaanimesh22@gmail.com
+changes:
+  - kind: added
+    description: "Add BareMetalHost list and detail views"
+  - kind: added
+    description: "Show operational, provisioning, and error status together"
+  - kind: added
+    description: "Link BareMetalHost consumers and Kubernetes resources"
+  - kind: added
+    description: "Handle clusters without the Metal3 CRDs"
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/metal3-0.1.0-alpha/headlamp-k8s-metal3-0.1.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: sha256:eda7b6ab8fae3734564805ab3b220969ce8c2e809a63469ca95199f80e292678
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

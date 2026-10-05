@@ -52,6 +52,8 @@ export function PrometheusNotFoundBanner() {
       <Grid item>
         <Typography>
           <Link
+            component="button"
+            type="button"
             onClick={() => history.push(`/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`)}
           >
             {t('Configure Prometheus plugin.')}
@@ -60,7 +62,7 @@ export function PrometheusNotFoundBanner() {
       </Grid>
       <Grid item>
         <Typography>
-          <Link href={learnMoreLink} target="_blank">
+          <Link href={learnMoreLink} target="_blank" rel="noopener noreferrer">
             {t('Learn more about enabling advanced charts.')}
           </Link>
         </Typography>

@@ -483,6 +483,10 @@ function createMockIndexedDB() {
       makeRequest(() => {
         store.set(entry.key, entry);
       }),
+    delete: (key: string) =>
+      makeRequest(() => {
+        store.delete(key);
+      }),
     clear: () =>
       makeRequest(() => {
         store.clear();
@@ -555,6 +559,18 @@ describe('BrowserSkillCache', () => {
     expect(result).toBeNull();
   });
 
+  it('does not expire downloaded skills by default', async () => {
+    const cache = new BrowserSkillCache();
+    const skills = [makeParsedSkill('downloaded-skill')];
+    await cache.set('key1', skills);
+
+    const entry = mockIndexedDB._store.get('key1');
+    expect(entry).toBeDefined();
+    mockIndexedDB._store.set('key1', { ...entry!, cachedAt: 0 });
+
+    expect(await cache.get('key1')).toEqual(skills);
+  });
+
   it('returns null when the stored skills JSON is corrupt', async () => {
     mockIndexedDB._store.set('bad-key', {
       key: 'bad-key',
@@ -573,6 +589,16 @@ describe('BrowserSkillCache', () => {
     await cache.clear();
 
     expect(mockIndexedDB._store.size).toBe(0);
+  });
+
+  it('deletes one source entry', async () => {
+    const cache = new BrowserSkillCache();
+    await cache.set('a', []);
+    await cache.set('b', []);
+    await cache.delete('a');
+
+    expect(await cache.get('a')).toBeNull();
+    expect(await cache.get('b')).toEqual([]);
   });
 
   it('get returns null when IndexedDB is unavailable', async () => {

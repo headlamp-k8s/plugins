@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   Link,
@@ -16,6 +16,7 @@ import CanaryStatus from './canarystatus';
 import { DeploymentProgress } from './deploymentprogress';
 
 export default function Canaries() {
+  const { t } = useTranslation();
   const [canary] = useCanary();
   const canaryResourceClass = React.useMemo(() => getCanaryResourceClass(canary), [canary]);
 
@@ -24,13 +25,14 @@ export default function Canaries() {
       {canaryResourceClass ? (
         <CanaryList canaryResourceClass={canaryResourceClass} />
       ) : (
-        <Loader title="Loading..." />
+        <Loader title={t('Loading...')} />
       )}
     </FlaggerAvailabilityCheck>
   );
 }
 
 function CanaryList({ canaryResourceClass }) {
+  const { t } = useTranslation();
   const [canaries] = canaryResourceClass.useList();
   const [deployments] = K8s.ResourceClasses.Deployment.useList();
 
@@ -90,12 +92,12 @@ function CanaryList({ canaryResourceClass }) {
   }, [canaries, deployments]);
 
   return (
-    <SectionBox title="Canaries">
+    <SectionBox title={t('Canaries')}>
       <Table
         data={canariesWithPodCounts}
         columns={[
           {
-            header: 'Name',
+            header: t('Name'),
             accessorKey: 'metadata.name',
             Cell: ({ row: { original: item } }) => {
               return (
@@ -115,16 +117,16 @@ function CanaryList({ canaryResourceClass }) {
             },
           },
           {
-            header: 'Status',
+            header: t('Status'),
             accessorKey: 'status.phase',
             Cell: ({ row: { original: item } }) => {
               // Correctly extract the phase from the status object
-              const phase = item?.status?.phase || 'Unknown';
+              const phase = item?.status?.phase || t('Unknown');
               return <CanaryStatus status={phase} />;
             },
           },
           {
-            header: 'Namespace',
+            header: t('Namespace'),
             accessorKey: 'metadata.namespace',
             Cell: ({ row: { original: item } }) => (
               <Link routeName={'namespace'} params={{ name: item.metadata.namespace }}>
@@ -133,7 +135,7 @@ function CanaryList({ canaryResourceClass }) {
             ),
           },
           {
-            header: 'Target',
+            header: t('Target'),
             accessorKey: 'spec.targetRef.name',
             Cell: ({ row: { original: item } }) => {
               const kind = item?.spec?.targetRef?.kind;
@@ -147,19 +149,19 @@ function CanaryList({ canaryResourceClass }) {
             },
           },
           {
-            header: 'Progress',
+            header: t('Progress'),
             Cell: ({ row: { original: item } }) => <DeploymentProgress canary={item} />,
           },
           {
-            header: 'Canary Pods',
+            header: t('Canary Pods'),
             Cell: ({ row: { original: item } }) => item?.canaryPodCount || 0,
           },
           {
-            header: 'Primary Pods',
+            header: t('Primary Pods'),
             Cell: ({ row: { original: item } }) => item?.primaryPodCount || 0,
           },
           {
-            header: 'A/B Testing',
+            header: t('A/B Testing'),
             Cell: ({ row: { original: item } }) =>
               item?.hasAbTesting ? (
                 <Box display="flex" alignItems="center">
@@ -172,26 +174,34 @@ function CanaryList({ canaryResourceClass }) {
               ),
           },
           {
-            header: 'A/B Headers',
+            header: t('A/B Headers'),
             Cell: ({ row: { original: item } }) => item?.abHeaders || '-',
           },
           {
-            header: 'A/B Cookies',
+            header: t('A/B Cookies'),
             Cell: ({ row: { original: item } }) => item?.abCookies || '-',
           },
           {
-            header: 'Configuration',
+            header: t('Configuration'),
             Cell: ({ row: { original: item } }) => (
               <Box>
-                <Box>Max Weight: {item.spec.analysis.maxWeight}</Box>
-                <Box>Step Weight: {item.spec.analysis.stepWeight}</Box>
-                <Box>Threshold: {item.spec.analysis.threshold}</Box>
-                <Box>Interval: {item.spec.analysis.interval}</Box>
+                <Box>
+                  {t('Max Weight')}: {item.spec.analysis.maxWeight}
+                </Box>
+                <Box>
+                  {t('Step Weight')}: {item.spec.analysis.stepWeight}
+                </Box>
+                <Box>
+                  {t('Threshold')}: {item.spec.analysis.threshold}
+                </Box>
+                <Box>
+                  {t('Interval')}: {item.spec.analysis.interval}
+                </Box>
               </Box>
             ),
           },
           {
-            header: 'Age',
+            header: t('Age'),
             accessorKey: 'metadata.creationTimestamp',
             Cell: ({ row: { original: item } }) => {
               return <DateLabel date={item.metadata.creationTimestamp} />;

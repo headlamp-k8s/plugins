@@ -18,9 +18,8 @@
  * Tests for the agent-mode default behaviour in modal.tsx.
  *
  * The rule: default to chat mode (isAgentMode = false).
- * Only auto-enable Holmes agent mode on first mount when:
- *   1. There is NO configured chat provider, AND
- *   2. Holmes agent health check returns true.
+ * Auto-enable Holmes on mount when it is available, unless the user has
+ * explicitly selected Chat during the current panel session.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -35,11 +34,12 @@ async function shouldAutoEnableAgentMode(opts: {
   holmesAvailable: boolean;
   isAlreadyAgentMode: boolean;
   hasExistingAgent: boolean;
+  userSelectedChat?: boolean;
 }): Promise<boolean> {
-  const { holmesAvailable, isAlreadyAgentMode, hasExistingAgent } = opts;
+  const { holmesAvailable, isAlreadyAgentMode, hasExistingAgent, userSelectedChat } = opts;
 
   // Mirror the guard in the useEffect (hasChatProvider no longer blocks):
-  if (isAlreadyAgentMode || hasExistingAgent) return false;
+  if (userSelectedChat || isAlreadyAgentMode || hasExistingAgent) return false;
 
   // Holmes wins if reachable, regardless of chat provider.
   return holmesAvailable;
@@ -87,7 +87,7 @@ describe('agent mode default behaviour', () => {
     expect(result).toBe(false);
   });
 
-  it('auto-enables agent mode only when there is no chat provider AND Holmes is reachable', async () => {
+  it('auto-enables agent mode when there is no chat provider and Holmes is reachable', async () => {
     const result = await shouldAutoEnableAgentMode({
       hasChatProvider: false,
       holmesAvailable: true,
@@ -113,6 +113,17 @@ describe('agent mode default behaviour', () => {
       holmesAvailable: true,
       isAlreadyAgentMode: false,
       hasExistingAgent: true,
+    });
+    expect(result).toBe(false);
+  });
+
+  it('does NOT re-enable Holmes after the user explicitly selects Chat', async () => {
+    const result = await shouldAutoEnableAgentMode({
+      hasChatProvider: true,
+      holmesAvailable: true,
+      isAlreadyAgentMode: false,
+      hasExistingAgent: false,
+      userSelectedChat: true,
     });
     expect(result).toBe(false);
   });

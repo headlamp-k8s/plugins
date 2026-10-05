@@ -1,10 +1,14 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import ClusterQueueDetail from './components/clusterqueues/Detail';
 import ClusterQueueList from './components/clusterqueues/List';
+import CohortDetail from './components/cohorts/Detail';
+import CohortList from './components/cohorts/List';
 import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
+import WorkloadDetail from './components/workloads/Detail';
+import WorkloadList from './components/workloads/List';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
 
 registerSidebarEntry({
@@ -24,6 +28,13 @@ registerSidebarEntry({
 
 registerSidebarEntry({
   parent: 'kueue',
+  name: 'kueue-cohorts',
+  label: 'Cohorts',
+  url: kueueRoutePaths.cohortsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
   name: 'kueue-localqueues',
   label: 'LocalQueues',
   url: kueueRoutePaths.localQueuesList,
@@ -34,6 +45,13 @@ registerSidebarEntry({
   name: 'kueue-resourceflavors',
   label: 'ResourceFlavors',
   url: kueueRoutePaths.resourceFlavorsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-workloads',
+  label: 'Workloads',
+  url: kueueRoutePaths.workloadsList,
 });
 
 registerRoute({
@@ -50,6 +68,22 @@ registerRoute({
   name: kueueRouteNames.clusterQueueDetail,
   exact: true,
   component: () => <ClusterQueueDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.cohortsList,
+  sidebar: 'kueue-cohorts',
+  name: kueueRouteNames.cohortsList,
+  exact: true,
+  component: () => <CohortList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.cohortDetail,
+  sidebar: 'kueue-cohorts',
+  name: kueueRouteNames.cohortDetail,
+  exact: true,
+  component: () => <CohortDetail />,
 });
 
 registerRoute({
@@ -82,4 +116,20 @@ registerRoute({
   name: kueueRouteNames.resourceFlavorDetail,
   exact: true,
   component: () => <ResourceFlavorDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.workloadsList,
+  sidebar: 'kueue-workloads',
+  name: kueueRouteNames.workloadsList,
+  exact: true,
+  component: () => <WorkloadList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.workloadDetail,
+  sidebar: 'kueue-workloads',
+  name: kueueRouteNames.workloadDetail,
+  exact: true,
+  component: () => <WorkloadDetail />,
 });

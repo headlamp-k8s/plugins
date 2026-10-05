@@ -1,5 +1,7 @@
 import { getSavedConfigurations } from '@headlamp-k8s/ai-common/providers/savedConfigs';
+import { AiUiI18nProvider } from '@headlamp-k8s/ai-ui/AiUiI18nProvider';
 import AIAssistantToggle from '@headlamp-k8s/ai-ui/components/appbar/AIAssistantToggle';
+import { isAksDesktopHost } from '@headlamp-k8s/ai-ui/mcp/host';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { useTheme } from '@mui/material/styles';
@@ -19,7 +21,7 @@ import { getSettingsURL, pluginStore, useGlobalState, usePluginConfig } from '..
 export default function HeadlampAIPrompt() {
   const pluginState = useGlobalState();
   const savedConfigs = usePluginConfig();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const history = useHistory();
   const theme = useTheme();
   const [showPopover, setShowPopover] = React.useState(false);
@@ -42,6 +44,10 @@ export default function HeadlampAIPrompt() {
   const [isAgentAvailable, setIsAgentAvailable] = React.useState(false);
   React.useEffect(() => {
     let cancelled = false;
+    if (isAksDesktopHost()) {
+      setIsAgentAvailable(false);
+      return;
+    }
     const cluster = getCluster();
     if (!cluster) {
       setIsAgentAvailable(false);
@@ -98,15 +104,17 @@ export default function HeadlampAIPrompt() {
   }
 
   return (
-    <AIAssistantToggle
-      isOpen={pluginState.isUIPanelOpen}
-      onToggle={() => pluginState.setIsUIPanelOpen(!pluginState.isUIPanelOpen)}
-      showConfigPrompt={showPopover}
-      onDismissPrompt={handleClosePopover}
-      onConfigure={handleConfigureClick}
-      icon="ai-assistant:logo"
-      iconColor={iconColor}
-      tooltipTitle={t('AI Assistant')}
-    />
+    <AiUiI18nProvider i18n={i18n}>
+      <AIAssistantToggle
+        isOpen={pluginState.isUIPanelOpen}
+        onToggle={() => pluginState.setIsUIPanelOpen(!pluginState.isUIPanelOpen)}
+        showConfigPrompt={showPopover}
+        onDismissPrompt={handleClosePopover}
+        onConfigure={handleConfigureClick}
+        icon="ai-assistant:logo"
+        iconColor={iconColor}
+        tooltipTitle={t('AI Assistant')}
+      />
+    </AiUiI18nProvider>
   );
 }

@@ -22,6 +22,7 @@ import {
 } from '@headlamp-k8s/ai-common/providers/catalog';
 import {
   type CommandRunner,
+  detectAzureOpenAIProvider,
   detectCopilotChatModels,
   detectCopilotProvider,
   DetectedProvider,
@@ -68,6 +69,12 @@ import {
 import { Autocomplete } from '@mui/material';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  translateProviderDescription,
+  translateProviderFieldDescription,
+  translateProviderFieldLabel,
+  translateProviderFieldPlaceholder,
+} from '../../../ownedUiTranslations';
 import { DefaultDialog } from '../../defaults/DefaultSlots/DefaultSlots';
 import TermsDialog from '../TermsDialog/TermsDialog';
 
@@ -165,7 +172,7 @@ function ProviderSelectionDialog({
           {modelProviders.map(provider => (
             <Grid item key={provider.id} xs={6} md={3}>
               <Paper
-                aria-label={t('Configure {{provider}}', { provider: t(provider.name) })}
+                aria-label={t('Configure {{provider}}', { provider: provider.name })}
                 role="button"
                 tabIndex={0}
                 sx={{
@@ -199,7 +206,7 @@ function ProviderSelectionDialog({
               >
                 <Icon icon={provider.icon} width="32px" height="32px" />
                 <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
-                  {t(provider.name)}
+                  {provider.name}
                 </Typography>
               </Paper>
             </Grid>
@@ -272,20 +279,25 @@ function ConfigurationDialog({
   latestConfig.current = config;
   latestConfigName.current = configName;
 
-  const isDetectSupported = providerId === 'copilot';
+  const isDetectSupported = providerId === 'copilot' || providerId === 'azure';
   const detectRequestId = useRef(0);
+  const detectController = useRef<AbortController | null>(null);
 
   // Reset detect state when dialog opens/provider changes
   useEffect(() => {
+    detectController.current?.abort();
     detectRequestId.current += 1;
     setDetectStatus(null);
     setIsDetecting(false);
     setLiveModelOptions([]);
   }, [open, providerId]);
 
+  useEffect(() => () => detectController.current?.abort(), []);
+
   // Live Copilot model fetching when dialog opens with a token
   useEffect(() => {
     if (!open || providerId !== 'copilot' || !commandRunner) return;
+    const controller = new AbortController();
     setLiveModelOptions([]);
     const storedKey = config.apiKey;
     const isSentinel = storedKey === GH_CLI_AUTH_SENTINEL;
@@ -301,9 +313,9 @@ function ConfigurationDialog({
      */
     const run = async () => {
       try {
-        const token = typedKey ?? (await refreshGitHubToken(commandRunner));
+        const token = typedKey ?? (await refreshGitHubToken(commandRunner, controller.signal));
         if (!token || cancelled) return;
-        const models = await detectCopilotChatModels(token);
+        const models = await detectCopilotChatModels(token, controller.signal);
         if (!cancelled && models && models.length > 0) {
           setLiveModelOptions(models.map(m => m.id));
         }
@@ -315,6 +327,7 @@ function ConfigurationDialog({
     const timer = setTimeout(run, delay);
     return () => {
       cancelled = true;
+      controller.abort();
       clearTimeout(timer);
     };
   }, [open, providerId, config.apiKey, commandRunner]);
@@ -326,6 +339,9 @@ function ConfigurationDialog({
    */
   const handleDetect = async () => {
     if (!commandRunner || !isDetectSupported) return;
+    detectController.current?.abort();
+    const controller = new AbortController();
+    detectController.current = controller;
     const requestId = ++detectRequestId.current;
     const configAtStart = latestConfig.current;
     const configNameAtStart = latestConfigName.current;
@@ -334,7 +350,15 @@ function ConfigurationDialog({
     try {
       let detected: DetectedProvider | null = null;
       if (providerId === 'copilot') {
-        detected = await detectCopilotProvider(commandRunner);
+        detected = await detectCopilotProvider(commandRunner, controller.signal);
+      } else if (providerId === 'azure') {
+        detected = await detectAzureOpenAIProvider(
+          commandRunner,
+          new Set(),
+          new Set(),
+          new Set(),
+          controller.signal
+        );
       }
       if (detectRequestId.current !== requestId) return;
       if (detected) {
@@ -357,15 +381,15 @@ function ConfigurationDialog({
           onConfigNameChange(detected.displayName || provider?.name || providerId);
         }
         const detectedApiKey = detected.config.apiKey;
-        if (detected.config.model && detectedApiKey) {
+        if (providerId === 'copilot' && detected.config.model && detectedApiKey) {
           void (async () => {
             try {
               const modelToken =
                 detectedApiKey === GH_CLI_AUTH_SENTINEL
-                  ? await refreshGitHubToken(commandRunner)
+                  ? await refreshGitHubToken(commandRunner, controller.signal)
                   : detectedApiKey;
               if (!modelToken) return;
-              const models = await detectCopilotChatModels(modelToken);
+              const models = await detectCopilotChatModels(modelToken, controller.signal);
               const currentApiKey = latestConfig.current.apiKey;
               const credentialStillMatches =
                 currentApiKey === detectedApiKey ||
@@ -385,8 +409,8 @@ function ConfigurationDialog({
         setDetectStatus({ kind: 'success', text: t('Detected and applied provider settings.') });
       } else {
         let hint: ReactNode | undefined;
-        if (providerId === 'copilot') {
-          const ghAvailable = await detectGhCliAvailable(commandRunner);
+        if (providerId === 'copilot' && !controller.signal.aborted) {
+          const ghAvailable = await detectGhCliAvailable(commandRunner, controller.signal);
           if (detectRequestId.current !== requestId) return;
           if (!ghAvailable) {
             hint = (
@@ -464,7 +488,7 @@ function ConfigurationDialog({
           {provider && <Icon icon={provider.icon} width="24px" height="24px" />}
           <Typography variant="h6" component="span">
             {provider
-              ? t('Configure {{provider}}', { provider: t(provider.name) })
+              ? t('Configure {{provider}}', { provider: provider.name })
               : t('Configure Provider')}
           </Typography>
         </Box>
@@ -473,7 +497,9 @@ function ConfigurationDialog({
         {provider && (
           <Box sx={{ p: 1 }}>
             <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-              {provider.description ? t(provider.description) : null}
+              {provider.description
+                ? translateProviderDescription(t, provider.id, provider.description)
+                : null}
             </Typography>
 
             {onConfigNameChange && (
@@ -501,7 +527,7 @@ function ConfigurationDialog({
                   {field.type === 'select' && field.name === 'model' ? (
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" sx={{ mb: 0.5 }}>
-                        {t(field.label)}
+                        {translateProviderFieldLabel(t, provider.id, field.name, field.label)}
                         {field.required && (
                           <Box component="span" sx={{ color: 'error.main' }}>
                             {' '}
@@ -525,7 +551,12 @@ function ConfigurationDialog({
                           <TextField
                             {...params}
                             fullWidth
-                            label={t(field.label)}
+                            label={translateProviderFieldLabel(
+                              t,
+                              provider.id,
+                              field.name,
+                              field.label
+                            )}
                             size="small"
                             placeholder={t(
                               'Enter or select model name (e.g., gpt-4, claude-3-opus, custom-model)'
@@ -578,12 +609,21 @@ function ConfigurationDialog({
                           />
                         )}
                       />
-                      {field.description && <FormHelperText>{t(field.description)}</FormHelperText>}
+                      {field.description && (
+                        <FormHelperText>
+                          {translateProviderFieldDescription(
+                            t,
+                            provider.id,
+                            field.name,
+                            field.description
+                          )}
+                        </FormHelperText>
+                      )}
                     </Box>
                   ) : field.type === 'select' ? (
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" sx={{ mb: 0.5 }}>
-                        {t(field.label)}
+                        {translateProviderFieldLabel(t, provider.id, field.name, field.label)}
                         {field.required && (
                           <Box component="span" sx={{ color: 'error.main' }}>
                             {' '}
@@ -598,12 +638,26 @@ function ConfigurationDialog({
                         size="small"
                         displayEmpty
                         inputProps={{
-                          'aria-label': t(field.label),
+                          'aria-label': translateProviderFieldLabel(
+                            t,
+                            provider.id,
+                            field.name,
+                            field.label
+                          ),
                           'aria-required': field.required,
                         }}
                       >
                         <MenuItem value="" disabled>
-                          <em>{t('Select {{label}}', { label: t(field.label) })}</em>
+                          <em>
+                            {t('Select {{label}}', {
+                              label: translateProviderFieldLabel(
+                                t,
+                                provider.id,
+                                field.name,
+                                field.label
+                              ),
+                            })}
+                          </em>
                         </MenuItem>
                         {field.options?.map(option => (
                           <MenuItem key={option} value={option}>
@@ -611,12 +665,21 @@ function ConfigurationDialog({
                           </MenuItem>
                         ))}
                       </Select>
-                      {field.description && <FormHelperText>{t(field.description)}</FormHelperText>}
+                      {field.description && (
+                        <FormHelperText>
+                          {translateProviderFieldDescription(
+                            t,
+                            provider.id,
+                            field.name,
+                            field.description
+                          )}
+                        </FormHelperText>
+                      )}
                     </Box>
                   ) : field.type === 'number' ? (
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" sx={{ mb: 0.5 }}>
-                        {t(field.label)}
+                        {translateProviderFieldLabel(t, provider.id, field.name, field.label)}
                         {field.required && (
                           <Box component="span" sx={{ color: 'error.main' }}>
                             {' '}
@@ -625,22 +688,40 @@ function ConfigurationDialog({
                         )}
                       </Typography>
                       <TextField
-                        label={t(field.label)}
+                        label={translateProviderFieldLabel(t, provider.id, field.name, field.label)}
                         type="number"
                         value={getStringSetting(config, field.name)}
                         onChange={e => handleFieldChange(field.name, e.target.value)}
                         fullWidth
                         size="small"
-                        placeholder={field.placeholder ? t(field.placeholder) : undefined}
+                        placeholder={
+                          field.placeholder
+                            ? translateProviderFieldPlaceholder(
+                                t,
+                                provider.id,
+                                field.name,
+                                field.placeholder
+                              )
+                            : undefined
+                        }
                         inputProps={{ step: 0.1 }}
                         required={field.required}
                       />
-                      {field.description && <FormHelperText>{t(field.description)}</FormHelperText>}
+                      {field.description && (
+                        <FormHelperText>
+                          {translateProviderFieldDescription(
+                            t,
+                            provider.id,
+                            field.name,
+                            field.description
+                          )}
+                        </FormHelperText>
+                      )}
                     </Box>
                   ) : (
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" sx={{ mb: 0.5 }}>
-                        {t(field.label)}
+                        {translateProviderFieldLabel(t, provider.id, field.name, field.label)}
                         {field.required && (
                           <Box component="span" sx={{ color: 'error.main' }}>
                             {' '}
@@ -649,17 +730,35 @@ function ConfigurationDialog({
                         )}
                       </Typography>
                       <TextField
-                        label={t(field.label)}
+                        label={translateProviderFieldLabel(t, provider.id, field.name, field.label)}
                         type={field.name.toLowerCase().includes('key') ? 'password' : 'text'}
                         value={getStringSetting(config, field.name)}
                         onChange={e => handleFieldChange(field.name, e.target.value)}
                         fullWidth
                         size="small"
-                        placeholder={field.placeholder ? t(field.placeholder) : undefined}
+                        placeholder={
+                          field.placeholder
+                            ? translateProviderFieldPlaceholder(
+                                t,
+                                provider.id,
+                                field.name,
+                                field.placeholder
+                              )
+                            : undefined
+                        }
                         required={field.required}
                         autoComplete={field.name.toLowerCase().includes('key') ? 'off' : undefined}
                       />
-                      {field.description && <FormHelperText>{t(field.description)}</FormHelperText>}
+                      {field.description && (
+                        <FormHelperText>
+                          {translateProviderFieldDescription(
+                            t,
+                            provider.id,
+                            field.name,
+                            field.description
+                          )}
+                        </FormHelperText>
+                      )}
                     </Box>
                   )}
                 </Grid>
@@ -749,7 +848,7 @@ function ConfigurationDialog({
             onClick={handleDetect}
             disabled={isDetecting}
           >
-            {isDetecting ? t('Auto Detecting...') : t('Auto Detect')}
+            {isDetecting ? t('Detecting…') : t('Auto Detect')}
           </Button>
         )}
         <Button onClick={onClose} disabled={isDetecting}>
@@ -856,6 +955,9 @@ export default function ModelSelector({
   const [pendingAcquisition, setPendingAcquisition] = useState<'add' | 'detect'>('add');
   const [builtInDetecting, setBuiltInDetecting] = useState(false);
   const detectAllRequestId = useRef(0);
+  const detectAllController = useRef<AbortController | null>(null);
+
+  useEffect(() => () => detectAllController.current?.abort(), []);
 
   // State for the 3-dot menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -1046,11 +1148,19 @@ export default function ModelSelector({
    */
   const handleDetectAllProviders = async (): Promise<void> => {
     if (!commandRunner || !onAutoDetectResults || builtInDetecting) return;
+    detectAllController.current?.abort();
+    const controller = new AbortController();
+    detectAllController.current = controller;
     const requestId = ++detectAllRequestId.current;
     setBuiltInDetecting(true);
     let detected: DetectedProvider[];
     try {
-      detected = await detectProviders(normalizedSavedConfigs.providers || [], [], commandRunner);
+      detected = await detectProviders(
+        normalizedSavedConfigs.providers || [],
+        [],
+        commandRunner,
+        controller.signal
+      );
     } catch {
       detected = [];
     }
@@ -1250,7 +1360,7 @@ export default function ModelSelector({
                           : t('Select {{provider}}', {
                               provider:
                                 savedConfig.displayName ||
-                                (savedProvider?.name ? t(savedProvider.name) : undefined) ||
+                                savedProvider?.name ||
                                 savedConfig.providerId,
                             })
                       }
@@ -1309,9 +1419,7 @@ export default function ModelSelector({
                         variant="body1"
                         sx={{ fontWeight: 'medium', textAlign: 'center' }}
                       >
-                        {savedConfig.displayName ||
-                          (savedProvider?.name ? t(savedProvider.name) : undefined) ||
-                          savedConfig.providerId}
+                        {savedConfig.displayName || savedProvider?.name || savedConfig.providerId}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" align="center">
                         {savedConfig.config.model || savedConfig.config.deploymentName ? (
@@ -1337,9 +1445,7 @@ export default function ModelSelector({
                       size="small"
                       aria-label={t('More options for {{configuration}}', {
                         configuration:
-                          savedConfig.displayName ||
-                          (savedProvider?.name ? t(savedProvider.name) : undefined) ||
-                          savedConfig.providerId,
+                          savedConfig.displayName || savedProvider?.name || savedConfig.providerId,
                       })}
                       aria-haspopup="menu"
                       aria-expanded={openMenu && menuConfigId === savedConfig.id}

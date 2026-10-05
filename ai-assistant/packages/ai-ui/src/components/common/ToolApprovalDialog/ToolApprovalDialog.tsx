@@ -231,12 +231,14 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
 
       <DialogContent>
         <Alert severity="info" sx={{ mb: 3 }}>
-          {t(
-            toolCalls.length === 1
-              ? 'The AI Assistant wants to execute 1 tool to complete your request. Please review and approve the tool you want to allow.'
-              : 'The AI Assistant wants to execute {{count}} tools to complete your request. Please review and approve the tools you want to allow.',
-            { count: toolCalls.length }
-          )}
+          {toolCalls.length === 1
+            ? t(
+                'The AI Assistant wants to execute 1 tool to complete your request. Please review and approve the tool you want to allow.'
+              )
+            : t(
+                'The AI Assistant wants to execute {{total}} tools to complete your request. Please review and approve the tools you want to allow.',
+                { total: toolCalls.length }
+              )}
         </Alert>
 
         {mcpTools.length > 0 && (

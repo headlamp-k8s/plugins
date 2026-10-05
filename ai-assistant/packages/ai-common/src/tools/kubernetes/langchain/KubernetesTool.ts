@@ -68,6 +68,12 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
 - For POST: Provide the complete resource definition
 - The system will automatically merge PUT patches with existing resources`
         ),
+      cluster: z
+        .string()
+        .optional()
+        .describe(
+          'Name of the cluster to send the request to. Omit to use the currently selected cluster. When no cluster is selected, pass one of the available clusters listed in the context.'
+        ),
     }),
   };
 
@@ -135,14 +141,18 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
     if (!this.context) {
       throw new Error('Kubernetes tool context not configured');
     }
-    const { url, method, body } = args;
+    const { url, method, body, cluster } = args;
     if (typeof url !== 'string' || typeof method !== 'string') {
       throw new Error('Kubernetes tool requires string url and method arguments');
     }
     if (body !== undefined && typeof body !== 'string') {
       throw new Error('Kubernetes tool body must be a string when provided');
     }
+    if (cluster !== undefined && typeof cluster !== 'string') {
+      throw new Error('Kubernetes tool cluster must be a string when provided');
+    }
     const requestBody = typeof body === 'string' ? body : undefined;
+    const targetCluster = typeof cluster === 'string' ? cluster : undefined;
 
     // Normalize once; all downstream branching, callbacks, and metadata use
     // the canonical upper-case form so a model-supplied lowercase verb never
@@ -159,7 +169,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
           () => {}, // No-op onClose for GET requests
           this.context.aiManager, // Use aiManager from context
           '', // No resource info needed for GET requests
-          undefined, // No target cluster specified
+          targetCluster,
           undefined // No failure callback for GET requests (they're read-only)
         );
 
@@ -220,6 +230,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
       url,
       method: METHOD,
       body: requestBody,
+      cluster: targetCluster,
       toolCallId,
       pendingPrompt,
     });
@@ -261,7 +272,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
   async handleApiConfirmation(body: string, resourceInfo: unknown): Promise<void> {
     if (!this.context || !this.context.ui.apiRequest) return;
 
-    const { url, method, toolCallId } = this.context.ui.apiRequest;
+    const { url, method, toolCallId, cluster } = this.context.ui.apiRequest;
     // Normalize for consistency; the stored value is already upper-case but
     // ui.apiRequest.method is typed as string so defensive normalization is cheap.
     const METHOD = method.toUpperCase();
@@ -277,7 +288,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
       this.handleApiDialogClose.bind(this),
       this.context.aiManager, // Use aiManager from context
       resourceInfo,
-      undefined, // No target cluster specified
+      cluster,
       undefined // No failure callback needed here as it's handled by the main flow
     );
 

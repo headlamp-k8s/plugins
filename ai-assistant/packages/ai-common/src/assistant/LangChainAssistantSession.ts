@@ -30,6 +30,7 @@ import {
 } from '../conversation/history';
 import { convertPromptsToMessages } from '../conversation/langchain/messages';
 import type { ConversationMessage } from '../conversation/types';
+import type { ToolClient } from '../mcp/client/ToolClient';
 import { MCPArgumentProcessor } from '../mcp/tools/ArgumentProcessor';
 import type { MCPToolSchema, UserContext } from '../mcp/tools/types';
 import { buildSystemPrompt, buildToolResponseSystemPrompt } from '../prompts/buildSystemPrompt';
@@ -216,6 +217,9 @@ export default class LangChainAssistantSession extends AssistantSession {
    *     }),
    *   });
    *   ```
+   * @param options.mcpClient - Inject the host MCP bridge so discovered MCP
+   *   tools are bound to the model. Without it the manager falls back to a
+   *   no-op client and only built-in tools are available.
    */
   constructor(
     providerId: string,
@@ -224,6 +228,8 @@ export default class LangChainAssistantSession extends AssistantSession {
     options?: {
       /** Optional replacement tool runtime for tests, CLI, or demos. */
       toolManager?: LangChainToolRuntime;
+      /** Host MCP bridge used to discover and execute MCP tools. */
+      mcpClient?: ToolClient;
     }
   ) {
     super();
@@ -233,7 +239,9 @@ export default class LangChainAssistantSession extends AssistantSession {
       'AI Assistant: Initializing with enabled tools:',
       enabledToolIds || 'all tools enabled'
     );
-    this.toolManager = options?.toolManager ?? new LangChainToolManager({ enabledToolIds });
+    this.toolManager =
+      options?.toolManager ??
+      new LangChainToolManager({ enabledToolIds, mcpClient: options?.mcpClient });
     this.model = this.createModel(providerId, config);
 
     // Initialize prompt template and output parser

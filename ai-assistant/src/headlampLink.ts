@@ -22,8 +22,8 @@
  * It is exported from `@headlamp-k8s/ai-common/ai` which is already browser-only.
  */
 
-import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/lib/k8s';
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
+import { K8s, Router } from '@kinvolk/headlamp-plugin/lib';
+import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 
 const HEADLAMP_LINK_HOST = 'headlamp';
 const HEADLAMP_RESOURCE_DETAILS_LINK = 'resource-details';
@@ -67,11 +67,11 @@ export function getHeadlampLink(link: string | null | undefined) {
 
       // @todo: Add support for CRDs
       // Guard against ResourceClasses being undefined at runtime
-      let resourceClass = ResourceClasses?.[kind];
+      let resourceClass = K8s.ResourceClasses?.[kind];
       // If we couldn't match it like this, iterate and try to match it from the API name
-      if (!resourceClass && ResourceClasses) {
-        for (const className in ResourceClasses) {
-          const rc = ResourceClasses[className];
+      if (!resourceClass && K8s.ResourceClasses) {
+        for (const className in K8s.ResourceClasses) {
+          const rc = K8s.ResourceClasses[className];
           if (rc.apiName === kind) {
             resourceClass = rc;
             break;
@@ -85,20 +85,11 @@ export function getHeadlampLink(link: string | null | undefined) {
         cluster &&
         (resourceClass.isNamespaced ? !!namespace : true)
       ) {
-        // Create an instance
-        const instance = new resourceClass(
-          {
-            kind,
-            metadata: {
-              name: resource,
-              ...(resourceClass.isNamespaced ? { namespace } : {}),
-            },
-          },
-          cluster
-        );
-
-        linkResult.kubeObject = instance;
-        linkResult.url = instance.getDetailsLink();
+        linkResult.url = Router.createRouteURL(resourceClass.detailsRoute, {
+          cluster,
+          name: resource,
+          ...(resourceClass.isNamespaced ? { namespace } : {}),
+        });
       }
     } else if (urlPath === HEADLAMP_CLUSTER_LINK) {
       // It's a cluster link

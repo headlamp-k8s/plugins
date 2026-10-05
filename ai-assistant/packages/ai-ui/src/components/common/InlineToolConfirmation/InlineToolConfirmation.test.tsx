@@ -23,10 +23,18 @@ vi.mock('@headlamp-k8s/ai-common/mcp/tools/ArgumentProcessor', () => ({
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) =>
-      options
-        ? key.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options[name] ?? ''))
-        : key,
+    t: (key: string, options?: Record<string, unknown>) => {
+      const pluralKey =
+        Number(options?.count) === 1
+          ? key
+          : key
+              .replace('{{count}} tool:', '{{count}} tools:')
+              .replace('{{count}} Tool', '{{count}} Tools')
+              .replace('{{count}} tool', '{{count}} tools');
+      return options
+        ? pluralKey.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options[name] ?? ''))
+        : pluralKey;
+    },
   }),
 }));
 

@@ -51,6 +51,10 @@ import {
 } from '@mui/material';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  translateSkillDirectoryLabel,
+  translateSkillRepositoryDescription,
+} from '../../../ownedUiTranslations';
 import { DefaultDialog, DefaultSectionWrapper } from '../../defaults/DefaultSlots/DefaultSlots';
 import type { ConfigStore } from '../MCPSettings/MCPSettings';
 import SkillSourceEditorDialog from '../SkillSourceEditorDialog/SkillSourceEditorDialog';
@@ -206,7 +210,8 @@ export interface SkillSettingsProps {
    */
   loadSkills?: (
     onProgress?: (progress: SkillLoadProgress) => void,
-    sourceIdentity?: string
+    sourceIdentity?: string,
+    forceReload?: boolean
   ) => Promise<SkillDisplayInfo[]>;
   /** Callback fired when skill loading completes (for notifications). */
   onSkillsLoadComplete?: (result: { count: number; error?: string }) => void;
@@ -558,11 +563,13 @@ export function SkillSettings({
     <SectionWrapper title={t('Skills')}>
       <Box sx={{ mb: 3 }}>
         <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-          {t(
-            filesystemSkillsEnabled && projectRoot
-              ? 'Skills are markdown files that provide domain-specific knowledge to the AI assistant. Configure filesystem paths and GitHub repositories to load skills from.'
-              : 'Skills are markdown files that provide domain-specific knowledge to the AI assistant. Configure GitHub repositories to load skills from.'
-          )}
+          {filesystemSkillsEnabled && projectRoot
+            ? t(
+                'Skills are markdown files that provide domain-specific knowledge to the AI assistant. Configure filesystem paths and GitHub repositories to load skills from.'
+              )
+            : t(
+                'Skills are markdown files that provide domain-specific knowledge to the AI assistant. Configure GitHub repositories to load skills from.'
+              )}
         </Typography>
       </Box>
 
@@ -593,7 +600,7 @@ export function SkillSettings({
                     <TableCell>
                       <Box>
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {t(status.label)}
+                          {translateSkillDirectoryLabel(t, status.path, status.label)}
                         </Typography>
                         <Typography
                           variant="caption"
@@ -605,7 +612,7 @@ export function SkillSettings({
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Chip label={t(status.tool)} size="small" variant="outlined" />
+                      <Chip label={status.tool} size="small" variant="outlined" />
                     </TableCell>
                     <TableCell align="center">
                       {checkPathExists ? (
@@ -648,7 +655,9 @@ export function SkillSettings({
                         onChange={() => handleToggleWellKnownPath(status.path)}
                         size="small"
                         inputProps={{
-                          'aria-label': t('Enable {{label}}', { label: status.label }),
+                          'aria-label': t('Enable {{label}}', {
+                            label: translateSkillDirectoryLabel(t, status.path, status.label),
+                          }),
                         }}
                       />
                     </TableCell>
@@ -692,7 +701,7 @@ export function SkillSettings({
                     <TableCell>
                       <Box>
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {t(repo.label)}
+                          {repo.label}
                         </Typography>
                         <Typography
                           variant="caption"
@@ -705,7 +714,7 @@ export function SkillSettings({
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="textSecondary">
-                        {t(repo.description)}
+                        {translateSkillRepositoryDescription(t, repo.url, repo.description)}
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
@@ -982,13 +991,13 @@ export function SkillSettings({
             setViewerOpen(false);
             setActiveRepoIdentity(null);
           }}
-          loadSkills={onProgress => {
+          loadSkills={(onProgress, forceReload) => {
             // Pass source identity so the host loads only this exact URL/path pair.
             // the progress bar from resetting between multiple enabled sources
             if (activeRepoIdentity) {
-              return loadSkills(onProgress, activeRepoIdentity);
+              return loadSkills(onProgress, activeRepoIdentity, forceReload);
             }
-            return loadSkills(onProgress);
+            return loadSkills(onProgress, undefined, forceReload);
           }}
           title={
             activeRepoIdentity

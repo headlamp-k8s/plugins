@@ -19,12 +19,22 @@ import { describe, expect, it, vi } from 'vitest';
 import ArgoNamespaceInsights from './components/namespaces/ArgoNamespaceInsights';
 
 const {
+  mockApiList,
   mockRegisterDetailsViewSectionsProcessor,
+  mockRegisterKindIcon,
+  mockRegisterMapSource,
+  mockRegisterProjectDetailsTab,
+  mockRegisterProjectOverviewSection,
   mockRegisterRoute,
   mockRegisterSidebarEntry,
   mockRegisterSidebarEntryFilter,
 } = vi.hoisted(() => ({
+  mockApiList: vi.fn(() => vi.fn()),
   mockRegisterDetailsViewSectionsProcessor: vi.fn(),
+  mockRegisterKindIcon: vi.fn(),
+  mockRegisterMapSource: vi.fn(),
+  mockRegisterProjectDetailsTab: vi.fn(),
+  mockRegisterProjectOverviewSection: vi.fn(),
   mockRegisterRoute: vi.fn(),
   mockRegisterSidebarEntry: vi.fn(),
   mockRegisterSidebarEntryFilter: vi.fn(),
@@ -38,6 +48,10 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   registerRoute: mockRegisterRoute,
   registerSidebarEntry: mockRegisterSidebarEntry,
   registerSidebarEntryFilter: mockRegisterSidebarEntryFilter,
+  registerMapSource: mockRegisterMapSource,
+  registerKindIcon: mockRegisterKindIcon,
+  registerProjectDetailsTab: mockRegisterProjectDetailsTab,
+  registerProjectOverviewSection: mockRegisterProjectOverviewSection,
   ApiProxy: { request: vi.fn() },
   K8s: {
     cluster: {
@@ -50,7 +64,7 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
     },
     ResourceClasses: {
       CustomResourceDefinition: {
-        apiList: vi.fn(() => vi.fn()),
+        apiList: mockApiList,
       },
     },
   },
@@ -133,6 +147,25 @@ describe('argocd plugin', () => {
     );
   });
 
+  it('should register the ApplicationSet list and detail routes', () => {
+    expect(mockRegisterRoute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/argocd/applicationsets',
+        name: 'argocd-applicationsets-list',
+        sidebar: 'argocd-applicationsets',
+        exact: true,
+      })
+    );
+    expect(mockRegisterRoute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/argocd/applicationsets/:namespace/:name',
+        name: 'argocd-applicationset-detail',
+        sidebar: 'argocd-applicationsets',
+        exact: true,
+      })
+    );
+  });
+
   it('should register sidebar entries with the Argo CD icon', () => {
     expect(mockRegisterSidebarEntry).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -159,6 +192,16 @@ describe('argocd plugin', () => {
         label: 'Projects',
         url: '/argocd/projects',
         parent: 'argocd',
+      })
+    );
+
+    expect(mockRegisterSidebarEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'argocd-applicationsets',
+        label: 'ApplicationSets',
+        url: '/argocd/applicationsets',
+        parent: 'argocd',
+        icon: 'simple-icons:argo',
       })
     );
   });
@@ -190,5 +233,98 @@ describe('argocd plugin', () => {
       type: ArgoNamespaceInsights,
       props: { resource: namespace },
     });
+  });
+
+  it('should register the Argo CD resource tree map source', () => {
+    expect(mockRegisterMapSource).toHaveBeenCalledTimes(1);
+    expect(mockRegisterMapSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'argocd-resource-tree',
+        label: 'Argo CD',
+      })
+    );
+  });
+
+  it('hides only entries whose exact CRD is missing', () => {
+    const filter = mockRegisterSidebarEntryFilter.mock.calls[0][0];
+    const applications = { name: 'argocd-applications', parent: 'argocd' };
+    const applicationSets = { name: 'argocd-applicationsets', parent: 'argocd' };
+
+    expect(filter(applications)).toBe(applications);
+    const success = (mockApiList.mock.calls as any)[0][0] as (crds: unknown[]) => void;
+    success([{ jsonData: { metadata: { name: 'applications.argoproj.io' } } }]);
+
+    expect(filter(applications)).toBe(applications);
+    expect(filter(applicationSets)).toBeNull();
+  });
+
+  it('keeps an ApplicationSet-only installation usable', () => {
+    const filter = mockRegisterSidebarEntryFilter.mock.calls[0][0];
+    const success = (mockApiList.mock.calls as any)[0][0] as (crds: unknown[]) => void;
+    success([{ jsonData: { metadata: { name: 'applicationsets.argoproj.io' } } }]);
+
+    expect(filter({ name: 'argocd', parent: null, url: '/argocd/applications' })).toEqual(
+      expect.objectContaining({ url: '/argocd/applicationsets' })
+    );
+    expect(filter({ name: 'argocd-applications', parent: 'argocd' })).toBeNull();
+    expect(filter({ name: 'argocd-applicationsets', parent: 'argocd' })).not.toBeNull();
+  });
+
+  it('keeps Argo CD navigation visible when CRD discovery is forbidden', () => {
+    const filter = mockRegisterSidebarEntryFilter.mock.calls[0][0];
+    const failure = (mockApiList.mock.calls as any)[0][1] as () => void;
+    failure();
+
+    const parent = { name: 'argocd', parent: null, url: '/argocd/applications' };
+    const applications = { name: 'argocd-applications', parent: 'argocd' };
+    const projects = { name: 'argocd-projects', parent: 'argocd' };
+    const applicationSets = { name: 'argocd-applicationsets', parent: 'argocd' };
+
+    expect(filter(parent)).toBe(parent);
+    expect(filter(applications)).toBe(applications);
+    expect(filter(projects)).toBe(projects);
+    expect(filter(applicationSets)).toBe(applicationSets);
+  });
+
+  it('registers the Project integrations exactly once', () => {
+    expect(mockRegisterProjectOverviewSection).toHaveBeenCalledTimes(1);
+    expect(mockRegisterProjectOverviewSection).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'argocd.project-overview' })
+    );
+    expect(mockRegisterProjectDetailsTab).toHaveBeenCalledTimes(1);
+    expect(mockRegisterProjectDetailsTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'argocd.project-applications',
+        label: 'Argo CD Applications',
+        icon: 'simple-icons:argo',
+      })
+    );
+  });
+
+  it('should register the Application and AppProject kind icons', () => {
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith(
+      'Application',
+      expect.anything(),
+      'argoproj.io'
+    );
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith('Application', expect.anything());
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith(
+      'AppProject',
+      expect.anything(),
+      'argoproj.io'
+    );
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith('AppProject', expect.anything());
+  });
+
+  it('registers group-specific and fallback ApplicationSet icons', () => {
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith(
+      'ApplicationSet',
+      expect.objectContaining({ color: '#EF7B4D' }),
+      'argoproj.io'
+    );
+    expect(mockRegisterKindIcon).toHaveBeenCalledWith(
+      'ApplicationSet',
+      expect.objectContaining({ color: '#EF7B4D' })
+    );
   });
 });

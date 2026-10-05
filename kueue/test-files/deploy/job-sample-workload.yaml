@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sample-kueue-workload
+  namespace: default
+  labels:
+    kueue.x-k8s.io/queue-name: team-a-queue
+spec:
+  suspend: true
+  parallelism: 2
+  completions: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: worker
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo "hello from kueue"; sleep 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi

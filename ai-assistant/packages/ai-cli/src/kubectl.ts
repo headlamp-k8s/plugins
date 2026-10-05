@@ -103,14 +103,14 @@ export function buildKubectlArgs(
 ): { args: string[]; input?: string } {
   // Validate the URL is a Kubernetes API path, not a flag injection attempt.
   // kubectl --raw expects a path like /api/v1/pods — reject anything that
-  // doesn't start with "/" to prevent argument injection (e.g. "--kubeconfig=...").
+  // doesn't start with '/' to prevent argument injection (e.g. '--kubeconfig=...').
   if (!url.startsWith('/')) {
     throw new Error(`Invalid API path: must start with "/", got "${url}"`);
   }
   // Reject paths with characters that could be used for injection or path traversal.
   if (!/^\/[a-zA-Z0-9\/_.:@%~-]+$/.test(url)) {
     throw new Error(
-      `Invalid API path: contains disallowed characters. Path must match /[a-zA-Z0-9/_.:@%~-]+`
+      'Invalid API path: contains disallowed characters. Path must match /[a-zA-Z0-9/_.:@%~-]+'
     );
   }
 

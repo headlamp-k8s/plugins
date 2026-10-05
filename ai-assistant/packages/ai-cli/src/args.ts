@@ -47,13 +47,16 @@ export function parseArgs(argv: string[]): ParsedArgs {
     interactive: false,
     autoDetect: false,
     allowMutations: false,
-    autoApprove: process.env.HEADLAMP_AI_AUTO_APPROVE === '1' || process.env.HEADLAMP_AI_MOCK_ALL === '1',
+    autoApprove:
+      process.env.HEADLAMP_AI_AUTO_APPROVE === '1' || process.env.HEADLAMP_AI_MOCK_ALL === '1',
     save: false,
     help: false,
     query: '',
     skillSources: [],
-    mockSkills: process.env.HEADLAMP_AI_MOCK_SKILLS === '1' || process.env.HEADLAMP_AI_MOCK_ALL === '1',
-    mockTools: process.env.HEADLAMP_AI_MOCK_TOOLS === '1' || process.env.HEADLAMP_AI_MOCK_ALL === '1',
+    mockSkills:
+      process.env.HEADLAMP_AI_MOCK_SKILLS === '1' || process.env.HEADLAMP_AI_MOCK_ALL === '1',
+    mockTools:
+      process.env.HEADLAMP_AI_MOCK_TOOLS === '1' || process.env.HEADLAMP_AI_MOCK_ALL === '1',
   };
   const args = argv.slice(2);
   const queryParts: string[] = [];

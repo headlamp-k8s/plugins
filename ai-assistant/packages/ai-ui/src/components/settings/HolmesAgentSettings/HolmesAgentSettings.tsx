@@ -154,8 +154,8 @@ export function HolmesAgentSettings({
         <TextField
           label={t('Namespace')}
           value={holmesNamespace}
-          helperText={t('Namespace where HolmesGPT is deployed (default: "{{namespace}}")', {
-            namespace: defaultNamespace,
+          helperText={t('Namespace where HolmesGPT is deployed (default: "{{namespaceName}}")', {
+            namespaceName: defaultNamespace,
           })}
           onChange={handleNamespaceChange}
           size="small"

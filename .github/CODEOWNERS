@@ -1,0 +1,24 @@
+# Global plugin owners
+* @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+
+/ai-assistant/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/app-catalog/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/backstage/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/cert-manager/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/cluster-api/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/flux/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/karpenter/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/keda/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/knative/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha @kahirokunn @mudit06mah
+/kompose/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/kro/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha @danbruno101
+/kueue/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha @kannon92
+/kyverno/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha @itvi-1234
+/metal3/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha @Rozzii
+/minikube/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/opencost/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/plugin-catalog/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/prometheus/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/radius/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha
+/strimzi/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha @cesaroangelo
+/volcano/ @illume @skoeva @ashu8912 @yolossn @vyncent-t @sniok @gambtho @tejhan @joaquimrocha @mahmoudmagdy1-1

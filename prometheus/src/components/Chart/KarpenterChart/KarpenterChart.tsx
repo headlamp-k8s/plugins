@@ -127,6 +127,23 @@ export function KarpenterChart(props: KarpenterChartProps) {
     return null;
   };
 
+  const translateChartLabel = (config: ChartConfig) => {
+    switch (config.key) {
+      case 'usage':
+        return t('Resource Usage');
+      case 'nodes':
+        return t('Allowed Disruptions');
+      case 'pending-pods':
+        return t('Pending Pods');
+      case 'creation-rate':
+        return t('Creation Rate');
+      case 'provisioning-duration':
+        return t('Provisioning Duration');
+      default:
+        return config.label;
+    }
+  };
+
   const currentChartConfig = props.chartConfigs.find(config => config.key === selectedChart);
 
   return (
@@ -139,14 +156,14 @@ export function KarpenterChart(props: KarpenterChartProps) {
                 <ToggleButtonGroup
                   onChange={handleChartVariantChange}
                   size="small"
-                  aria-label="metric chooser"
+                  aria-label={t('metric chooser')}
                   value={selectedChart}
                   exclusive
                 >
                   {props.chartConfigs.map(config => (
                     <CustomToggleButton
                       key={config.key}
-                      label={config.label}
+                      label={translateChartLabel(config)}
                       value={config.key}
                       icon={config.icon}
                     />
@@ -167,6 +184,7 @@ export function KarpenterChart(props: KarpenterChartProps) {
                 </Button>
                 <Box>
                   <Select
+                    inputProps={{ 'aria-label': t('Timespan') }}
                     variant="outlined"
                     size="small"
                     name="Time"
@@ -191,6 +209,7 @@ export function KarpenterChart(props: KarpenterChartProps) {
                 </Box>
                 <Box>
                   <Select
+                    inputProps={{ 'aria-label': t('Resolution') }}
                     variant="outlined"
                     size="small"
                     name="Time"

@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/ai-assistant",
-  "version": "0.3.0-alpha",
+  "version": "0.4.1-alpha",
   "description": "Headlamp's AI Assistant",
   "type": "module",
   "scripts": {
@@ -17,7 +17,7 @@
     "storybook": "headlamp-plugin storybook",
     "storybook-build": "headlamp-plugin storybook-build",
     "test": "vitest run --config node_modules/@kinvolk/headlamp-plugin/config/vite.config.mjs --exclude \"**/packages/**\" --exclude \"**/node_modules/**\" --exclude \"e2e/**\"",
-    "i18n": "headlamp-plugin i18n"
+    "i18n": "i18next"
   },
   "keywords": [
     "headlamp",
@@ -38,6 +38,7 @@
   "devDependencies": {
     "@kinvolk/headlamp-plugin": "^0.14.0",
     "@playwright/test": "1.61.1",
+    "i18next-parser": "^9.1.0",
     "tsx": "^4.22.4"
   },
   "dependencies": {
@@ -75,11 +76,35 @@
     "typescript": "5.6.2",
     "ws": "^8.18.0",
     "@anthropic-ai/sdk": "~0.95.2",
+    "dompurify": "^3.4.13",
     "@ag-ui/core": {
       "zod": "$zod"
     },
     "@ag-ui/client": {
       "zod": "$zod"
     }
+  },
+  "headlamp": {
+    "i18n": [
+      "en",
+      "de",
+      "es",
+      "fr",
+      "it",
+      "ja",
+      "id",
+      "ko",
+      "pt-BR",
+      "ru",
+      "zh-Hans",
+      "zh-Hant",
+      "cs",
+      "nl",
+      "hu",
+      "pt-PT",
+      "pl",
+      "sv",
+      "tr"
+    ]
   }
 }

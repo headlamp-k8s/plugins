@@ -4,13 +4,7 @@ import {
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Hardware } from '../../resources/hardware';
-import {
-  booleanLabel,
-  countLabel,
-  fallback,
-  getFirstDefined,
-  renderFallback,
-} from '../common/listHelpers';
+import { fallback, renderFallback } from '../common/listHelpers';
 import { getHardwareAgentID } from './helpers';
 
 /**
@@ -45,22 +39,6 @@ export function HardwareList() {
       label: 'Hostname',
       getValue: item => fallback(item.spec?.interfaces?.[0]?.dhcp?.hostname),
       render: item => renderFallback(item.spec?.interfaces?.[0]?.dhcp?.hostname),
-    },
-    {
-      id: 'pxe',
-      label: 'PXE',
-      getValue: item =>
-        booleanLabel(
-          getFirstDefined(
-            item.spec?.interfaces?.[0]?.netboot?.allowPXE,
-            item.spec?.interfaces?.[0]?.netboot?.allowWorkflow
-          )
-        ),
-    },
-    {
-      id: 'disks',
-      label: 'Disks',
-      getValue: item => countLabel(item.spec?.disks?.length, 'disk'),
     },
     'age',
   ];

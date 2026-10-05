@@ -13,10 +13,15 @@ import {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) =>
-      options
-        ? key.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options[name] ?? ''))
-        : key,
+    t: (key: string, options?: Record<string, unknown>) => {
+      const pluralKey =
+        Number(options?.count) === 1
+          ? key
+          : key.replace('{{completed}}/{{total}} event', '{{completed}}/{{total}} events');
+      return options
+        ? pluralKey.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options[name] ?? ''))
+        : pluralKey;
+    },
   }),
 }));
 vi.mock('@iconify/react', () => ({

@@ -16,12 +16,18 @@
 
 import {
   registerDetailsViewHeaderAction,
+  registerMapSource,
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
+import { DetachActionButton } from './BareMetalHost/DetachActionButton';
 import { BareMetalHostDetail } from './BareMetalHost/Details';
 import { BareMetalHosts } from './BareMetalHost/List';
+import { BareMetalHostOverview } from './BareMetalHost/Overview';
 import { PowerActionButton } from './BareMetalHost/PowerActionButton';
+import { RebootActionButton } from './BareMetalHost/RebootActionButton';
+import { ReprovisionActionButton } from './BareMetalHost/ReprovisionActionButton';
+import { metal3Source } from './mapView';
 import { Metal3ClusterDetail } from './Metal3Cluster/Details';
 import { Metal3Clusters } from './Metal3Cluster/List';
 import { Metal3ClusterTemplateDetail } from './Metal3ClusterTemplate/Details';
@@ -36,20 +42,41 @@ import { Metal3MachineDetail } from './Metal3Machine/Details';
 import { Metal3Machines } from './Metal3Machine/List';
 import { Metal3MachineTemplateDetail } from './Metal3MachineTemplate/Details';
 import { Metal3MachineTemplates } from './Metal3MachineTemplate/List';
+import { Metal3RemediationDetail } from './Metal3Remediation/Details';
+import { Metal3Remediations } from './Metal3Remediation/List';
+import { Metal3RemediationTemplateDetail } from './Metal3RemediationTemplate/Details';
+import { Metal3RemediationTemplates } from './Metal3RemediationTemplate/List';
 
-// Parent Metal3 group. Its url points at the first child's list so the group
-// header is itself navigable.
+// Parent Metal3 group. Its url points at the Overview so the group header lands
+// on the fleet dashboard.
 registerSidebarEntry({
   parent: null,
   name: 'metal3',
   icon: 'mdi:server',
   label: 'Metal3',
-  url: '/metal3/baremetalhosts',
+  url: '/metal3/overview',
+});
+
+// Overview / fleet dashboard: the section's landing page.
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3overview',
+  label: 'Overview',
+  url: '/metal3/overview',
+});
+
+registerRoute({
+  path: '/metal3/overview',
+  sidebar: 'metal3overview',
+  component: BareMetalHostOverview,
+  name: 'metal3-overview',
+  exact: true,
 });
 
 registerSidebarEntry({
   parent: 'metal3',
   name: 'baremetalhosts',
+  icon: 'mdi:server-network',
   label: 'Bare Metal Hosts',
   url: '/metal3/baremetalhosts',
 });
@@ -75,7 +102,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3machines',
-  label: 'Metal3 Machines',
+  icon: 'mdi:desktop-classic',
+  label: 'Machines',
   url: '/metal3/metal3machines',
 });
 
@@ -97,7 +125,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3machinetemplates',
-  label: 'Metal3 Machine Templates',
+  icon: 'mdi:shape-outline',
+  label: 'Machine Templates',
   url: '/metal3/metal3machinetemplates',
 });
 
@@ -119,7 +148,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3clusters',
-  label: 'Metal3 Clusters',
+  icon: 'mdi:kubernetes',
+  label: 'Clusters',
   url: '/metal3/metal3clusters',
 });
 
@@ -141,7 +171,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3clustertemplates',
-  label: 'Metal3 Cluster Templates',
+  icon: 'mdi:shape-outline',
+  label: 'Cluster Templates',
   url: '/metal3/metal3clustertemplates',
 });
 
@@ -163,7 +194,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3datas',
-  label: 'Metal3 Data',
+  icon: 'mdi:database',
+  label: 'Data',
   url: '/metal3/metal3datas',
 });
 
@@ -185,7 +217,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3dataclaims',
-  label: 'Metal3 Data Claims',
+  icon: 'mdi:database-check',
+  label: 'Data Claims',
   url: '/metal3/metal3dataclaims',
 });
 
@@ -207,7 +240,8 @@ registerRoute({
 registerSidebarEntry({
   parent: 'metal3',
   name: 'metal3datatemplates',
-  label: 'Metal3 Data Templates',
+  icon: 'mdi:shape-outline',
+  label: 'Data Templates',
   url: '/metal3/metal3datatemplates',
 });
 
@@ -226,5 +260,63 @@ registerRoute({
   name: 'metal3datatemplate-detail',
 });
 
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3remediations',
+  icon: 'mdi:wrench',
+  label: 'Remediations',
+  url: '/metal3/metal3remediations',
+});
+
+registerRoute({
+  path: '/metal3/metal3remediations',
+  sidebar: 'metal3remediations',
+  component: Metal3Remediations,
+  name: 'metal3remediations-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3remediations/:namespace/:name',
+  sidebar: 'metal3remediations',
+  component: () => <Metal3RemediationDetail />,
+  name: 'metal3remediation-detail',
+});
+
+registerSidebarEntry({
+  parent: 'metal3',
+  name: 'metal3remediationtemplates',
+  icon: 'mdi:shape-outline',
+  label: 'Remediation Templates',
+  url: '/metal3/metal3remediationtemplates',
+});
+
+registerRoute({
+  path: '/metal3/metal3remediationtemplates',
+  sidebar: 'metal3remediationtemplates',
+  component: Metal3RemediationTemplates,
+  name: 'metal3remediationtemplates-list',
+  exact: true,
+});
+
+registerRoute({
+  path: '/metal3/metal3remediationtemplates/:namespace/:name',
+  sidebar: 'metal3remediationtemplates',
+  component: () => <Metal3RemediationTemplateDetail />,
+  name: 'metal3remediationtemplate-detail',
+});
+// Map source. Draws the Metal3Machine to BareMetalHost link and the Cluster API
+// Machine to Metal3Machine link, neither of which Headlamp derives on its own.
+registerMapSource(metal3Source);
+
 // Power on/off action on the BareMetalHost detail view. Toggles spec.online.
 registerDetailsViewHeaderAction(PowerActionButton);
+
+// Reboot action on the BareMetalHost detail view (reboot annotation, soft or hard).
+registerDetailsViewHeaderAction(RebootActionButton);
+
+// Detach action on the BareMetalHost detail view (detached annotation; toggles attach).
+registerDetailsViewHeaderAction(DetachActionButton);
+
+// Reprovision action on the BareMetalHost detail view. Sets or clears spec.image.
+registerDetailsViewHeaderAction(ReprovisionActionButton);

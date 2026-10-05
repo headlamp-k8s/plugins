@@ -215,7 +215,7 @@ export function KnativeChart({
                 <ToggleButtonGroup
                   onChange={handleChartVariantChange}
                   size="small"
-                  aria-label="metric chooser"
+                  aria-label={t('metric chooser')}
                   value={selectedChart}
                   exclusive
                 >
@@ -243,6 +243,7 @@ export function KnativeChart({
                 </Button>
                 <Box>
                   <Select
+                    inputProps={{ 'aria-label': t('Timespan') }}
                     variant="outlined"
                     size="small"
                     name="Time"
@@ -267,6 +268,7 @@ export function KnativeChart({
                 </Box>
                 <Box>
                   <Select
+                    inputProps={{ 'aria-label': t('Resolution') }}
                     variant="outlined"
                     size="small"
                     name="Resolution"

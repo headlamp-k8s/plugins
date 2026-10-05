@@ -28,6 +28,7 @@ import { ClusterDomainClaim, KnativeDomainMapping } from '../../resources/knativ
 import { createClusterDomainClaim, getClusterDomainClaim } from '../../utils/domain';
 import { useNotify } from '../common/notifications/useNotify';
 import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
+import { ExternalUrl } from '../common/ResourceListCells';
 import { DomainMappingRowAction } from './list/header/DomainMappingRowAction';
 
 function getReadyCondition(dm: KnativeDomainMapping): {
@@ -83,7 +84,7 @@ export function useDomainMappingColumns(
       },
       {
         id: 'clusterdomainclaim',
-        label: 'ClusterDomainClaim',
+        label: 'Cluster Domain Claim',
         gridTemplate: 'auto',
         disableFiltering: true,
         getValue: item => {
@@ -132,17 +133,7 @@ export function useDomainMappingColumns(
         getValue: item => (item as KnativeDomainMapping).readyUrl ?? '',
         render: item => {
           const dm = item as KnativeDomainMapping;
-          return dm.readyUrl ? (
-            <Typography variant="caption" color="text.secondary">
-              <a href={dm.readyUrl} target="_blank" rel="noreferrer">
-                {dm.readyUrl}
-              </a>
-            </Typography>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              -
-            </Typography>
-          );
+          return <ExternalUrl url={dm.readyUrl} />;
         },
       },
       'age',

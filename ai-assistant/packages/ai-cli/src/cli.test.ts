@@ -65,10 +65,7 @@ interface CLIResult {
  * Run the CLI with HEADLAMP_AI_MOCK_ALL=1 plus any extra env vars.
  * Runs asynchronously so Vitest's worker can continue processing RPC messages.
  */
-function run(
-  args: string[],
-  extraEnv: Record<string, string> = {}
-): Promise<CLIResult> {
+function run(args: string[], extraEnv: Record<string, string> = {}): Promise<CLIResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(tsxBin, [cliPath, ...args], {
       env: {
@@ -106,7 +103,6 @@ function run(
 }
 
 describe('CLI — HEADLAMP_AI_MOCK_ALL full offline suite', { timeout: 60_000 }, () => {
-
   // ── model: fixture responses ────────────────────────────────────────────
 
   it('responds to "Hello" with the greeting fixture', async () => {

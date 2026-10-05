@@ -234,4 +234,41 @@ Inspect pod status, recent events, and container logs before recommending a fix.
       fullPage: true,
     });
   });
+
+  test('navigates resource links within Headlamp', async ({ context, page }) => {
+    await page.goto('/c/main/nodes');
+
+    const tokenLogin = page.getByRole('button', { name: 'Use A Token' });
+    if (await tokenLogin.isVisible()) {
+      const token = process.env.HEADLAMP_TOKEN;
+      expect(
+        token,
+        'HEADLAMP_TOKEN must be set when Headlamp requires authentication'
+      ).toBeTruthy();
+      await tokenLogin.click();
+      await page.getByRole('textbox', { name: 'ID token' }).fill(token!);
+      await page.getByRole('button', { name: 'Authenticate' }).click();
+    }
+
+    await page.goto('/settings/plugins/%40headlamp-k8s%2Fai-assistant');
+    await page.getByText('Developer Options', { exact: true }).click();
+    await page.getByRole('checkbox', { name: 'Mock Testing Model' }).check();
+    await page.getByRole('checkbox', { name: /Test Mode/ }).check();
+    await page.getByRole('button', { name: 'AI Assistant' }).click();
+
+    await page.getByRole('button', { name: 'Add Test Response' }).click();
+    await page
+      .getByRole('textbox', { name: 'Response Content' })
+      .fill(
+        '[web](https://headlamp/resource-details?cluster=main&kind=Deployment&resource=web&ns=demo)'
+      );
+    await page.getByRole('button', { name: 'Add Response' }).click();
+
+    const resourceLink = page.getByRole('link', { name: 'web', exact: true });
+    await expect(resourceLink).not.toHaveAttribute('target', '_blank');
+    const pageCount = context.pages().length;
+    await resourceLink.click();
+    await expect(page).toHaveURL(/\/c\/main\/deployments\/demo\/web$/);
+    await expect.poll(() => context.pages().length).toBe(pageCount);
+  });
 });

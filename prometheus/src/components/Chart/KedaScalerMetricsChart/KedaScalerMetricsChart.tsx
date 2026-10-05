@@ -28,11 +28,20 @@ interface KedaScalerSeriesInfo extends BaseSeriesInfo {
   scaler: string;
 }
 
-function extractKedaScalersSeriesInfo(response: PrometheusResponse): KedaScalerSeriesInfo[] {
-  return extractSeriesInfo<KedaScalerSeriesInfo>(response, metric => ({
-    metric: metric.metric || 'Unknown Metric',
-    scaler: metric.scaler || 'Unknown Scaler',
-  }));
+function extractKedaScalersSeriesInfo(
+  response: PrometheusResponse,
+  unknownInstance: string,
+  unknownMetric: string,
+  unknownScaler: string
+): KedaScalerSeriesInfo[] {
+  return extractSeriesInfo<KedaScalerSeriesInfo>(
+    response,
+    metric => ({
+      metric: metric.metric || unknownMetric,
+      scaler: metric.scaler || unknownScaler,
+    }),
+    unknownInstance
+  );
 }
 
 interface KedaScalerMetricsChartProps extends KedaChartProps {
@@ -65,7 +74,12 @@ export function KedaScalerMetricsChart(props: KedaScalerMetricsChartProps) {
 
   const scalerMetricsDataProcessor = useCallback(
     (response: PrometheusResponse): ChartDataPoint[] => {
-      const newSeriesInfo = extractKedaScalersSeriesInfo(response);
+      const newSeriesInfo = extractKedaScalersSeriesInfo(
+        response,
+        t('Unknown Instance'),
+        t('Unknown Metric'),
+        t('Unknown Scaler')
+      );
       const newInstanceGroups = groupSeriesByInstance(newSeriesInfo);
 
       // Update instance groups only when structure changes
@@ -247,7 +261,7 @@ export function KedaScalerMetricsChart(props: KedaScalerMetricsChartProps) {
                           ml: 1,
                         }}
                       >
-                        ({group.series.length} metrics)
+                        ({t('{{count}} metrics', { count: group.series.length })})
                       </Box>
                     </Box>
                   </MenuItem>

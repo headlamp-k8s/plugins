@@ -26,21 +26,71 @@ export interface RawK8sEvent {
   [key: string]: any;
 }
 
+/** Timestamp of the last failure per cluster, used to back off from unreachable clusters. */
+const lastFailureByCluster = new Map<string, number>();
+
+/** How long an unreachable cluster is skipped before it is retried. */
+const FAILURE_BACKOFF_MS = 5 * 60 * 1000;
+
+/** How long a cluster's events are reused instead of issuing another request. */
+const EVENTS_CACHE_MS = 30 * 1000;
+
+/** Most recent successful result per cluster. */
+const eventsByCluster = new Map<string, { events: RawK8sEvent[]; fetchedAt: number }>();
+
+/** Requests currently in flight, so concurrent callers share one request per cluster. */
+const inFlightByCluster = new Map<string, Promise<RawK8sEvent[]>>();
+
 /**
  * Fetch Warning / Error events from a single cluster via the Kubernetes API.
  * Uses `fieldSelector=type!=Normal` so only warning & error events are returned.
+ *
+ * Context is refreshed on nearly every Headlamp event, so results are cached,
+ * concurrent callers share one request, and failing clusters are skipped for a
+ * cooldown period. Without this the renderer exhausts its connection pool.
  */
 export async function fetchWarningEventsForCluster(cluster: string): Promise<RawK8sEvent[]> {
+  const cached = eventsByCluster.get(cluster);
+  if (cached && Date.now() - cached.fetchedAt < EVENTS_CACHE_MS) {
+    return cached.events;
+  }
+
+  const pending = inFlightByCluster.get(cluster);
+  if (pending) return pending;
+
+  const request = requestWarningEvents(cluster).finally(() => inFlightByCluster.delete(cluster));
+  inFlightByCluster.set(cluster, request);
+  return request;
+}
+
+/**
+ * Performs the uncached event request for one cluster.
+ *
+ * @param cluster - Cluster to query.
+ * @returns Warning events, or an empty list when the cluster cannot be reached.
+ */
+async function requestWarningEvents(cluster: string): Promise<RawK8sEvent[]> {
+  const lastFailure = lastFailureByCluster.get(cluster);
+  if (lastFailure !== undefined && Date.now() - lastFailure < FAILURE_BACKOFF_MS) {
+    return [];
+  }
+
   try {
     const response: any = await clusterRequest(
       '/api/v1/events?fieldSelector=type!=Normal&limit=50',
       { cluster }
     );
 
+    lastFailureByCluster.delete(cluster);
     const items: RawK8sEvent[] = response?.items ?? [];
+    eventsByCluster.set(cluster, { events: items, fetchedAt: Date.now() });
     return items;
   } catch (err) {
-    console.error(`[EventFetcher] Failed to fetch events for cluster ${cluster}:`, err);
+    // Only report the first failure so an unreachable cluster cannot flood the console.
+    if (lastFailure === undefined) {
+      console.warn(`[EventFetcher] Cluster ${cluster} is unreachable, skipping its events:`, err);
+    }
+    lastFailureByCluster.set(cluster, Date.now());
     return [];
   }
 }
@@ -60,7 +110,6 @@ export async function fetchWarningEventsForClusters(clusterNames: string[]): Pro
       return events.map(e => ({ jsonData: e, _cluster: cluster }));
     })
   );
-  console.log(results);
   return results.flat();
 }
 
@@ -84,6 +133,5 @@ export async function fetchClusterWarnings(
       }
     })
   );
-  console.log(result);
   return result;
 }

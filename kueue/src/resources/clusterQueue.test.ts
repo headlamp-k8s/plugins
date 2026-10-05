@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getResourceGroupRows,
   getUniqueFlavorNames,
   renderClusterQueueStatus,
   renderLabelSelector,
@@ -24,6 +25,50 @@ describe('ClusterQueue formatters', () => {
 
     expect(renderResourceGroupsSummary(resourceGroups)).toBe('2 groups, 3 flavors');
     expect(getUniqueFlavorNames(resourceGroups)).toEqual(['default', 'spot']);
+  });
+
+  it('flattens resource groups for detail tables', () => {
+    expect(
+      getResourceGroupRows([
+        {
+          coveredResources: ['cpu', 'memory'],
+          flavors: [
+            {
+              name: 'default',
+              resources: [
+                {
+                  name: 'cpu',
+                  nominalQuota: '8',
+                  borrowingLimit: '4',
+                  lendingLimit: '2',
+                },
+              ],
+            },
+          ],
+        },
+        {
+          coveredResources: ['nvidia.com/gpu'],
+          flavors: [{ name: 'gpu' }],
+        },
+      ])
+    ).toEqual([
+      {
+        group: 'Group 1',
+        coveredResources: 'cpu, memory',
+        flavor: 'default',
+        resource: 'cpu',
+        nominalQuota: '8',
+        borrowingLimit: '4',
+        lendingLimit: '2',
+      },
+      {
+        group: 'Group 2',
+        coveredResources: 'nvidia.com/gpu',
+        flavor: 'gpu',
+        resource: '-',
+        nominalQuota: '-',
+      },
+    ]);
   });
 
   it('derives a readable status from the Active condition', () => {

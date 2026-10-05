@@ -94,6 +94,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
             <Box>{t('Disk')}</Box>
             <Box pl={2}>
               <IconButton
+                aria-label={refresh ? t('Pause') : t('Resume')}
                 onClick={() => {
                   setRefresh(prev => !prev);
                 }}

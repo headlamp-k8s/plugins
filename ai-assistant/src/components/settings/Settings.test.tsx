@@ -20,6 +20,7 @@ import { describe, expect, it, vi } from 'vitest';
 const skillManagerMock = vi.hoisted(() => ({
   constructorArgs: [] as unknown[][],
   loadedConfigs: [] as unknown[],
+  invalidations: 0,
 }));
 
 vi.mock('@headlamp-k8s/ai-common/skills/config', async () => {
@@ -43,7 +44,10 @@ vi.mock('@headlamp-k8s/ai-common/skills/SkillManager', () => ({
     constructor(...args: unknown[]) {
       skillManagerMock.constructorArgs.push(args);
     }
-    invalidateCache() {}
+    invalidateCache() {
+      skillManagerMock.invalidations += 1;
+    }
+    setSkillCache() {}
     async loadAllSkillsWithErrors(config: unknown) {
       skillManagerMock.loadedConfigs.push(config);
       return { skills: [], errors: [] };
@@ -66,7 +70,7 @@ vi.mock('@headlamp-k8s/ai-ui/testing/testMode', () => ({
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   Headlamp: { isRunningAsApp: () => false },
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: (key: string) => key, i18n: {} }),
 }));
 
 vi.mock('../../pluginState', () => ({
@@ -82,6 +86,50 @@ import { render } from '@testing-library/react';
 import Settings from './Settings';
 
 describe('Settings', () => {
+  it('logs when GitHub and Azure CLI auto-detection is available', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.stubGlobal('pluginRunCommand', vi.fn());
+    try {
+      render(React.createElement(Settings));
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        '[ai-assistant auto-detect] GitHub and Azure CLI command runner is available: ' +
+          'pluginRunCommand was injected.'
+      );
+    } finally {
+      vi.unstubAllGlobals();
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('logs when GitHub and Azure CLI auto-detection is unavailable', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(React.createElement(Settings));
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[ai-assistant auto-detect] GitHub and Azure CLI detection is unavailable: ' +
+          'pluginRunCommand was not injected. Ensure Headlamp grants runCmd-gh and runCmd-az permissions.'
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('logs when auto-detection is hidden outside app mode', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(React.createElement(Settings));
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[ai-assistant auto-detect] Auto Detect UI is unavailable: ' +
+          'Headlamp.isRunningAsApp() returned false.'
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('renders without crashing (guards against missing Holmes constant imports)', () => {
     capturedProps.length = 0;
     expect(() => render(React.createElement(Settings))).not.toThrow();
@@ -119,16 +167,38 @@ describe('Settings', () => {
     expect(capturedProps[0].proactiveDiagnosisEnabled).toBe(false);
   });
 
+  it('omits the Holmes settings section on AKS Desktop', () => {
+    capturedProps.length = 0;
+    window.desktopApi = {
+      registerAKSCluster: () => undefined,
+    } as unknown as typeof window.desktopApi;
+    try {
+      render(React.createElement(Settings));
+      expect(capturedProps[0].onHolmesConfigChange).toBeUndefined();
+    } finally {
+      delete window.desktopApi;
+    }
+  });
+
   it('loads one exact source identity without configuring ZIP extraction', async () => {
     capturedProps.length = 0;
     skillManagerMock.constructorArgs.length = 0;
     skillManagerMock.loadedConfigs.length = 0;
+    skillManagerMock.invalidations = 0;
     render(React.createElement(Settings));
     const loadSkills = capturedProps[0].loadSkills as (
       onProgress?: unknown,
-      sourceIdentity?: string
+      sourceIdentity?: string,
+      forceReload?: boolean
     ) => Promise<unknown[]>;
     await loadSkills(undefined, JSON.stringify(['git', 'https://github.com/example/repo', 'two']));
+    expect(skillManagerMock.invalidations).toBe(0);
+    await loadSkills(
+      undefined,
+      JSON.stringify(['git', 'https://github.com/example/repo', 'two']),
+      true
+    );
+    expect(skillManagerMock.invalidations).toBe(1);
     expect(skillManagerMock.constructorArgs[0]).toHaveLength(2);
     expect(skillManagerMock.loadedConfigs[0]).toEqual(
       expect.objectContaining({

@@ -25,7 +25,11 @@ import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
 import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Chip, Stack, Typography } from '@mui/material';
 import React, { useMemo } from 'react';
-import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
+import {
+  formatIngressClass,
+  INGRESS_CLASS_GATEWAY_API,
+  readIngressClass,
+} from '../../config/ingress';
 import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
@@ -33,6 +37,7 @@ import { KnativeDomainMapping, KService } from '../../resources/knative';
 import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
+import { ExternalUrl } from '../common/ResourceListCells';
 import { useKServiceActions } from './detail/hooks/useKServiceActions';
 
 type IngressClassWithCluster = {
@@ -124,11 +129,8 @@ function getServiceUrls(svc: KService, domainByServiceKey: Record<string, string
     return urls;
   }
 
-  if (svc.url) {
-    return [svc.url];
-  }
-
-  return [];
+  const serviceUrl = getSafeUrl(svc.url);
+  return serviceUrl ? [serviceUrl] : [];
 }
 
 type KServiceRowActionsProps = {
@@ -213,9 +215,8 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       if (!refName) continue;
       const svcNs = dm.spec.ref.namespace || dm.metadata.namespace!;
       const key = `${dm.cluster}/${svcNs}/${refName}`;
-      const isReady = dm.status?.conditions?.find(c => c.type === 'Ready')?.status === 'True';
-      const url = dm.status?.url || dm.status?.address?.url;
-      if (isReady && url) {
+      const url = getSafeUrl(dm.readyUrl);
+      if (url) {
         if (!domainMap[key]) domainMap[key] = [];
         if (!domainMap[key].includes(url)) domainMap[key].push(url);
       }
@@ -234,14 +235,9 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       const cm = configMaps.find(
         item => item.cluster === cluster && item.metadata.name === 'config-network'
       );
-      const raw =
-        cm && cm.data && typeof cm.data['ingress.class'] === 'string'
-          ? cm.data['ingress.class']
-          : null;
-      const trimmed = raw?.trim();
       result.push({
         cluster,
-        ingressClass: trimmed && trimmed !== '' ? trimmed : null,
+        ingressClass: readIngressClass(cm?.data).value,
       });
     });
 
@@ -347,21 +343,9 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
           if (urls.length > 0) {
             return (
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                {urls.map(u => (
-                  <a key={u} href={u} target="_blank" rel="noreferrer">
-                    {u}
-                  </a>
+                {urls.map(url => (
+                  <ExternalUrl key={url} url={url} />
                 ))}
-              </Stack>
-            );
-          }
-
-          if (svc.status?.url) {
-            return (
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <a href={svc.status.url} target="_blank" rel="noreferrer">
-                  {svc.status.url}
-                </a>
               </Stack>
             );
           }
@@ -375,7 +359,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'latestCreated',
-        label: 'LatestCreated',
+        label: 'Latest Created',
         gridTemplate: 'min-content',
         getValue: svc => {
           const revisionName = svc.status?.latestCreatedRevisionName;
@@ -393,15 +377,23 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
           const shortName = getRevisionShort(svc, revisionName);
           return (
-            <Typography variant="body2" title={revisionName}>
+            <Link
+              routeName="revisionDetails"
+              params={{
+                namespace: svc.metadata.namespace || 'default',
+                name: revisionName,
+              }}
+              activeCluster={svc.cluster}
+              title={revisionName}
+            >
               {shortName}
-            </Typography>
+            </Link>
           );
         },
       },
       {
         id: 'latestReady',
-        label: 'LatestReady',
+        label: 'Latest Ready',
         gridTemplate: 'min-content',
         getValue: svc => {
           const revisionName = svc.status?.latestReadyRevisionName;
@@ -419,9 +411,17 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
           const shortName = getRevisionShort(svc, revisionName);
           return (
-            <Typography variant="body2" title={revisionName}>
+            <Link
+              routeName="revisionDetails"
+              params={{
+                namespace: svc.metadata.namespace || 'default',
+                name: revisionName,
+              }}
+              activeCluster={svc.cluster}
+              title={revisionName}
+            >
               {shortName}
-            </Typography>
+            </Link>
           );
         },
       },
@@ -600,7 +600,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
   return (
     <ResourceListView
-      title="KServices"
+      title="Services"
       headerProps={headerProps}
       resourceClass={KService}
       columns={columns}

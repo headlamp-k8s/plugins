@@ -41,6 +41,24 @@ export interface ResourceGroupLike {
   flavors?: FlavorQuotasLike[];
 }
 
+/** Flattened row rendered in resource group detail tables. */
+export interface ResourceGroupRow {
+  /** Display label for the resource group index from spec.resourceGroups. */
+  group: string;
+  /** Comma-separated resources covered by this group, such as cpu and memory. */
+  coveredResources: string;
+  /** ResourceFlavor name associated with this resource quota row. */
+  flavor: string;
+  /** Resource name within the flavor quota, for example cpu or memory. */
+  resource: string;
+  /** Nominal quota configured for the resource and flavor pair. */
+  nominalQuota: string | number;
+  /** Optional quota that can be borrowed. */
+  borrowingLimit?: string | number;
+  /** Optional quota that can be lent. */
+  lendingLimit?: string | number;
+}
+
 /** Namespace selector used to decide where a ClusterQueue can admit workloads. */
 export interface LabelSelectorLike {
   /** Exact label matches required by the selector. */
@@ -171,6 +189,50 @@ export function renderResourceGroupsSummary(resourceGroups: ResourceGroupLike[])
   const flavorLabel = flavorCount === 1 ? 'flavor' : 'flavors';
 
   return `${resourceGroups.length} ${groupLabel}, ${flavorCount} ${flavorLabel}`;
+}
+
+/** Convert nested resource groups into table rows. */
+export function getResourceGroupRows(resourceGroups: ResourceGroupLike[]): ResourceGroupRow[] {
+  return resourceGroups.flatMap((group, groupIndex): ResourceGroupRow[] => {
+    const groupLabel = `Group ${groupIndex + 1}`;
+    const coveredResources = group.coveredResources?.join(', ') || '-';
+
+    if (!group.flavors?.length) {
+      return [
+        {
+          group: groupLabel,
+          coveredResources,
+          flavor: '-',
+          resource: '-',
+          nominalQuota: '-',
+        },
+      ];
+    }
+
+    return group.flavors.flatMap((flavor): ResourceGroupRow[] => {
+      if (!flavor.resources?.length) {
+        return [
+          {
+            group: groupLabel,
+            coveredResources,
+            flavor: flavor.name,
+            resource: '-',
+            nominalQuota: '-',
+          },
+        ];
+      }
+
+      return flavor.resources.map(resource => ({
+        group: groupLabel,
+        coveredResources,
+        flavor: flavor.name,
+        resource: resource.name,
+        nominalQuota: resource.nominalQuota,
+        borrowingLimit: resource.borrowingLimit,
+        lendingLimit: resource.lendingLimit,
+      }));
+    });
+  });
 }
 
 /** Render a comma-separated list, falling back to '-' when empty. */

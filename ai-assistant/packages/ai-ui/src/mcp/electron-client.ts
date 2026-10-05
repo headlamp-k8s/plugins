@@ -357,17 +357,24 @@ class ElectronMCPClient implements ToolClient {
   }
 }
 
+/**
+ * Shared Electron MCP client.
+ *
+ * The client resolves the bridge per call and holds no per-instance state, so
+ * every caller can share one instance instead of duplicating IPC wiring.
+ */
+const electronMCPClient = new ElectronMCPClient();
+
 // Export a function that returns enabled tools (compatible with existing interface)
 /**
- * Returns enabled Electron MCP tools using a new client instance.
+ * Returns enabled Electron MCP tools.
  *
  * @returns Enabled tools available through the Electron bridge.
  */
 const tools = async function (): Promise<ElectronMCPTool[]> {
-  const client = new ElectronMCPClient();
-  return client.getEnabledTools();
+  return electronMCPClient.getEnabledTools();
 };
 
 // Export both the client class and the tools function for flexibility
-export { ElectronMCPClient };
+export { ElectronMCPClient, electronMCPClient };
 export default tools;

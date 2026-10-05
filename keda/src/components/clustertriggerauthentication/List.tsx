@@ -7,7 +7,7 @@ export function ClusterTriggerAuthenticationsList() {
 
   return (
     <BaseKedaAuthenticationList
-      title={t('ClusterTriggerAuthentications')}
+      title={t('Cluster Trigger Authentications')}
       resourceType={ClusterTriggerAuthentication}
     />
   );

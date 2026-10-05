@@ -1,12 +1,12 @@
 import {
   DetailsGrid,
-  NameValueTable,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { Template } from '../../resources/template';
 import { fallback, renderTextSection } from '../common/detailHelpers';
+import type { TinkerbellDetailProps } from '../common/detailTypes';
 
 /** Parsed summary for one task in a Tinkerbell template. */
 interface ParsedTemplateTask {
@@ -46,6 +46,8 @@ interface ParsedTemplate {
   tasks: ParsedTemplateTask[];
   /** Parsed action summaries across all tasks. */
   actions: ParsedTemplateAction[];
+  /** Unique container images referenced by parsed actions. */
+  images: string[];
 }
 
 /** Parsed template control-flow marker. */
@@ -236,7 +238,7 @@ function parseTaskActions(taskName: string, taskLines: string[]): ParsedTemplate
  */
 function parseTemplateData(data: string | undefined): ParsedTemplate {
   if (!data) {
-    return { tasks: [], actions: [] };
+    return { tasks: [], actions: [], images: [] };
   }
 
   const lines = data.split('\n');
@@ -251,7 +253,7 @@ function parseTemplateData(data: string | undefined): ParsedTemplate {
   const tasksIndex = lines.findIndex(line => /^\s*tasks:\s*$/.test(line));
 
   if (tasksIndex === -1) {
-    return { name: templateName, globalTimeout, tasks: [], actions: [] };
+    return { name: templateName, globalTimeout, tasks: [], actions: [], images: [] };
   }
 
   const tasksIndent = lines[tasksIndex].search(/\S/);
@@ -299,7 +301,11 @@ function parseTemplateData(data: string | undefined): ParsedTemplate {
     return parseTaskActions(task.name, taskLines);
   });
 
-  return { name: templateName, globalTimeout, tasks, actions };
+  const images = Array.from(
+    new Set(actions.map(action => action.image).filter(Boolean) as string[])
+  );
+
+  return { name: templateName, globalTimeout, tasks, actions, images };
 }
 
 /**
@@ -307,15 +313,17 @@ function parseTemplateData(data: string | undefined): ParsedTemplate {
  *
  * @returns Template detail page with summary, parsed tasks, actions, and raw data.
  */
-export function TemplateDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export function TemplateDetail(props: TinkerbellDetailProps = {}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <DetailsGrid
       resourceType={Template}
       name={name}
       namespace={namespace}
-      withEvents
+      cluster={props.cluster}
       extraInfo={item => {
         const parsedTemplate = parseTemplateData(item?.data);
 
@@ -324,8 +332,7 @@ export function TemplateDetail() {
               { name: 'Template Name', value: fallback(parsedTemplate.name) },
               { name: 'Global Timeout', value: fallback(parsedTemplate.globalTimeout) },
               { name: 'Tasks', value: fallback(parsedTemplate.tasks.length) },
-              { name: 'Action Slots', value: fallback(parsedTemplate.actions.length) },
-              { name: 'Template Data Size', value: fallback(`${item.data?.length ?? 0} chars`) },
+              { name: 'Total Actions', value: fallback(parsedTemplate.actions.length) },
             ]
           : [];
       }}
@@ -335,21 +342,6 @@ export function TemplateDetail() {
         return item
           ? [
               {
-                id: 'tinkerbell.template-summary',
-                section: (
-                  <SectionBox title="Template Summary">
-                    <NameValueTable
-                      rows={[
-                        { name: 'Name', value: fallback(parsedTemplate.name) },
-                        { name: 'Global Timeout', value: fallback(parsedTemplate.globalTimeout) },
-                        { name: 'Tasks', value: fallback(parsedTemplate.tasks.length) },
-                        { name: 'Action Slots', value: fallback(parsedTemplate.actions.length) },
-                      ]}
-                    />
-                  </SectionBox>
-                ),
-              },
-              {
                 id: 'tinkerbell.template-tasks',
                 section: (
                   <SectionBox title="Tasks">
@@ -357,7 +349,7 @@ export function TemplateDetail() {
                       columns={[
                         { label: 'Name', getter: row => row.name },
                         { label: 'Worker', getter: row => fallback(row.worker) },
-                        { label: 'Action Slots', getter: row => fallback(row.actionCount) },
+                        { label: 'Total Actions', getter: row => fallback(row.actionCount) },
                         { label: 'Volumes', getter: row => fallback(row.volumeCount) },
                       ]}
                       data={parsedTemplate.tasks}

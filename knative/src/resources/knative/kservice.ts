@@ -22,7 +22,7 @@ import {
 import type { Condition } from './common';
 
 export type Traffic = {
-  percent: number;
+  percent?: number;
   revisionName?: string;
   latestRevision?: boolean;
   configurationName?: string;

@@ -1,27 +1,9 @@
-import {
-  ConditionsSection,
-  DetailsGrid,
-  Link,
-} from '@kinvolk/headlamp-plugin/lib/components/common';
+import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { LocalQueue } from '../../resources/localQueue';
-import { kueueRouteNames } from '../../utils/kueueRoutes';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
-
-/** Render a ClusterQueue reference as a detail-page link. */
-function renderClusterQueueLink(localQueue: LocalQueue) {
-  const clusterQueueName = localQueue.clusterQueueName;
-
-  if (!clusterQueueName) {
-    return '-';
-  }
-
-  return (
-    <Link routeName={kueueRouteNames.clusterQueueDetail} params={{ name: clusterQueueName }}>
-      {clusterQueueName}
-    </Link>
-  );
-}
+import { renderClusterQueueLink } from '../common/KueueResourceLinks';
+import { RelatedWorkloadsSection } from '../common/RelatedResources';
 
 /** Build the standard Headlamp conditions section for LocalQueue status. */
 function getConditionsSection(localQueue: LocalQueue) {
@@ -55,7 +37,7 @@ export default function LocalQueueDetail() {
             ? [
                 {
                   name: 'ClusterQueue',
-                  value: renderClusterQueueLink(localQueue),
+                  value: renderClusterQueueLink(localQueue.clusterQueueName),
                 },
                 {
                   name: 'Stop Policy',
@@ -81,7 +63,20 @@ export default function LocalQueueDetail() {
             : []
         }
         extraSections={localQueue =>
-          localQueue ? [getConditionsSection(localQueue)].filter(Boolean) : []
+          localQueue
+            ? [
+                getConditionsSection(localQueue),
+                {
+                  id: 'related-workloads',
+                  section: (
+                    <RelatedWorkloadsSection
+                      namespace={localQueue.metadata.namespace}
+                      localQueueName={localQueue.metadata.name}
+                    />
+                  ),
+                },
+              ].filter(Boolean)
+            : []
         }
       />
     </KueueAdminResourceAccess>

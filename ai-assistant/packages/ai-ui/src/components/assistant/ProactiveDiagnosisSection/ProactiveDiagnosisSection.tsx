@@ -30,11 +30,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getStatusIcon,
-  getStatusLabel,
   getStepIcon,
   getStepIconColor,
   getStepSummary,
-  getStepTypeLabel,
   splitDiagnosisContent,
 } from '../../../diagnosis/diagnosisHelpers';
 import type {
@@ -42,6 +40,36 @@ import type {
   DiagnosisThinkingStep,
 } from '../../../diagnosis/ProactiveDiagnosisManager';
 import { DefaultContentRenderer } from '../../defaults/DefaultSlots/DefaultSlots';
+
+function translateStatusLabel(
+  t: ReturnType<typeof useTranslation>['t'],
+  diagnosis: DiagnosisResult
+): string {
+  if (diagnosis.loading) return t('Diagnosing…');
+  if (diagnosis.pending) return t('Queued');
+  if (diagnosis.error) return t('Failed');
+  return t('Completed');
+}
+
+function translateStepSummary(
+  t: ReturnType<typeof useTranslation>['t'],
+  step: DiagnosisThinkingStep
+): string {
+  if (step.type === 'tool-start') return getStepSummary(step);
+  if (step.type === 'tool-result') return t('Tool done');
+  if (step.type === 'todo-update') return t('Updating plan…');
+  return t('Thinking…');
+}
+
+function translateStepTypeLabel(
+  t: ReturnType<typeof useTranslation>['t'],
+  type: DiagnosisThinkingStep['type']
+): string {
+  if (type === 'tool-start') return t('Tool call');
+  if (type === 'tool-result') return t('Tool result');
+  if (type === 'todo-update') return t('Plan update');
+  return t('Intermediate');
+}
 
 /** Props for the ProactiveDiagnosisSection component that displays diagnosis results. */
 export interface ProactiveDiagnosisSectionProps {
@@ -97,9 +125,9 @@ function DiagnosisThinkingBlock({
     ? latestStep
       ? latestStep.type === 'tool-start'
         ? getStepSummary(latestStep)
-        : t(getStepSummary(latestStep))
+        : translateStepSummary(t, latestStep)
       : t('Analyzing event…')
-    : t(steps.length !== 1 ? '{{count}} steps' : '{{count}} step', { count: steps.length });
+    : t('{{count}} step', { count: steps.length });
 
   return (
     <Box
@@ -243,7 +271,7 @@ function DiagnosisThinkingBlock({
                     style={{ flexShrink: 0 }}
                   />
                   <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                    {t(getStepTypeLabel(step.type))}
+                    {translateStepTypeLabel(t, step.type)}
                   </Typography>
                 </Box>
                 <Typography
@@ -593,7 +621,7 @@ export default function ProactiveDiagnosisSection({
     ? t('Diagnosis for {{kind}} {{name}}: {{status}}', {
         kind: latestDiagnosis.event.objectKind,
         name: latestDiagnosis.event.objectName,
-        status: t(getStatusLabel(latestDiagnosis)),
+        status: translateStatusLabel(t, latestDiagnosis),
       })
     : t('Proactive diagnosis is running');
 
@@ -631,12 +659,11 @@ export default function ProactiveDiagnosisSection({
           />
         )}
         <Chip
-          label={t(
-            diagnoses.length !== 1
-              ? '{{completed}}/{{total}} events'
-              : '{{completed}}/{{total}} event',
-            { completed: completedCount, total: diagnoses.length }
-          )}
+          label={t('{{completed}}/{{total}} event', {
+            completed: completedCount,
+            total: diagnoses.length,
+            count: diagnoses.length,
+          })}
           size="small"
           variant="outlined"
           sx={{ ml: 'auto', fontSize: '0.7rem', height: 20 }}
@@ -719,7 +746,7 @@ export default function ProactiveDiagnosisSection({
                 variant="caption"
                 sx={{ color: 'text.secondary', flexShrink: 0, minWidth: 70, textAlign: 'right' }}
               >
-                {t(getStatusLabel(d))}
+                {translateStatusLabel(t, d)}
               </Typography>
             </Box>
 
