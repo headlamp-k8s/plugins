@@ -40,6 +40,7 @@ export function fetchOpencostData(
   resource: string,
   accumulate: boolean
 ) {
+  serviceName = serviceName.trim();
   const queryString = `window=${window}&aggregate=${resource}&step=1d&accumulate=${accumulate.toString()}`;
 
   if (isDirectUrl(serviceName)) {
