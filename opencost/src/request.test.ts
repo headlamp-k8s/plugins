@@ -26,6 +26,7 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
 }));
 
 afterEach(() => {
+  vi.clearAllMocks();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -63,6 +64,23 @@ describe('fetchOpencostData', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://opencost.example.com/allocation?window=1d&aggregate=pod&step=1d&accumulate=true'
+    );
+  });
+
+  it('trims whitespace around a configured service value', async () => {
+    const mockJson = vi.fn().mockResolvedValue({ data: [] });
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: mockJson });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await fetchOpencostData('opencost', '  https://opencost.example.com/  ', '1d', 'pod', true);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://opencost.example.com/allocation?window=1d&aggregate=pod&step=1d&accumulate=true'
+    );
+
+    mockRequest.mockResolvedValue({ data: [] });
+    await fetchOpencostData('opencost', ' http:opencost:9003 ', '1d', 'pod', true);
+    expect(mockRequest).toHaveBeenCalledWith(
+      '/api/v1/namespaces/opencost/services/http:opencost:9003/proxy/allocation?window=1d&aggregate=pod&step=1d&accumulate=true'
     );
   });
 
