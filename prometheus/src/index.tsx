@@ -12,6 +12,7 @@ import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetric
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
+import { KServeChart } from './components/Chart/KServeChart/KServeChart';
 import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
 import { TinkerbellChart } from './components/Chart/TinkerbellChart/TinkerbellChart';
 import {
@@ -177,6 +178,18 @@ function PrometheusMetrics(resource: KubeObject) {
           resource.jsonData.metadata.name
         }
         revisionName={resource.jsonData.metadata.name}
+      />
+    );
+  }
+
+  if (
+    resourceKind === 'InferenceService' &&
+    resource.jsonData?.apiVersion?.startsWith('serving.kserve.io')
+  ) {
+    return (
+      <KServeChart
+        namespace={resource.jsonData.metadata.namespace}
+        serviceName={resource.jsonData.metadata.name}
       />
     );
   }

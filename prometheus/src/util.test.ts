@@ -164,6 +164,22 @@ describe('supportsPrometheusMetrics', () => {
       { kind: 'Application', jsonData: { kind: 'Application', apiVersion: 'example.com/v1' } },
       false,
     ],
+    [
+      'supports KServe InferenceServices',
+      {
+        kind: 'InferenceService',
+        jsonData: { kind: 'InferenceService', apiVersion: 'serving.kserve.io/v1beta1' },
+      },
+      true,
+    ],
+    [
+      'rejects non-KServe InferenceServices with the same kind',
+      {
+        kind: 'InferenceService',
+        jsonData: { kind: 'InferenceService', apiVersion: 'example.com/v1' },
+      },
+      false,
+    ],
     ['rejects unknown kinds', { kind: 'VolcanoJob', jsonData: { kind: 'VolcanoJob' } }, false],
     ['rejects missing resources', undefined, false],
   ])('%s', (_, resource, expected) => {

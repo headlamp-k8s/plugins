@@ -176,6 +176,7 @@ const resourceApiVersionRules: Record<string, RegExp> = {
   KubeadmControlPlane: /^controlplane\.cluster\.x-k8s\.io\//,
   Service: /^serving\.knative\.dev\/v1$/,
   Revision: /^serving\.knative\.dev\/v1$/,
+  InferenceService: /^serving\.kserve\.io\//,
 };
 
 /**
@@ -225,6 +226,7 @@ const ChartEnabledKinds = [
   'Kafka',
   'Service',
   'Revision',
+  'InferenceService',
   'Queue',
   'Application',
   'Cluster',

@@ -74,6 +74,7 @@
   "Memory": "",
   "Network": "",
   "Filesystem": "",
+  "Requests/s": "",
   "Resource Usage": "",
   "Allowed Disruptions": "",
   "Pending Pods": "",
