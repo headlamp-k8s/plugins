@@ -34,9 +34,13 @@ export function CertificatesList() {
             if (!notAfter) {
               return null;
             }
+            const notAfterMs = new Date(notAfter).getTime();
+            if (Number.isNaN(notAfterMs)) {
+              return null;
+            }
             // notAfter is a future expiry date, so we need the time remaining until it
             // (not time elapsed since it, which is what DateLabel/TimeAgo compute).
-            const remainingMs = new Date(notAfter).getTime() - Date.now();
+            const remainingMs = notAfterMs - Date.now();
             const label =
               remainingMs <= 0 ? t('Expired') : Utils.formatDuration(remainingMs, { format: 'mini' });
             return (
