@@ -1,7 +1,7 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { kueueApiVersions } from '../utils/kueueApi';
 import { kueueRoutePaths } from '../utils/kueueRoutes';
-import type { FairSharing, FairSharingStatus, ResourceGroup } from './clusterQueue';
+import type { ClusterQueue, FairSharing, FairSharingStatus, ResourceGroup } from './clusterQueue';
 import { renderFairSharing } from './clusterQueueFormatters';
 import {
   getCohortUniqueFlavorNames,
@@ -50,7 +50,7 @@ export interface CohortSpec {
  */
 export interface CohortStatus {
   /**
-   * Current FairSharing state reported by Kueue.
+   * Fair sharing status summarizing weighted share allocation across the Cohort.
    *
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#cohortstatus
    */
@@ -58,29 +58,52 @@ export interface CohortStatus {
 }
 
 /**
- * Kubernetes Cohort object returned by the Kueue API.
+ * Raw JSON interface for a cluster-scoped Kueue Cohort resource.
  *
  * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#cohort
  */
 export interface KubeCohort extends KubeObjectInterface {
-  /**
-   * Kubernetes object metadata for the Cohort.
-   *
-   * @see https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#objectmeta-v1-meta
-   */
-  metadata: KubeObjectInterface['metadata'];
-  /**
-   * Cohort desired state.
-   *
-   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#cohortspec
-   */
+  /** Desired specification of the Cohort. */
   spec?: CohortSpec;
-  /**
-   * Cohort observed state.
-   *
-   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#cohortstatus
-   */
+  /** Observed status of the Cohort. */
   status?: CohortStatus;
+}
+
+export interface CohortMember {
+  /** Name of the ClusterQueue belonging to the cohort. */
+  name: string;
+  /** Cohort name. */
+  cohort: string;
+}
+
+export interface CohortTree {
+  /** Cohort name. */
+  name: string;
+  /** ClusterQueues participating in this cohort. */
+  members: CohortMember[];
+}
+
+/** Group a list of ClusterQueues by their cohort name. */
+export function buildCohortTrees(clusterQueues: ClusterQueue[]): CohortTree[] {
+  const cohortMap = new Map<string, CohortMember[]>();
+
+  for (const cq of clusterQueues) {
+    const cohort = cq.cohortName;
+    if (!cohort || cohort === '-') continue;
+
+    if (!cohortMap.has(cohort)) {
+      cohortMap.set(cohort, []);
+    }
+    cohortMap.get(cohort)!.push({
+      name: cq.metadata.name,
+      cohort,
+    });
+  }
+
+  return Array.from(cohortMap.entries()).map(([name, members]) => ({
+    name,
+    members,
+  }));
 }
 
 export class Cohort extends KubeObject<KubeCohort> {
@@ -101,27 +124,27 @@ export class Cohort extends KubeObject<KubeCohort> {
     return this.jsonData.status ?? {};
   }
 
-  get parentName() {
+  get parentName(): string {
     return renderParentName(this.spec.parentName);
   }
 
-  get parentNameDisplay() {
+  get parentNameDisplay(): string {
     return renderParentNameDisplay(this.spec.parentName);
   }
 
-  get resourceGroups() {
-    return this.spec.resourceGroups || [];
+  get resourceGroups(): ResourceGroup[] {
+    return this.spec.resourceGroups ?? [];
   }
 
-  get resourceGroupsDisplay() {
+  get resourceGroupsDisplay(): string {
     return renderCohortResourceGroupsSummary(this.resourceGroups);
   }
 
-  get referencedFlavorNames() {
+  get referencedFlavorNames(): string[] {
     return getCohortUniqueFlavorNames(this.resourceGroups);
   }
 
-  get referencedFlavorNamesDisplay() {
+  get referencedFlavorNamesDisplay(): string {
     return renderCohortFlavorNames(this.resourceGroups);
   }
 
