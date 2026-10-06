@@ -59,32 +59,29 @@ function notify(cluster: string, status: KyvernoCRDStatus) {
   listeners.get(cluster)?.forEach(fn => fn(status));
 }
 
-async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
+// Exported for unit testing — kept SDK-free (just the ApiProxy calls) so
+// probing logic can be verified without mounting the hook.
+export async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
   const existing = inFlight.get(cluster);
   if (existing) return existing;
 
   const promise = (async () => {
-    const [legacy, cel, reports, ephemeralReports] = await Promise.all([
+    const [legacy, cel, reports, ephemeralReports, v2] = await Promise.all([
       checkAPIGroup('/apis/kyverno.io/v1'),
       checkAPIGroup('/apis/policies.kyverno.io/v1'),
       checkAPIGroup('/apis/wgpolicyk8s.io/v1alpha2'),
       checkAPIGroup('/apis/reports.kyverno.io/v1'),
+      checkAPIGroup('/apis/kyverno.io/v2'),
     ]);
 
     // kyverno.io/v2 hosts cleanup, exceptions, and admission/background scan reports.
     // The API-group-level probe doesn't tell us *which* CRDs are inside, so we treat
-    // all v2 features as available together, matching what stock Kyverno installs.
-    let cleanup = false;
-    let exceptions = false;
-    let kyvernoV2Reports = false;
-    if (legacy) {
-      const v2 = await checkAPIGroup('/apis/kyverno.io/v2');
-      if (v2) {
-        cleanup = true;
-        exceptions = true;
-        kyvernoV2Reports = true;
-      }
-    }
+    // all v2 features as available together. This is probed independently of `legacy`:
+    // Kyverno's Helm chart lets cleanuppolicies/policyexceptions be enabled while
+    // clusterpolicies/policies (v1) are disabled, e.g. a CEL-only install.
+    const cleanup = v2;
+    const exceptions = v2;
+    const kyvernoV2Reports = v2;
 
     const status: KyvernoCRDStatus = {
       legacy,
