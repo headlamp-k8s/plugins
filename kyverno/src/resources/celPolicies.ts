@@ -73,7 +73,7 @@ export interface ValidatingPolicySpec {
 }
 
 export interface ValidatingPolicyInterface extends KubeObjectInterface {
-  spec: ValidatingPolicySpec;
+  spec?: ValidatingPolicySpec;
   status?: CELPolicyStatus;
 }
 
@@ -92,19 +92,19 @@ export class ValidatingPolicy extends KubeObject<ValidatingPolicyInterface> {
   }
 
   get validationActions(): string[] {
-    return this.spec.validationActions || ['Audit'];
+    return this.spec?.validationActions || ['Audit'];
   }
 
   get validationCount(): number {
-    return this.spec.validations?.length || 0;
+    return this.spec?.validations?.length || 0;
   }
 
   get isAdmissionEnabled(): boolean {
-    return this.spec.evaluation?.admission?.enabled ?? true;
+    return this.spec?.evaluation?.admission?.enabled ?? true;
   }
 
   get isBackgroundEnabled(): boolean {
-    return this.spec.evaluation?.background?.enabled ?? true;
+    return this.spec?.evaluation?.background?.enabled ?? true;
   }
 
   get ready(): boolean {
@@ -129,7 +129,7 @@ export interface MutatingPolicySpec {
 }
 
 export interface MutatingPolicyInterface extends KubeObjectInterface {
-  spec: MutatingPolicySpec;
+  spec?: MutatingPolicySpec;
   status?: CELPolicyStatus;
 }
 
@@ -148,15 +148,15 @@ export class MutatingPolicy extends KubeObject<MutatingPolicyInterface> {
   }
 
   get mutationCount(): number {
-    return this.spec.mutations?.length || 0;
+    return this.spec?.mutations?.length || 0;
   }
 
   get isAdmissionEnabled(): boolean {
-    return this.spec.evaluation?.admission?.enabled ?? true;
+    return this.spec?.evaluation?.admission?.enabled ?? true;
   }
 
   get isBackgroundEnabled(): boolean {
-    return this.spec.evaluation?.background?.enabled ?? true;
+    return this.spec?.evaluation?.background?.enabled ?? true;
   }
 
   get ready(): boolean {
@@ -180,7 +180,7 @@ export interface GeneratingPolicySpec {
 }
 
 export interface GeneratingPolicyInterface extends KubeObjectInterface {
-  spec: GeneratingPolicySpec;
+  spec?: GeneratingPolicySpec;
   status?: CELPolicyStatus;
 }
 
@@ -199,7 +199,7 @@ export class GeneratingPolicy extends KubeObject<GeneratingPolicyInterface> {
   }
 
   get generateCount(): number {
-    return this.spec.generate?.length || 0;
+    return this.spec?.generate?.length || 0;
   }
 
   get ready(): boolean {
@@ -219,7 +219,7 @@ export interface DeletingPolicySpec {
 }
 
 export interface DeletingPolicyInterface extends KubeObjectInterface {
-  spec: DeletingPolicySpec;
+  spec?: DeletingPolicySpec;
   status?: CELPolicyStatus & { lastExecutionTime?: string };
 }
 
@@ -238,7 +238,7 @@ export class DeletingPolicy extends KubeObject<DeletingPolicyInterface> {
   }
 
   get schedule(): string {
-    return this.spec.schedule || '-';
+    return this.spec?.schedule || '-';
   }
 
   get ready(): boolean {
@@ -281,7 +281,7 @@ export interface ImageValidatingPolicySpec {
 }
 
 export interface ImageValidatingPolicyInterface extends KubeObjectInterface {
-  spec: ImageValidatingPolicySpec;
+  spec?: ImageValidatingPolicySpec;
   status?: CELPolicyStatus;
 }
 
@@ -300,11 +300,11 @@ export class ImageValidatingPolicy extends KubeObject<ImageValidatingPolicyInter
   }
 
   get imagePatterns(): string[] {
-    return (this.spec.matchImageReferences || []).map(r => r.glob || r.expression || '');
+    return (this.spec?.matchImageReferences || []).map(r => r.glob || r.expression || '');
   }
 
   get attestorCount(): number {
-    return this.spec.attestors?.length || 0;
+    return this.spec?.attestors?.length || 0;
   }
 
   get ready(): boolean {
