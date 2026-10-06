@@ -1,0 +1,57 @@
+# Demo Restore CRs for Headlamp Velero → Restores UI.
+# Safe to apply without a running Velero controller — objects are for UI verification.
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-from-default-daily
+  namespace: velero
+spec:
+  backupName: default-deployments-daily-20261001070000
+  includedNamespaces:
+    - default
+  restorePVs: true
+status:
+  phase: Completed
+  errors: 0
+  warnings: 1
+  startTimestamp: '2026-10-02T10:00:00Z'
+  completionTimestamp: '2026-10-02T10:03:20Z'
+  progress:
+    totalItems: 12
+    itemsRestored: 12
+---
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-apps-partial
+  namespace: velero
+spec:
+  backupName: apps-namespace-only-20261002090000
+  includedNamespaces:
+    - apps
+  restorePVs: false
+status:
+  phase: PartiallyFailed
+  errors: 2
+  warnings: 0
+  startTimestamp: '2026-10-03T08:00:00Z'
+  completionTimestamp: '2026-10-03T08:05:10Z'
+  progress:
+    totalItems: 8
+    itemsRestored: 6
+---
+# Schedule-sourced Restore (no backupName) — Velero resolves the latest Backup from the Schedule.
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-from-schedule-daily
+  namespace: velero
+spec:
+  scheduleName: default-deployments-daily
+  includedNamespaces:
+    - default
+  restorePVs: true
+status:
+  phase: New
+  errors: 0
+  warnings: 0

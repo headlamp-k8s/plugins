@@ -1,0 +1,9 @@
+/node_modules
+/build
+/dist
+/coverage
+storybook-static
+storybook-build.log
+.eslintcache
+*.tgz
+npm-debug.log*
