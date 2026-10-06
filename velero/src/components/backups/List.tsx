@@ -12,7 +12,13 @@ function BackupListContent() {
     <ResourceListView
       title="Velero Backups"
       resourceClass={VeleroBackup}
-      filterFunction={(backup: VeleroBackup) => backup.getNamespace() === veleroNamespace}
+      namespaces={[veleroNamespace]}
+      enableRowActions={false}
+      enableRowSelection={false}
+      headerProps={{
+        noNamespaceFilter: true,
+        titleSideActions: [],
+      }}
       columns={[
         'name',
         'namespace',

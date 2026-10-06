@@ -4,7 +4,7 @@ import { getLatestBackupForSchedule } from '../../coverage';
 import { formatNextScheduledRun } from '../../cron';
 import { useVeleroData } from '../../hooks/useVeleroData';
 import { VeleroSchedule } from '../../resources/velero';
-import { getBackupStatusColor } from '../../utils/status';
+import { getBackupStatusColor, getScheduleStatusColor } from '../../utils/status';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
@@ -24,11 +24,19 @@ function ScheduleDetailContent() {
         }
 
         const last = getLatestBackupForSchedule(backups, schedule.getName());
+        const nextRun =
+          schedule.paused || schedule.isFailedValidation
+            ? 'N/A'
+            : formatNextScheduledRun(schedule.cronSchedule);
 
         return [
           {
             name: 'Status',
-            value: schedule.paused ? 'Paused' : 'Active',
+            value: (
+              <StatusLabel status={getScheduleStatusColor(schedule.statusDisplay)}>
+                {schedule.statusDisplay}
+              </StatusLabel>
+            ),
           },
           {
             name: 'Cron',
@@ -36,12 +44,20 @@ function ScheduleDetailContent() {
           },
           {
             name: 'Next run',
-            value: schedule.paused ? 'N/A (paused)' : formatNextScheduledRun(schedule.cronSchedule),
+            value: nextRun,
           },
           {
             name: 'Namespaces',
             value: schedule.includedNamespacesDisplay,
           },
+          ...(schedule.validationErrors.length > 0
+            ? [
+                {
+                  name: 'Validation errors',
+                  value: schedule.validationErrors.join('; '),
+                },
+              ]
+            : []),
           {
             name: 'Last backup',
             value: last ? (

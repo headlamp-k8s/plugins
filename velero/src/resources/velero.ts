@@ -34,6 +34,13 @@ export interface VeleroScheduleSpec {
 
 export interface VeleroScheduleInterface extends KubeObjectInterface {
   spec?: VeleroScheduleSpec;
+  status?: VeleroScheduleStatus;
+}
+
+export interface VeleroScheduleStatus {
+  phase?: string;
+  validationErrors?: string[];
+  lastBackup?: string;
 }
 
 export interface VeleroBackupStatus {
@@ -77,6 +84,30 @@ export class VeleroSchedule extends KubeObject<VeleroScheduleInterface> {
 
   get paused(): boolean {
     return !!this.spec?.paused;
+  }
+
+  get phase(): string | undefined {
+    return this.jsonData.status?.phase;
+  }
+
+  get validationErrors(): string[] {
+    return this.jsonData.status?.validationErrors ?? [];
+  }
+
+  /** True when Velero will not create backups from this schedule. */
+  get isFailedValidation(): boolean {
+    return this.phase === 'FailedValidation';
+  }
+
+  /** Operator-facing status: FailedValidation, Paused, or Active. */
+  get statusDisplay(): string {
+    if (this.isFailedValidation) {
+      return 'FailedValidation';
+    }
+    if (this.paused) {
+      return 'Paused';
+    }
+    return 'Active';
   }
 
   get template(): VeleroBackupTemplate {

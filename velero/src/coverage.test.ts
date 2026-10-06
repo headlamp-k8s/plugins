@@ -381,6 +381,26 @@ describe('scheduleCoversWorkload', () => {
     ).toBe(false);
   });
 
+  test('excludes FailedValidation schedules from coverage', () => {
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'broken',
+          phase: 'FailedValidation',
+          template: {
+            includedNamespaces: ['apps'],
+            includedResources: ['deployments'],
+          },
+        },
+        {
+          namespace: 'apps',
+          labels: {},
+          resourceKind: 'deployments',
+        }
+      )
+    ).toBe(false);
+  });
+
   test('rejects PVC labeled velero.io/exclude-from-backup=true', () => {
     expect(
       scheduleCoversWorkload(

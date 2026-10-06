@@ -4,7 +4,7 @@ import { getLatestBackupForSchedule } from '../../coverage';
 import { formatNextScheduledRun } from '../../cron';
 import { useVeleroData } from '../../hooks/useVeleroData';
 import { VeleroSchedule } from '../../resources/velero';
-import { getBackupStatusColor } from '../../utils/status';
+import { getBackupStatusColor, getScheduleStatusColor } from '../../utils/status';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
@@ -16,7 +16,13 @@ function ScheduleListContent() {
     <ResourceListView
       title="Velero Schedules"
       resourceClass={VeleroSchedule}
-      filterFunction={(schedule: VeleroSchedule) => schedule.getNamespace() === veleroNamespace}
+      namespaces={[veleroNamespace]}
+      enableRowActions={false}
+      enableRowSelection={false}
+      headerProps={{
+        noNamespaceFilter: true,
+        titleSideActions: [],
+      }}
       columns={[
         'name',
         'namespace',
@@ -28,7 +34,12 @@ function ScheduleListContent() {
         {
           id: 'status',
           label: 'Status',
-          getValue: (schedule: VeleroSchedule) => (schedule.paused ? 'Paused' : 'Active'),
+          getValue: (schedule: VeleroSchedule) => schedule.statusDisplay,
+          render: (schedule: VeleroSchedule) => (
+            <StatusLabel status={getScheduleStatusColor(schedule.statusDisplay)}>
+              {schedule.statusDisplay}
+            </StatusLabel>
+          ),
         },
         {
           id: 'namespaces',
@@ -39,7 +50,9 @@ function ScheduleListContent() {
           id: 'next-run',
           label: 'Next run',
           getValue: (schedule: VeleroSchedule) =>
-            schedule.paused ? 'N/A (paused)' : formatNextScheduledRun(schedule.cronSchedule),
+            schedule.paused || schedule.isFailedValidation
+              ? 'N/A'
+              : formatNextScheduledRun(schedule.cronSchedule),
         },
         {
           id: 'last-backup',

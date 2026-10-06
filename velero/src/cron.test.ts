@@ -29,6 +29,19 @@ describe('getNextScheduledRun', () => {
     expect(next?.toISOString()).toBe('2026-07-05T08:00:00.000Z');
   });
 
+  test('parses Velero @every interval schedules', () => {
+    const from = new Date('2026-07-05T06:00:00Z');
+    expect(getNextScheduledRun('@every 5m', from)?.toISOString()).toBe('2026-07-05T06:05:00.000Z');
+    expect(getNextScheduledRun('@every 1h30m', from)?.toISOString()).toBe(
+      '2026-07-05T07:30:00.000Z'
+    );
+  });
+
+  test('returns undefined for invalid @every durations', () => {
+    expect(getNextScheduledRun('@every')).toBeUndefined();
+    expect(getNextScheduledRun('@every notaduration')).toBeUndefined();
+  });
+
   test('returns undefined for invalid cron expressions', () => {
     expect(getNextScheduledRun('not-a-cron')).toBeUndefined();
     expect(getNextScheduledRun('')).toBeUndefined();

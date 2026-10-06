@@ -22,6 +22,8 @@ export interface ScheduleCoverageInput {
   cronSchedule?: string;
   /** When true, the schedule does not create new backups. */
   paused?: boolean;
+  /** Velero Schedule status.phase (e.g. FailedValidation). */
+  phase?: string;
 }
 
 /** Normalized Velero Backup fields joined onto schedule coverage results. */
@@ -229,6 +231,7 @@ function labelsMatch(template: VeleroBackupTemplate, labels: Record<string, stri
  * label selectors (`matchLabels`, `matchExpressions`, `orLabelSelectors`),
  * and the `velero.io/exclude-from-backup` label.
  *
+ * FailedValidation schedules never cover (Velero will not create backups).
  * Paused schedules still "match" the template so they can be shown as paused;
  * callers decide how to present them via {@link ScheduleCoverageResult.paused}.
  */
@@ -236,6 +239,10 @@ export function scheduleCoversWorkload(
   schedule: ScheduleCoverageInput,
   target: WorkloadTarget
 ): boolean {
+  if (schedule.phase === 'FailedValidation') {
+    return false;
+  }
+
   if (isExcludedFromBackup(target.labels)) {
     return false;
   }
@@ -297,6 +304,10 @@ export function getSchedulesForNamespace(
   namespace: string
 ): ScheduleCoverageResult[] {
   return schedules
-    .filter(schedule => namespaceIncluded(schedule.template ?? {}, namespace))
+    .filter(
+      schedule =>
+        schedule.phase !== 'FailedValidation' &&
+        namespaceIncluded(schedule.template ?? {}, namespace)
+    )
     .map(schedule => toScheduleCoverageResult(schedule, backups));
 }

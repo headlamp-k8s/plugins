@@ -36,7 +36,13 @@ function RestoreListContent() {
     <ResourceListView
       title="Velero Restores"
       resourceClass={VeleroRestore}
-      filterFunction={(restore: VeleroRestore) => restore.getNamespace() === veleroNamespace}
+      namespaces={[veleroNamespace]}
+      enableRowActions={false}
+      enableRowSelection={false}
+      headerProps={{
+        noNamespaceFilter: true,
+        titleSideActions: [],
+      }}
       columns={[
         'name',
         'namespace',
