@@ -195,7 +195,7 @@ function getMemberClusterQueuesSection(
             {
               label: 'Name',
               getter: (clusterQueue: ClusterQueue) =>
-                renderClusterQueueLink(clusterQueue.metadata.name),
+                renderClusterQueueLink(clusterQueue.metadata.name, clusterQueue.cluster),
             },
             {
               label: 'Queueing Strategy',

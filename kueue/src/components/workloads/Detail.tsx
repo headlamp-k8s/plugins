@@ -1,3 +1,5 @@
+import { Icon } from '@iconify/react';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -429,8 +431,26 @@ function getConditionsSection(workload: Workload) {
   };
 }
 
-export default function WorkloadDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+/** Open a Workload's details in a side panel instead of navigating away. */
+export function openWorkloadActivity(namespace: string, name: string, cluster?: string) {
+  Activity.launch({
+    id: `kueue-workload-${cluster ?? ''}-${namespace}-${name}`,
+    location: 'split-right',
+    icon: <Icon icon="mdi:briefcase-outline" />,
+    title: `${namespace}/${name}`,
+    cluster,
+    content: <WorkloadDetail namespace={namespace} name={name} cluster={cluster} />,
+  });
+}
+
+export default function WorkloadDetail(props: {
+  namespace?: string;
+  name?: string;
+  cluster?: string;
+}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <KueueAdminResourceAccess
@@ -443,13 +463,18 @@ export default function WorkloadDetail() {
         resourceType={Workload}
         name={name}
         namespace={namespace}
+        cluster={props.cluster}
         withEvents
         extraInfo={workload =>
           workload
             ? [
                 {
                   name: 'Queue',
-                  value: renderLocalQueueLink(workload.queueName, workload.metadata.namespace),
+                  value: renderLocalQueueLink(
+                    workload.queueName,
+                    workload.metadata.namespace,
+                    workload.cluster
+                  ),
                 },
                 {
                   name: 'Priority',
@@ -489,7 +514,7 @@ export default function WorkloadDetail() {
                 },
                 {
                   name: 'Assigned ClusterQueue',
-                  value: renderClusterQueueLink(workload.admissionClusterQueue),
+                  value: renderClusterQueueLink(workload.admissionClusterQueue, workload.cluster),
                 },
                 {
                   name: 'Assigned ResourceFlavors',
