@@ -1,48 +1,24 @@
 # PipeCD Headlamp Plugin
 
-This plugin adds a Headlamp UI for [PipeCD](https://pipecd.dev/), a continuous
-delivery system for Kubernetes, Terraform, Cloud Run, Lambda, and ECS.
+[PipeCD](https://pipecd.dev/) is a continuous delivery tool for Kubernetes,
+Terraform, Cloud Run, Lambda and ECS. This plugin will show your PipeCD
+applications inside Headlamp, so you can check what was deployed without
+switching to the PipeCD console.
 
-It shows the delivery state of your PipeCD applications alongside the Kubernetes
-resources in Headlamp.
+## Current state
 
-## Current Scope
+This is the project scaffold. It adds a PipeCD section to the sidebar with a
+single placeholder page, so the plugin builds and loads in Headlamp. There is
+nothing to configure yet, and it does not talk to a PipeCD server.
 
-The plugin is read-only. It adds a PipeCD section to the sidebar with
-Applications and Settings pages.
+Planned, in later changes:
 
-- **Applications** — a list of applications with sync status, platform kind,
-  last synced time, and Git repository, with search and a platform filter.
-- **Application detail** — repository, path, piped, platform provider, labels,
-  last synced time, and recent deployments.
-- **Deployment detail** — status, commit, who triggered it, duration, and the
-  pipeline stages.
-- **Stage logs** — logs for each pipeline stage, with timestamps.
-- **Settings** — PipeCD server URL and API key, with a connection test.
-
-Actions that change state, such as triggering a sync, are not supported. Use the
-PipeCD console for those.
-
-## Prerequisites
-
-A running PipeCD control plane and an API key for your project.
-
-Create the key in the PipeCD console under **Settings → API Keys**. A read-only
-key is sufficient.
-
-## Configuration
-
-Open **PipeCD → Settings** in Headlamp and enter:
-
-| Field             | Example                      |
-| ----------------- | ---------------------------- |
-| PipeCD server URL | `https://pipecd.example.com` |
-| API key           | the key created above        |
-
-Use **Test connection** to check that the server is reachable and the key is
-accepted. The settings are stored in the browser's local storage.
-
-The PipeCD server must accept gRPC-Web requests from the Headlamp origin.
+- Applications list with sync status, platform and Git repository
+- Application detail with recent deployments
+- Deployment detail with pipeline stages
+- Logs for each pipeline stage
+- A settings page for the PipeCD server URL and API key
+- A sync button
 
 ## Development
 
@@ -56,7 +32,7 @@ npm run tsc
 npm test
 ```
 
-The API client in `src/generated` is generated from PipeCD's protocol buffer
-definitions using [buf](https://buf.build/) and `protoc-gen-es`. It is committed
-so that the plugin builds without a generation step, and it is excluded from
-formatting.
+The PipeCD API client will be generated from PipeCD's protocol buffer
+definitions using [buf](https://buf.build/) and `protoc-gen-es`. None of it is
+in this change. `src/generated` is already listed in `.prettierignore` so the
+generated files are skipped when formatting once they arrive.
