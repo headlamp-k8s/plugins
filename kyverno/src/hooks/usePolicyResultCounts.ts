@@ -15,8 +15,8 @@
  */
 
 import { useMemo } from 'react';
-import { ClusterPolicyReport, PolicyReport } from '../resources/policyReport';
 import { bucketReportResults, PolicyResultCounts } from './policyResultBucket';
+import { usePolicyReportSources } from './usePolicyReportSources';
 
 export type { PolicyResultCounts };
 
@@ -24,30 +24,27 @@ export interface PolicyResultLookup {
   forCluster(name: string): PolicyResultCounts | undefined;
   forNamespaced(name: string, namespace: string): PolicyResultCounts | undefined;
   loading: boolean;
+  error?: unknown;
 }
 
 /**
- * Aggregates PolicyReport / ClusterPolicyReport results by policy name so list
- * views can show "X of Y failed" without each row re-walking every report.
+ * Aggregates normalized report-source results by policy name so list views can
+ * show "X of Y failed" without each row re-walking every report.
  *
  * The actual bucketing logic lives in `policyResultBucket.ts` so it can be
  * unit-tested without the Headlamp SDK shim.
  */
 export function usePolicyResultCounts(): PolicyResultLookup {
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { reports, loading, error } = usePolicyReportSources();
 
   return useMemo(() => {
-    const { cluster, namespaced } = bucketReportResults([
-      ...(policyReports || []),
-      ...(clusterPolicyReports || []),
-    ]);
+    const { cluster, namespaced } = bucketReportResults(reports);
 
     return {
       forCluster: name => cluster.get(name),
       forNamespaced: (name, namespace) => namespaced.get(`${namespace}/${name}`),
-      // Loading until BOTH streams resolve — partial data would undercount per-row totals.
-      loading: policyReports === null || clusterPolicyReports === null,
+      loading,
+      error,
     };
-  }, [policyReports, clusterPolicyReports]);
+  }, [reports, loading, error]);
 }
