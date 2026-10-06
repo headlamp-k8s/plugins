@@ -16,6 +16,8 @@
 
 import { ClusterDomainClaim, KnativeDomainMapping } from '../resources/knative';
 
+type TFunc = (key: string, options?: Record<string, string>) => string;
+
 export function getClusterDomainClaim(
   dm: KnativeDomainMapping,
   clusterDomainClaims: ClusterDomainClaim[] | null,
@@ -95,17 +97,18 @@ export async function createDomainMapping(
   domainInput: string,
   cluster: string,
   namespace: string,
-  serviceName: string
+  serviceName: string,
+  t: TFunc
 ) {
   const host = domainInput.trim();
   if (!host) {
-    throw new Error('Please enter a domain name');
+    throw new Error(t('Please enter a domain name'));
   }
   if (!isValidDomain(host)) {
-    throw new Error('Invalid domain name format');
+    throw new Error(t('Invalid domain name format'));
   }
   if (!cluster) {
-    throw new Error('No cluster available');
+    throw new Error(t('No cluster available'));
   }
 
   // Create Cluster Domain Claim
@@ -138,10 +141,14 @@ export async function createDomainMapping(
  * Creates a ClusterDomainClaim.
  * Throws an error if validation or API calls fail.
  */
-export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespace: string) {
+export async function createClusterDomainClaim(
+  dm: KnativeDomainMapping,
+  namespace: string,
+  t: TFunc
+) {
   const host = dm.host?.trim();
   if (!host) {
-    throw new Error('Domain name is missing');
+    throw new Error(t('Domain name is missing'));
   }
 
   try {
@@ -161,8 +168,8 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
       const detail2 = error2?.message?.trim();
       throw new Error(
         detail2
-          ? `Failed to annotate DomainMapping: ${detail2}`
-          : 'Failed to annotate DomainMapping'
+          ? t('Failed to annotate DomainMapping: {{ detail }}', { detail: detail2 })
+          : t('Failed to annotate DomainMapping')
       );
     }
   } catch (e: unknown) {
@@ -170,8 +177,8 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
     const detail = error?.message?.trim();
     throw new Error(
       detail
-        ? `Failed to create ClusterDomainClaim: ${detail}`
-        : 'Failed to create ClusterDomainClaim'
+        ? t('Failed to create ClusterDomainClaim: {{ detail }}', { detail })
+        : t('Failed to create ClusterDomainClaim')
     );
   }
 }
