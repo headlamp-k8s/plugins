@@ -3,8 +3,11 @@ import {
   getResourceGroupRows,
   getUniqueFlavorNames,
   renderClusterQueueStatus,
+  renderConditions,
   renderLabelSelector,
+  renderResourceGroups,
   renderResourceGroupsSummary,
+  renderStringList,
 } from './clusterQueueFormatters';
 
 describe('ClusterQueue formatters', () => {
@@ -69,6 +72,15 @@ describe('ClusterQueue formatters', () => {
         nominalQuota: '-',
       },
     ]);
+  });
+
+  it('safely handles undefined array parameters without throwing errors', () => {
+    expect(renderResourceGroupsSummary(undefined)).toBe('-');
+    expect(getUniqueFlavorNames(undefined)).toEqual([]);
+    expect(getResourceGroupRows(undefined)).toEqual([]);
+    expect(renderConditions(undefined)).toBe('-');
+    expect(renderResourceGroups(undefined)).toBe('-');
+    expect(renderStringList(undefined)).toBe('-');
   });
 
   it('derives a readable status from the Active condition', () => {
