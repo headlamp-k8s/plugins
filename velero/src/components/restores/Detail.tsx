@@ -1,4 +1,5 @@
 import { DetailsGrid, Link, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { VeleroRestore } from '../../resources/velero';
 import { getRestoreStatusColor } from '../../utils/status';
@@ -19,6 +20,27 @@ function RestoreDetailContent() {
           return [];
         }
 
+        let sourceValue: ReactNode = 'N/A';
+        if (restore.backupName) {
+          sourceValue = (
+            <Link
+              routeName={veleroRouteNames.backupDetail}
+              params={{ namespace: restore.getNamespace(), name: restore.backupName }}
+            >
+              {restore.backupName}
+            </Link>
+          );
+        } else if (restore.scheduleName) {
+          sourceValue = (
+            <Link
+              routeName={veleroRouteNames.scheduleDetail}
+              params={{ namespace: restore.getNamespace(), name: restore.scheduleName }}
+            >
+              {`Schedule: ${restore.scheduleName}`}
+            </Link>
+          );
+        }
+
         return [
           {
             name: 'Status',
@@ -30,16 +52,7 @@ function RestoreDetailContent() {
           },
           {
             name: 'Backup source',
-            value: restore.backupName ? (
-              <Link
-                routeName={veleroRouteNames.backupDetail}
-                params={{ namespace: restore.getNamespace(), name: restore.backupName }}
-              >
-                {restore.backupName}
-              </Link>
-            ) : (
-              'N/A'
-            ),
+            value: sourceValue,
           },
           {
             name: 'Namespaces',

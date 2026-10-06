@@ -2,14 +2,17 @@
 export const VELERO_SCHEDULE_NAME_LABEL = 'velero.io/schedule-name';
 
 /**
- * Sentinel selector that matches no Backup CRs.
+ * Guaranteed no-match selector using two contradictory equality requirements.
  * Used while schedules are unknown/empty so coverage does not list every Backup.
+ * Values are valid Kubernetes label tokens (must start/end alphanumeric).
  */
-export const NO_MATCH_SCHEDULE_BACKUP_SELECTOR = `${VELERO_SCHEDULE_NAME_LABEL}=__headlamp_velero_no_schedules__`;
+export const NO_MATCH_SCHEDULE_BACKUP_SELECTOR = `${VELERO_SCHEDULE_NAME_LABEL}=headlamp-none-a,${VELERO_SCHEDULE_NAME_LABEL}=headlamp-none-b`;
 
 /**
  * Build a labelSelector that returns only Backups created by the given schedules.
- * Coverage and schedule views only need last-backup-per-schedule, not every Backup CR.
+ * Coverage and schedule views filter to schedule-owned Backups (not manual ones),
+ * then keep the latest Backup per schedule client-side. This still may transfer
+ * full history for those schedules when TTLs are long.
  */
 export function buildScheduleBackupLabelSelector(scheduleNames: string[]): string {
   const names = [...new Set(scheduleNames.filter(Boolean))].sort();

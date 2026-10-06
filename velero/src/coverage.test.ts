@@ -275,6 +275,41 @@ describe('scheduleCoversWorkload', () => {
     ).toBe(false);
   });
 
+  test('malformed namespace globs fail closed without throwing', () => {
+    expect(() =>
+      scheduleCoversWorkload(
+        {
+          name: 'bad-glob',
+          template: {
+            includedNamespaces: ['[z-a]'],
+            includedResources: ['deployments'],
+          },
+        },
+        {
+          namespace: 'default',
+          labels: {},
+          resourceKind: 'deployments',
+        }
+      )
+    ).not.toThrow();
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'bad-glob',
+          template: {
+            includedNamespaces: ['[z-a]'],
+            includedResources: ['deployments'],
+          },
+        },
+        {
+          namespace: 'default',
+          labels: {},
+          resourceKind: 'deployments',
+        }
+      )
+    ).toBe(false);
+  });
+
   test('matches includedNamespaces glob patterns', () => {
     const schedule = {
       name: 'app-ns',

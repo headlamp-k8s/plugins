@@ -122,7 +122,12 @@ export function matchesNamespaceGlob(pattern: string, namespace: string): boolea
     }
   }
   re += '$';
-  return new RegExp(re).test(namespace);
+  try {
+    return new RegExp(re).test(namespace);
+  } catch {
+    // Invalid patterns (e.g. `[z-a]`) must fail closed — never crash coverage panels.
+    return false;
+  }
 }
 
 function namespaceIncluded(template: VeleroBackupTemplate, namespace: string): boolean {

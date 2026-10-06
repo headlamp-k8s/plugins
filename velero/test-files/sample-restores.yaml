@@ -39,3 +39,19 @@ status:
   progress:
     totalItems: 8
     itemsRestored: 6
+---
+# Schedule-sourced Restore (no backupName) — Velero resolves the latest Backup from the Schedule.
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-from-schedule-daily
+  namespace: velero
+spec:
+  scheduleName: default-deployments-daily
+  includedNamespaces:
+    - default
+  restorePVs: true
+status:
+  phase: New
+  errors: 0
+  warnings: 0

@@ -22,7 +22,7 @@ Sidebar entry **Velero** with:
 - **Backups** — phase, triggered by schedule or manual, namespace scope
 - **Restores** — backup source, phase, errors/warnings, progress (list/detail inspired by [reasonerjt prototype](https://github.com/reasonerjt/velero-headlamp-plugin))
 
-Coverage panels and schedule views load Backups with a `velero.io/schedule-name` label selector (latest per schedule only). The Backups sidebar list still shows the full Backup table. Create actions are deferred to a later phase.
+Coverage panels and schedule views load schedule-owned Backups via a `velero.io/schedule-name` label selector, then keep the latest Backup per schedule client-side (long TTLs can still return large histories). The Backups sidebar list still shows the full Backup table. Create actions are deferred to a later phase.
 
 ## Plugin settings
 

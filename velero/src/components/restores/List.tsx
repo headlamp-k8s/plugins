@@ -5,6 +5,30 @@ import { getRestoreStatusColor } from '../../utils/status';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
+function RestoreSourceCell({ restore }: { restore: VeleroRestore }) {
+  if (restore.backupName) {
+    return (
+      <Link
+        routeName={veleroRouteNames.backupDetail}
+        params={{ namespace: restore.getNamespace(), name: restore.backupName }}
+      >
+        {restore.backupName}
+      </Link>
+    );
+  }
+  if (restore.scheduleName) {
+    return (
+      <Link
+        routeName={veleroRouteNames.scheduleDetail}
+        params={{ namespace: restore.getNamespace(), name: restore.scheduleName }}
+      >
+        {`Schedule: ${restore.scheduleName}`}
+      </Link>
+    );
+  }
+  return <>N/A</>;
+}
+
 function RestoreListContent() {
   const veleroNamespace = useVeleroNamespace();
 
@@ -19,20 +43,8 @@ function RestoreListContent() {
         {
           id: 'backup-source',
           label: 'Backup source',
-          getValue: (restore: VeleroRestore) => restore.backupName ?? 'N/A',
-          render: (restore: VeleroRestore) => {
-            if (!restore.backupName) {
-              return 'N/A';
-            }
-            return (
-              <Link
-                routeName={veleroRouteNames.backupDetail}
-                params={{ namespace: restore.getNamespace(), name: restore.backupName }}
-              >
-                {restore.backupName}
-              </Link>
-            );
-          },
+          getValue: (restore: VeleroRestore) => restore.sourceDisplay,
+          render: (restore: VeleroRestore) => <RestoreSourceCell restore={restore} />,
         },
         {
           id: 'phase',

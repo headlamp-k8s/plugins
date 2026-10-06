@@ -51,9 +51,11 @@ export interface VeleroDataState {
  * Velero namespace, and exposes helpers to compute coverage for workloads and
  * namespaces.
  *
- * Backups are fetched with a `velero.io/schedule-name` labelSelector so detail
- * coverage panels do not list every Backup CR. The cluster-wide Backups page
- * uses ResourceListView / VeleroBackup.useList separately for the full table.
+ * Backups are fetched with a `velero.io/schedule-name` labelSelector (excludes
+ * manual Backups). Results are reduced client-side to the latest Backup per
+ * schedule for coverage panels. Long TTLs can still return large histories for
+ * those schedules. The cluster-wide Backups page uses ResourceListView /
+ * VeleroBackup.useList separately for the full table.
  */
 export function useVeleroData(): VeleroDataState {
   const veleroNamespace = useVeleroNamespace();

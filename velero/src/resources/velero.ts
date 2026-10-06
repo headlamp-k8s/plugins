@@ -189,6 +189,19 @@ export class VeleroRestore extends KubeObject<VeleroRestoreInterface> {
     return this.spec?.backupName;
   }
 
+  /** Schedule name when the Restore targets the latest Backup from a Schedule. */
+  get scheduleName(): string | undefined {
+    return this.spec?.scheduleName;
+  }
+
+  /**
+   * Display source for the Restore: Backup name when set, otherwise Schedule name.
+   * Velero accepts either `spec.backupName` or `spec.scheduleName`.
+   */
+  get sourceDisplay(): string {
+    return this.backupName ?? this.scheduleName ?? 'N/A';
+  }
+
   get phase(): string {
     return this.jsonData.status?.phase ?? 'Unknown';
   }
