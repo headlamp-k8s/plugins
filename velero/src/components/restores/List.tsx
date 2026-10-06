@@ -31,12 +31,14 @@ function RestoreSourceCell({ restore }: { restore: VeleroRestore }) {
 
 function RestoreListContent() {
   const veleroNamespace = useVeleroNamespace();
+  // Pin fetch to the configured Velero namespace (ResourceListView types omit `namespaces`).
+  const [restores, error] = VeleroRestore.useList({ namespace: veleroNamespace });
 
   return (
     <ResourceListView
       title="Velero Restores"
-      resourceClass={VeleroRestore}
-      namespaces={[veleroNamespace]}
+      data={restores}
+      errorMessage={error?.message}
       enableRowActions={false}
       enableRowSelection={false}
       headerProps={{

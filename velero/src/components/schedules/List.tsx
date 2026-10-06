@@ -11,12 +11,14 @@ import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 function ScheduleListContent() {
   const veleroNamespace = useVeleroNamespace();
   const { backups } = useVeleroData();
+  // Pin fetch to the configured Velero namespace (ResourceListView types omit `namespaces`).
+  const [schedules, error] = VeleroSchedule.useList({ namespace: veleroNamespace });
 
   return (
     <ResourceListView
       title="Velero Schedules"
-      resourceClass={VeleroSchedule}
-      namespaces={[veleroNamespace]}
+      data={schedules}
+      errorMessage={error?.message}
       enableRowActions={false}
       enableRowSelection={false}
       headerProps={{

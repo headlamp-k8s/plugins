@@ -7,12 +7,14 @@ import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
 function BackupListContent() {
   const veleroNamespace = useVeleroNamespace();
+  // Pin fetch to the configured Velero namespace (ResourceListView types omit `namespaces`).
+  const [backups, error] = VeleroBackup.useList({ namespace: veleroNamespace });
 
   return (
     <ResourceListView
       title="Velero Backups"
-      resourceClass={VeleroBackup}
-      namespaces={[veleroNamespace]}
+      data={backups}
+      errorMessage={error?.message}
       enableRowActions={false}
       enableRowSelection={false}
       headerProps={{
