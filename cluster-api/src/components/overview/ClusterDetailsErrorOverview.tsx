@@ -186,7 +186,15 @@ function InlineSolutionPanel({
                   <Typography variant="caption" color="text.secondary">
                     {cmd.description}
                   </Typography>
-                  <IconButton size="small" onClick={() => handleCopy(cmd.command)}>
+                  <IconButton
+                    size="small"
+                    aria-label={
+                      copiedCommand === cmd.command
+                        ? `Copied command: ${cmd.description}`
+                        : `Copy command: ${cmd.description}`
+                    }
+                    onClick={() => handleCopy(cmd.command)}
+                  >
                     <Icon
                       icon={copiedCommand === cmd.command ? 'mdi:check' : 'mdi:content-copy'}
                       width="14px"
@@ -690,6 +698,7 @@ export default function ClusterDetailsErrorOverview({
           </Box>
           <Select
             size="small"
+            inputProps={{ 'aria-label': 'Filter clusters' }}
             value={clusterFilter}
             onChange={e => setClusterFilter(e.target.value)}
             sx={{ minWidth: 220 }}
