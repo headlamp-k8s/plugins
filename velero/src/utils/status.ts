@@ -1,4 +1,4 @@
-/** Maps a Velero Backup phase to a Headlamp StatusLabel tone. */
+/** Maps a Velero Backup or Restore phase to a Headlamp StatusLabel tone. */
 export function getBackupStatusColor(phase: string): string {
   switch (phase) {
     case 'Completed':
@@ -15,3 +15,6 @@ export function getBackupStatusColor(phase: string): string {
       return '';
   }
 }
+
+/** Alias for Restore phases (same Velero phase vocabulary as Backup). */
+export const getRestoreStatusColor = getBackupStatusColor;

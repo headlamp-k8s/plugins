@@ -21,7 +21,7 @@ function NotInstalledBanner({ isLoading }: { isLoading: boolean }) {
         </Grid>
         <Grid item>
           <Typography>
-            Install Velero to view schedules and backups here.{' '}
+            Install Velero to view schedules, backups, and restores here.{' '}
             <MuiLink href={LEARN_MORE_URL} target="_blank" rel="noopener noreferrer">
               Learn more
             </MuiLink>

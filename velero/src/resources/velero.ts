@@ -141,3 +141,87 @@ export class VeleroBackup extends KubeObject<VeleroBackupInterface> {
     return namespaces.join(', ');
   }
 }
+
+/** Velero Restore CRD (velero.io/v1) — inspired by reasonerjt prototype field set. */
+export interface VeleroRestoreSpec {
+  backupName?: string;
+  scheduleName?: string;
+  includedNamespaces?: string[];
+  excludedNamespaces?: string[];
+  includedResources?: string[];
+  excludedResources?: string[];
+  restorePVs?: boolean;
+}
+
+export interface VeleroRestoreStatus {
+  phase?: string;
+  errors?: number;
+  warnings?: number;
+  startTimestamp?: string;
+  completionTimestamp?: string;
+  progress?: {
+    totalItems?: number;
+    itemsRestored?: number;
+  };
+}
+
+export interface VeleroRestoreInterface extends KubeObjectInterface {
+  spec?: VeleroRestoreSpec;
+  status?: VeleroRestoreStatus;
+}
+
+/** Headlamp KubeObject wrapper for Velero Restore resources. */
+export class VeleroRestore extends KubeObject<VeleroRestoreInterface> {
+  static kind = 'Restore';
+  static apiName = 'restores';
+  static apiVersion = 'velero.io/v1';
+  static isNamespaced = true;
+
+  static get detailsRoute() {
+    return veleroRoutePaths.restoreDetail;
+  }
+
+  get spec(): VeleroRestoreSpec | undefined {
+    return this.jsonData.spec;
+  }
+
+  get backupName(): string | undefined {
+    return this.spec?.backupName;
+  }
+
+  get phase(): string {
+    return this.jsonData.status?.phase ?? 'Unknown';
+  }
+
+  get errors(): number {
+    return this.jsonData.status?.errors ?? 0;
+  }
+
+  get warnings(): number {
+    return this.jsonData.status?.warnings ?? 0;
+  }
+
+  get startTimestamp(): string | undefined {
+    return this.jsonData.status?.startTimestamp;
+  }
+
+  get completionTimestamp(): string | undefined {
+    return this.jsonData.status?.completionTimestamp;
+  }
+
+  get includedNamespacesDisplay(): string {
+    const namespaces = this.spec?.includedNamespaces;
+    if (!namespaces || namespaces.length === 0) {
+      return '*';
+    }
+    return namespaces.join(', ');
+  }
+
+  get progressDisplay(): string {
+    const progress = this.jsonData.status?.progress;
+    if (!progress?.totalItems) {
+      return 'N/A';
+    }
+    return `${progress.itemsRestored ?? 0} / ${progress.totalItems}`;
+  }
+}

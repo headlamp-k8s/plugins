@@ -20,17 +20,17 @@ Sidebar entry **Velero** with:
 
 - **Schedules** — cron, status, next run, last backup
 - **Backups** — phase, triggered by schedule or manual, namespace scope
-- **Coverage gaps** — namespaces and Deployments/StatefulSets with no matching schedule
+- **Restores** — backup source, phase, errors/warnings, progress (list/detail inspired by [reasonerjt prototype](https://github.com/reasonerjt/velero-headlamp-plugin))
 
-Coverage panels and schedule views load Backups with a `velero.io/schedule-name` label selector (latest per schedule only). The Backups sidebar list still shows the full Backup table.
+Coverage panels and schedule views load Backups with a `velero.io/schedule-name` label selector (latest per schedule only). The Backups sidebar list still shows the full Backup table. Create actions are deferred to a later phase.
 
 ## Plugin settings
 
 **Settings → Plugins → Velero**
 
-| Setting          | Default  | Purpose                                                 |
-| ---------------- | -------- | ------------------------------------------------------- |
-| Velero namespace | `velero` | Namespace where Velero `Schedule` and `Backup` CRs live |
+| Setting          | Default  | Purpose                                                     |
+| ---------------- | -------- | ----------------------------------------------------------- |
+| Velero namespace | `velero` | Namespace where Velero Schedule / Backup / Restore CRs live |
 
 ## RBAC
 
@@ -58,7 +58,7 @@ Copy the built plugin into Headlamp, or load from this folder per the [plugin de
 Apply the fixtures under `test-files/` to a cluster with Velero installed, then:
 
 1. Open a Deployment / StatefulSet / Namespace detail page for Phase 1 panels
-2. Open sidebar **Velero → Schedules / Backups / Coverage gaps** for Phase 2
+2. Open sidebar **Velero → Schedules / Backups / Restores** for Phase 2
 
 ## Screenshots
 

@@ -1,6 +1,6 @@
 /**
  * Velero plugin entry point — Phase 1 coverage panels on resource detail views,
- * plus Phase 2 cluster-wide Schedules, Backups, and coverage-gap pages.
+ * plus Phase 2 cluster-wide Schedules, Backups, and Restores pages.
  */
 import {
   registerDetailsViewSectionsProcessor,
@@ -20,7 +20,8 @@ import {
 } from './components/BackupCoveragePanel';
 import BackupDetail from './components/backups/Detail';
 import BackupList from './components/backups/List';
-import CoverageGaps from './components/coverage/CoverageGaps';
+import RestoreDetail from './components/restores/Detail';
+import RestoreList from './components/restores/List';
 import ScheduleDetail from './components/schedules/Detail';
 import ScheduleList from './components/schedules/List';
 import { PLUGIN_NAME } from './config';
@@ -57,9 +58,9 @@ registerSidebarEntry({
 
 registerSidebarEntry({
   parent: 'velero',
-  name: 'velero-coverage-gaps',
-  label: 'Coverage gaps',
-  url: veleroRoutePaths.coverageGaps,
+  name: 'velero-restores',
+  label: 'Restores',
+  url: veleroRoutePaths.restoresList,
 });
 
 registerRoute({
@@ -95,11 +96,19 @@ registerRoute({
 });
 
 registerRoute({
-  path: veleroRoutePaths.coverageGaps,
-  sidebar: 'velero-coverage-gaps',
-  name: veleroRouteNames.coverageGaps,
+  path: veleroRoutePaths.restoresList,
+  sidebar: 'velero-restores',
+  name: veleroRouteNames.restoresList,
   exact: true,
-  component: () => <CoverageGaps />,
+  component: () => <RestoreList />,
+});
+
+registerRoute({
+  path: veleroRoutePaths.restoreDetail,
+  sidebar: 'velero-restores',
+  name: veleroRouteNames.restoreDetail,
+  exact: true,
+  component: () => <RestoreDetail />,
 });
 
 // ---- Phase 1: detail-view coverage panels ----

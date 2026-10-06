@@ -4,7 +4,8 @@ export const veleroRouteNames = {
   scheduleDetail: 'velero-schedule-detail',
   backupsList: 'velero-backups-list',
   backupDetail: 'velero-backup-detail',
-  coverageGaps: 'velero-coverage-gaps',
+  restoresList: 'velero-restores-list',
+  restoreDetail: 'velero-restore-detail',
 } as const;
 
 /** URL paths for Velero Phase 2 cluster-wide views. */
@@ -13,5 +14,6 @@ export const veleroRoutePaths = {
   scheduleDetail: '/velero/schedules/:namespace/:name',
   backupsList: '/velero/backups',
   backupDetail: '/velero/backups/:namespace/:name',
-  coverageGaps: '/velero/coverage-gaps',
+  restoresList: '/velero/restores',
+  restoreDetail: '/velero/restores/:namespace/:name',
 } as const;
