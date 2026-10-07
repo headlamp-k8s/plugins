@@ -1,26 +1,26 @@
 # PipeCD Headlamp Plugin
 
 [PipeCD](https://pipecd.dev/) is a continuous delivery tool for Kubernetes,
-Terraform, Cloud Run, Lambda and ECS. This plugin shows your PipeCD
+Terraform, Cloud Run, Lambda and ECS. This plugin will show your PipeCD
 applications inside Headlamp, so you can check what was deployed without
 switching to the PipeCD console.
 
-## What it does
+## Current state
 
-The plugin is read-only. It adds a PipeCD section to the sidebar with two
-pages, Applications and Settings.
+The plugin adds a PipeCD section to the sidebar with two entries. Settings
+works. Applications is still a placeholder.
 
-The Applications page lists your applications with their sync status, platform,
-last synced time and Git repository. You can search by name or repository and
-filter by platform.
+The Settings page stores the PipeCD server URL and API key, and can test the
+connection to your control plane. It is read-only, and the settings live in the
+browser's local storage.
 
-Clicking an application opens its details: repository, path, piped, platform
-provider, labels and its recent deployments. Clicking a deployment shows its
-status, commit, who triggered it, how long it took, and the pipeline stages.
-Each stage can be opened to read its logs.
+Coming in later changes:
 
-You cannot trigger a sync or anything else that changes state. Those actions
-need a read-write API key, so use the PipeCD console for them.
+- Applications list with sync status, platform and Git repository
+- Application detail with recent deployments
+- Deployment detail with pipeline stages
+- Logs for each pipeline stage
+- A sync button
 
 ## Before you start
 
@@ -59,8 +59,7 @@ The URL has to be `https://`. Plain `http://` is rejected because the API key
 is sent in a header and would not be encrypted. The exception is localhost, so
 you can still point it at a local server while developing.
 
-Use Test connection to check it works. The settings are saved in the browser's
-local storage.
+Use Test connection to check it works.
 
 ## Development
 
