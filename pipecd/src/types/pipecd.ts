@@ -1,4 +1,10 @@
-export type ApplicationKind = 'KUBERNETES' | 'TERRAFORM' | 'CLOUD_RUN' | 'LAMBDA' | 'ECS';
+export type ApplicationKind =
+  | 'KUBERNETES'
+  | 'TERRAFORM'
+  | 'CLOUD_RUN'
+  | 'LAMBDA'
+  | 'ECS'
+  | 'UNKNOWN';
 
 export type SyncStatus = 'UNKNOWN' | 'SYNCED' | 'DEPLOYING' | 'OUT_OF_SYNC' | 'INVALID_CONFIG';
 
@@ -91,7 +97,8 @@ export interface PipelineStage {
   statusReason: string;
   metadata: Record<string, string>;
   retrievedAt: number;
-  startedAt: number;
+  /** PipeCD reports when a stage was created; it has no separate start time. */
+  createdAt: number;
   completedAt: number;
 }
 

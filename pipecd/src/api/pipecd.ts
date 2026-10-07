@@ -147,6 +147,32 @@ const LOG_SEVERITY_MAP: Record<number, LogSeverity> = {
   [GenLogSeverity.ERROR]: 'ERROR',
 };
 
+/** Plugin names as they appear in Application.deployTargetsByPlugin. */
+const PLUGIN_KINDS: Record<string, ApplicationKind> = {
+  kubernetes: 'KUBERNETES',
+  kubernetes_multicluster: 'KUBERNETES',
+  terraform: 'TERRAFORM',
+  cloudrun: 'CLOUD_RUN',
+  lambda: 'LAMBDA',
+  ecs: 'ECS',
+};
+
+/**
+ * Works out which platform an application deploys to.
+ *
+ * Application.kind is deprecated and a plugin-arch piped does not set it, so it
+ * arrives as the zero value and every application would look like Kubernetes.
+ * Prefer the deploy targets, which name the plugin, and fall back to the old
+ * field only when there are none.
+ */
+function resolveKind(a: GenApplication): ApplicationKind {
+  for (const plugin of Object.keys(a.deployTargetsByPlugin ?? {})) {
+    const kind = PLUGIN_KINDS[plugin.toLowerCase()];
+    if (kind) return kind;
+  }
+  return KIND_MAP[a.kind] ?? 'UNKNOWN';
+}
+
 function mapGitPath(gp: GenGitPath | undefined): GitPath | undefined {
   if (!gp) return undefined;
   return {
@@ -180,7 +206,7 @@ function mapApplication(a: GenApplication): Application {
     name: a.name,
     pipedId: a.pipedId,
     projectId: a.projectId,
-    kind: KIND_MAP[a.kind] ?? 'KUBERNETES',
+    kind: resolveKind(a),
     gitPath: mapGitPath(a.gitPath),
     cloudProvider: a.cloudProvider,
     description: a.description,
@@ -232,7 +258,7 @@ function mapStage(s: GenPipelineStage): PipelineStage {
     statusReason: s.statusReason,
     metadata: s.metadata,
     retrievedAt: 0,
-    startedAt: toNumber(s.createdAt),
+    createdAt: toNumber(s.createdAt),
     completedAt: toNumber(s.completedAt),
   };
 }
@@ -244,7 +270,7 @@ function mapDeployment(d: GenDeployment): Deployment {
     applicationName: d.applicationName,
     pipedId: d.pipedId,
     projectId: d.projectId,
-    kind: KIND_MAP[d.kind] ?? 'KUBERNETES',
+    kind: KIND_MAP[d.kind] ?? 'UNKNOWN',
     gitPath: mapGitPath(d.gitPath),
     cloudProvider: d.cloudProvider,
     trigger: mapTrigger(d.trigger),

@@ -112,6 +112,7 @@ export function SettingsPage(): JSX.Element {
                 setBaseURL(e.target.value);
                 setTestResult(null);
                 testedConfig.current = null;
+                setTesting(false);
               }}
               error={!urlValid}
             />
@@ -137,6 +138,7 @@ export function SettingsPage(): JSX.Element {
                 setApiKey(e.target.value);
                 setTestResult(null);
                 testedConfig.current = null;
+                setTesting(false);
               }}
             />
             <FormHelperText>

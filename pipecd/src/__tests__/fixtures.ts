@@ -149,7 +149,7 @@ export const deploymentCompleted: Deployment = {
       statusReason: '',
       metadata: {},
       retrievedAt: 0,
-      startedAt: 1721990100,
+      createdAt: 1721990100,
       completedAt: 1721990150,
     },
     {
@@ -164,7 +164,7 @@ export const deploymentCompleted: Deployment = {
       statusReason: '',
       metadata: {},
       retrievedAt: 0,
-      startedAt: 1721990150,
+      createdAt: 1721990150,
       completedAt: 1721990300,
     },
     {
@@ -180,7 +180,7 @@ export const deploymentCompleted: Deployment = {
       statusReason: '',
       metadata: {},
       retrievedAt: 0,
-      startedAt: 1721990300,
+      createdAt: 1721990300,
       completedAt: 1721990300,
     },
   ],
