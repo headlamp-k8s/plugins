@@ -1,21 +1,32 @@
-export function parseRam(ramStr: string): number {
-  if (!ramStr) return 0;
-  const match = ramStr.match(/^(\d+)([KMGT]i?)?$/i);
+const quantitySuffixes: Record<string, number> = {
+  n: 1e-9,
+  u: 1e-6,
+  m: 1e-3,
+  k: 1e3,
+  M: 1e6,
+  G: 1e9,
+  T: 1e12,
+  P: 1e15,
+  E: 1e18,
+  Ki: 2 ** 10,
+  Mi: 2 ** 20,
+  Gi: 2 ** 30,
+  Ti: 2 ** 40,
+  Pi: 2 ** 50,
+  Ei: 2 ** 60,
+};
+
+const quantityPattern =
+  /^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)(Ki|Mi|Gi|Ti|Pi|Ei|n|u|m|k|M|G|T|P|E)?$/;
+
+export function parseQuantity(quantity: string): number {
+  if (!quantity) return 0;
+  const match = String(quantity).trim().match(quantityPattern);
   if (!match) return 0;
 
-  const num = parseInt(match[1]);
-  const unit = match[2]?.toUpperCase();
+  return Number(match[1]) * (match[2] ? quantitySuffixes[match[2]] : 1);
+}
 
-  const units: Record<string, number> = {
-    K: 1024,
-    KI: 1024,
-    M: 1024 * 1024,
-    MI: 1024 * 1024,
-    G: 1024 * 1024 * 1024,
-    GI: 1024 * 1024 * 1024,
-    T: 1024 * 1024 * 1024 * 1024,
-    TI: 1024 * 1024 * 1024 * 1024,
-  };
-
-  return num * (units[unit] || 1);
+export function parseRam(ramStr: string): number {
+  return parseQuantity(ramStr);
 }
