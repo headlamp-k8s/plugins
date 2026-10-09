@@ -49,6 +49,7 @@ Please see [headlamp plugins on Artifact Hub](https://artifacthub.io/packages/se
 | [Strimzi](https://github.com/cesaroangelo/strimzi-headlamp) | The Headlamp plugin for managing Strimzi (Apache Kafka on Kubernetes) resources. | [Demo](https://www.youtube.com/watch?v=MNt28s6b5d8) | [@cesaroangelo](https://github.com/cesaroangelo) |
 | [Fortem IDP](https://github.com/cybrixcc/headlamp-fortem) | View and manage Fortem environments, clusters, and cost metrics directly in Headlamp. Fortem is a self-hosted AI-native Kubernetes Internal Developer Platform. | [ArtifactHub](https://artifacthub.io/packages/headlamp/fortem/fortem) | [@dspv](https://github.com/dspv) |
 | [MetalLB](https://github.com/YotamKorah/headlamp-metallb-plugin) | View and manage MetalLB resources in Headlamp. MetalLB is a load-balancer implementation for bare metal Kubernetes clusters, using standard routing protocols. | [ArtifactHub](https://artifacthub.io/packages/headlamp/headlamp-metallb-plugin/headlamp-metallb-plugin) | [@YotamKorah](https://github.com/YotamKorah) | 
+| [Istio](https://github.com/eottabom/istio-headlamp-plugin) | Istio service mesh UI with first-class ambient mode support. Shows Istio resource specs in detail pages, namespace enrollment, waypoints, ztunnel/CNI health, and L4/L7 policy checks. | [ArtifactHub](https://artifacthub.io/packages/headlamp/istio-headlamp-plugin/istio-headlamp-plugin) | [@eottabom](https://github.com/eottabom) |
 
 
 
