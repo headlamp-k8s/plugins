@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   Loader,
@@ -22,16 +23,17 @@ interface ClustersListWithDataProps {
  * @param props.ClusterClass - The Cluster resource class to use for fetching.
  */
 function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Clusters"
+      title={t('Clusters')}
       resourceClass={ClusterClass}
       columns={[
         'name',
         'namespace',
         {
           id: 'clusterclass',
-          label: 'Cluster Class',
+          label: t('Cluster Class'),
           getValue: cluster =>
             cluster.spec?.topology?.class ?? cluster.spec?.topology?.classRef?.name ?? '-',
           render: cluster => {
@@ -54,7 +56,7 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
 
         {
           id: 'cpreplicas',
-          label: 'CP Replicas',
+          label: t('CP Replicas'),
           getValue: cluster =>
             `${cluster.controlPlaneStatus?.readyReplicas ?? 0}/${
               cluster.controlPlaneStatus?.desiredReplicas ?? 0
@@ -72,7 +74,7 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
         },
         {
           id: 'wreplicas',
-          label: 'Workers Replicas',
+          label: t('Workers Replicas'),
           getValue: cluster =>
             `${cluster.workerStatus?.readyReplicas ?? 0}/${
               cluster.workerStatus?.desiredReplicas ?? 0
@@ -90,7 +92,7 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
         },
         {
           id: 'phase',
-          label: 'Phase',
+          label: t('Phase'),
           getValue: cluster => cluster.status?.phase ?? '-',
           render: cluster => {
             const phase = cluster.status?.phase;
@@ -100,7 +102,7 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
         },
         {
           id: 'Available',
-          label: 'Available',
+          label: t('Available'),
           getValue: (c: Cluster) => {
             const cond =
               getCondition(c.conditions, 'Available') || getCondition(c.conditions, 'Ready'); // ready only in v1beta1
@@ -120,7 +122,7 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
         },
         {
           id: 'version',
-          label: 'Version',
+          label: t('Version'),
           getValue: cluster => cluster.spec?.topology?.version ?? '-',
         },
         'age',
@@ -134,11 +136,12 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
  * Handles API version detection and passes the versioned class to the renderer.
  */
 export function ClustersList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(Cluster.crdName, 'v1beta1');
   const VersionedCluster = useMemo(
     () => (version ? Cluster.withApiVersion(version) : Cluster),
     [version]
   );
-  if (!version) return <Loader title="Detecting Cluster API version" />;
+  if (!version) return <Loader title={t('Detecting Cluster API version')} />;
   return <ClustersListWithData ClusterClass={VersionedCluster} />;
 }
