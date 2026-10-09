@@ -8,12 +8,14 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { useParams } from 'react-router-dom';
+// embedded live instance graph + shared sub-resource watches
+// (native GraphView when available, local fallback otherwise)
+import LiveInstanceSections from '../../map/LiveInstanceSections';
 import ViewInMapLink from '../../map/ViewInMapLink';
 import { KroInstance, useInstanceClass } from '../../resources/instance';
 import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition';
 import { flattenSimpleSchema } from '../../resources/rgdGraph';
 import { KroStateLabel } from '../resourcegraphdefinitions/common';
-import SubResourcesSection from './SubResourcesSection';
 
 /**
  * Build the "Spec" section: the instance's spec flattened to dot-path
@@ -137,9 +139,10 @@ export default function InstanceDetail() {
         instance
           ? [
               getConditionsSection(instance),
+              // live graph + sub-resources from one watch set
               {
-                id: 'kro-instance-subresources',
-                section: <SubResourcesSection rgd={rgd} instance={instance} />,
+                id: 'kro-instance-live',
+                section: <LiveInstanceSections rgd={rgd} instance={instance} />,
               },
               getSpecSection(instance),
             ].filter(Boolean)
