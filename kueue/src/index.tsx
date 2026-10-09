@@ -1,8 +1,15 @@
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerDetailsViewSection,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
+import AdmissionCheckDetail from './components/admissionchecks/Detail';
+import AdmissionCheckList from './components/admissionchecks/List';
 import ClusterQueueDetail from './components/clusterqueues/Detail';
 import ClusterQueueList from './components/clusterqueues/List';
 import CohortDetail from './components/cohorts/Detail';
 import CohortList from './components/cohorts/List';
+import KueueJobSection from './components/jobs/KueueJobSection';
 import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
@@ -17,6 +24,13 @@ registerSidebarEntry({
   label: 'Kueue',
   icon: 'mdi:queue-first-in-last-out',
   url: kueueRoutePaths.clusterQueuesList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-admissionchecks',
+  label: 'AdmissionChecks',
+  url: kueueRoutePaths.admissionChecksList,
 });
 
 registerSidebarEntry({
@@ -52,6 +66,22 @@ registerSidebarEntry({
   name: 'kueue-workloads',
   label: 'Workloads',
   url: kueueRoutePaths.workloadsList,
+});
+
+registerRoute({
+  path: kueueRoutePaths.admissionChecksList,
+  sidebar: 'kueue-admissionchecks',
+  name: kueueRouteNames.admissionChecksList,
+  exact: true,
+  component: () => <AdmissionCheckList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.admissionCheckDetail,
+  sidebar: 'kueue-admissionchecks',
+  name: kueueRouteNames.admissionCheckDetail,
+  exact: true,
+  component: () => <AdmissionCheckDetail />,
 });
 
 registerRoute({
@@ -133,3 +163,5 @@ registerRoute({
   exact: true,
   component: () => <WorkloadDetail />,
 });
+
+registerDetailsViewSection(KueueJobSection);
