@@ -1,6 +1,7 @@
 import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import type {
   Admission,
+  AdmissionCheckState,
   PodSet,
   ReclaimablePod,
   RequeueState,
@@ -61,26 +62,19 @@ export function findWorkloadCondition(conditions: WorkloadConditionLike[] = [], 
   return conditions.find(condition => condition.type === type);
 }
 
-/** Render whether Kueue has admitted a Workload. */
-export function renderAdmittedStatus(
-  admission?: Admission,
-  conditions: WorkloadConditionLike[] = []
-) {
-  if (admission) {
+/**
+ * Render whether Kueue has admitted a Workload. status.admission is set on quota
+ * reservation, before admission checks pass, so only the Admitted condition counts.
+ * Kueue does not add that condition until it admits, so a missing one means No.
+ */
+export function renderAdmittedStatus(conditions: WorkloadConditionLike[] = []) {
+  const status = findWorkloadCondition(conditions, CONDITION_TYPES.admitted)?.status;
+
+  if (status === 'True') {
     return 'Yes';
   }
 
-  const admittedCondition = findWorkloadCondition(conditions, CONDITION_TYPES.admitted);
-
-  if (!admittedCondition) {
-    return 'Unknown';
-  }
-
-  if (admittedCondition.status === 'True') {
-    return 'Yes';
-  }
-
-  if (admittedCondition.status === 'False') {
+  if (status === undefined || status === 'False') {
     return 'No';
   }
 
@@ -107,11 +101,7 @@ export function renderFinishedStatus(conditions: WorkloadConditionLike[] = []) {
 }
 
 /** Render a readable Workload status from Kueue condition types and reasons. */
-export function renderWorkloadStatus(
-  conditions: WorkloadConditionLike[] = [],
-  active?: boolean,
-  admission?: Admission
-) {
+export function renderWorkloadStatus(conditions: WorkloadConditionLike[] = [], active?: boolean) {
   if (active === false) {
     return 'Deactivated';
   }
@@ -133,7 +123,7 @@ export function renderWorkloadStatus(
     return 'Deactivated';
   }
 
-  if (admission || isConditionTrue(conditions, CONDITION_TYPES.admitted)) {
+  if (isConditionTrue(conditions, CONDITION_TYPES.admitted)) {
     return isConditionTrue(conditions, CONDITION_TYPES.podsReady) ? 'Running' : 'Admitted';
   }
 
@@ -349,6 +339,143 @@ export function renderOwnerReferences(ownerReferences: KubeOwnerReference[] = []
   }
 
   return ownerReferences.map(reference => `${reference.kind}/${reference.name}`).join(', ');
+}
+
+const QUOTA_RESERVED_REASONS: Record<string, string> = {
+  Pending: 'Kueue has not reserved quota for this Workload yet.',
+  WaitingForQuota: 'There is not enough unused quota in the ClusterQueue or its Cohort right now.',
+  ExceedsMaxQuota:
+    'The Workload requests more than the ClusterQueue could ever provide, even with borrowing.',
+  NoMatchingFlavor:
+    "No ResourceFlavor in the ClusterQueue matches this Workload's node selectors or tolerations.",
+  TopologyPlacementFailed: "The Workload's topology request cannot be satisfied.",
+  WaitingForPreemptedWorkloads:
+    'Kueue preempted other Workloads to make room and is waiting for them to release quota.',
+  Misconfigured:
+    'Kueue cannot admit this Workload because required queue or Workload configuration is missing, invalid, or inactive.',
+  Inadmissible:
+    'Kueue considers this Workload inadmissible because required configuration is missing, invalid, or inactive.',
+  Suspended: 'The LocalQueue or ClusterQueue is stopped by its stopPolicy.',
+  PendingEvaluation: 'The Workload is queued but Kueue has not evaluated it yet.',
+  WaitingForPodsReady: 'Kueue is waiting for other admitted Workloads to become ready first.',
+  OnHold: 'The Workload is intentionally on hold.',
+  AdmissionGated: 'An admission or preemption gate is blocking this Workload.',
+};
+
+const ADMITTED_REASONS: Record<string, string> = {
+  UnsatisfiedAdmissionChecks:
+    'Quota is reserved, but not every AdmissionCheck on the ClusterQueue has passed.',
+  PendingDelayedTopologyRequests:
+    'Quota is reserved, and Kueue is still computing the delayed topology assignment.',
+};
+
+const EVICTED_REASONS: Record<string, string> = {
+  Preempted: 'A higher-priority Workload or quota reclamation preempted this Workload.',
+  PodsReadyTimeout: 'The pods did not become ready within the waitForPodsReady timeout.',
+  AdmissionCheck: 'An AdmissionCheck asked Kueue to evict this Workload.',
+  ClusterQueueStopped: 'The ClusterQueue was stopped.',
+  LocalQueueStopped: 'The LocalQueue was stopped.',
+  Deactivated: 'The Workload was deactivated (spec.active is false).',
+  InactiveWorkload: 'The Workload was deactivated (spec.active is false).',
+  NodeFailures: 'Nodes running the Workload failed.',
+  MaximumExecutionTimeExceeded: 'The Workload ran longer than its maximum execution time.',
+};
+
+/** What is currently stopping a Workload from being admitted, derived from its status. */
+export interface WorkloadBlocker {
+  /** Short stage label. */
+  stage: 'Evicted' | 'Deactivated' | 'Not evaluated' | 'Waiting for quota' | 'Admission checks';
+  /** Condition reason reported by Kueue. */
+  reason?: string;
+  /** Plain-English meaning of the reason, when known. */
+  explanation?: string;
+  /** Kueue's own condition message. */
+  message?: string;
+  /** Admission checks that are not Ready yet. */
+  pendingAdmissionChecks: AdmissionCheckState[];
+  /** When Kueue will requeue the Workload after a backoff. */
+  requeueAt?: string;
+}
+
+/**
+ * Explain why a Workload is not admitted, or return null when nothing is blocking it.
+ * A missing QuotaReserved condition means Kueue has not looked at the Workload yet,
+ * which is different from QuotaReserved=False where Kueue looked and refused.
+ */
+export function getWorkloadBlocker(
+  conditions: WorkloadConditionLike[] = [],
+  admissionChecks: AdmissionCheckState[] = [],
+  requeueState?: RequeueState,
+  active?: boolean
+): WorkloadBlocker | null {
+  if (isConditionTrue(conditions, CONDITION_TYPES.finished)) {
+    return null;
+  }
+
+  const base = { pendingAdmissionChecks: [], requeueAt: requeueState?.requeueAt };
+
+  const evicted = findWorkloadCondition(conditions, CONDITION_TYPES.evicted);
+
+  if (active === false) {
+    // A Rejected AdmissionCheck deactivates the Workload, so keep it and the eviction details.
+    const evictedDetails = evicted?.status === 'True' ? evicted : undefined;
+    return {
+      ...base,
+      stage: 'Deactivated',
+      reason: evictedDetails?.reason,
+      explanation: 'spec.active is false, so Kueue will not admit this Workload.',
+      message: evictedDetails?.message,
+      pendingAdmissionChecks: admissionChecks.filter(check => check.state === 'Rejected'),
+    };
+  }
+
+  if (evicted?.status === 'True') {
+    return {
+      ...base,
+      stage: 'Evicted',
+      reason: evicted.reason,
+      explanation: evicted.reason ? EVICTED_REASONS[evicted.reason] : undefined,
+      message: evicted.message,
+    };
+  }
+
+  if (isConditionTrue(conditions, CONDITION_TYPES.admitted)) {
+    return null;
+  }
+
+  const quotaReserved = findWorkloadCondition(conditions, CONDITION_TYPES.quotaReserved);
+
+  if (!quotaReserved) {
+    return {
+      ...base,
+      stage: 'Not evaluated',
+      explanation:
+        'Kueue has not tried to reserve quota for this Workload yet, so it has not been refused. ' +
+        'It is usually queued behind other Workloads.',
+    };
+  }
+
+  if (quotaReserved.status !== 'True') {
+    return {
+      ...base,
+      stage: quotaReserved.reason === 'PendingEvaluation' ? 'Not evaluated' : 'Waiting for quota',
+      reason: quotaReserved.reason,
+      explanation: quotaReserved.reason ? QUOTA_RESERVED_REASONS[quotaReserved.reason] : undefined,
+      message: quotaReserved.message,
+    };
+  }
+
+  const admitted = findWorkloadCondition(conditions, CONDITION_TYPES.admitted);
+
+  return {
+    ...base,
+    stage: 'Admission checks',
+    reason: admitted?.reason,
+    // Kueue leaves Admitted unset while checks are pending, so fall back to that explanation.
+    explanation: ADMITTED_REASONS[admitted?.reason || 'UnsatisfiedAdmissionChecks'],
+    message: admitted?.message,
+    pendingAdmissionChecks: admissionChecks.filter(check => check.state !== 'Ready'),
+  };
 }
 
 /** Build route params for a namespaced Workload detail link. */
