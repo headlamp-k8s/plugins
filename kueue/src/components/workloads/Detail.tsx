@@ -1,8 +1,10 @@
 import {
   ConditionsSection,
   DetailsGrid,
+  NameValueTable,
   SectionBox,
   SimpleTable,
+  StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import {
@@ -15,6 +17,7 @@ import {
   WorkloadSchedulingStatsEviction,
 } from '../../resources/workload';
 import {
+  getWorkloadBlocker,
   renderPodSetRequests,
   renderResourceList,
   renderStringMap,
@@ -22,7 +25,11 @@ import {
   renderTopologyAssignment,
 } from '../../resources/workloadFormatters';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
-import { renderClusterQueueLink, renderLocalQueueLink } from '../common/KueueResourceLinks';
+import {
+  renderAdmissionCheckLink,
+  renderClusterQueueLink,
+  renderLocalQueueLink,
+} from '../common/KueueResourceLinks';
 
 /** Row rendered for Workload spec.podSets. */
 interface PodSetRow {
@@ -294,7 +301,7 @@ function getAdmissionChecksSection(workload: Workload) {
           columns={[
             {
               label: 'Name',
-              getter: (row: AdmissionCheckRow) => row.name,
+              getter: (row: AdmissionCheckRow) => renderAdmissionCheckLink(row.name),
             },
             {
               label: 'State',
@@ -417,6 +424,59 @@ function getSchedulingStatsSection(workload: Workload) {
   };
 }
 
+/** Build the section explaining what is stopping the Workload from being admitted. */
+function getBlockerSection(workload: Workload) {
+  const blocker = getWorkloadBlocker(
+    workload.conditions,
+    workload.status.admissionChecks,
+    workload.status.requeueState,
+    workload.spec.active
+  );
+
+  if (!blocker) {
+    return null;
+  }
+
+  const rows = [
+    {
+      name: 'Stage',
+      value: (
+        <StatusLabel status={blocker.stage === 'Evicted' ? 'error' : 'warning'}>
+          {blocker.stage}
+        </StatusLabel>
+      ),
+    },
+    { name: 'Reason', value: blocker.reason, hide: !blocker.reason },
+    { name: 'What it means', value: blocker.explanation, hide: !blocker.explanation },
+    { name: 'Kueue message', value: blocker.message, hide: !blocker.message },
+    {
+      name: 'Blocking admission checks',
+      value: blocker.pendingAdmissionChecks.map(check => (
+        <div key={check.name}>
+          {renderAdmissionCheckLink(check.name)}: {check.state || 'Pending'}
+          {check.message ? ` (${check.message})` : ''}
+        </div>
+      )),
+      hide: blocker.pendingAdmissionChecks.length === 0,
+    },
+    {
+      name: 'Next retry',
+      // DateLabel is relative-only and renders future times as <invalid>.
+      value: blocker.requeueAt && new Date(blocker.requeueAt).toLocaleString(),
+      hide: !blocker.requeueAt,
+    },
+  ];
+
+  return {
+    id: 'blocker',
+    section: (
+      <SectionBox title="Why is this Workload not admitted?">
+        <NameValueTable rows={rows} />
+      </SectionBox>
+    ),
+  };
+}
+
 /** Build the standard Headlamp conditions section for Workload status. */
 function getConditionsSection(workload: Workload) {
   if (!workload.conditions.length) {
@@ -525,6 +585,7 @@ export default function WorkloadDetail() {
         extraSections={workload =>
           workload
             ? [
+                getBlockerSection(workload),
                 getConditionsSection(workload),
                 getPodSetsSection(workload),
                 getAdmissionSection(workload),

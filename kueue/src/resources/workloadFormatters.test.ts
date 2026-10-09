@@ -5,6 +5,7 @@ import type { PodSet, WorkloadConditionLike } from './workload';
 import {
   findWorkloadCondition,
   getAdmissionFlavorNames,
+  getWorkloadBlocker,
   getWorkloadDetailRouteParams,
   renderAdmissionClusterQueue,
   renderAdmissionFlavors,
@@ -314,6 +315,93 @@ describe('Workload formatters', () => {
     expect(getWorkloadDetailRouteParams(undefined, undefined)).toEqual({
       namespace: '',
       name: '',
+    });
+  });
+
+  it('explains what is blocking a Workload from admission', () => {
+    const condition = (
+      type: string,
+      status: WorkloadConditionLike['status'],
+      reason?: string,
+      message?: string
+    ): WorkloadConditionLike => ({
+      type,
+      status,
+      reason,
+      message,
+    });
+
+    expect(getWorkloadBlocker([condition('Finished', 'True')])).toBeNull();
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'True'), condition('Admitted', 'True')])
+    ).toBeNull();
+
+    expect(getWorkloadBlocker([])?.stage).toBe('Not evaluated');
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'PendingEvaluation')])?.stage
+    ).toBe('Not evaluated');
+    expect(
+      getWorkloadBlocker([condition('Evicted', 'True', 'Deactivated')], [], undefined, false)?.stage
+    ).toBe('Deactivated');
+    expect(
+      getWorkloadBlocker(
+        [condition('Evicted', 'True', 'DeactivatedDueToAdmissionCheck', 'check rejected')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'bad-check', state: 'Rejected', message: 'no capacity' },
+        ],
+        undefined,
+        false
+      )
+    ).toMatchObject({
+      stage: 'Deactivated',
+      reason: 'DeactivatedDueToAdmissionCheck',
+      message: 'check rejected',
+      pendingAdmissionChecks: [{ name: 'bad-check', state: 'Rejected', message: 'no capacity' }],
+    });
+
+    expect(
+      getWorkloadBlocker([
+        condition('QuotaReserved', 'False', 'NoMatchingFlavor', 'no flavor fits'),
+      ])
+    ).toMatchObject({
+      stage: 'Waiting for quota',
+      reason: 'NoMatchingFlavor',
+      message: 'no flavor fits',
+      explanation: expect.stringContaining('ResourceFlavor'),
+    });
+
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'SomethingNew')])?.explanation
+    ).toBeUndefined();
+
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'slow-check', state: 'Pending' },
+        ]
+      )
+    ).toMatchObject({
+      stage: 'Admission checks',
+      explanation: expect.stringContaining('AdmissionCheck'),
+      pendingAdmissionChecks: [{ name: 'slow-check', state: 'Pending' }],
+    });
+
+    expect(
+      getWorkloadBlocker(
+        [
+          condition('QuotaReserved', 'False', 'Pending'),
+          condition('Evicted', 'True', 'PodsReadyTimeout', 'pods not ready'),
+        ],
+        [],
+        { count: 2, requeueAt: '2026-09-29T10:00:00Z' }
+      )
+    ).toMatchObject({
+      stage: 'Evicted',
+      reason: 'PodsReadyTimeout',
+      requeueAt: '2026-09-29T10:00:00Z',
     });
   });
 });
