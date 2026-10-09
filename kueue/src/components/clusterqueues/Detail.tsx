@@ -8,7 +8,11 @@ import { useParams } from 'react-router-dom';
 import { ClusterQueue, FlavorUsage } from '../../resources/clusterQueue';
 import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
-import { renderCohortLink, renderResourceFlavorLink } from '../common/KueueResourceLinks';
+import {
+  renderAdmissionCheckLink,
+  renderCohortLink,
+  renderResourceFlavorLink,
+} from '../common/KueueResourceLinks';
 import { RelatedLocalQueuesSection, RelatedWorkloadsSection } from '../common/RelatedResources';
 
 /** Flattened row rendered for status flavor reservations or flavor usage. */
@@ -169,7 +173,7 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
           columns={[
             {
               label: 'Name',
-              getter: (row: AdmissionCheckRow) => row.name,
+              getter: (row: AdmissionCheckRow) => renderAdmissionCheckLink(row.name),
             },
             {
               label: 'ResourceFlavors',
