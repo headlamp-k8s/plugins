@@ -43,7 +43,7 @@ export const KnativePodResourceChart = (props: KnativePodResourceChartProps) => 
 
   const cpuPlots = [
     {
-      query: `sum(rate(container_cpu_usage_seconds_total{namespace="${props.namespace}", pod=~"${podRegex}"}[1m]))`,
+      query: `sum(rate(container_cpu_usage_seconds_total{container!="", namespace="${props.namespace}", pod=~"${podRegex}"}[1m]))`,
       name: t('CPU Usage'),
       strokeColor: alpha(blue[600], 0.8),
       fillColor: alpha(blue[400], 0.1),
@@ -53,7 +53,7 @@ export const KnativePodResourceChart = (props: KnativePodResourceChartProps) => 
 
   const memoryPlots = [
     {
-      query: `sum(container_memory_working_set_bytes{namespace="${props.namespace}", pod=~"${podRegex}"})`,
+      query: `sum(container_memory_working_set_bytes{container!="", namespace="${props.namespace}", pod=~"${podRegex}"})`,
       name: t('Memory Usage'),
       strokeColor: alpha(purple[600], 0.8),
       fillColor: alpha(purple[400], 0.1),
