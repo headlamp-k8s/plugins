@@ -8,6 +8,7 @@ import { kueueRoutePaths } from '../utils/kueueRoutes';
 import type { KueueCondition, ResourceQuantity } from './clusterQueue';
 import {
   getAdmissionFlavorNames,
+  getWorkloadBlocker,
   getWorkloadDetailRouteParams,
   renderAdmissionClusterQueue,
   renderAdmissionFlavors,
@@ -789,6 +790,13 @@ export class Workload extends KubeObject<KubeWorkload> {
 
   get statusDisplay() {
     return renderWorkloadStatus(this.conditions, this.spec.active, this.admission);
+  }
+
+  get blockerStageDisplay() {
+    const { conditions, admissionChecks, requeueState } = this.status;
+    return renderText(
+      getWorkloadBlocker(conditions, admissionChecks, requeueState, this.spec.active)?.stage
+    );
   }
 
   get admissionClusterQueue() {

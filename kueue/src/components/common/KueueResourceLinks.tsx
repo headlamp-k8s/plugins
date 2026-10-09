@@ -2,6 +2,19 @@ import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { renderParentNameDisplay } from '../../resources/cohortFormatters';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 
+/** Render an AdmissionCheck reference as a detail-page link when present. */
+export function renderAdmissionCheckLink(admissionCheckName?: string) {
+  if (!admissionCheckName) {
+    return '-';
+  }
+
+  return (
+    <Link routeName={kueueRouteNames.admissionCheckDetail} params={{ name: admissionCheckName }}>
+      {admissionCheckName}
+    </Link>
+  );
+}
+
 /** Render a Cohort reference as a detail-page link when present. */
 export function renderCohortLink(cohortName?: string) {
   if (!cohortName) {
