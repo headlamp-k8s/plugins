@@ -1,0 +1,24 @@
+# Configured for volume-snapshot backups.
+#
+# Pairs with `backups/on-demand.yaml` and `backups/scheduled-suspended.yaml`,
+# which are kept separate because they need the cluster to support volume
+# snapshots — see the README. This Cluster on its own is admitted anywhere.
+#
+# `className` is left unset so the default VolumeSnapshotClass is used. If your
+# cluster has no default, set it explicitly; snapshot classes are driver-specific
+# and cannot be committed here.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-backed
+  namespace: cnpg-headlamp-test
+spec:
+  instances: 2
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  backup:
+    volumeSnapshot: {}
