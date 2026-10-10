@@ -114,17 +114,24 @@ export function parseSuggestionsFromResponse(content: unknown): {
     }
   }
 
-  const suggestionPattern = /SUGGESTIONS:\s*(.+?)(?:\n|$)/i;
-  const match = processedContent.match(suggestionPattern);
+  // Match on the original string: case folding can change UTF-16 length (ß → SS)
+  // and shift the index away from the real marker position.
+  const markerMatch = /SUGGESTIONS:/i.exec(processedContent);
 
-  if (match) {
-    const suggestionsText = match[1];
+  if (markerMatch) {
+    const markerIndex = markerMatch.index;
+    const valueStart = markerIndex + markerMatch[0].length;
+    const lineEnd = processedContent.indexOf('\n', valueStart);
+    const suggestionsText = processedContent.slice(
+      valueStart,
+      lineEnd < 0 ? processedContent.length : lineEnd
+    );
     const suggestions = parseSuggestionLabels(suggestionsText);
+    const cleanContent =
+      processedContent.slice(0, markerIndex) +
+      (lineEnd < 0 ? '' : processedContent.slice(lineEnd + 1));
 
-    // Remove the suggestions line from the content
-    const cleanContent = processedContent.replace(suggestionPattern, '').trim();
-
-    return { cleanContent, suggestions };
+    return { cleanContent: cleanContent.trim(), suggestions };
   }
 
   return { cleanContent: processedContent, suggestions: [] };
