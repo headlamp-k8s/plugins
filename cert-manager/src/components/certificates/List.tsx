@@ -43,6 +43,7 @@ export function CertificatesList() {
       <ResourceListView
         title={t('Certificates')}
         data={sortedCertificates}
+        errors={certificatesError ? [certificatesError] : null}
         errorMessage={certificatesError ? t('Failed to load certificates') : null}
         columns={[
           'name',
