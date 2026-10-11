@@ -147,7 +147,7 @@ const LOG_SEVERITY_MAP: Record<number, LogSeverity> = {
   [GenLogSeverity.ERROR]: 'ERROR',
 };
 
-/** Plugin names as they appear in Application.deployTargetsByPlugin. */
+/** Plugin names as they appear in deployTargetsByPlugin. */
 const PLUGIN_KINDS: Record<string, ApplicationKind> = {
   kubernetes: 'KUBERNETES',
   kubernetes_multicluster: 'KUBERNETES',
@@ -158,19 +158,22 @@ const PLUGIN_KINDS: Record<string, ApplicationKind> = {
 };
 
 /**
- * Works out which platform an application deploys to.
+ * Works out which platform an application or deployment targets.
  *
- * Application.kind is deprecated and a plugin-arch piped does not set it, so it
- * arrives as the zero value and every application would look like Kubernetes.
- * Prefer the deploy targets, which name the plugin, and fall back to the old
- * field only when there are none.
+ * The `kind` field is deprecated on both messages, and a plugin-arch (v1) piped
+ * does not set it, so it arrives as the protobuf zero value and everything
+ * would look like Kubernetes. Prefer the deploy targets, which name the plugin,
+ * and fall back to the old field only when there are none.
  */
-function resolveKind(a: GenApplication): ApplicationKind {
-  for (const plugin of Object.keys(a.deployTargetsByPlugin ?? {})) {
+function resolveKind(source: {
+  kind: GenApplication['kind'] | GenDeployment['kind'];
+  deployTargetsByPlugin?: Record<string, unknown>;
+}): ApplicationKind {
+  for (const plugin of Object.keys(source.deployTargetsByPlugin ?? {})) {
     const kind = PLUGIN_KINDS[plugin.toLowerCase()];
     if (kind) return kind;
   }
-  return KIND_MAP[a.kind] ?? 'UNKNOWN';
+  return KIND_MAP[source.kind] ?? 'UNKNOWN';
 }
 
 function mapGitPath(gp: GenGitPath | undefined): GitPath | undefined {
@@ -270,7 +273,7 @@ function mapDeployment(d: GenDeployment): Deployment {
     applicationName: d.applicationName,
     pipedId: d.pipedId,
     projectId: d.projectId,
-    kind: KIND_MAP[d.kind] ?? 'UNKNOWN',
+    kind: resolveKind(d),
     gitPath: mapGitPath(d.gitPath),
     cloudProvider: d.cloudProvider,
     trigger: mapTrigger(d.trigger),

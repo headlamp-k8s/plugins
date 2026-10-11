@@ -54,6 +54,27 @@ const genApp = (overrides: Partial<Record<string, unknown>> = {}) => ({
   ...overrides,
 });
 
+const genDeployment = (overrides: Partial<Record<string, unknown>> = {}) => ({
+  id: 'dep-1',
+  applicationId: 'app-k8s-001',
+  applicationName: 'frontend-prod',
+  pipedId: 'piped-1',
+  projectId: 'project-1',
+  kind: 0, // KUBERNETES, and also the zero value a v1 piped leaves behind
+  gitPath: undefined,
+  cloudProvider: '',
+  trigger: undefined,
+  summary: '',
+  labels: {},
+  status: 4, // DEPLOYMENT_SUCCESS
+  statusReason: '',
+  stages: [],
+  completedAt: BigInt(0),
+  createdAt: BigInt(0),
+  updatedAt: BigInt(0),
+  ...overrides,
+});
+
 describe('loadConfig / saveConfig', () => {
   beforeEach(() => localStorage.clear());
 
@@ -270,5 +291,75 @@ describe('listDeployments', () => {
     expect(mockClient.listDeployments).toHaveBeenCalledWith(expect.anything(), {
       signal: controller.signal,
     });
+  });
+});
+
+// `kind` is deprecated on both Application and Deployment. A plugin-arch (v1)
+// piped leaves it at the protobuf zero value, which happens to mean KUBERNETES,
+// so the deploy targets have to be consulted first or every Terraform, Lambda,
+// Cloud Run and ECS resource reports as Kubernetes.
+describe('platform resolution', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('reads a v1 deployment kind from its deploy targets, not the deprecated field', async () => {
+    mockClient.listDeployments.mockResolvedValue({
+      deployments: [
+        genDeployment({ deployTargetsByPlugin: { terraform: { deployTargets: ['tf'] } } }),
+      ],
+      cursor: '',
+    });
+
+    const result = await listDeployments(MOCK_CONFIG);
+
+    expect(result.deployments[0].kind).toBe('TERRAFORM');
+  });
+
+  it.each([
+    ['lambda', 'LAMBDA'],
+    ['cloudrun', 'CLOUD_RUN'],
+    ['ecs', 'ECS'],
+    ['kubernetes_multicluster', 'KUBERNETES'],
+  ])('maps the %s plugin to %s', async (plugin, expected) => {
+    mockClient.listDeployments.mockResolvedValue({
+      deployments: [genDeployment({ deployTargetsByPlugin: { [plugin]: { deployTargets: [] } } })],
+      cursor: '',
+    });
+
+    const result = await listDeployments(MOCK_CONFIG);
+
+    expect(result.deployments[0].kind).toBe(expected);
+  });
+
+  it('falls back to the deprecated field for a v0 deployment with no deploy targets', async () => {
+    mockClient.listDeployments.mockResolvedValue({
+      deployments: [genDeployment({ kind: 1, deployTargetsByPlugin: {} })], // 1 = TERRAFORM
+      cursor: '',
+    });
+
+    const result = await listDeployments(MOCK_CONFIG);
+
+    expect(result.deployments[0].kind).toBe('TERRAFORM');
+  });
+
+  it('reads an application kind from its deploy targets too', async () => {
+    mockClient.listApplications.mockResolvedValue({
+      applications: [genApp({ deployTargetsByPlugin: { ecs: { deployTargets: [] } } })],
+      cursor: '',
+    });
+
+    const result = await listApplications(MOCK_CONFIG);
+
+    expect(result.applications[0].kind).toBe('ECS');
+  });
+
+  it('ignores an unrecognised plugin name and falls back', async () => {
+    mockClient.listDeployments.mockResolvedValue({
+      deployments: [genDeployment({ kind: 3, deployTargetsByPlugin: { somethingNew: {} } })], // 3 = LAMBDA
+      cursor: '',
+    });
+
+    const result = await listDeployments(MOCK_CONFIG);
+
+    expect(result.deployments[0].kind).toBe('LAMBDA');
   });
 });
