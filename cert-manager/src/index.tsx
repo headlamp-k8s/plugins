@@ -3,7 +3,7 @@ import { CertificateRequestDetail } from './components/certificateRequests/Detai
 import { CertificateRequestsList } from './components/certificateRequests/List';
 import { CertificateDetail } from './components/certificates/Detail';
 import { CertificatesList } from './components/certificates/List';
-import { CertificatesOverview } from './components/certificates/Overview';
+import { CertificatesOverviewPage } from './components/certificates/Overview';
 import { ChallengeDetail } from './components/challenges/Detail';
 import { ChallengesList } from './components/challenges/List';
 import { ClusterIssuerDetail } from './components/clusterIssuers/Detail';
@@ -70,7 +70,7 @@ registerRoute({
   sidebar: 'Overview',
   name: 'Overview',
   exact: true,
-  component: () => <CertificatesOverview />,
+  component: () => <CertificatesOverviewPage />,
 });
 
 // Register all resources

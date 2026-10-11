@@ -34,10 +34,20 @@ function SummaryCard({
   );
 }
 
-export function CertificatesOverview() {
+export interface CertificatesOverviewProps {
+  certificates: Certificate[] | null;
+  certificatesError: ReturnType<typeof Certificate.useList>[1];
+  isManagerInstalled: boolean | null;
+  isCertManagerCheckLoading: boolean;
+}
+
+export function CertificatesOverview({
+  certificates,
+  certificatesError,
+  isManagerInstalled,
+  isCertManagerCheckLoading,
+}: CertificatesOverviewProps) {
   const { t } = useTranslation();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
-  const [certificates, certificatesError] = Certificate.useList();
 
   const isLoading = certificates === null && !certificatesError;
   const items = certificates || [];
@@ -122,5 +132,19 @@ export function CertificatesOverview() {
         />
       </SectionBox>
     </>
+  );
+}
+
+export function CertificatesOverviewPage() {
+  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const [certificates, certificatesError] = Certificate.useList();
+
+  return (
+    <CertificatesOverview
+      certificates={certificates}
+      certificatesError={certificatesError}
+      isManagerInstalled={isManagerInstalled}
+      isCertManagerCheckLoading={isCertManagerCheckLoading}
+    />
   );
 }
