@@ -91,6 +91,7 @@ export default function LocalQueueDetail(props: {
                   id: 'related-workloads',
                   section: (
                     <RelatedWorkloadsSection
+                      cluster={localQueue.cluster}
                       namespace={localQueue.metadata.namespace}
                       localQueueName={localQueue.metadata.name}
                     />

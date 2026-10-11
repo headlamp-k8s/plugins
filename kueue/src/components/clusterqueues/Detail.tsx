@@ -326,13 +326,19 @@ export default function ClusterQueueDetail(props: { name?: string; cluster?: str
                 {
                   id: 'related-local-queues',
                   section: (
-                    <RelatedLocalQueuesSection clusterQueueName={clusterQueue.metadata.name} />
+                    <RelatedLocalQueuesSection
+                      clusterQueueName={clusterQueue.metadata.name}
+                      cluster={clusterQueue.cluster}
+                    />
                   ),
                 },
                 {
                   id: 'related-workloads',
                   section: (
-                    <RelatedWorkloadsSection clusterQueueName={clusterQueue.metadata.name} />
+                    <RelatedWorkloadsSection
+                      clusterQueueName={clusterQueue.metadata.name}
+                      cluster={clusterQueue.cluster}
+                    />
                   ),
                 },
               ].filter(Boolean)
