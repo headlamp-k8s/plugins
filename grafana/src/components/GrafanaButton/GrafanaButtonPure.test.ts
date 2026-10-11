@@ -71,4 +71,40 @@ describe('GrafanaButtonPure', () => {
     );
     openMock.mockRestore();
   });
+
+  it('should keep relative dashboard inside sub-path base', () => {
+    const dashboard = '/d/myapp?var-namespace=default';
+    const grafanaUrl = 'https://example.com/grafana';
+    const openMock = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+    render(React.createElement(GrafanaButtonPure, { dashboard, grafanaUrl }));
+
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+
+    expect(openMock).toHaveBeenCalledWith(
+      'https://example.com/grafana/d/myapp?var-namespace=default',
+      '_blank',
+      'noopener,noreferrer'
+    );
+    openMock.mockRestore();
+  });
+
+  it('should reject path traversal outside sub-path base', () => {
+    const dashboard = '../admin';
+    const grafanaUrl = 'https://example.com/grafana';
+
+    const { container } = render(React.createElement(GrafanaButtonPure, { dashboard, grafanaUrl }));
+
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('should reject same-origin URL outside sub-path base', () => {
+    const dashboard = 'https://example.com/admin';
+    const grafanaUrl = 'https://example.com/grafana';
+
+    const { container } = render(React.createElement(GrafanaButtonPure, { dashboard, grafanaUrl }));
+
+    expect(container.firstChild).toBeNull();
+  });
 });
