@@ -71,7 +71,7 @@ function CoverageTable({
 
 /** Presentational backup coverage panel (install check, loading, error, and schedule rows). */
 export interface BackupCoveragePanelPureProps {
-  /** False when Velero API is not reachable; null while install check runs. */
+  /** False when Velero API group is missing (404); null while install check runs. */
   installed: boolean | null;
   loading: boolean;
   error?: Error | null;

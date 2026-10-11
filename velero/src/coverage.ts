@@ -74,21 +74,39 @@ function resourceNameMatchesKind(
   return resourceAliases(kind).has(resourceName.toLowerCase());
 }
 
+/**
+ * True when include/exclude resource lists allow this namespaced workload kind.
+ * Honors both legacy `includedResources`/`excludedResources` and Velero's
+ * `includedNamespaceScopedResources`/`excludedNamespaceScopedResources`.
+ */
 function resourceIncluded(
   template: VeleroBackupTemplate,
   kind: WorkloadTarget['resourceKind']
 ): boolean {
-  const excluded = template.excludedResources ?? [];
+  const excluded = [
+    ...(template.excludedResources ?? []),
+    ...(template.excludedNamespaceScopedResources ?? []),
+  ];
   if (excluded.some(name => resourceNameMatchesKind(name, kind))) {
     return false;
   }
 
   const included = template.includedResources ?? [];
-  if (included.length === 0 || included.some(name => name === '*')) {
-    return true;
-  }
+  const nsIncluded = template.includedNamespaceScopedResources ?? [];
 
-  return included.some(name => resourceNameMatchesKind(name, kind));
+  const legacyAllows =
+    included.length === 0 ||
+    included.some(name => name === '*') ||
+    included.some(name => resourceNameMatchesKind(name, kind));
+
+  // When the newer namespace-scoped include list is set, the kind must appear there
+  // (or the list must be `*`). Empty means "no extra filter" and legacy rules apply.
+  const nsScopedAllows =
+    nsIncluded.length === 0 ||
+    nsIncluded.some(name => name === '*') ||
+    nsIncluded.some(name => resourceNameMatchesKind(name, kind));
+
+  return legacyAllows && nsScopedAllows;
 }
 
 /**

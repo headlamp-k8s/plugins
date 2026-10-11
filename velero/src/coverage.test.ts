@@ -231,6 +231,50 @@ describe('scheduleCoversWorkload', () => {
     expect(scheduleCoversWorkload(crossGroup, target)).toBe(false);
   });
 
+  test('honors excludedNamespaceScopedResources', () => {
+    const schedule = {
+      name: 'no-deployments',
+      template: {
+        includedNamespaces: ['apps'],
+        excludedNamespaceScopedResources: ['deployments.apps'],
+      },
+    };
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: {},
+        resourceKind: 'deployments',
+      })
+    ).toBe(false);
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: {},
+        resourceKind: 'persistentvolumeclaims',
+      })
+    ).toBe(true);
+  });
+
+  test('honors includedNamespaceScopedResources when set', () => {
+    const schedule = {
+      name: 'pods-only-ns-scoped',
+      template: {
+        includedNamespaces: ['apps'],
+        includedNamespaceScopedResources: ['pods'],
+      },
+    };
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: {},
+        resourceKind: 'deployments',
+      })
+    ).toBe(false);
+  });
+
   test('matches Velero short names deploy, sts, and pvc', () => {
     const ns = ['default'];
     expect(

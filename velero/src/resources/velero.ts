@@ -21,6 +21,9 @@ export interface VeleroBackupTemplate {
   orLabelSelectors?: LabelSelector[];
   includedResources?: string[];
   excludedResources?: string[];
+  /** Newer Velero BackupSpec filters for namespaced kinds (Deployments, PVCs, …). */
+  includedNamespaceScopedResources?: string[];
+  excludedNamespaceScopedResources?: string[];
 }
 
 /** Velero Schedule CRD (velero.io/v1). */
