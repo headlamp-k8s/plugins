@@ -241,6 +241,15 @@ describe('generatePrompts', () => {
     expect(result[2]).toBe('What in this list needs my attention?');
   });
 
+  it('returns NetworkPolicy list prompts when resources are NetworkPolicies', async () => {
+    const { generatePrompts } = await loadPromptGenerator();
+    const result = generatePrompts({ resources: [{ kind: 'NetworkPolicy' }] });
+    expect(result).toHaveLength(3);
+    expect(result[0]).toBe('Explain ingress and egress traffic rules');
+    expect(result[1]).toBe('Are pods blocked by this network policy?');
+    expect(result[2]).toBe('What in this list needs my attention?');
+  });
+
   it('returns generic list prompts for empty resources array without resourceKind', async () => {
     const { generatePrompts } = await loadPromptGenerator();
     const result = generatePrompts({ resources: [] });
@@ -299,6 +308,14 @@ describe('generatePrompts', () => {
     const result = generatePrompts({ pathname: '/c/minikube/storage/storageclasses' });
     expect(result).toHaveLength(3);
     expect(result[0]).toBe('What pods need my attention?');
+  });
+
+  it('returns NetworkPolicy prompts from pathname fallback', async () => {
+    const { generatePrompts } = await loadPromptGenerator();
+    const result = generatePrompts({ pathname: '/c/minikube/networkpolicies' });
+    expect(result).toHaveLength(3);
+    expect(result[0]).toBe('Explain ingress and egress traffic rules');
+    expect(result[1]).toBe('Are pods blocked by this network policy?');
   });
 
   it('returns event prompts when objectEvent has events', async () => {

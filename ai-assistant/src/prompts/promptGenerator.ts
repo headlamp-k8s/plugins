@@ -420,6 +420,9 @@ export function generatePromptSuggestions(
     } else if (resourceType === 'Namespace') {
       addSuggestion('Summarize namespaces and their status');
       addSuggestion('Which namespaces have warning events?');
+    } else if (resourceType === 'NetworkPolicy') {
+      addSuggestion('Explain ingress and egress traffic rules');
+      addSuggestion('Are pods blocked by this network policy?');
     }
 
     // Generic list prompts as fallbacks
@@ -473,6 +476,9 @@ export function generatePromptSuggestions(
     } else if (pathname.includes('/namespaces')) {
       addSuggestion('Summarize namespaces and their status');
       addSuggestion('Which namespaces have warning events?');
+    } else if (pathname.includes('/networkpolicies')) {
+      addSuggestion('Explain ingress and egress traffic rules');
+      addSuggestion('Are pods blocked by this network policy?');
     }
   }
 
