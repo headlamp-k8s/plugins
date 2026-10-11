@@ -37,6 +37,9 @@ export function GetResourcesFromInventory(
   const { t } = useTranslation();
 
   React.useEffect(() => {
+    setResources([]);
+    const unsubscribes: Promise<() => void>[] = [];
+
     props.inventory?.forEach(item => {
       const parsedID = parseID(item.id);
       const { name, namespace, group, kind } = parsedID;
@@ -52,7 +55,7 @@ export function GetResourcesFromInventory(
         customResourceDefinition: undefined as any,
       });
 
-      resourceClass.apiGet(
+      const unsubscribe = resourceClass.apiGet(
         data => {
           // add the resource if it does not exist yet, compare with uid.
           setResources(prevResources => {
@@ -71,8 +74,24 @@ export function GetResourcesFromInventory(
           });
         }
       )();
+
+      unsubscribes.push(unsubscribe);
     });
-  }, []);
+
+    return () => {
+      unsubscribes.forEach(unsubscribePromise => {
+        unsubscribePromise
+          .then(cancelFn => {
+            if (typeof cancelFn === 'function') {
+              cancelFn();
+            }
+          })
+          .catch(() => {
+            /* ignore */
+          });
+      });
+    };
+  }, [props.inventory]);
 
   return (
     <Table
