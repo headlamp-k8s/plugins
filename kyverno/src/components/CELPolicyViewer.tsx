@@ -272,7 +272,7 @@ export function CELPolicyViewer({ policy }: CELPolicyViewerProps) {
             { label: t('Patch Type'), getter: i => i.patchType || 'JSONPatch' },
             {
               label: t('Expression'),
-              getter: i => i.applyConfiguration?.expression || i.rfc6902?.expression,
+              getter: i => i.applyConfiguration?.expression || i.jsonPatch?.expression,
             },
           ]}
         />

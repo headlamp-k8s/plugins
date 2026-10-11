@@ -117,7 +117,11 @@ export class ValidatingPolicy extends KubeObject<ValidatingPolicyInterface> {
 export interface CELMutation {
   patchType?: string;
   applyConfiguration?: { expression: string };
-  rfc6902?: { expression: string };
+  // Confirmed against the real CRD (policies.kyverno.io_mutatingpolicies.yaml
+  // and policies.kyverno.io_namespacedmutatingpolicies.yaml, identical here):
+  // the JSONPatch mutation field is named jsonPatch, not rfc6902, for both
+  // the cluster-scoped and namespaced kind.
+  jsonPatch?: { expression: string };
 }
 
 export interface MutatingPolicySpec {
