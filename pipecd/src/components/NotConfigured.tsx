@@ -1,5 +1,7 @@
 import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import React from 'react';
+import { Link as RouterLink } from 'react-router-dom';
+import { pluginURL } from '../utils/url';
 
 export function NotConfigured(): JSX.Element {
   return (
@@ -13,7 +15,7 @@ export function NotConfigured(): JSX.Element {
           deployments.
         </Typography>
         <Stack direction="row" spacing={2} justifyContent="center">
-          <Button variant="contained" href="#/pipecd/settings">
+          <Button variant="contained" component={RouterLink} to={pluginURL('/pipecd/settings')}>
             Configure PipeCD
           </Button>
           <Button
