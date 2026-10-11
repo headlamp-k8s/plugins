@@ -194,11 +194,29 @@ data:
       timestamp: fixedDate,
     });
 
+    expect(result).toContain('- **Total Messages:** 2');
     expect(result).toContain('### User');
     expect(result).toContain('### AI Assistant');
     expect(result).toContain('**Requested Tool Call:** `kubernetes_delete`');
     expect(result).not.toContain('awaiting_confirmation');
     expect(result).not.toContain('Tool Result (kubernetes_delete)');
+  });
+
+  it('renders no messages placeholder when all messages are display-only', () => {
+    const result = generateSessionMarkdown({
+      messages: [
+        {
+          role: 'tool',
+          name: 'kubernetes_delete',
+          content: JSON.stringify({ status: 'awaiting_confirmation' }),
+          isDisplayOnly: true,
+        },
+      ],
+      timestamp: fixedDate,
+    });
+
+    expect(result).toContain('- **Total Messages:** 0');
+    expect(result).toContain('_No messages in this session._');
   });
 
   it('serializes agent thinking steps under agent activity with redactions', () => {

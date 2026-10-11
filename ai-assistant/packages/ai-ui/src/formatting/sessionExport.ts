@@ -77,12 +77,23 @@ export function generateSessionMarkdown(options: SessionExportOptions): string {
 
   const dateString = timestamp.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
 
+  const exportableMessages = messages.filter(
+    msg =>
+      !(
+        (msg.role === 'tool' && msg.isDisplayOnly) ||
+        (msg.isDisplayOnly &&
+          !msg.content &&
+          !msg.toolCalls?.length &&
+          !msg.agentThinkingSteps?.length)
+      )
+  );
+
   const lines: string[] = [
     '# Headlamp AI Assistant Session Report',
     '',
     `- **Date:** ${dateString}`,
     `- **Cluster(s):** ${clusterList.join(', ')}`,
-    `- **Total Messages:** ${messages.length}`,
+    `- **Total Messages:** ${exportableMessages.length}`,
     '',
     '---',
     '',
@@ -90,19 +101,10 @@ export function generateSessionMarkdown(options: SessionExportOptions): string {
     '',
   ];
 
-  if (messages.length === 0) {
+  if (exportableMessages.length === 0) {
     lines.push('_No messages in this session._', '');
   } else {
-    for (const msg of messages) {
-      if (
-        (msg.role === 'tool' && msg.isDisplayOnly) ||
-        (msg.isDisplayOnly &&
-          !msg.content &&
-          !msg.toolCalls?.length &&
-          !msg.agentThinkingSteps?.length)
-      ) {
-        continue;
-      }
+    for (const msg of exportableMessages) {
 
       const role = msg.role || 'unknown';
       let roleTitle = 'Message';

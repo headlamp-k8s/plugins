@@ -2071,7 +2071,7 @@ export default function AIPrompt(props: {
         onClose={() => setOpenExportDialog(false)}
         messages={promptHistory}
         cluster={getCluster()}
-        clusters={clusterNames}
+        clusters={selectedClusters}
       />
     </div>
   );
