@@ -22,6 +22,8 @@ export interface ScheduleCoverageInput {
   cronSchedule?: string;
   /** When true, the schedule does not create new backups. */
   paused?: boolean;
+  /** Velero Schedule status.phase (e.g. FailedValidation). */
+  phase?: string;
 }
 
 /** Normalized Velero Backup fields joined onto schedule coverage results. */
@@ -41,6 +43,8 @@ export interface ScheduleCoverageResult {
   lastBackup?: BackupCoverageInput;
   /** True when the schedule is paused and will not create new backups. */
   paused?: boolean;
+  /** Operator-facing status: FailedValidation, Paused, or Active. */
+  statusDisplay?: string;
 }
 
 // Include Velero/kubectl short names (ShortcutExpander) so includedResources like
@@ -83,11 +87,18 @@ function resourceIncluded(
   template: VeleroBackupTemplate,
   kind: WorkloadTarget['resourceKind']
 ): boolean {
-  const excluded = [
-    ...(template.excludedResources ?? []),
-    ...(template.excludedNamespaceScopedResources ?? []),
-  ];
-  if (excluded.some(name => resourceNameMatchesKind(name, kind))) {
+  // Namespace-scoped `*` means exclude every namespaced kind (Velero BackupSpec).
+  const nsExcluded = template.excludedNamespaceScopedResources ?? [];
+  if (
+    nsExcluded.some(name => name === '*') ||
+    nsExcluded.some(name => resourceNameMatchesKind(name, kind))
+  ) {
+    return false;
+  }
+
+  // Legacy excludedResources: match known kind aliases only (do not treat `*` as exclude-all).
+  const legacyExcluded = template.excludedResources ?? [];
+  if (legacyExcluded.some(name => resourceNameMatchesKind(name, kind))) {
     return false;
   }
 
@@ -140,7 +151,12 @@ export function matchesNamespaceGlob(pattern: string, namespace: string): boolea
     }
   }
   re += '$';
-  return new RegExp(re).test(namespace);
+  try {
+    return new RegExp(re).test(namespace);
+  } catch {
+    // Invalid patterns (e.g. `[z-a]`) must fail closed — never crash coverage panels.
+    return false;
+  }
 }
 
 function namespaceIncluded(template: VeleroBackupTemplate, namespace: string): boolean {
@@ -242,6 +258,7 @@ function labelsMatch(template: VeleroBackupTemplate, labels: Record<string, stri
  * label selectors (`matchLabels`, `matchExpressions`, `orLabelSelectors`),
  * and the `velero.io/exclude-from-backup` label.
  *
+ * FailedValidation schedules never cover (Velero will not create backups).
  * Paused schedules still "match" the template so they can be shown as paused;
  * callers decide how to present them via {@link ScheduleCoverageResult.paused}.
  */
@@ -249,6 +266,10 @@ export function scheduleCoversWorkload(
   schedule: ScheduleCoverageInput,
   target: WorkloadTarget
 ): boolean {
+  if (schedule.phase === 'FailedValidation') {
+    return false;
+  }
+
   if (isExcludedFromBackup(target.labels)) {
     return false;
   }
@@ -277,17 +298,30 @@ function backupTimestamp(backup: BackupCoverageInput): number {
   return value ? Date.parse(value) : 0;
 }
 
+function scheduleStatusDisplay(schedule: ScheduleCoverageInput): string {
+  if (schedule.phase === 'FailedValidation') {
+    return 'FailedValidation';
+  }
+  if (schedule.paused) {
+    return 'Paused';
+  }
+  return 'Active';
+}
+
 function toScheduleCoverageResult(
   schedule: ScheduleCoverageInput,
   backups: BackupCoverageInput[]
 ): ScheduleCoverageResult {
   const paused = !!schedule.paused;
+  const failedValidation = schedule.phase === 'FailedValidation';
   return {
     scheduleName: schedule.name,
     cronSchedule: schedule.cronSchedule,
     paused,
-    // Paused schedules do not create new backups; do not show a misleading next run.
-    nextScheduledRun: paused ? undefined : formatNextScheduledRun(schedule.cronSchedule),
+    statusDisplay: scheduleStatusDisplay(schedule),
+    // Paused / invalid schedules do not create new backups; do not show a misleading next run.
+    nextScheduledRun:
+      paused || failedValidation ? undefined : formatNextScheduledRun(schedule.cronSchedule),
     lastBackup: getLatestBackupForSchedule(backups, schedule.name),
   };
 }
@@ -310,6 +344,10 @@ export function getSchedulesForNamespace(
   namespace: string
 ): ScheduleCoverageResult[] {
   return schedules
-    .filter(schedule => namespaceIncluded(schedule.template ?? {}, namespace))
+    .filter(
+      schedule =>
+        schedule.phase !== 'FailedValidation' &&
+        namespaceIncluded(schedule.template ?? {}, namespace)
+    )
     .map(schedule => toScheduleCoverageResult(schedule, backups));
 }

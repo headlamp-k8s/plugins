@@ -41,11 +41,19 @@ function CoverageTable({
           <NameValueTable
             rows={[
               { name: 'Schedule', value: entry.scheduleName },
-              { name: 'Status', value: entry.paused ? 'Paused' : 'Active' },
+              {
+                name: 'Status',
+                value: entry.statusDisplay ?? (entry.paused ? 'Paused' : 'Active'),
+              },
               { name: 'Cron', value: entry.cronSchedule || 'N/A' },
               {
                 name: 'Next run',
-                value: entry.paused ? 'N/A (paused)' : entry.nextScheduledRun ?? 'N/A',
+                value:
+                  entry.statusDisplay === 'FailedValidation'
+                    ? 'N/A (FailedValidation)'
+                    : entry.paused
+                    ? 'N/A (paused)'
+                    : entry.nextScheduledRun ?? 'N/A',
               },
               {
                 name: 'Last backup',

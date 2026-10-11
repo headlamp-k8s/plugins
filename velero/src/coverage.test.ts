@@ -257,6 +257,93 @@ describe('scheduleCoversWorkload', () => {
     ).toBe(true);
   });
 
+  test('treats excludedNamespaceScopedResources wildcard as exclude-all', () => {
+    const schedule = {
+      name: 'no-namespaced',
+      template: {
+        includedNamespaces: ['apps'],
+        excludedNamespaceScopedResources: ['*'],
+      },
+    };
+
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: {},
+        resourceKind: 'deployments',
+      })
+    ).toBe(false);
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: {},
+        resourceKind: 'statefulsets',
+      })
+    ).toBe(false);
+    expect(
+      scheduleCoversWorkload(schedule, {
+        namespace: 'apps',
+        labels: {},
+        resourceKind: 'persistentvolumeclaims',
+      })
+    ).toBe(false);
+  });
+
+  test('fails closed on invalid namespace globs without throwing', () => {
+    expect(() =>
+      scheduleCoversWorkload(
+        {
+          name: 'bad-glob',
+          template: {
+            includedNamespaces: ['[z-a]'],
+            includedResources: ['deployments'],
+          },
+        },
+        {
+          namespace: 'default',
+          labels: {},
+          resourceKind: 'deployments',
+        }
+      )
+    ).not.toThrow();
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'bad-glob',
+          template: {
+            includedNamespaces: ['[z-a]'],
+            includedResources: ['deployments'],
+          },
+        },
+        {
+          namespace: 'default',
+          labels: {},
+          resourceKind: 'deployments',
+        }
+      )
+    ).toBe(false);
+  });
+
+  test('excludes FailedValidation schedules from coverage', () => {
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'broken',
+          phase: 'FailedValidation',
+          template: {
+            includedNamespaces: ['apps'],
+            includedResources: ['deployments'],
+          },
+        },
+        {
+          namespace: 'apps',
+          labels: {},
+          resourceKind: 'deployments',
+        }
+      )
+    ).toBe(false);
+  });
+
   test('honors includedNamespaceScopedResources when set', () => {
     const schedule = {
       name: 'pods-only-ns-scoped',
@@ -490,6 +577,7 @@ describe('getCoveringSchedules', () => {
         cronSchedule: '0 7 * * *',
         nextScheduledRun: expect.any(String),
         paused: false,
+        statusDisplay: 'Active',
         lastBackup: {
           name: 'backup-1',
           scheduleName: 'daily',
@@ -520,6 +608,7 @@ describe('getCoveringSchedules', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].paused).toBe(true);
+    expect(results[0].statusDisplay).toBe('Paused');
     expect(results[0].nextScheduledRun).toBeUndefined();
   });
 
@@ -583,6 +672,7 @@ describe('getSchedulesForNamespace', () => {
         cronSchedule: '0 7 * * *',
         nextScheduledRun: expect.any(String),
         paused: false,
+        statusDisplay: 'Active',
         lastBackup: {
           name: 'backup-1',
           scheduleName: 'daily-apps',
