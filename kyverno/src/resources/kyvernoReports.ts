@@ -70,33 +70,13 @@ abstract class KyvernoReportBase extends KubeObject<KyvernoReportInterface> {
   }
 }
 
-export class AdmissionReport extends KyvernoReportBase {
-  static kind = 'AdmissionReport';
-  static apiName = 'admissionreports';
-  static apiVersion = 'kyverno.io/v2';
-  static isNamespaced = true;
-}
-
-export class ClusterAdmissionReport extends KyvernoReportBase {
-  static kind = 'ClusterAdmissionReport';
-  static apiName = 'clusteradmissionreports';
-  static apiVersion = 'kyverno.io/v2';
-  static isNamespaced = false;
-}
-
-export class BackgroundScanReport extends KyvernoReportBase {
-  static kind = 'BackgroundScanReport';
-  static apiName = 'backgroundscanreports';
-  static apiVersion = 'kyverno.io/v2';
-  static isNamespaced = true;
-}
-
-export class ClusterBackgroundScanReport extends KyvernoReportBase {
-  static kind = 'ClusterBackgroundScanReport';
-  static apiName = 'clusterbackgroundscanreports';
-  static apiVersion = 'kyverno.io/v2';
-  static isNamespaced = false;
-}
+// Kyverno does not expose AdmissionReport / BackgroundScanReport as separate,
+// listable API resources. Both the admission controller and the background
+// controller write their intermediate results as EphemeralReport /
+// ClusterEphemeralReport (reports.kyverno.io/v1), distinguished only by the
+// `audit.kyverno.io/source: admission|background-scan` label. Confirmed live:
+// `kubectl get --raw /apis/kyverno.io/v2` never lists admissionreports or
+// backgroundscanreports, and requesting either path returns a 404.
 
 export class EphemeralReport extends KyvernoReportBase {
   static kind = 'EphemeralReport';
