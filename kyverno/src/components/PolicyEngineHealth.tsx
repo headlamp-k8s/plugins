@@ -64,10 +64,11 @@ interface HealthQueries {
   breakerTrips: number | null;
   // kyverno_policy_rule_info_total only ever covers legacy kyverno.io/v1 Policy/ClusterPolicy
   // rules, current Kyverno does not emit it for any policies.kyverno.io CEL kind at all. Named
-  // explicitly so it's never mistaken for full coverage; the "Rules Not Ready" tile combines this
-  // with celPoliciesNotReady (derived straight from the K8s API below) to actually cover every
-  // policy kind this plugin supports.
-  legacyRulesNotReady: number | null;
+  // explicitly so it's never mistaken for full coverage; the "Policies Not Ready" tile combines
+  // this with celPoliciesNotReady (derived straight from the K8s API below) to actually cover
+  // every policy kind this plugin supports. Counts distinct not-ready policies, not raw rule rows,
+  // see the comment on the query itself for why.
+  legacyPoliciesNotReady: number | null;
   requeueCount: number | null;
   latency: ChartDataPoint[];
 }
@@ -82,7 +83,7 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     requestRateRes,
     denyCountRes,
     breakerTripsRes,
-    legacyRulesNotReadyRes,
+    legacyPoliciesNotReadyRes,
     requeueCountRes,
     latencyRes,
   ] = await Promise.all([
@@ -102,7 +103,23 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
       'sum(increase(kyverno_admission_requests_total{request_allowed="false"}[5m])) or vector(0)'
     ),
     queryInstant(prefix, 'sum(increase(kyverno_breaker_total[1h])) or vector(0)'),
-    queryInstant(prefix, 'sum(kyverno_policy_rule_info_total{status_ready!="true"}) or vector(0)'),
+    // kyverno_policy_rule_info_total is an observable gauge recorded once per rule, by every
+    // controller process (admission and background) and every replica of each, confirmed against
+    // Kyverno's own pkg/metrics/policy_rule.go. A plain sum() over it counts the same not-ready
+    // policy once per rule, per controller, per replica, wildly overcounting, and the raw count is
+    // rules anyway, not policies, an incompatible unit from celPoliciesNotReady below (one legacy
+    // rule in a 10-rule policy versus one whole CEL policy are not the same "1"). Grouping by
+    // (policy_namespace, policy_name) first collapses every duplicate rule/controller/replica
+    // observation for the same policy into one series, status_ready is itself a policy-level
+    // attribute duplicated onto every rule row so this grouping can't accidentally mix a ready
+    // and a not-ready rule from the same policy together, then the outer count() tallies distinct
+    // not-ready policies. Same idiom Kyverno's own official Grafana dashboard uses
+    // (charts/kyverno/charts/grafana/dashboard/kyverno-dashboard.json) to count policies from this
+    // exact metric.
+    queryInstant(
+      prefix,
+      'count(count(kyverno_policy_rule_info_total{status_ready!="true"}) by (policy_namespace, policy_name)) or vector(0)'
+    ),
     queryInstant(prefix, 'sum(increase(kyverno_controller_requeue_total[1h])) or vector(0)'),
     queryRange(
       prefix,
@@ -118,7 +135,7 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     requestRate: instantValue(requestRateRes),
     denyCount: instantValue(denyCountRes),
     breakerTrips: instantValue(breakerTripsRes),
-    legacyRulesNotReady: instantValue(legacyRulesNotReadyRes),
+    legacyPoliciesNotReady: instantValue(legacyPoliciesNotReadyRes),
     requeueCount: instantValue(requeueCountRes),
     latency: rangeSeries(latencyRes),
   };
@@ -132,7 +149,7 @@ function goodIfZero(value: number | null): string | undefined {
   return value === 0 ? STATUS_GOOD : undefined;
 }
 
-// Rules Not Ready is the one count where a threshold isn't a guess: a rule that exists but
+// Policies Not Ready is the one count where a threshold isn't a guess: a policy that exists but
 // isn't ready is unambiguously a problem, at any count above zero.
 function goodIfZeroElseBad(value: number | null): string | undefined {
   if (value === null) return undefined;
@@ -193,7 +210,11 @@ function LatencyChart({ data }: { data: ChartDataPoint[] }) {
           strokeWidth={2}
           fill={accent}
           fillOpacity={0.15}
-          connectNulls
+          // No connectNulls: histogram_quantile returns NaN (rangeSeries turns that into a null
+          // point) for any interval with zero admission requests to compute a quantile over.
+          // Bridging across those with a drawn line would visually invent continuous latency data
+          // during a real no-traffic gap; recharts' default (unset = false) already renders a
+          // genuine gap there instead, which is the honest behavior.
           isAnimationActive={false}
         />
       </AreaChart>
@@ -209,7 +230,7 @@ export function PolicyEngineHealth() {
   const [state, setState] = useState<FetchState>('loading');
 
   // Prometheus has no readiness signal at all for CEL policy kinds (see the comment on
-  // legacyRulesNotReady), but every one of these classes already exposes `ready` straight from
+  // legacyPoliciesNotReady), but every one of these classes already exposes `ready` straight from
   // its own K8s object, read directly here instead, no Prometheus involved.
   const [validatingPolicies, validatingPoliciesError] = ValidatingPolicy.useList();
   const [mutatingPolicies, mutatingPoliciesError] = MutatingPolicy.useList();
@@ -363,12 +384,16 @@ export function PolicyEngineHealth() {
     );
   }
 
-  // Combines the legacy-rule count Prometheus actually tracks with the CEL-policy count read
+  // Combines the legacy-policy count Prometheus actually tracks with the CEL-policy count read
   // straight from the K8s API, so this tile covers every policy kind this plugin supports instead
-  // of silently reporting green whenever only CEL policies are broken. Stays null (unknown)
-  // rather than collapsing to a number whenever the CEL half genuinely can't be determined.
-  const rulesNotReady =
-    celPoliciesNotReady === null ? null : (health.legacyRulesNotReady ?? 0) + celPoliciesNotReady;
+  // of silently reporting green whenever only CEL policies are broken. Both sides are counts of
+  // distinct not-ready policies, not rules, see the comment on the legacy query itself for why
+  // that distinction matters. Stays null (unknown) rather than collapsing to a number whenever the
+  // CEL half genuinely can't be determined.
+  const policiesNotReady =
+    celPoliciesNotReady === null
+      ? null
+      : (health.legacyPoliciesNotReady ?? 0) + celPoliciesNotReady;
 
   return (
     <SectionBox title={t('Policy Engine Health')}>
@@ -392,9 +417,9 @@ export function PolicyEngineHealth() {
         </Grid>
         <Grid item xs={6} sm={2.4}>
           <MetricCard
-            title={t('Rules Not Ready')}
-            value={formatCount(rulesNotReady)}
-            color={goodIfZeroElseBad(rulesNotReady)}
+            title={t('Policies Not Ready')}
+            value={formatCount(policiesNotReady)}
+            color={goodIfZeroElseBad(policiesNotReady)}
           />
         </Grid>
         <Grid item xs={6} sm={2.4}>
