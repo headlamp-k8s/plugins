@@ -19,6 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip, Link as MuiLink } from '@mui/material';
 import { PolicyException } from '../resources/policyException';
+import { columnId } from './common';
 import { ExceptionViewer } from './ExceptionViewer';
 
 function openExceptionActivity(item: PolicyException) {
@@ -44,7 +45,7 @@ export function PolicyExceptionList() {
       resourceClass={PolicyException}
       columns={[
         {
-          id: 'name',
+          id: columnId('name', t('Name')),
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -59,7 +60,7 @@ export function PolicyExceptionList() {
         },
         'namespace',
         {
-          id: 'policies',
+          id: columnId('policies', t('Policies')),
           label: t('Policies'),
           getValue: item => item.policyNames.join(', '),
           render: item => (
@@ -71,13 +72,13 @@ export function PolicyExceptionList() {
           ),
         },
         {
-          id: 'exceptions',
+          id: columnId('exceptions', t('Rules')),
           label: t('Rules'),
           getValue: item => item.exceptions.length,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'background',
+          id: columnId('background', t('Background')),
           label: t('Background'),
           getValue: item => (item.background ? 'True' : 'False'),
           gridTemplate: '0.5fr',

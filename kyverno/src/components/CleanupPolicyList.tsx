@@ -18,6 +18,7 @@ import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip } from '@mui/material';
 import { CleanupPolicy, ClusterCleanupPolicy } from '../resources/cleanupPolicy';
+import { columnId } from './common';
 
 export function CleanupPolicyList() {
   const { t } = useTranslation();
@@ -27,13 +28,13 @@ export function CleanupPolicyList() {
       resourceClass={CleanupPolicy}
       columns={[
         {
-          id: 'name',
+          id: columnId('name', t('Name')),
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
         },
         'namespace',
         {
-          id: 'ready',
+          id: columnId('ready', t('Ready')),
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => (
@@ -46,12 +47,12 @@ export function CleanupPolicyList() {
           gridTemplate: '0.5fr',
         },
         {
-          id: 'schedule',
+          id: columnId('schedule', t('Schedule')),
           label: t('Schedule'),
           getValue: item => item.schedule,
         },
         {
-          id: 'lastExecution',
+          id: columnId('lastExecution', t('Last Execution')),
           label: t('Last Execution'),
           getValue: item => item.lastExecutionTime || '-',
         },
@@ -69,12 +70,12 @@ export function ClusterCleanupPolicyList() {
       resourceClass={ClusterCleanupPolicy}
       columns={[
         {
-          id: 'name',
+          id: columnId('name', t('Name')),
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
         },
         {
-          id: 'ready',
+          id: columnId('ready', t('Ready')),
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => (
@@ -87,12 +88,12 @@ export function ClusterCleanupPolicyList() {
           gridTemplate: '0.5fr',
         },
         {
-          id: 'schedule',
+          id: columnId('schedule', t('Schedule')),
           label: t('Schedule'),
           getValue: item => item.schedule,
         },
         {
-          id: 'lastExecution',
+          id: columnId('lastExecution', t('Last Execution')),
           label: t('Last Execution'),
           getValue: item => item.lastExecutionTime || '-',
         },

@@ -29,6 +29,7 @@ import {
   ValidatingPolicy,
 } from '../resources/celPolicies';
 import { CELPolicyViewer } from './CELPolicyViewer';
+import { columnId } from './common';
 
 // Namespaced* extends its cluster-scoped counterpart (see celPolicies.ts), so
 // instances of either are already assignable to this union, no widening needed.
@@ -62,7 +63,7 @@ export function ValidatingPolicyList() {
       resourceClass={ValidatingPolicy}
       columns={[
         {
-          id: 'name',
+          id: columnId('name', t('Name')),
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -76,19 +77,19 @@ export function ValidatingPolicyList() {
           ),
         },
         {
-          id: 'ready',
+          id: columnId('ready', t('Ready')),
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => <ReadyChip ready={item.ready} />,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'actions',
+          id: columnId('actions', t('Actions')),
           label: t('Actions'),
           getValue: item => item.validationActions.join(', '),
         },
         {
-          id: 'validations',
+          id: columnId('validations', t('Validations')),
           label: t('Validations'),
           getValue: item => item.validationCount,
           gridTemplate: '0.5fr',
@@ -107,7 +108,7 @@ export function MutatingPolicyList() {
       resourceClass={MutatingPolicy}
       columns={[
         {
-          id: 'name',
+          id: columnId('name', t('Name')),
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -121,14 +122,14 @@ export function MutatingPolicyList() {
           ),
         },
         {
-          id: 'ready',
+          id: columnId('ready', t('Ready')),
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => <ReadyChip ready={item.ready} />,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'mutations',
+          id: columnId('mutations', t('Mutations')),
           label: t('Mutations'),
           getValue: item => item.mutationCount,
           gridTemplate: '0.5fr',
@@ -147,7 +148,7 @@ export function GeneratingPolicyList() {
       resourceClass={GeneratingPolicy}
       columns={[
         {
-          id: 'name',
+          id: columnId('name', t('Name')),
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -161,14 +162,14 @@ export function GeneratingPolicyList() {
           ),
         },
         {
-          id: 'ready',
+          id: columnId('ready', t('Ready')),
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => <ReadyChip ready={item.ready} />,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'generators',
+          id: columnId('generators', t('Generators')),
           label: t('Generators'),
           getValue: item => item.generateCount,
           gridTemplate: '0.5fr',
@@ -187,7 +188,7 @@ export function DeletingPolicyList() {
       resourceClass={DeletingPolicy}
       columns={[
         {
-          id: 'name',
+          id: columnId('name', t('Name')),
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -201,14 +202,14 @@ export function DeletingPolicyList() {
           ),
         },
         {
-          id: 'ready',
+          id: columnId('ready', t('Ready')),
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => <ReadyChip ready={item.ready} />,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'schedule',
+          id: columnId('schedule', t('Schedule')),
           label: t('Schedule'),
           getValue: item => item.schedule,
         },

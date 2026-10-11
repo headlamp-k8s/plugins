@@ -19,6 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip, Link as MuiLink } from '@mui/material';
 import { ImageValidatingPolicy, NamespacedImageValidatingPolicy } from '../resources/celPolicies';
+import { columnId } from './common';
 import { ImageValidatingPolicyViewer } from './ImageValidatingPolicyViewer';
 
 function openActivity(item: ImageValidatingPolicy | NamespacedImageValidatingPolicy) {
@@ -45,7 +46,7 @@ export function ImageValidatingPolicyList() {
       resourceClass={ImageValidatingPolicy}
       columns={[
         {
-          id: 'name',
+          id: columnId('name', t('Name')),
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -59,7 +60,7 @@ export function ImageValidatingPolicyList() {
           ),
         },
         {
-          id: 'ready',
+          id: columnId('ready', t('Ready')),
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => (
@@ -72,12 +73,12 @@ export function ImageValidatingPolicyList() {
           gridTemplate: '0.5fr',
         },
         {
-          id: 'images',
+          id: columnId('images', t('Image Patterns')),
           label: t('Image Patterns'),
           getValue: item => item.imagePatterns.join(', ') || '-',
         },
         {
-          id: 'attestors',
+          id: columnId('attestors', t('Attestors')),
           label: t('Attestors'),
           getValue: item => item.attestorCount,
           gridTemplate: '0.5fr',

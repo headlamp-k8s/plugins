@@ -19,7 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link as MuiLink } from '@mui/material';
 import { ClusterPolicyReport } from '../resources/policyReport';
-import { SummaryChips } from './common';
+import { columnId, SummaryChips } from './common';
 import { ReportViewer } from './ReportViewer';
 
 function openClusterReportActivity(item: ClusterPolicyReport) {
@@ -40,8 +40,8 @@ export function ClusterPolicyReportList() {
       resourceClass={ClusterPolicyReport}
       columns={[
         {
-          id: 'name',
-          label: 'Name',
+          id: columnId('name', t('Name')),
+          label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
             <MuiLink
@@ -54,7 +54,7 @@ export function ClusterPolicyReportList() {
           ),
         },
         {
-          id: 'scope',
+          id: columnId('scope', t('Scope')),
           label: t('Scope'),
           getValue: item => {
             const scope = item.scope;
@@ -63,37 +63,37 @@ export function ClusterPolicyReportList() {
           },
         },
         {
-          id: 'pass',
+          id: columnId('pass', t('Pass')),
           label: t('Pass'),
           getValue: item => item.summary.pass || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'fail',
+          id: columnId('fail', t('Fail')),
           label: t('Fail'),
           getValue: item => item.summary.fail || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'warn',
+          id: columnId('warn', t('Warn')),
           label: t('Warn'),
           getValue: item => item.summary.warn || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'error',
+          id: columnId('error', t('Error')),
           label: t('Error'),
           getValue: item => item.summary.error || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'skip',
+          id: columnId('skip', t('Skip')),
           label: t('Skip'),
           getValue: item => item.summary.skip || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: 'summary',
+          id: columnId('summary', t('Summary')),
           label: t('Summary'),
           render: item => <SummaryChips summary={item.summary} />,
           getValue: item => item.totalResults,

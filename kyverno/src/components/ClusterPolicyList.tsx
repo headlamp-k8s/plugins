@@ -20,6 +20,7 @@ import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents'
 import { Box, Chip, Link as MuiLink, Typography } from '@mui/material';
 import { usePolicyResultCounts } from '../hooks/usePolicyResultCounts';
 import { KyvernoClusterPolicy } from '../resources/kyvernoPolicy';
+import { columnId } from './common';
 import { PolicyViewer } from './PolicyViewer';
 
 function openClusterPolicyActivity(item: KyvernoClusterPolicy) {
@@ -41,7 +42,7 @@ export function ClusterPolicyList() {
       resourceClass={KyvernoClusterPolicy}
       columns={[
         {
-          id: 'name',
+          id: columnId('name', t('Name')),
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -55,7 +56,7 @@ export function ClusterPolicyList() {
           ),
         },
         {
-          id: 'ready',
+          id: columnId('ready', t('Ready')),
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => (
@@ -68,19 +69,19 @@ export function ClusterPolicyList() {
           gridTemplate: '0.5fr',
         },
         {
-          id: 'action',
+          id: columnId('action', t('Action')),
           label: t('Action'),
           getValue: item => item.validationFailureAction,
           gridTemplate: '0.7fr',
         },
         {
-          id: 'background',
+          id: columnId('background', t('Background')),
           label: t('Background'),
           getValue: item => (item.background ? 'True' : 'False'),
           gridTemplate: '0.7fr',
         },
         {
-          id: 'ruleTypes',
+          id: columnId('ruleTypes', t('Rule Types')),
           label: t('Rule Types'),
           getValue: item => item.ruleTypes.join(', '),
           render: item => (
@@ -92,13 +93,13 @@ export function ClusterPolicyList() {
           ),
         },
         {
-          id: 'rules',
+          id: columnId('rules', t('Rules')),
           label: t('Rules'),
           getValue: item => item.rules.length,
           gridTemplate: '0.4fr',
         },
         {
-          id: 'results',
+          id: columnId('results', t('Results')),
           label: t('Results'),
           getValue: item => counts.forCluster(item.jsonData.metadata.name)?.total ?? 0,
           render: item => {
