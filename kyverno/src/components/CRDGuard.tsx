@@ -32,8 +32,16 @@ interface CRDGuardProps {
    * check doesn't guarantee every kind in it is actually present on this cluster.
    */
   requiresResource?: string;
-  /** Message shown when `requiresResource` is set but not present on this cluster. */
-  resourceMessage?: string;
+  /**
+   * Kind label and minimum version to interpolate into the built-in version-requirement message
+   * shown when `requiresResource` is set but not present (e.g. "NamespacedValidatingPolicy",
+   * "1.17"). Passed as data rather than a finished message string so the message itself can be
+   * built with this component's own `t()`: a caller outside a component (index.tsx registers
+   * these at module load time) has no `t()` available to build a translated string with, a
+   * pre-built string handed in from there would permanently bypass translation.
+   */
+  requiresResourceLabel?: string;
+  requiresResourceVersion?: string;
 }
 
 export function CRDGuard({
@@ -41,7 +49,8 @@ export function CRDGuard({
   children,
   message,
   requiresResource,
-  resourceMessage,
+  requiresResourceLabel,
+  requiresResourceVersion,
 }: CRDGuardProps) {
   const { t } = useTranslation();
   const status = useKyvernoCRDs();
@@ -74,10 +83,14 @@ export function CRDGuard({
     return (
       <NotInstalledBanner
         message={
-          resourceMessage ||
-          t(
-            'This Kyverno CEL policy kind (policies.kyverno.io/v1) requires a newer Kyverno version than what is installed on this cluster.'
-          )
+          requiresResourceLabel && requiresResourceVersion
+            ? t(
+                '{{kind}} (policies.kyverno.io/v1) was not detected on this cluster. Kyverno {{version}}+ is required.',
+                { kind: requiresResourceLabel, version: requiresResourceVersion }
+              )
+            : t(
+                'This Kyverno CEL policy kind (policies.kyverno.io/v1) requires a newer Kyverno version than what is installed on this cluster.'
+              )
         }
       />
     );

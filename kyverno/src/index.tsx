@@ -77,8 +77,9 @@ interface KyvernoPageOptions {
   requires?: CRDGroup;
   /** Specific policies.kyverno.io/v1 resource name additionally required (see CRDGuard). */
   requiresResource?: string;
-  /** Message shown when `requiresResource` is set but not present on this cluster. */
-  resourceMessage?: string;
+  /** Kind label and minimum version interpolated into CRDGuard's own translated message. */
+  requiresResourceLabel?: string;
+  requiresResourceVersion?: string;
 }
 
 // Centralises the sidebar + route pair that every Kyverno page needs so each
@@ -95,7 +96,8 @@ export function registerKyvernoPage({
   component,
   requires,
   requiresResource,
-  resourceMessage,
+  requiresResourceLabel,
+  requiresResourceVersion,
 }: KyvernoPageOptions) {
   registerSidebarEntry({ name, url: url ?? path, parent, label, icon });
   const wrapped = requires
@@ -103,7 +105,8 @@ export function registerKyvernoPage({
         <CRDGuard
           requires={requires}
           requiresResource={requiresResource}
-          resourceMessage={resourceMessage}
+          requiresResourceLabel={requiresResourceLabel}
+          requiresResourceVersion={requiresResourceVersion}
         >
           {component()}
         </CRDGuard>
@@ -209,8 +212,8 @@ registerKyvernoPage({
   path: '/kyverno/namespacedvalidatingpolicies',
   requires: 'cel',
   requiresResource: 'namespacedvalidatingpolicies',
-  resourceMessage:
-    'NamespacedValidatingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.17+ is required.',
+  requiresResourceLabel: 'NamespacedValidatingPolicy',
+  requiresResourceVersion: '1.17',
   component: () => <NamespacedValidatingPolicyList />,
 });
 
@@ -221,8 +224,8 @@ registerKyvernoPage({
   path: '/kyverno/namespacedmutatingpolicies',
   requires: 'cel',
   requiresResource: 'namespacedmutatingpolicies',
-  resourceMessage:
-    'NamespacedMutatingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.17+ is required.',
+  requiresResourceLabel: 'NamespacedMutatingPolicy',
+  requiresResourceVersion: '1.17',
   component: () => <NamespacedMutatingPolicyList />,
 });
 
@@ -233,8 +236,8 @@ registerKyvernoPage({
   path: '/kyverno/namespacedgeneratingpolicies',
   requires: 'cel',
   requiresResource: 'namespacedgeneratingpolicies',
-  resourceMessage:
-    'NamespacedGeneratingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.17+ is required.',
+  requiresResourceLabel: 'NamespacedGeneratingPolicy',
+  requiresResourceVersion: '1.17',
   component: () => <NamespacedGeneratingPolicyList />,
 });
 
@@ -245,8 +248,8 @@ registerKyvernoPage({
   path: '/kyverno/namespaceddeletingpolicies',
   requires: 'cel',
   requiresResource: 'namespaceddeletingpolicies',
-  resourceMessage:
-    'NamespacedDeletingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.17+ is required.',
+  requiresResourceLabel: 'NamespacedDeletingPolicy',
+  requiresResourceVersion: '1.17',
   component: () => <NamespacedDeletingPolicyList />,
 });
 
@@ -257,8 +260,8 @@ registerKyvernoPage({
   path: '/kyverno/namespacedimagevalidatingpolicies',
   requires: 'cel',
   requiresResource: 'namespacedimagevalidatingpolicies',
-  resourceMessage:
-    'NamespacedImageValidatingPolicy (policies.kyverno.io/v1) was not detected on this cluster. Kyverno 1.17+ is required.',
+  requiresResourceLabel: 'NamespacedImageValidatingPolicy',
+  requiresResourceVersion: '1.17',
   component: () => <NamespacedImageValidatingPolicyList />,
 });
 
