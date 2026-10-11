@@ -15,9 +15,9 @@
  */
 
 import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry, useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { Box, Typography } from '@mui/material';
+import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
+import { ApplicationList } from './components/ApplicationList';
 import { SettingsPage } from './components/SettingsPage';
 
 const PIPECD_ICON_NAME = 'pipecd:logo';
@@ -27,22 +27,6 @@ const pipecdIcon = {
   width: 86.07,
   height: 86.07,
 };
-
-function ApplicationsPlaceholder(): JSX.Element {
-  const { t } = useTranslation();
-  return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight={700} gutterBottom>
-        {t('PipeCD Applications')}
-      </Typography>
-      <Typography color="text.secondary">
-        {t(
-          'The applications view is not available yet. Configure the connection under PipeCD → Settings.'
-        )}
-      </Typography>
-    </Box>
-  );
-}
 
 addIcon(PIPECD_ICON_NAME, pipecdIcon);
 
@@ -77,7 +61,7 @@ registerRoute({
   path: '/pipecd/applications',
   sidebar: 'pipecd-applications',
   name: 'PipeCDApplications',
-  component: () => <ApplicationsPlaceholder />,
+  component: () => <ApplicationList />,
   exact: true,
   noAuthRequired: false,
 });
