@@ -39,7 +39,7 @@ export function renderParentCohortLink(parentName?: string) {
 }
 
 /** Render a ResourceFlavor reference as a side-panel link when present. */
-export function renderResourceFlavorLink(flavorName?: string, cluster?: string) {
+export function renderResourceFlavorLink(flavorName: string | undefined, cluster: string) {
   if (!flavorName) {
     return '-';
   }
@@ -48,7 +48,7 @@ export function renderResourceFlavorLink(flavorName?: string, cluster?: string) 
 }
 
 /** Render a ClusterQueue reference as a side-panel link when present. */
-export function renderClusterQueueLink(clusterQueueName?: string, cluster?: string) {
+export function renderClusterQueueLink(clusterQueueName: string | undefined, cluster: string) {
   if (!clusterQueueName) {
     return '-';
   }
@@ -59,7 +59,11 @@ export function renderClusterQueueLink(clusterQueueName?: string, cluster?: stri
 }
 
 /** Render a LocalQueue reference as a side-panel link when present. */
-export function renderLocalQueueLink(queueName?: string, namespace?: string, cluster?: string) {
+export function renderLocalQueueLink(
+  queueName: string | undefined,
+  namespace: string | undefined,
+  cluster: string
+) {
   if (!queueName || !namespace) {
     return '-';
   }
@@ -70,7 +74,11 @@ export function renderLocalQueueLink(queueName?: string, namespace?: string, clu
 }
 
 /** Render a Workload reference as a side-panel link when present. */
-export function renderWorkloadLink(workloadName?: string, namespace?: string, cluster?: string) {
+export function renderWorkloadLink(
+  workloadName: string | undefined,
+  namespace: string | undefined,
+  cluster: string
+) {
   if (!workloadName || !namespace) {
     return '-';
   }
