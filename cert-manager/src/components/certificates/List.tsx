@@ -1,5 +1,9 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import {
+  CreateResourceButton,
+  ResourceListView,
+} from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { useNamespaces } from '@kinvolk/headlamp-plugin/lib/redux/filterSlice';
 import { Button } from '@mui/material';
 import { useMemo, useState } from 'react';
 import { useCertManagerInstalled } from '../../hooks/useCertManagerInstalled';
@@ -10,7 +14,8 @@ import { CertificateExpiryLabel } from './CertificateExpiryLabel';
 export function CertificatesList() {
   const { t } = useTranslation();
   const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
-  const [certificates, certificatesError] = Certificate.useList();
+  const selectedNamespaces = useNamespaces();
+  const [certificates, certificatesError] = Certificate.useList({ namespace: selectedNamespaces });
   const [sortDescending, setSortDescending] = useState(false);
 
   const sortedCertificates = useMemo(() => {
@@ -45,6 +50,12 @@ export function CertificatesList() {
         data={sortedCertificates}
         errors={certificatesError ? [certificatesError] : null}
         errorMessage={certificatesError ? t('Failed to load certificates') : null}
+        headerProps={{
+          noNamespaceFilter: false,
+          titleSideActions: [
+            <CreateResourceButton key="create-certificate" resourceClass={Certificate} />,
+          ],
+        }}
         columns={[
           'name',
           'namespace',
