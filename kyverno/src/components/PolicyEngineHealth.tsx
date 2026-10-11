@@ -28,6 +28,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
 import { usePrometheus } from '../hooks/usePrometheus';
 import {
   DeletingPolicy,
@@ -210,33 +211,55 @@ export function PolicyEngineHealth() {
   // Prometheus has no readiness signal at all for CEL policy kinds (see the comment on
   // legacyRulesNotReady), but every one of these classes already exposes `ready` straight from
   // its own K8s object, read directly here instead, no Prometheus involved.
-  const [validatingPolicies] = ValidatingPolicy.useList();
-  const [mutatingPolicies] = MutatingPolicy.useList();
-  const [generatingPolicies] = GeneratingPolicy.useList();
-  const [deletingPolicies] = DeletingPolicy.useList();
-  const [imageValidatingPolicies] = ImageValidatingPolicy.useList();
+  const [validatingPolicies, validatingPoliciesError] = ValidatingPolicy.useList();
+  const [mutatingPolicies, mutatingPoliciesError] = MutatingPolicy.useList();
+  const [generatingPolicies, generatingPoliciesError] = GeneratingPolicy.useList();
+  const [deletingPolicies, deletingPoliciesError] = DeletingPolicy.useList();
+  const [imageValidatingPolicies, imageValidatingPoliciesError] = ImageValidatingPolicy.useList();
+  const crds = useKyvernoCRDs();
 
-  const celPoliciesNotReady = useMemo(() => {
+  // null means "can't say": either the CEL CRD probe hasn't resolved yet, or it has and the CEL
+  // CRD group is confirmed present but at least one of the five lists above is still loading or
+  // failed (RBAC denial, transient API error). A real number only comes out once every list that
+  // should exist has actually been read. Reporting 0 in either case would read as "all CEL rules
+  // ready" when the plugin genuinely doesn't know.
+  const celPoliciesNotReady = useMemo((): number | null => {
+    if (crds.loading) return null;
+    // CEL CRDs genuinely not installed on this cluster (a legacy-only install, the Dashboard
+    // route itself is only guarded on the legacy CRD group): there are no CEL policies to be
+    // unready, so 0 is the honest answer regardless of what the five lists above did, they're
+    // expected to have failed outright against a nonexistent API group.
+    if (!crds.cel) return 0;
+
     const lists = [
-      validatingPolicies,
-      mutatingPolicies,
-      generatingPolicies,
-      deletingPolicies,
-      imageValidatingPolicies,
-    ];
+      [validatingPolicies, validatingPoliciesError],
+      [mutatingPolicies, mutatingPoliciesError],
+      [generatingPolicies, generatingPoliciesError],
+      [deletingPolicies, deletingPoliciesError],
+      [imageValidatingPolicies, imageValidatingPoliciesError],
+    ] as const;
+
     let count = 0;
-    for (const list of lists) {
-      for (const policy of list || []) {
+    for (const [list, error] of lists) {
+      if (error || !list) return null;
+      for (const policy of list) {
         if (!policy.ready) count++;
       }
     }
     return count;
   }, [
+    crds.loading,
+    crds.cel,
     validatingPolicies,
+    validatingPoliciesError,
     mutatingPolicies,
+    mutatingPoliciesError,
     generatingPolicies,
+    generatingPoliciesError,
     deletingPolicies,
+    deletingPoliciesError,
     imageValidatingPolicies,
+    imageValidatingPoliciesError,
   ]);
 
   useEffect(() => {
@@ -342,8 +365,10 @@ export function PolicyEngineHealth() {
 
   // Combines the legacy-rule count Prometheus actually tracks with the CEL-policy count read
   // straight from the K8s API, so this tile covers every policy kind this plugin supports instead
-  // of silently reporting green whenever only CEL policies are broken.
-  const rulesNotReady = (health.legacyRulesNotReady ?? 0) + celPoliciesNotReady;
+  // of silently reporting green whenever only CEL policies are broken. Stays null (unknown)
+  // rather than collapsing to a number whenever the CEL half genuinely can't be determined.
+  const rulesNotReady =
+    celPoliciesNotReady === null ? null : (health.legacyRulesNotReady ?? 0) + celPoliciesNotReady;
 
   return (
     <SectionBox title={t('Policy Engine Health')}>
