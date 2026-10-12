@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Typography } from '@mui/material';
 import { alpha, lighten, useTheme } from '@mui/material/styles';
 import React from 'react';
@@ -12,14 +13,18 @@ const KIND_COLORS: Record<ApplicationKind, string> = {
   UNKNOWN: '#6B7280',
 };
 
-const KIND_LABELS: Record<ApplicationKind, string> = {
-  KUBERNETES: 'Kubernetes',
-  TERRAFORM: 'Terraform',
-  CLOUD_RUN: 'Cloud Run',
-  LAMBDA: 'Lambda',
-  ECS: 'ECS',
-  UNKNOWN: 'Unknown',
-};
+/** Display names for each platform, shared by the badge and the filter menu. */
+export function useKindLabels(): Record<ApplicationKind, string> {
+  const { t } = useTranslation();
+  return {
+    KUBERNETES: t('Kubernetes'),
+    TERRAFORM: t('Terraform'),
+    CLOUD_RUN: t('Cloud Run'),
+    LAMBDA: t('Lambda'),
+    ECS: t('ECS'),
+    UNKNOWN: t('Unknown'),
+  };
+}
 
 interface KindBadgeProps {
   kind: ApplicationKind;
@@ -27,6 +32,7 @@ interface KindBadgeProps {
 
 export function KindBadge({ kind }: KindBadgeProps): JSX.Element {
   const theme = useTheme();
+  const labels = useKindLabels();
   const base = KIND_COLORS[kind] ?? theme.palette.grey[600];
   const isLight = theme.palette.mode === 'light';
 
@@ -39,14 +45,14 @@ export function KindBadge({ kind }: KindBadgeProps): JSX.Element {
         border: '1px solid',
         borderColor: alpha(base, 0.4),
         backgroundColor: alpha(base, isLight ? 0.12 : 0.2),
-        color: isLight ? base : lighten(base, 0.4),
+        color: isLight ? theme.palette.text.primary : lighten(base, 0.4),
         fontSize: theme.typography.pxToRem(14),
         px: 1,
         py: 0.5,
         borderRadius: `${theme.shape.borderRadius}px`,
       }}
     >
-      {KIND_LABELS[kind] ?? kind}
+      {labels[kind] ?? kind}
     </Typography>
   );
 }

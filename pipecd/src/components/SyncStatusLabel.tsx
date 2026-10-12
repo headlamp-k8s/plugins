@@ -1,14 +1,7 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import React from 'react';
 import type { SyncStatus } from '../types/pipecd';
-
-const STATUS_LABELS: Record<SyncStatus, string> = {
-  UNKNOWN: 'Unknown',
-  SYNCED: 'Synced',
-  DEPLOYING: 'Deploying',
-  OUT_OF_SYNC: 'Out of Sync',
-  INVALID_CONFIG: 'Invalid Config',
-};
 
 const STATUS_LEVELS: Record<SyncStatus, 'success' | 'warning' | 'error' | ''> = {
   UNKNOWN: '',
@@ -24,6 +17,14 @@ interface SyncStatusLabelProps {
 }
 
 export function SyncStatusLabel({ status }: SyncStatusLabelProps): JSX.Element {
+  const { t } = useTranslation();
+  const labels: Record<SyncStatus, string> = {
+    UNKNOWN: t('Unknown'),
+    SYNCED: t('Synced'),
+    DEPLOYING: t('Deploying'),
+    OUT_OF_SYNC: t('Out of Sync'),
+    INVALID_CONFIG: t('Invalid Config'),
+  };
   const resolved: SyncStatus = status ?? 'UNKNOWN';
-  return <StatusLabel status={STATUS_LEVELS[resolved]}>{STATUS_LABELS[resolved]}</StatusLabel>;
+  return <StatusLabel status={STATUS_LEVELS[resolved]}>{labels[resolved]}</StatusLabel>;
 }

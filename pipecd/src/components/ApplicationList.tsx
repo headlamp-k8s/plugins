@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Alert,
   Box,
@@ -23,7 +24,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { isConfigured, listApplications, loadConfig, PipeCDApiError } from '../api/pipecd';
 import type { Application, ApplicationKind } from '../types/pipecd';
 import { formatTimestamp, relativeTime } from '../utils/time';
-import { KindBadge } from './KindBadge';
+import { KindBadge, useKindLabels } from './KindBadge';
 import { NotConfigured } from './NotConfigured';
 import { SyncStatusLabel } from './SyncStatusLabel';
 
@@ -56,11 +57,12 @@ function summarizeDescription(description: string): string {
 }
 
 function LoadingSkeleton(): JSX.Element {
+  const { t } = useTranslation();
   return (
     <Table aria-label="loading-skeleton">
       <TableHead>
         <TableRow>
-          {['Name', 'Kind', 'Sync Status', 'Last Deployed', 'Git Path'].map(h => (
+          {[t('Name'), t('Kind'), t('Sync Status'), t('Last Deployed'), t('Git Path')].map(h => (
             <TableCell key={h}>
               <strong>{h}</strong>
             </TableCell>
@@ -85,6 +87,8 @@ function LoadingSkeleton(): JSX.Element {
 const ALL_KINDS: ApplicationKind[] = ['KUBERNETES', 'TERRAFORM', 'CLOUD_RUN', 'LAMBDA', 'ECS'];
 
 export function ApplicationList(): JSX.Element {
+  const { t } = useTranslation();
+  const kindLabels = useKindLabels();
   const config = loadConfig();
 
   const [apps, setApps] = useState<Application[]>([]);
@@ -110,7 +114,6 @@ export function ApplicationList(): JSX.Element {
         let cursor = '';
         for (;;) {
           const resp = await listApplications(config, {
-            kind: kindFilter !== 'ALL' ? kindFilter : undefined,
             cursor: cursor || undefined,
             signal,
           });
@@ -124,7 +127,9 @@ export function ApplicationList(): JSX.Element {
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;
         if (err instanceof PipeCDApiError) {
-          setError(`API error ${err.status}: ${err.message}`);
+          setError(
+            t('API error {{status}}: {{message}}', { status: err.status, message: err.message })
+          );
         } else {
           setError(err instanceof Error ? err.message : String(err));
         }
@@ -135,7 +140,7 @@ export function ApplicationList(): JSX.Element {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [config.baseURL, config.apiKey, kindFilter]
+    [config.baseURL, config.apiKey]
   );
 
   /** Starts a fetch, cancelling whatever was already running. */
@@ -160,7 +165,12 @@ export function ApplicationList(): JSX.Element {
     return <NotConfigured />;
   }
 
+  // Filter by platform here, not on the server. The server matches the
+  // deprecated Application.kind, which a plugin-arch piped leaves at zero
+  // (Kubernetes), so its Terraform, Lambda, Cloud Run and ECS apps would never
+  // match. app.kind is already resolved from the deploy targets.
   const filtered = apps.filter(app => {
+    if (kindFilter !== 'ALL' && app.kind !== kindFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -182,29 +192,29 @@ export function ApplicationList(): JSX.Element {
       >
         <Box>
           <Typography variant="h5" fontWeight={700}>
-            PipeCD Applications
+            {t('PipeCD Applications')}
           </Typography>
           {lastFetched && (
             <Typography variant="caption" color="text.secondary">
-              Last updated: {lastFetched.toLocaleTimeString()}
+              {t('Last updated: {{time}}', { time: lastFetched.toLocaleTimeString() })}
             </Typography>
           )}
         </Box>
 
         <Stack direction="row" spacing={1.5} alignItems="center">
           <FormControl size="small" variant="outlined" sx={{ minWidth: 140 }}>
-            <InputLabel id="kind-filter-label">Platform</InputLabel>
+            <InputLabel id="kind-filter-label">{t('Platform')}</InputLabel>
             <Select
               labelId="kind-filter-label"
               id="kind-filter"
               value={kindFilter}
-              label="Platform"
+              label={t('Platform')}
               onChange={e => setKindFilter(e.target.value as ApplicationKind | 'ALL')}
             >
-              <MenuItem value="ALL">All</MenuItem>
+              <MenuItem value="ALL">{t('All')}</MenuItem>
               {ALL_KINDS.map(k => (
                 <MenuItem key={k} value={k}>
-                  {k}
+                  {kindLabels[k]}
                 </MenuItem>
               ))}
             </Select>
@@ -214,14 +224,14 @@ export function ApplicationList(): JSX.Element {
             id="app-search"
             size="small"
             variant="outlined"
-            label="Search applications"
-            placeholder="Name or repository"
+            label={t('Search applications')}
+            placeholder={t('Name or repository')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             sx={{ minWidth: 240 }}
           />
 
-          <Tooltip title="Refresh">
+          <Tooltip title={t('Refresh')}>
             <span>
               <Button
                 variant="outlined"
@@ -232,7 +242,7 @@ export function ApplicationList(): JSX.Element {
                 // Match the 40px height of the small outlined inputs beside it.
                 sx={{ height: 40, whiteSpace: 'nowrap' }}
               >
-                Refresh
+                {t('Refresh')}
               </Button>
             </span>
           </Tooltip>
@@ -243,7 +253,7 @@ export function ApplicationList(): JSX.Element {
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          <strong>Failed to load applications</strong>
+          <strong>{t('Failed to load applications')}</strong>
           <br />
           {error}
         </Alert>
@@ -255,12 +265,12 @@ export function ApplicationList(): JSX.Element {
         <Box textAlign="center" py={8}>
           <Typography color="text.secondary" mb={1}>
             {apps.length === 0
-              ? 'No PipeCD applications found.'
-              : 'No applications match the current filter.'}
+              ? t('No PipeCD applications found.')
+              : t('No applications match the current filter.')}
           </Typography>
           {apps.length === 0 && (
             <Typography variant="caption" color="text.secondary">
-              Make sure your PipeCD project has at least one application registered.
+              {t('Make sure your PipeCD project has at least one application registered.')}
             </Typography>
           )}
         </Box>
@@ -270,11 +280,11 @@ export function ApplicationList(): JSX.Element {
         <Table aria-label="pipecd-applications-table" sx={{ '& .MuiTableCell-root': { py: 1.2 } }}>
           <TableHead>
             <TableRow sx={{ '& .MuiTableCell-root': { fontWeight: 700 } }}>
-              <TableCell>Name</TableCell>
-              <TableCell>Platform</TableCell>
-              <TableCell>Sync Status</TableCell>
-              <TableCell>Last Synced</TableCell>
-              <TableCell>Repository</TableCell>
+              <TableCell>{t('Name')}</TableCell>
+              <TableCell>{t('Platform')}</TableCell>
+              <TableCell>{t('Sync Status')}</TableCell>
+              <TableCell>{t('Last Synced')}</TableCell>
+              <TableCell>{t('Repository')}</TableCell>
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
@@ -344,7 +354,7 @@ export function ApplicationList(): JSX.Element {
                     rel="noopener noreferrer"
                     sx={{ whiteSpace: 'nowrap' }}
                   >
-                    Open in PipeCD
+                    {t('Open in PipeCD')}
                   </Button>
                 </TableCell>
               </TableRow>
