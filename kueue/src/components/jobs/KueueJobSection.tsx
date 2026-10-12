@@ -12,7 +12,7 @@ import { renderLocalQueueLink } from '../common/KueueResourceLinks';
 import { getBlockerSection } from '../workloads/Detail';
 
 /** Label Kueue reads to decide which LocalQueue a Job is submitted to. */
-const QUEUE_NAME_LABEL = 'kueue.x-k8s.io/queue-name';
+export const QUEUE_NAME_LABEL = 'kueue.x-k8s.io/queue-name';
 
 /** Show the Kueue queue, Workload and admission state on a batch Job managed by Kueue. */
 export default function KueueJobSection({ resource }: DetailsViewSectionProps) {
@@ -30,6 +30,7 @@ function KueueJobDetails({ job, queueName }: { job: KubeObject; queueName: strin
   // Kueue labels each Workload it creates with the owning Job's UID.
   const [workloads, error] = Workload.useList({
     namespace,
+    cluster: job.cluster,
     labelSelector: `kueue.x-k8s.io/job-uid=${job.metadata.uid}`,
   });
 
@@ -57,7 +58,7 @@ function KueueJobDetails({ job, queueName }: { job: KubeObject; queueName: strin
       <SectionBox title="Kueue">
         <NameValueTable
           rows={[
-            { name: 'Queue', value: renderLocalQueueLink(queueName, namespace) },
+            { name: 'Queue', value: renderLocalQueueLink(queueName, namespace, job.cluster) },
             {
               name: 'Workload',
               value: workload ? (
