@@ -55,18 +55,18 @@ type IngressClassHookResult = {
 };
 
 function useIngressClassForCluster(cluster: string): IngressClassHookResult {
-  const {
-    data: networkConfig,
-    error,
-    isLoading: ingressClassLoading,
-  } = ConfigMap.useGet('config-network', 'knative-serving', { cluster });
+  const { data: networkConfig, error } = ConfigMap.useGet('config-network', 'knative-serving', {
+    cluster,
+  });
 
   const { raw, value: ingressClass } = readIngressClass(networkConfig?.data);
 
   return {
     ingressClass,
     ingressClassRaw: raw,
-    ingressClassLoading,
+    // useGet keeps isLoading false until the first response arrives, so a result with neither
+    // data nor an error is the one sign that the ConfigMap is still loading.
+    ingressClassLoading: !networkConfig && !error,
     ingressClassError: error ? getErrorMessage(error) : null,
   };
 }
@@ -78,15 +78,14 @@ type GatewayConfigHookResult = {
 };
 
 function useGatewayConfigForCluster(cluster: string): GatewayConfigHookResult {
-  const {
-    data: gatewayConfigMap,
-    error,
-    isLoading: gatewayConfigLoading,
-  } = ConfigMap.useGet('config-gateway', 'knative-serving', { cluster });
+  const { data: gatewayConfigMap, error } = ConfigMap.useGet('config-gateway', 'knative-serving', {
+    cluster,
+  });
 
   return {
     gatewayConfig: gatewayConfigMap ? parseGatewayConfigMap(gatewayConfigMap.data) : null,
-    gatewayConfigLoading,
+    // See useIngressClassForCluster: no data and no error means the first response is pending.
+    gatewayConfigLoading: !gatewayConfigMap && !error,
     gatewayConfigError: error ? getErrorMessage(error) : null,
   };
 }
