@@ -25,11 +25,14 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   }),
 }));
 
-const { listApplications } = vi.hoisted(() => ({ listApplications: vi.fn() }));
+const { listApplications, saveConfig } = vi.hoisted(() => ({
+  listApplications: vi.fn(),
+  saveConfig: vi.fn(),
+}));
 
 vi.mock('../api/pipecd', () => ({
   loadConfig: () => ({ baseURL: '', apiKey: '' }),
-  saveConfig: vi.fn(),
+  saveConfig,
   isConfigured: (config: { baseURL: string; apiKey: string }) =>
     config.baseURL.length > 0 && config.apiKey.length > 0,
   listApplications,
@@ -38,6 +41,7 @@ vi.mock('../api/pipecd', () => ({
 afterEach(() => {
   cleanup();
   listApplications.mockReset();
+  saveConfig.mockReset();
 });
 
 function fill(label: string, value: string): void {
@@ -76,6 +80,18 @@ describe('SettingsPage', () => {
     testConnection();
 
     expect(await screen.findByText('Connection failed: unreachable')).toBeTruthy();
+  });
+
+  it('saves the normalized URL and the API key', () => {
+    render(<SettingsPage />);
+    fill('PipeCD Server URL', 'https://pipecd.example.com/');
+    fill('API Key', 'test-key');
+    fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
+
+    expect(saveConfig).toHaveBeenCalledWith({
+      baseURL: 'https://pipecd.example.com',
+      apiKey: 'test-key',
+    });
   });
 
   it('flags a URL without a protocol', () => {
