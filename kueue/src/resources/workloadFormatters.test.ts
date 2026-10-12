@@ -5,6 +5,7 @@ import type { PodSet, WorkloadConditionLike } from './workload';
 import {
   findWorkloadCondition,
   getAdmissionFlavorNames,
+  getWorkloadBlocker,
   getWorkloadDetailRouteParams,
   renderAdmissionClusterQueue,
   renderAdmissionFlavors,
@@ -314,6 +315,167 @@ describe('Workload formatters', () => {
     expect(getWorkloadDetailRouteParams(undefined, undefined)).toEqual({
       namespace: '',
       name: '',
+    });
+  });
+
+  it('explains what is blocking a Workload from admission', () => {
+    const condition = (
+      type: string,
+      status: WorkloadConditionLike['status'],
+      reason?: string,
+      message?: string
+    ): WorkloadConditionLike => ({
+      type,
+      status,
+      reason,
+      message,
+    });
+
+    expect(getWorkloadBlocker([condition('Finished', 'True')])).toBeNull();
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'True'), condition('Admitted', 'True')])
+    ).toBeNull();
+
+    expect(getWorkloadBlocker([])?.stage).toBe('Not evaluated');
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'PendingEvaluation')])?.stage
+    ).toBe('Not evaluated');
+    expect(
+      getWorkloadBlocker([condition('Evicted', 'True', 'Deactivated')], [], undefined, false)?.stage
+    ).toBe('Deactivated');
+    expect(
+      getWorkloadBlocker(
+        [condition('Evicted', 'True', 'DeactivatedDueToAdmissionCheck', 'check rejected')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'bad-check', state: 'Pending', message: 'Reset to Pending after eviction' },
+        ],
+        undefined,
+        false
+      )
+    ).toMatchObject({
+      stage: 'Deactivated',
+      reason: 'DeactivatedDueToAdmissionCheck',
+      message: 'check rejected',
+      pendingAdmissionChecks: [
+        { name: 'bad-check', state: 'Pending', message: 'Reset to Pending after eviction' },
+      ],
+    });
+    expect(
+      getWorkloadBlocker(
+        [
+          condition('Admitted', 'True'),
+          condition('DeactivationTarget', 'True', 'AdmissionCheck', 'check rejected'),
+        ],
+        [{ name: 'bad-check', state: 'Rejected' }]
+      )
+    ).toMatchObject({
+      stage: 'Deactivated',
+      reason: 'AdmissionCheck',
+      message: 'check rejected',
+      pendingAdmissionChecks: [{ name: 'bad-check', state: 'Rejected' }],
+    });
+
+    expect(
+      getWorkloadBlocker([
+        condition('QuotaReserved', 'False', 'NoMatchingFlavor', 'no flavor fits'),
+      ])
+    ).toMatchObject({
+      stage: 'Waiting for quota',
+      reason: 'NoMatchingFlavor',
+      message: 'no flavor fits',
+      explanation: expect.stringContaining('ResourceFlavor'),
+    });
+
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'SomethingNew')])?.explanation
+    ).toBeUndefined();
+
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'slow-check', state: 'Pending' },
+        ]
+      )
+    ).toMatchObject({
+      stage: 'Admission checks',
+      explanation: expect.stringContaining('AdmissionCheck'),
+      pendingAdmissionChecks: [{ name: 'slow-check', state: 'Pending' }],
+    });
+
+    expect(
+      getWorkloadBlocker([
+        condition('QuotaReserved', 'True'),
+        condition('Admitted', 'False', 'UnsatisfiedChecks'),
+      ])?.explanation
+    ).toContain('AdmissionCheck');
+
+    expect(
+      getWorkloadBlocker([
+        condition('QuotaReserved', 'True'),
+        condition('Admitted', 'False', 'PendingDelayedTopologyRequests'),
+      ])
+    ).toMatchObject({
+      stage: 'Topology assignment',
+      explanation: expect.stringContaining('topology'),
+      pendingAdmissionChecks: [],
+    });
+
+    const delayedAdmission = {
+      clusterQueue: 'cq',
+      podSetAssignments: [{ name: 'main', delayedTopologyRequest: 'Pending' as const }],
+    };
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True')],
+        [{ name: 'ready-check', state: 'Ready' }],
+        undefined,
+        undefined,
+        delayedAdmission
+      )?.stage
+    ).toBe('Topology assignment');
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True')],
+        [{ name: 'slow-check', state: 'Pending' }],
+        undefined,
+        undefined,
+        delayedAdmission
+      )?.stage
+    ).toBe('Admission checks');
+
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'Waiting')])?.explanation
+    ).toContain('ready');
+
+    expect(
+      getWorkloadBlocker(
+        [
+          condition('QuotaReserved', 'False', 'Pending'),
+          condition('Evicted', 'True', 'PodsReadyTimeout', 'pods not ready'),
+        ],
+        [],
+        { count: 2, requeueAt: '2026-09-29T10:00:00Z' }
+      )
+    ).toMatchObject({
+      stage: 'Evicted',
+      reason: 'PodsReadyTimeout',
+      requeueAt: '2026-09-29T10:00:00Z',
+    });
+
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True'), condition('Evicted', 'True', 'AdmissionCheck')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'retry-check', state: 'Retry' },
+        ]
+      )
+    ).toMatchObject({
+      stage: 'Evicted',
+      pendingAdmissionChecks: [{ name: 'retry-check', state: 'Retry' }],
     });
   });
 });
