@@ -1,0 +1,8 @@
+{
+  "Unknown": "Unknown",
+  "Waiting": "Waiting",
+  "Terminated": "Terminated",
+  "Terminated successfully": "Terminated successfully",
+  "Terminated with error": "Terminated with error",
+  "Running": "Running"
+}
