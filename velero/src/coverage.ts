@@ -28,6 +28,8 @@ export interface ScheduleCoverageInput {
   creationTimestamp?: string;
   /** Schedule status.lastBackup timestamp — preferred `@every` next-run anchor. */
   lastBackupTime?: string;
+  /** Schedule status.lastSkipped — preferred over lastBackup when newer (e.g. skipImmediately). */
+  lastSkippedTime?: string;
 }
 
 /** Normalized Velero Backup fields joined onto schedule coverage results. */
@@ -53,11 +55,50 @@ export interface ScheduleCoverageResult {
 
 // Include Velero/kubectl short names (ShortcutExpander) so includedResources like
 // "deploy", "sts", and "pvc" match the same kinds as the plural/group forms.
-const DEPLOYMENT_ALIASES = new Set(['deployments', 'deployment', 'deploy', 'deployments.apps']);
-const STATEFULSET_ALIASES = new Set(['statefulsets', 'statefulset', 'sts', 'statefulsets.apps']);
-// Only discovery short names: persistentvolumeclaims / persistentvolumeclaim / pvc.
+// Include plural, singular, short names, and qualified forms Velero resolves via discovery
+// (e.g. deployment.apps — qualified singular is valid in includedResources).
+const DEPLOYMENT_ALIASES = new Set([
+  'deployments',
+  'deployment',
+  'deploy',
+  'deployments.apps',
+  'deployment.apps',
+]);
+const STATEFULSET_ALIASES = new Set([
+  'statefulsets',
+  'statefulset',
+  'sts',
+  'statefulsets.apps',
+  'statefulset.apps',
+]);
+// Only discovery names: persistentvolumeclaims / persistentvolumeclaim / pvc.
 // Do not include "pvcs" — it is not a Kubernetes short name and Velero leaves it unresolved.
 const PVC_ALIASES = new Set(['persistentvolumeclaims', 'persistentvolumeclaim', 'pvc']);
+
+/** Known cluster-scoped resource names (not Deployments/STS/PVCs in a namespace). */
+const CLUSTER_SCOPED_RESOURCE_ALIASES = new Set([
+  'nodes',
+  'node',
+  'persistentvolumes',
+  'persistentvolume',
+  'pv',
+  'storageclasses',
+  'storageclass',
+  'sc',
+  'storageclasses.storage.k8s.io',
+  'storageclass.storage.k8s.io',
+  'namespaces',
+  'namespace',
+  'ns',
+  'clusterroles',
+  'clusterrole',
+  'clusterrolebindings',
+  'clusterrolebinding',
+  'customresourcedefinitions',
+  'customresourcedefinition',
+  'crd',
+  'crds',
+]);
 
 function resourceAliases(kind: WorkloadTarget['resourceKind']): Set<string> {
   switch (kind) {
@@ -314,13 +355,34 @@ function scheduleStatusDisplay(schedule: ScheduleCoverageInput): string {
   return 'Active';
 }
 
-/** Anchor for `@every` next-run: Schedule status.lastBackup, else latest Backup, else creation. */
+/** Later of two ISO timestamps (invalid/missing ignored). */
+function laterTimestamp(a?: string, b?: string): string | undefined {
+  const aMs = a ? Date.parse(a) : Number.NaN;
+  const bMs = b ? Date.parse(b) : Number.NaN;
+  const aOk = !Number.isNaN(aMs);
+  const bOk = !Number.isNaN(bMs);
+  if (aOk && bOk) {
+    return aMs >= bMs ? a : b;
+  }
+  if (aOk) {
+    return a;
+  }
+  if (bOk) {
+    return b;
+  }
+  return undefined;
+}
+
+/**
+ * Anchor for `@every` next-run: later of status.lastBackup / status.lastSkipped,
+ * else latest Backup timestamps, else schedule creation.
+ */
 function everyRunAnchor(
   schedule: ScheduleCoverageInput,
   lastBackup: BackupCoverageInput | undefined
 ): Date | undefined {
   const raw =
-    schedule.lastBackupTime ??
+    laterTimestamp(schedule.lastBackupTime, schedule.lastSkippedTime) ??
     lastBackup?.completionTimestamp ??
     lastBackup?.startTimestamp ??
     schedule.creationTimestamp;
@@ -329,6 +391,31 @@ function everyRunAnchor(
   }
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+/**
+ * True when the backup template can include namespaced objects.
+ * Used by the namespace panel so schedules that only select cluster-scoped
+ * kinds (or exclude all namespaced kinds) are not listed as targeting the namespace.
+ */
+function mayCoverNamespacedObjects(template: VeleroBackupTemplate): boolean {
+  const nsExcluded = template.excludedNamespaceScopedResources ?? [];
+  if (nsExcluded.some(name => name === '*')) {
+    return false;
+  }
+
+  // Explicit namespace-scoped include list means the schedule intends namespaced kinds.
+  const nsIncluded = template.includedNamespaceScopedResources ?? [];
+  if (nsIncluded.length > 0) {
+    return true;
+  }
+
+  const included = template.includedResources ?? [];
+  if (included.length === 0 || included.some(name => name === '*')) {
+    return true;
+  }
+
+  return included.some(name => !CLUSTER_SCOPED_RESOURCE_ALIASES.has(name.toLowerCase()));
 }
 
 function toScheduleCoverageResult(
@@ -368,9 +455,10 @@ export function getCoveringSchedules(
 }
 
 /**
- * Returns schedules whose backup template *targets* the namespace (include/exclude
- * namespace filters only). This is not object-level coverage: resource includes and
- * label selectors are not evaluated against objects in the namespace.
+ * Returns schedules whose backup template *targets* the namespace.
+ * Checks namespace include/exclude and filters out templates that cannot cover any
+ * namespaced objects (e.g. nodes-only or excludedNamespaceScopedResources: ['*']).
+ * Does not evaluate label selectors against live objects in the namespace.
  */
 export function getSchedulesForNamespace(
   schedules: ScheduleCoverageInput[],
@@ -378,10 +466,12 @@ export function getSchedulesForNamespace(
   namespace: string
 ): ScheduleCoverageResult[] {
   return schedules
-    .filter(
-      schedule =>
-        schedule.phase !== 'FailedValidation' &&
-        namespaceIncluded(schedule.template ?? {}, namespace)
-    )
+    .filter(schedule => {
+      if (schedule.phase === 'FailedValidation') {
+        return false;
+      }
+      const template = schedule.template ?? {};
+      return namespaceIncluded(template, namespace) && mayCoverNamespacedObjects(template);
+    })
     .map(schedule => toScheduleCoverageResult(schedule, backups));
 }

@@ -65,8 +65,9 @@ export function parseGoDurationMs(duration: string): number | undefined {
 
 /**
  * Next run for `@every <duration>`.
- * Advances from `anchor` (last backup / schedule creation) by the interval until after `now`.
- * When no anchor is provided, the next run is `now + interval` (same as measuring from now).
+ * Advances from `anchor` (last backup / lastSkipped / creation) by the interval until after `now`.
+ * Uses arithmetic (not a loop) so tiny intervals with old anchors stay constant-time.
+ * When no anchor is provided, the next run is `now + interval`.
  */
 function getNextEveryRun(expression: string, now: Date, anchor?: Date): Date | undefined {
   const match = expression.match(EVERY_PREFIX);
@@ -74,15 +75,20 @@ function getNextEveryRun(expression: string, now: Date, anchor?: Date): Date | u
     return undefined;
   }
   const ms = parseGoDurationMs(match[1]);
-  if (ms === undefined || ms <= 0) {
+  if (ms === undefined || ms <= 0 || !Number.isFinite(ms)) {
     return undefined;
   }
 
-  let next = (anchor ?? now).getTime() + ms;
-  while (next <= now.getTime()) {
-    next += ms;
+  const start = (anchor ?? now).getTime();
+  const nowMs = now.getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(nowMs)) {
+    return undefined;
   }
-  return new Date(next);
+
+  // next = start + (floor((now - start) / ms) + 1) * ms  — strictly after `now` when on a boundary
+  const elapsed = nowMs - start;
+  const periods = Math.floor(elapsed / ms) + 1;
+  return new Date(start + periods * ms);
 }
 
 /**

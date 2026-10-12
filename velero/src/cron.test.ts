@@ -56,6 +56,13 @@ describe('getNextScheduledRun', () => {
     );
   });
 
+  test('computes @every next run in constant time for tiny intervals', () => {
+    const now = new Date('2026-07-05T06:00:00.000Z');
+    const anchor = new Date('2025-07-05T06:00:00.000Z');
+    const next = getNextScheduledRun('@every 1ms', now, anchor);
+    expect(next?.toISOString()).toBe('2026-07-05T06:00:00.001Z');
+  });
+
   test('returns undefined for invalid @every durations', () => {
     expect(getNextScheduledRun('@every')).toBeUndefined();
     expect(getNextScheduledRun('@every notaduration')).toBeUndefined();

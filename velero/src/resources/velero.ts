@@ -38,6 +38,8 @@ export interface VeleroScheduleStatus {
   phase?: string;
   validationErrors?: string[];
   lastBackup?: string;
+  /** Set when Velero skips a scheduled backup (e.g. skipImmediately). */
+  lastSkipped?: string;
 }
 
 export interface VeleroScheduleInterface extends KubeObjectInterface {
@@ -81,6 +83,11 @@ export class VeleroSchedule extends KubeObject<VeleroScheduleInterface> {
   /** Timestamp of the last backup created from this schedule (status.lastBackup). */
   get lastBackupTime(): string | undefined {
     return this.jsonData.status?.lastBackup;
+  }
+
+  /** Timestamp of the last skipped run (status.lastSkipped). */
+  get lastSkippedTime(): string | undefined {
+    return this.jsonData.status?.lastSkipped;
   }
 
   get validationErrors(): string[] {

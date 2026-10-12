@@ -19,6 +19,7 @@ function toScheduleInput(schedule: VeleroSchedule): ScheduleCoverageInput {
     template: schedule.template,
     creationTimestamp: schedule.metadata.creationTimestamp,
     lastBackupTime: schedule.lastBackupTime,
+    lastSkippedTime: schedule.lastSkippedTime,
   };
 }
 

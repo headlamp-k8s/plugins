@@ -4,11 +4,11 @@ Contextual Velero backup coverage panels for Headlamp ([Phase 1](https://github.
 
 ## What it does
 
-Shows whether a workload or namespace is covered by a Velero backup schedule — directly on the resource detail page in Headlamp.
+Shows whether a workload is covered by a Velero backup schedule — directly on the resource detail page in Headlamp.
 
-- **Deployment, StatefulSet, PVC** detail views — matching schedules, cron, next run, last backup status
-- **Namespace** detail view — schedules with any coverage in that namespace
-- Coverage matching uses Schedule template include/exclude filters and label selectors (`matchLabels`, `matchExpressions`, `orLabelSelectors`). Unknown selector operators fail closed (not reported as covered).
+- **Deployment, StatefulSet, PVC** detail views — matching schedules (namespace + resource + label filters), cron, next run, last backup status
+- **Namespace** detail view — schedules that _target_ the namespace (namespace include/exclude, and templates that can include namespaced objects). This is not object-level coverage: label selectors are not evaluated against live resources in the namespace.
+- Workload coverage matching uses Schedule template include/exclude filters and label selectors (`matchLabels`, `matchExpressions`, `orLabelSelectors`). Unknown selector operators fail closed (not reported as covered).
 - **Read-only** — no backup or restore actions
 - **Velero not installed** — clear empty state
 
