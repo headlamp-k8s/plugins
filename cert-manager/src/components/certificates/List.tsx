@@ -12,8 +12,17 @@ import { NotInstalledBanner, SecretNameLink } from '../common/CommonComponents';
 import { CertificateExpiryLabel } from './CertificateExpiryLabel';
 
 export function CertificatesList() {
-  const { t } = useTranslation();
   const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+
+  return isManagerInstalled ? (
+    <InstalledCertificatesList />
+  ) : (
+    <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+  );
+}
+
+function InstalledCertificatesList() {
+  const { t } = useTranslation();
   const selectedNamespaces = useNamespaces();
   const [certificates, certificatesError] = Certificate.useList({ namespace: selectedNamespaces });
   const [sortDescending, setSortDescending] = useState(false);
@@ -40,7 +49,7 @@ export function CertificatesList() {
     });
   }, [certificates, sortDescending]);
 
-  return isManagerInstalled ? (
+  return (
     <>
       <Button onClick={() => setSortDescending(value => !value)} sx={{ mb: 1 }}>
         {sortDescending ? t('Sort expiry: earliest first') : t('Sort expiry: latest first')}
@@ -83,7 +92,5 @@ export function CertificatesList() {
         ]}
       />
     </>
-  ) : (
-    <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
   );
 }

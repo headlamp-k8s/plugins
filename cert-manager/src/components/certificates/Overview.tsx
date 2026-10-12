@@ -135,16 +135,25 @@ export function CertificatesOverview({
   );
 }
 
-export function CertificatesOverviewPage() {
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+function InstalledCertificatesOverviewPage() {
   const [certificates, certificatesError] = Certificate.useList();
 
   return (
     <CertificatesOverview
       certificates={certificates}
       certificatesError={certificatesError}
-      isManagerInstalled={isManagerInstalled}
-      isCertManagerCheckLoading={isCertManagerCheckLoading}
+      isManagerInstalled
+      isCertManagerCheckLoading={false}
     />
   );
+}
+
+export function CertificatesOverviewPage() {
+  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+
+  if (!isManagerInstalled) {
+    return <NotInstalledBanner isLoading={isCertManagerCheckLoading} />;
+  }
+
+  return <InstalledCertificatesOverviewPage />;
 }
