@@ -17,14 +17,20 @@ function getRefreshDelay(remainingMs: number): number {
 }
 
 function useNow(expiryMs: number): number {
-  const [now, setNow] = useState(Date.now());
+  const [clock, setClock] = useState({ expiryMs, now: Date.now() });
+  // A clock stamped for a previous expiry may be stale (the timer stops once a
+  // certificate expires), so take a fresh reading as soon as the expiry changes.
+  const now = clock.expiryMs === expiryMs ? clock.now : Date.now();
 
   useEffect(() => {
     const remainingMs = expiryMs - now;
     if (Number.isNaN(remainingMs) || remainingMs <= 0) {
       return;
     }
-    const timer = setTimeout(() => setNow(Date.now()), getRefreshDelay(remainingMs));
+    const timer = setTimeout(
+      () => setClock({ expiryMs, now: Date.now() }),
+      getRefreshDelay(remainingMs)
+    );
     return () => clearTimeout(timer);
   }, [expiryMs, now]);
 
