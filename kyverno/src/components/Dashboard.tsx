@@ -192,7 +192,7 @@ export function Dashboard() {
   const isLoading = clusterPolicies === null || policies === null || reportsLoading;
 
   const complianceColor =
-    stats.compliancePct === null
+    isLoading || stats.compliancePct === null
       ? undefined
       : stats.compliancePct >= 90
       ? '#4caf50'
@@ -229,22 +229,38 @@ export function Dashboard() {
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Pass')} value={stats.counts.pass} color="#4caf50" />
+            <MetricCard
+              title={t('Pass')}
+              value={isLoading ? '...' : stats.counts.pass}
+              color={isLoading ? undefined : '#4caf50'}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Fail')} value={stats.counts.fail} color="#f44336" />
+            <MetricCard
+              title={t('Fail')}
+              value={isLoading ? '...' : stats.counts.fail}
+              color={isLoading ? undefined : '#f44336'}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Warn')} value={stats.counts.warn} color="#ff9800" />
+            <MetricCard
+              title={t('Warn')}
+              value={isLoading ? '...' : stats.counts.warn}
+              color={isLoading ? undefined : '#ff9800'}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Error')} value={stats.counts.error} color="#d32f2f" />
+            <MetricCard
+              title={t('Error')}
+              value={isLoading ? '...' : stats.counts.error}
+              color={isLoading ? undefined : '#d32f2f'}
+            />
           </Grid>
         </Grid>
       </SectionBox>
 
       <Grid container spacing={2}>
-        {statusData.length > 0 && (
+        {!isLoading && statusData.length > 0 && (
           <Grid item xs={12} md={6}>
             <SectionBox title={t('Results by Status')}>
               <ResponsiveContainer width="100%" height={300}>
@@ -271,7 +287,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {severityData.length > 0 && (
+        {!isLoading && severityData.length > 0 && (
           <Grid item xs={12} md={6}>
             <SectionBox title={t('Results by Severity')}>
               <ResponsiveContainer width="100%" height={300}>
@@ -298,7 +314,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {categoryData.length > 0 && (
+        {!isLoading && categoryData.length > 0 && (
           <Grid item xs={12}>
             <SectionBox title={t('Top Failing Categories')}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, py: 1 }}>
@@ -343,7 +359,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {namespaceData.length > 0 && (
+        {!isLoading && namespaceData.length > 0 && (
           <Grid item xs={12}>
             <SectionBox title={t('Compliance by Namespace (Top 10)')}>
               <ResponsiveContainer width="100%" height={300}>

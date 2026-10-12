@@ -123,11 +123,11 @@ export function PolicyList() {
                 </Typography>
               );
             }
-            if (counts.loading && !c) return <Typography variant="body2">…</Typography>;
+            if (counts.loading) return <Typography variant="body2">…</Typography>;
             if (!c || c.total === 0) return <Typography variant="body2">—</Typography>;
             return (
               <Typography variant="body2" color={c.fail > 0 ? 'error' : 'text.primary'}>
-                {t('{{fail}} / {{total}} failed', { fail: c.fail, total: c.total })}
+                {`${c.fail} / ${c.total} ${t('failed')}`}
               </Typography>
             );
           },
