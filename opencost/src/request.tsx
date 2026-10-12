@@ -40,11 +40,11 @@ export function fetchOpencostData(
   resource: string,
   accumulate: boolean
 ) {
-  serviceName = serviceName.trim();
+  const service = serviceName.trim();
   const queryString = `window=${window}&aggregate=${resource}&step=1d&accumulate=${accumulate.toString()}`;
 
-  if (isDirectUrl(serviceName)) {
-    const baseUrl = serviceName.replace(/\/+$/, '');
+  if (isDirectUrl(service)) {
+    const baseUrl = service.replace(/\/+$/, '');
     return fetch(`${baseUrl}/allocation?${queryString}`).then(response => {
       if (!response.ok) {
         throw new Error(
@@ -55,6 +55,6 @@ export function fetchOpencostData(
     });
   }
 
-  const url = `/api/v1/namespaces/${namespace}/services/${serviceName}/proxy/allocation?${queryString}`;
+  const url = `/api/v1/namespaces/${namespace}/services/${service}/proxy/allocation?${queryString}`;
   return request(url);
 }
