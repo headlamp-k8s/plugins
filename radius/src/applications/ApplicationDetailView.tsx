@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Chip, CircularProgress, Grid, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
@@ -40,6 +41,7 @@ interface ApplicationResourceCellProps {
  * Shows detailed information about a specific Radius application
  */
 export default function ApplicationDetailView() {
+  const { t } = useTranslation();
   const { applicationName } = useParams<RouteParams>();
   const [applications, error, loading] = useRadiusApplications();
 
@@ -64,7 +66,7 @@ export default function ApplicationDetailView() {
     return (
       <SectionBox sx={{ p: 3 }}>
         <Typography color="error" variant="h6">
-          Error loading application
+          {t('Error loading application')}
         </Typography>
         <Typography color="error">{error.message}</Typography>
       </SectionBox>
@@ -81,17 +83,17 @@ export default function ApplicationDetailView() {
     return (
       <SectionBox sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Application Not Found
+          {t('Application Not Found')}
         </Typography>
         <Typography color="textSecondary" gutterBottom>
-          The application "{applicationName}" could not be found.
+          {t('The application "{{applicationName}}" could not be found.', { applicationName })}
         </Typography>
         <Button
           onClick={() => window.history.back()}
           startIcon={<Icon icon="mdi:arrow-left" />}
           sx={{ mt: 2 }}
         >
-          Back
+          {t('Back')}
         </Button>
       </SectionBox>
     );
@@ -136,6 +138,7 @@ function ApplicationContent({
   application: UCPApplication;
   environmentName: string;
 }>) {
+  const { t } = useTranslation();
   // Fetch resources for this application
   const [resources, resourcesError, resourcesLoading] = useApplicationResources(application.id);
 
@@ -147,7 +150,7 @@ function ApplicationContent({
         startIcon={<Icon icon="mdi:arrow-left" />}
         sx={{ mb: 2 }}
       >
-        Back
+        {t('Back')}
       </Button>
       <SectionBox sx={{ mb: 3 }}>
         <Typography variant="h4" gutterBottom>
@@ -161,32 +164,32 @@ function ApplicationContent({
       {/* Content */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <SectionBox title="General Information">
+          <SectionBox title={t('General Information')}>
             <Box display="flex" flexDirection="column" gap={2}>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Name
+                  {t('Name')}
                 </Typography>
                 <Typography variant="body1">{application.name}</Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Type
+                  {t('Type')}
                 </Typography>
                 <Typography variant="body1">{application.type}</Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Location
+                  {t('Location')}
                 </Typography>
                 <Typography variant="body1">{application.location}</Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Provisioning State
+                  {t('Provisioning State')}
                 </Typography>
                 <Chip
-                  label={application.properties.provisioningState || 'Unknown'}
+                  label={application.properties.provisioningState || t('Unknown')}
                   color={
                     application.properties.provisioningState === 'Succeeded' ? 'success' : 'default'
                   }
@@ -198,11 +201,11 @@ function ApplicationContent({
         </Grid>
 
         <Grid item xs={12} md={6}>
-          <SectionBox title="Environment & Compute">
+          <SectionBox title={t('Environment & Compute')}>
             <Box display="flex" flexDirection="column" gap={2}>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Environment
+                  {t('Environment')}
                 </Typography>
                 {environmentName === 'N/A' ? (
                   <Typography variant="body1">{environmentName}</Typography>
@@ -215,7 +218,7 @@ function ApplicationContent({
               {application.properties.status?.compute?.kind && (
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Compute Kind
+                    {t('Compute Kind')}
                   </Typography>
                   <Typography variant="body1">
                     {application.properties.status.compute.kind}
@@ -225,7 +228,7 @@ function ApplicationContent({
               {application.properties.status?.compute?.namespace && (
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Namespace
+                    {t('Namespace')}
                   </Typography>
                   <Typography variant="body1">
                     {application.properties.status.compute.namespace}
@@ -237,21 +240,23 @@ function ApplicationContent({
         </Grid>
       </Grid>
 
-      <SectionBox title={`Resources (${resources?.length || 0})`}>
+      <SectionBox title={t('Resources ({{count}})', { count: resources?.length || 0 })}>
         {resourcesLoading && (
           <Box display="flex" justifyContent="center" p={2}>
             <CircularProgress size={24} />
           </Box>
         )}
         {resourcesError && (
-          <Typography color="error">Error loading resources: {resourcesError.message}</Typography>
+          <Typography color="error">
+            {t('Error loading resources: {{message}}', { message: resourcesError.message })}
+          </Typography>
         )}
         {!resourcesLoading && !resourcesError && resources && resources.length > 0 ? (
           <Table
             data={resources}
             columns={[
               {
-                header: 'Name',
+                header: t('Name'),
                 accessorKey: 'name',
                 gridTemplate: 'auto',
                 Cell: ({ row }: { row: { original: UCPResource } }) => (
@@ -264,7 +269,7 @@ function ApplicationContent({
                 ),
               },
               {
-                header: 'Type',
+                header: t('Type'),
                 accessorKey: 'type',
                 Cell: ({ row }: ApplicationResourceCellProps) => {
                   const resourceType = row.original.type.split('/').pop() || row.original.type;
@@ -272,17 +277,17 @@ function ApplicationContent({
                 },
               },
               {
-                header: 'Namespace',
+                header: t('Namespace'),
                 accessorKey: 'namespace',
                 Cell: ({ row }: ApplicationResourceCellProps) =>
                   row.original.properties.status?.compute?.namespace || 'N/A',
               },
               {
-                header: 'Provisioning State',
+                header: t('Provisioning State'),
                 accessorKey: 'provisioningState',
                 Cell: ({ row }: ApplicationResourceCellProps) => (
                   <Chip
-                    label={row.original.properties.provisioningState || 'Unknown'}
+                    label={row.original.properties.provisioningState || t('Unknown')}
                     color={
                       row.original.properties.provisioningState === 'Succeeded'
                         ? 'success'
@@ -297,18 +302,20 @@ function ApplicationContent({
         ) : (
           !resourcesLoading &&
           !resourcesError && (
-            <Typography color="textSecondary">No resources found for this application</Typography>
+            <Typography color="textSecondary">
+              {t('No resources found for this application')}
+            </Typography>
           )
         )}
       </SectionBox>
 
       {application.systemData && (
-        <SectionBox title="System Information">
+        <SectionBox title={t('System Information')}>
           <Grid container spacing={2}>
             {application.systemData.createdAt && (
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Created At
+                  {t('Created At')}
                 </Typography>
                 <Typography variant="body2">
                   {new Date(application.systemData.createdAt).toLocaleString()}
@@ -318,7 +325,7 @@ function ApplicationContent({
             {application.systemData.createdBy && (
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Created By
+                  {t('Created By')}
                 </Typography>
                 <Typography variant="body2">{application.systemData.createdBy}</Typography>
               </Grid>
@@ -326,7 +333,7 @@ function ApplicationContent({
             {application.systemData.lastModifiedAt && (
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Last Modified
+                  {t('Last Modified')}
                 </Typography>
                 <Typography variant="body2">
                   {new Date(application.systemData.lastModifiedAt).toLocaleString()}
@@ -336,7 +343,7 @@ function ApplicationContent({
             {application.systemData.lastModifiedBy && (
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Last Modified By
+                  {t('Last Modified By')}
                 </Typography>
                 <Typography variant="body2">{application.systemData.lastModifiedBy}</Typography>
               </Grid>

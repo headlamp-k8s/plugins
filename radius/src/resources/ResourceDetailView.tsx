@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Chip, CircularProgress, Grid, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
@@ -30,6 +31,7 @@ interface RouteParams {
  * Shows detailed information about a specific Radius resource
  */
 export default function ResourceDetailView() {
+  const { t } = useTranslation();
   const { resourceId } = useParams<RouteParams>();
   const [resources, error, loading] = useRadiusResources();
   const decodedResourceId = resourceId ? decodeURIComponent(resourceId) : '';
@@ -55,7 +57,7 @@ export default function ResourceDetailView() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography color="error" variant="h6">
-          Error loading resource
+          {t('Error loading resource')}
         </Typography>
         <Typography color="error">{error.message}</Typography>
       </Box>
@@ -70,17 +72,17 @@ export default function ResourceDetailView() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Resource Not Found
+          {t('Resource Not Found')}
         </Typography>
         <Typography color="textSecondary" gutterBottom>
-          The resource could not be found.
+          {t('The resource could not be found.')}
         </Typography>
         <Button
           onClick={() => window.history.back()}
           startIcon={<Icon icon="mdi:arrow-left" />}
           sx={{ mt: 2 }}
         >
-          Back
+          {t('Back')}
         </Button>
       </Box>
     );
@@ -142,7 +144,7 @@ export default function ResourceDetailView() {
           startIcon={<Icon icon="mdi:arrow-left" />}
           sx={{ mb: 2 }}
         >
-          Back
+          {t('Back')}
         </Button>
         <Typography variant="h4" gutterBottom>
           {resource.name}
@@ -155,38 +157,38 @@ export default function ResourceDetailView() {
       {/* Content */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <SectionBox title="General Information">
+          <SectionBox title={t('General Information')}>
             <Box display="flex" flexDirection="column" gap={2}>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Name
+                  {t('Name')}
                 </Typography>
                 <Typography variant="body1">{resource.name}</Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Type
+                  {t('Type')}
                 </Typography>
                 <Chip label={resourceType} size="small" />
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Full Type
+                  {t('Full Type')}
                 </Typography>
                 <Typography variant="body2">{resource.type}</Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Location
+                  {t('Location')}
                 </Typography>
                 <Typography variant="body1">{resource.location}</Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Provisioning State
+                  {t('Provisioning State')}
                 </Typography>
                 <Chip
-                  label={resource.properties.provisioningState || 'Unknown'}
+                  label={resource.properties.provisioningState || t('Unknown')}
                   color={
                     resource.properties.provisioningState === 'Succeeded' ? 'success' : 'default'
                   }
@@ -198,12 +200,12 @@ export default function ResourceDetailView() {
         </Grid>
 
         <Grid item xs={12} md={6}>
-          <SectionBox title="Application & Environment">
+          <SectionBox title={t('Application & Environment')}>
             <Box display="flex" flexDirection="column" gap={2}>
               {applicationName && (
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Application
+                    {t('Application')}
                   </Typography>
                   <Link routeName="application-detail" params={{ applicationName }}>
                     {applicationName}
@@ -213,7 +215,7 @@ export default function ResourceDetailView() {
               {environmentName && (
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Environment
+                    {t('Environment')}
                   </Typography>
                   <Link routeName="environment-detail" params={{ environmentName }}>
                     {environmentName}
@@ -223,7 +225,7 @@ export default function ResourceDetailView() {
               {resource.properties.status?.compute?.kind && (
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Compute Kind
+                    {t('Compute Kind')}
                   </Typography>
                   <Typography variant="body1">{resource.properties.status.compute.kind}</Typography>
                 </Box>
@@ -231,7 +233,7 @@ export default function ResourceDetailView() {
               {resource.properties.status?.compute?.namespace && (
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary">
-                    Namespace
+                    {t('Namespace')}
                   </Typography>
                   <Typography variant="body1">
                     {resource.properties.status.compute.namespace}
@@ -241,7 +243,7 @@ export default function ResourceDetailView() {
               {isContainer && k8sResourceName && k8sResourceType && computeNamespace && (
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                    Kubernetes Resource
+                    {t('Kubernetes Resource')}
                   </Typography>
                   <Button
                     component={Link}
@@ -254,7 +256,7 @@ export default function ResourceDetailView() {
                     variant="outlined"
                     size="small"
                   >
-                    View {k8sResourceType === 'deployment' ? 'Deployment' : 'Pod'}
+                    {k8sResourceType === 'deployment' ? t('View Deployment') : t('View Pod')}
                   </Button>
                 </Box>
               )}
@@ -265,7 +267,7 @@ export default function ResourceDetailView() {
         {/* Display additional properties if they exist */}
         {Object.keys(resource.properties).length > 4 && (
           <Grid item xs={12}>
-            <SectionBox title="Additional Properties">
+            <SectionBox title={t('Additional Properties')}>
               <Box display="flex" flexDirection="column" gap={1.5}>
                 {Object.entries(resource.properties)
                   .filter(
@@ -289,12 +291,12 @@ export default function ResourceDetailView() {
 
         {resource.systemData && (
           <Grid item xs={12}>
-            <SectionBox title="System Information">
+            <SectionBox title={t('System Information')}>
               <Grid container spacing={2}>
                 {resource.systemData.createdAt && (
                   <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" color="textSecondary">
-                      Created At
+                      {t('Created At')}
                     </Typography>
                     <Typography variant="body2">
                       {new Date(resource.systemData.createdAt).toLocaleString()}
@@ -304,7 +306,7 @@ export default function ResourceDetailView() {
                 {resource.systemData.createdBy && (
                   <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" color="textSecondary">
-                      Created By
+                      {t('Created By')}
                     </Typography>
                     <Typography variant="body2">{resource.systemData.createdBy}</Typography>
                   </Grid>
@@ -312,7 +314,7 @@ export default function ResourceDetailView() {
                 {resource.systemData.lastModifiedAt && (
                   <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" color="textSecondary">
-                      Last Modified
+                      {t('Last Modified')}
                     </Typography>
                     <Typography variant="body2">
                       {new Date(resource.systemData.lastModifiedAt).toLocaleString()}
@@ -322,7 +324,7 @@ export default function ResourceDetailView() {
                 {resource.systemData.lastModifiedBy && (
                   <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" color="textSecondary">
-                      Last Modified By
+                      {t('Last Modified By')}
                     </Typography>
                     <Typography variant="body2">{resource.systemData.lastModifiedBy}</Typography>
                   </Grid>
@@ -334,7 +336,7 @@ export default function ResourceDetailView() {
 
         {resource.tags && Object.keys(resource.tags).length > 0 && (
           <Grid item xs={12}>
-            <SectionBox title="Tags">
+            <SectionBox title={t('Tags')}>
               <Box display="flex" flexWrap="wrap" gap={1}>
                 {Object.entries(resource.tags).map(([key, value]) => (
                   <Chip key={key} label={`${key}: ${value}`} variant="outlined" size="small" />
