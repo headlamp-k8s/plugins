@@ -88,10 +88,10 @@ export function NetworkingSection({ kservice }: KServiceSectionProps) {
         <Alert severity="warning" variant="filled">
           {ingressClass === null
             ? t(
-                'Gateway API integration may be limited because Knative "config-network" ConfigMap ingress.class is not set.'
+                'Gateway API integration may be limited because Knative "config-network" ConfigMap ingress-class is not set.'
               )
             : t(
-                'Gateway API integration may be limited because Knative "config-network" ConfigMap ingress.class is set to "{{ ingressClass }}", not "{{ gatewayApiClass }}".',
+                'Gateway API integration may be limited because Knative "config-network" ConfigMap ingress-class is set to "{{ ingressClass }}", not "{{ gatewayApiClass }}".',
                 { ingressClass, gatewayApiClass: INGRESS_CLASS_GATEWAY_API }
               )}
         </Alert>
