@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { IconButton, Tooltip } from '@mui/material';
 import React from 'react';
+import { validateUrl } from '../../utils';
 
 /**
  * Props for the BackstageButtonPure component.
@@ -50,9 +51,10 @@ export function BackstageButtonPure({
     }
   };
 
-  // If we are not running in Backstage + the Backstage URL is not set up, then we
-  // do not display the button at all.
-  if (!isInIframe && !backstageUrl) {
+  // If we are not running in Backstage + the Backstage URL is not set up (or is not a
+  // usable URL), then we do not display the button at all, since clicking it would
+  // otherwise throw when building the redirect URL below.
+  if (!isInIframe && !validateUrl(backstageUrl)) {
     return null;
   }
 
