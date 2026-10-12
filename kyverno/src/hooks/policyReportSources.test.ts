@@ -112,15 +112,23 @@ describe('combineReportSources', () => {
         timestamp: { seconds: 10, nanos: 0 },
       },
     ]);
-    const ephemeral = report('ephemeral-report', 'resource-uid', [
-      {
-        source: 'kyverno',
-        policy: 'restrict-images',
-        rule: 'images',
-        result: 'fail',
-        timestamp: { seconds: 11, nanos: 0 },
+    const ephemeral: PolicyReportSource = {
+      metadata: {
+        name: 'ephemeral-report',
+        labels: { 'audit.kyverno.io/resource.uid': 'resource-uid' },
       },
-    ]);
+      scope: {},
+      summary: {},
+      results: [
+        {
+          source: 'kyverno',
+          policy: 'restrict-images',
+          rule: 'images',
+          result: 'fail',
+          timestamp: { seconds: 11, nanos: 0 },
+        },
+      ],
+    };
 
     const { reports } = combineReportSources([{ items: [durable] }, { items: [ephemeral] }]);
 

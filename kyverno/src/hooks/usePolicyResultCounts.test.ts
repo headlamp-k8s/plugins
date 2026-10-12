@@ -101,4 +101,45 @@ describe('usePolicyResultCounts', () => {
       total: 2,
     });
   });
+
+  it('keeps results for distinct resources identified by ephemeral report metadata', () => {
+    const ephemeralReport = (name: string, metadata: Record<string, unknown>) => ({
+      jsonData: {
+        metadata: {
+          name,
+          namespace: 'default',
+          ...metadata,
+        },
+      },
+      results: [
+        {
+          policy: 'default/require-labels',
+          result: 'fail' as const,
+          rule: 'require-owner',
+        },
+      ],
+      scope: {},
+      summary: { fail: 1 },
+    });
+
+    vi.mocked(PolicyReport.useList).mockReturnValue(resolvedList([]) as any);
+    vi.mocked(ClusterPolicyReport.useList).mockReturnValue(resolvedList([]) as any);
+    vi.mocked(EphemeralReport.useList).mockReturnValue(
+      resolvedList([
+        ephemeralReport('ephemeral-report-a', {
+          labels: { 'audit.kyverno.io/resource.uid': 'resource-uid-a' },
+        }),
+        ephemeralReport('ephemeral-report-b', {
+          ownerReferences: [{ uid: 'resource-uid-b' }],
+        }),
+      ]) as any
+    );
+
+    const { result } = renderHook(() => usePolicyResultCounts());
+
+    expect(result.current.forNamespaced('require-labels', 'default')).toEqual({
+      fail: 2,
+      total: 2,
+    });
+  });
 });

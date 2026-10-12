@@ -38,6 +38,9 @@ function normalizeReport(report: PolicyReportResource): PolicyReportSource {
     metadata: {
       name: report.jsonData.metadata.name,
       namespace: report.jsonData.metadata.namespace,
+      labels: report.jsonData.metadata.labels,
+      annotations: report.jsonData.metadata.annotations,
+      ownerReferences: report.jsonData.metadata.ownerReferences,
     },
     scope: report.scope,
     summary: report.summary,

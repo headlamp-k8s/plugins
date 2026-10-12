@@ -24,6 +24,14 @@ export interface PolicyReportSource {
   metadata: {
     name: string;
     namespace?: string;
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+    ownerReferences?: {
+      apiVersion?: string;
+      kind?: string;
+      name?: string;
+      uid?: string;
+    }[];
   };
   scope?: PolicyReportInterface['scope'];
   summary: PolicyReportSummary;
@@ -49,6 +57,13 @@ const POLICY_SOURCES_WITHOUT_RULE_IDENTITY = new Set([
   'KyvernoMutatingPolicy',
   'MutatingAdmissionPolicy',
 ]);
+
+const RESOURCE_UID_LABEL = 'audit.kyverno.io/resource.uid';
+const RESOURCE_GROUP_LABEL = 'audit.kyverno.io/resource.group';
+const RESOURCE_VERSION_LABEL = 'audit.kyverno.io/resource.version';
+const RESOURCE_KIND_LABEL = 'audit.kyverno.io/resource.kind';
+const RESOURCE_NAMESPACE_ANNOTATION = 'audit.kyverno.io/resource.namespace';
+const RESOURCE_NAME_ANNOTATION = 'audit.kyverno.io/resource.name';
 
 function getErrorStatus(error: unknown): number | undefined {
   if (typeof error !== 'object' || error === null) return undefined;
@@ -81,19 +96,69 @@ function isNewerResult(candidate: PolicyReportResult, current: PolicyReportResul
   );
 }
 
+function qualifiedResourceIdentity(resource: {
+  apiVersion?: string;
+  kind?: string;
+  namespace?: string;
+  name?: string;
+}): string | undefined {
+  if (!resource.apiVersion && !resource.kind && !resource.namespace && !resource.name) {
+    return undefined;
+  }
+
+  return [resource.apiVersion, resource.kind, resource.namespace, resource.name].join('/');
+}
+
+function reportMetadataResourceUid(report: PolicyReportSource): string | undefined {
+  const { labels = {}, ownerReferences = [] } = report.metadata;
+  const resourceUid = labels[RESOURCE_UID_LABEL];
+  if (resourceUid) return resourceUid;
+
+  const ownerWithUid = ownerReferences.find(owner => owner.uid);
+  return ownerWithUid?.uid;
+}
+
+function reportMetadataResourceIdentity(report: PolicyReportSource): string | undefined {
+  const { annotations = {}, labels = {}, ownerReferences = [] } = report.metadata;
+
+  const owner = ownerReferences.find(owner => owner.name);
+  if (owner) {
+    return qualifiedResourceIdentity({
+      apiVersion: owner.apiVersion,
+      kind: owner.kind,
+      namespace: annotations[RESOURCE_NAMESPACE_ANNOTATION] || report.metadata.namespace,
+      name: owner.name,
+    });
+  }
+
+  const name = annotations[RESOURCE_NAME_ANNOTATION];
+  if (!name) return undefined;
+
+  const group = labels[RESOURCE_GROUP_LABEL];
+  const version = labels[RESOURCE_VERSION_LABEL];
+  return qualifiedResourceIdentity({
+    apiVersion: group ? `${group}/${version || ''}` : version,
+    kind: labels[RESOURCE_KIND_LABEL],
+    namespace: annotations[RESOURCE_NAMESPACE_ANNOTATION] || report.metadata.namespace,
+    name,
+  });
+}
+
 function resourceIdentity(report: PolicyReportSource, result: PolicyReportResult): string {
+  const metadataUid = reportMetadataResourceUid(report);
+  if (metadataUid) return metadataUid;
+
   if (report.scope?.uid) return report.scope.uid;
 
   const resourceWithUid = result.resources?.find(resource => resource.uid);
   if (resourceWithUid?.uid) return resourceWithUid.uid;
 
+  const metadataIdentity = reportMetadataResourceIdentity(report);
+  if (metadataIdentity) return metadataIdentity;
+
   if (report.scope) {
-    return [
-      report.scope.apiVersion,
-      report.scope.kind,
-      report.scope.namespace,
-      report.scope.name,
-    ].join('/');
+    const scopeIdentity = qualifiedResourceIdentity(report.scope);
+    if (scopeIdentity) return scopeIdentity;
   }
 
   if (result.resources?.length) {
