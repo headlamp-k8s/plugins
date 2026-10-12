@@ -24,6 +24,13 @@ export interface KyvernoCRDStatus {
   reports: boolean; // wgpolicyk8s.io/v1alpha2 (PolicyReport, ClusterPolicyReport)
   exceptions: boolean; // kyverno.io/v2 (PolicyException)
   ephemeralReports: boolean; // reports.kyverno.io/v1 (EphemeralReport, ClusterEphemeralReport)
+  // Plural resource names actually present under policies.kyverno.io/v1 on this cluster
+  // (e.g. "namespacedmutatingpolicies"). The CEL kinds were added to that API group across
+  // several Kyverno releases (the namespaced kinds specifically span 1.16 and 1.17), so unlike
+  // every other flag above, `cel` alone can't tell us whether a *specific* kind in that group
+  // exists, only that the group itself does. CRDGuard's `requiresResource` checks this set for
+  // the kinds where that distinction matters.
+  celResources: Set<string>;
   loading: boolean;
 }
 
@@ -34,6 +41,7 @@ const initialStatus: KyvernoCRDStatus = {
   reports: false,
   exceptions: false,
   ephemeralReports: false,
+  celResources: new Set(),
   loading: true,
 };
 
@@ -43,6 +51,24 @@ async function checkAPIGroup(path: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+// Same discovery call as checkAPIGroup, but keeps the resource names from the response instead
+// of discarding them, since the APIResourceList already lists every kind in the group/version in
+// one response, subresources like "validatingpolicies/status" included, filtered out here.
+async function fetchAPIResourceNames(path: string): Promise<Set<string>> {
+  try {
+    const response = await ApiProxy.request(path, { method: 'GET' });
+    const names = new Set<string>();
+    for (const resource of response?.resources ?? []) {
+      if (typeof resource?.name === 'string' && !resource.name.includes('/')) {
+        names.add(resource.name);
+      }
+    }
+    return names;
+  } catch {
+    return new Set();
   }
 }
 
@@ -62,12 +88,13 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
   if (existing) return existing;
 
   const promise = (async () => {
-    const [legacy, cel, reports, ephemeralReports] = await Promise.all([
+    const [legacy, celResources, reports, ephemeralReports] = await Promise.all([
       checkAPIGroup('/apis/kyverno.io/v1'),
-      checkAPIGroup('/apis/policies.kyverno.io/v1'),
+      fetchAPIResourceNames('/apis/policies.kyverno.io/v1'),
       checkAPIGroup('/apis/wgpolicyk8s.io/v1alpha2'),
       checkAPIGroup('/apis/reports.kyverno.io/v1'),
     ]);
+    const cel = celResources.size > 0;
 
     // kyverno.io/v2 hosts cleanup and exceptions. The API-group-level probe
     // doesn't tell us *which* CRDs are inside, so we treat both v2 features
@@ -89,6 +116,7 @@ async function probeCluster(cluster: string): Promise<KyvernoCRDStatus> {
       reports,
       exceptions,
       ephemeralReports,
+      celResources,
       loading: false,
     };
     probeCache.set(cluster, status);

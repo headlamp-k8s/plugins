@@ -19,15 +19,39 @@ import { ReactNode } from 'react';
 import { KyvernoCRDStatus, useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
 import { NotInstalledBanner } from './common';
 
-export type CRDGroup = keyof Omit<KyvernoCRDStatus, 'loading'>;
+export type CRDGroup = keyof Omit<KyvernoCRDStatus, 'loading' | 'celResources'>;
 
 interface CRDGuardProps {
   requires: CRDGroup;
   children: ReactNode;
   message?: string;
+  /**
+   * A specific policies.kyverno.io/v1 resource name (e.g. "namespacedmutatingpolicies") to
+   * additionally require. Only meaningful alongside `requires="cel"`: some CEL kinds were added
+   * to that API group in a later Kyverno release than others, so passing the group-level `cel`
+   * check doesn't guarantee every kind in it is actually present on this cluster.
+   */
+  requiresResource?: string;
+  /**
+   * Kind label and minimum version to interpolate into the built-in version-requirement message
+   * shown when `requiresResource` is set but not present (e.g. "NamespacedValidatingPolicy",
+   * "1.17"). Passed as data rather than a finished message string so the message itself can be
+   * built with this component's own `t()`: a caller outside a component (index.tsx registers
+   * these at module load time) has no `t()` available to build a translated string with, a
+   * pre-built string handed in from there would permanently bypass translation.
+   */
+  requiresResourceLabel?: string;
+  requiresResourceVersion?: string;
 }
 
-export function CRDGuard({ requires, children, message }: CRDGuardProps) {
+export function CRDGuard({
+  requires,
+  children,
+  message,
+  requiresResource,
+  requiresResourceLabel,
+  requiresResourceVersion,
+}: CRDGuardProps) {
   const { t } = useTranslation();
   const status = useKyvernoCRDs();
 
@@ -50,6 +74,23 @@ export function CRDGuard({ requires, children, message }: CRDGuardProps) {
 
   if (!status[requires]) {
     return <NotInstalledBanner message={message || defaultMessages[requires]} />;
+  }
+
+  if (requiresResource && !status.celResources.has(requiresResource)) {
+    return (
+      <NotInstalledBanner
+        message={
+          requiresResourceLabel && requiresResourceVersion
+            ? t(
+                '{{kind}} (policies.kyverno.io/v1) was not detected on this cluster. Kyverno {{version}}+ is required.',
+                { kind: requiresResourceLabel, version: requiresResourceVersion }
+              )
+            : t(
+                'This Kyverno CEL policy kind (policies.kyverno.io/v1) requires a newer Kyverno version than what is installed on this cluster.'
+              )
+        }
+      />
+    );
   }
 
   return <>{children}</>;

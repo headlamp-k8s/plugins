@@ -30,10 +30,12 @@ import {
   ImageAttestation,
   ImageMatchReference,
   ImageValidatingPolicy,
+  NamespacedImageValidatingPolicy,
 } from '../resources/celPolicies';
 
 interface ImageValidatingPolicyViewerProps {
   name: string;
+  namespace?: string;
 }
 
 function attestorType(attestor: Attestor): string {
@@ -45,9 +47,14 @@ function attestorType(attestor: Attestor): string {
   return 'Unknown';
 }
 
-function PolicyContent({ policy }: { policy: ImageValidatingPolicy }) {
+function PolicyContent({
+  policy,
+}: {
+  policy: ImageValidatingPolicy | NamespacedImageValidatingPolicy;
+}) {
   const { t } = useTranslation();
   const annotations = policy.jsonData.metadata.annotations || {};
+  const namespace = policy.jsonData.metadata.namespace;
 
   return (
     <Box sx={{ p: 2 }}>
@@ -64,6 +71,7 @@ function PolicyContent({ policy }: { policy: ImageValidatingPolicy }) {
         <NameValueTable
           rows={[
             { name: t('Name'), value: policy.jsonData.metadata.name },
+            ...(namespace ? [{ name: t('Namespace'), value: namespace }] : []),
             {
               name: t('Ready'),
               value: (
@@ -190,9 +198,10 @@ function PolicyContent({ policy }: { policy: ImageValidatingPolicy }) {
   );
 }
 
-export function ImageValidatingPolicyViewer({ name }: ImageValidatingPolicyViewerProps) {
+export function ImageValidatingPolicyViewer({ name, namespace }: ImageValidatingPolicyViewerProps) {
   const { t } = useTranslation();
-  const [policy, error] = ImageValidatingPolicy.useGet(name);
+  const ResourceClass = namespace ? NamespacedImageValidatingPolicy : ImageValidatingPolicy;
+  const [policy, error] = ResourceClass.useGet(name, namespace);
 
   if (error) {
     return (
