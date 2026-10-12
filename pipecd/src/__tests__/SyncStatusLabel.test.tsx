@@ -20,6 +20,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SyncStatusLabel } from '../components/SyncStatusLabel';
 import type { SyncStatus } from '../types/pipecd';
 
+vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      key.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options?.[name] ?? '')),
+  }),
+}));
+
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
   StatusLabel: ({ status, children }: { status: string; children: ReactNode }) => (
     <span data-testid="status-label" data-status={status}>

@@ -23,6 +23,13 @@ import * as pipecdApi from '../api/pipecd';
 import { ApplicationList } from '../components/ApplicationList';
 import { appKubernetesSynced, appTerraformOutOfSync, mockListResponse } from './fixtures';
 
+vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      key.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options?.[name] ?? '')),
+  }),
+}));
+
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
   StatusLabel: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
@@ -226,24 +233,24 @@ describe('ApplicationList', () => {
     expect(screen.getByText(/No applications match the current filter/i)).toBeTruthy();
   });
 
-  it('re-fetches with kind filter when dropdown changes', async () => {
+  it('filters by platform on the client when dropdown changes', async () => {
     setupConfigured();
-    vi.mocked(pipecdApi.listApplications)
-      .mockResolvedValueOnce(mockListResponse)
-      .mockResolvedValueOnce({ applications: [appTerraformOutOfSync], cursor: '' });
+    mockListSuccess();
 
     renderList();
     await screen.findByText('frontend-prod');
 
     fireEvent.mouseDown(screen.getByLabelText('Platform'));
-    fireEvent.click(await screen.findByRole('option', { name: 'TERRAFORM' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Terraform' }));
 
     await waitFor(() => {
-      expect(vi.mocked(pipecdApi.listApplications)).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: 'test-key-xyz' }),
-        expect.objectContaining({ kind: 'TERRAFORM' })
-      );
+      expect(screen.queryByText('frontend-prod')).toBeNull();
     });
+    expect(screen.getByText(appTerraformOutOfSync.name)).toBeTruthy();
+    expect(vi.mocked(pipecdApi.listApplications)).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ kind: expect.anything() })
+    );
   });
 
   it('shows error alert when API call fails', async () => {
