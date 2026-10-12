@@ -127,19 +127,19 @@ function ComplianceBadgeContent() {
                   : 'error.main'
               }
             >
-              {t('{{pct}}% compliant', { pct: compliancePct })}
+              {`${compliancePct}% ${t('compliant')}`}
             </Typography>
-            <Typography variant="body2">{t('Pass: {{count}}', { count: counts.pass })}</Typography>
+            <Typography variant="body2">{`${t('Pass')}: ${counts.pass}`}</Typography>
             <Typography variant="body2" color={counts.fail > 0 ? 'error.main' : 'text.secondary'}>
-              {t('Fail: {{count}}', { count: counts.fail })}
+              {`${t('Fail')}: ${counts.fail}`}
             </Typography>
             <Typography variant="body2" color={counts.warn > 0 ? 'warning.main' : 'text.secondary'}>
-              {t('Warn: {{count}}', { count: counts.warn })}
+              {`${t('Warn')}: ${counts.warn}`}
             </Typography>
             <Typography variant="body2" color={counts.error > 0 ? 'error.main' : 'text.secondary'}>
-              {t('Error: {{count}}', { count: counts.error })}
+              {`${t('Error')}: ${counts.error}`}
             </Typography>
-            <Typography variant="body2">{t('Skip: {{count}}', { count: counts.skip })}</Typography>
+            <Typography variant="body2">{`${t('Skip')}: ${counts.skip}`}</Typography>
           </Box>
         )}
         <Box sx={{ mt: 1.5 }}>

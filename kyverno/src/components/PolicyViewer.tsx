@@ -123,8 +123,18 @@ function YamlSection({ jsonData }: { jsonData: KyvernoPolicyInterface }) {
 }
 
 function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
-  const { t } = useTranslation();
+  const { t, ready: translationsReady } = useTranslation();
   if (!conditions || conditions.length === 0) return null;
+
+  if (!translationsReady) {
+    return (
+      <SectionBox title="Conditions">
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+          <CircularProgress size={24} />
+        </Box>
+      </SectionBox>
+    );
+  }
 
   return (
     <SectionBox title={t('Conditions')}>
@@ -162,7 +172,16 @@ function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
 }
 
 function RulesTable({ rules }: { rules: PolicyRule[] }) {
-  const { t } = useTranslation();
+  const { t, ready: translationsReady } = useTranslation();
+
+  if (!translationsReady) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
+
   return (
     <Table
       columns={[
@@ -190,7 +209,7 @@ function AssociatedReportsSection({
   policyName: string;
   policyNamespace?: string;
 }) {
-  const { t } = useTranslation();
+  const { t, ready: translationsReady } = useTranslation();
   const { reports, loading: reportsLoading, error: reportsError } = usePolicyReportSources();
 
   if (reportsError) {
@@ -205,9 +224,11 @@ function AssociatedReportsSection({
     );
   }
 
-  if (reportsLoading) {
+  if (reportsLoading || !translationsReady) {
     return (
-      <SectionBox title={t('Associated Report Results')}>
+      <SectionBox
+        title={translationsReady ? t('Associated Report Results') : 'Associated Report Results'}
+      >
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <CircularProgress size={24} />
         </Box>
@@ -232,9 +253,7 @@ function AssociatedReportsSection({
   }
 
   return (
-    <SectionBox
-      title={t('Associated Report Results ({{count}})', { count: matchingResults.length })}
-    >
+    <SectionBox title={`${t('Associated Report Results')} (${matchingResults.length})`}>
       <Table
         columns={[
           { header: t('Rule'), accessorFn: (r: PolicyReportResult) => r.rule || '-' },
@@ -322,7 +341,7 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
       <KyvernoMetadataSection annotations={annotations} />
       <LabelsSection labels={labels} />
       <ConditionsSection conditions={policy.jsonData.status?.conditions} />
-      <SectionBox title={t('Rules ({{count}})', { count: policy.rules.length })}>
+      <SectionBox title={`${t('Rules')} (${policy.rules.length})`}>
         <RulesTable rules={policy.rules} />
       </SectionBox>
       <AssociatedReportsSection
