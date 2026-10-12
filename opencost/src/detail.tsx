@@ -86,10 +86,16 @@ export function OpencostDetailSection({ resource, type }) {
     if (!installed) {
       return;
     }
+    // Only the latest timespan may update state; an earlier request resolving or
+    // rejecting late must not overwrite newer data.
+    let cancelled = false;
     const fetchData = async () => {
       setError(null);
       try {
         const [namespace, serviceName] = await getServiceDetails();
+        if (cancelled) {
+          return;
+        }
         const accumulatedData = await fetchOpencostData(
           namespace,
           serviceName,
@@ -97,6 +103,9 @@ export function OpencostDetailSection({ resource, type }) {
           type,
           true
         );
+        if (cancelled) {
+          return;
+        }
         if (accumulatedData?.data[0]?.[resource.jsonData?.metadata?.name]) {
           setAccumulatedData(accumulatedData?.data[0]?.[resource.jsonData?.metadata?.name]);
         } else {
@@ -109,6 +118,9 @@ export function OpencostDetailSection({ resource, type }) {
           type,
           false
         );
+        if (cancelled) {
+          return;
+        }
         const processedData = [];
         const currentDate = new Date();
         let startDate = new Date(currentDate);
@@ -145,6 +157,9 @@ export function OpencostDetailSection({ resource, type }) {
         });
         setTsData(processedData);
       } catch (err) {
+        if (cancelled) {
+          return;
+        }
         setAccumulatedData({});
         setTsData([]);
         setError(err instanceof Error ? err.message : String(err));
@@ -152,6 +167,9 @@ export function OpencostDetailSection({ resource, type }) {
     };
 
     fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, [displayTimespan]);
 
   const handleDisplayTimespanChange = timespan => {
