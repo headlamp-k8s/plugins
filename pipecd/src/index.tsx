@@ -1,5 +1,5 @@
 import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { registerRoute, registerSidebarEntry, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, Typography } from '@mui/material';
 import React from 'react';
 import { SettingsPage } from './components/SettingsPage';
@@ -13,14 +13,16 @@ const pipecdIcon = {
 };
 
 function ApplicationsPlaceholder(): JSX.Element {
+  const { t } = useTranslation();
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" fontWeight={700} gutterBottom>
-        PipeCD Applications
+        {t('PipeCD Applications')}
       </Typography>
       <Typography color="text.secondary">
-        The applications view is not available yet. Configure the connection under PipeCD →
-        Settings.
+        {t(
+          'The applications view is not available yet. Configure the connection under PipeCD → Settings.'
+        )}
       </Typography>
     </Box>
   );

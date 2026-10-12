@@ -18,6 +18,13 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from '../components/SettingsPage';
 
+vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      key.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options?.[name] ?? '')),
+  }),
+}));
+
 const { listApplications } = vi.hoisted(() => ({ listApplications: vi.fn() }));
 
 vi.mock('../api/pipecd', () => ({

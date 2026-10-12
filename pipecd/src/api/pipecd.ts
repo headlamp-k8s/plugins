@@ -163,16 +163,20 @@ const PLUGIN_KINDS: Record<string, ApplicationKind> = {
  * The `kind` field is deprecated on both messages, and a plugin-arch (v1) piped
  * does not set it, so it arrives as the protobuf zero value and everything
  * would look like Kubernetes. Prefer the deploy targets, which name the plugin,
- * and fall back to the old field only when there are none.
+ * and fall back to the old field only when there are none. Deploy targets with
+ * no known plugin mean a v1 piped too, so the old field is just as unreliable
+ * there and the platform is reported as unknown.
  */
 function resolveKind(source: {
   kind: GenApplication['kind'] | GenDeployment['kind'];
   deployTargetsByPlugin?: Record<string, unknown>;
 }): ApplicationKind {
-  for (const plugin of Object.keys(source.deployTargetsByPlugin ?? {})) {
+  const plugins = Object.keys(source.deployTargetsByPlugin ?? {});
+  for (const plugin of plugins) {
     const kind = PLUGIN_KINDS[plugin.toLowerCase()];
     if (kind) return kind;
   }
+  if (plugins.length > 0) return 'UNKNOWN';
   return KIND_MAP[source.kind] ?? 'UNKNOWN';
 }
 

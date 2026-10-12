@@ -7,6 +7,7 @@ const mockClient = {
   getApplication: vi.fn(),
   listDeployments: vi.fn(),
   getDeployment: vi.fn(),
+  listStageLogs: vi.fn(),
 };
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -26,6 +27,7 @@ import {
   isConfigured,
   listApplications,
   listDeployments,
+  listStageLogs,
   loadConfig,
   PipeCDApiError,
   saveConfig,
@@ -352,14 +354,51 @@ describe('platform resolution', () => {
     expect(result.applications[0].kind).toBe('ECS');
   });
 
-  it('ignores an unrecognised plugin name and falls back', async () => {
+  it('reports an unrecognised plugin as unknown, not as the zero-value Kubernetes', async () => {
     mockClient.listDeployments.mockResolvedValue({
-      deployments: [genDeployment({ kind: 3, deployTargetsByPlugin: { somethingNew: {} } })], // 3 = LAMBDA
+      deployments: [genDeployment({ deployTargetsByPlugin: { somethingNew: {} } })],
       cursor: '',
     });
 
     const result = await listDeployments(MOCK_CONFIG);
 
-    expect(result.deployments[0].kind).toBe('LAMBDA');
+    expect(result.deployments[0].kind).toBe('UNKNOWN');
+  });
+});
+
+describe('listStageLogs', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('maps each stage log, converting bigints and severity names', async () => {
+    mockClient.listStageLogs.mockResolvedValue({
+      stageLogs: {
+        s1: {
+          blocks: [
+            { index: BigInt(0), log: 'starting', severity: 0, createdAt: BigInt(1700000000) },
+            { index: BigInt(1), log: 'done', severity: 1, createdAt: BigInt(1700000005) },
+            { index: BigInt(2), log: 'boom', severity: 2, createdAt: BigInt(1700000009) },
+          ],
+          completed: true,
+        },
+      },
+    });
+
+    const result = await listStageLogs(MOCK_CONFIG, 'dep-1');
+
+    expect(mockClient.listStageLogs).toHaveBeenCalledWith({ deploymentId: 'dep-1' });
+    expect(result.stageLogs.s1.completed).toBe(true);
+    expect(result.stageLogs.s1.blocks).toEqual([
+      { index: 0, log: 'starting', severity: 'INFO', createdAt: 1700000000 },
+      { index: 1, log: 'done', severity: 'SUCCESS', createdAt: 1700000005 },
+      { index: 2, log: 'boom', severity: 'ERROR', createdAt: 1700000009 },
+    ]);
+  });
+
+  it('returns an empty map when no stage has logs yet', async () => {
+    mockClient.listStageLogs.mockResolvedValue({ stageLogs: {} });
+
+    const result = await listStageLogs(MOCK_CONFIG, 'dep-1');
+
+    expect(result.stageLogs).toEqual({});
   });
 });

@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Alert,
   Box,
@@ -37,14 +38,16 @@ function isSecureURL(value: string): boolean {
   return ['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname);
 }
 
-function renderTestResultMessage(result: TestResult): string {
-  if (result.ok) {
-    return `Connection successful — ${result.count ?? 0} application(s) returned.`;
-  }
-  return `Connection failed: ${result.error ?? 'Unknown error'}`;
+/**
+ * Console links are built as `${baseURL}/applications/...`, so surrounding
+ * whitespace or a trailing slash would produce a broken path.
+ */
+function normalizeBaseURL(value: string): string {
+  return value.trim().replace(/\/+$/, '');
 }
 
 export function SettingsPage(): JSX.Element {
+  const { t } = useTranslation();
   const saved = loadConfig();
 
   const [baseURL, setBaseURL] = useState(saved.baseURL);
@@ -54,10 +57,21 @@ export function SettingsPage(): JSX.Element {
   const [saved_, setSaved] = useState(false);
   const testedConfig = useRef<{ baseURL: string; apiKey: string } | null>(null);
 
-  const config: PipeCDConfig = { baseURL, apiKey };
+  const config: PipeCDConfig = { baseURL: normalizeBaseURL(baseURL), apiKey };
+
+  const renderTestResultMessage = (result: TestResult): string => {
+    if (result.ok) {
+      return t('Connection successful — {{count}} application(s) returned.', {
+        count: result.count ?? 0,
+      });
+    }
+    const error = result.error ?? t('Unknown error');
+    return t('Connection failed: {{error}}', { error });
+  };
 
   const handleSave = (): void => {
     saveConfig(config);
+    setBaseURL(config.baseURL);
     setSaved(true);
     setTestResult(null);
     setTimeout(() => setSaved(false), 2000);
@@ -87,16 +101,18 @@ export function SettingsPage(): JSX.Element {
   };
 
   const urlValid = baseURL === '' || isSecureURL(baseURL);
-  const hasChanges = baseURL !== saved.baseURL || apiKey !== saved.apiKey;
+  const hasChanges = config.baseURL !== saved.baseURL || apiKey !== saved.apiKey;
 
   return (
     <Box sx={{ maxWidth: 640, py: 4 }}>
       <Typography variant="h5" fontWeight={700} gutterBottom>
-        PipeCD Plugin Settings
+        {t('PipeCD Plugin Settings')}
       </Typography>
       <Typography variant="body2" color="text.secondary" mb={3}>
-        Connect this Headlamp plugin to your PipeCD Control Plane. You need a PipeCD API key with at
-        minimum the <strong>READ_ONLY</strong> role.
+        {t(
+          'Connect this Headlamp plugin to your PipeCD Control Plane. You need a PipeCD API key with at minimum the {{role}} role.',
+          { role: 'READ_ONLY' }
+        )}
       </Typography>
 
       <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
@@ -105,7 +121,7 @@ export function SettingsPage(): JSX.Element {
             <TextField
               fullWidth
               id="pipecd-base-url"
-              label="PipeCD Server URL"
+              label={t('PipeCD Server URL')}
               placeholder="https://pipecd.example.com"
               value={baseURL}
               onChange={e => {
@@ -118,21 +134,19 @@ export function SettingsPage(): JSX.Element {
             />
             {!urlValid && (
               <FormHelperText error>
-                Use an https:// URL. http:// is only allowed for localhost.
+                {t('Use an https:// URL. http:// is only allowed for localhost.')}
               </FormHelperText>
             )}
-            <FormHelperText>
-              Base URL of your PipeCD Control Plane gateway. No trailing slash.
-            </FormHelperText>
+            <FormHelperText>{t('Base URL of your PipeCD Control Plane gateway.')}</FormHelperText>
           </Box>
 
           <Box>
             <TextField
               fullWidth
               id="pipecd-api-key"
-              label="API Key"
+              label={t('API Key')}
               type="password"
-              placeholder="Enter PipeCD API key"
+              placeholder={t('Enter PipeCD API key')}
               value={apiKey}
               onChange={e => {
                 setApiKey(e.target.value);
@@ -142,7 +156,7 @@ export function SettingsPage(): JSX.Element {
               }}
             />
             <FormHelperText>
-              Generate one in the PipeCD UI under Settings → API Keys.
+              {t('Generate one in the PipeCD UI under Settings → API Keys.')}
             </FormHelperText>
           </Box>
 
@@ -162,7 +176,7 @@ export function SettingsPage(): JSX.Element {
               color={saved_ ? 'success' : 'primary'}
               startIcon={undefined}
             >
-              {saved_ ? 'Saved!' : 'Save Settings'}
+              {saved_ ? t('Saved!') : t('Save Settings')}
             </Button>
 
             <Button
@@ -173,7 +187,7 @@ export function SettingsPage(): JSX.Element {
               disabled={!isConfigured(config) || !urlValid || testing}
               startIcon={testing ? <CircularProgress size={16} /> : undefined}
             >
-              {testing ? 'Testing…' : 'Test Connection'}
+              {testing ? t('Testing…') : t('Test Connection')}
             </Button>
           </Stack>
         </Stack>

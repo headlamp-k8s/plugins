@@ -1,20 +1,25 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import React from 'react';
+import { Link as RouterLink } from 'react-router-dom';
+import { pluginURL } from '../utils/url';
 
 export function NotConfigured(): JSX.Element {
+  const { t } = useTranslation();
   return (
     <Box display="flex" alignItems="center" justifyContent="center" minHeight="50vh">
       <Paper elevation={2} sx={{ p: 5, maxWidth: 480, textAlign: 'center', borderRadius: 3 }}>
         <Typography variant="h5" fontWeight={700} gutterBottom>
-          PipeCD Not Configured
+          {t('PipeCD Not Configured')}
         </Typography>
         <Typography variant="body2" color="text.secondary" mb={3}>
-          Enter your PipeCD server URL and API key in the plugin settings to start viewing your
-          deployments.
+          {t(
+            'Enter your PipeCD server URL and API key in the plugin settings to start viewing your deployments.'
+          )}
         </Typography>
         <Stack direction="row" spacing={2} justifyContent="center">
-          <Button variant="contained" href="#/pipecd/settings">
-            Configure PipeCD
+          <Button variant="contained" component={RouterLink} to={pluginURL('/pipecd/settings')}>
+            {t('Configure PipeCD')}
           </Button>
           <Button
             variant="outlined"
@@ -22,11 +27,11 @@ export function NotConfigured(): JSX.Element {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Get API Key
+            {t('Get API Key')}
           </Button>
         </Stack>
         <Typography variant="caption" color="text.secondary" mt={3} display="block">
-          The API key requires at minimum the <strong>READ_ONLY</strong> role.
+          {t('The API key requires at minimum the {{role}} role.', { role: 'READ_ONLY' })}
         </Typography>
       </Paper>
     </Box>
