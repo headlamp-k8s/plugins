@@ -113,7 +113,7 @@ export function useClusterDomainClaimColumns(
               <Typography
                 variant="body2"
                 color="text.secondary"
-                title="No namespace specified in spec"
+                title={t('No namespace specified in spec')}
               >
                 -
               </Typography>

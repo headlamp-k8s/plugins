@@ -11,6 +11,7 @@
   "Missing": "Missing",
   "Namespace": "Namespace",
   "No cluster available": "No cluster available",
+  "No namespace specified in spec": "No namespace specified in spec",
   "Owner: {{ namespace }}": "Owner: {{ namespace }}",
   "Please enter a domain name": "Please enter a domain name",
   "Present": "Present"
