@@ -177,24 +177,38 @@ export function usePrometheus(): PrometheusStatus {
     set.add(listener);
     listeners.set(cacheKey, set);
 
-    if (isStale(current)) {
-      void probeCluster(cacheKey);
-    }
+    let timeoutId: ReturnType<typeof setTimeout>;
 
     // Re-checks staleness on a timer rather than only on mount/cluster-switch, since this
     // component (the Dashboard's health section) stays mounted far longer than PROBE_TTL_MS. The
     // already-known status keeps rendering immediately throughout, this only refreshes it in the
     // background; probeCluster's own inFlight dedup means several mounted consumers checking at
     // once still only trigger one real discovery request.
-    const interval = setInterval(() => {
+    //
+    // Scheduled via a setTimeout chain relative to the cache entry's own probedAt, not a fixed
+    // setInterval anchored to whenever this effect happened to run: probedAt is only set once an
+    // async discovery genuinely finishes, so a fixed-period timer drifts out of phase with it. A
+    // tick landing a hair before the TTL has actually elapsed sees "not stale yet" and skips, so
+    // the real reprobe doesn't happen until the FOLLOWING tick, silently halving the effective
+    // refresh rate. Recomputing the delay from the latest probedAt after every check (and waiting
+    // out any reprobe before doing so) keeps this honoring the stated TTL instead of drifting.
+    const checkAndReschedule = async () => {
       if (isStale(probeCache.get(cacheKey))) {
-        void probeCluster(cacheKey);
+        await probeCluster(cacheKey);
       }
-    }, PROBE_TTL_MS);
+      if (cancelled) return;
+      const entry = probeCache.get(cacheKey);
+      const delay = entry
+        ? Math.max(0, PROBE_TTL_MS - (Date.now() - entry.probedAt))
+        : PROBE_TTL_MS;
+      timeoutId = setTimeout(checkAndReschedule, delay);
+    };
+
+    void checkAndReschedule();
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearTimeout(timeoutId);
       set.delete(listener);
       if (set.size === 0) listeners.delete(cacheKey);
     };
