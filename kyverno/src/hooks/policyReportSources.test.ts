@@ -18,6 +18,7 @@ import { describe, expect, test } from 'vitest';
 import { PolicyReportResult } from '../resources/policyReport';
 import {
   combineReportSources,
+  normalizeReportResource,
   policyIdentity,
   PolicyReportSource,
   reportSourceErrorMessage,
@@ -154,6 +155,88 @@ describe('combineReportSources', () => {
     expect(reports).toHaveLength(1);
     expect(reports[0].metadata.name).toBe('policy-report');
     expect(reports[0].results[0].result).toBe('pass');
+  });
+});
+
+describe('normalizeReportResource', () => {
+  test('turns Kyverno audit metadata into a displayable resource reference', () => {
+    const normalized = normalizeReportResource({
+      metadata: {
+        name: 'ephemeral-report',
+        namespace: 'payments',
+        labels: {
+          'audit.kyverno.io/resource.group': 'apps',
+          'audit.kyverno.io/resource.version': 'v1',
+          'audit.kyverno.io/resource.kind': 'Deployment',
+          'audit.kyverno.io/resource.uid': 'checkout-uid',
+        },
+        annotations: {
+          'audit.kyverno.io/resource.name': 'checkout-api',
+          'audit.kyverno.io/resource.namespace': 'payments',
+        },
+      },
+      scope: {},
+      summary: { fail: 1 },
+      results: [
+        {
+          policy: 'payments/require-team-label',
+          rule: 'require-team',
+          result: 'fail',
+        },
+      ],
+    });
+
+    const expectedResource = {
+      apiVersion: 'apps/v1',
+      kind: 'Deployment',
+      namespace: 'payments',
+      name: 'checkout-api',
+      uid: 'checkout-uid',
+    };
+    expect(normalized.scope).toEqual(expectedResource);
+    expect(normalized.results[0].resources).toEqual([expectedResource]);
+  });
+
+  test('preserves explicit result resources and fills missing report scope from an owner reference', () => {
+    const normalized = normalizeReportResource({
+      metadata: {
+        name: 'ephemeral-report',
+        namespace: 'default',
+        ownerReferences: [
+          { apiVersion: 'v1', kind: 'Pod', name: 'metadata-pod', uid: 'metadata-uid' },
+        ],
+      },
+      summary: { fail: 1 },
+      results: [
+        {
+          policy: 'require-labels',
+          result: 'fail',
+          resources: [{ apiVersion: 'v1', kind: 'Pod', name: 'explicit-pod' }],
+        },
+      ],
+    });
+
+    expect(normalized.scope).toEqual({
+      apiVersion: 'v1',
+      kind: 'Pod',
+      namespace: 'default',
+      name: 'metadata-pod',
+      uid: 'metadata-uid',
+    });
+    expect(normalized.results[0].resources).toEqual([
+      { apiVersion: 'v1', kind: 'Pod', name: 'explicit-pod' },
+    ]);
+  });
+
+  test('does not treat the report namespace alone as evaluated-resource identity', () => {
+    const normalized = normalizeReportResource({
+      metadata: { name: 'report-without-resource', namespace: 'default' },
+      summary: { fail: 1 },
+      results: [{ policy: 'require-labels', result: 'fail' }],
+    });
+
+    expect(normalized.scope).toBeUndefined();
+    expect(normalized.results[0].resources).toBeUndefined();
   });
 });
 

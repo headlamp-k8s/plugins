@@ -17,7 +17,12 @@
 import { useMemo } from 'react';
 import { ClusterEphemeralReport, EphemeralReport } from '../resources/kyvernoReports';
 import { ClusterPolicyReport, PolicyReport } from '../resources/policyReport';
-import { combineReportSources, PolicyReportSource, ReportSourceList } from './policyReportSources';
+import {
+  combineReportSources,
+  normalizeReportResource,
+  PolicyReportSource,
+  ReportSourceList,
+} from './policyReportSources';
 
 type PolicyReportResource =
   | PolicyReport
@@ -34,7 +39,7 @@ export interface PolicyReportSources {
 }
 
 function normalizeReport(report: PolicyReportResource): PolicyReportSource {
-  return {
+  return normalizeReportResource({
     metadata: {
       name: report.jsonData.metadata.name,
       namespace: report.jsonData.metadata.namespace,
@@ -45,7 +50,7 @@ function normalizeReport(report: PolicyReportResource): PolicyReportSource {
     scope: report.scope,
     summary: report.summary,
     results: report.results,
-  };
+  });
 }
 
 function normalizeSource(items: PolicyReportResource[] | null, error: unknown): ReportSourceList {

@@ -65,6 +65,55 @@ const RESOURCE_KIND_LABEL = 'audit.kyverno.io/resource.kind';
 const RESOURCE_NAMESPACE_ANNOTATION = 'audit.kyverno.io/resource.namespace';
 const RESOURCE_NAME_ANNOTATION = 'audit.kyverno.io/resource.name';
 
+type ReportResourceReference = NonNullable<PolicyReportInterface['scope']>;
+
+function hasResourceReference(resource?: ReportResourceReference): boolean {
+  return Boolean(resource?.apiVersion || resource?.kind || resource?.name || resource?.uid);
+}
+
+function metadataResourceReference(
+  report: PolicyReportSource
+): ReportResourceReference | undefined {
+  const { annotations = {}, labels = {}, ownerReferences = [] } = report.metadata;
+  const owner = ownerReferences.find(reference => reference.name);
+  const group = labels[RESOURCE_GROUP_LABEL];
+  const version = labels[RESOURCE_VERSION_LABEL];
+  const apiVersion =
+    owner?.apiVersion || (group && version ? `${group}/${version}` : version || group);
+  const resource: ReportResourceReference = {
+    apiVersion,
+    kind: owner?.kind || labels[RESOURCE_KIND_LABEL],
+    namespace: annotations[RESOURCE_NAMESPACE_ANNOTATION] || report.metadata.namespace,
+    name: owner?.name || annotations[RESOURCE_NAME_ANNOTATION],
+    uid: labels[RESOURCE_UID_LABEL] || owner?.uid,
+  };
+
+  return hasResourceReference(resource) ? resource : undefined;
+}
+
+/**
+ * Gives report-level resource identity one normalized representation. Kyverno's
+ * admission reports can omit both spec.owner and result.resources, leaving the
+ * evaluated resource only in audit.kyverno.io metadata.
+ */
+export function normalizeReportResource(report: PolicyReportSource): PolicyReportSource {
+  const metadataResource = metadataResourceReference(report);
+  const reportScope = report.scope;
+  const resource = {
+    apiVersion: reportScope?.apiVersion || metadataResource?.apiVersion,
+    kind: reportScope?.kind || metadataResource?.kind,
+    namespace: reportScope?.namespace || metadataResource?.namespace,
+    name: reportScope?.name || metadataResource?.name,
+    uid: reportScope?.uid || metadataResource?.uid,
+  };
+  const scope = hasResourceReference(resource) ? resource : undefined;
+  const results = report.results.map(result =>
+    !result.resources?.length && scope ? { ...result, resources: [scope] } : result
+  );
+
+  return { ...report, scope, results };
+}
+
 function getErrorStatus(error: unknown): number | undefined {
   if (typeof error !== 'object' || error === null) return undefined;
 
@@ -119,29 +168,8 @@ function reportMetadataResourceUid(report: PolicyReportSource): string | undefin
 }
 
 function reportMetadataResourceIdentity(report: PolicyReportSource): string | undefined {
-  const { annotations = {}, labels = {}, ownerReferences = [] } = report.metadata;
-
-  const owner = ownerReferences.find(owner => owner.name);
-  if (owner) {
-    return qualifiedResourceIdentity({
-      apiVersion: owner.apiVersion,
-      kind: owner.kind,
-      namespace: annotations[RESOURCE_NAMESPACE_ANNOTATION] || report.metadata.namespace,
-      name: owner.name,
-    });
-  }
-
-  const name = annotations[RESOURCE_NAME_ANNOTATION];
-  if (!name) return undefined;
-
-  const group = labels[RESOURCE_GROUP_LABEL];
-  const version = labels[RESOURCE_VERSION_LABEL];
-  return qualifiedResourceIdentity({
-    apiVersion: group ? `${group}/${version || ''}` : version,
-    kind: labels[RESOURCE_KIND_LABEL],
-    namespace: annotations[RESOURCE_NAMESPACE_ANNOTATION] || report.metadata.namespace,
-    name,
-  });
+  const resource = metadataResourceReference(report);
+  return resource ? qualifiedResourceIdentity(resource) : undefined;
 }
 
 function resourceIdentity(report: PolicyReportSource, result: PolicyReportResult): string {
