@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   AuthVisible,
   EmptyContent,
@@ -5,6 +6,7 @@ import {
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
+import { Box } from '@mui/material';
 import { ReactNode, useState } from 'react';
 
 interface KueueAdminResourceAccessProps {
@@ -24,22 +26,45 @@ export default function KueueAdminResourceAccess({
   resourceClass,
   resourceLabel,
   verb,
-  accessDescription = `Kueue ${resourceLabel} are cluster-scoped admin resources.`,
+  accessDescription,
   children,
 }: KueueAdminResourceAccessProps) {
+  const { t } = useTranslation();
   const [allowed, setAllowed] = useState<boolean | null>(null);
+
+  const defaultDescription =
+    accessDescription ||
+    t('Kueue {{resourceLabel}} are cluster-scoped admin resources.', {
+      resourceLabel,
+    });
 
   return (
     <>
-      {allowed === null && <Loader title={`Checking access to Kueue ${resourceLabel}`} />}
+      {allowed === null && (
+        <Box role="status" aria-live="polite">
+          <Loader title={t('Checking access to Kueue {{resourceLabel}}', { resourceLabel })} />
+        </Box>
+      )}
       {allowed === false && (
-        <SectionBox title={`Kueue ${resourceLabel}`}>
-          <EmptyContent color="text.secondary">
-            {`${accessDescription} Your current Kubernetes credentials are not authorized to ${
-              verb === 'get' ? 'view' : 'list'
-            } this page.`}
-          </EmptyContent>
-        </SectionBox>
+        <Box role="alert" aria-live="assertive">
+          <SectionBox title={t('Kueue {{resourceLabel}}', { resourceLabel })}>
+            <EmptyContent color="text.secondary">
+              {verb === 'get'
+                ? t(
+                    '{{description}} Your current Kubernetes credentials are not authorized to view this page.',
+                    {
+                      description: defaultDescription,
+                    }
+                  )
+                : t(
+                    '{{description}} Your current Kubernetes credentials are not authorized to list this page.',
+                    {
+                      description: defaultDescription,
+                    }
+                  )}
+            </EmptyContent>
+          </SectionBox>
+        </Box>
       )}
       <AuthVisible
         item={resourceClass}
