@@ -160,16 +160,17 @@ export function ViolationsView() {
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
 
-  // Each header string is computed once and reused for both `header` and
-  // `id`, rather than calling t() twice per column. The column array is
+  // Each header string is computed once and reused for both `header` and the
+  // column id, rather than calling t() twice per column. The column array is
   // memoized on those header strings specifically, not on `t` itself (whose
   // reference doesn't change when the translation backend finishes loading,
-  // so depending on it directly would never actually refresh anything).
-  // Keying id off the live header text means it changes exactly when the
-  // header text does, so Table's memoized header cells (keyed on column id)
-  // refresh instead of keeping a blank label from an early pre-translation
-  // render. Body cells here render resource data, not translated labels, so
-  // they aren't affected by this.
+  // so depending on it directly would never actually refresh anything). The
+  // id itself stays a stable, semantic string though, see tableRemountKey in
+  // common.tsx for why: Headlamp memoizes header cells by id alone, so a
+  // blank pre-translation label would otherwise stick around even once the
+  // real translation arrives, fixed by remounting the table via key once
+  // translations are ready instead of changing the id. Body cells here
+  // render resource data, not translated labels, so they aren't affected.
   const resourceHeader = t('Resource');
   const kindHeader = t('Kind');
   const namespaceHeader = t('Namespace');
