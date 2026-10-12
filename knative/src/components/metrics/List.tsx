@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ResourceListView,
   ResourceTableColumn,
@@ -31,6 +32,7 @@ import {
 } from '../common/ResourceListCells';
 
 export function MetricsList() {
+  const { t } = useTranslation();
   const clusters = useClusters();
   const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
   const showClusterColumn = clusters.length > 1;
@@ -43,7 +45,7 @@ export function MetricsList() {
       ...(showClusterColumn ? (['cluster'] as const) : []),
       {
         id: 'revision',
-        label: 'Revision',
+        label: t('Revision'),
         getValue: item => item.revisionName || '',
         render: item => (
           <NamespacedResourceLink
@@ -56,26 +58,26 @@ export function MetricsList() {
       },
       {
         id: 'scrape-target',
-        label: 'Scrape Target',
+        label: t('Scrape Target'),
         getValue: item => item.spec?.scrapeTarget || '',
         render: item => <TextValue value={item.spec?.scrapeTarget} />,
       },
       {
         id: 'stable-window',
-        label: 'Stable Window',
+        label: t('Stable Window'),
         getValue: item => item.spec?.stableWindow ?? '',
         render: item => <TextValue value={formatNanoseconds(item.spec?.stableWindow)} />,
       },
       {
         id: 'panic-window',
-        label: 'Panic Window',
+        label: t('Panic Window'),
         getValue: item => item.spec?.panicWindow ?? '',
         render: item => <TextValue value={formatNanoseconds(item.spec?.panicWindow)} />,
       },
-      ...getReadinessColumns<KnativeMetric>(),
+      ...getReadinessColumns<KnativeMetric>(t),
       'age',
     ],
-    [showClusterColumn]
+    [showClusterColumn, t]
   );
 
   if (!isKnativeInstalled) {
@@ -84,7 +86,7 @@ export function MetricsList() {
 
   return (
     <ResourceListView
-      title="Metrics"
+      title={t('Metrics')}
       resourceClass={KnativeMetric}
       columns={columns}
       reflectInURL="knative-metrics"

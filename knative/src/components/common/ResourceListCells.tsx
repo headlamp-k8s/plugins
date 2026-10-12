@@ -105,23 +105,25 @@ type ReadinessItem = {
   };
 };
 
-export function getReadinessColumns<T extends ReadinessItem>(): ResourceTableColumn<T>[] {
+export function getReadinessColumns<T extends ReadinessItem>(
+  t: (key: string) => string = key => key
+): ResourceTableColumn<T>[] {
   return [
     {
       id: 'ready',
-      label: 'Ready',
+      label: t('Ready'),
       filterVariant: 'multi-select',
       filterSelectOptions: [
-        { label: 'True', value: 'True' },
-        { label: 'False', value: 'False' },
-        { label: 'Unknown', value: 'Unknown' },
+        { label: t('True'), value: 'True' },
+        { label: t('False'), value: 'False' },
+        { label: t('Unknown'), value: 'Unknown' },
       ],
       getValue: item => item.readyCondition?.status || 'Unknown',
       render: item => <ReadyCell condition={item.readyCondition} />,
     },
     {
       id: 'reason',
-      label: 'Reason',
+      label: t('Reason'),
       getValue: item => item.readyCondition?.reason || '',
       render: item => <TextValue value={item.readyCondition?.reason} />,
     },
