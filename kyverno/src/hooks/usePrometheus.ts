@@ -92,12 +92,17 @@ async function findByLabel(type: ResourceType, labelSelector: string): Promise<s
   return null;
 }
 
+// Services tried before pods within each label tier: a Service's name is stable across a
+// Prometheus rollout, a Pod's isn't (a new replica gets a new generated name), so preferring a
+// Service when both match avoids caching a prefix a routine rollout is about to turn into a dead
+// proxy path. Doesn't eliminate the problem (a setup with only a matching Pod and no matching
+// Service still caches a pod-based prefix), the TTL re-probe below covers what this can't.
 async function discoverPrometheus(): Promise<string | null> {
   for (const [type, label] of [
-    ['pods', CUSTOM_LABEL],
     ['services', CUSTOM_LABEL],
-    ['pods', COMMON_POD_LABEL],
+    ['pods', CUSTOM_LABEL],
     ['services', COMMON_SERVICE_LABEL],
+    ['pods', COMMON_POD_LABEL],
   ] as [ResourceType, string][]) {
     const found = await findByLabel(type, label);
     if (found) return found;
@@ -105,9 +110,23 @@ async function discoverPrometheus(): Promise<string | null> {
   return null;
 }
 
+// A discovered prefix is never structurally re-validated once cached: a Prometheus rollout can
+// replace the pod a cached pod-based prefix names, or the very first probe can lose a race against
+// Prometheus still starting up and cache a dead-end `null` for the rest of the session, with
+// nothing to ever notice either and re-probe. PROBE_TTL_MS bounds how long either kind of stale
+// result survives; re-probing on a timer rather than reacting to a query failure keeps this
+// entirely self-contained in this hook instead of needing PolicyEngineHealth (or any other
+// consumer) to report failures back here.
+const PROBE_TTL_MS = 5 * 60_000;
+
+interface CacheEntry {
+  status: PrometheusStatus;
+  probedAt: number;
+}
+
 // Same module-level cache-per-cluster + listener pattern as useKyvernoCRDs, so every component
 // that renders the health section doesn't each trigger their own discovery search.
-const probeCache = new Map<string, PrometheusStatus>();
+const probeCache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Promise<PrometheusStatus>>();
 const listeners = new Map<string, Set<(status: PrometheusStatus) => void>>();
 
@@ -122,7 +141,7 @@ async function probeCluster(cluster: string): Promise<PrometheusStatus> {
   const promise = (async () => {
     const prefix = await discoverPrometheus();
     const status: PrometheusStatus = { prefix, loading: false };
-    probeCache.set(cluster, status);
+    probeCache.set(cluster, { status, probedAt: Date.now() });
     inFlight.delete(cluster);
     notify(cluster, status);
     return status;
@@ -132,17 +151,21 @@ async function probeCluster(cluster: string): Promise<PrometheusStatus> {
   return promise;
 }
 
+function isStale(entry: CacheEntry | undefined): boolean {
+  return !entry || Date.now() - entry.probedAt > PROBE_TTL_MS;
+}
+
 export function usePrometheus(): PrometheusStatus {
   const cluster = K8s.useCluster();
   const cacheKey = cluster ?? '';
   const cached = probeCache.get(cacheKey);
-  const [status, setStatus] = useState<PrometheusStatus>(cached ?? initialStatus);
+  const [status, setStatus] = useState<PrometheusStatus>(cached?.status ?? initialStatus);
 
   useEffect(() => {
     let cancelled = false;
     const current = probeCache.get(cacheKey);
     if (current) {
-      setStatus(current);
+      setStatus(current.status);
     } else {
       setStatus(initialStatus);
     }
@@ -154,12 +177,24 @@ export function usePrometheus(): PrometheusStatus {
     set.add(listener);
     listeners.set(cacheKey, set);
 
-    if (!current) {
+    if (isStale(current)) {
       void probeCluster(cacheKey);
     }
 
+    // Re-checks staleness on a timer rather than only on mount/cluster-switch, since this
+    // component (the Dashboard's health section) stays mounted far longer than PROBE_TTL_MS. The
+    // already-known status keeps rendering immediately throughout, this only refreshes it in the
+    // background; probeCluster's own inFlight dedup means several mounted consumers checking at
+    // once still only trigger one real discovery request.
+    const interval = setInterval(() => {
+      if (isStale(probeCache.get(cacheKey))) {
+        void probeCluster(cacheKey);
+      }
+    }, PROBE_TTL_MS);
+
     return () => {
       cancelled = true;
+      clearInterval(interval);
       set.delete(listener);
       if (set.size === 0) listeners.delete(cacheKey);
     };

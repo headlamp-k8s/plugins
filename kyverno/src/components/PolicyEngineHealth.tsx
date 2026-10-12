@@ -108,8 +108,13 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // Kyverno's own pkg/metrics/policy_rule.go. A plain sum() over it counts the same not-ready
     // policy once per rule, per controller, per replica, wildly overcounting, and the raw count is
     // rules anyway, not policies, an incompatible unit from celPoliciesNotReady below (one legacy
-    // rule in a 10-rule policy versus one whole CEL policy are not the same "1"). Grouping by
-    // (policy_namespace, policy_name) first collapses every duplicate rule/controller/replica
+    // rule in a 10-rule policy versus one whole CEL policy are not the same "1"). The metric's own
+    // description says it plainly: "0 means the rule doesn't exist and has been deleted, 1 means
+    // the rule is currently existent", so a deleted rule's series can stick around at value 0
+    // (same policy_namespace/policy_name/status_ready labels as right before deletion) rather than
+    // vanishing outright; `== 1` filters to only currently-existing rule rows before anything else
+    // runs, so a deleted policy can't leave this tile stuck red. Grouping by
+    // (policy_namespace, policy_name) then collapses every duplicate rule/controller/replica
     // observation for the same policy into one series, status_ready is itself a policy-level
     // attribute duplicated onto every rule row so this grouping can't accidentally mix a ready
     // and a not-ready rule from the same policy together, then the outer count() tallies distinct
@@ -118,7 +123,7 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // exact metric.
     queryInstant(
       prefix,
-      'count(count(kyverno_policy_rule_info_total{status_ready!="true"}) by (policy_namespace, policy_name)) or vector(0)'
+      'count(count(kyverno_policy_rule_info_total{status_ready!="true"} == 1) by (policy_namespace, policy_name)) or vector(0)'
     ),
     queryInstant(prefix, 'sum(increase(kyverno_controller_requeue_total[1h])) or vector(0)'),
     queryRange(
@@ -287,7 +292,14 @@ export function PolicyEngineHealth() {
     if (!prometheus.prefix) return;
 
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
+    // setTimeout chained from the end of the previous load, not setInterval, deliberately: a
+    // fixed interval fires on the wall clock regardless of whether the prior seven-query batch
+    // has actually finished, and since these are unsequenced async responses, a slow batch
+    // finishing after a later one started could overwrite fresher state with stale data (or flip
+    // a successful view back to an error). Scheduling the next load only once the current one has
+    // fully settled (success or error) means at most one batch is ever in flight.
     const load = async () => {
       try {
         const data = await fetchHealth(prometheus.prefix as string);
@@ -297,17 +309,20 @@ export function PolicyEngineHealth() {
         }
       } catch {
         if (!cancelled) setState('error');
+      } finally {
+        if (!cancelled) {
+          timeoutId = setTimeout(load, REFRESH_INTERVAL_MS);
+        }
       }
     };
 
     setState('loading');
     setHealth(null);
     void load();
-    const interval = setInterval(load, REFRESH_INTERVAL_MS);
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearTimeout(timeoutId);
     };
     // `cluster` is deliberately in these deps even though `prometheus.prefix` usually changes
     // with it: two different clusters can discover the identical prefix string (e.g. both have
