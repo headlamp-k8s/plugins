@@ -10,7 +10,20 @@ export function CertificateExpiryLabel({ notAfter }: { notAfter?: string }) {
   return (
     <Tooltip title={notAfter || t('Unknown')}>
       <span>
-        <StatusLabel status={expiry.statusLabelStatus}>{formatExpiryLabel(expiry, t)}</StatusLabel>
+        <StatusLabel
+          status={expiry.statusLabelStatus}
+          sx={
+            expiry.level === 'expired'
+              ? {
+                  backgroundColor: 'common.black',
+                  color: 'common.white',
+                  borderColor: 'common.black',
+                }
+              : undefined
+          }
+        >
+          {formatExpiryLabel(expiry, t)}
+        </StatusLabel>
       </span>
     </Tooltip>
   );

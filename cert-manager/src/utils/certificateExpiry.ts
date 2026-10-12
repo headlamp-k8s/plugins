@@ -29,7 +29,7 @@ export function getCertificateExpiry(
   const daysRemaining = Math.floor(remainingMs / MS_PER_DAY);
 
   if (remainingMs < 0) {
-    return { level: 'expired', daysRemaining, statusLabelStatus: 'error' };
+    return { level: 'expired', daysRemaining, statusLabelStatus: '' };
   }
   if (remainingMs < CRITICAL_DAYS * MS_PER_DAY) {
     return { level: 'critical', daysRemaining, statusLabelStatus: 'error' };

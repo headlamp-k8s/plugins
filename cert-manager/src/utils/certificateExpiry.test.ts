@@ -58,7 +58,7 @@ describe('getCertificateExpiry', () => {
   it('marks past notAfter as expired', () => {
     const expiry = getCertificateExpiry(isoFromDays(-1), NOW);
     expect(expiry.level).toBe('expired');
-    expect(expiry.statusLabelStatus).toBe('error');
+    expect(expiry.statusLabelStatus).toBe('');
   });
 });
 
