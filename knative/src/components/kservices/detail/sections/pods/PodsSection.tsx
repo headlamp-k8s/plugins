@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   LightTooltip,
   ResourceTable,
@@ -67,49 +68,58 @@ function getPodStatus(pod: Pod): '' | 'success' | 'warning' | 'error' {
   return '';
 }
 
-function getContainerDisplayStatus(container: PodContainerStatus) {
+function getContainerDisplayStatus(
+  container: PodContainerStatus,
+  t: (key: string, options?: any) => string
+) {
   const state = container.state || {};
   let color = 'grey';
-  let label = 'Unknown';
-  const tooltipLines: string[] = [`Name: ${container.name}`];
+  let label = t('Unknown');
+  const tooltipLines: string[] = [t('Name: {{ name }}', { name: container.name })];
 
   if (state.waiting) {
     color = 'orange';
-    label = 'Waiting';
+    label = t('Waiting');
     if (state.waiting.reason) {
-      tooltipLines.push(`Reason: ${state.waiting.reason}`);
+      tooltipLines.push(t('Reason: {{ reason }}', { reason: state.waiting.reason }));
     }
     if (state.waiting.message) {
-      tooltipLines.push(`Message: ${state.waiting.message}`);
+      tooltipLines.push(t('Message: {{ message }}', { message: state.waiting.message }));
     }
   } else if (state.terminated) {
     color = state.terminated.reason === 'Error' ? 'red' : 'green';
-    label = 'Terminated';
+    label = t('Terminated');
     if (state.terminated.reason) {
-      tooltipLines.push(`Reason: ${state.terminated.reason}`);
+      tooltipLines.push(t('Reason: {{ reason }}', { reason: state.terminated.reason }));
     }
     if (state.terminated.exitCode !== undefined) {
-      tooltipLines.push(`Exit Code: ${state.terminated.exitCode}`);
+      tooltipLines.push(t('Exit Code: {{ exitCode }}', { exitCode: state.terminated.exitCode }));
     }
     if (state.terminated.startedAt) {
-      tooltipLines.push(`Started: ${new Date(state.terminated.startedAt).toLocaleString()}`);
+      tooltipLines.push(
+        t('Started: {{ time }}', { time: new Date(state.terminated.startedAt).toLocaleString() })
+      );
     }
     if (state.terminated.finishedAt) {
-      tooltipLines.push(`Finished: ${new Date(state.terminated.finishedAt).toLocaleString()}`);
+      tooltipLines.push(
+        t('Finished: {{ time }}', { time: new Date(state.terminated.finishedAt).toLocaleString() })
+      );
     }
   } else if (state.running) {
     color = 'green';
-    label = 'Running';
+    label = t('Running');
     if (state.running.startedAt) {
-      tooltipLines.push(`Started: ${new Date(state.running.startedAt).toLocaleString()}`);
+      tooltipLines.push(
+        t('Started: {{ time }}', { time: new Date(state.running.startedAt).toLocaleString() })
+      );
     }
   }
 
   if ((container.restartCount ?? 0) > 0) {
-    tooltipLines.push(`Restarts: ${container.restartCount}`);
+    tooltipLines.push(t('Restarts: {{ count }}', { count: container.restartCount }));
   }
 
-  tooltipLines.splice(1, 0, `Status: ${label}`);
+  tooltipLines.splice(1, 0, t('Status: {{ label }}', { label }));
 
   return {
     color,
@@ -117,7 +127,7 @@ function getContainerDisplayStatus(container: PodContainerStatus) {
   };
 }
 
-function makePodStatusLabel(pod: Pod) {
+function makePodStatusLabel(pod: Pod, t: (key: string, options?: any) => string) {
   const { reason, message } = pod.getDetailedStatus();
   const status = getPodStatus(pod);
 
@@ -126,7 +136,7 @@ function makePodStatusLabel(pod: Pod) {
     containerStatuses.length > 0 ? (
       <Box display="flex" gap={0.5}>
         {containerStatuses.map((cs, index) => {
-          const { color, tooltip } = getContainerDisplayStatus(cs);
+          const { color, tooltip } = getContainerDisplayStatus(cs, t);
           return (
             <LightTooltip title={tooltip} key={`${cs.name}-${index}`}>
               <Box
@@ -158,6 +168,7 @@ function makePodStatusLabel(pod: Pod) {
 }
 
 export function PodsSection({ kservice }: KServiceSectionProps) {
+  const { t } = useTranslation();
   const namespace = kservice.metadata.namespace;
   const cluster = kservice.cluster;
   const serviceName = kservice.metadata.name;
@@ -197,7 +208,7 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
     'name',
     {
       id: 'revision',
-      label: 'Revision',
+      label: t('Revision'),
       gridTemplate: 'min-content',
       disableFiltering: true,
       getValue: item => {
@@ -233,7 +244,7 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
     },
     {
       id: 'ready',
-      label: 'Ready',
+      label: t('Ready'),
       gridTemplate: 'min-content',
       disableFiltering: true,
       getValue: item => {
@@ -272,7 +283,7 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
     },
     {
       id: 'restarts',
-      label: 'Restarts',
+      label: t('Restarts'),
       gridTemplate: 'min-content',
       disableFiltering: true,
       getValue: item => (item as unknown as Pod).getDetailedStatus().restarts ?? 0,
@@ -280,14 +291,14 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
     },
     {
       id: 'status',
-      label: 'Status',
+      label: t('Status'),
       gridTemplate: 'min-content',
       filterVariant: 'multi-select',
       getValue: item => {
         const pod = item as unknown as Pod;
         return pod.getDetailedStatus().reason || pod.status?.phase || 'Unknown';
       },
-      render: item => makePodStatusLabel(item as unknown as Pod),
+      render: item => makePodStatusLabel(item as unknown as Pod, t),
     },
     'age',
   ];
@@ -309,13 +320,13 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
   return (
     <Stack spacing={2}>
       <SectionBox
-        title="Pods"
+        title={t('Pods')}
         headerProps={{
           titleSideActions: [
             pods === null ? (
-              <Chip key="pods-loading" size="small" label="Loading…" variant="outlined" />
+              <Chip key="pods-loading" size="small" label={t('Loading…')} variant="outlined" />
             ) : pods.length === 0 ? (
-              <Chip key="pods-empty" size="small" label="No pods" variant="outlined" />
+              <Chip key="pods-empty" size="small" label={t('No pods')} variant="outlined" />
             ) : (
               <Stack
                 key="pods-status-badges"
@@ -334,7 +345,7 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
       >
         {!namespace || !serviceName ? (
           <Typography variant="body2" color="text.secondary">
-            Namespace or KService name is missing.
+            {t('Namespace or KService name is missing.')}
           </Typography>
         ) : (
           <ResourceTable.default

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KService } from '../../../../resources/knative';
 import { useKServiceActions } from '../hooks/useKServiceActions';
@@ -24,6 +25,7 @@ type KServiceHeaderActionsProps = {
 };
 
 export function KServiceHeaderActions({ kservice }: KServiceHeaderActionsProps) {
+  const { t } = useTranslation();
   const { acting, handleRedeploy, handleRestart } = useKServiceActions(kservice);
   const disabled = acting !== null;
   const { canPatchKService, canDeletePods } = useKServicePermissions();
@@ -32,7 +34,7 @@ export function KServiceHeaderActions({ kservice }: KServiceHeaderActionsProps) 
     <>
       {canPatchKService === true && (
         <ActionButton
-          description="Redeploy Latest Revision"
+          description={t('Redeploy Latest Revision')}
           icon="mdi:update"
           onClick={handleRedeploy}
           iconButtonProps={{ disabled }}
@@ -40,7 +42,7 @@ export function KServiceHeaderActions({ kservice }: KServiceHeaderActionsProps) 
       )}
       {canDeletePods === true && (
         <ActionButton
-          description="Restart"
+          description={t('Restart')}
           icon="mdi:restart"
           onClick={handleRestart}
           iconButtonProps={{ disabled }}

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import type { SnackbarKey } from 'notistack';
 import { useSnackbar } from 'notistack';
@@ -177,6 +178,7 @@ export function useKServiceActions(
   kservice: KService | null | undefined,
   options?: UseKServiceActionsOptions
 ) {
+  const { t } = useTranslation();
   const [acting, setActing] = React.useState<KServiceActionId | null>(null);
   const { notifyError, notifyInfo } = useNotify();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
@@ -234,14 +236,14 @@ export function useKServiceActions(
           },
         },
       });
-      notifyInfo('Redeploy requested');
+      notifyInfo(t('Redeploy requested'));
       if (onDone) {
         onDone();
       }
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
       const detail = error?.message?.trim();
-      notifyError(detail ? `Redeploy failed: ${detail}` : 'Redeploy failed');
+      notifyError(detail ? t('Redeploy failed: {{ detail }}', { detail }) : t('Redeploy failed'));
     } finally {
       setActing(null);
     }
@@ -262,12 +264,12 @@ export function useKServiceActions(
     setActing('restart');
     try {
       if (!namespace) {
-        notifyError('Restart failed: namespace not found');
+        notifyError(t('Restart failed: namespace not found'));
         return;
       }
 
       if (!serviceName) {
-        notifyError('Restart failed: KService name not found');
+        notifyError(t('Restart failed: KService name not found'));
         return;
       }
 
@@ -289,7 +291,7 @@ export function useKServiceActions(
         });
 
       if (deletablePods.length === 0) {
-        notifyInfo('No pods found for KService');
+        notifyInfo(t('No pods found for KService'));
         return;
       }
 
@@ -319,7 +321,11 @@ export function useKServiceActions(
 
         try {
           setProgress(
-            `Restart in progress: deleting pod ${podName} (${i + 1}/${deletablePods.length})`
+            t('Restart in progress: deleting pod {{ podName }} ({{ current }}/{{ total }})', {
+              podName,
+              current: i + 1,
+              total: deletablePods.length,
+            })
           );
           await podToDelete.delete();
           const deleted = await waitForPodDeletion({
@@ -329,7 +335,7 @@ export function useKServiceActions(
             podName,
           });
           if (!deleted) {
-            notifyError(`Timed out waiting for pod deletion: ${podName}`);
+            notifyError(t('Timed out waiting for pod deletion: {{ podName }}', { podName }));
           }
         } catch (err: unknown) {
           failedCount += 1;
@@ -337,8 +343,8 @@ export function useKServiceActions(
           const detail = error?.message?.trim();
           notifyError(
             detail
-              ? `Failed to delete pod ${podName}: ${detail}`
-              : `Failed to delete pod ${podName}`
+              ? t('Failed to delete pod {{ podName }}: {{ detail }}', { podName, detail })
+              : t('Failed to delete pod {{ podName }}', { podName })
           );
         }
 
@@ -350,7 +356,9 @@ export function useKServiceActions(
         });
 
         if (!recovered) {
-          notifyError(`Timed out waiting for replacement pod after deleting ${podName}`);
+          notifyError(
+            t('Timed out waiting for replacement pod after deleting {{ podName }}', { podName })
+          );
         }
 
         if (i < deletablePods.length - 1) {
@@ -359,9 +367,14 @@ export function useKServiceActions(
       }
 
       if (failedCount > 0) {
-        notifyError(`Restart completed with errors (${failedCount}/${deletablePods.length})`);
+        notifyError(
+          t('Restart completed with errors ({{ failedCount }}/{{ total }})', {
+            failedCount,
+            total: deletablePods.length,
+          })
+        );
       } else {
-        notifyInfo('Restart completed successfully');
+        notifyInfo(t('Restart completed successfully'));
       }
       if (onDone) {
         onDone();
@@ -369,7 +382,7 @@ export function useKServiceActions(
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
       const detail = error?.message?.trim();
-      notifyError(detail ? `Restart failed: ${detail}` : 'Restart failed');
+      notifyError(detail ? t('Restart failed: {{ detail }}', { detail }) : t('Restart failed'));
     } finally {
       clearProgress();
       setActing(null);

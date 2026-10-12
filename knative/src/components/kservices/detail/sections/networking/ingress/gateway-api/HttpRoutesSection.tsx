@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ResourceTable,
   type ResourceTableColumn,
@@ -241,6 +242,7 @@ export default function HttpRoutesSection({
   serviceName,
   networkTemplates,
 }: HttpRoutesSectionProps) {
+  const { t } = useTranslation();
   const uniqueClusters = new Set(
     (routes ?? []).map(r => r.cluster).filter((c): c is string => Boolean(c))
   );
@@ -251,7 +253,7 @@ export default function HttpRoutesSection({
     'name',
     {
       id: 'role',
-      label: 'Role',
+      label: t('Role'),
       gridTemplate: 'min-content',
       getValue: item => {
         const r = item as HttpRoute;
@@ -268,7 +270,7 @@ export default function HttpRoutesSection({
         });
         const parts: string[] = [];
         if (isMain) parts.push('main');
-        for (const t of tags) parts.push(`tag:${t}`);
+        for (const tag of tags) parts.push(`tag:${tag}`);
         if (rolloutInvalidJson) parts.push('rollout:invalid');
         return parts.join(', ');
       },
@@ -296,18 +298,20 @@ export default function HttpRoutesSection({
 
         return (
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            {isMain && <Chip label="main" size="small" color="primary" />}
-            {tags.map(t => (
-              <Chip key={t} label={`tag: ${t}`} size="small" color="default" />
+            {isMain && <Chip label={t('main')} size="small" color="primary" />}
+            {tags.map(tag => (
+              <Chip key={tag} label={t('tag: {{ tag }}', { tag })} size="small" color="default" />
             ))}
-            {rolloutInvalidJson && <Chip label="rollout: invalid" size="small" color="warning" />}
+            {rolloutInvalidJson && (
+              <Chip label={t('rollout: invalid')} size="small" color="warning" />
+            )}
           </Stack>
         );
       },
     },
     {
       id: 'origin',
-      label: 'Origin',
+      label: t('Origin'),
       gridTemplate: 'min-content',
       getValue: item => {
         const r = item as HttpRoute;
@@ -340,7 +344,7 @@ export default function HttpRoutesSection({
     },
     {
       id: 'hostnames',
-      label: 'Hostnames',
+      label: t('Hostnames'),
       getValue: item => {
         const r = item as HttpRoute;
         return (r.spec?.hostnames ?? []).join(', ') || '';

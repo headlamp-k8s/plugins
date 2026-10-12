@@ -14,22 +14,24 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { useSnackbar } from 'notistack';
 import { KRevision, KService } from '../../../../resources/knative';
 
 export function useRevisionActions() {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
 
   const isSafeToDelete = (revision: KRevision, kservice: KService | null) => {
     if (!kservice) return { safe: true };
 
     const traffic = revision.getTrafficInService(kservice);
-    const hasActiveTraffic = traffic.some(t => (t.percent || 0) > 0 || !!t.tag);
+    const hasActiveTraffic = traffic.some(item => (item.percent || 0) > 0 || !!item.tag);
 
     if (hasActiveTraffic) {
       return {
         safe: false,
-        reason: 'Revision is currently receiving traffic or has an assigned tag.',
+        reason: t('Revision is currently receiving traffic or has an assigned tag.'),
       };
     }
 
@@ -45,14 +47,23 @@ export function useRevisionActions() {
 
     try {
       await revision.delete();
-      enqueueSnackbar(`Successfully deleted Revision ${revision.metadata.name}!`, {
-        variant: 'success',
-      });
+      enqueueSnackbar(
+        t('Successfully deleted Revision {{ name }}!', { name: revision.metadata.name }),
+        {
+          variant: 'success',
+        }
+      );
     } catch (err) {
       const errMessage = err instanceof Error ? err.message : String(err);
-      enqueueSnackbar(`Failed to delete Revision ${revision.metadata.name}: ${errMessage}`, {
-        variant: 'error',
-      });
+      enqueueSnackbar(
+        t('Failed to delete Revision {{ name }}: {{ error }}', {
+          name: revision.metadata.name,
+          error: errMessage,
+        }),
+        {
+          variant: 'error',
+        }
+      );
     }
   };
 

@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KRevision, KService } from '../../../../resources/knative';
 import { useRevisionActions } from '../hooks/useRevisionActions';
 import { useRevisionPermissions } from '../permissions/RevisionPermissionsProvider';
 
 export function RevisionDeleteHeaderButton({ revision }: { revision: KRevision }) {
+  const { t } = useTranslation();
   const { deleteRevision, isSafeToDelete } = useRevisionActions();
   const { canDeleteRevision } = useRevisionPermissions();
 
@@ -41,12 +43,12 @@ export function RevisionDeleteHeaderButton({ revision }: { revision: KRevision }
 
   if (isLoadingKService) {
     safe = false;
-    reason = 'Loading Traffic...';
+    reason = t('Loading Traffic...');
   }
 
   return (
     <ActionButton
-      description={safe ? 'Delete Revision' : reason}
+      description={safe ? t('Delete Revision') : reason}
       icon="mdi:delete"
       onClick={() => deleteRevision(revision, kservice ?? null)}
       iconButtonProps={{ disabled: !safe }}

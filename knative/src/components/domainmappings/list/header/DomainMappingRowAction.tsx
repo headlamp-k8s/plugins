@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useAuthorization } from '../../../../hooks/useAuthorization';
 import { ClusterDomainClaim, KnativeDomainMapping } from '../../../../resources/knative';
@@ -28,6 +29,7 @@ interface DomainMappingRowActionProps {
  * This component checks both ClusterDomainClaim create and DomainMapping patch permissions.
  */
 export function DomainMappingRowAction({ dm, onAction }: DomainMappingRowActionProps) {
+  const { t } = useTranslation();
   const cluster = dm.cluster;
   const namespace = dm.metadata.namespace;
 
@@ -53,7 +55,7 @@ export function DomainMappingRowAction({ dm, onAction }: DomainMappingRowActionP
 
   return (
     <ActionButton
-      description="Create ClusterDomainClaim"
+      description={t('Create ClusterDomainClaim')}
       buttonStyle="menu"
       onClick={onAction}
       icon="mdi:plus-circle"
