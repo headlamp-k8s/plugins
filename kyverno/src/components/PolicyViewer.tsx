@@ -34,7 +34,7 @@ import {
   PolicyRule,
 } from '../resources/kyvernoPolicy';
 import { ClusterPolicyReport, PolicyReport, PolicyReportResult } from '../resources/policyReport';
-import { columnId, ResultStatusChip, SeverityChip } from './common';
+import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
 
 interface PolicyViewerProps {
   name: string;
@@ -122,10 +122,10 @@ function YamlSection({ jsonData }: { jsonData: KyvernoPolicyInterface }) {
 }
 
 function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
 
-  // See ViolationsView for why headers are computed once and id is derived from
-  // the live header text.
+  // See ViolationsView/common.tsx for why headers are computed once and the
+  // table is remounted via key once translations are ready.
   const typeHeader = t('Type');
   const statusHeader = t('Status');
   const reasonHeader = t('Reason');
@@ -136,12 +136,12 @@ function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
     () => [
       {
         header: typeHeader,
-        id: columnId('type', typeHeader),
+        id: 'type',
         accessorFn: (c: PolicyCondition) => c.type,
       },
       {
         header: statusHeader,
-        id: columnId('status', statusHeader),
+        id: 'status',
         accessorFn: (c: PolicyCondition) => c.status,
         Cell: ({ row }: { row: { original: PolicyCondition } }) => (
           <Chip
@@ -159,17 +159,17 @@ function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
       },
       {
         header: reasonHeader,
-        id: columnId('reason', reasonHeader),
+        id: 'reason',
         accessorFn: (c: PolicyCondition) => c.reason || '-',
       },
       {
         header: messageHeader,
-        id: columnId('message', messageHeader),
+        id: 'message',
         accessorFn: (c: PolicyCondition) => c.message || '-',
       },
       {
         header: lastTransitionHeader,
-        id: columnId('lastTransition', lastTransitionHeader),
+        id: 'lastTransition',
         accessorFn: (c: PolicyCondition) => c.lastTransitionTime || '-',
       },
     ],
@@ -180,16 +180,16 @@ function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
 
   return (
     <SectionBox title={t('Conditions')}>
-      <Table columns={columns} data={conditions} />
+      <Table key={tableRemountKey(ready)} columns={columns} data={conditions} />
     </SectionBox>
   );
 }
 
 function RulesTable({ rules }: { rules: PolicyRule[] }) {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
 
-  // See ViolationsView for why headers are computed once and id is derived from
-  // the live header text.
+  // See ViolationsView/common.tsx for why headers are computed once and the
+  // table is remounted via key once translations are ready.
   const nameHeader = t('Name');
   const typeHeader = t('Type');
   const matchKindsHeader = t('Match Kinds');
@@ -199,12 +199,12 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
     () => [
       {
         header: nameHeader,
-        id: columnId('name', nameHeader),
+        id: 'name',
         accessorFn: (r: PolicyRule) => r.name,
       },
       {
         header: typeHeader,
-        id: columnId('type', typeHeader),
+        id: 'type',
         accessorFn: (r: PolicyRule) => ruleType(r),
         Cell: ({ row }: { row: { original: PolicyRule } }) => (
           <Chip label={ruleType(row.original)} size="small" variant="outlined" />
@@ -212,19 +212,26 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
       },
       {
         header: matchKindsHeader,
-        id: columnId('matchKinds', matchKindsHeader),
+        id: 'matchKinds',
         accessorFn: (r: PolicyRule) => matchKinds(r),
       },
       {
         header: messageHeader,
-        id: columnId('message', messageHeader),
+        id: 'message',
         accessorFn: (r: PolicyRule) => r.validate?.message || '-',
       },
     ],
     [nameHeader, typeHeader, matchKindsHeader, messageHeader]
   );
 
-  return <Table columns={columns} data={rules} emptyMessage={t('No rules defined.')} />;
+  return (
+    <Table
+      key={tableRemountKey(ready)}
+      columns={columns}
+      data={rules}
+      emptyMessage={t('No rules defined.')}
+    />
+  );
 }
 
 function AssociatedReportsSection({ policyName }: { policyName: string }) {
@@ -284,10 +291,10 @@ function AssociatedReportsTable({
 }: {
   results: (PolicyReportResult & { reportName: string; reportNamespace?: string })[];
 }) {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
 
-  // See ViolationsView for why headers are computed once and id is derived from
-  // the live header text.
+  // See ViolationsView/common.tsx for why headers are computed once and the
+  // table is remounted via key once translations are ready.
   const ruleHeader = t('Rule');
   const resultHeader = t('Result');
   const severityHeader = t('Severity');
@@ -298,12 +305,12 @@ function AssociatedReportsTable({
     () => [
       {
         header: ruleHeader,
-        id: columnId('rule', ruleHeader),
+        id: 'rule',
         accessorFn: (r: PolicyReportResult) => r.rule || '-',
       },
       {
         header: resultHeader,
-        id: columnId('result', resultHeader),
+        id: 'result',
         accessorFn: (r: PolicyReportResult) => r.result,
         Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
           <ResultStatusChip status={row.original.result} />
@@ -311,7 +318,7 @@ function AssociatedReportsTable({
       },
       {
         header: severityHeader,
-        id: columnId('severity', severityHeader),
+        id: 'severity',
         accessorFn: (r: PolicyReportResult) => r.severity || '',
         Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
           <SeverityChip severity={row.original.severity} />
@@ -319,7 +326,7 @@ function AssociatedReportsTable({
       },
       {
         header: resourceHeader,
-        id: columnId('resource', resourceHeader),
+        id: 'resource',
         accessorFn: (r: PolicyReportResult) =>
           r.resources
             ?.map(res => `${res.namespace ? res.namespace + '/' : ''}${res.kind}/${res.name}`)
@@ -327,7 +334,7 @@ function AssociatedReportsTable({
       },
       {
         header: messageHeader,
-        id: columnId('message', messageHeader),
+        id: 'message',
         accessorFn: (r: PolicyReportResult) => r.message || '-',
       },
     ],
@@ -336,6 +343,7 @@ function AssociatedReportsTable({
 
   return (
     <Table
+      key={tableRemountKey(ready)}
       columns={columns}
       data={results}
       emptyMessage={t('No report results found for this policy.')}

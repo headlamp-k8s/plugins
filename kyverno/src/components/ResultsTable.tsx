@@ -18,14 +18,15 @@ import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
 import { PolicyReportResult } from '../resources/policyReport';
-import { columnId, ResultStatusChip, SeverityChip } from './common';
+import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
 
 export function ResultsTable({ results }: { results: PolicyReportResult[] }) {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
 
-  // See ViolationsView for why headers are computed once and id is derived from
-  // the live header text: Table memoizes header cells by id alone, so an id that
-  // doesn't change with the header text would keep a stale pre-translation label.
+  // See ViolationsView/common.tsx for why headers are computed once and the
+  // table is remounted via key once translations are ready: Table memoizes
+  // header cells by id alone, so a stale pre-translation label would otherwise
+  // stick around even once the real translation arrives.
   const policyHeader = t('Policy');
   const ruleHeader = t('Rule');
   const resultHeader = t('Result');
@@ -38,17 +39,17 @@ export function ResultsTable({ results }: { results: PolicyReportResult[] }) {
     () => [
       {
         header: policyHeader,
-        id: columnId('policy', policyHeader),
+        id: 'policy',
         accessorFn: (r: PolicyReportResult) => r.policy,
       },
       {
         header: ruleHeader,
-        id: columnId('rule', ruleHeader),
+        id: 'rule',
         accessorFn: (r: PolicyReportResult) => r.rule || '-',
       },
       {
         header: resultHeader,
-        id: columnId('result', resultHeader),
+        id: 'result',
         accessorFn: (r: PolicyReportResult) => r.result,
         Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
           <ResultStatusChip status={row.original.result} />
@@ -56,7 +57,7 @@ export function ResultsTable({ results }: { results: PolicyReportResult[] }) {
       },
       {
         header: severityHeader,
-        id: columnId('severity', severityHeader),
+        id: 'severity',
         accessorFn: (r: PolicyReportResult) => r.severity || '',
         Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
           <SeverityChip severity={row.original.severity} />
@@ -64,17 +65,17 @@ export function ResultsTable({ results }: { results: PolicyReportResult[] }) {
       },
       {
         header: categoryHeader,
-        id: columnId('category', categoryHeader),
+        id: 'category',
         accessorFn: (r: PolicyReportResult) => r.category || '-',
       },
       {
         header: messageHeader,
-        id: columnId('message', messageHeader),
+        id: 'message',
         accessorFn: (r: PolicyReportResult) => r.message || '-',
       },
       {
         header: resourceHeader,
-        id: columnId('resource', resourceHeader),
+        id: 'resource',
         accessorFn: (r: PolicyReportResult) =>
           r.resources?.map(res => `${res.kind}/${res.name}`).join(', ') || '-',
       },
@@ -90,5 +91,12 @@ export function ResultsTable({ results }: { results: PolicyReportResult[] }) {
     ]
   );
 
-  return <Table columns={columns} data={results} emptyMessage={t('No results found.')} />;
+  return (
+    <Table
+      key={tableRemountKey(ready)}
+      columns={columns}
+      data={results}
+      emptyMessage={t('No results found.')}
+    />
+  );
 }

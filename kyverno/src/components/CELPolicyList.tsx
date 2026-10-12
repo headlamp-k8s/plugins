@@ -29,7 +29,7 @@ import {
   ValidatingPolicy,
 } from '../resources/celPolicies';
 import { CELPolicyViewer } from './CELPolicyViewer';
-import { columnId } from './common';
+import { tableRemountKey } from './common';
 
 // Namespaced* extends its cluster-scoped counterpart (see celPolicies.ts), so
 // instances of either are already assignable to this union, no widening needed.
@@ -56,14 +56,15 @@ function ReadyChip({ ready }: { ready: boolean }) {
 }
 
 export function ValidatingPolicyList() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t('Validating Policies')}
       resourceClass={ValidatingPolicy}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -77,19 +78,19 @@ export function ValidatingPolicyList() {
           ),
         },
         {
-          id: columnId('ready', t('Ready')),
+          id: 'ready',
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => <ReadyChip ready={item.ready} />,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('actions', t('Actions')),
+          id: 'actions',
           label: t('Actions'),
           getValue: item => item.validationActions.join(', '),
         },
         {
-          id: columnId('validations', t('Validations')),
+          id: 'validations',
           label: t('Validations'),
           getValue: item => item.validationCount,
           gridTemplate: '0.5fr',
@@ -101,14 +102,15 @@ export function ValidatingPolicyList() {
 }
 
 export function MutatingPolicyList() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t('Mutating Policies')}
       resourceClass={MutatingPolicy}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -122,14 +124,14 @@ export function MutatingPolicyList() {
           ),
         },
         {
-          id: columnId('ready', t('Ready')),
+          id: 'ready',
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => <ReadyChip ready={item.ready} />,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('mutations', t('Mutations')),
+          id: 'mutations',
           label: t('Mutations'),
           getValue: item => item.mutationCount,
           gridTemplate: '0.5fr',
@@ -141,14 +143,15 @@ export function MutatingPolicyList() {
 }
 
 export function GeneratingPolicyList() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t('Generating Policies')}
       resourceClass={GeneratingPolicy}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -162,14 +165,14 @@ export function GeneratingPolicyList() {
           ),
         },
         {
-          id: columnId('ready', t('Ready')),
+          id: 'ready',
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => <ReadyChip ready={item.ready} />,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('generators', t('Generators')),
+          id: 'generators',
           label: t('Generators'),
           getValue: item => item.generateCount,
           gridTemplate: '0.5fr',
@@ -181,14 +184,15 @@ export function GeneratingPolicyList() {
 }
 
 export function DeletingPolicyList() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t('Deleting Policies')}
       resourceClass={DeletingPolicy}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -202,14 +206,14 @@ export function DeletingPolicyList() {
           ),
         },
         {
-          id: columnId('ready', t('Ready')),
+          id: 'ready',
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => <ReadyChip ready={item.ready} />,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('schedule', t('Schedule')),
+          id: 'schedule',
           label: t('Schedule'),
           getValue: item => item.schedule,
         },

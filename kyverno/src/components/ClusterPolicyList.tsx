@@ -20,7 +20,7 @@ import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents'
 import { Box, Chip, Link as MuiLink, Typography } from '@mui/material';
 import { usePolicyResultCounts } from '../hooks/usePolicyResultCounts';
 import { KyvernoClusterPolicy } from '../resources/kyvernoPolicy';
-import { columnId } from './common';
+import { tableRemountKey } from './common';
 import { PolicyViewer } from './PolicyViewer';
 
 function openClusterPolicyActivity(item: KyvernoClusterPolicy) {
@@ -34,15 +34,16 @@ function openClusterPolicyActivity(item: KyvernoClusterPolicy) {
 }
 
 export function ClusterPolicyList() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   const counts = usePolicyResultCounts();
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t('Cluster Policies')}
       resourceClass={KyvernoClusterPolicy}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -56,7 +57,7 @@ export function ClusterPolicyList() {
           ),
         },
         {
-          id: columnId('ready', t('Ready')),
+          id: 'ready',
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => (
@@ -69,19 +70,19 @@ export function ClusterPolicyList() {
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('action', t('Action')),
+          id: 'action',
           label: t('Action'),
           getValue: item => item.validationFailureAction,
           gridTemplate: '0.7fr',
         },
         {
-          id: columnId('background', t('Background')),
+          id: 'background',
           label: t('Background'),
           getValue: item => (item.background ? 'True' : 'False'),
           gridTemplate: '0.7fr',
         },
         {
-          id: columnId('ruleTypes', t('Rule Types')),
+          id: 'ruleTypes',
           label: t('Rule Types'),
           getValue: item => item.ruleTypes.join(', '),
           render: item => (
@@ -93,13 +94,13 @@ export function ClusterPolicyList() {
           ),
         },
         {
-          id: columnId('rules', t('Rules')),
+          id: 'rules',
           label: t('Rules'),
           getValue: item => item.rules.length,
           gridTemplate: '0.4fr',
         },
         {
-          id: columnId('results', t('Results')),
+          id: 'results',
           label: t('Results'),
           getValue: item => counts.forCluster(item.jsonData.metadata.name)?.total ?? 0,
           render: item => {

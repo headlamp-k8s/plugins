@@ -19,7 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link as MuiLink } from '@mui/material';
 import { ClusterEphemeralReport, EphemeralReport } from '../resources/kyvernoReports';
-import { columnId, SummaryChips } from './common';
+import { SummaryChips, tableRemountKey } from './common';
 import { ReportClass, ReportLike, ReportViewer } from './ReportViewer';
 
 export type AnyKyvernoReportClass = typeof EphemeralReport | typeof ClusterEphemeralReport;
@@ -37,7 +37,7 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
   resourceClass,
   activityIdPrefix,
 }: KyvernoReportListProps<T>) {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   const isNamespaced = resourceClass.isNamespaced;
 
   function openReport(item: InstanceType<T>) {
@@ -61,11 +61,12 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
 
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t(titleKey)}
       resourceClass={resourceClass}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -80,7 +81,7 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
         },
         ...(isNamespaced ? (['namespace'] as const) : []),
         {
-          id: columnId('owner', t('Owner')),
+          id: 'owner',
           label: t('Owner'),
           getValue: item => {
             const o = item.scope;
@@ -89,37 +90,37 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
           },
         },
         {
-          id: columnId('pass', t('Pass')),
+          id: 'pass',
           label: t('Pass'),
           getValue: item => item.summary.pass || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('fail', t('Fail')),
+          id: 'fail',
           label: t('Fail'),
           getValue: item => item.summary.fail || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('warn', t('Warn')),
+          id: 'warn',
           label: t('Warn'),
           getValue: item => item.summary.warn || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('error', t('Error')),
+          id: 'error',
           label: t('Error'),
           getValue: item => item.summary.error || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('skip', t('Skip')),
+          id: 'skip',
           label: t('Skip'),
           getValue: item => item.summary.skip || 0,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('summary', t('Summary')),
+          id: 'summary',
           label: t('Summary'),
           render: item => <SummaryChips summary={item.summary} />,
           getValue: item => item.totalResults,

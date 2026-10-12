@@ -19,7 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip, Link as MuiLink } from '@mui/material';
 import { ImageValidatingPolicy, NamespacedImageValidatingPolicy } from '../resources/celPolicies';
-import { columnId } from './common';
+import { tableRemountKey } from './common';
 import { ImageValidatingPolicyViewer } from './ImageValidatingPolicyViewer';
 
 function openActivity(item: ImageValidatingPolicy | NamespacedImageValidatingPolicy) {
@@ -39,14 +39,15 @@ function openActivity(item: ImageValidatingPolicy | NamespacedImageValidatingPol
 }
 
 export function ImageValidatingPolicyList() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t('Image Validating Policies')}
       resourceClass={ImageValidatingPolicy}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -60,7 +61,7 @@ export function ImageValidatingPolicyList() {
           ),
         },
         {
-          id: columnId('ready', t('Ready')),
+          id: 'ready',
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => (
@@ -73,12 +74,12 @@ export function ImageValidatingPolicyList() {
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('images', t('Image Patterns')),
+          id: 'images',
           label: t('Image Patterns'),
           getValue: item => item.imagePatterns.join(', ') || '-',
         },
         {
-          id: columnId('attestors', t('Attestors')),
+          id: 'attestors',
           label: t('Attestors'),
           getValue: item => item.attestorCount,
           gridTemplate: '0.5fr',

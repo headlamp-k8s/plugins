@@ -36,14 +36,23 @@ const severityColors: Record<string, 'error' | 'warning' | 'info' | 'default'> =
 };
 
 /**
- * Headlamp's shared Table memoizes header cells by column id alone and body
- * cells by accessorFn value alone, ignoring the translated header/cell text.
- * If a column's first render happens to catch t() before its resources are
- * loaded, the stale (blank) label sticks forever. Folding the live header
- * text into the id busts that cache as soon as the real translation lands.
+ * Headlamp's shared Table/ResourceListView memoizes header cells by column id alone, ignoring the
+ * translated header text, so a column whose first render catches t() before its resources are
+ * loaded can get stuck showing a blank or default-locale label even once the real translation
+ * arrives. The id itself has to stay a stable, semantic string though, never derived from the
+ * live header text as an earlier version of this fix did: Table/ResourceListView treats id as
+ * public state (Headlamp persists column sort/visibility by id, and
+ * registerResourceTableColumnsProcessor integrations can target a specific id), so a
+ * translation-dependent id invalidates existing user settings the moment the real translation
+ * lands, and again on every later locale change.
+ *
+ * Keying the table itself with this value is the actual fix: `ready` (from useTranslation())
+ * flips false -> true exactly once translations finish loading, so passing it through here forces
+ * React to fully remount the table at that point, discarding Headlamp's stale memoized header
+ * cells along with the rest of the old component instance, without the column ids ever changing.
  */
-export function columnId(key: string, header: string): string {
-  return `${key}-${header}`;
+export function tableRemountKey(ready: boolean): string {
+  return ready ? 'translations-ready' : 'translations-loading';
 }
 
 export function ResultStatusChip({ status }: { status: PolicyResultStatus }) {

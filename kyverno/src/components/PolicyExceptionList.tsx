@@ -19,7 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip, Link as MuiLink } from '@mui/material';
 import { PolicyException } from '../resources/policyException';
-import { columnId } from './common';
+import { tableRemountKey } from './common';
 import { ExceptionViewer } from './ExceptionViewer';
 
 function openExceptionActivity(item: PolicyException) {
@@ -38,14 +38,15 @@ function openExceptionActivity(item: PolicyException) {
 }
 
 export function PolicyExceptionList() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t('Policy Exceptions')}
       resourceClass={PolicyException}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
@@ -60,7 +61,7 @@ export function PolicyExceptionList() {
         },
         'namespace',
         {
-          id: columnId('policies', t('Policies')),
+          id: 'policies',
           label: t('Policies'),
           getValue: item => item.policyNames.join(', '),
           render: item => (
@@ -72,13 +73,13 @@ export function PolicyExceptionList() {
           ),
         },
         {
-          id: columnId('exceptions', t('Rules')),
+          id: 'exceptions',
           label: t('Rules'),
           getValue: item => item.exceptions.length,
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('background', t('Background')),
+          id: 'background',
           label: t('Background'),
           getValue: item => (item.background ? 'True' : 'False'),
           gridTemplate: '0.5fr',

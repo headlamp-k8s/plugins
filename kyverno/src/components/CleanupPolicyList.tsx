@@ -18,23 +18,24 @@ import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip } from '@mui/material';
 import { CleanupPolicy, ClusterCleanupPolicy } from '../resources/cleanupPolicy';
-import { columnId } from './common';
+import { tableRemountKey } from './common';
 
 export function CleanupPolicyList() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t('Cleanup Policies')}
       resourceClass={CleanupPolicy}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
         },
         'namespace',
         {
-          id: columnId('ready', t('Ready')),
+          id: 'ready',
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => (
@@ -47,12 +48,12 @@ export function CleanupPolicyList() {
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('schedule', t('Schedule')),
+          id: 'schedule',
           label: t('Schedule'),
           getValue: item => item.schedule,
         },
         {
-          id: columnId('lastExecution', t('Last Execution')),
+          id: 'lastExecution',
           label: t('Last Execution'),
           getValue: item => item.lastExecutionTime || '-',
         },
@@ -63,19 +64,20 @@ export function CleanupPolicyList() {
 }
 
 export function ClusterCleanupPolicyList() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready)}
       title={t('Cluster Cleanup Policies')}
       resourceClass={ClusterCleanupPolicy}
       columns={[
         {
-          id: columnId('name', t('Name')),
+          id: 'name',
           label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
         },
         {
-          id: columnId('ready', t('Ready')),
+          id: 'ready',
           label: t('Ready'),
           getValue: item => (item.ready ? 'True' : 'False'),
           render: item => (
@@ -88,12 +90,12 @@ export function ClusterCleanupPolicyList() {
           gridTemplate: '0.5fr',
         },
         {
-          id: columnId('schedule', t('Schedule')),
+          id: 'schedule',
           label: t('Schedule'),
           getValue: item => item.schedule,
         },
         {
-          id: columnId('lastExecution', t('Last Execution')),
+          id: 'lastExecution',
           label: t('Last Execution'),
           getValue: item => item.lastExecutionTime || '-',
         },

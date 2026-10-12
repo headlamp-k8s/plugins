@@ -33,7 +33,7 @@ import {
   ImageValidatingPolicy,
   NamespacedImageValidatingPolicy,
 } from '../resources/celPolicies';
-import { columnId } from './common';
+import { tableRemountKey } from './common';
 
 interface ImageValidatingPolicyViewerProps {
   name: string;
@@ -54,12 +54,12 @@ function PolicyContent({
 }: {
   policy: ImageValidatingPolicy | NamespacedImageValidatingPolicy;
 }) {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   const annotations = policy.jsonData.metadata.annotations || {};
   const namespace = policy.jsonData.metadata.namespace;
 
-  // See ViolationsView for why headers are computed once and id is derived from
-  // the live header text, applied here to every Table in this viewer.
+  // See ViolationsView/common.tsx for why headers are computed once and every Table in this
+  // viewer is remounted via key once translations are ready.
   const patternHeader = t('Pattern');
   const imageRefTypeHeader = t('Type');
   const attestorNameHeader = t('Name');
@@ -74,12 +74,12 @@ function PolicyContent({
     () => [
       {
         header: patternHeader,
-        id: columnId('pattern', patternHeader),
+        id: 'pattern',
         accessorFn: (r: ImageMatchReference) => r.glob || r.expression || '-',
       },
       {
         header: imageRefTypeHeader,
-        id: columnId('imageRefType', imageRefTypeHeader),
+        id: 'imageRefType',
         accessorFn: (r: ImageMatchReference) => (r.glob ? 'Glob' : 'CEL Expression'),
         Cell: ({ row }: { row: { original: ImageMatchReference } }) => (
           <Chip label={row.original.glob ? 'Glob' : 'CEL'} size="small" variant="outlined" />
@@ -93,12 +93,12 @@ function PolicyContent({
     () => [
       {
         header: attestorNameHeader,
-        id: columnId('attestorName', attestorNameHeader),
+        id: 'attestorName',
         accessorFn: (a: Attestor) => a.name || '-',
       },
       {
         header: attestorTypeHeader,
-        id: columnId('attestorType', attestorTypeHeader),
+        id: 'attestorType',
         accessorFn: (a: Attestor) => attestorType(a),
         Cell: ({ row }: { row: { original: Attestor } }) => (
           <Chip label={attestorType(row.original)} size="small" variant="outlined" />
@@ -112,17 +112,17 @@ function PolicyContent({
     () => [
       {
         header: attestationNameHeader,
-        id: columnId('attestationName', attestationNameHeader),
+        id: 'attestationName',
         accessorFn: (a: ImageAttestation) => a.name,
       },
       {
         header: attestationTypeHeader,
-        id: columnId('attestationType', attestationTypeHeader),
+        id: 'attestationType',
         accessorFn: (a: ImageAttestation) => a.intoto?.type || a.referrer?.type || '-',
       },
       {
         header: formatHeader,
-        id: columnId('format', formatHeader),
+        id: 'format',
         accessorFn: (a: ImageAttestation) => (a.intoto ? 'In-Toto' : a.referrer ? 'Referrer' : '-'),
         Cell: ({ row }: { row: { original: ImageAttestation } }) => (
           <Chip
@@ -140,12 +140,12 @@ function PolicyContent({
     () => [
       {
         header: expressionHeader,
-        id: columnId('expression', expressionHeader),
+        id: 'expression',
         accessorFn: (v: CELValidation) => v.expression,
       },
       {
         header: validationMessageHeader,
-        id: columnId('validationMessage', validationMessageHeader),
+        id: 'validationMessage',
         accessorFn: (v: CELValidation) => v.message || '-',
       },
     ],
@@ -213,6 +213,7 @@ function PolicyContent({
         })}
       >
         <Table
+          key={tableRemountKey(ready)}
           columns={imageReferenceColumns}
           data={policy.spec.matchImageReferences || []}
           emptyMessage={t('No image references defined.')}
@@ -221,6 +222,7 @@ function PolicyContent({
 
       <SectionBox title={t('Attestors ({{count}})', { count: policy.spec.attestors?.length || 0 })}>
         <Table
+          key={tableRemountKey(ready)}
           columns={attestorColumns}
           data={policy.spec.attestors || []}
           emptyMessage={t('No attestors defined.')}
@@ -231,13 +233,21 @@ function PolicyContent({
         <SectionBox
           title={t('Attestations ({{count}})', { count: policy.spec.attestations.length })}
         >
-          <Table columns={attestationColumns} data={policy.spec.attestations} />
+          <Table
+            key={tableRemountKey(ready)}
+            columns={attestationColumns}
+            data={policy.spec.attestations}
+          />
         </SectionBox>
       )}
 
       {policy.spec.validations && policy.spec.validations.length > 0 && (
         <SectionBox title={t('Validations ({{count}})', { count: policy.spec.validations.length })}>
-          <Table columns={validationColumns} data={policy.spec.validations} />
+          <Table
+            key={tableRemountKey(ready)}
+            columns={validationColumns}
+            data={policy.spec.validations}
+          />
         </SectionBox>
       )}
     </Box>

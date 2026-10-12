@@ -36,7 +36,7 @@ import {
   PolicyReportResult,
   PolicyResultStatus,
 } from '../resources/policyReport';
-import { columnId, ResultStatusChip, SeverityChip } from './common';
+import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
 
 type GroupBy = 'none' | 'policy' | 'namespace' | 'kind';
 
@@ -153,7 +153,7 @@ function StatusFilterChips({
 }
 
 export function ViolationsView() {
-  const { t } = useTranslation();
+  const { ready, t } = useTranslation();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
@@ -183,33 +183,33 @@ export function ViolationsView() {
     () => [
       {
         header: resourceHeader,
-        id: columnId('resource', resourceHeader),
+        id: 'resource',
         accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
       },
       {
         header: kindHeader,
-        id: columnId('kind', kindHeader),
+        id: 'kind',
         accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
       },
       {
         header: namespaceHeader,
-        id: columnId('namespace', namespaceHeader),
+        id: 'namespace',
         accessorFn: (v: ViolationEntry) =>
           v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
       },
       {
         header: policyHeader,
-        id: columnId('policy', policyHeader),
+        id: 'policy',
         accessorFn: (v: ViolationEntry) => v.policy,
       },
       {
         header: ruleHeader,
-        id: columnId('rule', ruleHeader),
+        id: 'rule',
         accessorFn: (v: ViolationEntry) => v.rule || '-',
       },
       {
         header: severityHeader,
-        id: columnId('severity', severityHeader),
+        id: 'severity',
         accessorFn: (v: ViolationEntry) => v.severity || '',
         Cell: ({ row }: { row: { original: ViolationEntry } }) => (
           <SeverityChip severity={row.original.severity} />
@@ -217,7 +217,7 @@ export function ViolationsView() {
       },
       {
         header: resultHeader,
-        id: columnId('result', resultHeader),
+        id: 'result',
         accessorFn: (v: ViolationEntry) => v.result,
         Cell: ({ row }: { row: { original: ViolationEntry } }) => (
           <ResultStatusChip status={row.original.result} />
@@ -225,7 +225,7 @@ export function ViolationsView() {
       },
       {
         header: messageHeader,
-        id: columnId('message', messageHeader),
+        id: 'message',
         accessorFn: (v: ViolationEntry) => v.message || '-',
       },
     ],
@@ -344,11 +344,21 @@ export function ViolationsView() {
                 <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                   {group} ({entries.length})
                 </Typography>
-                <Table columns={violationColumns} data={entries} rowsPerPage={[25, 50, 100]} />
+                <Table
+                  key={tableRemountKey(ready)}
+                  columns={violationColumns}
+                  data={entries}
+                  rowsPerPage={[25, 50, 100]}
+                />
               </Box>
             ))
         ) : (
-          <Table columns={violationColumns} data={filteredViolations} rowsPerPage={[25, 50, 100]} />
+          <Table
+            key={tableRemountKey(ready)}
+            columns={violationColumns}
+            data={filteredViolations}
+            rowsPerPage={[25, 50, 100]}
+          />
         )}
       </SectionBox>
     </Box>
