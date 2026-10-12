@@ -24,7 +24,7 @@ export function Settings(props) {
       name: 'Namespace',
       value: (
         <TextField
-          helperText="Please enter the namespace where Opencost is Installed. Not used when Service URL below is a direct http(s) URL."
+          helperText="Enter the namespace where OpenCost is installed. This isn't used when the Service URL below is a direct HTTP(S) URL."
           defaultValue={data?.namespace ? data.namespace : ''}
           onChange={e => onDataChange({ ...data, namespace: e.target.value })}
           variant="standard"
