@@ -101,14 +101,16 @@ export default function ChartDetails({ vanillaHelmRepo }: ChartDetailsProps) {
 
   return (
     <>
-      <EditorDialog
-        openEditor={openEditor}
-        chart={chart}
-        handleEditor={open => {
-          setOpenEditor(open);
-        }}
-        chartProfile={vanillaHelmRepo}
-      />
+      {chart && (
+        <EditorDialog
+          openEditor={openEditor}
+          chart={chart}
+          handleEditor={open => {
+            setOpenEditor(open);
+          }}
+          chartProfile={vanillaHelmRepo}
+        />
+      )}
       <SectionBox
         title={
           <SectionHeader
