@@ -63,8 +63,12 @@ export function parseGoDurationMs(duration: string): number | undefined {
   return matched ? totalMs : undefined;
 }
 
-/** Next run for `@every <duration>`, measured from `from` (Velero/robfig semantics). */
-function getNextEveryRun(expression: string, from: Date): Date | undefined {
+/**
+ * Next run for `@every <duration>`.
+ * Advances from `anchor` (last backup / schedule creation) by the interval until after `now`.
+ * When no anchor is provided, the next run is `now + interval` (same as measuring from now).
+ */
+function getNextEveryRun(expression: string, now: Date, anchor?: Date): Date | undefined {
   const match = expression.match(EVERY_PREFIX);
   if (!match) {
     return undefined;
@@ -73,13 +77,23 @@ function getNextEveryRun(expression: string, from: Date): Date | undefined {
   if (ms === undefined || ms <= 0) {
     return undefined;
   }
-  return new Date(from.getTime() + ms);
+
+  let next = (anchor ?? now).getTime() + ms;
+  while (next <= now.getTime()) {
+    next += ms;
+  }
+  return new Date(next);
 }
 
-/** Returns the next run time for a Velero cron schedule, or undefined when invalid. */
+/**
+ * Returns the next run time for a Velero cron schedule, or undefined when invalid.
+ * For `@every`, pass `everyAnchor` (status.lastBackup or creationTimestamp) so the
+ * interval is measured from that point rather than from `from` alone.
+ */
 export function getNextScheduledRun(
   cronSchedule: string | undefined,
-  from: Date = new Date()
+  from: Date = new Date(),
+  everyAnchor?: Date
 ): Date | undefined {
   const expression = cronSchedule?.trim();
   if (!expression) {
@@ -89,7 +103,7 @@ export function getNextScheduledRun(
   const { cron, tz } = parseVeleroCron(expression);
 
   if (EVERY_PREFIX.test(cron)) {
-    return getNextEveryRun(cron, from);
+    return getNextEveryRun(cron, from, everyAnchor);
   }
 
   try {
@@ -107,9 +121,10 @@ export function getNextScheduledRun(
 /** Locale-formatted next run time for display in the coverage panel. */
 export function formatNextScheduledRun(
   cronSchedule: string | undefined,
-  from: Date = new Date()
+  from: Date = new Date(),
+  everyAnchor?: Date
 ): string {
-  const next = getNextScheduledRun(cronSchedule, from);
+  const next = getNextScheduledRun(cronSchedule, from, everyAnchor);
   if (!next) {
     return 'N/A';
   }

@@ -84,8 +84,8 @@ export const NamespaceSummary: Story = {
   args: {
     installed: true,
     loading: false,
-    sectionTitle: 'Velero backup schedules',
-    emptyMessage: 'No Velero schedule covers this namespace.',
+    sectionTitle: 'Velero schedules targeting this namespace',
+    emptyMessage: 'No Velero schedule targets this namespace.',
     coverage: [
       {
         scheduleName: 'default-deployments-daily',

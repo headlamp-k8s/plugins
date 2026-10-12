@@ -57,8 +57,8 @@ function NamespaceBackupCoveragePanel(props: { namespace: string }) {
       loading={loading}
       error={error}
       coverage={coverage}
-      emptyMessage="No Velero schedule covers this namespace."
-      sectionTitle="Velero backup schedules"
+      emptyMessage="No Velero schedule targets this namespace."
+      sectionTitle="Velero schedules targeting this namespace"
     />
   );
 }

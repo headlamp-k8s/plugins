@@ -387,6 +387,18 @@ describe('scheduleCoversWorkload', () => {
     ).toBe(true);
   });
 
+  test('does not treat unsupported pvcs alias as covering PVCs', () => {
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'pvcs-alias',
+          template: { includedNamespaces: ['default'], includedResources: ['pvcs'] },
+        },
+        { namespace: 'default', labels: {}, resourceKind: 'persistentvolumeclaims' }
+      )
+    ).toBe(false);
+  });
+
   test('rejects resource type listed in excludedResources', () => {
     expect(
       scheduleCoversWorkload(

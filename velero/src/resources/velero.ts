@@ -78,6 +78,11 @@ export class VeleroSchedule extends KubeObject<VeleroScheduleInterface> {
     return this.jsonData.status?.phase;
   }
 
+  /** Timestamp of the last backup created from this schedule (status.lastBackup). */
+  get lastBackupTime(): string | undefined {
+    return this.jsonData.status?.lastBackup;
+  }
+
   get validationErrors(): string[] {
     return this.jsonData.status?.validationErrors ?? [];
   }

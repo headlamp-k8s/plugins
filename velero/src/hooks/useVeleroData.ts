@@ -17,6 +17,8 @@ function toScheduleInput(schedule: VeleroSchedule): ScheduleCoverageInput {
     paused: schedule.paused,
     phase: schedule.phase,
     template: schedule.template,
+    creationTimestamp: schedule.metadata.creationTimestamp,
+    lastBackupTime: schedule.lastBackupTime,
   };
 }
 
@@ -40,7 +42,7 @@ export interface VeleroDataState {
   backups: BackupCoverageInput[];
   /** Schedules whose template covers the workload, with last-backup metadata. */
   getCoverageForWorkload: (target: WorkloadTarget) => ScheduleCoverageResult[];
-  /** Schedules that include the namespace in their template. */
+  /** Schedules whose template targets the namespace (namespace filters only). */
   getSchedulesForNamespace: (namespace: string) => ScheduleCoverageResult[];
 }
 
