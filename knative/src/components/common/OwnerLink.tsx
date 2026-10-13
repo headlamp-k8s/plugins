@@ -18,6 +18,7 @@ import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import {
   getKnativeCrdName,
+  KnativeBroker,
   KnativeCertificate,
   KnativeConfiguration,
   KnativeImage,
@@ -30,6 +31,7 @@ import {
 import { EmptyValue, TextValue } from './ResourceListCells';
 
 const ownerResourceClasses = [
+  KnativeBroker,
   KnativeConfiguration,
   KnativeRoute,
   KnativePodAutoscaler,
@@ -59,20 +61,46 @@ const ownerRouteNames = new Map<string, string>([
   ['v1/Secret', 'secret'],
 ]);
 
-function getOwnerCrdName(owner: KubeOwnerReference): string | undefined {
+/** The parts of an object reference needed to link to the object. */
+type ResourceReference = Pick<KubeOwnerReference, 'apiVersion' | 'kind' | 'name'>;
+
+/**
+ * Finds the CRD name of a Knative kind that the plugin links to Headlamp's Custom Resource view.
+ *
+ * @param owner - The referenced object.
+ * @returns The CRD name, for example `routes.serving.knative.dev`, or undefined for other kinds.
+ */
+function getOwnerCrdName(owner: ResourceReference): string | undefined {
   return ownerCrdNames.get(`${owner.apiVersion}/${owner.kind}`);
 }
 
+/**
+ * Links to a referenced object: the plugin's pages for Knative Services and Revisions, Headlamp's
+ * pages for Services and Secrets, and Headlamp's Custom Resource view for the other Knative kinds
+ * the plugin knows.
+ *
+ * @param props - The object to link to, where it is, and the text to show.
+ * @returns A link to the object, its name or label as text when it cannot be linked, or an empty
+ * value when there is no object.
+ */
 export function OwnerLink({
   owner,
   namespace,
   cluster,
+  label,
 }: {
-  owner?: KubeOwnerReference;
+  /** The object to link to. */
+  owner?: ResourceReference;
+  /** Namespace of the object; `default` when it is not set. */
   namespace?: string;
+  /** Cluster of the object. */
   cluster?: string;
+  /** Text to show instead of the object's name. */
+  label?: string;
 }) {
   if (!owner) return <EmptyValue />;
+
+  const text = label || owner.name;
 
   const routeName = ownerRouteNames.get(`${owner.apiVersion}/${owner.kind}`);
   if (routeName) {
@@ -82,13 +110,13 @@ export function OwnerLink({
         params={{ namespace: namespace || 'default', name: owner.name }}
         activeCluster={cluster}
       >
-        {owner.name}
+        {text}
       </Link>
     );
   }
 
   const crd = getOwnerCrdName(owner);
-  if (!crd) return <TextValue value={owner.name} />;
+  if (!crd) return <TextValue value={text} />;
 
   return (
     <Link
@@ -96,7 +124,7 @@ export function OwnerLink({
       params={{ crd, namespace: namespace || 'default', crName: owner.name }}
       activeCluster={cluster}
     >
-      {owner.name}
+      {text}
     </Link>
   );
 }

@@ -1,0 +1,77 @@
+/*
+ * Copyright 2025 The Kubernetes Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import type { Destination, KReference } from './common';
+
+const BROKER_CLASS_ANNOTATION = 'eventing.knative.dev/broker.class';
+
+/**
+ * Reads a Broker's class from its annotations.
+ *
+ * @param metadata - The Broker's metadata.
+ * @returns The value of the `eventing.knative.dev/broker.class` annotation, or undefined when it
+ * is not set.
+ */
+export function getBrokerClass(metadata: {
+  /** Annotations of the Broker. */
+  annotations?: Record<string, string>;
+}): string | undefined {
+  return metadata.annotations?.[BROKER_CLASS_ANNOTATION];
+}
+
+/**
+ * Finds the Broker a Trigger takes events from, which it names in `spec.broker` or
+ * `spec.brokerRef`.
+ *
+ * @param spec - The Trigger's spec, if it has one.
+ * @returns The Broker's name, with the namespace that `spec.brokerRef` names, if any; undefined
+ * when the Trigger names no Broker.
+ */
+export function getTriggerBroker(spec?: {
+  /** Name of the Broker in the Trigger's namespace. */
+  broker?: string;
+  /** Reference to the Broker, which may be in another namespace. */
+  brokerRef?: KReference;
+}): { name: string; namespace?: string } | undefined {
+  if (spec?.broker) {
+    return { name: spec.broker };
+  }
+
+  return spec?.brokerRef?.name
+    ? { name: spec.brokerRef.name, namespace: spec.brokerRef.namespace }
+    : undefined;
+}
+
+/**
+ * Formats where a Trigger sends its events, for display.
+ *
+ * @param destination - The Trigger's subscriber, if it has one.
+ * @returns `Kind/name` for an object reference (or whichever of the two is set), the URI on its
+ * own, `Kind/name (uri)` when both are set, and an empty string when there is neither.
+ */
+export function formatDestination(destination?: Destination): string {
+  if (!destination) {
+    return '';
+  }
+
+  const ref = destination.ref;
+  const target = ref ? [ref.kind, ref.name].filter(Boolean).join('/') : '';
+  if (!target) {
+    return destination.uri || '';
+  }
+
+  return destination.uri ? `${target} (${destination.uri})` : target;
+}

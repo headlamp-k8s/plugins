@@ -3,24 +3,27 @@
 A Headlamp plugin for operating Knative Serving workloads and inspecting the resources that
 Serving creates for them. Application owners can manage Services and traffic, while platform
 operators can follow a request from its Route and Ingress through to autoscaling and image
-resolution resources.
+resolution resources. Event-driven application owners can manage the Knative Eventing Brokers and
+Triggers that route events.
 
 ## Requirements
 
 | Requirement | Required condition | Why |
 |---|---|---|
 | Headlamp | 0.44.0 or later | The plugin targets the sidebar APIs available in Headlamp 0.44.0 and later. |
-| Knative | Knative Serving installed on the selected cluster | The plugin discovers Serving from its CustomResourceDefinitions. |
+| Knative | Knative Serving, Knative Eventing, or both installed on the selected cluster | The plugin discovers Serving and Eventing separately from their CustomResourceDefinitions and shows only the views for what is installed. |
 
-## Serving Resource Views
+## Resource Views
 
 Headlamp adds the selected cluster to each route. For example, selecting a cluster named
 `development` and opening Routes navigates to `/c/development/knative/routes`.
 
-The sidebar uses non-clickable section headings to group the views into three sections:
+The sidebar uses non-clickable section headings to group the views into four sections:
 **Serving** for the resources application and domain owners manage, **Serving Internals** for
-internal resources, including the read-only resources Serving derives and manages itself, and
-**Configuration** for cluster-level Knative settings.
+internal resources, including the read-only resources Serving derives and manages itself,
+**Configuration** for cluster-level Knative settings, and **Eventing** for the Brokers and
+Triggers that route events. Serving and Eventing are detected separately, so a cluster that runs
+only one of them shows only its sections.
 
 ### Serving
 
@@ -49,6 +52,13 @@ internal resources, including the read-only resources Serving derives and manage
 | Who uses this view | Sidebar item | Registered URL | Example question it answers | Actions |
 |---|---|---|---|---|
 | Network operator | Networking | `/knative/networking` | Which ingress class and gateways are configured in `knative-serving/config-network` and `config-gateway`? | View only |
+
+### Eventing
+
+| Who uses this view | Sidebar item | Registered URL | Example question it answers | Actions |
+|---|---|---|---|---|
+| Event-driven application owner | Brokers | `/knative/brokers` | Which address do producers send events to, and is the `default` Broker ready? | Manage |
+| Event-driven application owner | Triggers | `/knative/triggers` | Which subscriber receives events from the `default` Broker, and why is a Trigger not ready? | Manage |
 
 ## Resource Map
 

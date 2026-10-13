@@ -15,6 +15,7 @@
  */
 
 import type React from 'react';
+import { BrokersList } from './components/brokers/List';
 import { CertificatesList } from './components/certificates/List';
 import { ClusterDomainClaimsList } from './components/clusterdomainclaims/List';
 import { ConfigurationsList } from './components/configurations/List';
@@ -28,6 +29,7 @@ import { PodAutoscalersList } from './components/podautoscalers/List';
 import { RevisionsList } from './components/revisions/List';
 import { RoutesList } from './components/routes/List';
 import { ServerlessServicesList } from './components/serverlessservices/List';
+import { TriggersList } from './components/triggers/List';
 import type { KnativeListRouteName } from './navigation';
 
 /** Components registered for every list route declared by `knativeNavigationSections`. */
@@ -45,6 +47,8 @@ export const knativeListRouteComponents = {
   knativeServerlessServices: ServerlessServicesList,
   knativeCertificates: CertificatesList,
   knetworking: NetworkingConfiguration,
+  knativeBrokers: BrokersList,
+  knativeTriggers: TriggersList,
 } satisfies Record<KnativeListRouteName, React.ComponentType>;
 
 function isKnativeListRouteName(routeName: string): routeName is KnativeListRouteName {
