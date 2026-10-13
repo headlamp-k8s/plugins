@@ -29,12 +29,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { KServiceDetail } from './components/kservices/Detail';
 import { RevisionDetail } from './components/revisions/Detail';
-import { isKnativeInstalled } from './isKnativeInstalled';
+import { isKnativeComponentInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
 import { getKnativeListRouteComponent } from './listRoutes';
 import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
+import { createSidebarGate } from './sidebarGating';
 
 registerKnativeIcon();
 registerDetailsViewHeaderActionsProcessor((resource, actions) =>
@@ -42,11 +43,6 @@ registerDetailsViewHeaderActionsProcessor((resource, actions) =>
 );
 
 const queryClient = new QueryClient();
-
-const knativeSidebarParents = new Set([
-  'knative',
-  ...knativeNavigationSections.map(section => section.name),
-]);
 
 function withQueryClient(Component: React.ComponentType) {
   return React.memo(function WithQueryClient() {
@@ -58,43 +54,13 @@ function withQueryClient(Component: React.ComponentType) {
   });
 }
 
-// Track whether Knative CRDs exist per cluster to hide sidebar.
-const knativeInstalledByCluster: Record<string, boolean> = {};
-const lastCheckedAt: Record<string, number> = {};
-const inFlight: Record<string, boolean> = {};
-const CHECK_TTL_MS = 30 * 1000;
-
-/**
- * Checks if Knative is installed on the given cluster using the shared
- * installed check.
- *
- * @param cluster The name of the cluster to check.
- */
-async function checkKnativeInstalled(cluster: string) {
-  const now = Date.now();
-  const fresh = now - (lastCheckedAt[cluster] ?? 0) < CHECK_TTL_MS;
-  if (inFlight[cluster] || fresh) {
-    return;
-  }
-  inFlight[cluster] = true;
-  knativeInstalledByCluster[cluster] = await isKnativeInstalled([cluster]);
-  lastCheckedAt[cluster] = Date.now();
-  inFlight[cluster] = false;
-}
-
-registerSidebarEntryFilter(entry => {
-  if (entry.name !== 'knative' && !knativeSidebarParents.has(entry.parent ?? '')) {
-    return entry;
-  }
-
-  const cluster = Utils.getCluster() ?? '';
-  void checkKnativeInstalled(cluster);
-
-  if (knativeInstalledByCluster[cluster] === false) {
-    return null;
-  }
-  return entry;
-});
+// Hide Knative sidebar entries whose component is not installed on the cluster.
+registerSidebarEntryFilter(
+  createSidebarGate({
+    getCluster: () => Utils.getCluster() ?? '',
+    isInstalled: isKnativeComponentInstalled,
+  })
+);
 
 registerSidebarEntry({
   parent: null,
