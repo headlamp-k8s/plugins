@@ -17,7 +17,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { PolicyRule } from './kyvernoPolicy';
 import { collectPolicyImpact, describeMatchReasons, suggestFix } from './policyImpact';
-import { ClusterPolicyReport, PolicyReport } from './policyReport';
+import { ClusterPolicyReport, POLICY_REPORT_SOURCE, PolicyReport } from './policyReport';
 
 // policyReport.ts extends KubeObject from @kinvolk/headlamp-plugin/lib/k8s/cluster,
 // which only resolves at real build time through a rollup-only external/globals
@@ -45,9 +45,20 @@ vi.mock('./policyReport', () => {
       return this.jsonData.scope;
     }
   }
-  class PolicyReport extends PolicyReportBase { }
-  class ClusterPolicyReport extends PolicyReportBase { }
-  return { PolicyReport, ClusterPolicyReport };
+  class PolicyReport extends PolicyReportBase {}
+  class ClusterPolicyReport extends PolicyReportBase {}
+  // Same reason as the classes above: vi.mock's factory can't call
+  // importOriginal() to pull the real constant in, since that re-triggers the
+  // same external-import resolution failure. Values copied verbatim from
+  // policyReport.ts; keep the two in sync if Kyverno's own source values ever change.
+  const POLICY_REPORT_SOURCE = {
+    legacy: 'kyverno',
+    validating: 'KyvernoValidatingPolicy',
+    mutating: 'KyvernoMutatingPolicy',
+    generating: 'KyvernoGeneratingPolicy',
+    imageValidating: 'KyvernoImageValidatingPolicy',
+  } as const;
+  return { PolicyReport, ClusterPolicyReport, POLICY_REPORT_SOURCE };
 });
 
 // Real reports pulled from a live kind cluster running Kyverno v1.18.2, with a
@@ -111,11 +122,17 @@ describe('collectPolicyImpact', () => {
           rule: 'check-for-app-label',
           result: 'fail',
           message: "validation error: The label 'app' is required on all Pods.",
+          source: POLICY_REPORT_SOURCE.legacy,
         },
       ]),
     ];
 
-    const impact = collectPolicyImpact('require-app-label', reports, []);
+    const impact = collectPolicyImpact(
+      'require-app-label',
+      POLICY_REPORT_SOURCE.legacy,
+      reports,
+      []
+    );
 
     expect(impact.counts.fail).toBe(1);
     expect(impact.resources).toEqual([
@@ -130,7 +147,7 @@ describe('collectPolicyImpact', () => {
           policy: 'require-team-label',
           result: 'fail',
           message: "the 'team' label is required on all pods",
-          source: 'KyvernoValidatingPolicy',
+          source: POLICY_REPORT_SOURCE.validating,
         },
       ]),
       report('team-checkout', goodTeamPod, [
@@ -138,19 +155,116 @@ describe('collectPolicyImpact', () => {
           policy: 'require-team-label',
           result: 'pass',
           message: 'success',
-          source: 'KyvernoValidatingPolicy',
+          source: POLICY_REPORT_SOURCE.validating,
         },
       ]),
     ];
 
-    const impact = collectPolicyImpact('require-team-label', reports, []);
+    const impact = collectPolicyImpact(
+      'require-team-label',
+      POLICY_REPORT_SOURCE.validating,
+      reports,
+      []
+    );
 
     expect(impact.counts).toEqual({ pass: 1, fail: 1, warn: 0, error: 0, skip: 0 });
     expect(impact.namespaces).toEqual(new Set(['team-checkout']));
   });
 
+  test('does not attribute one policy kind to another when a legacy ClusterPolicy and a CEL ValidatingPolicy share a name, found via Copilot review', () => {
+    // Kubernetes puts no constraint on a kyverno.io/v1 ClusterPolicy and a
+    // policies.kyverno.io ValidatingPolicy sharing a bare name; both are
+    // independent objects of different kinds. Confirmed against
+    // pkg/utils/report/results.go (ToPolicyReportResult) in kyverno/kyverno:
+    // every result it builds carries a `source` stamped from the policy kind
+    // that produced it ("kyverno" for legacy, "KyvernoValidatingPolicy" for
+    // this CEL kind), so filtering on `source` as well as `policy` is enough
+    // to tell these two apart even though their `policy` string is identical.
+    const reports = [
+      report('team-checkout', badPod, [
+        {
+          policy: 'require-label',
+          rule: 'check-for-label',
+          result: 'fail',
+          message: 'legacy engine result',
+          source: POLICY_REPORT_SOURCE.legacy,
+        },
+        {
+          policy: 'require-label',
+          result: 'pass',
+          message: 'CEL engine result',
+          source: POLICY_REPORT_SOURCE.validating,
+        },
+      ]),
+    ];
+
+    const legacyImpact = collectPolicyImpact(
+      'require-label',
+      POLICY_REPORT_SOURCE.legacy,
+      reports,
+      []
+    );
+    expect(legacyImpact.counts).toEqual({ pass: 0, fail: 1, warn: 0, error: 0, skip: 0 });
+    expect(legacyImpact.resources[0].message).toBe('legacy engine result');
+
+    const celImpact = collectPolicyImpact(
+      'require-label',
+      POLICY_REPORT_SOURCE.validating,
+      reports,
+      []
+    );
+    expect(celImpact.counts).toEqual({ pass: 1, fail: 0, warn: 0, error: 0, skip: 0 });
+    expect(celImpact.resources[0].message).toBe('CEL engine result');
+  });
+
+  test('a namespaced Policy is invisible without policyNamespace, found via Copilot review on real cluster data', () => {
+    // Real report from a namespaced Policy (kyverno.io/v1 Policy, not
+    // ClusterPolicy) installed on the live cluster. Kyverno encodes its
+    // identity in result.policy as "team-checkout/require-cost-center-label",
+    // the same <namespace>/<name> convention bucketReportResults already
+    // documents. Passing just policy.metadata.name, the obvious thing a
+    // caller holding a Policy object would do, silently returns zero impact
+    // even though this exact report has real failures.
+    const reports = [
+      report('team-checkout', badPod, [
+        {
+          policy: 'team-checkout/require-cost-center-label',
+          rule: 'check-for-cost-center-label',
+          result: 'fail',
+          message:
+            "validation error: the 'cost-center' label is required on all Pods in this namespace.",
+          source: POLICY_REPORT_SOURCE.legacy,
+        },
+      ]),
+    ];
+
+    const withoutNamespace = collectPolicyImpact(
+      'require-cost-center-label',
+      POLICY_REPORT_SOURCE.legacy,
+      reports,
+      []
+    );
+    expect(withoutNamespace.resources).toEqual([]);
+
+    const withNamespace = collectPolicyImpact(
+      'require-cost-center-label',
+      POLICY_REPORT_SOURCE.legacy,
+      reports,
+      [],
+      'team-checkout'
+    );
+    expect(withNamespace.counts.fail).toBe(1);
+    expect(withNamespace.resources[0]).toEqual(
+      expect.objectContaining({ kind: 'Pod', name: 'bad-pod', status: 'fail' })
+    );
+  });
+
   test('groups by kind across both namespaced and cluster-scoped reports', () => {
-    const policyReports = [report('team-checkout', badPod, [{ policy: 'p', result: 'fail' }])];
+    const policyReports = [
+      report('team-checkout', badPod, [
+        { policy: 'p', result: 'fail', source: POLICY_REPORT_SOURCE.legacy },
+      ]),
+    ];
     const clusterReports = [
       new ClusterPolicyReport({
         apiVersion: 'wgpolicyk8s.io/v1alpha2',
@@ -162,11 +276,16 @@ describe('collectPolicyImpact', () => {
           resourceVersion: '1',
         },
         scope: corednsDeployment,
-        results: [{ policy: 'p', result: 'fail' }],
+        results: [{ policy: 'p', result: 'fail', source: POLICY_REPORT_SOURCE.legacy }],
       } as any),
     ];
 
-    const impact = collectPolicyImpact('p', policyReports, clusterReports);
+    const impact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      policyReports,
+      clusterReports
+    );
 
     expect(Array.from(impact.byKind.keys()).sort()).toEqual(['Deployment', 'Pod']);
     expect(impact.byKind.get('Deployment')).toHaveLength(1);
@@ -174,9 +293,16 @@ describe('collectPolicyImpact', () => {
   });
 
   test('returns an empty summary for a policy with zero results, not an error', () => {
-    const reports = [report('team-checkout', badPod, [{ policy: 'require-app-label', result: 'fail' }])];
+    const reports = [
+      report('team-checkout', badPod, [{ policy: 'require-app-label', result: 'fail' }]),
+    ];
 
-    const impact = collectPolicyImpact('a-policy-nothing-matches', reports, []);
+    const impact = collectPolicyImpact(
+      'a-policy-nothing-matches',
+      POLICY_REPORT_SOURCE.legacy,
+      reports,
+      []
+    );
 
     expect(impact.resources).toEqual([]);
     expect(impact.byKind.size).toBe(0);
@@ -185,7 +311,7 @@ describe('collectPolicyImpact', () => {
   });
 
   test('handles null report lists the same as empty ones, useList() returns null while loading', () => {
-    const impact = collectPolicyImpact('any-policy', null, null);
+    const impact = collectPolicyImpact('any-policy', POLICY_REPORT_SOURCE.legacy, null, null);
 
     expect(impact.resources).toEqual([]);
   });
@@ -197,12 +323,12 @@ describe('collectPolicyImpact', () => {
     // in case a version or mode produces more than one result per resource.
     const reports = [
       report('team-checkout', badPod, [
-        { policy: 'p', rule: 'r1', result: 'pass' },
-        { policy: 'p', rule: 'r2', result: 'fail' },
+        { policy: 'p', rule: 'r1', result: 'pass', source: POLICY_REPORT_SOURCE.legacy },
+        { policy: 'p', rule: 'r2', result: 'fail', source: POLICY_REPORT_SOURCE.legacy },
       ]),
     ];
 
-    const impact = collectPolicyImpact('p', reports, []);
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, reports, []);
 
     expect(impact.resources).toHaveLength(1);
     expect(impact.resources[0].status).toBe('fail');
@@ -226,14 +352,191 @@ describe('collectPolicyImpact', () => {
         {
           policy: 'p',
           result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
           resources: [{ kind: 'Pod', name: 'from-resources-array', namespace: 'team-checkout' }],
         },
       ],
     } as any);
 
-    const impact = collectPolicyImpact('p', [withResourcesArray], []);
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, [withResourcesArray], []);
 
     expect(impact.resources[0].name).toBe('from-resources-array');
+  });
+
+  test('keeps every resource when a single result references more than one, found via Copilot review', () => {
+    // resources[] is typed as an array. The original code only ever read
+    // resources[0], silently dropping every later resource a result
+    // referenced.
+    const multiResourceReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'multi-resource',
+        namespace: 'team-checkout',
+        uid: 'r-3',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'first', namespace: 'team-checkout', uid: 'uid-first' },
+            { kind: 'Pod', name: 'second', namespace: 'team-checkout', uid: 'uid-second' },
+          ],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, [multiResourceReport], []);
+
+    expect(impact.resources.map(r => r.name).sort()).toEqual(['first', 'second']);
+  });
+
+  test('prefers the UID over the name-based key so same-named resources from different API groups do not collapse, found via Copilot review', () => {
+    const crossGroupReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'cross-group',
+        namespace: 'team-checkout',
+        uid: 'r-4',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Widget', name: 'shared-name', namespace: 'team-checkout', uid: 'widget-a' },
+          ],
+        },
+        {
+          policy: 'p',
+          result: 'pass',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Widget', name: 'shared-name', namespace: 'team-checkout', uid: 'widget-b' },
+          ],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, [crossGroupReport], []);
+
+    expect(impact.resources).toHaveLength(2);
+    expect(impact.resources.map(r => r.uid).sort()).toEqual(['widget-a', 'widget-b']);
+  });
+
+  test('does not borrow the report scope UID for resources[] entries that omit their own, found via Copilot review', () => {
+    // Two distinct resources[] entries, neither with its own uid. Both used
+    // to fall back to reportScope.uid, colliding into one entry and losing
+    // one of them, even though the multi-resource loop should keep both.
+    const scopedReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'scoped',
+        namespace: 'team-checkout',
+        uid: 'r-5',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      scope: { kind: 'Pod', name: 'scope-subject', namespace: 'team-checkout', uid: 'scope-uid' },
+      results: [
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'no-own-uid-1', namespace: 'team-checkout' },
+            { kind: 'Pod', name: 'no-own-uid-2', namespace: 'team-checkout' },
+          ],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, [scopedReport], []);
+
+    expect(impact.resources.map(r => r.name).sort()).toEqual(['no-own-uid-1', 'no-own-uid-2']);
+  });
+
+  test('folds apiVersion into the fallback key so same kind/name resources from different API groups do not collapse, found via Copilot review', () => {
+    const differentApiGroupsReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'different-groups',
+        namespace: 'team-checkout',
+        uid: 'r-6',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            {
+              apiVersion: 'group-a/v1',
+              kind: 'Widget',
+              name: 'shared-name',
+              namespace: 'team-checkout',
+            },
+          ],
+        },
+        {
+          policy: 'p',
+          result: 'pass',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            {
+              apiVersion: 'group-b/v1',
+              kind: 'Widget',
+              name: 'shared-name',
+              namespace: 'team-checkout',
+            },
+          ],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [differentApiGroupsReport],
+      []
+    );
+
+    expect(impact.resources).toHaveLength(2);
+    expect(impact.resources.map(r => r.apiVersion).sort()).toEqual(['group-a/v1', 'group-b/v1']);
+  });
+
+  test('produces no entry at all when a result has neither resources[] nor a report scope, found via Copilot review', () => {
+    // Previously this iterated once anyway and fabricated an
+    // "Unknown/(unscoped)" resource, collapsing every identity-less result
+    // from any policy into one fake entry instead of reporting nothing.
+    const noIdentityReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'no-identity',
+        namespace: 'team-checkout',
+        uid: 'r-7',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [{ policy: 'p', result: 'fail', source: POLICY_REPORT_SOURCE.legacy }],
+    } as any);
+
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, [noIdentityReport], []);
+
+    expect(impact.resources).toEqual([]);
   });
 });
 
@@ -259,6 +562,176 @@ describe('describeMatchReasons', () => {
     const reasons = describeMatchReasons(rules, 'Deployment');
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Deployment"');
+  });
+
+  test('recognizes a wildcard kind as an explicit match, found via Copilot review', () => {
+    const wildcardRules: PolicyRule[] = [
+      { name: 'check-everything', match: { any: [{ resources: { kinds: ['*'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(wildcardRules, 'Deployment');
+
+    expect(reasons[0]).toContain('Rule "check-everything" matches kind "Deployment"');
+  });
+
+  test('mentions a namespace label selector, not just a resource label selector, found via Copilot review', () => {
+    const namespaceSelectorRules: PolicyRule[] = [
+      {
+        name: 'check-team-namespaces',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], namespaceSelector: { team: 'checkout' } } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(namespaceSelectorRules, 'Pod');
+
+    expect(reasons[0]).toContain('a namespace label selector');
+  });
+
+  test('gives an honest unknown-provenance message for an empty rules array instead of implying autogen or a background scan, found via Copilot review', () => {
+    // An empty rules array is also how a policy type this function was not
+    // written for (a CEL ValidatingPolicy has no rules[] at all) can reach
+    // here, that is not the same as "rules exist but none matched".
+    const reasons = describeMatchReasons([], 'Pod');
+
+    expect(reasons[0]).toContain('provenance for kind "Pod" is unknown');
+    expect(reasons[0]).not.toContain('background scan');
+  });
+
+  test('requires every entry in match.all to cover the kind, not just any one of them, found via Copilot review', () => {
+    // An all[] block requiring both Pod and Deployment kinds can never be
+    // satisfied by any single resource. Concatenating any and all into one
+    // OR'd list used to report this as a match for Pod anyway.
+    const impossibleAllRules: PolicyRule[] = [
+      {
+        name: 'impossible',
+        match: {
+          all: [{ resources: { kinds: ['Pod'] } }, { resources: { kinds: ['Deployment'] } }],
+        },
+      },
+    ];
+
+    expect(describeMatchReasons(impossibleAllRules, 'Pod')).toEqual([
+      expect.stringContaining('No rule in this policy explicitly lists kind "Pod"'),
+    ]);
+  });
+
+  test('reports a match when every entry in match.all genuinely covers the kind', () => {
+    const satisfiableAllRules: PolicyRule[] = [
+      {
+        name: 'namespaced-pods',
+        match: {
+          all: [
+            { resources: { kinds: ['Pod'], namespaces: ['team-checkout'] } },
+            { resources: { kinds: ['Pod'], selector: { matchLabels: { team: 'checkout' } } } },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(satisfiableAllRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "namespaced-pods" matches kind "Pod"');
+    expect(reasons[0]).toContain('namespaces [team-checkout]');
+    expect(reasons[0]).toContain('a label selector');
+  });
+
+  test('recognizes the deprecated direct match.resources form, not just any/all, found via Copilot review', () => {
+    // Confirmed against api/kyverno/v1/match_resources_types.go: MatchResources
+    // embeds ResourceDescription directly as `resources`, deprecated in favor
+    // of any/all but still real and still supported. A policy written this
+    // way used to fall through to the "No rule explicitly lists kind" message
+    // even when it plainly matched.
+    const directMatchRules: PolicyRule[] = [
+      {
+        name: 'legacy-style-pods',
+        match: { resources: { kinds: ['Pod'], namespaces: ['team-checkout'] } },
+      },
+    ];
+
+    const reasons = describeMatchReasons(directMatchRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "legacy-style-pods" matches kind "Pod"');
+    expect(reasons[0]).toContain('namespaces [team-checkout]');
+  });
+
+  test('notes when a rule also has an exclude block that plausibly covers the same kind, found via Copilot review', () => {
+    const excludedRules: PolicyRule[] = [
+      {
+        name: 'require-labels',
+        match: { any: [{ resources: { kinds: ['Pod'] } }] },
+        exclude: { any: [{ resources: { kinds: ['Pod'], namespaces: ['kube-system'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(excludedRules, 'Pod');
+
+    expect(reasons).toHaveLength(2);
+    expect(reasons[1]).toContain('exclude block covering kind "Pod"');
+  });
+
+  test('recognizes the deprecated direct exclude.resources form, not just any/all, found via Copilot review', () => {
+    const directExcludeRules: PolicyRule[] = [
+      {
+        name: 'require-labels-direct-exclude',
+        match: { any: [{ resources: { kinds: ['Pod'] } }] },
+        exclude: { resources: { kinds: ['Pod'], namespaces: ['kube-system'] } },
+      },
+    ];
+
+    const reasons = describeMatchReasons(directExcludeRules, 'Pod');
+
+    expect(reasons).toHaveLength(2);
+    expect(reasons[1]).toContain('exclude block covering kind "Pod"');
+  });
+
+  test('recognizes a group+version-qualified kind pattern as a match, found via Copilot review', () => {
+    // Confirmed against kubectl explain: report results only ever carry the
+    // bare kind, but a policy's match kinds can be fully qualified.
+    const qualifiedRules: PolicyRule[] = [
+      {
+        name: 'check-deployments',
+        match: { any: [{ resources: { kinds: ['apps/v1/Deployment'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(qualifiedRules, 'Deployment');
+
+    expect(reasons[0]).toContain('Rule "check-deployments" matches kind "Deployment"');
+  });
+
+  test('recognizes a version-qualified kind pattern as a match, found via Copilot review', () => {
+    const versionQualifiedRules: PolicyRule[] = [
+      { name: 'check-pods', match: { any: [{ resources: { kinds: ['v1/Pod'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(versionQualifiedRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pods" matches kind "Pod"');
+  });
+
+  test('recognizes a subresource-qualified kind pattern as a match, found via Copilot review', () => {
+    const subresourceRules: PolicyRule[] = [
+      { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['Pod/status'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(subresourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('does not let a qualified pattern for a different kind falsely match, found via Copilot review', () => {
+    const qualifiedRules: PolicyRule[] = [
+      {
+        name: 'check-deployments',
+        match: { any: [{ resources: { kinds: ['apps/v1/Deployment'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(qualifiedRules, 'Pod');
+
+    expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Pod"');
   });
 });
 
@@ -293,5 +766,36 @@ describe('suggestFix', () => {
 
     expect(result).not.toContain('undefined');
     expect(result).toContain('this rule');
+  });
+
+  test('points at deny.conditions for a conditional deny rule, found via Copilot review', () => {
+    // Confirmed against kubectl explain (clusterpolicy.spec.rules.validate.deny):
+    // conditions is the real field a deny rule is evaluated against, and a deny
+    // rule is conditional far more often than it is unconditional.
+    const rule: PolicyRule = {
+      name: 'deny-privileged',
+      validate: {
+        deny: {
+          conditions: {
+            any: [{ key: '{{ request.object.spec.privileged }}', operator: 'Equals', value: true }],
+          },
+        },
+      },
+    };
+
+    const result = suggestFix(rule, target);
+
+    expect(result).toContain('deny.conditions');
+    expect(result).toContain('rule "deny-privileged"');
+    expect(result).not.toContain('outright');
+  });
+
+  test('falls back to an outright-deny message when a deny rule has no conditions, found via Copilot review', () => {
+    const rule: PolicyRule = { name: 'deny-everything', validate: { deny: {} } };
+
+    const result = suggestFix(rule, target);
+
+    expect(result).toContain('outright');
+    expect(result).toContain('match and exclude blocks');
   });
 });
