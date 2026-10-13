@@ -6,9 +6,9 @@ See the [Kueue getting started guide](https://kueue.sigs.k8s.io/docs/getting-sta
 
 ## Current Scope
 
-This plugin currently reads Kueue `Cohort`, `ClusterQueue`, `LocalQueue`, `ResourceFlavor`, and `Workload` resources from the Kubernetes API and displays them in basic list and detail pages. It registers a Kueue sidebar section with entries for these resources.
+This plugin currently reads Kueue `Cohort`, `ClusterQueue`, `LocalQueue`, `ResourceFlavor`, `Workload`, and `Topology` resources from the Kubernetes API and displays them in basic list and detail pages. It registers a Kueue sidebar section with entries for these resources.
 
-The views are read-only. Cohort pages show parent and child Cohort relationships, member ClusterQueues, ResourceFlavor references, resource groups, and fair-sharing values.
+The views are read-only. Cohort pages show parent and child Cohort relationships, member ClusterQueues, ResourceFlavor references, resource groups, and fair-sharing values. Topology pages display node and hardware hierarchy levels for Topology-Aware Scheduling (TAS).
 
 Related Cohorts, ClusterQueues, LocalQueues, ResourceFlavors, and Workloads are linked so users can follow the queueing path between resources. The plugin checks Kubernetes permissions before loading resource pages and shows an access message when the current user cannot view a resource.
 
@@ -16,7 +16,7 @@ Related Cohorts, ClusterQueues, LocalQueues, ResourceFlavors, and Workloads are 
 
 Kueue CRDs must be installed in the cluster before the plugin can list resources. See the [Kueue installation guide](https://kueue.sigs.k8s.io/docs/getting-started/installation/) for installation instructions.
 
-You can check for the `Cohort`, `ClusterQueue`, `LocalQueue`, `ResourceFlavor`, and `Workload` CRDs and resources with:
+You can check for the `Cohort`, `ClusterQueue`, `LocalQueue`, `ResourceFlavor`, `Workload`, and `Topology` CRDs and resources with:
 
 ```bash
 kubectl get crd cohorts.kueue.x-k8s.io
@@ -24,6 +24,7 @@ kubectl get crd clusterqueues.kueue.x-k8s.io
 kubectl get crd localqueues.kueue.x-k8s.io
 kubectl get crd resourceflavors.kueue.x-k8s.io
 kubectl get crd workloads.kueue.x-k8s.io
+kubectl get crd topologies.kueue.x-k8s.io
 kubectl get cohorts
 kubectl get cohort default -o yaml
 kubectl get clusterqueues
@@ -32,15 +33,18 @@ kubectl get localqueue <name> -n <namespace> -o yaml
 kubectl get resourceflavors
 kubectl get workloads -A
 kubectl get workload <name> -n <namespace> -o yaml
+kubectl get topologies
+kubectl get topology default -o yaml
 ```
 
 ## Test Files
 
-Sample `Cohort`, `ClusterQueue`, `LocalQueue`, `ResourceFlavor`, and Job manifests are available in `test-files/deploy/`. The sample ClusterQueue belongs to the `default` Cohort, and the sample Job uses the `team-a-queue` LocalQueue so Kueue can create a real `Workload` for local UI testing.
+Sample `Cohort`, `ClusterQueue`, `LocalQueue`, `ResourceFlavor`, `Topology`, and Job manifests are available in `test-files/deploy/`. The sample ClusterQueue belongs to the `default` Cohort, the sample ResourceFlavor references the `default` Topology, and the sample Job uses the `team-a-queue` LocalQueue so Kueue can create a real `Workload` for local UI testing.
 
 Apply them to a cluster with Kueue installed:
 
 ```bash
+kubectl apply -f test-files/deploy/topology-default.yaml
 kubectl apply -f test-files/deploy/resourceflavor-default.yaml
 kubectl apply -f test-files/deploy/resourceflavor-spot.yaml
 kubectl apply -f test-files/deploy/resourceflavor-topology.yaml
@@ -49,10 +53,11 @@ kubectl apply -f test-files/deploy/clusterqueue-team-a.yaml
 kubectl apply -f test-files/deploy/localqueue-team-a.yaml
 kubectl apply -f test-files/deploy/job-sample-workload.yaml
 kubectl get cohorts
+kubectl get topologies
 kubectl get workloads -A
 ```
 
-After applying the examples, open `Kueue` > `Cohorts`, `Kueue` > `ClusterQueues`, `Kueue` > `LocalQueues`, `Kueue` > `ResourceFlavors`, or `Kueue` > `Workloads` in Headlamp.
+After applying the examples, open `Kueue` > `Cohorts`, `Kueue` > `ClusterQueues`, `Kueue` > `LocalQueues`, `Kueue` > `ResourceFlavors`, `Kueue` > `Workloads`, or `Kueue` > `Topologies` in Headlamp.
 
 ## Development
 
