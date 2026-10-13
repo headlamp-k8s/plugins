@@ -38,10 +38,10 @@ function openExceptionActivity(item: PolicyException) {
 }
 
 export function PolicyExceptionList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Policy Exceptions')}
       resourceClass={PolicyException}
       columns={[

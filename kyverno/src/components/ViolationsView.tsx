@@ -153,7 +153,7 @@ function StatusFilterChips({
 }
 
 export function ViolationsView() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
@@ -346,7 +346,7 @@ export function ViolationsView() {
                   {group} ({entries.length})
                 </Typography>
                 <Table
-                  key={tableRemountKey(ready)}
+                  key={tableRemountKey(ready, i18n?.language)}
                   columns={violationColumns}
                   data={entries}
                   rowsPerPage={[25, 50, 100]}
@@ -355,7 +355,7 @@ export function ViolationsView() {
             ))
         ) : (
           <Table
-            key={tableRemountKey(ready)}
+            key={tableRemountKey(ready, i18n?.language)}
             columns={violationColumns}
             data={filteredViolations}
             rowsPerPage={[25, 50, 100]}

@@ -39,11 +39,11 @@ function openPolicyActivity(item: KyvernoPolicy) {
 }
 
 export function PolicyList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   const counts = usePolicyResultCounts();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Policies')}
       resourceClass={KyvernoPolicy}
       columns={[

@@ -33,10 +33,10 @@ function openClusterReportActivity(item: ClusterPolicyReport) {
 }
 
 export function ClusterPolicyReportList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Cluster Policy Reports')}
       resourceClass={ClusterPolicyReport}
       columns={[

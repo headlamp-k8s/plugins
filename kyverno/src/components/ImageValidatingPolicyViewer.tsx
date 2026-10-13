@@ -54,7 +54,7 @@ function PolicyContent({
 }: {
   policy: ImageValidatingPolicy | NamespacedImageValidatingPolicy;
 }) {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   const annotations = policy.jsonData.metadata.annotations || {};
   const namespace = policy.jsonData.metadata.namespace;
 
@@ -213,7 +213,7 @@ function PolicyContent({
         })}
       >
         <Table
-          key={tableRemountKey(ready)}
+          key={tableRemountKey(ready, i18n?.language)}
           columns={imageReferenceColumns}
           data={policy.spec.matchImageReferences || []}
           emptyMessage={t('No image references defined.')}
@@ -222,7 +222,7 @@ function PolicyContent({
 
       <SectionBox title={t('Attestors ({{count}})', { count: policy.spec.attestors?.length || 0 })}>
         <Table
-          key={tableRemountKey(ready)}
+          key={tableRemountKey(ready, i18n?.language)}
           columns={attestorColumns}
           data={policy.spec.attestors || []}
           emptyMessage={t('No attestors defined.')}
@@ -234,7 +234,7 @@ function PolicyContent({
           title={t('Attestations ({{count}})', { count: policy.spec.attestations.length })}
         >
           <Table
-            key={tableRemountKey(ready)}
+            key={tableRemountKey(ready, i18n?.language)}
             columns={attestationColumns}
             data={policy.spec.attestations}
           />
@@ -244,7 +244,7 @@ function PolicyContent({
       {policy.spec.validations && policy.spec.validations.length > 0 && (
         <SectionBox title={t('Validations ({{count}})', { count: policy.spec.validations.length })}>
           <Table
-            key={tableRemountKey(ready)}
+            key={tableRemountKey(ready, i18n?.language)}
             columns={validationColumns}
             data={policy.spec.validations}
           />

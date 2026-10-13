@@ -21,7 +21,7 @@ import { PolicyReportResult } from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
 
 export function ResultsTable({ results }: { results: PolicyReportResult[] }) {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
 
   // See ViolationsView/common.tsx for why headers are computed once and the
   // table is remounted via key once translations are ready: Table memoizes
@@ -93,7 +93,7 @@ export function ResultsTable({ results }: { results: PolicyReportResult[] }) {
 
   return (
     <Table
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       columns={columns}
       data={results}
       emptyMessage={t('No results found.')}

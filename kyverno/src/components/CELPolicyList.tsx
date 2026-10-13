@@ -56,10 +56,10 @@ function ReadyChip({ ready }: { ready: boolean }) {
 }
 
 export function ValidatingPolicyList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Validating Policies')}
       resourceClass={ValidatingPolicy}
       columns={[
@@ -102,10 +102,10 @@ export function ValidatingPolicyList() {
 }
 
 export function MutatingPolicyList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Mutating Policies')}
       resourceClass={MutatingPolicy}
       columns={[
@@ -143,10 +143,10 @@ export function MutatingPolicyList() {
 }
 
 export function GeneratingPolicyList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Generating Policies')}
       resourceClass={GeneratingPolicy}
       columns={[
@@ -184,10 +184,10 @@ export function GeneratingPolicyList() {
 }
 
 export function DeletingPolicyList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Deleting Policies')}
       resourceClass={DeletingPolicy}
       columns={[

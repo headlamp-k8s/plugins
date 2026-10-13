@@ -122,7 +122,7 @@ function YamlSection({ jsonData }: { jsonData: KyvernoPolicyInterface }) {
 }
 
 function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
 
   // See ViolationsView/common.tsx for why headers are computed once and the
   // table is remounted via key once translations are ready.
@@ -180,13 +180,13 @@ function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
 
   return (
     <SectionBox title={t('Conditions')}>
-      <Table key={tableRemountKey(ready)} columns={columns} data={conditions} />
+      <Table key={tableRemountKey(ready, i18n?.language)} columns={columns} data={conditions} />
     </SectionBox>
   );
 }
 
 function RulesTable({ rules }: { rules: PolicyRule[] }) {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
 
   // See ViolationsView/common.tsx for why headers are computed once and the
   // table is remounted via key once translations are ready.
@@ -226,7 +226,7 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
 
   return (
     <Table
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       columns={columns}
       data={rules}
       emptyMessage={t('No rules defined.')}
@@ -291,7 +291,7 @@ function AssociatedReportsTable({
 }: {
   results: (PolicyReportResult & { reportName: string; reportNamespace?: string })[];
 }) {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
 
   // See ViolationsView/common.tsx for why headers are computed once and the
   // table is remounted via key once translations are ready.
@@ -343,7 +343,7 @@ function AssociatedReportsTable({
 
   return (
     <Table
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       columns={columns}
       data={results}
       emptyMessage={t('No report results found for this policy.')}

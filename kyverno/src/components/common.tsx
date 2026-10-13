@@ -47,12 +47,20 @@ const severityColors: Record<string, 'error' | 'warning' | 'info' | 'default'> =
  * lands, and again on every later locale change.
  *
  * Keying the table itself with this value is the actual fix: `ready` (from useTranslation())
- * flips false -> true exactly once translations finish loading, so passing it through here forces
- * React to fully remount the table at that point, discarding Headlamp's stale memoized header
- * cells along with the rest of the old component instance, without the column ids ever changing.
+ * flips false -> true exactly once translations finish loading, so including it forces React to
+ * fully remount the table at that point, discarding Headlamp's stale memoized header cells along
+ * with the rest of the old component instance, without the column ids ever changing. `ready`
+ * alone only covers that first transition though: confirmed directly in
+ * @kinvolk/headlamp-plugin's pluginI18n.js, the plugin's own i18next instance gets synced to a
+ * new language in a separate effect whenever Headlamp's main app locale changes, but `ready`
+ * itself is a one-shot flag that never resets for that, so a later locale switch would leave the
+ * key unchanged and the memoized headers stuck on whichever locale was active the first time.
+ * Folding in the plugin's current language (`i18n?.language` from useTranslation(), undefined
+ * before the instance exists) covers that case too, forcing a fresh remount on every genuine
+ * language change, not just the initial load.
  */
-export function tableRemountKey(ready: boolean): string {
-  return ready ? 'translations-ready' : 'translations-loading';
+export function tableRemountKey(ready: boolean, language?: string): string {
+  return ready ? `translations-ready:${language ?? ''}` : 'translations-loading';
 }
 
 export function ResultStatusChip({ status }: { status: PolicyResultStatus }) {

@@ -21,10 +21,10 @@ import { CleanupPolicy, ClusterCleanupPolicy } from '../resources/cleanupPolicy'
 import { tableRemountKey } from './common';
 
 export function CleanupPolicyList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Cleanup Policies')}
       resourceClass={CleanupPolicy}
       columns={[
@@ -64,10 +64,10 @@ export function CleanupPolicyList() {
 }
 
 export function ClusterCleanupPolicyList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Cluster Cleanup Policies')}
       resourceClass={ClusterCleanupPolicy}
       columns={[

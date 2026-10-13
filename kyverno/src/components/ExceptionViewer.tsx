@@ -96,7 +96,7 @@ function MatchSection({ match }: { match: PolicyException['spec']['match'] }) {
 }
 
 function ExceptionContent({ exception }: { exception: PolicyException }) {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
 
   // See ViolationsView/common.tsx for why headers are computed once and the
   // table is remounted via key once translations are ready.
@@ -150,7 +150,7 @@ function ExceptionContent({ exception }: { exception: PolicyException }) {
         title={t('Excepted Policies ({{count}})', { count: exception.exceptions.length })}
       >
         <Table
-          key={tableRemountKey(ready)}
+          key={tableRemountKey(ready, i18n?.language)}
           columns={exceptionColumns}
           data={exception.exceptions}
           emptyMessage={t('No exceptions defined.')}

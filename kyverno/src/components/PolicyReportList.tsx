@@ -38,10 +38,10 @@ function openReportActivity(item: PolicyReport) {
 }
 
 export function PolicyReportList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Policy Reports')}
       resourceClass={PolicyReport}
       columns={[

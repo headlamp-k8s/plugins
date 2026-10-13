@@ -39,10 +39,10 @@ function openActivity(item: ImageValidatingPolicy | NamespacedImageValidatingPol
 }
 
 export function ImageValidatingPolicyList() {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Image Validating Policies')}
       resourceClass={ImageValidatingPolicy}
       columns={[

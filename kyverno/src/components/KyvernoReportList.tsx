@@ -37,7 +37,7 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
   resourceClass,
   activityIdPrefix,
 }: KyvernoReportListProps<T>) {
-  const { ready, t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   const isNamespaced = resourceClass.isNamespaced;
 
   function openReport(item: InstanceType<T>) {
@@ -61,7 +61,7 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
 
   return (
     <ResourceListView
-      key={tableRemountKey(ready)}
+      key={tableRemountKey(ready, i18n?.language)}
       title={t(titleKey)}
       resourceClass={resourceClass}
       columns={[
