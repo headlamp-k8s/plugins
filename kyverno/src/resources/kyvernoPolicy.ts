@@ -39,6 +39,14 @@ export interface MatchSelectorEntry {
 export interface MatchSelector {
   any?: MatchSelectorEntry[];
   all?: MatchSelectorEntry[];
+  // The direct form: resource/user constraints set straight on match/exclude
+  // instead of wrapped in any/all. Kyverno deprecates this in favor of
+  // any/all but it's still real and still supported, confirmed against the
+  // actual MatchResources Go type (api/kyverno/v1/match_resources_types.go),
+  // which embeds ResourceDescription directly, serialized as `resources`,
+  // identical in shape to a single any/all entry (ResourceFilter embeds the
+  // same ResourceDescription).
+  resources?: MatchSelectorEntry['resources'];
 }
 
 export interface PolicyRule {

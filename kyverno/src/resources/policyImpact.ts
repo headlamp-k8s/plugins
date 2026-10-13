@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-import { PolicyRule } from './kyvernoPolicy';
+import { MatchSelectorEntry, PolicyRule } from './kyvernoPolicy';
 import {
   ClusterPolicyReport,
   PolicyReport,
   PolicyReportInterface,
   PolicyReportResult,
+  PolicyReportSource,
   PolicyResultStatus,
 } from './policyReport';
 
@@ -29,6 +30,7 @@ export interface DrillDownTarget {
   policy: string;
   rule?: string;
   kind?: string;
+  apiVersion?: string;
   name?: string;
   namespace?: string;
   message?: string;
@@ -57,38 +59,68 @@ const STATUS_RANK: Record<PolicyResultStatus, number> = {
 
 function ingest(
   policyName: string,
+  policySource: PolicyReportSource,
   results: PolicyReportResult[],
   reportScope: PolicyReportInterface['scope'],
   reportNamespace: string | undefined,
   byResource: Map<string, ImpactedResource>
 ) {
   for (const result of results) {
-    if (result.policy !== policyName) continue;
+    // PolicyReport / ClusterPolicyReport is the community wgpolicyk8s.io CRD,
+    // not exclusive to Kyverno, and Kubernetes itself permits a legacy
+    // ClusterPolicy and a CEL ValidatingPolicy (or any other Kyverno engine)
+    // to share a bare name. Matching on `policy` alone would attribute one
+    // policy's resources and statuses to an unrelated one that happens to
+    // share its name; `source` is what actually identifies which engine
+    // produced a given result (see POLICY_REPORT_SOURCE in policyReport.ts).
+    if (result.policy !== policyName || result.source !== policySource) continue;
 
     // Background-scan reports put the resource identity on the report's
     // `scope` rather than per-result `resources[]` (Kyverno emits one
     // PolicyReport per scanned resource in that mode), so `resources[]` is
-    // the primary source and `scope` is the fallback.
-    const res = result.resources?.[0];
-    const kind = res?.kind || reportScope?.kind || 'Unknown';
-    const name = res?.name || reportScope?.name || '(unscoped)';
-    const namespace = res?.namespace || reportScope?.namespace || reportNamespace;
-    const uid = res?.uid || reportScope?.uid;
-    const key = `${kind}/${namespace || ''}/${name}`;
-    const existing = byResource.get(key);
+    // the primary source and the whole `scope` object is the fallback, used
+    // only when there are no resources[] entries at all. A result can
+    // reference more than one resource, so every entry gets its own map
+    // slot. Individual fields are never borrowed from `scope` for a genuine
+    // resources[] entry, `scope` describes the report's own subject, not
+    // necessarily the resource in this specific entry, borrowing its uid (or
+    // any other field) would attribute one resource's identity to another.
+    // When there is truly no identity at all (no resources[], no scope),
+    // iterate zero times rather than fabricate a placeholder resource.
+    const resourceRefs =
+      result.resources && result.resources.length > 0
+        ? result.resources
+        : reportScope
+        ? [reportScope]
+        : [];
 
-    if (!existing || STATUS_RANK[result.result] > STATUS_RANK[existing.status]) {
-      byResource.set(key, {
-        policy: policyName,
-        kind,
-        name,
-        namespace,
-        uid,
-        status: result.result,
-        rule: result.rule,
-        message: result.message,
-        severity: result.severity,
-      });
+    for (const res of resourceRefs) {
+      const kind = res?.kind || 'Unknown';
+      const name = res?.name || '(unscoped)';
+      const namespace = res?.namespace || reportNamespace;
+      const uid = res?.uid;
+      const apiVersion = res?.apiVersion;
+      // Prefer the UID when it's available. The name-based key alone can
+      // collide for distinct objects that share kind, namespace, and name,
+      // for example the same name used by two different API groups, so the
+      // fallback also folds in apiVersion.
+      const key = uid || `${apiVersion || ''}/${kind}/${namespace || ''}/${name}`;
+      const existing = byResource.get(key);
+
+      if (!existing || STATUS_RANK[result.result] > STATUS_RANK[existing.status]) {
+        byResource.set(key, {
+          policy: policyName,
+          kind,
+          apiVersion,
+          name,
+          namespace,
+          uid,
+          status: result.result,
+          rule: result.rule,
+          message: result.message,
+          severity: result.severity,
+        });
+      }
     }
   }
 }
@@ -98,19 +130,41 @@ function ingest(
  * the live PolicyReport / ClusterPolicyReport results already on the cluster.
  * This reflects what Kyverno evaluated rather than a static re-implementation
  * of its match logic, so it stays correct across selector, CEL, and autogen rules.
+ *
+ * Kyverno encodes a namespaced policy's identity in report results as
+ * `<namespace>/<name>` (see bucketReportResults), cluster policies stay
+ * unprefixed. Pass `policyNamespace` for a namespaced Policy so this matches
+ * the qualified form, otherwise every result is silently filtered out even
+ * when real data exists, `policyName` alone is never enough for a namespaced
+ * policy.
+ *
+ * `policySource` is required, not optional: a bare policy name is not a safe
+ * identity key on its own (see the comment in `ingest`), so every caller has
+ * to say which engine's results it actually wants, using the constants in
+ * POLICY_REPORT_SOURCE (policyReport.ts).
  */
 export function collectPolicyImpact(
   policyName: string,
+  policySource: PolicyReportSource,
   policyReports: PolicyReport[] | null,
-  clusterPolicyReports: ClusterPolicyReport[] | null
+  clusterPolicyReports: ClusterPolicyReport[] | null,
+  policyNamespace?: string
 ): PolicyImpactSummary {
+  const qualifiedName = policyNamespace ? `${policyNamespace}/${policyName}` : policyName;
   const byResource = new Map<string, ImpactedResource>();
 
   for (const report of policyReports || []) {
-    ingest(policyName, report.results, report.scope, report.jsonData.metadata.namespace, byResource);
+    ingest(
+      qualifiedName,
+      policySource,
+      report.results,
+      report.scope,
+      report.jsonData.metadata.namespace,
+      byResource
+    );
   }
   for (const report of clusterPolicyReports || []) {
-    ingest(policyName, report.results, report.scope, undefined, byResource);
+    ingest(qualifiedName, policySource, report.results, report.scope, undefined, byResource);
   }
 
   const resources = Array.from(byResource.values());
@@ -135,34 +189,121 @@ export function collectPolicyImpact(
   return { resources, byKind, namespaces, counts };
 }
 
+// Matches a real Kubernetes API version segment (v1, v2, v1alpha1, v1beta2, ...),
+// used below to find the kind inside a qualified pattern regardless of how many
+// other segments (group, subresource) surround it.
+const K8S_VERSION_SEGMENT = /^v\d+((alpha|beta)\d*)?$/;
+
+// Kyverno kind patterns can be a bare kind ("Pod"), version-qualified ("v1/Pod"),
+// group+version-qualified ("apps/v1/Deployment"), and any of those forms can also
+// carry a trailing "/subresource" segment ("Pod/status", "apps/v1/Deployment/scale").
+// Report results only ever carry the bare kind, so this walks the pattern to the
+// segment right after whatever looks like a real API version, rather than assuming
+// the kind is always the last segment (which a subresource suffix would break) or
+// always the first (which group/version qualification would break).
+function normalizeKindPattern(pattern: string): string {
+  const segments = pattern.split('/');
+  const versionIndex = segments.findIndex(s => K8S_VERSION_SEGMENT.test(s));
+  if (versionIndex !== -1 && versionIndex + 1 < segments.length) {
+    return segments[versionIndex + 1];
+  }
+  // No version segment found: either a bare kind, or "Kind/subresource".
+  return segments[0];
+}
+
+function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boolean {
+  const kinds = selector.resources?.kinds || [];
+  // Kyverno match kinds support "*" as a wildcard for every kind, an
+  // exact-membership check alone would reject a kind matched this way.
+  if (kinds.includes('*')) return true;
+  return kinds.some(pattern => normalizeKindPattern(pattern) === kind);
+}
+
+function describeConstraints(selectors: MatchSelectorEntry[], kind: string): string {
+  const parts = [`kind "${kind}"`];
+  const namespaces = selectors.flatMap(s => s.resources?.namespaces || []);
+  if (namespaces.length > 0) {
+    parts.push(`namespaces [${namespaces.join(', ')}]`);
+  }
+  if (selectors.some(s => s.resources?.selector)) {
+    parts.push('a label selector');
+  }
+  if (selectors.some(s => s.resources?.namespaceSelector)) {
+    parts.push('a namespace label selector');
+  }
+  return parts.join(' and ');
+}
+
 /**
  * Explains, in plain language, which rule and selector caused a policy to
  * consider a given resource kind. Read directly from the policy spec so the
  * explanation stays accurate even for policies with several rules.
  */
 export function describeMatchReasons(rules: PolicyRule[], kind: string): string[] {
+  // An empty or missing rules array is also how a policy type this function
+  // was not written for (a CEL ValidatingPolicy has no rules[] at all, only
+  // validations[]) reaches here, that is not the same as "rules exist but
+  // none of them matched", so it needs its own honest message rather than
+  // implying provenance this function has no basis to claim.
+  if (!rules || rules.length === 0) {
+    return [
+      `This policy's rules could not be read in a format this explanation understands; provenance for kind "${kind}" is unknown.`,
+    ];
+  }
+
   const reasons: string[] = [];
 
   for (const rule of rules) {
-    const selectors = [...(rule.match?.any || []), ...(rule.match?.all || [])];
-    for (const selector of selectors) {
-      const kinds = selector.resources?.kinds || [];
-      if (!kinds.includes(kind)) continue;
+    const ruleReasons: string[] = [];
 
-      const parts = [`kind "${kind}"`];
-      if (selector.resources?.namespaces?.length) {
-        parts.push(`namespaces [${selector.resources.namespaces.join(', ')}]`);
-      }
-      if (selector.resources?.selector) {
-        parts.push('a label selector');
-      }
-      reasons.push(`Rule "${rule.name}" matches ${parts.join(' and ')}.`);
+    // match.any is OR, any single entry matching is sufficient on its own.
+    // The deprecated direct match.resources form is one more implicit OR
+    // branch alongside it (same ResourceDescription shape as a single any/all
+    // entry, see MatchSelector), so it's folded into the same any-style loop
+    // rather than needing its own separate check.
+    const anySelectors = rule.match?.resources
+      ? [...(rule.match.any || []), { resources: rule.match.resources }]
+      : rule.match?.any || [];
+    for (const selector of anySelectors) {
+      if (!selectorMentionsKind(selector, kind)) continue;
+      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints([selector], kind)}.`);
     }
+
+    // match.all is AND, every entry has to hold at once, so the kind check
+    // has to pass for all of them together, concatenating any and all into
+    // one OR'd list (the previous approach) would report a match whenever a
+    // single all[] entry happened to name this kind, even when another entry
+    // in the same all[] block restricts it to a different kind entirely,
+    // something no single resource could ever satisfy.
+    const allSelectors = rule.match?.all || [];
+    if (allSelectors.length > 0 && allSelectors.every(s => selectorMentionsKind(s, kind))) {
+      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints(allSelectors, kind)}.`);
+    }
+
+    // exclude overrides a positive match at runtime for a resource it also
+    // covers. This function only has a kind, not a full resource, so it
+    // cannot know for certain whether a given resource would actually be
+    // excluded, but staying silent about an exclude block that plausibly
+    // covers this kind would let the reason above overstate certainty.
+    if (ruleReasons.length > 0 && rule.exclude) {
+      const excludeSelectors = [
+        ...(rule.exclude.any || []),
+        ...(rule.exclude.all || []),
+        ...(rule.exclude.resources ? [{ resources: rule.exclude.resources }] : []),
+      ];
+      if (excludeSelectors.some(s => selectorMentionsKind(s, kind))) {
+        ruleReasons.push(
+          `Rule "${rule.name}" also has an exclude block covering kind "${kind}"; a specific resource matching it would not actually be affected by this rule.`
+        );
+      }
+    }
+
+    reasons.push(...ruleReasons);
   }
 
   if (reasons.length > 0) return reasons;
   return [
-    `No rule in this policy explicitly lists kind "${kind}" in its match block; it was likely reached through a generated rule, a wildcard selector, or a background scan.`,
+    `No rule in this policy explicitly lists kind "${kind}" in its match block; it was likely reached through a generated rule or a background scan.`,
   ];
 }
 
@@ -179,13 +320,26 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
   const ruleLabel = rule.name ? `rule "${rule.name}"` : 'this rule';
 
   if (rule.validate?.pattern) {
-    return `This rule enforces the pattern below on ${target.kind || 'the resource'}. Update the manifest so every field matches the pattern, then re-apply it.`;
+    return `This rule enforces the pattern below on ${
+      target.kind || 'the resource'
+    }. Update the manifest so every field matches the pattern, then re-apply it.`;
   }
   if (rule.validate?.anyPattern) {
     return `This rule requires the resource to satisfy at least one of several patterns. Compare the resource against each entry in validate.anyPattern and adjust it to match one of them.`;
   }
   if (rule.validate?.deny) {
-    return `This rule denies matching resources outright rather than asking for a change. Check the match and exclude blocks on ${ruleLabel} to see whether this resource should be excluded instead of edited.`;
+    // deny.conditions (any/all, confirmed against the real CRD schema) is what
+    // actually decides whether a given matched resource gets denied, a deny rule
+    // is conditional far more often than not, and commonly references editable
+    // resource fields. Pointing straight at match/exclude here would tell users
+    // to change the policy's scope when the real fix is usually to change the
+    // resource so the conditions no longer hold; reserve match/exclude for a
+    // resource that is genuinely meant to be out of scope entirely.
+    const deny = rule.validate.deny as { conditions?: unknown };
+    if (deny.conditions) {
+      return `This rule denies matching resources when validate.deny.conditions on ${ruleLabel} evaluates to true. Review those conditions and adjust the resource so they evaluate to false; only use the match and exclude blocks if this resource should be out of scope entirely.`;
+    }
+    return `This rule denies every matching resource outright, with no conditions attached. Check the match and exclude blocks on ${ruleLabel} to see whether this resource should be excluded instead.`;
   }
   if (rule.validate?.cel) {
     return `This rule is enforced with a CEL expression. Review validate.cel.expressions on ${ruleLabel} and adjust the resource so the expression evaluates to true.`;
