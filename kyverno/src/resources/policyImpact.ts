@@ -189,10 +189,13 @@ export function collectPolicyImpact(
   return { resources, byKind, namespaces, counts };
 }
 
-// Matches a real Kubernetes API version segment (v1, v2, v1alpha1, v1beta2, ...),
-// used below to find the kind inside a qualified pattern regardless of how many
-// other segments (group, subresource) surround it.
-const K8S_VERSION_SEGMENT = /^v\d+((alpha|beta)\d*)?$/;
+// Matches a real Kubernetes API version segment (v1, v2, v1alpha1, v1beta2, ...) or a wildcard
+// standing in for one, used below to find the kind inside a qualified pattern regardless of how
+// many other segments (group, subresource) surround it. The "*" alternative is confirmed against
+// Kyverno's own versionRegex in pkg/utils/kube/kind.go: it matches a literal "*" explicitly, so a
+// pattern like "*/Pod" means "any version, kind Pod", not a version-less bare pattern whose first
+// segment happens to be "*".
+const K8S_VERSION_SEGMENT = /^(v\d+((alpha|beta)\d*)?|\*)$/;
 
 // Kyverno kind patterns can be a bare kind ("Pod"), version-qualified ("v1/Pod"),
 // group+version-qualified ("apps/v1/Deployment"), and any of those forms can also
@@ -211,12 +214,32 @@ function normalizeKindPattern(pattern: string): string {
   return segments[0];
 }
 
+// Kyverno's own kind matcher (pkg/utils/match/kind.go CheckKind, confirmed against the real
+// source) runs the parsed kind segment through genuine wildcard matching (ext/wildcard, "*"
+// stands for zero or more characters), not a literal "*"-only check, so a pattern like "Pod*"
+// matches any kind starting with "Pod". Only "*" is mirrored here; the underlying Go library also
+// supports "?" and ".", but no real Kyverno kind pattern is likely to use them, kind names never
+// contain the characters that would make them meaningful.
+function kindPatternMatches(pattern: string, kind: string): boolean {
+  if (pattern === '*') return true;
+  const regex = new RegExp(
+    `^${pattern
+      .split('*')
+      .map(segment => segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*')}$`
+  );
+  return regex.test(kind);
+}
+
 function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boolean {
-  const kinds = selector.resources?.kinds || [];
-  // Kyverno match kinds support "*" as a wildcard for every kind, an
-  // exact-membership check alone would reject a kind matched this way.
-  if (kinds.includes('*')) return true;
-  return kinds.some(pattern => normalizeKindPattern(pattern) === kind);
+  const kinds = selector.resources?.kinds;
+  // Confirmed against Kyverno's own checkResourceDescription (pkg/utils/match/match.go): the kind
+  // check only runs at all when len(conditionBlock.Kinds) > 0. An omitted or empty kinds list
+  // imposes no kind restriction, it matches every kind, not none, the way a plain `kinds.some(...)`
+  // over an empty array would otherwise conclude for a selector that only constrains namespaces,
+  // labels, or names.
+  if (!kinds || kinds.length === 0) return true;
+  return kinds.some(pattern => kindPatternMatches(normalizeKindPattern(pattern), kind));
 }
 
 function describeConstraints(selectors: MatchSelectorEntry[], kind: string): string {
@@ -285,13 +308,21 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
     // cannot know for certain whether a given resource would actually be
     // excluded, but staying silent about an exclude block that plausibly
     // covers this kind would let the reason above overstate certainty.
+    //
+    // Same any/all/direct distinction as the positive match logic above, for the same reason:
+    // exclude.all is AND, so flattening it into one OR'd list with exclude.any (as this used to
+    // do) would report an exclusion whenever a single all[] entry happened to name this kind, even
+    // when an all: [Pod, Deployment] block, impossible for any single resource to satisfy, could
+    // never actually exclude anything.
     if (ruleReasons.length > 0 && rule.exclude) {
-      const excludeSelectors = [
-        ...(rule.exclude.any || []),
-        ...(rule.exclude.all || []),
-        ...(rule.exclude.resources ? [{ resources: rule.exclude.resources }] : []),
-      ];
-      if (excludeSelectors.some(s => selectorMentionsKind(s, kind))) {
+      const excludeAny = rule.exclude.any || [];
+      const excludeAll = rule.exclude.all || [];
+      const excludeDirect = rule.exclude.resources ? [{ resources: rule.exclude.resources }] : [];
+      const excludeMentionsKind =
+        excludeAny.some(s => selectorMentionsKind(s, kind)) ||
+        (excludeAll.length > 0 && excludeAll.every(s => selectorMentionsKind(s, kind))) ||
+        excludeDirect.some(s => selectorMentionsKind(s, kind));
+      if (excludeMentionsKind) {
         ruleReasons.push(
           `Rule "${rule.name}" also has an exclude block covering kind "${kind}"; a specific resource matching it would not actually be affected by this rule.`
         );

@@ -733,6 +733,102 @@ describe('describeMatchReasons', () => {
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Pod"');
   });
+
+  test('treats an omitted kinds list as matching any kind, not none, found via Copilot review', () => {
+    // Confirmed against pkg/utils/match/match.go checkResourceDescription: the kind check only
+    // runs when len(conditionBlock.Kinds) > 0, so a selector that only constrains namespaces
+    // (no kinds at all) applies to every kind, it never narrows by kind in the first place.
+    const noKindsRules: PolicyRule[] = [
+      {
+        name: 'require-team-label-namespace',
+        match: { any: [{ resources: { namespaces: ['team-checkout'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(noKindsRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "require-team-label-namespace" matches kind "Pod"');
+    expect(reasons[0]).toContain('namespaces [team-checkout]');
+  });
+
+  test('recognizes a wildcard version segment ("*/Pod") as a match, found via Copilot review', () => {
+    // Confirmed against Kyverno's own versionRegex (pkg/utils/kube/kind.go): it matches a
+    // literal "*" explicitly, so "*/Pod" parses as (version: *, kind: Pod), not a bare pattern
+    // whose first segment happens to be the literal string "*".
+    const wildcardVersionRules: PolicyRule[] = [
+      { name: 'check-pods', match: { any: [{ resources: { kinds: ['*/Pod'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(wildcardVersionRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pods" matches kind "Pod"');
+  });
+
+  test('recognizes a wildcard kind pattern ("Pod*") as a match, found via Copilot review', () => {
+    // Confirmed against pkg/utils/match/kind.go CheckKind: it runs the parsed kind segment
+    // through ext/wildcard's genuine glob matching, not a literal "*"-only check.
+    const wildcardKindRules: PolicyRule[] = [
+      { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Pod*'] } }] } },
+    ];
+
+    expect(describeMatchReasons(wildcardKindRules, 'PodTemplate')[0]).toContain(
+      'Rule "check-pod-like" matches kind "PodTemplate"'
+    );
+    expect(describeMatchReasons(wildcardKindRules, 'Pod')[0]).toContain(
+      'Rule "check-pod-like" matches kind "Pod"'
+    );
+  });
+
+  test('does not let a wildcard kind pattern falsely match an unrelated kind, found via Copilot review', () => {
+    const wildcardKindRules: PolicyRule[] = [
+      { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Pod*'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(wildcardKindRules, 'Deployment');
+
+    expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Deployment"');
+  });
+
+  test('requires every entry in exclude.all to cover the kind, not just any one of them, found via Copilot review', () => {
+    // Mirrors the match.all test above: an all[] block requiring both Pod and Deployment kinds
+    // can never be satisfied by any single resource, so it can never actually exclude anything.
+    // Flattening exclude.all into the same OR'd list as exclude.any used to report an exclusion
+    // for Pod anyway.
+    const impossibleExcludeAllRules: PolicyRule[] = [
+      {
+        name: 'require-labels',
+        match: { any: [{ resources: { kinds: ['Pod'] } }] },
+        exclude: {
+          all: [{ resources: { kinds: ['Pod'] } }, { resources: { kinds: ['Deployment'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(impossibleExcludeAllRules, 'Pod');
+
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).not.toContain('exclude block');
+  });
+
+  test('reports an exclusion when every entry in exclude.all genuinely covers the kind, found via Copilot review', () => {
+    const satisfiableExcludeAllRules: PolicyRule[] = [
+      {
+        name: 'require-labels',
+        match: { any: [{ resources: { kinds: ['Pod'] } }] },
+        exclude: {
+          all: [
+            { resources: { kinds: ['Pod'], namespaces: ['kube-system'] } },
+            { resources: { kinds: ['Pod'], selector: { matchLabels: { tier: 'system' } } } },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(satisfiableExcludeAllRules, 'Pod');
+
+    expect(reasons).toHaveLength(2);
+    expect(reasons[1]).toContain('exclude block covering kind "Pod"');
+  });
 });
 
 describe('suggestFix', () => {
