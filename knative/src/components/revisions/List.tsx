@@ -24,6 +24,7 @@ import React from 'react';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KRevision, KService } from '../../resources/knative';
+import { isScaledToZero } from '../../utils/status';
 import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
@@ -216,6 +217,7 @@ export function RevisionsList() {
             status={rev.readyCondition?.status ?? 'Unknown'}
             reason={rev.readyCondition?.reason}
             message={rev.readyCondition?.message}
+            isScaledToZero={isScaledToZero(rev)}
           />
         ),
       },

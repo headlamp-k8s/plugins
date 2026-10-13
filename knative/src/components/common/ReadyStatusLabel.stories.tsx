@@ -56,3 +56,11 @@ WithMessage.args = {
   reason: 'RevisionFailed',
   message: 'Initial scale was never achieved',
 };
+
+export const ScaledToZero = Template.bind({});
+ScaledToZero.args = {
+  status: 'True',
+  isScaledToZero: true,
+  reason: 'NoTraffic',
+  message: 'Service is scaled to zero (idle)',
+};
