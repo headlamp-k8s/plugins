@@ -224,9 +224,10 @@ export function DeletingPolicyList() {
 }
 
 export function NamespacedValidatingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Validating Policies')}
       resourceClass={NamespacedValidatingPolicy}
       columns={[
@@ -270,9 +271,10 @@ export function NamespacedValidatingPolicyList() {
 }
 
 export function NamespacedMutatingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Mutating Policies')}
       resourceClass={NamespacedMutatingPolicy}
       columns={[
@@ -311,9 +313,10 @@ export function NamespacedMutatingPolicyList() {
 }
 
 export function NamespacedGeneratingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Generating Policies')}
       resourceClass={NamespacedGeneratingPolicy}
       columns={[
@@ -352,9 +355,10 @@ export function NamespacedGeneratingPolicyList() {
 }
 
 export function NamespacedDeletingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Deleting Policies')}
       resourceClass={NamespacedDeletingPolicy}
       columns={[

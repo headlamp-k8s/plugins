@@ -91,9 +91,10 @@ export function ImageValidatingPolicyList() {
 }
 
 export function NamespacedImageValidatingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Image Validating Policies')}
       resourceClass={NamespacedImageValidatingPolicy}
       columns={[
