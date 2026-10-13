@@ -28,6 +28,7 @@ import {
 } from '../common/activity/Activity';
 import ConditionsSection from '../common/ConditionsSection';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
+import { RevisionCompareHeaderButton } from './detail/header/RevisionCompareHeaderButton';
 import { RevisionDeleteHeaderButton } from './detail/header/RevisionDeleteHeaderButton';
 import { RevisionViewYamlHeaderButton } from './detail/header/RevisionViewYamlHeaderButton';
 import { RevisionPermissionsProvider } from './detail/permissions/RevisionPermissionsProvider';
@@ -154,6 +155,10 @@ export function RevisionDetail() {
             actions={rev => {
               if (!rev) return [];
               return [
+                {
+                  id: 'knative.revision-compare',
+                  action: <RevisionCompareHeaderButton revision={rev} />,
+                },
                 {
                   id: 'knative.revision-view-yaml',
                   action: <RevisionViewYamlHeaderButton revision={rev} />,
