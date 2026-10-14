@@ -80,6 +80,7 @@ export function generateSessionMarkdown(options: SessionExportOptions): string {
   const exportableMessages = messages.filter(
     msg =>
       !(
+        msg.role === 'system' ||
         (msg.role === 'tool' && msg.isDisplayOnly) ||
         (msg.isDisplayOnly &&
           !msg.content &&
@@ -105,7 +106,6 @@ export function generateSessionMarkdown(options: SessionExportOptions): string {
     lines.push('_No messages in this session._', '');
   } else {
     for (const msg of exportableMessages) {
-
       const role = msg.role || 'unknown';
       let roleTitle = 'Message';
       if (role === 'user') {
@@ -114,8 +114,6 @@ export function generateSessionMarkdown(options: SessionExportOptions): string {
         roleTitle = 'AI Assistant';
       } else if (role === 'tool') {
         roleTitle = `Tool Result${msg.name ? ` (${msg.name})` : ''}`;
-      } else if (role === 'system') {
-        roleTitle = 'System';
       }
 
       lines.push(`### ${roleTitle}`);

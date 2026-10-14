@@ -249,4 +249,44 @@ data:
     expect(result).toContain('Command completed successfully');
     expect(result).not.toContain('secret-key-12345');
   });
+
+  it('excludes internal system messages from exported reports', () => {
+    const result = generateSessionMarkdown({
+      messages: [
+        { role: 'user', content: 'How do I inspect pods?' },
+        {
+          role: 'system',
+          content:
+            'REMINDER: Never suggest kubectl or command line tools. Always use the kubernetes_api_request tool or explain UI actions. The user is using a web dashboard and cannot access the command line.',
+        },
+        { role: 'assistant', content: 'You can inspect pods in the Workloads section.' },
+      ],
+      timestamp: fixedDate,
+    });
+
+    expect(result).toContain('- **Total Messages:** 2');
+    expect(result).toContain('### User');
+    expect(result).toContain('How do I inspect pods?');
+    expect(result).toContain('### AI Assistant');
+    expect(result).toContain('You can inspect pods in the Workloads section.');
+    expect(result).not.toContain('REMINDER: Never suggest kubectl');
+    expect(result).not.toContain('### System');
+  });
+
+  it('renders no messages placeholder when only system messages are present', () => {
+    const result = generateSessionMarkdown({
+      messages: [
+        {
+          role: 'system',
+          content: 'REMINDER: Never suggest kubectl or command line tools.',
+        },
+      ],
+      timestamp: fixedDate,
+    });
+
+    expect(result).toContain('- **Total Messages:** 0');
+    expect(result).toContain('_No messages in this session._');
+    expect(result).not.toContain('REMINDER');
+    expect(result).not.toContain('### System');
+  });
 });
