@@ -130,6 +130,10 @@ function translatePrompt(t: (key: string) => string, prompt: string): string {
       return t('Explain ingress and egress traffic rules');
     case 'Are pods blocked by this network policy?':
       return t('Are pods blocked by this network policy?');
+    case 'Which network policies block pod traffic?':
+      return t('Which network policies block pod traffic?');
+    case 'What should I check in the {{tab}} tab?':
+      return t('What should I check in the {{tab}} tab?');
     case 'What in this list needs my attention?':
       return t('What in this list needs my attention?');
     case 'Summarize the status of these resources':
@@ -198,7 +202,7 @@ function translatePrompt(t: (key: string) => string, prompt: string): string {
  */
 export function generatePromptSuggestions(
   event: PromptEvent | null | undefined,
-  t: (key: string) => string = (k: string) => k
+  t: (key: string, options?: Record<string, unknown>) => string = (k: string) => k
 ): PromptSuggestion[] {
   // Base prompts that work in any context
   const basePrompts = [
@@ -223,7 +227,16 @@ export function generatePromptSuggestions(
 
     if (event.projectTab) {
       const tabPrompt = `What should I check in the ${event.projectTab} tab?`;
-      addSuggestion(tabPrompt, tabPrompt);
+      const translated = t('What should I check in the {{tab}} tab?', {
+        tab: event.projectTab,
+      });
+      const label = translated.includes('{{tab}}')
+        ? translated.replace(/{{tab}}/g, event.projectTab)
+        : translated;
+      contextSuggestions.push({
+        label,
+        prompt: tabPrompt,
+      });
     }
   }
 
@@ -258,7 +271,7 @@ export function generatePromptSuggestions(
       );
       addSuggestion(
         'Is this StatefulSet rollout healthy?',
-        target ? `Is ${target} rollout healthy?` : undefined
+        target ? `Is the rollout for ${target} healthy?` : undefined
       );
     } else if (kind === 'DaemonSet') {
       addSuggestion(
@@ -422,7 +435,7 @@ export function generatePromptSuggestions(
       addSuggestion('Which namespaces have warning events?');
     } else if (resourceType === 'NetworkPolicy') {
       addSuggestion('Explain ingress and egress traffic rules');
-      addSuggestion('Are pods blocked by this network policy?');
+      addSuggestion('Which network policies block pod traffic?');
     }
 
     // Generic list prompts as fallbacks
@@ -478,7 +491,7 @@ export function generatePromptSuggestions(
       addSuggestion('Which namespaces have warning events?');
     } else if (pathname.includes('/networkpolicies')) {
       addSuggestion('Explain ingress and egress traffic rules');
-      addSuggestion('Are pods blocked by this network policy?');
+      addSuggestion('Which network policies block pod traffic?');
     }
   }
 

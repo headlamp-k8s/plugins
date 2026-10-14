@@ -246,7 +246,7 @@ describe('generatePrompts', () => {
     const result = generatePrompts({ resources: [{ kind: 'NetworkPolicy' }] });
     expect(result).toHaveLength(3);
     expect(result[0]).toBe('Explain ingress and egress traffic rules');
-    expect(result[1]).toBe('Are pods blocked by this network policy?');
+    expect(result[1]).toBe('Which network policies block pod traffic?');
     expect(result[2]).toBe('What in this list needs my attention?');
   });
 
@@ -315,7 +315,7 @@ describe('generatePrompts', () => {
     const result = generatePrompts({ pathname: '/c/minikube/networkpolicies' });
     expect(result).toHaveLength(3);
     expect(result[0]).toBe('Explain ingress and egress traffic rules');
-    expect(result[1]).toBe('Are pods blocked by this network policy?');
+    expect(result[1]).toBe('Which network policies block pod traffic?');
   });
 
   it('returns event prompts when objectEvent has events', async () => {
@@ -452,5 +452,66 @@ describe('generatePromptSuggestions & Resource Name Interpolation', () => {
     expect(suggestions).toHaveLength(3);
     expect(suggestions[0]).toHaveProperty('label');
     expect(suggestions[0]).toHaveProperty('prompt');
+  });
+
+  it('localizes tab-specific display label with template while keeping model prompt canonical', async () => {
+    const { generatePromptSuggestions } = await loadPromptGenerator();
+    const fakeT = (key: string, options?: Record<string, unknown>) => {
+      if (key === 'What should I check in the {{tab}} tab?') {
+        return `¿Qué debo verificar en la pestaña ${options?.tab}?`;
+      }
+      return `[translated] ${key}`;
+    };
+
+    const suggestions = generatePromptSuggestions(
+      {
+        project: { id: 'test-project' },
+        projectTab: 'Security',
+      },
+      fakeT
+    );
+
+    const tabSuggestion = suggestions.find(s => s.prompt.includes('Security tab'));
+    expect(tabSuggestion).toBeDefined();
+    expect(tabSuggestion?.label).toBe('¿Qué debo verificar en la pestaña Security?');
+    expect(tabSuggestion?.prompt).toBe('What should I check in the Security tab?');
+  });
+
+  it('interpolates StatefulSet rollout healthy prompt with grammatically correct phrasing', async () => {
+    const { generatePromptSuggestions } = await loadPromptGenerator();
+    const suggestions = generatePromptSuggestions({
+      resource: {
+        kind: 'StatefulSet',
+        metadata: { name: 'database', namespace: 'default' },
+      },
+    });
+
+    const rolloutSuggestion = suggestions.find(
+      s => s.label === 'Is this StatefulSet rollout healthy?'
+    );
+    expect(rolloutSuggestion).toBeDefined();
+    expect(rolloutSuggestion?.prompt).toBe(
+      'Is the rollout for statefulset database in namespace default healthy?'
+    );
+  });
+
+  it('uses singular prompt for specific NetworkPolicy resource detail view', async () => {
+    const { generatePromptSuggestions } = await loadPromptGenerator();
+    const suggestions = generatePromptSuggestions({
+      resource: {
+        kind: 'NetworkPolicy',
+        metadata: { name: 'deny-ingress', namespace: 'backend' },
+      },
+    });
+
+    expect(suggestions).toHaveLength(3);
+    expect(suggestions[0].label).toBe('Explain ingress and egress traffic rules');
+    expect(suggestions[0].prompt).toBe(
+      'Explain ingress and egress traffic rules for networkpolicy deny-ingress in namespace backend'
+    );
+    expect(suggestions[1].label).toBe('Are pods blocked by this network policy?');
+    expect(suggestions[1].prompt).toBe(
+      'Are pods blocked by networkpolicy deny-ingress in namespace backend?'
+    );
   });
 });
