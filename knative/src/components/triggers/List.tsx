@@ -35,7 +35,7 @@ import { getReadinessColumns } from '../common/ResourceListCells';
  * @returns A link to the Broker named in `spec.broker` or `spec.brokerRef`, or an empty value when
  * neither is set.
  */
-function BrokerCell({
+export function BrokerCell({
   trigger,
 }: {
   /** The Trigger to show. */
