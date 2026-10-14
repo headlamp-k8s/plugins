@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { FormControlLabel, Switch } from '@mui/material';
 import { useKServiceEditMode } from '../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../permissions/KServicePermissionsProvider';
 
 export function KServiceEditToggleHeaderAction() {
+  const { t } = useTranslation();
   const { isEditMode, setIsEditMode } = useKServiceEditMode();
   const { canPatchKService, isLoading } = useKServicePermissions();
 
@@ -36,7 +38,7 @@ export function KServiceEditToggleHeaderAction() {
           disabled={isDisabled}
         />
       }
-      label="Edit Mode"
+      label={t('Edit Mode')}
       sx={{ ml: 2 }}
       disabled={isDisabled}
     />

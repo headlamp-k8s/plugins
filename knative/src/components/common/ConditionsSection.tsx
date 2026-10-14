@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Tooltip, Typography } from '@mui/material';
 import type { Condition } from '../../resources/knative/common';
@@ -25,14 +26,15 @@ type ConditionsSectionProps = {
 };
 
 export default function ConditionsSection({ conditions }: ConditionsSectionProps) {
+  const { t } = useTranslation();
   const columns = [
     {
-      label: 'Type',
+      label: t('Type'),
       getter: (c: Condition) => c.type,
       sort: (a: Condition, b: Condition) => a.type.localeCompare(b.type),
     },
     {
-      label: 'Status',
+      label: t('Status'),
       getter: (c: Condition) => (
         <ReadyStatusLabel
           status={c.status}
@@ -44,12 +46,12 @@ export default function ConditionsSection({ conditions }: ConditionsSectionProps
       sort: (a: Condition, b: Condition) => a.status.localeCompare(b.status),
     },
     {
-      label: 'Reason',
+      label: t('Reason'),
       getter: (c: Condition) => c.reason || '-',
       sort: (a: Condition, b: Condition) => (a.reason || '').localeCompare(b.reason || ''),
     },
     {
-      label: 'Message',
+      label: t('Message'),
       getter: (c: Condition) =>
         c.message ? (
           <Tooltip title={c.message}>
@@ -64,7 +66,7 @@ export default function ConditionsSection({ conditions }: ConditionsSectionProps
         ),
     },
     {
-      label: 'Last Transition',
+      label: t('Last Transition'),
       getter: (c: Condition) => (c.lastTransitionTime ? getAge(c.lastTransitionTime) : '-'),
       sort: (a: Condition, b: Condition) => {
         const timeA = a.lastTransitionTime ? new Date(a.lastTransitionTime).getTime() : 0;
@@ -75,7 +77,7 @@ export default function ConditionsSection({ conditions }: ConditionsSectionProps
   ];
 
   return (
-    <SectionBox title="Conditions">
+    <SectionBox title={t('Conditions')}>
       <SimpleTable columns={columns} data={conditions} />
     </SectionBox>
   );

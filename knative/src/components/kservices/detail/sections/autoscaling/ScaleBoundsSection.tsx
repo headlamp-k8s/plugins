@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
@@ -92,6 +93,7 @@ export default function ScaleBoundsSection({
   defaults: AutoscalingDefaults | null;
   cluster: string;
 }) {
+  const { t } = useTranslation();
   const [saving, setSaving] = React.useState(false);
   const { canPatchKService, isLoading } = useKServicePermissions();
   const { isEditMode } = useKServiceEditMode();
@@ -159,11 +161,15 @@ export default function ScaleBoundsSection({
         await kservice.patch(patchBody);
       }
 
-      notifySuccess('Scale bounds updated');
+      notifySuccess(t('Scale bounds updated'));
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
       const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to update settings: ${detail}` : 'Failed to update settings');
+      notifyError(
+        detail
+          ? t('Failed to update settings: {{ detail }}', { detail })
+          : t('Failed to update settings')
+      );
     } finally {
       setSaving(false);
     }
@@ -190,23 +196,25 @@ export default function ScaleBoundsSection({
         value
       ) : (
         <Typography component="span" color="text.secondary">
-          Not set {fallbackInfo ? `(${fallbackInfo})` : ''}
+          {fallbackInfo ? t('Not set ({{ info }})', { info: fallbackInfo }) : t('Not set')}
         </Typography>
       )}
     </Typography>
   );
 
   return (
-    <SectionBox title="Scale bounds & windows">
+    <SectionBox title={t('Scale bounds & windows')}>
       <Stack spacing={2}>
         <NameValueTable
           rows={[
             {
-              name: 'Min replicas (min-scale)',
+              name: t('Min replicas (min-scale)'),
               value: isReadOnly ? (
                 renderReadonly(
                   minScale,
-                  resolvedMinScale !== undefined ? `Default: ${resolvedMinScale}` : undefined
+                  resolvedMinScale !== undefined
+                    ? t('Default: {{ value }}', { value: resolvedMinScale })
+                    : undefined
                 )
               ) : (
                 <TextField
@@ -216,18 +224,22 @@ export default function ScaleBoundsSection({
                   onChange={e => setMinScale(e.target.value)}
                   inputProps={{ min: 0, step: 1, inputMode: 'numeric' }}
                   helperText={
-                    resolvedMinScale !== undefined ? `Default: ${resolvedMinScale}` : undefined
+                    resolvedMinScale !== undefined
+                      ? t('Default: {{ value }}', { value: resolvedMinScale })
+                      : undefined
                   }
                   sx={{ maxWidth: 400 }}
                 />
               ),
             },
             {
-              name: 'Max replicas (max-scale)',
+              name: t('Max replicas (max-scale)'),
               value: isReadOnly ? (
                 renderReadonly(
                   maxScale,
-                  resolvedMaxScale !== undefined ? `Default: ${resolvedMaxScale}` : undefined
+                  resolvedMaxScale !== undefined
+                    ? t('Default: {{ value }}', { value: resolvedMaxScale })
+                    : undefined
                 )
               ) : (
                 <TextField
@@ -239,26 +251,32 @@ export default function ScaleBoundsSection({
                   helperText={
                     resolvedMaxScale !== undefined
                       ? resolvedMaxScaleLimit && resolvedMaxScaleLimit > 0
-                        ? `Default: ${resolvedMaxScale} (cluster limit: ${resolvedMaxScaleLimit})${
-                            resolvedMaxScale === 0 ? ' — 0 = unlimited' : ''
-                          }`
-                        : `Default: ${resolvedMaxScale}${
-                            resolvedMaxScale === 0 ? ' — 0 = unlimited' : ''
-                          }`
+                        ? resolvedMaxScale === 0
+                          ? t('Default: {{ value }} (cluster limit: {{ limit }}) — 0 = unlimited', {
+                              value: resolvedMaxScale,
+                              limit: resolvedMaxScaleLimit,
+                            })
+                          : t('Default: {{ value }} (cluster limit: {{ limit }})', {
+                              value: resolvedMaxScale,
+                              limit: resolvedMaxScaleLimit,
+                            })
+                        : resolvedMaxScale === 0
+                        ? t('Default: {{ value }} — 0 = unlimited', { value: resolvedMaxScale })
+                        : t('Default: {{ value }}', { value: resolvedMaxScale })
                       : resolvedMaxScaleLimit && resolvedMaxScaleLimit > 0
-                      ? `Cluster limit: ${resolvedMaxScaleLimit}`
+                      ? t('Cluster limit: {{ limit }}', { limit: resolvedMaxScaleLimit })
                       : undefined
                   }
                 />
               ),
             },
             {
-              name: 'Initial scale',
+              name: t('Initial scale'),
               value: isReadOnly ? (
                 renderReadonly(
                   initialScale,
                   resolvedInitialScale !== undefined
-                    ? `Default: ${resolvedInitialScale}`
+                    ? t('Default: {{ value }}', { value: resolvedInitialScale })
                     : undefined
                 )
               ) : (
@@ -271,20 +289,20 @@ export default function ScaleBoundsSection({
                   helperText={
                     resolvedInitialScale !== undefined
                       ? resolvedAllowZeroInitial
-                        ? `Default: ${resolvedInitialScale} (zero allowed)`
-                        : `Default: ${resolvedInitialScale}`
+                        ? t('Default: {{ value }} (zero allowed)', { value: resolvedInitialScale })
+                        : t('Default: {{ value }}', { value: resolvedInitialScale })
                       : undefined
                   }
                 />
               ),
             },
             {
-              name: 'Activation scale',
+              name: t('Activation scale'),
               value: isReadOnly ? (
                 renderReadonly(
                   activationScale,
                   defaults?.activationScaleDefault !== undefined
-                    ? `Default: ${defaults?.activationScaleDefault}`
+                    ? t('Default: {{ value }}', { value: defaults?.activationScaleDefault })
                     : undefined
                 )
               ) : (
@@ -296,43 +314,51 @@ export default function ScaleBoundsSection({
                   inputProps={{ min: 1, step: 1, inputMode: 'numeric' }}
                   helperText={
                     defaults?.activationScaleDefault !== undefined
-                      ? `Default: ${defaults?.activationScaleDefault}`
+                      ? t('Default: {{ value }}', { value: defaults?.activationScaleDefault })
                       : undefined
                   }
                 />
               ),
             },
             {
-              name: 'Stable window',
+              name: t('Stable window'),
               value: isReadOnly ? (
                 renderReadonly(
                   stableWindow,
-                  resolvedStableWindow ? `Default: ${resolvedStableWindow}` : undefined
+                  resolvedStableWindow
+                    ? t('Default: {{ value }}', { value: resolvedStableWindow })
+                    : undefined
                 )
               ) : (
                 <TextField
                   size="small"
-                  placeholder="e.g., 60s"
+                  placeholder={t('e.g., 60s')}
                   value={stableWindow}
                   onChange={e => setStableWindow(e.target.value)}
-                  helperText={`Default: ${resolvedStableWindow ?? '60s'} (6s to 1h)`}
+                  helperText={t('Default: {{ value }} (6s to 1h)', {
+                    value: resolvedStableWindow ?? '60s',
+                  })}
                 />
               ),
             },
             {
-              name: 'Scale down delay',
+              name: t('Scale down delay'),
               value: isReadOnly ? (
                 renderReadonly(
                   scaleDownDelay,
-                  resolvedScaleDownDelay ? `Default: ${resolvedScaleDownDelay}` : undefined
+                  resolvedScaleDownDelay
+                    ? t('Default: {{ value }}', { value: resolvedScaleDownDelay })
+                    : undefined
                 )
               ) : (
                 <TextField
                   size="small"
-                  placeholder="e.g., 15m"
+                  placeholder={t('e.g., 15m')}
                   value={scaleDownDelay}
                   onChange={e => setScaleDownDelay(e.target.value)}
-                  helperText={`Default: ${resolvedScaleDownDelay ?? '0s'} (0s to 1h)`}
+                  helperText={t('Default: {{ value }} (0s to 1h)', {
+                    value: resolvedScaleDownDelay ?? '0s',
+                  })}
                 />
               ),
             },
@@ -342,19 +368,19 @@ export default function ScaleBoundsSection({
         {!isReadOnly && (
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="body2" color={isValid() ? 'text.secondary' : 'error'}>
-              {isValid() ? 'All inputs valid' : 'Fix invalid inputs'}
+              {isValid() ? t('All inputs valid') : t('Fix invalid inputs')}
             </Typography>
             <Box display="flex" gap={1}>
-              <Button variant="text" onClick={resetSection} aria-label="Reset (scale bounds)">
-                Reset
+              <Button variant="text" onClick={resetSection} aria-label={t('Reset (scale bounds)')}>
+                {t('Reset')}
               </Button>
               <Button
                 variant="contained"
                 onClick={onSave}
                 disabled={!isValid() || saving}
-                aria-label="Save autoscaling (scale bounds)"
+                aria-label={t('Save autoscaling (scale bounds)')}
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t('Saving…') : t('Save')}
               </Button>
             </Box>
           </Box>

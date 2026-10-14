@@ -15,6 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, Button, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import { throttle } from 'lodash';
@@ -309,6 +310,7 @@ function SingleActivityRenderer({
   /** Click event callback */
   onClick: React.PointerEventHandler<HTMLDivElement>;
 }) {
+  const { t } = useTranslation();
   const { id, minimized, location, content, title, hideTitleInHeader, icon, cluster } = activity;
   const activityElementRef = useRef<HTMLDivElement | null>(null);
   const containerElementRef = useRef<HTMLElement | null>(null);
@@ -588,8 +590,8 @@ function SingleActivityRenderer({
                 <>
                   <IconButton
                     size="small"
-                    title="Window"
-                    aria-label="Window"
+                    title={t('Window')}
+                    aria-label={t('Window')}
                     aria-haspopup="menu"
                     aria-expanded={isPlacementMenuOpen ? 'true' : undefined}
                     onClick={event => setPlacementMenuAnchorEl(event.currentTarget)}
@@ -600,7 +602,7 @@ function SingleActivityRenderer({
                     anchorEl={placementMenuAnchorEl}
                     open={isPlacementMenuOpen}
                     onClose={() => setPlacementMenuAnchorEl(null)}
-                    MenuListProps={{ 'aria-label': 'Window' }}
+                    MenuListProps={{ 'aria-label': t('Window') }}
                   >
                     <MenuItem
                       selected={location === 'split-left'}
@@ -613,7 +615,7 @@ function SingleActivityRenderer({
                       <Box sx={{ width: 22, height: 22, marginRight: 1, display: 'flex' }}>
                         <Icon icon="mdi:dock-left" />
                       </Box>
-                      Snap Left
+                      {t('Snap Left')}
                     </MenuItem>
                     <MenuItem
                       selected={location === 'split-right'}
@@ -626,7 +628,7 @@ function SingleActivityRenderer({
                       <Box sx={{ width: 22, height: 22, marginRight: 1, display: 'flex' }}>
                         <Icon icon="mdi:dock-right" />
                       </Box>
-                      Snap Right
+                      {t('Snap Right')}
                     </MenuItem>
                     <MenuItem
                       selected={location === 'split-top'}
@@ -639,7 +641,7 @@ function SingleActivityRenderer({
                       <Box sx={{ width: 22, height: 22, marginRight: 1, display: 'flex' }}>
                         <Icon icon="mdi:dock-top" />
                       </Box>
-                      Snap Top
+                      {t('Snap Top')}
                     </MenuItem>
                     <MenuItem
                       selected={location === 'split-bottom'}
@@ -652,7 +654,7 @@ function SingleActivityRenderer({
                       <Box sx={{ width: 22, height: 22, marginRight: 1, display: 'flex' }}>
                         <Icon icon="mdi:dock-bottom" />
                       </Box>
-                      Snap Bottom
+                      {t('Snap Bottom')}
                     </MenuItem>
                     <MenuItem
                       selected={location === 'full'}
@@ -665,7 +667,7 @@ function SingleActivityRenderer({
                       <Box sx={{ width: 22, height: 22, marginRight: 1, display: 'flex' }}>
                         <Icon icon="mdi:fullscreen" />
                       </Box>
-                      Fullscreen
+                      {t('Fullscreen')}
                     </MenuItem>
                   </Menu>
                   <IconButton
@@ -673,11 +675,11 @@ function SingleActivityRenderer({
                       Activity.update(id, { minimized: true });
                     }}
                     size="small"
-                    title="Minimize"
+                    title={t('Minimize')}
                   >
                     <Icon icon="mdi:minimize" />
                   </IconButton>
-                  <IconButton onClick={() => Activity.close(id)} size="small" title="Close">
+                  <IconButton onClick={() => Activity.close(id)} size="small" title={t('Close')}>
                     <Icon icon="mdi:close" />
                   </IconButton>
                 </>
@@ -779,6 +781,7 @@ function ActivityResizer({ activityElementRef }: { activityElementRef: RefObject
 
 /** Renders all activities and the taskbar */
 export const ActivitiesRenderer = React.memo(function ActivitiesRenderer() {
+  const { t } = useTranslation();
   const { activities, history } = useActivitiesState();
   const list = Object.values(activities);
   const [isOverview, setIsOverview] = useState(false);
@@ -844,7 +847,7 @@ export const ActivitiesRenderer = React.memo(function ActivitiesRenderer() {
               lineHeight: 1,
             }}
           >
-            Close All
+            {t('Close All')}
           </Button>
         </Box>
       )}
@@ -859,6 +862,7 @@ const ActivityBar = React.memo(function ActivityBar({
 }: {
   setIsOverview: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
+  const { t } = useTranslation();
   const { activities, history } = useActivitiesState();
   const list = Object.values(activities);
   const lastElement = history.length > 0 ? history[history.length - 1] : undefined;
@@ -940,7 +944,7 @@ const ActivityBar = React.memo(function ActivityBar({
                   fontStyle: it.temporary ? 'italic' : undefined,
                 }}
               >
-                {it.title ?? 'Something'}
+                {it.title ?? t('Something')}
               </Box>
             </Box>
           </Button>
@@ -952,7 +956,7 @@ const ActivityBar = React.memo(function ActivityBar({
               Activity.close(it.id);
             }}
             sx={{ width: '42px', height: '100%', borderRadius: 1, flexShrink: 0 }}
-            aria-label="Close"
+            aria-label={t('Close')}
           >
             <Icon icon="mdi:close" />
           </IconButton>
@@ -967,8 +971,8 @@ const ActivityBar = React.memo(function ActivityBar({
           background: theme.palette.background.paper,
         })}
       >
-        <Tooltip title="Overview">
-          <IconButton onClick={() => setIsOverview(it => !it)} aria-label="Overview">
+        <Tooltip title={t('Overview')}>
+          <IconButton onClick={() => setIsOverview(it => !it)} aria-label={t('Overview')}>
             <Icon icon="mdi:grid-large" />
           </IconButton>
         </Tooltip>

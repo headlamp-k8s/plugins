@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import HttpRoutesSection from './HttpRoutesSection';
 
@@ -142,6 +143,7 @@ export default function GatewayApiIngressSection({
   serviceName,
   cluster,
 }: GatewayApiIngressSectionProps) {
+  const { t } = useTranslation();
   const { external: externalHttpRoutes, internal: internalHttpRoutes } =
     useHttpRoutesByVisibilityForService({
       cluster,
@@ -154,14 +156,14 @@ export default function GatewayApiIngressSection({
   return (
     <>
       <HttpRoutesSection
-        title="HTTPRoutes (external)"
+        title={t('HTTPRoutes (external)')}
         namespace={namespace}
         routes={externalHttpRoutes}
         serviceName={serviceName}
         networkTemplates={networkTemplates}
       />
       <HttpRoutesSection
-        title="HTTPRoutes (internal)"
+        title={t('HTTPRoutes (internal)')}
         namespace={namespace}
         routes={internalHttpRoutes}
         serviceName={serviceName}

@@ -15,7 +15,7 @@
  */
 
 import { Icon } from '@iconify/react';
-import { K8s } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type {
@@ -596,6 +596,7 @@ function internalGlanceFacts(resource: any): GlanceFact[] | null {
 }
 
 export function KnativeInternalResourceGlance({ node }: { node: any }) {
+  const { t } = useTranslation();
   const resource = node.kubeObject;
   const facts = internalGlanceFacts(resource);
   if (!facts) return null;
@@ -604,12 +605,12 @@ export function KnativeInternalResourceGlance({ node }: { node: any }) {
   const status = ready === 'True' ? 'success' : ready === 'False' ? 'error' : '';
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap">
-      <StatusLabel status={status}>Ready: {ready}</StatusLabel>
+      <StatusLabel status={status}>{t('Ready: {{ ready }}', { ready })}</StatusLabel>
       {facts
         .filter(fact => fact.value !== undefined && fact.value !== null && fact.value !== '-')
         .map(fact => (
           <StatusLabel key={fact.label}>
-            {fact.label}: {String(fact.value)}
+            {t(fact.label)}: {String(fact.value)}
           </StatusLabel>
         ))}
     </Box>

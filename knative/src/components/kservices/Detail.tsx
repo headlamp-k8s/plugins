@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid, Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Chip, Divider, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
@@ -41,6 +42,7 @@ import { PodsSection } from './detail/sections/pods/PodsSection';
 import { TrafficSection } from './detail/sections/traffic/TrafficSection';
 
 export function KServiceDetail() {
+  const { t } = useTranslation();
   const { name, namespace } = useParams<{ namespace: string; name: string }>();
   const clusters = useClusters();
   const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
@@ -130,14 +132,16 @@ export function KServiceDetail() {
                   const readyCond = svc.status?.conditions?.find(c => c.type === 'Ready');
                   const readyStatus = readyCond?.status || 'Unknown';
 
-                  const visibility =
+                  // Canonical state drives styling; the translated label is display-only.
+                  const visibility: 'Internal' | 'External' =
                     svc.metadata?.labels?.['networking.knative.dev/visibility'] === 'cluster-local'
                       ? 'Internal'
                       : 'External';
+                  const visibilityLabel = visibility === 'Internal' ? t('Internal') : t('External');
 
                   return [
                     {
-                      name: 'Ready',
+                      name: t('Ready'),
                       value: (
                         <ReadyStatusLabel
                           status={readyStatus}
@@ -147,17 +151,17 @@ export function KServiceDetail() {
                       ),
                     },
                     {
-                      name: 'Visibility',
+                      name: t('Visibility'),
                       value: (
                         <Chip
-                          label={visibility}
+                          label={visibilityLabel}
                           color={visibility === 'Internal' ? 'default' : 'primary'}
                           size="small"
                         />
                       ),
                     },
                     {
-                      name: 'URL',
+                      name: t('URL'),
                       value: svc.status?.url ? (
                         <a href={svc.status.url} target="_blank" rel="noopener noreferrer">
                           {svc.status.url}
@@ -169,7 +173,7 @@ export function KServiceDetail() {
                       ),
                     },
                     {
-                      name: 'Latest Created',
+                      name: t('Latest Created'),
                       value: svc.status?.latestCreatedRevisionName ? (
                         <Link
                           routeName="revisionDetails"
@@ -188,7 +192,7 @@ export function KServiceDetail() {
                       ),
                     },
                     {
-                      name: 'Latest Ready',
+                      name: t('Latest Ready'),
                       value: svc.status?.latestReadyRevisionName ? (
                         <Link
                           routeName="revisionDetails"
@@ -207,7 +211,7 @@ export function KServiceDetail() {
                       ),
                     },
                     {
-                      name: 'Ingress Class',
+                      name: t('Ingress Class'),
                       value: <IngressClassValue cluster={svc.cluster} />,
                     },
                   ];

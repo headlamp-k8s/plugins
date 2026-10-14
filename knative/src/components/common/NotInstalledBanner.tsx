@@ -14,13 +14,22 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, CircularProgress, Link as MuiLink, Typography } from '@mui/material';
+import { Trans } from 'react-i18next';
 
 interface NotInstalledBannerProps {
   isLoading?: boolean;
 }
 
 export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProps) {
+  const { t, i18n, ready } = useTranslation();
+
+  const notInstalledMessage =
+    ready && i18n
+      ? t("Knative was not detected on your cluster. If you haven't already, please install it.")
+      : "Knative was not detected on your cluster. If you haven't already, please install it.";
+
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
@@ -43,19 +52,40 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
           textAlign: 'center',
         }}
       >
-        <Typography variant="h5">
-          Knative was not detected on your cluster. If you haven't already, please install it.
-        </Typography>
+        <Typography variant="h5">{notInstalledMessage}</Typography>
         <Typography>
-          Learn how to{' '}
-          <MuiLink
-            href="https://knative.dev/docs/install/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            install
-          </MuiLink>{' '}
-          Knative
+          {/* t() returns '' until ready and Trans needs the plugin's i18n instance, so show the
+              English text until both are available. */}
+          {ready && i18n ? (
+            <Trans
+              t={t}
+              // This plugin bundles its own react-i18next, so Trans has no default instance;
+              // pass the plugin's i18n instance (null until initialized).
+              i18n={i18n}
+              i18nKey="Learn how to <install>install</install> Knative"
+              components={{
+                install: (
+                  <MuiLink
+                    href="https://knative.dev/docs/install/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                ),
+              }}
+            />
+          ) : (
+            <>
+              Learn how to{' '}
+              <MuiLink
+                href="https://knative.dev/docs/install/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                install
+              </MuiLink>{' '}
+              Knative
+            </>
+          )}
         </Typography>
       </Box>
     </Box>
