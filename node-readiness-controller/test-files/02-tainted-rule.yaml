@@ -1,0 +1,41 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessRule
+metadata:
+  name: 02-tainted-rule
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: taint-present
+spec:
+  enforcementMode: continuous
+  conditionPolicy: allOf
+  taint:
+    key: readiness.k8s.io/CSIProvisioned
+    value: waiting
+    effect: NoSchedule
+  nodeSelector:
+    matchLabels:
+      test.readiness.k8s.io/zone: us-east-1a
+  conditions:
+    - type: storage.kubernetes.io/CSIReady
+      requiredStatus: 'True'
+status:
+  observedGeneration: 1
+  appliedNodes:
+    - storage-node-01
+    - storage-node-02
+  nodeEvaluations:
+    - nodeName: storage-node-01
+      taintStatus: Absent
+      lastEvaluationTime: '2026-10-14T10:00:00Z'
+      conditionResults:
+        - type: storage.kubernetes.io/CSIReady
+          requiredStatus: 'True'
+          currentStatus: 'True'
+    - nodeName: storage-node-02
+      taintStatus: Present
+      lastEvaluationTime: '2026-10-14T10:00:00Z'
+      conditionResults:
+        - type: storage.kubernetes.io/CSIReady
+          requiredStatus: 'True'
+          currentStatus: 'False'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getRuleStats, getRuleStatusInfo } from './utils';
+import { getRuleStats, getRuleStatusInfo } from './ruleStats';
 
 describe('utils', () => {
   describe('getRuleStats', () => {
@@ -33,11 +33,7 @@ describe('utils', () => {
               },
             ],
             failedNodes: [
-              {
-                nodeName: 'node-3',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                message: 'timeout',
-              },
+              { nodeName: 'node-3', lastEvaluationTime: '2026-10-14T00:00:00Z', message: 'error' },
             ],
           },
         },
@@ -89,7 +85,7 @@ describe('utils', () => {
       const stats = getRuleStats(mockRule);
       expect(stats.targeted).toBe(3);
       expect(stats.satisfied).toBe(1);
-      expect(stats.unsatisfied).toBe(0); // node-2 excluded from evaluations because failedNodes takes precedence
+      expect(stats.unsatisfied).toBe(0);
       expect(stats.failed).toBe(2);
       expect(stats.hasSummary).toBe(true);
       expect(stats.isDryRun).toBe(false);
