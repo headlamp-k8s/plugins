@@ -29,6 +29,30 @@ const EVENTING_CRD = 'brokers.eventing.knative.dev';
 
 const cancel = vi.fn();
 
+class ApiStatusError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiStatusError';
+    this.status = status;
+  }
+}
+
+class NotFoundError extends ApiStatusError {
+  constructor() {
+    super(404, 'Not Found');
+    this.name = 'NotFoundError';
+  }
+}
+
+class NetworkError extends Error {
+  constructor() {
+    super('Network error');
+    this.name = 'NetworkError';
+  }
+}
+
 /**
  * Makes apiGet behave like a cluster that only has the given CRDs.
  *
@@ -50,9 +74,25 @@ function clusterHas(crdsByCluster: Record<string, string[]>) {
           if ((crdsByCluster[opts.cluster] ?? []).includes(crdName)) {
             onGet({ metadata: { name: crdName } });
           } else {
-            onError(new Error('not found'));
+            onError(new NotFoundError());
           }
         }, 0);
+        return Promise.resolve(cancel);
+      };
+    }
+  );
+}
+
+function probeFails(err: unknown) {
+  apiGet.mockImplementation(
+    (
+      _onGet: (item: unknown) => void,
+      _crdName: string,
+      _namespace: undefined,
+      onError: (err: unknown) => void
+    ) => {
+      return () => {
+        setTimeout(() => onError(err), 0);
         return Promise.resolve(cancel);
       };
     }
@@ -105,8 +145,44 @@ describe('isKnativeComponentInstalled', () => {
   });
 
   it('returns false when the request itself fails', async () => {
-    apiGet.mockImplementation(() => () => Promise.reject(new Error('network down')));
+    apiGet.mockImplementation(() => () => Promise.reject(new NetworkError()));
     await expect(isKnativeComponentInstalled('serving', ['a'])).resolves.toBe(false);
+  });
+
+  it('treats a 404 as the CRD being absent', async () => {
+    probeFails(new NotFoundError());
+    await expect(isKnativeComponentInstalled('serving', ['a'])).resolves.toBe(false);
+  });
+
+  it.each([
+    ['a forbidden probe', new ApiStatusError(403, 'Forbidden')],
+    ['a server error', new ApiStatusError(500, 'Internal Server Error')],
+    ['an error without a status', new NetworkError()],
+    ['a null error', null],
+  ])('does not report the CRD as absent for %s', async (_name, err) => {
+    probeFails(err);
+    await expect(isKnativeComponentInstalled('serving', ['a'])).resolves.toBe(true);
+  });
+
+  it('settles only once when both callbacks fire', async () => {
+    apiGet.mockImplementation(
+      (
+        onGet: (item: unknown) => void,
+        _crdName: string,
+        _namespace: undefined,
+        onError: (err: unknown) => void
+      ) => {
+        return () => {
+          setTimeout(() => {
+            onGet({ metadata: { name: SERVING_CRD } });
+            onError(new NotFoundError());
+          }, 0);
+          return Promise.resolve(cancel);
+        };
+      }
+    );
+    await expect(isKnativeComponentInstalled('serving', ['a'])).resolves.toBe(true);
+    expect(cancel).toHaveBeenCalledTimes(1);
   });
 
   it('cancels the watch once a result is known', async () => {

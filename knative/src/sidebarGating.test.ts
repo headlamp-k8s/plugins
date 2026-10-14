@@ -259,6 +259,21 @@ describe('createSidebarGate', () => {
     }
   });
 
+  it('keeps an entry without a component mapping instead of throwing', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const isInstalled = vi.fn(async () => false);
+    const gate = createSidebarGate({ getCluster: () => 'a', isInstalled });
+    const unmapped = { name: 'not-mapped-yet', parent: 'knative' };
+
+    try {
+      expect(gate(unmapped)).toBe(unmapped);
+      expect(isInstalled).not.toHaveBeenCalled();
+      expect(consoleError).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it('runs one check at a time for the same key', async () => {
     let resolveCheck: (value: boolean) => void = () => {};
     const isInstalled = vi.fn(

@@ -173,7 +173,13 @@ export function createSidebarGate(options: SidebarGateOptions) {
   }
 
   return function gate<T extends SidebarEntryLike>(entry: T): T | null {
-    const components = componentsForEntry(entry);
+    let components: KnativeComponent[] | null;
+    try {
+      components = componentsForEntry(entry);
+    } catch (err) {
+      console.error(err);
+      return entry;
+    }
     if (components === null) {
       return entry;
     }
