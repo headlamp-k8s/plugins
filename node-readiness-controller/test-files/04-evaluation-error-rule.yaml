@@ -1,0 +1,38 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessRule
+metadata:
+  name: 04-evaluation-error-rule
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: controller-evaluation-error
+spec:
+  enforcementMode: continuous
+  conditionPolicy: allOf
+  taint:
+    key: readiness.k8s.io/Attestation
+    effect: NoExecute
+  nodeSelector:
+    matchLabels:
+      test.readiness.k8s.io/enclave: tpm2
+  conditions:
+    - type: security.kubernetes.io/TPMHealthy
+      requiredStatus: 'True'
+status:
+  observedGeneration: 1
+  appliedNodes:
+    - secure-node-01
+    - secure-node-02
+  failedNodes:
+    - nodeName: secure-node-02
+      lastEvaluationTime: '2026-10-14T10:05:00Z'
+      reason: APICommunicationTimeout
+      message: 'Timed out attempting to query node TPM health status conditions after 30s'
+  nodeEvaluations:
+    - nodeName: secure-node-01
+      taintStatus: Absent
+      lastEvaluationTime: '2026-10-14T10:00:00Z'
+      conditionResults:
+        - type: security.kubernetes.io/TPMHealthy
+          requiredStatus: 'True'
+          currentStatus: 'True'
