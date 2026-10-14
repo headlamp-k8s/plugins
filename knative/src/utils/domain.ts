@@ -127,8 +127,14 @@ export async function createDomainMapping(
 }
 
 /**
- * Creates a ClusterDomainClaim.
- * Throws an error if validation or API calls fail.
+ * Creates the ClusterDomainClaim for a DomainMapping's host, then annotates the DomainMapping so
+ * Knative reconciles it again.
+ *
+ * @param dm - The DomainMapping whose host is claimed.
+ * @param namespace - The namespace the claim lets use the host.
+ * @returns A promise that resolves once both steps succeed. It rejects when the DomainMapping has
+ * no host, and otherwise with an error that names the step that failed: creating the
+ * ClusterDomainClaim or annotating the DomainMapping.
  */
 export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespace: string) {
   const host = dm.host?.trim();
@@ -138,25 +144,6 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
 
   try {
     await ensureClusterDomainClaim({ host, cluster: dm.cluster, namespace });
-
-    // Add dummy annotation to trigger DomainMapping reconciliation
-    try {
-      await dm.patch({
-        metadata: {
-          annotations: {
-            'knative.headlamp.dev/reconciledAt': new Date().toISOString(),
-          },
-        },
-      });
-    } catch (e2: unknown) {
-      const error2 = e2 as { message?: string } | undefined;
-      const detail2 = error2?.message?.trim();
-      throw new Error(
-        detail2
-          ? `Failed to annotate DomainMapping: ${detail2}`
-          : 'Failed to annotate DomainMapping'
-      );
-    }
   } catch (e: unknown) {
     const error = e as { message?: string } | undefined;
     const detail = error?.message?.trim();
@@ -164,6 +151,23 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
       detail
         ? `Failed to create ClusterDomainClaim: ${detail}`
         : 'Failed to create ClusterDomainClaim'
+    );
+  }
+
+  // Add dummy annotation to trigger DomainMapping reconciliation
+  try {
+    await dm.patch({
+      metadata: {
+        annotations: {
+          'knative.headlamp.dev/reconciledAt': new Date().toISOString(),
+        },
+      },
+    });
+  } catch (e: unknown) {
+    const error = e as { message?: string } | undefined;
+    const detail = error?.message?.trim();
+    throw new Error(
+      detail ? `Failed to annotate DomainMapping: ${detail}` : 'Failed to annotate DomainMapping'
     );
   }
 }
