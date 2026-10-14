@@ -21,39 +21,12 @@ import {
 import React from 'react';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
-import { KnativeBroker, KnativeTrigger } from '../../resources/knative';
+import { KnativeTrigger } from '../../resources/knative';
 import { formatDestination } from '../../resources/knative/eventingData';
 import { DestinationLink } from '../common/DestinationLink';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
-import { OwnerLink } from '../common/OwnerLink';
 import { getReadinessColumns } from '../common/ResourceListCells';
-
-/**
- * Shows the Broker a Trigger takes events from.
- *
- * @param props - The Trigger whose Broker is shown.
- * @returns A link to the Broker named in `spec.broker` or `spec.brokerRef`, or an empty value when
- * neither is set.
- */
-function BrokerCell({
-  trigger,
-}: {
-  /** The Trigger to show. */
-  trigger: KnativeTrigger;
-}) {
-  const broker = trigger.broker;
-  const owner = broker
-    ? { apiVersion: KnativeBroker.apiVersion, kind: KnativeBroker.kind, name: broker.name }
-    : undefined;
-
-  return (
-    <OwnerLink
-      owner={owner}
-      namespace={broker?.namespace || trigger.metadata.namespace}
-      cluster={trigger.cluster}
-    />
-  );
-}
+import { BrokerLink } from './BrokerLink';
 
 /**
  * Shows where a Trigger sends its events.
@@ -96,7 +69,7 @@ export function TriggersList() {
         id: 'broker',
         label: 'Broker',
         getValue: item => item.broker?.name || '',
-        render: item => <BrokerCell trigger={item} />,
+        render: item => <BrokerLink trigger={item} />,
       },
       {
         id: 'subscriber',
