@@ -30,19 +30,32 @@ vi.mock('../resources/policyReport', () => ({
   ClusterPolicyReport: { useList: vi.fn() },
 }));
 
-/** Mimics the shape `KubeObject.useList` returns for a still-in-flight query. */
+function listResult(items: unknown[] | null, error: unknown, isLoading = false) {
+  return {
+    items,
+    error,
+    errors: error ? [error] : null,
+    isLoading,
+    isError: Boolean(error),
+    *[Symbol.iterator]() {
+      yield items;
+      yield error;
+    },
+  };
+}
+
+/** Mimics the tuple/object hybrid `KubeObject.useList` returns while a query is in flight. */
 function pendingList() {
-  return { items: null, error: null, errors: null, isLoading: true, isError: false };
+  return listResult(null, null, true);
 }
 
 /** A list that settled with an error, e.g. the CRD is absent or RBAC denied it. */
-function erroredList() {
-  const error = { status: 404, message: 'not found' };
-  return { items: null, error, errors: [error], isLoading: false, isError: true };
+function erroredList(error: unknown = { status: 404, message: 'not found' }) {
+  return listResult(null, error);
 }
 
 function resolvedList(items: unknown[]) {
-  return { items, error: null, errors: null, isLoading: false, isError: false };
+  return listResult(items, null);
 }
 
 function report(results: { policy: string; result: 'fail' | 'pass'; rule: string }[]) {
@@ -80,6 +93,17 @@ describe('usePolicyResultCounts', () => {
     const { result } = renderHook(() => usePolicyResultCounts());
 
     expect(result.current.loading).toBe(true);
+  });
+
+  it('propagates a non-404 error from the useList tuple', () => {
+    const accessError = { status: 403, message: 'forbidden' };
+    vi.mocked(PolicyReport.useList).mockReturnValue(erroredList(accessError) as any);
+    vi.mocked(ClusterPolicyReport.useList).mockReturnValue(resolvedList([]) as any);
+
+    const { result } = renderHook(() => usePolicyResultCounts());
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBe(accessError);
   });
 
   it('still aggregates the lists that did resolve', () => {

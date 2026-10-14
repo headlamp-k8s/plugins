@@ -61,12 +61,10 @@ function normalizeSource(items: PolicyReportResource[] | null, error: unknown): 
 }
 
 export function usePolicyReportSources(): PolicyReportSources {
-  const { items: policyReports, error: policyReportsError } = PolicyReport.useList();
-  const { items: clusterPolicyReports, error: clusterPolicyReportsError } =
-    ClusterPolicyReport.useList();
-  const { items: ephemeralReports, error: ephemeralReportsError } = EphemeralReport.useList();
-  const { items: clusterEphemeralReports, error: clusterEphemeralReportsError } =
-    ClusterEphemeralReport.useList();
+  const [policyReports, policyReportsError] = PolicyReport.useList();
+  const [clusterPolicyReports, clusterPolicyReportsError] = ClusterPolicyReport.useList();
+  const [ephemeralReports, ephemeralReportsError] = EphemeralReport.useList();
+  const [clusterEphemeralReports, clusterEphemeralReportsError] = ClusterEphemeralReport.useList();
 
   return useMemo(
     () =>
