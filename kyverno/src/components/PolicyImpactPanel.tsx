@@ -55,10 +55,13 @@ export function PolicyImpactPanel({ policyName, policyNamespace, rules }: Policy
   // `items` stays null when a list never resolves, including when the report
   // CRDs are absent or RBAC denies them, so deriving loading from
   // `items === null` would leave this panel spinning forever. Use the
-  // query's own state instead (see usePolicyResultCounts.ts), which settles
-  // on error too, an errored list then contributes no results and falls
-  // through to the empty state below.
+  // query's own state instead (see usePolicyResultCounts.ts). Loading
+  // settles on error too, but an errored query's `items` is still null, so
+  // it has to be checked for explicitly below, otherwise it would silently
+  // read as "no evaluated resources" or get counted as zero instead of
+  // surfacing that this data could not actually be fetched.
   const loading = policyReportQuery.isLoading || clusterPolicyReportQuery.isLoading;
+  const queryError = policyReportQuery.error || clusterPolicyReportQuery.error;
 
   const impact = useMemo(
     () =>
@@ -123,6 +126,18 @@ export function PolicyImpactPanel({ policyName, policyNamespace, rules }: Policy
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <CircularProgress size={24} />
         </Box>
+      </SectionBox>
+    );
+  }
+
+  if (queryError) {
+    return (
+      <SectionBox title={t('Policy Impact Map')}>
+        <Typography variant="body2" color="error">
+          {t('Could not load report data for this policy: {{error}}', {
+            error: String(queryError),
+          })}
+        </Typography>
       </SectionBox>
     );
   }
