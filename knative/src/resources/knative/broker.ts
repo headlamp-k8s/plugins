@@ -15,21 +15,9 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
-import type { DeliverySpec, KReference } from './common';
+import type { Addressable, AppliedEventPolicyRef, DeliverySpec, KReference } from './common';
 import { ConditionedKnativeCustomResource, type ConditionedStatus } from './conditionedResource';
 import { getBrokerClass } from './eventingData';
-
-/** An address where a Knative resource accepts events, as Knative's `Addressable` defines it. */
-interface Addressable {
-  /** Name of the address, for example `http`. */
-  name?: string;
-  /** URL of the address. */
-  url?: string;
-  /** CA certificates in PEM format of the address. */
-  CACerts?: string;
-  /** The OIDC audience of the address. */
-  audience?: string;
-}
 
 /** A Knative Broker, as the v1 `brokers.eventing.knative.dev` CRD defines it. */
 interface KnativeBrokerResource extends KubeObjectInterface {
@@ -53,15 +41,7 @@ interface KnativeBrokerResource extends KubeObjectInterface {
     /** The OIDC audience of the dead letter sink. */
     deadLetterSinkAudience?: string;
     /** The EventPolicies applied to the Broker. */
-    policies?: {
-      /**
-       * API version of the applied EventPolicy, which is the EventPolicy version the resource
-       * supports.
-       */
-      apiVersion?: string;
-      /** Name of the applied EventPolicy. */
-      name?: string;
-    }[];
+    policies?: AppliedEventPolicyRef[];
   };
 }
 

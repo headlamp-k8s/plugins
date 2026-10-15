@@ -129,6 +129,8 @@ const knativeKindIconKinds = [
   'networking.internal.knative.dev/Certificate',
   'eventing.knative.dev/Broker',
   'eventing.knative.dev/Trigger',
+  'messaging.knative.dev/Channel',
+  'messaging.knative.dev/Subscription',
 ];
 
 knativeKindIconKinds.forEach(kind => {

@@ -3,8 +3,8 @@
 A Headlamp plugin for operating Knative Serving workloads and inspecting the resources that
 Serving creates for them. Application owners can manage Services and traffic, while platform
 operators can follow a request from its Route and Ingress through to autoscaling and image
-resolution resources. Event-driven application owners can manage the Knative Eventing Brokers and
-Triggers that route events.
+resolution resources. Event-driven application owners can manage the Knative Eventing Brokers,
+Triggers, Channels and Subscriptions that route events.
 
 ## Requirements
 
@@ -21,9 +21,9 @@ Headlamp adds the selected cluster to each route. For example, selecting a clust
 The sidebar uses non-clickable section headings to group the views into four sections:
 **Serving** for the resources application and domain owners manage, **Serving Internals** for
 internal resources, including the read-only resources Serving derives and manages itself,
-**Configuration** for cluster-level Knative settings, and **Eventing** for the Brokers and
-Triggers that route events. Serving and Eventing are detected separately, so a cluster that runs
-only one of them shows only its sections.
+**Configuration** for cluster-level Knative settings, and **Eventing** for the Brokers, Triggers,
+Channels and Subscriptions that route events. Serving and Eventing are detected separately, so a
+cluster that runs only one of them shows only its sections.
 
 ### Serving
 
@@ -59,6 +59,8 @@ only one of them shows only its sections.
 |---|---|---|---|---|
 | Event-driven application owner | Brokers | `/knative/brokers` | Which address do producers send events to, and is the `default` Broker ready? | Manage |
 | Event-driven application owner | Triggers | `/knative/triggers` | Which subscriber receives events from the `default` Broker, and why is a Trigger not ready? | Manage |
+| Event-driven application owner | Channels | `/knative/channels` | Which kind of channel backs `orders`, and how many Subscriptions does it have? | Manage; view only when Knative created it |
+| Event-driven application owner | Subscriptions | `/knative/subscriptions` | Where do events from the `orders` Channel go, and which Subscriptions did a Broker create for its Triggers? | Manage; view only when Knative created it |
 
 ## Resource Map
 

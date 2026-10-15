@@ -32,6 +32,8 @@ required_crds=(
   "brokers.eventing.knative.dev"
   "triggers.eventing.knative.dev"
   "inmemorychannels.messaging.knative.dev"
+  "channels.messaging.knative.dev"
+  "subscriptions.messaging.knative.dev"
 )
 for crd_name in "${required_crds[@]}"; do
   if ! kubectl get crd "${crd_name}" >/dev/null 2>&1; then
@@ -43,10 +45,13 @@ done
 echo "Using kubectl context: $(kubectl config current-context)"
 apply_manifest "00-namespace-and-sink.yaml"
 apply_manifest "01-broker-and-triggers.yaml"
+apply_manifest "02-channel-and-subscriptions.yaml"
 
 wait_for_ready "broker.eventing.knative.dev/default"
 wait_for_ready "trigger.eventing.knative.dev/catch-all"
 wait_for_ready "trigger.eventing.knative.dev/uri-subscriber"
+wait_for_ready "channel.messaging.knative.dev/orders"
+wait_for_ready "subscription.messaging.knative.dev/orders-to-display"
 
 echo
 echo "Knative Eventing test resources are ready in namespace ${TEST_NAMESPACE}."

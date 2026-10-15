@@ -29,6 +29,8 @@ const READ_ONLY_KNATIVE_GVKS = new Set([
   'networking.internal.knative.dev/v1alpha1/Ingress',
   'networking.internal.knative.dev/v1alpha1/ServerlessService',
   'networking.internal.knative.dev/v1alpha1/Certificate',
+  'messaging.knative.dev/v1/Channel',
+  'messaging.knative.dev/v1/Subscription',
 ]);
 
 /**
