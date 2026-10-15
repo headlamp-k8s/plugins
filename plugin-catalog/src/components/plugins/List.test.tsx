@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type * as React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 
 // The full Headlamp CommonComponents barrel pulls in monaco, which cannot load in jsdom,
 // so mock the heavy modules and keep the real ConfirmDialog to exercise its close behavior.
@@ -50,8 +51,6 @@ vi.mock('./PluginCard', () => ({
 }));
 
 import { PurePluginList, PurePluginListProps } from './List';
-
-afterEach(cleanup);
 
 function renderList(overrides: Partial<PurePluginListProps> = {}) {
   const props: PurePluginListProps = {
