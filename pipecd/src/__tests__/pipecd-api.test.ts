@@ -115,11 +115,69 @@ describe('listApplications', () => {
     expect(result.applications[0].syncState?.status).toBe('SYNCED');
   });
 
-  it('maps the real apiservice.ListApplications RPC field names, not REST query params', async () => {
+  it('shows a deploying app as DEPLOYING even if its last sync state was SYNCED', async () => {
+    mockClient.listApplications.mockResolvedValue({
+      applications: [genApp({ deploying: true })],
+      cursor: '',
+    });
+    const result = await listApplications(MOCK_CONFIG);
+    expect(result.applications[0].syncState?.status).toBe('DEPLOYING');
+  });
+
+  it('shows a deploying app as DEPLOYING when it has no sync state yet', async () => {
+    mockClient.listApplications.mockResolvedValue({
+      applications: [genApp({ deploying: true, syncState: undefined })],
+      cursor: '',
+    });
+    const result = await listApplications(MOCK_CONFIG);
+    expect(result.applications[0].syncState?.status).toBe('DEPLOYING');
+  });
+
+  // The server filters `kind` on the deprecated field, which a v1 piped leaves
+  // at 0 (KUBERNETES), so the filter has to run on the resolved platform.
+  const v1Terraform = genApp({
+    id: 'app-tf-001',
+    name: 'infra',
+    kind: 0,
+    deployTargetsByPlugin: { terraform: {} },
+  });
+
+  it('does not send the platform filter to the server', async () => {
     mockClient.listApplications.mockResolvedValue({ applications: [], cursor: '' });
-    await listApplications(MOCK_CONFIG, { kind: 'KUBERNETES' });
+    await listApplications(MOCK_CONFIG, { kind: 'TERRAFORM' });
     expect(mockClient.listApplications).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'KUBERNETES' }),
+      expect.objectContaining({ kind: '' }),
+      expect.anything()
+    );
+  });
+
+  it('includes a v1 Terraform app in the Terraform filter', async () => {
+    mockClient.listApplications.mockResolvedValue({
+      applications: [genApp(), v1Terraform],
+      cursor: '',
+    });
+    const result = await listApplications(MOCK_CONFIG, { kind: 'TERRAFORM' });
+    expect(result.applications.map(a => a.id)).toEqual(['app-tf-001']);
+  });
+
+  it('leaves a v1 Terraform app out of the Kubernetes filter', async () => {
+    mockClient.listApplications.mockResolvedValue({
+      applications: [genApp(), v1Terraform],
+      cursor: '',
+    });
+    const result = await listApplications(MOCK_CONFIG, { kind: 'KUBERNETES' });
+    expect(result.applications.map(a => a.id)).toEqual(['app-k8s-001']);
+  });
+
+  it('follows the cursor so matches on later pages are not skipped', async () => {
+    mockClient.listApplications
+      .mockResolvedValueOnce({ applications: [genApp()], cursor: 'page-2' })
+      .mockResolvedValueOnce({ applications: [v1Terraform], cursor: '' });
+    const result = await listApplications(MOCK_CONFIG, { kind: 'TERRAFORM' });
+    expect(result.applications.map(a => a.id)).toEqual(['app-tf-001']);
+    expect(mockClient.listApplications).toHaveBeenCalledTimes(2);
+    expect(mockClient.listApplications).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cursor: 'page-2' }),
       expect.anything()
     );
   });
@@ -129,24 +187,6 @@ describe('listApplications', () => {
     await listApplications(MOCK_CONFIG, { pageSize: 10 });
     expect(mockClient.listApplications).toHaveBeenCalledWith(
       expect.objectContaining({ limit: 10 }),
-      expect.anything()
-    );
-  });
-
-  it('translates the Cloud Run filter to the CLOUDRUN protobuf enum name', async () => {
-    mockClient.listApplications.mockResolvedValue({ applications: [], cursor: '' });
-    await listApplications(MOCK_CONFIG, { kind: 'CLOUD_RUN' });
-    expect(mockClient.listApplications).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'CLOUDRUN' }),
-      expect.anything()
-    );
-  });
-
-  it('passes other kinds through unchanged', async () => {
-    mockClient.listApplications.mockResolvedValue({ applications: [], cursor: '' });
-    await listApplications(MOCK_CONFIG, { kind: 'ECS' });
-    expect(mockClient.listApplications).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'ECS' }),
       expect.anything()
     );
   });

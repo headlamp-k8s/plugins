@@ -207,6 +207,23 @@ function mapTrigger(t: GenDeployment['trigger']): DeploymentTrigger {
   };
 }
 
+/**
+ * PipeCD reports a running deployment through `deploying`, separately from the
+ * drift-based sync state, and its console lets that flag win. Do the same, or
+ * an app mid-deploy shows its previous SYNCED state.
+ */
+function mapSyncState(a: GenApplication): Application['syncState'] {
+  if (!a.syncState) {
+    return a.deploying ? { status: 'DEPLOYING', timestamp: 0 } : undefined;
+  }
+  return {
+    status: a.deploying ? 'DEPLOYING' : SYNC_STATUS_MAP[a.syncState.status] ?? 'UNKNOWN',
+    shortReason: a.syncState.shortReason,
+    reason: a.syncState.reason,
+    timestamp: toNumber(a.syncState.timestamp),
+  };
+}
+
 function mapApplication(a: GenApplication): Application {
   return {
     id: a.id,
@@ -218,14 +235,7 @@ function mapApplication(a: GenApplication): Application {
     cloudProvider: a.cloudProvider,
     description: a.description,
     labels: a.labels,
-    syncState: a.syncState
-      ? {
-          status: SYNC_STATUS_MAP[a.syncState.status] ?? 'UNKNOWN',
-          shortReason: a.syncState.shortReason,
-          reason: a.syncState.reason,
-          timestamp: toNumber(a.syncState.timestamp),
-        }
-      : undefined,
+    syncState: mapSyncState(a),
     mostRecentSuccessfulDeployment: a.mostRecentlySuccessfulDeployment
       ? {
           deploymentId: a.mostRecentlySuccessfulDeployment.deploymentId,
@@ -293,20 +303,6 @@ function mapDeployment(d: GenDeployment): Deployment {
   };
 }
 
-/**
- * PipeCD validates the `kind` filter against its protobuf enum, where Cloud Run
- * is spelled CLOUDRUN. The UI and our own types use CLOUD_RUN, so translate at
- * the API boundary or the server answers InvalidArgument.
- */
-const KIND_FILTER_NAMES: Record<string, string> = {
-  CLOUD_RUN: 'CLOUDRUN',
-};
-
-function toKindFilter(kind: string | undefined): string {
-  if (!kind) return '';
-  return KIND_FILTER_NAMES[kind] ?? kind;
-}
-
 export interface ListApplicationsOptions {
   kind?: string;
   cursor?: string;
@@ -319,21 +315,47 @@ export async function listApplications(
   options: ListApplicationsOptions = {}
 ): Promise<ListApplicationsResponse> {
   const client = getClient(config);
-  const resp = await call('ListApplications', () =>
-    client.listApplications(
-      {
-        kind: toKindFilter(options.kind),
-        cursor: options.cursor ?? '',
-        limit: options.pageSize ?? 0,
-        name: '',
-        disabled: false,
-        labels: {},
-        pipedId: '',
-      },
-      { signal: options.signal }
-    )
-  );
-  return { applications: resp.applications.map(mapApplication), cursor: resp.cursor };
+  const fetchPage = (cursor: string) =>
+    call('ListApplications', () =>
+      client.listApplications(
+        {
+          // The server filters `kind` on the deprecated field, which a v1 piped
+          // leaves at KUBERNETES, so never send it. See the filter below.
+          kind: '',
+          cursor,
+          limit: options.pageSize ?? 0,
+          name: '',
+          disabled: false,
+          labels: {},
+          pipedId: '',
+        },
+        { signal: options.signal }
+      )
+    );
+
+  if (!options.kind) {
+    const resp = await fetchPage(options.cursor ?? '');
+    return { applications: resp.applications.map(mapApplication), cursor: resp.cursor };
+  }
+
+  // Filter on the resolved platform instead. Matches can sit on any page, so
+  // walk them all here rather than hand back pages that may be empty. Stop if
+  // the server repeats a cursor, and skip ids already seen.
+  const seen = new Set<string>();
+  const matches: Application[] = [];
+  let cursor = options.cursor ?? '';
+  for (;;) {
+    const resp = await fetchPage(cursor);
+    for (const gen of resp.applications) {
+      if (seen.has(gen.id)) continue;
+      seen.add(gen.id);
+      const app = mapApplication(gen);
+      if (app.kind === options.kind) matches.push(app);
+    }
+    if (!resp.cursor || resp.cursor === cursor || resp.applications.length === 0) break;
+    cursor = resp.cursor;
+  }
+  return { applications: matches, cursor: '' };
 }
 
 export async function getApplication(
