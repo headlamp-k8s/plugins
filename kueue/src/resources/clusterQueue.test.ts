@@ -82,7 +82,7 @@ describe('ClusterQueue formatters', () => {
   });
 
   it('formats namespace selectors', () => {
-    expect(renderLabelSelector()).toBe('All namespaces');
+    expect(renderLabelSelector()).toBe('No namespaces');
     expect(renderLabelSelector({})).toBe('All namespaces');
     expect(renderLabelSelector({ matchLabels: { team: 'platform' } })).toBe('team=platform');
     expect(
