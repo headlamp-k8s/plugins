@@ -42,7 +42,6 @@ const ownerResourceClasses = [
   KnativeIngress,
   KnativeServerlessService,
   KnativeCertificate,
-  KnativeChannel,
   KnativeTrigger,
 ];
 
@@ -61,6 +60,7 @@ const ownerCrdNames = new Map(
 const ownerRouteNames = new Map<string, string>([
   ['serving.knative.dev/v1/Service', 'kserviceDetails'],
   ['serving.knative.dev/v1/Revision', 'revisionDetails'],
+  ['messaging.knative.dev/v1/Channel', KnativeChannel.detailsRoute],
   ['v1/Service', 'service'],
   ['v1/Secret', 'secret'],
 ]);
@@ -79,9 +79,9 @@ function getOwnerCrdName(owner: ResourceReference): string | undefined {
 }
 
 /**
- * Links to a referenced object: the plugin's pages for Knative Services and Revisions, Headlamp's
- * pages for Services and Secrets, and Headlamp's Custom Resource view for the other Knative kinds
- * the plugin knows.
+ * Links to a referenced object: the plugin's pages for Knative Services, Revisions and Channels,
+ * Headlamp's pages for Services and Secrets, and Headlamp's Custom Resource view for the other
+ * Knative kinds the plugin knows.
  *
  * @param props - The object to link to, where it is, and the text to show.
  * @returns A link to the object, its name or label as text when it cannot be linked, or an empty

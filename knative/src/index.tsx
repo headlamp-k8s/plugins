@@ -27,14 +27,17 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import { ChannelDetail } from './components/channels/Detail';
 import { KServiceDetail } from './components/kservices/Detail';
 import { RevisionDetail } from './components/revisions/Detail';
+import { SubscriptionDetail } from './components/subscriptions/Detail';
 import { isKnativeComponentInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
 import { getKnativeListRouteComponent } from './listRoutes';
 import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
+import { KnativeChannel, KnativeSubscription } from './resources/knative';
 import { createSidebarGate } from './sidebarGating';
 
 registerKnativeIcon();
@@ -101,6 +104,20 @@ registerRoute({
   sidebar: 'knative-revisions',
   name: 'revisionDetails',
   component: withQueryClient(RevisionDetail),
+});
+
+registerRoute({
+  path: '/knative/channels/:namespace/:name',
+  sidebar: 'knative-channels',
+  name: KnativeChannel.detailsRoute,
+  component: withQueryClient(ChannelDetail),
+});
+
+registerRoute({
+  path: '/knative/subscriptions/:namespace/:name',
+  sidebar: 'knative-subscriptions',
+  name: KnativeSubscription.detailsRoute,
+  component: withQueryClient(SubscriptionDetail),
 });
 
 knativeNavigationItems.forEach(item => {

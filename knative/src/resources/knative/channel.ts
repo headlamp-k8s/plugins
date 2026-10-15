@@ -15,6 +15,7 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KnativeListRouteName } from '../../navigation';
 import type {
   Addressable,
   AppliedEventPolicyRef,
@@ -117,6 +118,24 @@ export class KnativeChannel extends ConditionedKnativeCustomResource<KnativeChan
   static apiName = 'channels';
   static apiVersion = 'messaging.knative.dev/v1';
   static isNamespaced = true;
+
+  /**
+   * The plugin route that shows one Channel.
+   *
+   * @returns The route name.
+   */
+  static get detailsRoute(): string {
+    return 'knativeChannelDetails';
+  }
+
+  /**
+   * The plugin route that lists Channels.
+   *
+   * @returns The route name.
+   */
+  static get listRoute(): KnativeListRouteName {
+    return 'knativeChannels';
+  }
 
   /**
    * The address that event producers send events to.
