@@ -281,7 +281,14 @@ export function PurePluginList({
       <SectionHeader
         title={t('Plugins')}
         titleSideActions={[
-          <Box key="catalog-filters" pl={2} display="flex" flexWrap="wrap" gap={1} alignItems="center">
+          <Box
+            key="catalog-filters"
+            pl={2}
+            display="flex"
+            flexWrap="wrap"
+            gap={1}
+            alignItems="center"
+          >
             <OfficialSwitch isChecked={isOfficialSwitchChecked} onChange={onOfficialSwitchChange} />
             <VerifiedSwitch isChecked={isVerifiedSwitchChecked} onChange={onVerifiedSwitchChange} />
           </Box>,
