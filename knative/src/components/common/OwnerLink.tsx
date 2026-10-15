@@ -28,6 +28,7 @@ import {
   KnativePodAutoscaler,
   KnativeRoute,
   KnativeServerlessService,
+  KnativeSubscription,
   KnativeTrigger,
 } from '../../resources/knative';
 import { EmptyValue, TextValue } from './ResourceListCells';
@@ -43,26 +44,29 @@ const ownerResourceClasses = [
   KnativeServerlessService,
   KnativeCertificate,
   KnativeChannel,
+  KnativeSubscription,
   KnativeTrigger,
 ];
 
+const ownerClassesByGvk = ownerResourceClasses.flatMap(resourceClass =>
+  (Array.isArray(resourceClass.apiVersion)
+    ? resourceClass.apiVersion
+    : [resourceClass.apiVersion]
+  ).map(apiVersion => [`${apiVersion}/${resourceClass.kind}`, resourceClass] as const)
+);
+
 const ownerCrdNames = new Map(
-  ownerResourceClasses.flatMap(resourceClass =>
-    (Array.isArray(resourceClass.apiVersion)
-      ? resourceClass.apiVersion
-      : [resourceClass.apiVersion]
-    ).map(
-      apiVersion =>
-        [`${apiVersion}/${resourceClass.kind}`, getKnativeCrdName(resourceClass)] as const
-    )
-  )
+  ownerClassesByGvk.map(([gvk, resourceClass]) => [gvk, getKnativeCrdName(resourceClass)] as const)
 );
 
 const ownerRouteNames = new Map<string, string>([
   ['serving.knative.dev/v1/Service', 'kserviceDetails'],
   ['serving.knative.dev/v1/Revision', 'revisionDetails'],
-  ['v1/Service', 'service'],
-  ['v1/Secret', 'secret'],
+  ...ownerClassesByGvk
+    .filter(([, resourceClass]) => resourceClass.detailsRoute !== resourceClass.kind)
+    .map(([gvk, resourceClass]) => [gvk, resourceClass.detailsRoute] as const),
+  ['v1/Service', 'Service'],
+  ['v1/Secret', 'Secret'],
 ]);
 
 /** The parts of an object reference needed to link to the object. */
@@ -79,9 +83,9 @@ function getOwnerCrdName(owner: ResourceReference): string | undefined {
 }
 
 /**
- * Links to a referenced object: the plugin's pages for Knative Services and Revisions, Headlamp's
- * pages for Services and Secrets, and Headlamp's Custom Resource view for the other Knative kinds
- * the plugin knows.
+ * Links to a referenced object: the plugin's pages for Knative Services and Revisions and for the
+ * Knative kinds whose class names its own detail route, Headlamp's pages for Services and Secrets,
+ * and Headlamp's Custom Resource view for the other Knative kinds the plugin knows.
  *
  * @param props - The object to link to, where it is, and the text to show.
  * @returns A link to the object, its name or label as text when it cannot be linked, or an empty

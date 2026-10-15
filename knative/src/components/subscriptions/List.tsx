@@ -22,8 +22,7 @@ import React from 'react';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeSubscription } from '../../resources/knative';
-import { formatDestination } from '../../resources/knative/eventingData';
-import { DestinationLink } from '../common/DestinationLink';
+import { destinationColumn } from '../common/DestinationLink';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { OwnerLink } from '../common/OwnerLink';
 import { getReadinessColumns } from '../common/ResourceListCells';
@@ -45,42 +44,11 @@ export function SubscriptionsList() {
       'name',
       'namespace',
       ...(showClusterColumn ? (['cluster'] as const) : []),
-      {
-        id: 'channel',
-        label: 'Channel',
-        getValue: item => formatDestination({ ref: item.spec?.channel }),
-        render: item => (
-          <DestinationLink
-            destination={{ ref: item.spec?.channel }}
-            namespace={item.metadata.namespace}
-            cluster={item.cluster}
-          />
-        ),
-      },
-      {
-        id: 'subscriber',
-        label: 'Subscriber',
-        getValue: item => formatDestination(item.spec?.subscriber),
-        render: item => (
-          <DestinationLink
-            destination={item.spec?.subscriber}
-            namespace={item.metadata.namespace}
-            cluster={item.cluster}
-          />
-        ),
-      },
-      {
-        id: 'reply',
-        label: 'Reply',
-        getValue: item => formatDestination(item.spec?.reply),
-        render: item => (
-          <DestinationLink
-            destination={item.spec?.reply}
-            namespace={item.metadata.namespace}
-            cluster={item.cluster}
-          />
-        ),
-      },
+      destinationColumn('channel', 'Channel', item => ({
+        ref: item.spec?.channel,
+      })),
+      destinationColumn('subscriber', 'Subscriber', item => item.spec?.subscriber),
+      destinationColumn('reply', 'Reply', item => item.spec?.reply),
       {
         id: 'owner',
         label: 'Owner',

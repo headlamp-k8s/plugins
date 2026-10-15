@@ -62,6 +62,11 @@ cluster that runs only one of them shows only its sections.
 | Event-driven application owner | Channels | `/knative/channels` | Which kind of channel backs `orders`, and how many Subscriptions does it have? | Manage; view only when Knative created it |
 | Event-driven application owner | Subscriptions | `/knative/subscriptions` | Where do events from the `orders` Channel go, and which Subscriptions did a Broker create for its Triggers? | Manage; view only when Knative created it |
 
+Selecting a Channel or Subscription opens its detail page. A Channel's page shows its backing
+Channel, address, and Subscriptions with the state of each; a Subscription's page shows its
+Channel, subscriber, reply, owner, and the endpoints Knative resolved for them. Both show conditions
+and events.
+
 ## Resource Map
 
 Application owners and Serving troubleshooters use Headlamp's Map to see how a Service expands

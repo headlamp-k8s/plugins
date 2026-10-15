@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import type { ResourceTableColumn } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import type { Destination } from '../../resources/knative/common';
 import { formatDestination } from '../../resources/knative/eventingData';
 import { OwnerLink } from './OwnerLink';
@@ -50,4 +52,32 @@ export function DestinationLink({
       label={label}
     />
   );
+}
+
+/**
+ * Builds a list column that shows a destination a resource names, such as a Subscription's
+ * subscriber.
+ *
+ * @param id - The column's id.
+ * @param label - The column's heading.
+ * @param getDestination - Reads the destination from a row's resource.
+ * @returns A column that sorts and filters by the destination's text and links to it.
+ */
+export function destinationColumn<T extends KubeObject>(
+  id: string,
+  label: string,
+  getDestination: (item: T) => Destination | undefined
+): ResourceTableColumn<T> {
+  return {
+    id,
+    label,
+    getValue: item => formatDestination(getDestination(item)),
+    render: item => (
+      <DestinationLink
+        destination={getDestination(item)}
+        namespace={item.metadata.namespace}
+        cluster={item.cluster}
+      />
+    ),
+  };
 }
