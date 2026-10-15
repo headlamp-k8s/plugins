@@ -47,8 +47,18 @@ interface PolicyImpactPanelProps {
  */
 export function PolicyImpactPanel({ policyName, policyNamespace, rules }: PolicyImpactPanelProps) {
   const { i18n, ready, t } = useTranslation();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const policyReportQuery = PolicyReport.useList();
+  const clusterPolicyReportQuery = ClusterPolicyReport.useList();
+  const policyReports = policyReportQuery.items;
+  const clusterPolicyReports = clusterPolicyReportQuery.items;
+
+  // `items` stays null when a list never resolves, including when the report
+  // CRDs are absent or RBAC denies them, so deriving loading from
+  // `items === null` would leave this panel spinning forever. Use the
+  // query's own state instead (see usePolicyResultCounts.ts), which settles
+  // on error too, an errored list then contributes no results and falls
+  // through to the empty state below.
+  const loading = policyReportQuery.isLoading || clusterPolicyReportQuery.isLoading;
 
   const impact = useMemo(
     () =>
@@ -107,10 +117,7 @@ export function PolicyImpactPanel({ policyName, policyNamespace, rules }: Policy
     [namespaceHeader, nameHeader, statusHeader, severityHeader, ruleHeader]
   );
 
-  // Wait for both streams, same convention AssociatedReportsSection already
-  // uses, otherwise this would briefly flash a wrong "0 resources" empty
-  // state as soon as the first list resolves.
-  if (policyReports === null || clusterPolicyReports === null) {
+  if (loading) {
     return (
       <SectionBox title={t('Policy Impact Map')}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>

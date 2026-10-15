@@ -33,7 +33,12 @@ import {
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
-import { ClusterPolicyReport, PolicyReport, PolicyReportResult } from '../resources/policyReport';
+import {
+  ClusterPolicyReport,
+  POLICY_REPORT_SOURCE,
+  PolicyReport,
+  PolicyReportResult,
+} from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
 import { PolicyImpactPanel } from './PolicyImpactPanel';
 
@@ -235,6 +240,14 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
   );
 }
 
+type ReportResourceRef = NonNullable<PolicyReportResult['resources']>[number];
+
+type AssociatedReportResult = PolicyReportResult & {
+  reportName: string;
+  reportNamespace?: string;
+  reportScope?: ReportResourceRef;
+};
+
 function AssociatedReportsSection({
   policyName,
   policyNamespace,
@@ -264,16 +277,21 @@ function AssociatedReportsSection({
   // silently matched nothing for every namespaced Policy.
   const qualifiedName = policyNamespace ? `${policyNamespace}/${policyName}` : policyName;
 
-  const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] =
-    [];
+  const matchingResults: AssociatedReportResult[] = [];
 
   for (const report of policyReports) {
     for (const result of report.results) {
-      if (result.policy === qualifiedName) {
+      // Every Kyverno policy engine reports through the same PolicyReport
+      // CRD, so a legacy namespaced Policy and a same-named CEL policy can
+      // both produce a result with this qualifiedName. `source` is what
+      // actually disambiguates which engine produced it (see
+      // POLICY_REPORT_SOURCE in policyReport.ts).
+      if (result.policy === qualifiedName && result.source === POLICY_REPORT_SOURCE.legacy) {
         matchingResults.push({
           ...result,
           reportName: report.jsonData.metadata.name,
           reportNamespace: report.jsonData.metadata.namespace,
+          reportScope: report.scope,
         });
       }
     }
@@ -281,10 +299,11 @@ function AssociatedReportsSection({
 
   for (const report of clusterPolicyReports) {
     for (const result of report.results) {
-      if (result.policy === qualifiedName) {
+      if (result.policy === qualifiedName && result.source === POLICY_REPORT_SOURCE.legacy) {
         matchingResults.push({
           ...result,
           reportName: report.jsonData.metadata.name,
+          reportScope: report.scope,
         });
       }
     }
@@ -299,11 +318,7 @@ function AssociatedReportsSection({
   );
 }
 
-function AssociatedReportsTable({
-  results,
-}: {
-  results: (PolicyReportResult & { reportName: string; reportNamespace?: string })[];
-}) {
+function AssociatedReportsTable({ results }: { results: AssociatedReportResult[] }) {
   const { i18n, ready, t } = useTranslation();
 
   // See ViolationsView/common.tsx for why headers are computed once and the
@@ -340,10 +355,23 @@ function AssociatedReportsTable({
       {
         header: resourceHeader,
         id: 'resource',
-        accessorFn: (r: PolicyReportResult) =>
-          r.resources
-            ?.map(res => `${res.namespace ? res.namespace + '/' : ''}${res.kind}/${res.name}`)
-            .join(', ') || '-',
+        // Background-scan reports put the resource identity on the report's
+        // `scope` rather than per-result `resources[]` (see the `ingest`
+        // comment in policyImpact.ts), so fall back to it when `resources`
+        // is empty instead of rendering '-' for an otherwise-known resource.
+        accessorFn: (r: AssociatedReportResult) => {
+          const refs =
+            r.resources && r.resources.length > 0
+              ? r.resources
+              : r.reportScope
+              ? [r.reportScope]
+              : [];
+          return (
+            refs
+              .map(res => `${res.namespace ? res.namespace + '/' : ''}${res.kind}/${res.name}`)
+              .join(', ') || '-'
+          );
+        },
       },
       {
         header: messageHeader,
