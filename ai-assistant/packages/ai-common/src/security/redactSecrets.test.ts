@@ -44,6 +44,27 @@ describe('redactSecrets', () => {
     expect(out).toContain('[REDACTED]');
   });
 
+  it('handles repeated eyJ input without treating it as a JWT', () => {
+    const adversarialInput = 'eyJ'.repeat(100_000);
+
+    expect(redactSecrets(adversarialInput)).toBe(adversarialInput);
+  });
+
+  it('preserves incomplete JWT-like values', () => {
+    const incomplete = 'prefix eyJheader.eyJpayload suffix';
+
+    expect(redactSecrets(incomplete)).toBe(incomplete);
+  });
+
+  it('redacts every valid JWT embedded in surrounding text', () => {
+    const first = 'eyJheader.eyJpayload.signature_one';
+    const second = 'eyJother.eyJclaims.signature-two';
+
+    expect(redactSecrets(`first=${first}; second=${second}`)).toBe(
+      'first=[REDACTED]; second=[REDACTED]'
+    );
+  });
+
   it('redacts PEM private keys', () => {
     const pem = `-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4
@@ -60,6 +81,11 @@ MIICpDCCAYwCCQDU+pQ4pHgSpDANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
     const out = redactSecrets(cert);
     expect(out).not.toContain('MIICpD');
     expect(out).toContain('[REDACTED]');
+  });
+
+  it('preserves many unterminated PEM headers', () => {
+    const input = Array.from({ length: 2_000 }, () => '-----BEGIN CERTIFICATE-----').join('\n');
+    expect(redactSecrets(input)).toBe(input);
   });
 
   it('redacts kubeconfig inline certificate data', () => {
@@ -253,6 +279,21 @@ namespace: default`;
     expect(out).toContain('[REDACTED]');
   });
 
+  it('redacts every fenced JSON Secret after malformed and non-secret blocks', () => {
+    const input = [
+      '```json\n{invalid}\n```',
+      '```json\n{"kind":"ConfigMap","data":{"visible":"yes"}}\n```',
+      '```json\n{"kind":"Secret","data":{"first":"c2VjcmV0MQ=="}}\n```',
+      '```json\n{"kind":"Secret","stringData":{"second":"secret2"}}\n```',
+    ].join('\n');
+    const out = redactSecrets(input);
+    expect(out).toContain('{invalid}');
+    expect(out).toContain('"visible":"yes"');
+    expect(out).not.toContain('c2VjcmV0MQ==');
+    expect(out).not.toContain('secret2');
+    expect(out.match(/\[REDACTED\]/g)).toHaveLength(2);
+  });
+
   it('redacts all data values of a JSON Kubernetes Secret and List responses', () => {
     const secret = JSON.stringify({
       apiVersion: 'v1',
@@ -287,5 +328,20 @@ namespace: default`;
     expect(
       redactSecrets('DefaultEndpointsProtocol=https;AccountKey=abc123DEF456==;Rest=1')
     ).toContain('AccountKey=[REDACTED]');
+  });
+
+  it('redacts credentials that are not at the start of a line', () => {
+    expect(redactSecrets('url=https://x.io/?token=abc123')).toBe(
+      'url=https://x.io/?token=[REDACTED]'
+    );
+    expect(redactSecrets('export PASSWORD=hunter2')).toBe('export PASSWORD=[REDACTED]');
+    expect(redactSecrets('my password: hunter2')).toBe('my password: [REDACTED]');
+    expect(redactSecrets('The password: hunter2 was leaked')).toBe('The password: [REDACTED]');
+  });
+
+  it('leaves non-credential fields and already-redacted values alone', () => {
+    expect(redactSecrets('url=https://example.com/path')).toBe('url=https://example.com/path');
+    expect(redactSecrets('password: [REDACTED]')).toBe('password: [REDACTED]');
+    expect(redactSecrets('DB_PASSWORD=hunter2')).toBe('DB_PASSWORD=hunter2');
   });
 });
