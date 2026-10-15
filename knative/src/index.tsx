@@ -67,7 +67,7 @@ registerSidebarEntry({
   name: 'knative',
   label: 'Knative',
   icon: 'custom:knative',
-  url: '/knative/services',
+  url: knativeNavigationItems[0].path,
 });
 
 knativeNavigationSections.forEach(section => {
@@ -127,6 +127,8 @@ const knativeKindIconKinds = [
   'networking.internal.knative.dev/Ingress',
   'networking.internal.knative.dev/ServerlessService',
   'networking.internal.knative.dev/Certificate',
+  'eventing.knative.dev/Broker',
+  'eventing.knative.dev/Trigger',
 ];
 
 knativeKindIconKinds.forEach(kind => {
