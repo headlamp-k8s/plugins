@@ -197,21 +197,52 @@ export function collectPolicyImpact(
 // segment happens to be "*".
 const K8S_VERSION_SEGMENT = /^(v\d+((alpha|beta)\d*)?|\*)$/;
 
-// Kyverno kind patterns can be a bare kind ("Pod"), version-qualified ("v1/Pod"),
-// group+version-qualified ("apps/v1/Deployment"), and any of those forms can also
-// carry a trailing "/subresource" segment ("Pod/status", "apps/v1/Deployment/scale").
-// Report results only ever carry the bare kind, so this walks the pattern to the
-// segment right after whatever looks like a real API version, rather than assuming
-// the kind is always the last segment (which a subresource suffix would break) or
-// always the first (which group/version qualification would break).
+// Faithful port of Kyverno's real ParseKindSelector (pkg/utils/kube/kind.go, confirmed against
+// the Go source), which this plugin only needs the kind out of. It first splits the pattern on
+// "/", then splits only the LAST resulting segment on "." too, a kind pattern can carry a
+// dot-qualified subresource ("Pod.status") as well as a slash-qualified one ("Pod/status"), both
+// mean the same thing to Kyverno. It then walks the segment count exactly as Kyverno does. A
+// 2-segment "x/y" pattern is ambiguous between "version/kind" and "kind/subresource": Kyverno
+// breaks the tie by checking whether y is a real version, or (when x is "*") whether y is already
+// all lowercase, which is what a subresource name looks like and a kind name never does, so
+// "*/status" means "wildcard kind, status subresource", not "version *, kind status".
 function normalizeKindPattern(pattern: string): string {
-  const segments = pattern.split('/');
-  const versionIndex = segments.findIndex(s => K8S_VERSION_SEGMENT.test(s));
-  if (versionIndex !== -1 && versionIndex + 1 < segments.length) {
-    return segments[versionIndex + 1];
+  let segments = pattern.split('/');
+  const lastIndex = segments.length - 1;
+  segments = [...segments.slice(0, lastIndex), ...segments[lastIndex].split('.')];
+
+  switch (segments.length) {
+    case 1:
+      // Bare kind.
+      return segments[0];
+    case 2: {
+      const [first, second] = segments;
+      if (first === '*' && second === '*') {
+        // "*/*": every resource and subresource.
+        return '*';
+      }
+      if (first === '*' && second === second.toLowerCase()) {
+        // "*/subresource": an all-lowercase second segment is a subresource
+        // name, never a kind, so the kind here is the wildcard itself.
+        return '*';
+      }
+      if (K8S_VERSION_SEGMENT.test(first)) {
+        // "version/kind" (including the wildcard-version form "*/Kind").
+        return second;
+      }
+      // "kind/subresource".
+      return first;
+    }
+    case 3:
+      // "version/kind/subresource" when the first segment is a real version,
+      // otherwise "group/version/kind".
+      return K8S_VERSION_SEGMENT.test(segments[0]) ? segments[1] : segments[2];
+    case 4:
+      // "group/version/kind/subresource".
+      return segments[2];
+    default:
+      return '';
   }
-  // No version segment found: either a bare kind, or "Kind/subresource".
-  return segments[0];
 }
 
 // Kyverno's own kind matcher (pkg/utils/match/kind.go CheckKind, confirmed against the real

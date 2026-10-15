@@ -764,6 +764,58 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).toContain('Rule "check-pods" matches kind "Pod"');
   });
 
+  test('recognizes a dot-qualified subresource kind pattern ("Pod.status") as a match, found via Copilot review', () => {
+    // Confirmed against Kyverno's own ParseKindSelector (pkg/utils/kube/kind.go): it splits the
+    // last "/"-segment on "." too, so a dot-qualified subresource means the same thing as a
+    // slash-qualified one, "Pod.status" and "Pod/status" both parse to kind "Pod".
+    const dotSubresourceRules: PolicyRule[] = [
+      { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['Pod.status'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(dotSubresourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('recognizes a version-qualified dot-subresource pattern ("v1/Pod.status") as a match, found via Copilot review', () => {
+    const versionDotSubresourceRules: PolicyRule[] = [
+      { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['v1/Pod.status'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(versionDotSubresourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('recognizes a group+version-qualified dot-subresource pattern ("apps/v1/Deployment.scale") as a match, found via Copilot review', () => {
+    const groupVersionDotSubresourceRules: PolicyRule[] = [
+      {
+        name: 'check-deployment-scale',
+        match: { any: [{ resources: { kinds: ['apps/v1/Deployment.scale'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(groupVersionDotSubresourceRules, 'Deployment');
+
+    expect(reasons[0]).toContain('Rule "check-deployment-scale" matches kind "Deployment"');
+  });
+
+  test('treats a wildcard-kind subresource pattern ("*/status") as matching any kind, found via Copilot review', () => {
+    // Confirmed against ParseKindSelector: when the first segment is "*" and the second is
+    // already all lowercase, the second segment is a subresource name, not a kind, so this
+    // parses as (kind: *, subresource: status), not (version: *, kind: status).
+    const wildcardSubresourceRules: PolicyRule[] = [
+      { name: 'check-any-status', match: { any: [{ resources: { kinds: ['*/status'] } }] } },
+    ];
+
+    expect(describeMatchReasons(wildcardSubresourceRules, 'Pod')[0]).toContain(
+      'Rule "check-any-status" matches kind "Pod"'
+    );
+    expect(describeMatchReasons(wildcardSubresourceRules, 'Deployment')[0]).toContain(
+      'Rule "check-any-status" matches kind "Deployment"'
+    );
+  });
+
   test('recognizes a wildcard kind pattern ("Pod*") as a match, found via Copilot review', () => {
     // Confirmed against pkg/utils/match/kind.go CheckKind: it runs the parsed kind segment
     // through ext/wildcard's genuine glob matching, not a literal "*"-only check.
