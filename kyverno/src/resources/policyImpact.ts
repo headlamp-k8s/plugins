@@ -63,7 +63,8 @@ function ingest(
   results: PolicyReportResult[],
   reportScope: PolicyReportInterface['scope'],
   reportNamespace: string | undefined,
-  byResource: Map<string, ImpactedResource>
+  byResource: Map<string, ImpactedResource>,
+  nameKeyToUid: Map<string, string>
 ) {
   for (const result of results) {
     // PolicyReport / ClusterPolicyReport is the community wgpolicyk8s.io CRD,
@@ -100,12 +101,42 @@ function ingest(
       const namespace = res?.namespace || reportNamespace;
       const uid = res?.uid;
       const apiVersion = res?.apiVersion;
-      // Prefer the UID when it's available. The name-based key alone can
-      // collide for distinct objects that share kind, namespace, and name,
-      // for example the same name used by two different API groups, so the
-      // fallback also folds in apiVersion.
-      const key = uid || `${apiVersion || ''}/${kind}/${namespace || ''}/${name}`;
+      // The name-based key alone can collide for distinct objects that share
+      // kind, namespace, and name, for example the same name used by two
+      // different API groups, so it also folds in apiVersion.
+      const nameKey = `${apiVersion || ''}/${kind}/${namespace || ''}/${name}`;
+
+      let key: string;
+      if (uid) {
+        key = uid;
+        // First time this exact resource's UID shows up: remember it so a
+        // UID-less reference for the same name-key, arriving in either
+        // input order, resolves to this same slot instead of staying a
+        // separate duplicate. A name-key that already maps to a different
+        // UID is left alone, that's a genuine conflict (two distinct
+        // objects that happen to share kind/namespace/name), not the same
+        // resource reported two ways, so each keeps its own UID-keyed entry.
+        if (!nameKeyToUid.has(nameKey)) {
+          nameKeyToUid.set(nameKey, uid);
+          const orphan = byResource.get(nameKey);
+          if (orphan) {
+            byResource.delete(nameKey);
+            byResource.set(key, orphan);
+          }
+        }
+      } else {
+        // No UID on this reference: resolve to a UID we've already seen for
+        // this exact name-key so it merges instead of duplicating. Falls
+        // back to the name-key itself when no UID has been seen for it yet.
+        key = nameKeyToUid.get(nameKey) || nameKey;
+      }
+
       const existing = byResource.get(key);
+      // Once a UID becomes known for this slot, keep carrying it even when
+      // the winning status below comes from a UID-less reference, losing it
+      // would make a later UID-less reference for the same resource miss
+      // the nameKeyToUid redirect above and duplicate it again.
+      const resolvedUid = uid || existing?.uid;
 
       if (!existing || STATUS_RANK[result.result] > STATUS_RANK[existing.status]) {
         byResource.set(key, {
@@ -114,12 +145,14 @@ function ingest(
           apiVersion,
           name,
           namespace,
-          uid,
+          uid: resolvedUid,
           status: result.result,
           rule: result.rule,
           message: result.message,
           severity: result.severity,
         });
+      } else if (resolvedUid && !existing.uid) {
+        existing.uid = resolvedUid;
       }
     }
   }
@@ -152,6 +185,10 @@ export function collectPolicyImpact(
 ): PolicyImpactSummary {
   const qualifiedName = policyNamespace ? `${policyNamespace}/${policyName}` : policyName;
   const byResource = new Map<string, ImpactedResource>();
+  // Shared across both report kinds so a resource reported with a UID in one
+  // and without one in the other (or vice versa) still reconciles into a
+  // single entry, see the comment in `ingest`.
+  const nameKeyToUid = new Map<string, string>();
 
   for (const report of policyReports || []) {
     ingest(
@@ -160,11 +197,20 @@ export function collectPolicyImpact(
       report.results,
       report.scope,
       report.jsonData.metadata.namespace,
-      byResource
+      byResource,
+      nameKeyToUid
     );
   }
   for (const report of clusterPolicyReports || []) {
-    ingest(qualifiedName, policySource, report.results, report.scope, undefined, byResource);
+    ingest(
+      qualifiedName,
+      policySource,
+      report.results,
+      report.scope,
+      undefined,
+      byResource,
+      nameKeyToUid
+    );
   }
 
   const resources = Array.from(byResource.values());
@@ -246,20 +292,22 @@ function normalizeKindPattern(pattern: string): string {
 }
 
 // Kyverno's own kind matcher (pkg/utils/match/kind.go CheckKind, confirmed against the real
-// source) runs the parsed kind segment through genuine wildcard matching (ext/wildcard, "*"
-// stands for zero or more characters), not a literal "*"-only check, so a pattern like "Pod*"
-// matches any kind starting with "Pod". Only "*" is mirrored here; the underlying Go library also
-// supports "?" and ".", but no real Kyverno kind pattern is likely to use them, kind names never
-// contain the characters that would make them meaningful.
+// source) runs the parsed kind segment through ext/wildcard's Match, confirmed against its real
+// implementation: "*" matches zero or more characters and "?" matches exactly one, there is no
+// third operator, "." is just a literal character to it. A pattern like "Pod*" matches any kind
+// starting with "Pod", and "Po?" matches "Pod" (one character for the "?"), so both have to be
+// translated as wildcard operators here, not just "*", or a pattern using "?" would wrongly read
+// as never matching anything.
 function kindPatternMatches(pattern: string, kind: string): boolean {
   if (pattern === '*') return true;
-  const regex = new RegExp(
-    `^${pattern
-      .split('*')
-      .map(segment => segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-      .join('.*')}$`
-  );
-  return regex.test(kind);
+  const regexBody = Array.from(pattern)
+    .map(ch => {
+      if (ch === '*') return '.*';
+      if (ch === '?') return '.';
+      return ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    })
+    .join('');
+  return new RegExp(`^${regexBody}$`).test(kind);
 }
 
 function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boolean {
@@ -275,9 +323,16 @@ function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boole
 
 function describeConstraints(selectors: MatchSelectorEntry[], kind: string): string {
   const parts = [`kind "${kind}"`];
-  const namespaces = selectors.flatMap(s => s.resources?.namespaces || []);
-  if (namespaces.length > 0) {
-    parts.push(`namespaces [${namespaces.join(', ')}]`);
+  // Flattening every selector's namespaces into one list describes their union, but for a
+  // match.all block (every selector has to hold at once) the real constraint is their
+  // intersection: a selector allowing [dev, prod] alongside one allowing [prod] only ever
+  // admits prod, not "dev, prod, prod". Keeping each selector's own list separate preserves
+  // that "and" relationship instead of implying any one of the listed namespaces would do.
+  for (const selector of selectors) {
+    const namespaces = selector.resources?.namespaces || [];
+    if (namespaces.length > 0) {
+      parts.push(`namespaces [${namespaces.join(', ')}]`);
+    }
   }
   if (selectors.some(s => s.resources?.selector)) {
     parts.push('a label selector');

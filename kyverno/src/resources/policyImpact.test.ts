@@ -396,6 +396,10 @@ describe('collectPolicyImpact', () => {
   });
 
   test('prefers the UID over the name-based key so same-named resources from different API groups do not collapse, found via Copilot review', () => {
+    // Also covers the "conflicting known UIDs" case from the UID-reconciliation fix below:
+    // both entries here carry their own distinct, non-empty UID, so they must stay separate,
+    // reconciliation only merges a UID-less reference into an already-known UID, never two
+    // references that both already know a (different) UID.
     const crossGroupReport = new PolicyReport({
       apiVersion: 'wgpolicyk8s.io/v1alpha2',
       kind: 'PolicyReport',
@@ -430,6 +434,83 @@ describe('collectPolicyImpact', () => {
 
     expect(impact.resources).toHaveLength(2);
     expect(impact.resources.map(r => r.uid).sort()).toEqual(['widget-a', 'widget-b']);
+  });
+
+  test('reconciles a UID-less reference into an already-known UID-backed one, found via Copilot review', () => {
+    // Same resource (apiVersion/kind/namespace/name agree), seen once with a
+    // UID and once without, UID-backed first. The UID-less reference used to
+    // get its own name-key entry instead of merging, double-counting the
+    // resource and losing the worse of the two statuses.
+    const uidFirstReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'uid-first',
+        namespace: 'team-checkout',
+        uid: 'r-uid-first',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'pass',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'reconciled', namespace: 'team-checkout', uid: 'uid-1' },
+          ],
+        },
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [{ kind: 'Pod', name: 'reconciled', namespace: 'team-checkout' }],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, [uidFirstReport], []);
+
+    expect(impact.resources).toHaveLength(1);
+    expect(impact.resources[0]).toMatchObject({ name: 'reconciled', uid: 'uid-1', status: 'fail' });
+  });
+
+  test('reconciles a UID-backed reference into an already-known UID-less one, found via Copilot review', () => {
+    // Same scenario as above with the input order reversed: UID-less first,
+    // UID-backed second. Reconciliation has to work in both input orders,
+    // real report data has no guaranteed arrival order.
+    const uidLastReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'uid-last',
+        namespace: 'team-checkout',
+        uid: 'r-uid-last',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'pass',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [{ kind: 'Pod', name: 'reconciled', namespace: 'team-checkout' }],
+        },
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'reconciled', namespace: 'team-checkout', uid: 'uid-1' },
+          ],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, [uidLastReport], []);
+
+    expect(impact.resources).toHaveLength(1);
+    expect(impact.resources[0]).toMatchObject({ name: 'reconciled', uid: 'uid-1', status: 'fail' });
   });
 
   test('does not borrow the report scope UID for resources[] entries that omit their own, found via Copilot review', () => {
@@ -637,6 +718,29 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).toContain('a label selector');
   });
 
+  test("describes each match.all selector's namespaces separately instead of their flattened union, found via Copilot review", () => {
+    // match.all requires every selector to hold at once, so a selector allowing [dev, prod]
+    // alongside one allowing [prod] only ever admits prod, the intersection, not "dev, prod,
+    // prod". Flattening every selector's namespaces into one list used to describe the union
+    // instead, misstating the actual constraint.
+    const intersectingNamespaceRules: PolicyRule[] = [
+      {
+        name: 'namespaced-pods',
+        match: {
+          all: [
+            { resources: { kinds: ['Pod'], namespaces: ['dev', 'prod'] } },
+            { resources: { kinds: ['Pod'], namespaces: ['prod'] } },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(intersectingNamespaceRules, 'Pod');
+
+    expect(reasons[0]).toContain('namespaces [dev, prod]');
+    expect(reasons[0]).toContain('namespaces [prod]');
+  });
+
   test('recognizes the deprecated direct match.resources form, not just any/all, found via Copilot review', () => {
     // Confirmed against api/kyverno/v1/match_resources_types.go: MatchResources
     // embeds ResourceDescription directly as `resources`, deprecated in favor
@@ -839,6 +943,48 @@ describe('describeMatchReasons', () => {
     const reasons = describeMatchReasons(wildcardKindRules, 'Deployment');
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Deployment"');
+  });
+
+  test('recognizes a "?" single-character wildcard in a match selector kind pattern, found via Copilot review', () => {
+    // Confirmed against ext/wildcard's real Match implementation: "?" matches exactly one
+    // character, same operator class as "*", not a literal question mark.
+    const questionMarkRules: PolicyRule[] = [
+      { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Po?'] } }] } },
+    ];
+
+    expect(describeMatchReasons(questionMarkRules, 'Pod')[0]).toContain(
+      'Rule "check-pod-like" matches kind "Pod"'
+    );
+    expect(describeMatchReasons(questionMarkRules, 'Pot')[0]).toContain(
+      'Rule "check-pod-like" matches kind "Pot"'
+    );
+  });
+
+  test('does not let a "?" wildcard match a kind of the wrong length, found via Copilot review', () => {
+    const questionMarkRules: PolicyRule[] = [
+      { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Po?'] } }] } },
+    ];
+
+    expect(describeMatchReasons(questionMarkRules, 'PodTemplate')[0]).toContain(
+      'No rule in this policy explicitly lists kind "PodTemplate"'
+    );
+    expect(describeMatchReasons(questionMarkRules, 'Po')[0]).toContain(
+      'No rule in this policy explicitly lists kind "Po"'
+    );
+  });
+
+  test('recognizes a "?" wildcard in an exclude selector kind pattern, found via Copilot review', () => {
+    const questionMarkExcludeRules: PolicyRule[] = [
+      {
+        name: 'require-labels',
+        match: { any: [{ resources: { kinds: ['Pod'] } }] },
+        exclude: { any: [{ resources: { kinds: ['Po?'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(questionMarkExcludeRules, 'Pod');
+
+    expect(reasons[1]).toContain('also has an exclude block covering kind "Pod"');
   });
 
   test('requires every entry in exclude.all to cover the kind, not just any one of them, found via Copilot review', () => {
