@@ -44,7 +44,7 @@ function getResourceGroupsSection(cohort: Cohort) {
             {
               label: 'ResourceFlavor',
               getter: (row: ResourceGroupRow) =>
-                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
+                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor, cohort.cluster),
             },
             {
               label: 'Resource',
@@ -86,7 +86,7 @@ function getReferencedFlavorsSection(cohort: Cohort) {
           columns={[
             {
               label: 'Name',
-              getter: (row: { name: string }) => renderResourceFlavorLink(row.name),
+              getter: (row: { name: string }) => renderResourceFlavorLink(row.name, cohort.cluster),
             },
           ]}
         />
@@ -195,7 +195,7 @@ function getMemberClusterQueuesSection(
             {
               label: 'Name',
               getter: (clusterQueue: ClusterQueue) =>
-                renderClusterQueueLink(clusterQueue.metadata.name),
+                renderClusterQueueLink(clusterQueue.metadata.name, clusterQueue.cluster),
             },
             {
               label: 'Queueing Strategy',
