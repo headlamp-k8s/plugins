@@ -1,5 +1,6 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { KubeflowResourceCondition } from './common';
+import { getKatibMetricValue, KatibMetric, KatibMetricStrategy } from './katibMetric';
 
 /**
  * Objective configuration declared on a Katib Trial resource.
@@ -9,6 +10,7 @@ export interface KatibTrialSpec {
     type?: string;
     goal?: number;
     objectiveMetricName?: string;
+    metricStrategies?: KatibMetricStrategy[];
   };
   [key: string]: unknown;
 }
@@ -19,7 +21,7 @@ export interface KatibTrialSpec {
 export interface KatibTrialStatus {
   conditions?: KubeflowResourceCondition[];
   observation?: {
-    metrics?: Array<{ name?: string; value?: string }>;
+    metrics?: KatibMetric[];
   };
   startTime?: string;
   completionTime?: string;
@@ -76,13 +78,12 @@ export class KatibTrialClass extends KubeObject<KatibTrial> {
   }
 
   get objectiveMetricValue(): string {
-    const objectiveMetricName = this.spec.objective?.objectiveMetricName;
+    const objective = this.spec.objective;
     const metrics = this.status.observation?.metrics ?? [];
-    if (objectiveMetricName) {
-      const metric = metrics.find(item => item.name === objectiveMetricName);
-      return metric?.value ?? '';
-    }
-    return metrics[0]?.value ?? '';
+    const metric = objective?.objectiveMetricName
+      ? metrics.find(item => item.name === objective.objectiveMetricName)
+      : metrics[0];
+    return getKatibMetricValue(metric, objective);
   }
 
   get failureReason(): string {
