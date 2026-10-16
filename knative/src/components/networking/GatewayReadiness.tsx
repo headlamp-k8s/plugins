@@ -146,13 +146,10 @@ function GatewayServiceReadinessStatus({
   service: NonNullable<GatewayConfig['service']>;
   cluster: string;
 }) {
-  const {
-    data: serviceResource,
-    error,
-    isLoading,
-  } = Service.useGet(service.name, service.namespace, { cluster });
+  const { data: serviceResource, error } = Service.useGet(service.name, service.namespace, {
+    cluster,
+  });
 
-  if (isLoading) return <LoadingStatus label="Service" />;
   if (error) {
     return (
       <ResourceStatusError
@@ -162,15 +159,9 @@ function GatewayServiceReadinessStatus({
       />
     );
   }
-  if (!serviceResource) {
-    return (
-      <ResourceStatusError
-        label="Service status"
-        resource={`Service ${service.namespace}/${service.name}`}
-        error={{ status: 404 }}
-      />
-    );
-  }
+  // useGet reports a missing Service as a 404 error. With neither data nor an error, the first
+  // request has not answered yet; useGet keeps isLoading false while it does.
+  if (!serviceResource) return <LoadingStatus label="Service" />;
 
   return <ServiceReadinessDetails readiness={evaluateServiceReadiness(serviceResource.jsonData)} />;
 }
@@ -182,17 +173,13 @@ export function GatewayReadinessStatus({
   config: GatewayConfig;
   cluster: string;
 }) {
-  const {
-    data: gateway,
-    error,
-    isLoading,
-  } = Gateway.useGet(config.gateway.name, config.gateway.namespace, { cluster });
+  const { data: gateway, error } = Gateway.useGet(config.gateway.name, config.gateway.namespace, {
+    cluster,
+  });
 
   return (
     <Box sx={{ mt: 1 }}>
-      {isLoading ? (
-        <LoadingStatus label="Gateway" />
-      ) : error ? (
+      {error ? (
         <ResourceStatusError
           label="Gateway status"
           resource={`Gateway ${config.gateway.namespace}/${config.gateway.name}`}
@@ -201,11 +188,10 @@ export function GatewayReadinessStatus({
       ) : gateway ? (
         <GatewayReadinessDetails gatewayReadiness={evaluateGatewayReadiness(gateway.status)} />
       ) : (
-        <ResourceStatusError
-          label="Gateway status"
-          resource={`Gateway ${config.gateway.namespace}/${config.gateway.name}`}
-          error={{ status: 404 }}
-        />
+        // useGet reports a missing Gateway as a 404 error. With neither data nor an error, the
+        // request has not answered yet, or is still waiting for Headlamp to pick the Gateway API
+        // version; useGet keeps isLoading false while it does.
+        <LoadingStatus label="Gateway" />
       )}
 
       {config.service ? (
