@@ -79,6 +79,19 @@ MIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4
     }
   });
 
+  it('redacts JWTs next to look-alike text', () => {
+    expect(redactSecrets('eyJ.eyJa.b eyJa.eyJb.c eyJa.eyJb. eyJaeyJb.eyJc.d')).toBe(
+      'eyJ.eyJa.b [REDACTED] eyJa.eyJb. [REDACTED]'
+    );
+  });
+
+  it('scans adversarial JWT-like input in linear time', () => {
+    const input = 'eyJ'.repeat(50_000);
+    const start = performance.now();
+    expect(redactSecrets(input)).toBe(input);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
   it('redacts PEM certificates', () => {
     const cert = `-----BEGIN CERTIFICATE-----
 MIICpDCCAYwCCQDU+pQ4pHgSpDANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
