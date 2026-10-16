@@ -93,10 +93,10 @@ export function expandEnvAndResolvePaths(
 
     // Handle Docker volume mount format and ensure proper Windows path format
     if (expandedArg.includes('type=bind,src=')) {
-      const match = expandedArg.match(/type=bind,src=(.+?),dst=(.+)/);
+      const match = parseBindMount(expandedArg);
       if (match) {
-        let srcPath = match[1];
-        const dstPath = match[2];
+        let srcPath = match.src;
+        const dstPath = match.dst;
 
         // Resolve the source path — Node only; in browser this branch is unreachable
         // because effectivePlatform will never be 'win32' in a browser context.
@@ -117,6 +117,30 @@ export function expandEnvAndResolvePaths(
 
     return expandedArg;
   });
+}
+
+/**
+ * Parses the source and destination of a `type=bind,src=...,dst=...` mount.
+ *
+ * Matches `/type=bind,src=(.+?),dst=(.+)/` in linear time; that regex is
+ * quadratic on repeated `type=bind,src=` text.
+ *
+ * @param arg - Docker mount argument.
+ * @returns Source and destination paths, or null when the argument does not match.
+ */
+function parseBindMount(arg: string): { src: string; dst: string } | null {
+  const prefix = 'type=bind,src=';
+  // `.` doesn't match line terminators, so a match lies within one line.
+  for (const line of arg.split(/[\n\r\u2028\u2029]/)) {
+    const start = line.indexOf(prefix);
+    if (start === -1) continue;
+    const srcStart = start + prefix.length;
+    const dstMarker = line.indexOf(',dst=', srcStart + 1);
+    if (dstMarker !== -1 && dstMarker + 5 < line.length) {
+      return { src: line.slice(srcStart, dstMarker), dst: line.slice(dstMarker + 5) };
+    }
+  }
+  return null;
 }
 
 /**

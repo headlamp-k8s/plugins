@@ -76,6 +76,22 @@ describe('expandEnvAndResolvePaths', () => {
     expect(result).toEqual([arg]);
   });
 
+  it('normalizes docker bind args to the first src/dst pair', () => {
+    expect(
+      expandEnvAndResolvePaths(['--mount=type=bind,src=/a,b,dst=/c,dst=/d'], null, 'linux')
+    ).toEqual(['type=bind,src=/a,b,dst=/c,dst=/d']);
+    expect(expandEnvAndResolvePaths(['type=bind,src=/a,dst='], null, 'linux')).toEqual([
+      'type=bind,src=/a,dst=',
+    ]);
+  });
+
+  it('parses docker bind args in linear time', () => {
+    const arg = 'type=bind,src='.repeat(50_000);
+    const start = performance.now();
+    expect(expandEnvAndResolvePaths([arg], null, 'linux')).toEqual([arg]);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
   it('uses empty environment values when process is polyfilled without env', () => {
     const originalProcess = globalThis.process;
     vi.stubGlobal('process', { platform: 'linux', cwd: () => '/tmp' });
