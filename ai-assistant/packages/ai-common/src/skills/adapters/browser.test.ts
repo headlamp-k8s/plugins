@@ -105,7 +105,7 @@ function mockGitHubTreesAndFiles(filePaths: string[]) {
 
   const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
     const urlStr = String(input);
-    if (urlStr.includes('api.github.com')) {
+    if (new URL(urlStr).hostname === 'api.github.com') {
       return treeResponse as unknown as Response;
     }
     // Individual file fetch
