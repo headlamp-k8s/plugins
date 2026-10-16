@@ -58,8 +58,29 @@ interface HealthQueries {
   // Whether Kyverno's own metrics are actually present in this Prometheus at all, not just
   // whether Prometheus itself answered. See the comment on the canary query below.
   hasKyvernoMetrics: boolean;
+  // Whether the admission controller specifically is being scraped. hasKyvernoMetrics above only
+  // confirms *some* Kyverno process answered: kyverno_info is recorded unconditionally by every
+  // controller binary (admission, background, reports, cleanup, ...) at startup, confirmed
+  // against Kyverno's pkg/metrics/metrics.go, where initializeMetrics wires up kyvernoInfoMetric
+  // the same way regardless of which process calls it. So if the reports or background
+  // controller is scraped but the admission controller isn't configured or is down,
+  // hasKyvernoMetrics alone stays true while requestRate/denyCount/latency below would otherwise
+  // fall back through "or vector(0)" to a confident, wrong 0. This checks presence of
+  // kyverno_admission_requests_total itself, with no rate()/window/label filter, so it only reads
+  // empty when the admission controller truly isn't being scraped, never because of a genuinely
+  // quiet admission window (the counter keeps reporting its last value on every scrape as long as
+  // the controller stays up, even with zero new requests).
+  hasAdmissionMetrics: boolean;
   requestRate: number | null;
   denyCount: number | null;
+  // Same idea as hasAdmissionMetrics, scoped to breaker telemetry instead of the admission
+  // controller. kyverno_breaker_total increments on every breaker.Do() call unconditionally,
+  // before the breaker's own open() check even runs (confirmed against Kyverno's
+  // pkg/breaker/breaker.go), and that breaker runs from admission webhook handlers, background
+  // processors, and the reports controller alike. So its presence is as reliable a "this
+  // breaker-guarded path exists and is being scraped" signal as kyverno_info is for "some
+  // controller exists" above, just scoped to breaker telemetry specifically.
+  hasBreakerMetrics: boolean;
   breakerTrips: number | null;
   // kyverno_policy_rule_info_total only ever covers legacy kyverno.io/v1 Policy/ClusterPolicy
   // rules, current Kyverno does not emit it for any policies.kyverno.io CEL kind at all. Named
@@ -79,8 +100,10 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
 
   const [
     canaryRes,
+    hasAdmissionMetricsRes,
     requestRateRes,
     denyCountRes,
+    hasBreakerMetricsRes,
     breakerTripsRes,
     legacyPoliciesNotReadyRes,
     requeueCountRes,
@@ -91,21 +114,30 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // (no ServiceMonitor, wrong job, etc.), not that everything happens to be healthy. Checked
     // with no "or vector(0)" specifically so a real absence stays distinguishable from a real 0.
     queryInstant(prefix, 'count(kyverno_info)'),
+    // See the comment on hasAdmissionMetrics in HealthQueries: a plain count() of the raw
+    // counter, no rate/window/label filter, so this only reads empty when the admission
+    // controller truly isn't being scraped.
+    queryInstant(prefix, 'count(kyverno_admission_requests_total)'),
     // "or vector(0)" matters here: sum()/increase() over zero matching series returns an empty
     // result in PromQL, not a 0, e.g. when nothing has been denied in the window at all. Without
     // this every one of these would show "no data" instead of a real 0 on a perfectly healthy
     // cluster, which reads as "unknown" rather than "nothing wrong". This fallback is only safe
-    // to read once hasKyvernoMetrics above has confirmed the metrics exist at all.
+    // to read once hasAdmissionMetrics has confirmed the admission controller itself is scraped,
+    // hasKyvernoMetrics alone isn't enough, see that comment for why.
     queryInstant(prefix, 'sum(rate(kyverno_admission_requests_total[5m])) or vector(0)'),
     queryInstant(
       prefix,
       'sum(increase(kyverno_admission_requests_total{request_allowed="false"}[5m])) or vector(0)'
     ),
+    // See the comment on hasBreakerMetrics in HealthQueries.
+    queryInstant(prefix, 'count(kyverno_breaker_total)'),
     // kyverno_breaker_total counts every breaker invocation unconditionally, confirmed against
     // Kyverno's own pkg/breaker/breaker.go: it increments before the breaker's open() check even
     // runs, so normal traffic through a healthy, never-tripped breaker still drives this metric
     // up. kyverno_breaker_drops_total (pkg/metrics/breaker.go's "drops" counter) only increments
     // when the breaker actually fails open and drops work, that's the real "Breaker Trips" signal.
+    // This fallback is only safe to read once hasBreakerMetrics has confirmed a breaker is
+    // actually being invoked and scraped somewhere in this cluster.
     queryInstant(prefix, 'sum(increase(kyverno_breaker_drops_total[1h])) or vector(0)'),
     // kyverno_policy_rule_info_total is an observable gauge recorded once per rule, by every
     // controller process (admission and background) and every replica of each, confirmed against
@@ -139,14 +171,21 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     ),
   ]);
 
+  const hasAdmissionMetrics = (instantValue(hasAdmissionMetricsRes) ?? 0) > 0;
+  const hasBreakerMetrics = (instantValue(hasBreakerMetricsRes) ?? 0) > 0;
+
   return {
     hasKyvernoMetrics: (instantValue(canaryRes) ?? 0) > 0,
-    requestRate: instantValue(requestRateRes),
-    denyCount: instantValue(denyCountRes),
-    breakerTrips: instantValue(breakerTripsRes),
+    hasAdmissionMetrics,
+    // Falls back to null (unavailable), not the "or vector(0)" value, whenever the admission
+    // controller itself isn't confirmed scraped, see the comment on hasAdmissionMetrics.
+    requestRate: hasAdmissionMetrics ? instantValue(requestRateRes) : null,
+    denyCount: hasAdmissionMetrics ? instantValue(denyCountRes) : null,
+    hasBreakerMetrics,
+    breakerTrips: hasBreakerMetrics ? instantValue(breakerTripsRes) : null,
     legacyPoliciesNotReady: instantValue(legacyPoliciesNotReadyRes),
     requeueCount: instantValue(requeueCountRes),
-    latency: rangeSeries(latencyRes),
+    latency: hasAdmissionMetrics ? rangeSeries(latencyRes) : [],
   };
 }
 
@@ -424,13 +463,26 @@ export function PolicyEngineHealth() {
     <SectionBox title={t('Policy Engine Health')}>
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={6} sm={2.4}>
-          <MetricCard title={t('Admission Rate')} value={formatRate(health.requestRate)} />
+          <MetricCard
+            title={t('Admission Rate')}
+            value={formatRate(health.requestRate)}
+            tooltip={
+              !health.hasAdmissionMetrics
+                ? t("The admission controller isn't being scraped, so this can't be confirmed.")
+                : undefined
+            }
+          />
         </Grid>
         <Grid item xs={6} sm={2.4}>
           <MetricCard
             title={t('Denied (5m)')}
             value={formatCount(health.denyCount)}
             color={goodIfZero(health.denyCount)}
+            tooltip={
+              !health.hasAdmissionMetrics
+                ? t("The admission controller isn't being scraped, so this can't be confirmed.")
+                : undefined
+            }
           />
         </Grid>
         <Grid item xs={6} sm={2.4}>
@@ -438,6 +490,13 @@ export function PolicyEngineHealth() {
             title={t('Breaker Trips (1h)')}
             value={formatCount(health.breakerTrips)}
             color={goodIfZero(health.breakerTrips)}
+            tooltip={
+              !health.hasBreakerMetrics
+                ? t(
+                    "No breaker-guarded controller has been scraped recently, so this can't be confirmed."
+                  )
+                : undefined
+            }
           />
         </Grid>
         <Grid item xs={6} sm={2.4}>

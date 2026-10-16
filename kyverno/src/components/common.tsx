@@ -33,12 +33,17 @@ export function MetricCard({
   title,
   value,
   color,
+  tooltip,
 }: {
   title: string;
   value: string | number;
   color?: string;
+  // Set only when value is showing "unavailable" for a reason more specific than "no data yet",
+  // e.g. a particular controller not being scraped, so the user isn't left guessing why this one
+  // tile can't be confirmed while its neighbors read fine.
+  tooltip?: string;
 }) {
-  return (
+  const card = (
     <Card variant="outlined">
       <CardContent sx={{ textAlign: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Typography variant="body2" color="text.secondary">
@@ -52,6 +57,14 @@ export function MetricCard({
         </Typography>
       </CardContent>
     </Card>
+  );
+
+  return tooltip ? (
+    <Tooltip title={tooltip} arrow>
+      {card}
+    </Tooltip>
+  ) : (
+    card
   );
 }
 
