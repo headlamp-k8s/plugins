@@ -44,7 +44,10 @@ export function MetricCard({
         <Typography variant="body2" color="text.secondary">
           {title}
         </Typography>
-        <Typography variant="h4" sx={{ color: color || 'text.primary', fontWeight: 'bold' }}>
+        <Typography
+          variant="h4"
+          sx={{ color: color || 'text.primary', fontWeight: 'bold', wordBreak: 'break-word' }}
+        >
           {value}
         </Typography>
       </CardContent>
