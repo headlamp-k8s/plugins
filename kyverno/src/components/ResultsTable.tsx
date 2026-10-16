@@ -16,38 +16,85 @@
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Table } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useMemo } from 'react';
 import { PolicyReportResult } from '../resources/policyReport';
-import { ResultStatusChip, SeverityChip } from './common';
+import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
 
 export function ResultsTable({ results }: { results: PolicyReportResult[] }) {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
+
+  // See ViolationsView/common.tsx for why headers are computed once and the
+  // table is remounted via key once translations are ready: Table memoizes
+  // header cells by id alone, so a stale pre-translation label would otherwise
+  // stick around even once the real translation arrives.
+  const policyHeader = t('Policy');
+  const ruleHeader = t('Rule');
+  const resultHeader = t('Result');
+  const severityHeader = t('Severity');
+  const categoryHeader = t('Category');
+  const messageHeader = t('Message');
+  const resourceHeader = t('Resource');
+
+  const columns = useMemo(
+    () => [
+      {
+        header: policyHeader,
+        id: 'policy',
+        accessorFn: (r: PolicyReportResult) => r.policy,
+      },
+      {
+        header: ruleHeader,
+        id: 'rule',
+        accessorFn: (r: PolicyReportResult) => r.rule || '-',
+      },
+      {
+        header: resultHeader,
+        id: 'result',
+        accessorFn: (r: PolicyReportResult) => r.result,
+        Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
+          <ResultStatusChip status={row.original.result} />
+        ),
+      },
+      {
+        header: severityHeader,
+        id: 'severity',
+        accessorFn: (r: PolicyReportResult) => r.severity || '',
+        Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
+          <SeverityChip severity={row.original.severity} />
+        ),
+      },
+      {
+        header: categoryHeader,
+        id: 'category',
+        accessorFn: (r: PolicyReportResult) => r.category || '-',
+      },
+      {
+        header: messageHeader,
+        id: 'message',
+        accessorFn: (r: PolicyReportResult) => r.message || '-',
+      },
+      {
+        header: resourceHeader,
+        id: 'resource',
+        accessorFn: (r: PolicyReportResult) =>
+          r.resources?.map(res => `${res.kind}/${res.name}`).join(', ') || '-',
+      },
+    ],
+    [
+      policyHeader,
+      ruleHeader,
+      resultHeader,
+      severityHeader,
+      categoryHeader,
+      messageHeader,
+      resourceHeader,
+    ]
+  );
+
   return (
     <Table
-      columns={[
-        { header: t('Policy'), accessorFn: (r: PolicyReportResult) => r.policy },
-        { header: t('Rule'), accessorFn: (r: PolicyReportResult) => r.rule || '-' },
-        {
-          header: t('Result'),
-          accessorFn: (r: PolicyReportResult) => r.result,
-          Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
-            <ResultStatusChip status={row.original.result} />
-          ),
-        },
-        {
-          header: t('Severity'),
-          accessorFn: (r: PolicyReportResult) => r.severity || '',
-          Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
-            <SeverityChip severity={row.original.severity} />
-          ),
-        },
-        { header: t('Category'), accessorFn: (r: PolicyReportResult) => r.category || '-' },
-        { header: t('Message'), accessorFn: (r: PolicyReportResult) => r.message || '-' },
-        {
-          header: t('Resource'),
-          accessorFn: (r: PolicyReportResult) =>
-            r.resources?.map(res => `${res.kind}/${res.name}`).join(', ') || '-',
-        },
-      ]}
+      key={tableRemountKey(ready, i18n?.language)}
+      columns={columns}
       data={results}
       emptyMessage={t('No results found.')}
     />

@@ -24,7 +24,9 @@ import {
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, CircularProgress, Typography } from '@mui/material';
+import { useMemo } from 'react';
 import { PolicyException, PolicyExceptionEntry } from '../resources/policyException';
+import { tableRemountKey } from './common';
 
 interface ExceptionViewerProps {
   name: string;
@@ -94,7 +96,36 @@ function MatchSection({ match }: { match: PolicyException['spec']['match'] }) {
 }
 
 function ExceptionContent({ exception }: { exception: PolicyException }) {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
+
+  // See ViolationsView/common.tsx for why headers are computed once and the
+  // table is remounted via key once translations are ready.
+  const policyHeader = t('Policy');
+  const rulesHeader = t('Rules');
+
+  const exceptionColumns = useMemo(
+    () => [
+      {
+        header: policyHeader,
+        id: 'policy',
+        accessorFn: (e: PolicyExceptionEntry) => e.policyName,
+      },
+      {
+        header: rulesHeader,
+        id: 'rules',
+        accessorFn: (e: PolicyExceptionEntry) => e.ruleNames.join(', '),
+        Cell: ({ row }: { row: { original: PolicyExceptionEntry } }) => (
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+            {row.original.ruleNames.map(r => (
+              <Chip key={r} label={r} size="small" variant="outlined" />
+            ))}
+          </Box>
+        ),
+      },
+    ],
+    [policyHeader, rulesHeader]
+  );
+
   return (
     <Box sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', gap: 1, mb: 2, justifyContent: 'flex-end' }}>
@@ -119,20 +150,8 @@ function ExceptionContent({ exception }: { exception: PolicyException }) {
         title={t('Excepted Policies ({{count}})', { count: exception.exceptions.length })}
       >
         <Table
-          columns={[
-            { header: t('Policy'), accessorFn: (e: PolicyExceptionEntry) => e.policyName },
-            {
-              header: t('Rules'),
-              accessorFn: (e: PolicyExceptionEntry) => e.ruleNames.join(', '),
-              Cell: ({ row }: { row: { original: PolicyExceptionEntry } }) => (
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                  {row.original.ruleNames.map(r => (
-                    <Chip key={r} label={r} size="small" variant="outlined" />
-                  ))}
-                </Box>
-              ),
-            },
-          ]}
+          key={tableRemountKey(ready, i18n?.language)}
+          columns={exceptionColumns}
           data={exception.exceptions}
           emptyMessage={t('No exceptions defined.')}
         />

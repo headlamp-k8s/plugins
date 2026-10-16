@@ -19,6 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip, Link as MuiLink } from '@mui/material';
 import { ImageValidatingPolicy, NamespacedImageValidatingPolicy } from '../resources/celPolicies';
+import { tableRemountKey } from './common';
 import { ImageValidatingPolicyViewer } from './ImageValidatingPolicyViewer';
 
 function openActivity(item: ImageValidatingPolicy | NamespacedImageValidatingPolicy) {
@@ -38,9 +39,10 @@ function openActivity(item: ImageValidatingPolicy | NamespacedImageValidatingPol
 }
 
 export function ImageValidatingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Image Validating Policies')}
       resourceClass={ImageValidatingPolicy}
       columns={[
@@ -89,9 +91,10 @@ export function ImageValidatingPolicyList() {
 }
 
 export function NamespacedImageValidatingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Image Validating Policies')}
       resourceClass={NamespacedImageValidatingPolicy}
       columns={[
