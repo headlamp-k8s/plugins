@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 The Kubernetes Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Alert,
@@ -5,19 +21,17 @@ import {
   Button,
   CircularProgress,
   Divider,
-  FormHelperText,
   Paper,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PipeCDConfig } from '../api/pipecd';
 import { isConfigured, listApplications, loadConfig, saveConfig } from '../api/pipecd';
 
 interface TestResult {
   ok: boolean;
-  count?: number;
   error?: string;
 }
 
@@ -56,15 +70,19 @@ export function SettingsPage(): JSX.Element {
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [saved_, setSaved] = useState(false);
   const testedConfig = useRef<{ baseURL: string; apiKey: string } | null>(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const config: PipeCDConfig = { baseURL: normalizeBaseURL(baseURL), apiKey };
+  // Clear the "Saved!" timer if the page is left before it fires.
+  useEffect(() => () => clearTimeout(savedTimer.current), []);
+
+  // A pasted key often carries a trailing space or newline, which PipeCD then
+  // rejects as an invalid key.
+  const config: PipeCDConfig = { baseURL: normalizeBaseURL(baseURL), apiKey: apiKey.trim() };
 
   const renderTestResultMessage = (result: TestResult): string => {
-    if (result.ok) {
-      return t('Connection successful — {{count}} application(s) returned.', {
-        count: result.count ?? 0,
-      });
-    }
+    // No application count: the response is only the first page, so a count
+    // would be too low for anyone with more applications than one page holds.
+    if (result.ok) return t('Connection successful.');
     const error = result.error ?? t('Unknown error');
     return t('Connection failed: {{error}}', { error });
   };
@@ -72,9 +90,11 @@ export function SettingsPage(): JSX.Element {
   const handleSave = (): void => {
     saveConfig(config);
     setBaseURL(config.baseURL);
+    setApiKey(config.apiKey);
     setSaved(true);
     setTestResult(null);
-    setTimeout(() => setSaved(false), 2000);
+    clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setSaved(false), 2000);
   };
 
   const handleTest = async (): Promise<void> => {
@@ -86,9 +106,9 @@ export function SettingsPage(): JSX.Element {
     setTesting(true);
     setTestResult(null);
     try {
-      const result = await listApplications(config);
+      await listApplications(config);
       if (testedConfig.current !== tested) return;
-      setTestResult({ ok: true, count: result.applications?.length ?? 0 });
+      setTestResult({ ok: true });
     } catch (err) {
       if (testedConfig.current !== tested) return;
       setTestResult({
@@ -101,7 +121,7 @@ export function SettingsPage(): JSX.Element {
   };
 
   const urlValid = baseURL === '' || isSecureURL(baseURL);
-  const hasChanges = config.baseURL !== saved.baseURL || apiKey !== saved.apiKey;
+  const hasChanges = config.baseURL !== saved.baseURL || config.apiKey !== saved.apiKey;
 
   return (
     <Box sx={{ maxWidth: 640, py: 4 }}>
@@ -131,13 +151,12 @@ export function SettingsPage(): JSX.Element {
                 setTesting(false);
               }}
               error={!urlValid}
+              helperText={
+                urlValid
+                  ? t('Base URL of your PipeCD Control Plane gateway.')
+                  : t('Use an https:// URL. http:// is only allowed for localhost.')
+              }
             />
-            {!urlValid && (
-              <FormHelperText error>
-                {t('Use an https:// URL. http:// is only allowed for localhost.')}
-              </FormHelperText>
-            )}
-            <FormHelperText>{t('Base URL of your PipeCD Control Plane gateway.')}</FormHelperText>
           </Box>
 
           <Box>
@@ -154,16 +173,14 @@ export function SettingsPage(): JSX.Element {
                 testedConfig.current = null;
                 setTesting(false);
               }}
+              helperText={t('Generate one in the PipeCD UI under Settings → API Keys.')}
             />
-            <FormHelperText>
-              {t('Generate one in the PipeCD UI under Settings → API Keys.')}
-            </FormHelperText>
           </Box>
 
           <Divider />
 
           {testResult !== null && (
-            <Alert severity={testResult.ok ? 'success' : 'error'} icon={undefined}>
+            <Alert severity={testResult.ok ? 'success' : 'error'}>
               {renderTestResultMessage(testResult)}
             </Alert>
           )}
@@ -174,7 +191,6 @@ export function SettingsPage(): JSX.Element {
               onClick={handleSave}
               disabled={!isConfigured(config) || !urlValid || !hasChanges}
               color={saved_ ? 'success' : 'primary'}
-              startIcon={undefined}
             >
               {saved_ ? t('Saved!') : t('Save Settings')}
             </Button>

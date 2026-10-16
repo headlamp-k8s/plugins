@@ -55,14 +55,12 @@ function testConnection(): void {
 }
 
 describe('SettingsPage', () => {
-  it('reports the actual number of applications returned', async () => {
-    listApplications.mockResolvedValue({ applications: [{}, {}], cursor: '' });
+  it('reports a successful connection', async () => {
+    listApplications.mockResolvedValue({ applications: [{}, {}], cursor: 'next' });
     render(<SettingsPage />);
     testConnection();
 
-    expect(
-      await screen.findByText('Connection successful — 2 application(s) returned.')
-    ).toBeTruthy();
+    expect(await screen.findByText('Connection successful.')).toBeTruthy();
   });
 
   it('does not limit the connection test to a single application', async () => {
@@ -85,7 +83,7 @@ describe('SettingsPage', () => {
   it('saves the normalized URL and the API key', () => {
     render(<SettingsPage />);
     fill('PipeCD Server URL', 'https://pipecd.example.com/');
-    fill('API Key', 'test-key');
+    fill('API Key', ' test-key\n');
     fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
 
     expect(saveConfig).toHaveBeenCalledWith({
