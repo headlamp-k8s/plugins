@@ -1,10 +1,17 @@
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerDetailsViewSection,
+  registerResourceTableColumnsProcessor,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
 import AdmissionCheckDetail from './components/admissionchecks/Detail';
 import AdmissionCheckList from './components/admissionchecks/List';
 import ClusterQueueDetail from './components/clusterqueues/Detail';
 import ClusterQueueList from './components/clusterqueues/List';
 import CohortDetail from './components/cohorts/Detail';
 import CohortList from './components/cohorts/List';
+import { processJobsTableColumns } from './components/jobs/kueueJobColumns';
+import KueueJobSection from './components/jobs/KueueJobSection';
 import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
@@ -157,4 +164,10 @@ registerRoute({
   name: kueueRouteNames.workloadDetail,
   exact: true,
   component: () => <WorkloadDetail />,
+});
+
+registerDetailsViewSection(KueueJobSection);
+registerResourceTableColumnsProcessor({
+  id: 'kueue-jobs-columns',
+  processor: processJobsTableColumns,
 });
