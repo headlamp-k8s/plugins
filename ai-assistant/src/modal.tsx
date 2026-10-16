@@ -90,6 +90,10 @@ import { createPluginCommandRunner } from './pluginCommandRunner';
 import { getSettingsURL, type PluginConfig, useGlobalState } from './pluginState';
 import { useDynamicPrompts } from './prompts/promptGenerator';
 import { resolveRuntimeProviderConfig } from './resolveRuntimeProviderConfig';
+import {
+  removeToolResultBlocksBeforeHeadings,
+  removeTrailingToolResultBlock,
+} from './toolResultBlocks';
 
 interface HolmesTextEvent {
   /** Streamed message identifier. */
@@ -995,20 +999,21 @@ export default function AIPrompt(props: {
     let cleaned = text;
 
     // Remove 🔧 tool result blocks (🔧 <tool> result: ... up to the next ## heading)
-    cleaned = cleaned.replace(/🔧\s*\S+\s+result:[\s\S]*?(?=\n\s*##)/g, '');
+    cleaned = removeToolResultBlocksBeforeHeadings(cleaned);
     // Also remove standalone 🔧 result blocks at the end (no ## heading follows)
-    cleaned = cleaned.replace(/🔧\s*\S+\s+result:[\s\S]*$/g, '');
+    cleaned = removeTrailingToolResultBlock(cleaned);
 
     // Remove 🔧 tool-start lines
     cleaned = cleaned.replace(/🔧\s*Using Agent tool:.*\n?/g, '');
 
     // If content starts with non-markdown text before a ## heading,
     // check whether it looks like leaked tool/CLI output and strip it
-    const headingMatch = cleaned.match(/(^[\s\S]*?)(\n##\s)/m);
-    if (headingMatch && headingMatch[1]) {
-      const before = headingMatch[1].trim();
+    // Linear equivalent of matching /(^[\s\S]*?)(\n##\s)/m, which always matches at index 0.
+    const headingStart = cleaned.search(/\n##\s/);
+    if (headingStart > 0) {
+      const before = cleaned.slice(0, headingStart).trim();
       if (before && looksLikeToolOutput(before)) {
-        cleaned = cleaned.substring((headingMatch.index ?? 0) + headingMatch[1].length);
+        cleaned = cleaned.substring(headingStart);
       }
     }
 
