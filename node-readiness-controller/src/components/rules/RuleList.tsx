@@ -1,45 +1,40 @@
-import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Chip, Tooltip, Typography } from '@mui/material';
-import { NodeReadinessRule } from './index';
-import { getRuleStats, getRuleStatusInfo } from './utils';
+import React from 'react';
+import { NodeReadinessRule } from '../../resources';
+import { nrcRouteNames } from '../../utils';
+import { getRuleStats, getRuleStatusInfo } from '../../utils';
+import { NodeSelectorSummary, TaintChip } from '../common';
 
-export default function ReadinessRulesPage() {
+export default function RuleList() {
   return (
     <ResourceListView
       title="Node Readiness Rules"
       resourceClass={NodeReadinessRule}
-      id="nrc-readiness-rules"
-      headerProps={{ titleSideActions: [] }}
-      enableRowActions={false}
-      enableRowSelection={false}
       columns={[
         {
           id: 'name',
           label: 'Name',
           getValue: (rule: InstanceType<typeof NodeReadinessRule>) => rule.metadata.name,
           render: (rule: InstanceType<typeof NodeReadinessRule>) => {
-            const isDryRun = rule.jsonData?.spec?.dryRun;
+            const isDryRun = Boolean(rule.jsonData?.spec?.dryRun);
             return (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  minWidth: '140px',
-                }}
-              >
-                <Tooltip title={rule.metadata.name} placement="top-start">
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <Tooltip title={rule.metadata.name}>
                   <Typography
-                    component="div"
+                    variant="body2"
                     sx={{
+                      fontWeight: 'bold',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       maxWidth: '200px',
                     }}
                   >
-                    <Link routeName="nrc-rule-details" params={{ name: rule.metadata.name }}>
+                    <Link
+                      routeName={nrcRouteNames.ruleDetail}
+                      params={{ name: rule.metadata.name }}
+                    >
                       {rule.metadata.name}
                     </Link>
                   </Typography>
@@ -165,59 +160,9 @@ export default function ReadinessRulesPage() {
             if (numExprs > 0) parts.push(`${numExprs} Exprs`);
             return parts.join(', ');
           },
-          render: (rule: InstanceType<typeof NodeReadinessRule>) => {
-            const selector = rule.jsonData?.spec?.nodeSelector || {};
-            const labels = selector.matchLabels;
-            const exprs = selector.matchExpressions;
-
-            if (!labels && !exprs) {
-              return (
-                <Box sx={{ minWidth: '70px' }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-                    All Nodes
-                  </Typography>
-                </Box>
-              );
-            }
-
-            const numLabels = labels ? Object.keys(labels).length : 0;
-            const numExprs = exprs ? exprs.length : 0;
-            const tooltipText = JSON.stringify(selector, null, 2);
-
-            let displayText = '';
-            if (numLabels === 1 && numExprs === 0) {
-              const key = Object.keys(labels)[0];
-              displayText = `${key}=${labels[key]}`;
-            } else {
-              const parts = [];
-              if (numLabels > 0) parts.push(`${numLabels} Lbls`);
-              if (numExprs > 0) parts.push(`${numExprs} Exprs`);
-              displayText = parts.join(', ');
-            }
-
-            return (
-              <Box sx={{ minWidth: '70px', maxWidth: '160px' }}>
-                <Tooltip
-                  title={<pre style={{ margin: 0, fontSize: '0.75rem' }}>{tooltipText}</pre>}
-                >
-                  <Typography
-                    tabIndex={0}
-                    variant="body2"
-                    sx={{
-                      cursor: 'help',
-                      textDecoration: 'underline dotted',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: 'block',
-                    }}
-                  >
-                    {displayText}
-                  </Typography>
-                </Tooltip>
-              </Box>
-            );
-          },
+          render: (rule: InstanceType<typeof NodeReadinessRule>) => (
+            <NodeSelectorSummary selector={rule.jsonData?.spec?.nodeSelector} />
+          ),
         },
         {
           id: 'taint',
@@ -229,36 +174,9 @@ export default function ReadinessRulesPage() {
               ? `${taint.key}=${taint.value}:${taint.effect}`
               : `${taint.key}:${taint.effect}`;
           },
-          render: (rule: InstanceType<typeof NodeReadinessRule>) => {
-            const taint = rule.jsonData?.spec?.taint;
-            if (!taint)
-              return (
-                <Typography variant="body2" color="text.secondary">
-                  None
-                </Typography>
-              );
-            const text = taint.value
-              ? `${taint.key}=${taint.value}:${taint.effect}`
-              : `${taint.key}:${taint.effect}`;
-            return (
-              <Box sx={{ minWidth: '100px' }}>
-                <Tooltip title={text}>
-                  <Typography
-                    tabIndex={0}
-                    variant="body2"
-                    sx={{
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      maxWidth: '120px',
-                    }}
-                  >
-                    {taint.key}
-                  </Typography>
-                </Tooltip>
-              </Box>
-            );
-          },
+          render: (rule: InstanceType<typeof NodeReadinessRule>) => (
+            <TaintChip taint={rule.jsonData?.spec?.taint} />
+          ),
         },
         'age',
       ]}
