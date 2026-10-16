@@ -16,12 +16,13 @@
 
 import { Icon } from '@iconify/react';
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
-import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { DetailsGrid, type NameValueTableRow } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type {
   GraphNode,
   GraphSource,
 } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
+import type { KubeObject, KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
 import { Box } from '@mui/system';
 import { useMemo } from 'react';
 import { knativeMapSourceConfig } from './mapSourceConfig';
@@ -61,6 +62,7 @@ import {
   KService,
   type Traffic,
 } from './resources/knative';
+import type { KnativeResourceClass } from './resources/knative/customResourceLinks';
 import { formatList, formatNanoseconds, formatTraffic } from './utils/servingResources';
 import { getSafeUrl } from './utils/url';
 
@@ -72,28 +74,41 @@ type MapNode = GraphNode & {
   traffic?: Traffic[];
 };
 
-type ResourceClass = {
-  apiName: string;
-  apiVersion: string | string[];
-  kind: string;
-};
-
-function readyValue(item: any): string {
+/**
+ * Reads a resource's readiness for a row of its map details.
+ *
+ * @param item - The resource.
+ * @returns The status of its `Ready` condition, or `Unknown` when it has none.
+ */
+function readyValue(item: TopologyResource): string {
   return getReadyCondition(item)?.status ?? 'Unknown';
 }
 
-function resourceCoordinates(node: any) {
+/**
+ * Finds where the resource of a map node lives.
+ *
+ * @param node - The map node.
+ * @returns The resource's name and namespace.
+ */
+function resourceCoordinates(node: GraphNode) {
   return {
     name: node.kubeObject.jsonData.metadata.name,
     namespace: node.kubeObject.jsonData.metadata.namespace,
   };
 }
 
-function makeDetailsComponent(
-  resourceType: any,
-  rows: (item: any, node: MapNode) => Array<{ name: string; value: any }>
+/**
+ * Builds the details panel that the map shows for the nodes of one resource class.
+ *
+ * @param resourceType - The resource class to load.
+ * @param rows - Builds the rows shown below the resource's metadata.
+ * @returns A component that shows the resource of a node.
+ */
+function makeDetailsComponent<T extends KubeObjectClass>(
+  resourceType: T,
+  rows: (item: InstanceType<T>, node: MapNode) => NameValueTableRow[]
 ) {
-  return ({ node }: { node: any }) => (
+  return ({ node }: { node: MapNode }) => (
     <DetailsGrid
       resourceType={resourceType}
       {...resourceCoordinates(node)}
@@ -189,16 +204,25 @@ const CertificateDetails = makeDetailsComponent(KnativeCertificate, item => [
   { name: 'Expiry', value: item.status?.notAfter || '-' },
 ]);
 
+/**
+ * Builds the map node of a Knative resource.
+ *
+ * @param resource - The resource.
+ * @param resourceClass - The resource's class, which names its CRD.
+ * @param detailsComponent - The details panel shown for the node.
+ * @param data - Node fields that replace the defaults.
+ * @returns The map node.
+ */
 function makeNode(
-  resource: any,
-  resourceClass: ResourceClass,
+  resource: KubeObject,
+  resourceClass: KnativeResourceClass,
   detailsComponent: MapNode['detailsComponent'],
   data: Partial<MapNode> = {}
 ): MapNode {
   return {
     id: resource.metadata.uid,
     kubeObject: resource,
-    customResourceDefinition: getKnativeCrdName(resourceClass as any),
+    customResourceDefinition: getKnativeCrdName(resourceClass),
     detailsComponent,
     weight: 1100,
     status: getReadyNodeStatus(resource as TopologyResource),
@@ -526,7 +550,7 @@ export const knativePluginSource: GraphSource = {
 
 type GlanceFact = { label: string; value: unknown };
 
-const glanceFactsByClass: Array<[ResourceClass, (resource: any) => GlanceFact[]]> = [
+const glanceFactsByClass: Array<[KnativeResourceClass, (resource: any) => GlanceFact[]]> = [
   [
     KnativeConfiguration,
     resource => [
@@ -588,14 +612,26 @@ const glanceFactsByClass: Array<[ResourceClass, (resource: any) => GlanceFact[]]
   ],
 ];
 
-function internalGlanceFacts(resource: any): GlanceFact[] | null {
+/**
+ * Lists the facts that the glance of a Knative internal resource shows.
+ *
+ * @param resource - The resource.
+ * @returns The facts for its class, or null when the resource is not one of those classes.
+ */
+function internalGlanceFacts(resource: KubeObject): GlanceFact[] | null {
   const entry = glanceFactsByClass.find(([resourceClass]) =>
     matchesResourceClass(resource, resourceClass)
   );
   return entry ? entry[1](resource) : null;
 }
 
-export function KnativeInternalResourceGlance({ node }: { node: any }) {
+/**
+ * Shows the glance of an internal Knative resource on the map: its readiness and key facts.
+ *
+ * @param props - The map node of the resource.
+ * @returns The glance, or null for a resource that has none.
+ */
+export function KnativeInternalResourceGlance({ node }: { node: GraphNode }) {
   const resource = node.kubeObject;
   const facts = internalGlanceFacts(resource);
   if (!facts) return null;

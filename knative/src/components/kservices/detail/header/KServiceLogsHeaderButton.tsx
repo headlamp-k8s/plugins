@@ -276,7 +276,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
   const pendingDownloadRef = React.useRef<string[]>([]);
   const flushScheduledRef = React.useRef(false);
 
-  const allPods = (kservicePods ?? []) as Pod[];
+  const allPods = kservicePods ?? [];
   const selectedPods =
     selectedPodName === 'all' ? allPods : allPods.filter(p => p.getName() === selectedPodName);
   const availablePodNames = allPods.map(p => p.getName());
@@ -414,8 +414,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
 
     if (podsError) {
       if (!notifiedRef.current.podsError) {
-        const message =
-          (podsError as { message?: string })?.message ?? 'Failed to fetch pods: Unknown error';
+        const message = podsError.message ?? 'Failed to fetch pods: Unknown error';
         enqueueSnackbar(message, { variant: 'error', autoHideDuration: 5000 });
         notifiedRef.current.podsError = true;
       }

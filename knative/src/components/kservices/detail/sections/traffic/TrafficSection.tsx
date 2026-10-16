@@ -39,9 +39,7 @@ export function TrafficSection({ kservice }: KServiceSectionProps) {
 
   const error = React.useMemo(() => {
     if (revisionListResult.error) {
-      return (
-        (revisionListResult.error as { message?: string })?.message || 'Failed to load revisions'
-      );
+      return revisionListResult.error.message || 'Failed to load revisions';
     }
     return null;
   }, [revisionListResult]);

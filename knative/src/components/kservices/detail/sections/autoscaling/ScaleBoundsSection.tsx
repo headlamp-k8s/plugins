@@ -18,24 +18,11 @@ import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonC
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
 import { annNumOrClear, annStrOrClear, KService } from '../../../../../resources/knative';
+import { errorDetail, withDetail } from '../../../../../utils/error';
 import { useNotify } from '../../../../common/notifications/useNotify';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
-
-type AutoscalingDefaults = {
-  concurrencyTarget: number;
-  targetUtilizationPercentage: number;
-  rpsTarget: number;
-  containerConcurrency: number;
-  minScale: number;
-  maxScale: number;
-  maxScaleLimit?: number;
-  initialScale: number;
-  allowZeroInitialScale: boolean;
-  scaleDownDelay: string;
-  stableWindow: string;
-  activationScaleDefault: number;
-};
+import type { AutoscalingDefaults } from './AutoscalingSettings';
 
 /**
  * Represents the fallback scale bound constraints utilized when explicit values are left blank by the user.
@@ -176,9 +163,7 @@ export default function ScaleBoundsSection({
 
       notifySuccess('Scale bounds updated');
     } catch (err: unknown) {
-      const error = err as { message?: string } | undefined;
-      const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to update settings: ${detail}` : 'Failed to update settings');
+      notifyError(withDetail('Failed to update settings', errorDetail(err)));
     } finally {
       setSaving(false);
     }
