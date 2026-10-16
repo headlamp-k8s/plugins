@@ -425,7 +425,7 @@ function getSchedulingStatsSection(workload: Workload) {
 }
 
 /** Build the section explaining what is stopping the Workload from being admitted. */
-function getBlockerSection(workload: Workload) {
+export function getBlockerSection(workload: Workload) {
   const blocker = getWorkloadBlocker(
     workload.conditions,
     workload.status.admissionChecks,
