@@ -29,6 +29,7 @@ import {
   ValidatingPolicy,
 } from '../resources/celPolicies';
 import { CELPolicyViewer } from './CELPolicyViewer';
+import { tableRemountKey } from './common';
 
 // Namespaced* extends its cluster-scoped counterpart (see celPolicies.ts), so
 // instances of either are already assignable to this union, no widening needed.
@@ -55,9 +56,10 @@ function ReadyChip({ ready }: { ready: boolean }) {
 }
 
 export function ValidatingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Validating Policies')}
       resourceClass={ValidatingPolicy}
       columns={[
@@ -100,9 +102,10 @@ export function ValidatingPolicyList() {
 }
 
 export function MutatingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Mutating Policies')}
       resourceClass={MutatingPolicy}
       columns={[
@@ -140,9 +143,10 @@ export function MutatingPolicyList() {
 }
 
 export function GeneratingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Generating Policies')}
       resourceClass={GeneratingPolicy}
       columns={[
@@ -180,9 +184,10 @@ export function GeneratingPolicyList() {
 }
 
 export function DeletingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Deleting Policies')}
       resourceClass={DeletingPolicy}
       columns={[
@@ -219,9 +224,10 @@ export function DeletingPolicyList() {
 }
 
 export function NamespacedValidatingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Validating Policies')}
       resourceClass={NamespacedValidatingPolicy}
       columns={[
@@ -265,9 +271,10 @@ export function NamespacedValidatingPolicyList() {
 }
 
 export function NamespacedMutatingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Mutating Policies')}
       resourceClass={NamespacedMutatingPolicy}
       columns={[
@@ -306,9 +313,10 @@ export function NamespacedMutatingPolicyList() {
 }
 
 export function NamespacedGeneratingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Generating Policies')}
       resourceClass={NamespacedGeneratingPolicy}
       columns={[
@@ -347,9 +355,10 @@ export function NamespacedGeneratingPolicyList() {
 }
 
 export function NamespacedDeletingPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Namespaced Deleting Policies')}
       resourceClass={NamespacedDeletingPolicy}
       columns={[

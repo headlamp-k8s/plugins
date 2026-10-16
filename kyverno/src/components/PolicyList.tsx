@@ -20,6 +20,7 @@ import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents'
 import { Box, Chip, Link as MuiLink, Typography } from '@mui/material';
 import { usePolicyResultCounts } from '../hooks/usePolicyResultCounts';
 import { KyvernoPolicy } from '../resources/kyvernoPolicy';
+import { tableRemountKey } from './common';
 import { PolicyViewer } from './PolicyViewer';
 
 function openPolicyActivity(item: KyvernoPolicy) {
@@ -38,10 +39,11 @@ function openPolicyActivity(item: KyvernoPolicy) {
 }
 
 export function PolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   const counts = usePolicyResultCounts();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Policies')}
       resourceClass={KyvernoPolicy}
       columns={[

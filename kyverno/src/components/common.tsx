@@ -35,6 +35,34 @@ const severityColors: Record<string, 'error' | 'warning' | 'info' | 'default'> =
   info: 'default',
 };
 
+/**
+ * Headlamp's shared Table/ResourceListView memoizes header cells by column id alone, ignoring the
+ * translated header text, so a column whose first render catches t() before its resources are
+ * loaded can get stuck showing a blank or default-locale label even once the real translation
+ * arrives. The id itself has to stay a stable, semantic string though, never derived from the
+ * live header text as an earlier version of this fix did: Table/ResourceListView treats id as
+ * public state (Headlamp persists column sort/visibility by id, and
+ * registerResourceTableColumnsProcessor integrations can target a specific id), so a
+ * translation-dependent id invalidates existing user settings the moment the real translation
+ * lands, and again on every later locale change.
+ *
+ * Keying the table itself with this value is the actual fix: `ready` (from useTranslation())
+ * flips false -> true exactly once translations finish loading, so including it forces React to
+ * fully remount the table at that point, discarding Headlamp's stale memoized header cells along
+ * with the rest of the old component instance, without the column ids ever changing. `ready`
+ * alone only covers that first transition though: confirmed directly in
+ * @kinvolk/headlamp-plugin's pluginI18n.js, the plugin's own i18next instance gets synced to a
+ * new language in a separate effect whenever Headlamp's main app locale changes, but `ready`
+ * itself is a one-shot flag that never resets for that, so a later locale switch would leave the
+ * key unchanged and the memoized headers stuck on whichever locale was active the first time.
+ * Folding in the plugin's current language (`i18n?.language` from useTranslation(), undefined
+ * before the instance exists) covers that case too, forcing a fresh remount on every genuine
+ * language change, not just the initial load.
+ */
+export function tableRemountKey(ready: boolean, language?: string): string {
+  return ready ? `translations-ready:${language ?? ''}` : 'translations-loading';
+}
+
 export function ResultStatusChip({ status }: { status: PolicyResultStatus }) {
   return <Chip label={status} color={statusColors[status] || 'default'} size="small" />;
 }
@@ -66,7 +94,10 @@ export function SummaryChips({ summary }: { summary: PolicyReportSummary }) {
       {items
         .filter(item => item.count > 0)
         .map(item => (
-          <Tooltip key={item.label} title={item.label}>
+          // Keyed on the untranslated status enum, not the translated label: unlike a Table
+          // column id, a list key has no reason to be derived from translated text at all here,
+          // and status is already stable and unique per item regardless of i18n load state.
+          <Tooltip key={item.status} title={item.label}>
             <Chip
               label={`${item.label}: ${item.count}`}
               color={statusColors[item.status]}
