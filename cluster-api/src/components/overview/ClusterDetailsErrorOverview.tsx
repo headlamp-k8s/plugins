@@ -70,7 +70,7 @@ function renderClusterHealthStatus(healthy: boolean, priorityError: ClusterPrior
  * @param props.open - Whether the panel is currently expanded or collapsed.
  * @returns A Collapse-wrapped React component with solution instructions.
  */
-function InlineSolutionPanel({
+export function InlineSolutionPanel({
   priorityError,
   open,
 }: {
@@ -85,7 +85,9 @@ function InlineSolutionPanel({
     try {
       await copyToClipboard(text);
       setCopiedCommand(text);
-      setTimeout(() => setCopiedCommand(null), 1800);
+      // only clear if this timeout's command is still the one showing —
+      // otherwise it clobbers a more recent copy before its own 1800ms is up
+      setTimeout(() => setCopiedCommand(current => (current === text ? null : current)), 1800);
     } catch {
       setCopiedCommand(null);
     }
