@@ -43,10 +43,24 @@ function buildProxyPath(prefix: string, apiPath: string, params: URLSearchParams
   return `/api/v1/namespaces/${prefix}/proxy${apiPath}?${params.toString()}`;
 }
 
-/** Runs an instant query (a single current value), e.g. for a stat tile. */
-export async function queryInstant(prefix: string, query: string): Promise<PrometheusResponse> {
+/**
+ * Runs an instant query (a single current value), e.g. for a stat tile.
+ *
+ * `cluster` pins the request to a specific cluster rather than whichever one is currently active
+ * in the URL at the moment the request actually fires; only pass it where that race matters (see
+ * usePrometheus.ts's discovery path), omit it (not an empty string) everywhere else so this keeps
+ * following the default "current cluster" behavior ApiProxy.request already provides.
+ */
+export async function queryInstant(
+  prefix: string,
+  query: string,
+  cluster?: string
+): Promise<PrometheusResponse> {
   const params = new URLSearchParams({ query });
-  return ApiProxy.request(buildProxyPath(prefix, '/api/v1/query', params), { method: 'GET' });
+  return ApiProxy.request(buildProxyPath(prefix, '/api/v1/query', params), {
+    method: 'GET',
+    ...(cluster !== undefined ? { cluster } : {}),
+  });
 }
 
 /** Runs a range query (a time series), e.g. for a chart. */

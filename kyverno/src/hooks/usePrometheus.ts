@@ -60,11 +60,23 @@ function portsFromItem(type: ResourceType, item: ListItem): string[] {
 // stale leftover next to the real one). Trying only the first result would let an unreachable
 // item hide a perfectly reachable one further down the list, so every returned item gets tried,
 // in order, stopping at the first one that actually answers a query.
-async function findByLabel(type: ResourceType, labelSelector: string): Promise<string | null> {
+//
+// `cluster` is threaded through both the list request and the validation query explicitly,
+// rather than relying on ApiProxy's default "whichever cluster is currently active" behavior:
+// this function runs inside an async probe that can still be in flight after the user has
+// switched clusters, and ApiProxy.request reads the active cluster fresh at the moment each
+// request actually fires, not at the moment probeCluster captured its `cluster` argument. Without
+// this, a probe started for cluster A can have its list/validation requests silently redirected
+// to cluster B mid-flight, and whatever it finds there gets cached under A's key.
+async function findByLabel(
+  type: ResourceType,
+  labelSelector: string,
+  cluster: string
+): Promise<string | null> {
   const params = new URLSearchParams({ labelSelector });
   let response: { items?: ListItem[] };
   try {
-    response = await ApiProxy.request(`/api/v1/${type}?${params}`, { method: 'GET' });
+    response = await ApiProxy.request(`/api/v1/${type}?${params}`, { method: 'GET', cluster });
   } catch {
     return null;
   }
@@ -77,7 +89,7 @@ async function findByLabel(type: ResourceType, labelSelector: string): Promise<s
     const results = await Promise.all(
       candidates.map(async prefix => {
         try {
-          const query = await queryInstant(prefix, 'up');
+          const query = await queryInstant(prefix, 'up', cluster);
           return query.status === 'success' ? prefix : null;
         } catch {
           return null;
@@ -97,14 +109,14 @@ async function findByLabel(type: ResourceType, labelSelector: string): Promise<s
 // Service when both match avoids caching a prefix a routine rollout is about to turn into a dead
 // proxy path. Doesn't eliminate the problem (a setup with only a matching Pod and no matching
 // Service still caches a pod-based prefix), the TTL re-probe below covers what this can't.
-async function discoverPrometheus(): Promise<string | null> {
+async function discoverPrometheus(cluster: string): Promise<string | null> {
   for (const [type, label] of [
     ['services', CUSTOM_LABEL],
     ['pods', CUSTOM_LABEL],
     ['services', COMMON_SERVICE_LABEL],
     ['pods', COMMON_POD_LABEL],
   ] as [ResourceType, string][]) {
-    const found = await findByLabel(type, label);
+    const found = await findByLabel(type, label, cluster);
     if (found) return found;
   }
   return null;
@@ -139,7 +151,7 @@ async function probeCluster(cluster: string): Promise<PrometheusStatus> {
   if (existing) return existing;
 
   const promise = (async () => {
-    const prefix = await discoverPrometheus();
+    const prefix = await discoverPrometheus(cluster);
     const status: PrometheusStatus = { prefix, loading: false };
     probeCache.set(cluster, { status, probedAt: Date.now() });
     inFlight.delete(cluster);
