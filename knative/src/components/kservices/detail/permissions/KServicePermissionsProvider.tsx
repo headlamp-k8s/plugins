@@ -18,12 +18,13 @@ import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import React, { createContext, useContext } from 'react';
 import { useAuthorization } from '../../../../hooks/useAuthorization';
 import { ClusterDomainClaim, KnativeDomainMapping, KService } from '../../../../resources/knative';
+import { useCanRestartKService } from '../hooks/useCanRestartKService';
 
 interface KServicePermissions {
   /** Whether the user can patch the KService. */
   canPatchKService: boolean | null;
-  /** Whether the user can delete Pods (for restart operation). */
-  canDeletePods: boolean | null;
+  /** Whether the user can list, watch and patch Deployments (for restart operation). */
+  canRestart: boolean | null;
   /** Whether the user can get pod logs. */
   canGetPodLogs: boolean | null;
   /** Whether the user can create DomainMapping resources. */
@@ -43,7 +44,12 @@ interface KServicePermissionsProviderProps {
 
 /**
  * Provider that checks all KService-related permissions and makes them available via context.
- * This centralizes permission checks to avoid duplicate queries and ensures unidirectional data flow.
+ * This centralizes permission checks to avoid duplicate queries and ensures unidirectional data
+ * flow.
+ *
+ * @param props - The Knative Service whose permissions are checked, and the components that use
+ * them.
+ * @returns The children, with the permissions available through `useKServicePermissions`.
  */
 export function KServicePermissionsProvider({
   kservice,
@@ -60,13 +66,7 @@ export function KServicePermissionsProvider({
     cluster,
   });
 
-  // Check Pod delete permission (for restart operation)
-  const deletePods = useAuthorization({
-    item: Pod,
-    authVerb: 'delete',
-    namespace,
-    cluster,
-  });
+  const restart = useCanRestartKService(namespace, cluster);
 
   // Check Pod logs get permission
   const getPodLogs = useAuthorization({
@@ -94,13 +94,13 @@ export function KServicePermissionsProvider({
 
   const permissions: KServicePermissions = {
     canPatchKService: patchKService.allowed,
-    canDeletePods: deletePods.allowed,
+    canRestart: restart.allowed,
     canGetPodLogs: getPodLogs.allowed,
     canCreateDomainMapping: createDomainMapping.allowed,
     canCreateClusterDomainClaim: createClusterDomainClaim.allowed,
     isLoading:
       patchKService.isLoading ||
-      deletePods.isLoading ||
+      restart.isLoading ||
       getPodLogs.isLoading ||
       createDomainMapping.isLoading ||
       createClusterDomainClaim.isLoading,
