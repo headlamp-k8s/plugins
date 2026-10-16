@@ -7,6 +7,7 @@ import {
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
 import { registerDetailsViewHeaderAction } from '@kinvolk/headlamp-plugin/lib';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
@@ -110,12 +111,13 @@ function registerSection(name: string, label: string, icon: string, url: string)
  * @param props.children - The component to render if CAPI is active.
  */
 function CapiRouteWrapper({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const [crd, error] = CustomResourceDefinition.useGet(Cluster.crdName);
   if (error) {
     return <Dashboard />;
   }
   if (!crd) {
-    return <Loader title="Detecting Cluster API status..." />;
+    return <Loader title={t('Detecting Cluster API status...')} />;
   }
   return <>{children}</>;
 }

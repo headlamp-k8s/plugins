@@ -1,4 +1,4 @@
-import { Router } from '@kinvolk/headlamp-plugin/lib';
+import { Router, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, ConfirmButton } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useSnackbar } from 'notistack';
 import React from 'react';
@@ -21,13 +21,14 @@ export function ViewNodeAction({
   nodeName: string;
   clusterName?: string;
 }) {
+  const { t } = useTranslation();
   const history = useHistory();
   const { enqueueSnackbar } = useSnackbar();
 
   const handleViewNode = () => {
     if (!clusterName) {
       console.warn('[ViewNodeAction] No cluster name provided');
-      enqueueSnackbar('Workload cluster information is unavailable.', { variant: 'warning' });
+      enqueueSnackbar(t('Workload cluster information is unavailable.'), { variant: 'warning' });
       return;
     }
     try {
@@ -38,11 +39,13 @@ export function ViewNodeAction({
         })
       );
     } catch (error) {
-      enqueueSnackbar(`Error navigating to Node: ${getErrorMessage(error)}`, { variant: 'error' });
+      enqueueSnackbar(t('Error navigating to Node: {{error}}', { error: getErrorMessage(error) }), {
+        variant: 'error',
+      });
     }
   };
 
-  return <ActionButton description="View Node" icon="mdi:server" onClick={handleViewNode} />;
+  return <ActionButton description={t('View Node')} icon="mdi:server" onClick={handleViewNode} />;
 }
 
 /**
@@ -51,24 +54,30 @@ export function ViewNodeAction({
  * MachineSet or MachineDeployment.
  */
 export function ReplaceMachineAction({ machine }: { machine: Machine }) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
 
   return (
     <ConfirmButton
-      confirmTitle={`Replace Machine "${machine.metadata?.name}"?`}
-      confirmDescription="This deletes the current Machine resource. CAPI controllers will automatically provision a replacement."
+      confirmTitle={t('Replace Machine "{{name}}"?', { name: machine.metadata?.name })}
+      confirmDescription={t(
+        'This deletes the current Machine resource. CAPI controllers will automatically provision a replacement.'
+      )}
       onConfirm={async () => {
         try {
           await machine.delete();
-          enqueueSnackbar('Machine replacement triggered', { variant: 'success' });
+          enqueueSnackbar(t('Machine replacement triggered'), { variant: 'success' });
         } catch (err: any) {
-          enqueueSnackbar(`Failed to replace machine: ${getErrorMessage(err)}`, {
-            variant: 'error',
-          });
+          enqueueSnackbar(
+            t('Failed to replace machine: {{error}}', { error: getErrorMessage(err) }),
+            {
+              variant: 'error',
+            }
+          );
         }
       }}
     >
-      <ActionButton description="Replace Machine" icon="mdi:restart" onClick={() => {}} />
+      <ActionButton description={t('Replace Machine')} icon="mdi:restart" onClick={() => {}} />
     </ConfirmButton>
   );
 }
@@ -109,11 +118,12 @@ function getProviderUrl(providerID: string): string | null {
  * Open provider instance console.
  */
 export function ProviderInstanceAction({ providerID }: { providerID: string }) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
 
   return (
     <ActionButton
-      description="Open Provider Instance"
+      description={t('Open Provider Instance')}
       icon="mdi:open-in-new"
       onClick={() => {
         const url = getProviderUrl(providerID);
@@ -121,7 +131,7 @@ export function ProviderInstanceAction({ providerID }: { providerID: string }) {
           window.open(url, '_blank', 'noopener,noreferrer');
         } else {
           enqueueSnackbar(
-            'Provider console link is not available for this infrastructure provider.',
+            t('Provider console link is not available for this infrastructure provider.'),
             { variant: 'info' }
           );
         }
