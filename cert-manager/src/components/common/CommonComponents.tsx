@@ -145,6 +145,22 @@ export function ConditionsTable({ conditions }: ConditionsTableProps) {
   );
 }
 
+export function SecretNameLink({ name, namespace }: { name?: string; namespace?: string }) {
+  if (!name) {
+    return null;
+  }
+
+  if (!namespace) {
+    return <>{name}</>;
+  }
+
+  return (
+    <Link routeName={K8s.ResourceClasses.Secret.kind} params={{ name, namespace }}>
+      {name}
+    </Link>
+  );
+}
+
 interface SecretKeySelectorProps {
   selector: SecretKeySelector;
   namespace?: string;
@@ -157,16 +173,7 @@ export function SecretKeySelectorComponent({ selector, namespace }: SecretKeySel
       rows={[
         {
           name: t('Name'),
-          value: namespace ? (
-            <Link
-              routeName={K8s.ResourceClasses.Secret.kind}
-              params={{ name: selector.name, namespace }}
-            >
-              {selector.name}
-            </Link>
-          ) : (
-            selector.name
-          ),
+          value: <SecretNameLink name={selector.name} namespace={namespace} />,
         },
         {
           name: t('Key'),
