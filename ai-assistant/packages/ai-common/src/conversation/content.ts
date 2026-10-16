@@ -81,6 +81,9 @@ export function processToolContent(
   };
 }
 
+/** Characters for the HTML entities decoded when no DOM parser is available. */
+const HTML_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" } as const;
+
 /**
  * Strips HTML and normalizes JSON content for safe model input.
  *
@@ -100,15 +103,33 @@ export function sanitizeContent(content: string): string {
     const text =
       typeof DOMParser !== 'undefined'
         ? new DOMParser().parseFromString(content, 'text/html').body.textContent || ''
-        : content
-            .replace(/<[^>]*>/g, '')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'");
+        : stripAngleBracketTags(content).replace(
+            // One pass so decoded '&' can't start another entity (e.g. '&amp;lt;').
+            /&(amp|lt|gt|quot|#39);/g,
+            (_, entity: keyof typeof HTML_ENTITIES) => HTML_ENTITIES[entity]
+          );
     return text.replace(/\[IMAGE\]/gi, '[IMAGE]');
   } catch {
-    return content.substring(0, 5000).replace(/<[^>]*>/g, '');
+    return stripAngleBracketTags(content.substring(0, 5000));
   }
+}
+
+/**
+ * Removes `<...>` spans, matching `text.replace(/<[^>]*>/g, '')` in linear time.
+ *
+ * @param text - Text that may contain HTML-like tags.
+ * @returns The text without `<...>` spans.
+ */
+function stripAngleBracketTags(text: string): string {
+  let out = '';
+  let pos = 0;
+  for (;;) {
+    const open = text.indexOf('<', pos);
+    if (open === -1) break;
+    const close = text.indexOf('>', open + 1);
+    if (close === -1) break;
+    out += text.slice(pos, open);
+    pos = close + 1;
+  }
+  return out + text.slice(pos);
 }

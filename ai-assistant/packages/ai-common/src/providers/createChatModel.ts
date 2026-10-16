@@ -21,6 +21,7 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatMistralAI } from '@langchain/mistralai';
 import { ChatOllama } from '@langchain/ollama';
 import { AzureChatOpenAI, ChatOpenAI } from '@langchain/openai';
+import { trimTrailingSlashes } from '../text/trimSlashes';
 import { GH_CLI_AUTH_SENTINEL } from './detectProvider';
 import { createFixtureChatModel } from './langchain/testing/FixtureChatModel';
 
@@ -86,6 +87,28 @@ export function copilotModelRequiresResponsesApi(model: string): boolean {
 }
 
 /**
+ * Removes an `/openai/...` path from an Azure endpoint.
+ *
+ * Matches `endpoint.replace(/\/openai\/.*$/, '')` in linear time; that regex is
+ * quadratic on repeated `/openai/` text.
+ *
+ * @param endpoint - Azure OpenAI endpoint.
+ * @returns The endpoint without its `/openai/...` path.
+ */
+function stripAzureOpenAIPath(endpoint: string): string {
+  // `.` doesn't match line terminators, so only the last line can match.
+  const lastLineStart =
+    Math.max(
+      endpoint.lastIndexOf('\n'),
+      endpoint.lastIndexOf('\r'),
+      endpoint.lastIndexOf('\u2028'),
+      endpoint.lastIndexOf('\u2029')
+    ) + 1;
+  const pathStart = endpoint.indexOf('/openai/', lastLineStart);
+  return pathStart === -1 ? endpoint : endpoint.slice(0, pathStart);
+}
+
+/**
  * Creates a LangChain `BaseChatModel` from a provider ID and configuration map.
  *
  * This is the single source of truth for provider → model mapping shared by
@@ -130,7 +153,7 @@ export function createChatModel(
         if (!c.apiKey || !c.endpoint || !c.deploymentName)
           throw new Error('Incomplete Azure OpenAI configuration');
         return new AzureChatOpenAI({
-          azureOpenAIEndpoint: c.endpoint.replace(/\/+$/, '').replace(/\/openai\/.*$/, ''),
+          azureOpenAIEndpoint: stripAzureOpenAIPath(trimTrailingSlashes(c.endpoint)),
           azureOpenAIApiKey: c.apiKey,
           azureOpenAIApiDeploymentName: c.deploymentName,
           azureOpenAIApiVersion: '2025-04-01-preview',
@@ -157,7 +180,7 @@ export function createChatModel(
       case 'vllm': {
         if (!c.baseUrl) throw new Error('Base URL is required for vLLM');
         if (!c.model) throw new Error('Model is required for vLLM');
-        let url = c.baseUrl.replace(/\/+$/, '');
+        let url = trimTrailingSlashes(c.baseUrl);
         if (!url.endsWith('/v1')) url = `${url}/v1`;
         return new ChatOpenAI({
           apiKey: c.apiKey || 'sk-noop',

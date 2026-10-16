@@ -41,4 +41,15 @@ describe('isSpecificResourceRequestHelper', () => {
       isSpecificResourceRequestHelper('/apis/apps/v1/namespaces/default/deployments/my-deploy')
     ).toBe(true);
   });
+
+  it('treats trailing-slash list endpoints as lists', () => {
+    expect(isSpecificResourceRequestHelper('/apis/apps/v1/deployments/')).toBe(false);
+  });
+
+  it('checks adversarial URLs in linear time', () => {
+    const url = `${'/api/'.repeat(50_000)}!`;
+    const start = performance.now();
+    isSpecificResourceRequestHelper(url);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
 });

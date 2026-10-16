@@ -53,6 +53,32 @@ MIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4
     expect(out).toContain('[REDACTED]');
   });
 
+  it('redacts each of several PEM blocks and keeps surrounding text', () => {
+    const out = redactSecrets(
+      'a -----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE----- b ' +
+        '-----BEGIN EC PRIVATE KEY-----\nBBB\n-----END EC PRIVATE KEY----- c'
+    );
+    expect(out).toBe('a [REDACTED] b [REDACTED] c');
+  });
+
+  it('leaves unterminated PEM headers unchanged', () => {
+    const input = '-----BEGIN CERTIFICATE-----\nAAA';
+    expect(redactSecrets(input)).toBe(input);
+  });
+
+  it('scans adversarial PEM and fenced JSON input in linear time', () => {
+    const inputs = [
+      '-----BEGIN A-----'.repeat(50_000),
+      `kind: Secret\n${'```json'.repeat(50_000)}`,
+      `kind: Secret\n\`\`\`json${' '.repeat(100_000)}x`,
+    ];
+    for (const input of inputs) {
+      const start = performance.now();
+      redactSecrets(input);
+      expect(performance.now() - start).toBeLessThan(500);
+    }
+  });
+
   it('redacts PEM certificates', () => {
     const cert = `-----BEGIN CERTIFICATE-----
 MIICpDCCAYwCCQDU+pQ4pHgSpDANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls

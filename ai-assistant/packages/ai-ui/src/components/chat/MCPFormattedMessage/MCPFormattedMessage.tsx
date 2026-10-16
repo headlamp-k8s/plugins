@@ -4,6 +4,7 @@ import { Icon } from '@iconify/react';
 import { Alert, Box, Paper, Typography } from '@mui/material';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toSafeFileName } from '../../../formatting/stringFormatting';
 import MCPOutputDisplay from '../../mcpOutput/MCPOutputDisplay/MCPOutputDisplay';
 
 /** Props for {@link MCPFormattedMessage}. */
@@ -112,10 +113,7 @@ export function isFormattedMCPMessage(content: string): boolean {
 
 /** @returns Filesystem-safe export base name. */
 function getExportName(toolName: string | undefined): string {
-  return (
-    (toolName || 'mcp-output').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') ||
-    'mcp-output'
-  );
+  return toSafeFileName(toolName || 'mcp-output', 'mcp-output');
 }
 
 /** @returns One quoted CSV cell with embedded quotes escaped. */

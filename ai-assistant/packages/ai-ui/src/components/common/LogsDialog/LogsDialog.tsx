@@ -19,6 +19,7 @@ import {
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFormattedLogs, getLogLanguage } from '../../../formatting/logFormatting';
+import { toSafeFileName } from '../../../formatting/stringFormatting';
 
 /** Props for the LogsDialog component that displays log content in a modal. */
 export interface LogsDialogProps {
@@ -75,9 +76,7 @@ const LogsDialog: React.FC<LogsDialogProps> = ({
     const a = document.createElement('a');
     a.href = url;
     const extension = getLogLanguage(logs) === 'json' ? 'json' : 'txt';
-    const safeResourceName =
-      (resourceName || t('resource')).replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') ||
-      t('resource');
+    const safeResourceName = toSafeFileName(resourceName || t('resource'), t('resource'));
     a.download = `${safeResourceName}-logs.${extension}`;
     try {
       document.body.appendChild(a);
