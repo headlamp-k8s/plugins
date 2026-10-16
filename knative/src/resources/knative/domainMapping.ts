@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { clusterRequest } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import type { DeleteParameters } from '@kinvolk/headlamp-plugin/lib/k8s/apiProxy';
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { getSafeUrl } from '../../utils/url';
@@ -55,8 +56,9 @@ export class KnativeDomainMapping extends ConditionedKnativeCustomResource<Domai
 
   /**
    * Delete DomainMapping and (best-effort) delete the corresponding ClusterDomainClaim (same host).
-   * If the claim doesn't exist, ignore it. Any other errors are ignored as DomainMapping deletion
-   * should be the source of truth for the UI action.
+   * The claim is only deleted when it is held by this DomainMapping's namespace. If the claim
+   * doesn't exist, ignore it. Any other errors are ignored as DomainMapping deletion should be the
+   * source of truth for the UI action.
    */
   async delete(force?: boolean): Promise<any> {
     // 1) Delete DomainMapping first.
@@ -73,6 +75,15 @@ export class KnativeDomainMapping extends ConditionedKnativeCustomResource<Domai
       delete: (name: string, deleteParams?: DeleteParameters, cluster?: string) => Promise<any>;
     };
     try {
+      // A claim held by another namespace means this DomainMapping never acquired the domain.
+      // Deleting it would release the domain from the namespace that does own it, so leave it
+      // alone, as Knative's own DomainMapping finalizer does.
+      const claim: { spec?: { namespace?: string } } | null = await clusterRequest(
+        `/apis/${ClusterDomainClaim.apiVersion}/${ClusterDomainClaim.apiName}/${host}`,
+        { cluster: this.cluster }
+      );
+      if (claim?.spec?.namespace !== this.metadata?.namespace) return res;
+
       await cdcEndpoint.delete(host, deleteParams, this.cluster);
     } catch (error: unknown) {
       // Best-effort cleanup: DomainMapping deletion remains the source of truth.
