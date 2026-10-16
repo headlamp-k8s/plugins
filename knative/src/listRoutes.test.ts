@@ -18,6 +18,7 @@ import { vi } from 'vitest';
 
 vi.mock('./components/brokers/List', () => ({ BrokersList: () => null }));
 vi.mock('./components/certificates/List', () => ({ CertificatesList: () => null }));
+vi.mock('./components/channels/List', () => ({ ChannelsList: () => null }));
 vi.mock('./components/clusterdomainclaims/List', () => ({
   ClusterDomainClaimsList: () => null,
 }));
@@ -34,6 +35,7 @@ vi.mock('./components/podautoscalers/List', () => ({ PodAutoscalersList: () => n
 vi.mock('./components/revisions/List', () => ({ RevisionsList: () => null }));
 vi.mock('./components/routes/List', () => ({ RoutesList: () => null }));
 vi.mock('./components/serverlessservices/List', () => ({ ServerlessServicesList: () => null }));
+vi.mock('./components/subscriptions/List', () => ({ SubscriptionsList: () => null }));
 vi.mock('./components/triggers/List', () => ({ TriggersList: () => null }));
 
 import { getKnativeListRouteComponent, knativeListRouteComponents } from './listRoutes';

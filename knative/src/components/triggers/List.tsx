@@ -23,9 +23,10 @@ import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeBroker, KnativeTrigger } from '../../resources/knative';
 import { formatDestination } from '../../resources/knative/eventingData';
+import { DestinationLink } from '../common/DestinationLink';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { OwnerLink } from '../common/OwnerLink';
-import { getReadinessColumns, TextValue } from '../common/ResourceListCells';
+import { getReadinessColumns } from '../common/ResourceListCells';
 
 /**
  * Shows the Broker a Trigger takes events from.
@@ -66,16 +67,11 @@ function SubscriberCell({
   /** The Trigger to show. */
   trigger: KnativeTrigger;
 }) {
-  const label = formatDestination(trigger.subscriber);
-  const ref = trigger.subscriber?.ref;
-  if (!ref?.apiVersion || !ref.kind || !ref.name) return <TextValue value={label} />;
-
   return (
-    <OwnerLink
-      owner={{ apiVersion: ref.apiVersion, kind: ref.kind, name: ref.name }}
-      namespace={ref.namespace || trigger.metadata.namespace}
+    <DestinationLink
+      destination={trigger.subscriber}
+      namespace={trigger.metadata.namespace}
       cluster={trigger.cluster}
-      label={label}
     />
   );
 }

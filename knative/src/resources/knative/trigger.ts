@@ -15,7 +15,7 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
-import type { DeliverySpec, Destination, KReference } from './common';
+import type { AuthStatus, DeliverySpec, Destination, KReference } from './common';
 import { ConditionedKnativeCustomResource, type ConditionedStatus } from './conditionedResource';
 import { getTriggerBroker } from './eventingData';
 
@@ -93,12 +93,7 @@ interface KnativeTriggerResource extends KubeObjectInterface {
     /** The OIDC audience of the dead letter sink. */
     deadLetterSinkAudience?: string;
     /** Details used for OIDC authentication. */
-    auth?: {
-      /** The generated service account used for OIDC authentication. */
-      serviceAccountName?: string;
-      /** Every generated service account used for OIDC authentication. */
-      serviceAccountNames?: string[];
-    };
+    auth?: AuthStatus;
   };
 }
 

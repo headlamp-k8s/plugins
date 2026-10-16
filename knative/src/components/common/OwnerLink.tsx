@@ -20,6 +20,7 @@ import {
   getKnativeCrdName,
   KnativeBroker,
   KnativeCertificate,
+  KnativeChannel,
   KnativeConfiguration,
   KnativeImage,
   KnativeIngress,
@@ -27,6 +28,7 @@ import {
   KnativePodAutoscaler,
   KnativeRoute,
   KnativeServerlessService,
+  KnativeTrigger,
 } from '../../resources/knative';
 import { EmptyValue, TextValue } from './ResourceListCells';
 
@@ -40,6 +42,8 @@ const ownerResourceClasses = [
   KnativeIngress,
   KnativeServerlessService,
   KnativeCertificate,
+  KnativeChannel,
+  KnativeTrigger,
 ];
 
 const ownerCrdNames = new Map(

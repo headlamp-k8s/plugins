@@ -97,3 +97,34 @@ export interface DeliverySpec {
    */
   retryAfterMax?: string;
 }
+
+/** An address where a Knative resource accepts events, as Knative's `Addressable` defines it. */
+export interface Addressable {
+  /** Name of the address, for example `http`. */
+  name?: string;
+  /** URL of the address. */
+  url?: string;
+  /** CA certificates in PEM format of the address. */
+  CACerts?: string;
+  /** The OIDC audience of the address. */
+  audience?: string;
+}
+
+/** An EventPolicy applied to a resource. */
+export interface AppliedEventPolicyRef {
+  /**
+   * API version of the applied EventPolicy, which is the EventPolicy version the resource
+   * supports.
+   */
+  apiVersion?: string;
+  /** Name of the applied EventPolicy. */
+  name?: string;
+}
+
+/** Details used for OIDC authentication, as Knative's `AuthStatus` defines them. */
+export interface AuthStatus {
+  /** The generated service account used for OIDC authentication. */
+  serviceAccountName?: string;
+  /** Every generated service account used for OIDC authentication. */
+  serviceAccountNames?: string[];
+}

@@ -56,9 +56,9 @@ export function getTriggerBroker(spec?: {
 }
 
 /**
- * Formats where a Trigger sends its events, for display.
+ * Formats a destination, such as a Trigger's or Subscription's subscriber, for display.
  *
- * @param destination - The Trigger's subscriber, if it has one.
+ * @param destination - The destination, if there is one.
  * @returns `Kind/name` for an object reference (or whichever of the two is set), the URI on its
  * own, `Kind/name (uri)` when both are set, and an empty string when there is neither.
  */

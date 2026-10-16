@@ -141,6 +141,18 @@ export const knativeNavigationSections = [
         path: '/knative/triggers',
         routeName: 'knativeTriggers',
       },
+      {
+        name: 'knative-channels',
+        label: 'Channels',
+        path: '/knative/channels',
+        routeName: 'knativeChannels',
+      },
+      {
+        name: 'knative-subscriptions',
+        label: 'Subscriptions',
+        path: '/knative/subscriptions',
+        routeName: 'knativeSubscriptions',
+      },
     ],
   },
 ] as const satisfies readonly KnativeNavigationSectionShape[];
