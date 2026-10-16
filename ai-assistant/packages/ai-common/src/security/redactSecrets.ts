@@ -44,7 +44,7 @@ export function redactSecrets(input: string): string {
 
   // PEM blocks — run first so private-key content is gone before the
   // generic key-value patterns could match individual lines inside them.
-  out = out.replace(/-----BEGIN [A-Z ]+-----[\s\S]*?-----END [A-Z ]+-----/g, '[REDACTED]');
+  out = redactPemBlocks(out);
 
   // JWT tokens: three base64url segments separated by dots.
   // The first two start with "eyJ" (base64 of '{"').
@@ -129,6 +129,89 @@ export function redactSecrets(input: string): string {
   return out;
 }
 
+// The two scanners below replace regexes that were quadratic on adversarial
+// input (`/-----BEGIN [A-Z ]+-----[\s\S]*?-----END [A-Z ]+-----/g` and
+// /```json\s*([\s\S]*?)```/gi) with linear scans that match the same text.
+
+/**
+ * Returns the index after a `[A-Z ]+-----` PEM label starting at `from`.
+ *
+ * @param text - Text being scanned.
+ * @param from - Index where the label should start.
+ * @returns Index after the closing dashes, or -1 when there is no label.
+ */
+function matchPemLabel(text: string, from: number): number {
+  let end = from;
+  while (end < text.length) {
+    const code = text.charCodeAt(end);
+    if (code !== 32 && (code < 65 || code > 90)) break;
+    end++;
+  }
+  return end > from && text.startsWith('-----', end) ? end + 5 : -1;
+}
+
+/**
+ * Replaces `-----BEGIN X----- ... -----END Y-----` blocks with `[REDACTED]`.
+ *
+ * @param text - Text that may contain PEM blocks.
+ * @returns The text with each PEM block replaced.
+ */
+function redactPemBlocks(text: string): string {
+  const begin = '-----BEGIN ';
+  const end = '-----END ';
+  let out = '';
+  let copied = 0;
+  let search = 0;
+  for (;;) {
+    const blockStart = text.indexOf(begin, search);
+    if (blockStart === -1) break;
+    const headerEnd = matchPemLabel(text, blockStart + begin.length);
+    if (headerEnd === -1) {
+      search = blockStart + 1;
+      continue;
+    }
+    let blockEnd = -1;
+    for (let footer = text.indexOf(end, headerEnd); footer !== -1; ) {
+      blockEnd = matchPemLabel(text, footer + end.length);
+      if (blockEnd !== -1) break;
+      footer = text.indexOf(end, footer + 1);
+    }
+    // Later blocks start after this header, so they cannot find a footer either.
+    if (blockEnd === -1) break;
+    out += text.slice(copied, blockStart) + '[REDACTED]';
+    copied = search = blockEnd;
+  }
+  return out + text.slice(copied);
+}
+
+/**
+ * Replaces each ```json fenced block using `replacer`.
+ *
+ * @param text - Text that may contain fenced JSON blocks.
+ * @param replacer - Receives the whole block and its body after leading whitespace.
+ * @returns The text with each block replaced.
+ */
+function replaceFencedJsonBlocks(
+  text: string,
+  replacer: (block: string, body: string) => string
+): string {
+  const opening = /```json/gi;
+  let out = '';
+  let copied = 0;
+  for (let match = opening.exec(text); match; match = opening.exec(text)) {
+    let bodyStart = opening.lastIndex;
+    while (bodyStart < text.length && /\s/.test(text[bodyStart])) bodyStart++;
+    const close = text.indexOf('```', bodyStart);
+    // Later blocks open after this one, so they cannot find a closing fence either.
+    if (close === -1) break;
+    out +=
+      text.slice(copied, match.index) +
+      replacer(text.slice(match.index, close + 3), text.slice(bodyStart, close));
+    copied = opening.lastIndex = close + 3;
+  }
+  return out + text.slice(copied);
+}
+
 /**
  * Redacts every value under `data` / `stringData` of Kubernetes Secret objects.
  *
@@ -147,7 +230,7 @@ function redactKubernetesSecretValues(input: string): string {
     return input;
   }
 
-  const fencedJson = input.replace(/```json\s*([\s\S]*?)```/gi, (block, body: string) => {
+  const fencedJson = replaceFencedJsonBlocks(input, (block, body) => {
     try {
       const parsed: unknown = JSON.parse(body.trim());
       return redactSecretsInParsedJson(parsed)
