@@ -274,6 +274,7 @@ function usePluginSettings() {
 
   // Add state to control UI panel visibility - always start closed (don't restore from storage)
   const [isUIPanelOpen, setIsUIPanelOpenState] = React.useState(false);
+  const [initialPrompt, setInitialPrompt] = React.useState('');
 
   // Add state for enabled tools - will be initialized properly using initializeToolsState
   const [enabledTools, setEnabledToolsState] = React.useState<string[]>([]);
@@ -347,6 +348,8 @@ function usePluginSettings() {
     setActiveProvider,
     isUIPanelOpen,
     setIsUIPanelOpen,
+    initialPrompt,
+    setInitialPrompt,
     enabledTools,
     setEnabledTools,
     toolsInitialized,
