@@ -13,6 +13,7 @@ import {
   renderCohortLink,
   renderResourceFlavorLink,
 } from '../common/KueueResourceLinks';
+import { QuotaBar } from '../common/QuotaBar';
 import { RelatedLocalQueuesSection, RelatedWorkloadsSection } from '../common/RelatedResources';
 
 /** Flattened row rendered for status flavor reservations or flavor usage. */
@@ -97,6 +98,23 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
             {
               label: 'Resource',
               getter: (row: ResourceGroupRow) => row.resource,
+            },
+            {
+              label: 'Quota Utilization',
+              getter: (row: ResourceGroupRow) => {
+                const flavorUsage = clusterQueue.status.flavorsUsage?.find(
+                  fu => fu.name === row.flavor
+                );
+                const resourceUsage = flavorUsage?.resources?.find(r => r.name === row.resource);
+                return (
+                  <QuotaBar
+                    used={resourceUsage?.total}
+                    nominal={row.nominalQuota}
+                    borrowingLimit={row.borrowingLimit}
+                    lendingLimit={row.lendingLimit}
+                  />
+                );
+              },
             },
             {
               label: 'Nominal Quota',
