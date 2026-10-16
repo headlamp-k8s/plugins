@@ -28,7 +28,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
 import { usePrometheus } from '../hooks/usePrometheus';
 import {
   DeletingPolicy,
@@ -102,7 +101,12 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
       prefix,
       'sum(increase(kyverno_admission_requests_total{request_allowed="false"}[5m])) or vector(0)'
     ),
-    queryInstant(prefix, 'sum(increase(kyverno_breaker_total[1h])) or vector(0)'),
+    // kyverno_breaker_total counts every breaker invocation unconditionally, confirmed against
+    // Kyverno's own pkg/breaker/breaker.go: it increments before the breaker's open() check even
+    // runs, so normal traffic through a healthy, never-tripped breaker still drives this metric
+    // up. kyverno_breaker_drops_total (pkg/metrics/breaker.go's "drops" counter) only increments
+    // when the breaker actually fails open and drops work, that's the real "Breaker Trips" signal.
+    queryInstant(prefix, 'sum(increase(kyverno_breaker_drops_total[1h])) or vector(0)'),
     // kyverno_policy_rule_info_total is an observable gauge recorded once per rule, by every
     // controller process (admission and background) and every replica of each, confirmed against
     // Kyverno's own pkg/metrics/policy_rule.go. A plain sum() over it counts the same not-ready
@@ -242,21 +246,21 @@ export function PolicyEngineHealth() {
   const [generatingPolicies, generatingPoliciesError] = GeneratingPolicy.useList();
   const [deletingPolicies, deletingPoliciesError] = DeletingPolicy.useList();
   const [imageValidatingPolicies, imageValidatingPoliciesError] = ImageValidatingPolicy.useList();
-  const crds = useKyvernoCRDs();
 
-  // null means "can't say": either the CEL CRD probe hasn't resolved yet, or it has and the CEL
-  // CRD group is confirmed present but at least one of the five lists above is still loading or
-  // failed (RBAC denial, transient API error). A real number only comes out once every list that
-  // should exist has actually been read. Reporting 0 in either case would read as "all CEL rules
-  // ready" when the plugin genuinely doesn't know.
+  // Each CEL policy kind is its own CRD, and Kyverno's Helm chart allows disabling any one of
+  // them independently of the rest of policies.kyverno.io/v1 (e.g. ImageValidatingPolicy without
+  // the other four), so "CEL support present" was never really a single yes/no per cluster.
+  // Rather than a separate API-group-level discovery probe, each list request's own error already
+  // answers the question for its one kind: the Kubernetes API server returns 404 for a list
+  // against a resource kind that isn't registered at all, confirmed absence, 0 is the honest
+  // count for that kind. Any other failure (403 permission denial, a timeout, a 5xx) means this
+  // plugin genuinely doesn't know whether that kind's policies are ready, not that there are
+  // none, and must not collapse to 0 either. One kind being confirmed absent must not blank out
+  // the kinds that do exist: this used to key off a single crds.cel boolean that conflated
+  // "confirmed absent" with "failed to check" and returned null (unknown) for the whole tile the
+  // moment any one list errored, hiding every other kind's real count behind one disabled or
+  // momentarily-inaccessible CRD.
   const celPoliciesNotReady = useMemo((): number | null => {
-    if (crds.loading) return null;
-    // CEL CRDs genuinely not installed on this cluster (a legacy-only install, the Dashboard
-    // route itself is only guarded on the legacy CRD group): there are no CEL policies to be
-    // unready, so 0 is the honest answer regardless of what the five lists above did, they're
-    // expected to have failed outright against a nonexistent API group.
-    if (!crds.cel) return 0;
-
     const lists = [
       [validatingPolicies, validatingPoliciesError],
       [mutatingPolicies, mutatingPoliciesError],
@@ -266,16 +270,22 @@ export function PolicyEngineHealth() {
     ] as const;
 
     let count = 0;
+    let unknown = false;
     for (const [list, error] of lists) {
-      if (error || !list) return null;
+      if (error) {
+        if (error.status !== 404) unknown = true;
+        continue;
+      }
+      if (!list) {
+        unknown = true; // still loading
+        continue;
+      }
       for (const policy of list) {
         if (!policy.ready) count++;
       }
     }
-    return count;
+    return unknown ? null : count;
   }, [
-    crds.loading,
-    crds.cel,
     validatingPolicies,
     validatingPoliciesError,
     mutatingPolicies,
