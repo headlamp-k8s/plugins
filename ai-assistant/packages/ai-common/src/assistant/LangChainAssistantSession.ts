@@ -47,6 +47,7 @@ import { ProviderSettings } from '../providers/savedConfigs';
 import { redactSecrets } from '../security/redactSecrets';
 import { DEFAULT_SKILLS_CONFIG, SkillsConfig } from '../skills/config';
 import { SkillManager } from '../skills/SkillManager';
+import { trimTrailingSlashes } from '../text/trimSlashes';
 import {
   inlineToolApprovalManager,
   ToolConfirmationEvent,
@@ -531,7 +532,7 @@ export default class LangChainAssistantSession extends AssistantSession {
       return url.origin;
     } catch {
       // If URL parsing fails, fall back to stripping trailing slashes
-      return endpoint.replace(/\/+$/, '');
+      return trimTrailingSlashes(endpoint);
     }
   }
 
