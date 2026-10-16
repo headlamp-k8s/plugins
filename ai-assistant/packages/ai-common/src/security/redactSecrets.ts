@@ -48,7 +48,7 @@ export function redactSecrets(input: string): string {
 
   // JWT tokens: three base64url segments separated by dots.
   // The first two start with "eyJ" (base64 of '{"').
-  out = out.replace(/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED]');
+  out = redactJwts(out);
 
   // AWS long-lived and temporary access key IDs.
   out = out.replace(/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, '[REDACTED]');
@@ -127,6 +127,67 @@ export function redactSecrets(input: string): string {
   );
 
   return out;
+}
+
+/**
+ * Returns the end of a run of base64url characters (`[A-Za-z0-9_-]`).
+ *
+ * @param text - Text being scanned.
+ * @param from - Index where the run starts.
+ * @returns Index after the last base64url character.
+ */
+function base64UrlRunEnd(text: string, from: number): number {
+  let end = from;
+  while (end < text.length) {
+    const code = text.charCodeAt(end);
+    const isBase64Url =
+      (code >= 48 && code <= 57) || // 0-9
+      (code >= 65 && code <= 90) || // A-Z
+      (code >= 97 && code <= 122) || // a-z
+      code === 95 || // _
+      code === 45; // -
+    if (!isBase64Url) break;
+    end++;
+  }
+  return end;
+}
+
+/**
+ * Replaces JWTs (`eyJ<b64>.eyJ<b64>.<b64>`) with `[REDACTED]`.
+ *
+ * Matches `/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g` in linear
+ * time; that regex is quadratic on long runs of `eyJ`.
+ *
+ * @param text - Text that may contain JWTs.
+ * @returns The text with each JWT replaced.
+ */
+function redactJwts(text: string): string {
+  let out = '';
+  let copied = 0;
+  let search = 0;
+  for (;;) {
+    const start = text.indexOf('eyJ', search);
+    if (start === -1) break;
+    // The dots aren't base64url, so each segment must span a whole run.
+    const headerEnd = base64UrlRunEnd(text, start + 3);
+    const payloadStart = headerEnd + 4;
+    const payloadEnd = base64UrlRunEnd(text, payloadStart);
+    const signatureEnd = base64UrlRunEnd(text, payloadEnd + 1);
+    const isJwt =
+      headerEnd > start + 3 &&
+      text.startsWith('.eyJ', headerEnd) &&
+      payloadEnd > payloadStart &&
+      text[payloadEnd] === '.' &&
+      signatureEnd > payloadEnd + 1;
+    if (!isJwt) {
+      // Any later `eyJ` in the same run shares this header end and fails too.
+      search = Math.max(headerEnd, start + 1);
+      continue;
+    }
+    out += text.slice(copied, start) + '[REDACTED]';
+    copied = search = signatureEnd;
+  }
+  return out + text.slice(copied);
 }
 
 // The two scanners below replace regexes that were quadratic on adversarial
