@@ -71,6 +71,7 @@ export function OpencostDetailSection({ resource, type }) {
   const [tsData, setTsData] = useState(null);
   const [installed, setInstalled] = useState(true);
   const [displayTimespan, setDisplayTimespan] = useState(getDisplayTimespan());
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -85,63 +86,97 @@ export function OpencostDetailSection({ resource, type }) {
     if (!installed) {
       return;
     }
+    // Only the latest timespan may update state; an earlier request resolving or
+    // rejecting late must not overwrite newer data.
+    let cancelled = false;
     const fetchData = async () => {
-      const [namespace, serviceName] = await getServiceDetails();
-      const accumulatedData = await fetchOpencostData(
-        namespace,
-        serviceName,
-        displayTimespan,
-        type,
-        true
-      );
-      if (accumulatedData?.data[0]?.[resource.jsonData?.metadata?.name]) {
-        setAccumulatedData(accumulatedData?.data[0]?.[resource.jsonData?.metadata?.name]);
-      } else {
-        setAccumulatedData({});
-      }
-      const tsData = await fetchOpencostData(namespace, serviceName, displayTimespan, type, false);
-      const processedData = [];
-      const currentDate = new Date();
-      let startDate = new Date(currentDate);
-      if (displayTimespan === 'yesterday') {
-        startDate = new Date(currentDate.setDate(currentDate.getDate() - 1));
-      } else if (displayTimespan === 'lastweek') {
-        // find last saturday
-        startDate = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay() - 1));
-        // startDate = new Date(currentDate.setDate(currentDate.getDate() - 7));
-      }
-
-      startDate.setDate(currentDate.getDate() - tsData.data.length + 1);
-      tsData.data.forEach(day => {
-        if (day.hasOwnProperty(resource.jsonData?.metadata?.name)) {
-          processedData.push({
-            date: new Date(startDate.getTime()),
-            cpuCost: day[resource.jsonData?.metadata?.name].cpuCost,
-            ramCost: day[resource.jsonData?.metadata?.name].ramCost,
-            pvCost: day[resource.jsonData?.metadata?.name].pvCost,
-            gpuCost: day[resource.jsonData?.metadata?.name].gpuCost,
-          });
-        } else if (Object.keys(day).length === 0) {
-          processedData.push({
-            date: new Date(startDate.getTime()),
-            cpuCost: 0,
-            ramCost: 0,
-            pvCost: 0,
-            gpuCost: 0,
-          });
+      setError(null);
+      try {
+        const [namespace, serviceName] = await getServiceDetails();
+        if (cancelled) {
+          return;
         }
-        startDate.setDate(startDate.getDate() + 1);
-      });
-      setTsData(processedData);
+        const accumulatedData = await fetchOpencostData(
+          namespace,
+          serviceName,
+          displayTimespan,
+          type,
+          true
+        );
+        if (cancelled) {
+          return;
+        }
+        if (accumulatedData?.data[0]?.[resource.jsonData?.metadata?.name]) {
+          setAccumulatedData(accumulatedData?.data[0]?.[resource.jsonData?.metadata?.name]);
+        } else {
+          setAccumulatedData({});
+        }
+        const tsData = await fetchOpencostData(
+          namespace,
+          serviceName,
+          displayTimespan,
+          type,
+          false
+        );
+        if (cancelled) {
+          return;
+        }
+        const processedData = [];
+        const currentDate = new Date();
+        let startDate = new Date(currentDate);
+        if (displayTimespan === 'yesterday') {
+          startDate = new Date(currentDate.setDate(currentDate.getDate() - 1));
+        } else if (displayTimespan === 'lastweek') {
+          // find last saturday
+          startDate = new Date(
+            currentDate.setDate(currentDate.getDate() - currentDate.getDay() - 1)
+          );
+          // startDate = new Date(currentDate.setDate(currentDate.getDate() - 7));
+        }
+
+        startDate.setDate(currentDate.getDate() - tsData.data.length + 1);
+        tsData.data.forEach(day => {
+          if (day.hasOwnProperty(resource.jsonData?.metadata?.name)) {
+            processedData.push({
+              date: new Date(startDate.getTime()),
+              cpuCost: day[resource.jsonData?.metadata?.name].cpuCost,
+              ramCost: day[resource.jsonData?.metadata?.name].ramCost,
+              pvCost: day[resource.jsonData?.metadata?.name].pvCost,
+              gpuCost: day[resource.jsonData?.metadata?.name].gpuCost,
+            });
+          } else if (Object.keys(day).length === 0) {
+            processedData.push({
+              date: new Date(startDate.getTime()),
+              cpuCost: 0,
+              ramCost: 0,
+              pvCost: 0,
+              gpuCost: 0,
+            });
+          }
+          startDate.setDate(startDate.getDate() + 1);
+        });
+        setTsData(processedData);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        setAccumulatedData({});
+        setTsData([]);
+        setError(err instanceof Error ? err.message : String(err));
+      }
     };
 
     fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, [displayTimespan]);
 
   const handleDisplayTimespanChange = timespan => {
     setDisplayTimespan(timespan);
     setTsData(null);
     setAccumulatedData(null);
+    setError(null);
   };
 
   return (
@@ -153,6 +188,7 @@ export function OpencostDetailSection({ resource, type }) {
       learnMoreLink={learnMoreLink}
       displayCurrency={getDisplayCurrency()}
       handleDisplayTimespanChange={handleDisplayTimespanChange}
+      error={error}
     />
   );
 }
@@ -174,6 +210,7 @@ interface OpencostDetailSectionPureProps {
   learnMoreLink: string;
   displayCurrency: string;
   handleDisplayTimespanChange: (timespan: string) => void;
+  error?: string | null;
 }
 
 export function OpencostDetailSectionPure(props: OpencostDetailSectionPureProps) {
@@ -185,12 +222,19 @@ export function OpencostDetailSectionPure(props: OpencostDetailSectionPureProps)
     learnMoreLink,
     displayCurrency,
     handleDisplayTimespanChange,
+    error,
   } = props;
 
   let content = null;
 
   if (installed) {
-    if (
+    if (error) {
+      content = (
+        <Paper variant="outlined">
+          <EmptyContent color="error">{`Couldn't fetch cost data: ${error}`}</EmptyContent>
+        </Paper>
+      );
+    } else if (
       (accumulatedData === null || Object.keys(accumulatedData).length === 0) &&
       tsData?.length === 0
     ) {
