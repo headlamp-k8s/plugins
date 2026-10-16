@@ -15,8 +15,8 @@
  */
 
 import { useMemo } from 'react';
-import { ClusterPolicyReport, PolicyReport } from '../resources/policyReport';
 import { bucketReportResults, PolicyResultCounts } from './policyResultBucket';
+import { usePolicyReportSources } from './usePolicyReportSources';
 
 export type { PolicyResultCounts };
 
@@ -24,39 +24,27 @@ export interface PolicyResultLookup {
   forCluster(name: string): PolicyResultCounts | undefined;
   forNamespaced(name: string, namespace: string): PolicyResultCounts | undefined;
   loading: boolean;
+  error?: unknown;
 }
 
 /**
- * Aggregates PolicyReport / ClusterPolicyReport results by policy name so list
- * views can show "X of Y failed" without each row re-walking every report.
+ * Aggregates normalized report-source results by policy name so list views can
+ * show "X of Y failed" without each row re-walking every report.
  *
  * The actual bucketing logic lives in `policyResultBucket.ts` so it can be
  * unit-tested without the Headlamp SDK shim.
  */
 export function usePolicyResultCounts(): PolicyResultLookup {
-  const policyReportQuery = PolicyReport.useList();
-  const clusterPolicyReportQuery = ClusterPolicyReport.useList();
-
-  const policyReports = policyReportQuery.items;
-  const clusterPolicyReports = clusterPolicyReportQuery.items;
-
-  // `items` stays null when a list never resolves — including when the
-  // PolicyReport CRDs are absent or RBAC denies them — so deriving loading from
-  // `items === null` would leave callers stuck on a spinner forever. Use the
-  // query's own state instead, which settles on error too; an errored list then
-  // contributes no results and the caller can fall back to its empty state.
-  const loading = policyReportQuery.isLoading || clusterPolicyReportQuery.isLoading;
+  const { reports, loading, error } = usePolicyReportSources();
 
   return useMemo(() => {
-    const { cluster, namespaced } = bucketReportResults([
-      ...(policyReports || []),
-      ...(clusterPolicyReports || []),
-    ]);
+    const { cluster, namespaced } = bucketReportResults(reports);
 
     return {
       forCluster: name => cluster.get(name),
       forNamespaced: (name, namespace) => namespaced.get(`${namespace}/${name}`),
       loading,
+      error,
     };
-  }, [policyReports, clusterPolicyReports, loading]);
+  }, [reports, loading, error]);
 }

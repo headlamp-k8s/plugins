@@ -103,11 +103,18 @@ export function ClusterPolicyList() {
           getValue: item => counts.forCluster(item.jsonData.metadata.name)?.total ?? 0,
           render: item => {
             const c = counts.forCluster(item.jsonData.metadata.name);
-            if (counts.loading && !c) return <Typography variant="body2">…</Typography>;
+            if (counts.error) {
+              return (
+                <Typography variant="body2" color="error">
+                  {t('Unavailable')}
+                </Typography>
+              );
+            }
+            if (counts.loading) return <Typography variant="body2">…</Typography>;
             if (!c || c.total === 0) return <Typography variant="body2">—</Typography>;
             return (
               <Typography variant="body2" color={c.fail > 0 ? 'error' : 'text.primary'}>
-                {t('{{fail}} / {{total}} failed', { fail: c.fail, total: c.total })}
+                {`${c.fail} / ${c.total} ${t('failed')}`}
               </Typography>
             );
           },

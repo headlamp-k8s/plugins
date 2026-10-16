@@ -32,15 +32,19 @@ export interface ResultEntryLike {
 }
 
 export interface ReportLike {
+  kind?: string;
+  metadata?: {
+    namespace?: string;
+  };
   results: ResultEntryLike[];
 }
 
 /**
- * Splits PolicyReport result entries by policy scope.
+ * Splits normalized report result entries by policy scope.
  *
- * Kyverno prefixes namespaced-policy results with `<namespace>/<name>`; cluster
- * policies stay unprefixed. The two maps keep these spaces separate so a
- * ClusterPolicy and a same-named Policy in some namespace don't merge counts.
+ * Kyverno encodes namespaced policies as `<namespace>/<name>` and
+ * cluster-scoped policies as a bare name. Preserve that policy identity even
+ * when a ClusterPolicy evaluates a namespaced resource.
  */
 export function bucketReportResults(reports: ReportLike[]): PolicyResultBuckets {
   const cluster = new Map<string, PolicyResultCounts>();

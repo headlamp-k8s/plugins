@@ -25,6 +25,8 @@ import {
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, CircularProgress, Typography } from '@mui/material';
+import { policyIdentity, reportSourceErrorMessage } from '../hooks/policyReportSources';
+import { usePolicyReportSources } from '../hooks/usePolicyReportSources';
 import {
   KyvernoClusterPolicy,
   KyvernoPolicy,
@@ -32,7 +34,7 @@ import {
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
-import { ClusterPolicyReport, PolicyReport, PolicyReportResult } from '../resources/policyReport';
+import { PolicyReportResult } from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip } from './common';
 
 interface PolicyViewerProps {
@@ -121,8 +123,18 @@ function YamlSection({ jsonData }: { jsonData: KyvernoPolicyInterface }) {
 }
 
 function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
-  const { t } = useTranslation();
+  const { t, ready: translationsReady } = useTranslation();
   if (!conditions || conditions.length === 0) return null;
+
+  if (!translationsReady) {
+    return (
+      <SectionBox title="Conditions">
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+          <CircularProgress size={24} />
+        </Box>
+      </SectionBox>
+    );
+  }
 
   return (
     <SectionBox title={t('Conditions')}>
@@ -160,7 +172,16 @@ function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
 }
 
 function RulesTable({ rules }: { rules: PolicyRule[] }) {
-  const { t } = useTranslation();
+  const { t, ready: translationsReady } = useTranslation();
+
+  if (!translationsReady) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
+
   return (
     <Table
       columns={[
@@ -181,16 +202,33 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
   );
 }
 
-function AssociatedReportsSection({ policyName }: { policyName: string }) {
-  const { t } = useTranslation();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+function AssociatedReportsSection({
+  policyName,
+  policyNamespace,
+}: {
+  policyName: string;
+  policyNamespace?: string;
+}) {
+  const { t, ready: translationsReady } = useTranslation();
+  const { reports, loading: reportsLoading, error: reportsError } = usePolicyReportSources();
 
-  // Wait for BOTH streams before rendering — otherwise we'd briefly show a
-  // partial result set as soon as the first list resolves.
-  if (policyReports === null || clusterPolicyReports === null) {
+  if (reportsError) {
     return (
       <SectionBox title={t('Associated Report Results')}>
+        <Typography color="error">
+          {t('Failed to load policy reports: {{error}}', {
+            error: reportSourceErrorMessage(reportsError),
+          })}
+        </Typography>
+      </SectionBox>
+    );
+  }
+
+  if (reportsLoading || !translationsReady) {
+    return (
+      <SectionBox
+        title={translationsReady ? t('Associated Report Results') : 'Associated Report Results'}
+      >
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <CircularProgress size={24} />
         </Box>
@@ -200,34 +238,22 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
 
   const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] =
     [];
+  const expectedPolicy = policyIdentity(policyName, policyNamespace);
 
-  for (const report of policyReports) {
+  for (const report of reports) {
     for (const result of report.results) {
-      if (result.policy === policyName) {
+      if (result.policy === expectedPolicy) {
         matchingResults.push({
           ...result,
-          reportName: report.jsonData.metadata.name,
-          reportNamespace: report.jsonData.metadata.namespace,
-        });
-      }
-    }
-  }
-
-  for (const report of clusterPolicyReports) {
-    for (const result of report.results) {
-      if (result.policy === policyName) {
-        matchingResults.push({
-          ...result,
-          reportName: report.jsonData.metadata.name,
+          reportName: report.metadata.name,
+          reportNamespace: report.metadata.namespace,
         });
       }
     }
   }
 
   return (
-    <SectionBox
-      title={t('Associated Report Results ({{count}})', { count: matchingResults.length })}
-    >
+    <SectionBox title={`${t('Associated Report Results')} (${matchingResults.length})`}>
       <Table
         columns={[
           { header: t('Rule'), accessorFn: (r: PolicyReportResult) => r.rule || '-' },
@@ -315,10 +341,13 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
       <KyvernoMetadataSection annotations={annotations} />
       <LabelsSection labels={labels} />
       <ConditionsSection conditions={policy.jsonData.status?.conditions} />
-      <SectionBox title={t('Rules ({{count}})', { count: policy.rules.length })}>
+      <SectionBox title={`${t('Rules')} (${policy.rules.length})`}>
         <RulesTable rules={policy.rules} />
       </SectionBox>
-      <AssociatedReportsSection policyName={policy.jsonData.metadata.name} />
+      <AssociatedReportsSection
+        policyName={policy.jsonData.metadata.name}
+        policyNamespace={policy.jsonData.metadata.namespace}
+      />
       <YamlSection jsonData={policy.jsonData} />
     </Box>
   );

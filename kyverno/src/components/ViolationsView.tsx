@@ -29,9 +29,9 @@ import {
   Typography,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
+import { reportSourceErrorMessage } from '../hooks/policyReportSources';
+import { PolicyReportSource, usePolicyReportSources } from '../hooks/usePolicyReportSources';
 import {
-  ClusterPolicyReport,
-  PolicyReport,
   PolicyReportInterface,
   PolicyReportResult,
   PolicyResultStatus,
@@ -47,30 +47,16 @@ interface ViolationEntry extends PolicyReportResult {
 
 const VIOLATION_STATUSES: PolicyResultStatus[] = ['fail', 'warn', 'error'];
 
-function collectViolations(
-  policyReports: PolicyReport[] | null,
-  clusterPolicyReports: ClusterPolicyReport[] | null
-): ViolationEntry[] {
+function collectViolations(reports: PolicyReportSource[]): ViolationEntry[] {
   const violations: ViolationEntry[] = [];
 
-  for (const report of policyReports || []) {
+  for (const report of reports) {
     for (const result of report.results) {
       if (VIOLATION_STATUSES.includes(result.result)) {
         violations.push({
           ...result,
-          reportNamespace: report.jsonData.metadata.namespace,
-          scope: report.jsonData.scope,
-        });
-      }
-    }
-  }
-
-  for (const report of clusterPolicyReports || []) {
-    for (const result of report.results) {
-      if (VIOLATION_STATUSES.includes(result.result)) {
-        violations.push({
-          ...result,
-          scope: report.jsonData.scope,
+          reportNamespace: report.metadata.namespace,
+          scope: report.scope,
         });
       }
     }
@@ -153,63 +139,57 @@ function StatusFilterChips({
 }
 
 export function ViolationsView() {
-  const { t } = useTranslation();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { t, ready: translationsReady } = useTranslation();
+  const { reports, loading: reportsLoading, error: reportsError } = usePolicyReportSources();
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
 
-  // Column definitions depend on t() so they're built inside the component.
-  const violationColumns = useMemo(
-    () => [
-      {
-        header: t('Resource'),
-        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
-      },
-      {
-        header: t('Kind'),
-        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
-      },
-      {
-        header: t('Namespace'),
-        accessorFn: (v: ViolationEntry) =>
-          v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
-      },
-      {
-        header: t('Policy'),
-        accessorFn: (v: ViolationEntry) => v.policy,
-      },
-      {
-        header: t('Rule'),
-        accessorFn: (v: ViolationEntry) => v.rule || '-',
-      },
-      {
-        header: t('Severity'),
-        accessorFn: (v: ViolationEntry) => v.severity || '',
-        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
-          <SeverityChip severity={row.original.severity} />
-        ),
-      },
-      {
-        header: t('Result'),
-        accessorFn: (v: ViolationEntry) => v.result,
-        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
-          <ResultStatusChip status={row.original.result} />
-        ),
-      },
-      {
-        header: t('Message'),
-        accessorFn: (v: ViolationEntry) => v.message || '-',
-      },
-    ],
-    [t]
-  );
+  // These definitions are cheap, and rebuilding them also keeps translated
+  // labels current if the active language changes.
+  const violationColumns = [
+    {
+      header: t('Resource'),
+      accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
+    },
+    {
+      header: t('Kind'),
+      accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
+    },
+    {
+      header: t('Namespace'),
+      accessorFn: (v: ViolationEntry) =>
+        v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
+    },
+    {
+      header: t('Policy'),
+      accessorFn: (v: ViolationEntry) => v.policy,
+    },
+    {
+      header: t('Rule'),
+      accessorFn: (v: ViolationEntry) => v.rule || '-',
+    },
+    {
+      header: t('Severity'),
+      accessorFn: (v: ViolationEntry) => v.severity || '',
+      Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+        <SeverityChip severity={row.original.severity} />
+      ),
+    },
+    {
+      header: t('Result'),
+      accessorFn: (v: ViolationEntry) => v.result,
+      Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+        <ResultStatusChip status={row.original.result} />
+      ),
+    },
+    {
+      header: t('Message'),
+      accessorFn: (v: ViolationEntry) => v.message || '-',
+    },
+  ];
 
-  const allViolations = useMemo(
-    () => collectViolations(policyReports, clusterPolicyReports),
-    [policyReports, clusterPolicyReports]
-  );
+  const allViolations = useMemo(() => collectViolations(reports), [reports]);
 
   const filteredViolations = useMemo(() => {
     return allViolations.filter(v => {
@@ -241,12 +221,23 @@ export function ViolationsView() {
     return Array.from(set).sort();
   }, [allViolations]);
 
-  // Wait for BOTH streams — partial data here would silently undercount violations.
-  const isLoading = policyReports === null || clusterPolicyReports === null;
-
-  if (isLoading) {
+  if (reportsError) {
     return (
       <SectionBox title={t('Violations')}>
+        <Typography color="error">
+          {t('Failed to load policy reports: {{error}}', {
+            error: reportSourceErrorMessage(reportsError),
+          })}
+        </Typography>
+      </SectionBox>
+    );
+  }
+
+  // Headlamp's Table captures its initial column labels, so do not mount it
+  // with the empty strings returned while plugin translations initialize.
+  if (reportsLoading || !translationsReady) {
+    return (
+      <SectionBox title={translationsReady ? t('Violations') : 'Violations'}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -258,7 +249,7 @@ export function ViolationsView() {
 
   return (
     <Box sx={{ p: 2 }}>
-      <SectionBox title={t('Violations ({{count}})', { count: filteredViolations.length })}>
+      <SectionBox title={`${t('Violations')} (${filteredViolations.length})`}>
         <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <StatusFilterChips
             selected={statusFilter}

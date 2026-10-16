@@ -20,7 +20,8 @@ import { Badge, Box, IconButton, Link, Menu, Tooltip, Typography } from '@mui/ma
 import { useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useKyvernoCRDs } from '../hooks/useKyvernoCRDs';
-import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
+import { usePolicyReportSources } from '../hooks/usePolicyReportSources';
+import { PolicyResultStatus } from '../resources/policyReport';
 
 // App-bar actions render on every page, so the badge has to gate itself.
 // We only render when we're in a cluster context AND Kyverno is actually
@@ -31,7 +32,7 @@ export function ComplianceBadge() {
   const crds = useKyvernoCRDs();
 
   const hasKyvernoEngine = crds.legacy || crds.cel;
-  if (!cluster || crds.loading || !hasKyvernoEngine || !crds.reports) {
+  if (!cluster || crds.loading || !hasKyvernoEngine || !crds.reportSources) {
     return null;
   }
 
@@ -40,8 +41,7 @@ export function ComplianceBadge() {
 
 function ComplianceBadgeContent() {
   const { t } = useTranslation();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { reports, loading, error } = usePolicyReportSources();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const history = useHistory();
   const cluster = K8s.useCluster();
@@ -56,10 +56,6 @@ function ComplianceBadgeContent() {
 
   const open = Boolean(anchorEl);
 
-  // Hide the badge until BOTH streams arrive — otherwise we'd briefly show a misleading
-  // "100% compliant" while only one list has resolved.
-  const isLoading = policyReports === null || clusterPolicyReports === null;
-
   const counts = useMemo(() => {
     const result: Record<PolicyResultStatus, number> = {
       pass: 0,
@@ -69,16 +65,7 @@ function ComplianceBadgeContent() {
       skip: 0,
     };
 
-    for (const report of policyReports || []) {
-      const s = report.summary;
-      result.pass += s.pass || 0;
-      result.fail += s.fail || 0;
-      result.warn += s.warn || 0;
-      result.error += s.error || 0;
-      result.skip += s.skip || 0;
-    }
-
-    for (const report of clusterPolicyReports || []) {
+    for (const report of reports) {
       const s = report.summary;
       result.pass += s.pass || 0;
       result.fail += s.fail || 0;
@@ -88,9 +75,9 @@ function ComplianceBadgeContent() {
     }
 
     return result;
-  }, [policyReports, clusterPolicyReports]);
+  }, [reports]);
 
-  if (isLoading) {
+  if (loading || error) {
     return null;
   }
 
@@ -140,19 +127,19 @@ function ComplianceBadgeContent() {
                   : 'error.main'
               }
             >
-              {t('{{pct}}% compliant', { pct: compliancePct })}
+              {`${compliancePct}% ${t('compliant')}`}
             </Typography>
-            <Typography variant="body2">{t('Pass: {{count}}', { count: counts.pass })}</Typography>
+            <Typography variant="body2">{`${t('Pass')}: ${counts.pass}`}</Typography>
             <Typography variant="body2" color={counts.fail > 0 ? 'error.main' : 'text.secondary'}>
-              {t('Fail: {{count}}', { count: counts.fail })}
+              {`${t('Fail')}: ${counts.fail}`}
             </Typography>
             <Typography variant="body2" color={counts.warn > 0 ? 'warning.main' : 'text.secondary'}>
-              {t('Warn: {{count}}', { count: counts.warn })}
+              {`${t('Warn')}: ${counts.warn}`}
             </Typography>
             <Typography variant="body2" color={counts.error > 0 ? 'error.main' : 'text.secondary'}>
-              {t('Error: {{count}}', { count: counts.error })}
+              {`${t('Error')}: ${counts.error}`}
             </Typography>
-            <Typography variant="body2">{t('Skip: {{count}}', { count: counts.skip })}</Typography>
+            <Typography variant="body2">{`${t('Skip')}: ${counts.skip}`}</Typography>
           </Box>
         )}
         <Box sx={{ mt: 1.5 }}>

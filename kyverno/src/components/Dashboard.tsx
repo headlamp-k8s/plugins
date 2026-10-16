@@ -30,8 +30,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { reportSourceErrorMessage } from '../hooks/policyReportSources';
+import { usePolicyReportSources } from '../hooks/usePolicyReportSources';
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
-import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
+import { PolicyResultStatus } from '../resources/policyReport';
 
 const STATUS_COLORS: Record<PolicyResultStatus, string> = {
   pass: '#4caf50',
@@ -76,8 +78,7 @@ export function Dashboard() {
   const { t } = useTranslation();
   const [clusterPolicies] = KyvernoClusterPolicy.useList();
   const [policies] = KyvernoPolicy.useList();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { reports, loading: reportsLoading, error: reportsError } = usePolicyReportSources();
 
   const stats = useMemo(() => {
     const counts: Record<PolicyResultStatus, number> = {
@@ -91,9 +92,7 @@ export function Dashboard() {
     const bySeverity = new Map<string, number>();
     const byNamespace = new Map<string, { pass: number; fail: number }>();
 
-    const allReports = [...(policyReports || []), ...(clusterPolicyReports || [])];
-
-    for (const report of allReports) {
+    for (const report of reports) {
       for (const result of report.results) {
         counts[result.result] = (counts[result.result] || 0) + 1;
 
@@ -106,8 +105,7 @@ export function Dashboard() {
           bySeverity.set(result.severity, (bySeverity.get(result.severity) || 0) + 1);
         }
 
-        const ns =
-          result.resources?.[0]?.namespace || report.jsonData.metadata.namespace || 'cluster';
+        const ns = result.resources?.[0]?.namespace || report.metadata.namespace || 'cluster';
         const nsStats = byNamespace.get(ns) || { pass: 0, fail: 0 };
         if (result.result === 'pass') nsStats.pass++;
         if (result.result === 'fail' || result.result === 'error') nsStats.fail++;
@@ -137,7 +135,7 @@ export function Dashboard() {
       bySeverity,
       byNamespace,
     };
-  }, [clusterPolicies, policies, policyReports, clusterPolicyReports]);
+  }, [clusterPolicies, policies, reports]);
 
   const statusData = useMemo(() => {
     return (['pass', 'fail', 'warn', 'error', 'skip'] as PolicyResultStatus[])
@@ -175,16 +173,26 @@ export function Dashboard() {
       .map(([ns, { pass, fail }]) => ({ name: ns, pass, failAndError: fail }));
   }, [stats.byNamespace]);
 
+  if (reportsError) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <SectionBox title={t('Kyverno Overview')}>
+          <Typography color="error">
+            {t('Failed to load policy reports: {{error}}', {
+              error: reportSourceErrorMessage(reportsError),
+            })}
+          </Typography>
+        </SectionBox>
+      </Box>
+    );
+  }
+
   // Loading until ALL streams resolve — otherwise totals/compliance flash partial values
   // as each useList settles.
-  const isLoading =
-    clusterPolicies === null ||
-    policies === null ||
-    policyReports === null ||
-    clusterPolicyReports === null;
+  const isLoading = clusterPolicies === null || policies === null || reportsLoading;
 
   const complianceColor =
-    stats.compliancePct === null
+    isLoading || stats.compliancePct === null
       ? undefined
       : stats.compliancePct >= 90
       ? '#4caf50'
@@ -221,22 +229,38 @@ export function Dashboard() {
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Pass')} value={stats.counts.pass} color="#4caf50" />
+            <MetricCard
+              title={t('Pass')}
+              value={isLoading ? '...' : stats.counts.pass}
+              color={isLoading ? undefined : '#4caf50'}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Fail')} value={stats.counts.fail} color="#f44336" />
+            <MetricCard
+              title={t('Fail')}
+              value={isLoading ? '...' : stats.counts.fail}
+              color={isLoading ? undefined : '#f44336'}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Warn')} value={stats.counts.warn} color="#ff9800" />
+            <MetricCard
+              title={t('Warn')}
+              value={isLoading ? '...' : stats.counts.warn}
+              color={isLoading ? undefined : '#ff9800'}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Error')} value={stats.counts.error} color="#d32f2f" />
+            <MetricCard
+              title={t('Error')}
+              value={isLoading ? '...' : stats.counts.error}
+              color={isLoading ? undefined : '#d32f2f'}
+            />
           </Grid>
         </Grid>
       </SectionBox>
 
       <Grid container spacing={2}>
-        {statusData.length > 0 && (
+        {!isLoading && statusData.length > 0 && (
           <Grid item xs={12} md={6}>
             <SectionBox title={t('Results by Status')}>
               <ResponsiveContainer width="100%" height={300}>
@@ -263,7 +287,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {severityData.length > 0 && (
+        {!isLoading && severityData.length > 0 && (
           <Grid item xs={12} md={6}>
             <SectionBox title={t('Results by Severity')}>
               <ResponsiveContainer width="100%" height={300}>
@@ -290,7 +314,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {categoryData.length > 0 && (
+        {!isLoading && categoryData.length > 0 && (
           <Grid item xs={12}>
             <SectionBox title={t('Top Failing Categories')}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, py: 1 }}>
@@ -335,7 +359,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {namespaceData.length > 0 && (
+        {!isLoading && namespaceData.length > 0 && (
           <Grid item xs={12}>
             <SectionBox title={t('Compliance by Namespace (Top 10)')}>
               <ResponsiveContainer width="100%" height={300}>

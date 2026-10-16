@@ -16,31 +16,62 @@
 
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ClusterEphemeralReport, EphemeralReport } from '../resources/kyvernoReports';
 import { ClusterPolicyReport, PolicyReport } from '../resources/policyReport';
 import { usePolicyResultCounts } from './usePolicyResultCounts';
+
+vi.mock('../resources/kyvernoReports', () => ({
+  EphemeralReport: { useList: vi.fn() },
+  ClusterEphemeralReport: { useList: vi.fn() },
+}));
 
 vi.mock('../resources/policyReport', () => ({
   PolicyReport: { useList: vi.fn() },
   ClusterPolicyReport: { useList: vi.fn() },
 }));
 
-/** Mimics the shape `KubeObject.useList` returns for a still-in-flight query. */
+function listResult(items: unknown[] | null, error: unknown, isLoading = false) {
+  return {
+    items,
+    error,
+    errors: error ? [error] : null,
+    isLoading,
+    isError: Boolean(error),
+    *[Symbol.iterator]() {
+      yield items;
+      yield error;
+    },
+  };
+}
+
+/** Mimics the tuple/object hybrid `KubeObject.useList` returns while a query is in flight. */
 function pendingList() {
-  return { items: null, errors: null, isLoading: true, isError: false };
+  return listResult(null, null, true);
 }
 
 /** A list that settled with an error, e.g. the CRD is absent or RBAC denied it. */
-function erroredList() {
-  return { items: null, errors: [new Error('not found')], isLoading: false, isError: true };
+function erroredList(error: unknown = { status: 404, message: 'not found' }) {
+  return listResult(null, error);
 }
 
 function resolvedList(items: unknown[]) {
-  return { items, errors: null, isLoading: false, isError: false };
+  return listResult(items, null);
+}
+
+function report(results: { policy: string; result: 'fail' | 'pass'; rule: string }[]) {
+  return {
+    jsonData: { metadata: { name: 'policy-report', namespace: 'default' } },
+    results,
+    scope: undefined,
+    summary: {},
+  };
 }
 
 describe('usePolicyResultCounts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(EphemeralReport.useList).mockReturnValue(resolvedList([]) as any);
+    vi.mocked(ClusterEphemeralReport.useList).mockReturnValue(resolvedList([]) as any);
   });
 
   it('stops loading once a list settles with an error', () => {
@@ -64,15 +95,24 @@ describe('usePolicyResultCounts', () => {
     expect(result.current.loading).toBe(true);
   });
 
+  it('propagates a non-404 error from the useList tuple', () => {
+    const accessError = { status: 403, message: 'forbidden' };
+    vi.mocked(PolicyReport.useList).mockReturnValue(erroredList(accessError) as any);
+    vi.mocked(ClusterPolicyReport.useList).mockReturnValue(resolvedList([]) as any);
+
+    const { result } = renderHook(() => usePolicyResultCounts());
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBe(accessError);
+  });
+
   it('still aggregates the lists that did resolve', () => {
     vi.mocked(PolicyReport.useList).mockReturnValue(
       resolvedList([
-        {
-          results: [
-            { policy: 'default/require-labels', result: 'fail' },
-            { policy: 'default/require-labels', result: 'pass' },
-          ],
-        },
+        report([
+          { policy: 'default/require-labels', result: 'fail', rule: 'require-owner' },
+          { policy: 'default/require-labels', result: 'pass', rule: 'require-team' },
+        ]),
       ]) as any
     );
     vi.mocked(ClusterPolicyReport.useList).mockReturnValue(erroredList() as any);
@@ -82,6 +122,47 @@ describe('usePolicyResultCounts', () => {
     expect(result.current.loading).toBe(false);
     expect(result.current.forNamespaced('require-labels', 'default')).toEqual({
       fail: 1,
+      total: 2,
+    });
+  });
+
+  it('keeps results for distinct resources identified by ephemeral report metadata', () => {
+    const ephemeralReport = (name: string, metadata: Record<string, unknown>) => ({
+      jsonData: {
+        metadata: {
+          name,
+          namespace: 'default',
+          ...metadata,
+        },
+      },
+      results: [
+        {
+          policy: 'default/require-labels',
+          result: 'fail' as const,
+          rule: 'require-owner',
+        },
+      ],
+      scope: {},
+      summary: { fail: 1 },
+    });
+
+    vi.mocked(PolicyReport.useList).mockReturnValue(resolvedList([]) as any);
+    vi.mocked(ClusterPolicyReport.useList).mockReturnValue(resolvedList([]) as any);
+    vi.mocked(EphemeralReport.useList).mockReturnValue(
+      resolvedList([
+        ephemeralReport('ephemeral-report-a', {
+          labels: { 'audit.kyverno.io/resource.uid': 'resource-uid-a' },
+        }),
+        ephemeralReport('ephemeral-report-b', {
+          ownerReferences: [{ uid: 'resource-uid-b' }],
+        }),
+      ]) as any
+    );
+
+    const { result } = renderHook(() => usePolicyResultCounts());
+
+    expect(result.current.forNamespaced('require-labels', 'default')).toEqual({
+      fail: 2,
       total: 2,
     });
   });
