@@ -12,24 +12,39 @@ import { KroInstance } from '../../resources/instance';
 import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition';
 import { getComposedResources } from '../../resources/rgdGraph';
 import { getNodeId, getResolvedValues, getSubResourceHealth } from '../../resources/subResources';
-import { SubResourceCollectors, useCollectedSubResources } from './subResourceCollectors';
+import {
+  SubResourceCollectors,
+  SubResourceListError,
+  useCollectedSubResources,
+} from './subResourceCollectors';
 
 /**
  * The resources kro created for this instance, discovered via kro's
  * ownership labels (kro.run/owned + kro.run/instance-id) across every
  * kind that appears in the RGD's templates. Per-kind list errors
  * (e.g. RBAC denials) render as messages instead of an empty state.
+ * When the caller already watches the sub-resources it can pass the
+ * collected items and errors in and this section renders purely from
+ * them.
  *
  * @param props.rgd - The RGD defining the instance's resource graph.
  * @param props.instance - The instance whose sub-resources to show.
+ * @param props.itemsOverride - Pre-collected items from a caller-owned
+ *   watch set; when set, this section starts no watches of its own.
+ * @param props.errorsOverride - Pre-collected per-kind list errors
+ *   accompanying itemsOverride.
  * @returns The Sub-resources section.
  */
 export default function SubResourcesSection(props: {
   rgd: ResourceGraphDefinition;
   instance: KubeObject<KroInstance>;
+  itemsOverride?: KubeObject<any>[];
+  errorsOverride?: SubResourceListError[];
 }) {
-  const { rgd, instance } = props;
-  const { items, errors, onItems } = useCollectedSubResources();
+  const { rgd, instance, itemsOverride, errorsOverride } = props;
+  const { items: collectedItems, errors: collectedErrors, onItems } = useCollectedSubResources();
+  const items = itemsOverride ?? collectedItems;
+  const errors = errorsOverride ?? collectedErrors;
 
   // Keyed on resourceVersion as well as identity: watch updates can
   // mutate the RGD object in place, so identity alone can go stale.
@@ -52,7 +67,7 @@ export default function SubResourcesSection(props: {
 
   return (
     <SectionBox title="Sub-resources">
-      <SubResourceCollectors rgd={rgd} instance={instance} onItems={onItems} />
+      {!itemsOverride && <SubResourceCollectors rgd={rgd} instance={instance} onItems={onItems} />}
       {errors.map(listError => (
         <EmptyContent key={listError.kind}>
           Unable to list {listError.kind}: {listError.message}
