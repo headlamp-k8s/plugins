@@ -1,25 +1,25 @@
-import { ConfigStore, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { ConfigStore, K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import FormHelperText from '@mui/material/FormHelperText';
 import Switch from '@mui/material/Switch';
-import { type ChangeEvent, type ReactNode, useEffect, useState } from 'react';
+import { type ChangeEvent, type ReactNode, useEffect, useId, useState } from 'react';
 
 interface AutoSaveSwitchProps {
-  settingKey: keyof PluginConfig;
   label: string;
-  onSave: (key: keyof PluginConfig, value: boolean) => void;
+  onSave: (value: boolean) => void;
   defaultValue?: boolean;
   helperText?: ReactNode;
+  describedBy?: string;
 }
 
 function AutoSaveSwitch({
-  settingKey,
   label,
   onSave,
   defaultValue,
   helperText = null,
+  describedBy,
 }: AutoSaveSwitchProps) {
   const [value, setValue] = useState(defaultValue);
   const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -32,7 +32,7 @@ function AutoSaveSwitch({
       clearTimeout(timer);
     }
 
-    const newTimer = setTimeout(() => onSave(settingKey, newValue), 100);
+    const newTimer = setTimeout(() => onSave(newValue), 100);
     setTimer(newTimer);
   };
 
@@ -46,7 +46,11 @@ function AutoSaveSwitch({
 
   return (
     <>
-      <Switch checked={value} inputProps={{ 'aria-label': label }} onChange={handleChange} />
+      <Switch
+        checked={value}
+        inputProps={{ 'aria-label': label, 'aria-describedby': describedBy }}
+        onChange={handleChange}
+      />
       {helperText && <FormHelperText sx={{ ml: 1.75, mt: 0.5 }}>{helperText}</FormHelperText>}
     </>
   );
@@ -56,28 +60,51 @@ export interface PluginConfig {
   linkHRelToKs: boolean;
   overviewShowFilter: 'configured' | 'all';
   overviewSortFilter: string;
+  /** Clusters, by name, where mutating actions are shown on Flux-managed resources. */
+  allowFluxManagedActions: Record<string, boolean>;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
   linkHRelToKs: false,
   overviewShowFilter: 'configured',
   overviewSortFilter: 'failed',
+  allowFluxManagedActions: {},
 };
 
 export const store = new ConfigStore<PluginConfig>('@headlamp-k8s/flux');
 
+/**
+ * Whether mutating actions are shown on Flux-managed resources in the given cluster.
+ * Clusters that were never opted in, including newly added ones, keep them hidden.
+ */
+export function areFluxManagedActionsAllowed(
+  config: Partial<PluginConfig> | undefined,
+  cluster: string
+): boolean {
+  return config?.allowFluxManagedActions?.[cluster] === true;
+}
+
 export function FluxSettings() {
   const { t } = useTranslation();
   const linkHRelLabel = t('Link HelmReleases to Kustomizations instead of HelmRepositories');
+  const clusters = K8s.useClustersConf() || {};
+  const actionsWarningId = useId();
   const [currentConfig, setCurrentConfig] = useState<PluginConfig>(() => ({
     ...DEFAULT_CONFIG,
     ...store.get(),
   }));
 
-  function handleSave(key: keyof PluginConfig, value: boolean) {
-    const updatedConfig = { ...currentConfig, [key]: value };
-    store.set(updatedConfig);
-    setCurrentConfig(updatedConfig);
+  // Merge into the latest stored config rather than this render's snapshot, so
+  // switches saved within the same debounce window don't overwrite each other.
+  function handleSave(update: Partial<PluginConfig>) {
+    store.update(update);
+    setCurrentConfig(prev => ({ ...prev, ...update }));
+  }
+
+  function handleClusterActionsSave(cluster: string, allowed: boolean) {
+    handleSave({
+      allowFluxManagedActions: { ...store.get()?.allowFluxManagedActions, [cluster]: allowed },
+    });
   }
 
   const settingsRows = [
@@ -85,19 +112,46 @@ export function FluxSettings() {
       name: linkHRelLabel,
       value: (
         <AutoSaveSwitch
-          settingKey="linkHRelToKs"
           label={linkHRelLabel}
           defaultValue={currentConfig?.linkHRelToKs}
-          onSave={handleSave}
+          onSave={value => handleSave({ linkHRelToKs: value })}
         />
       ),
     },
   ];
 
+  const resourceActionsRows = Object.keys(clusters).map(cluster => ({
+    name: cluster,
+    value: (
+      <AutoSaveSwitch
+        key={cluster}
+        label={t(
+          'Show edit, scale, delete and rollback actions on Flux-managed resources in {{cluster}}',
+          { cluster }
+        )}
+        defaultValue={areFluxManagedActionsAllowed(currentConfig, cluster)}
+        onSave={allowed => handleClusterActionsSave(cluster, allowed)}
+        describedBy={actionsWarningId}
+      />
+    ),
+  }));
+
   return (
     <Box style={{ paddingTop: '8vh' }}>
       <Typography variant="h6">{t('Map settings')}</Typography>
       <NameValueTable rows={settingsRows} />
+      <Typography variant="h6" sx={{ mt: 4 }}>
+        {t('Resource actions')}
+      </Typography>
+      <Typography variant="body2" sx={{ mt: 1 }}>
+        {t('Show edit, scale, delete and rollback actions on Flux-managed resources')}
+      </Typography>
+      <FormHelperText id={actionsWarningId}>
+        {t(
+          'Changes made in Headlamp may be reverted by Flux on the next reconciliation, or leave the cluster out of sync with Git. Intended for testing in non-production clusters.'
+        )}
+      </FormHelperText>
+      <NameValueTable rows={resourceActionsRows} />
     </Box>
   );
 }
