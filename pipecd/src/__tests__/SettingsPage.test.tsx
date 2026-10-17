@@ -25,13 +25,14 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   }),
 }));
 
-const { listApplications, saveConfig } = vi.hoisted(() => ({
+const { listApplications, saveConfig, stored } = vi.hoisted(() => ({
   listApplications: vi.fn(),
   saveConfig: vi.fn(),
+  stored: { config: { baseURL: '', apiKey: '' } },
 }));
 
 vi.mock('../api/pipecd', () => ({
-  loadConfig: () => ({ baseURL: '', apiKey: '' }),
+  loadConfig: () => stored.config,
   saveConfig,
   isConfigured: (config: { baseURL: string; apiKey: string }) =>
     config.baseURL.length > 0 && config.apiKey.length > 0,
@@ -42,6 +43,7 @@ afterEach(() => {
   cleanup();
   listApplications.mockReset();
   saveConfig.mockReset();
+  stored.config = { baseURL: '', apiKey: '' };
 });
 
 function fill(label: string, value: string): void {
@@ -63,13 +65,35 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('Connection successful.')).toBeTruthy();
   });
 
-  it('does not limit the connection test to a single application', async () => {
+  it('asks for a single application when testing the connection', async () => {
     listApplications.mockResolvedValue({ applications: [], cursor: '' });
     render(<SettingsPage />);
     testConnection();
 
     await screen.findByText(/Connection successful/);
-    expect(listApplications.mock.calls[0][1]).toBeUndefined();
+    expect(listApplications.mock.calls[0][1]).toEqual({ pageSize: 1 });
+  });
+
+  it('saves a loopback URL written without slashes in its full form', () => {
+    render(<SettingsPage />);
+    fill('PipeCD Server URL', 'http:localhost:8080');
+    fill('API Key', 'test-key');
+    fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
+
+    expect(saveConfig).toHaveBeenCalledWith({
+      baseURL: 'http://localhost:8080',
+      apiKey: 'test-key',
+    });
+  });
+
+  it('lets saved credentials be cleared', () => {
+    stored.config = { baseURL: 'https://pipecd.example.com', apiKey: 'old-key' };
+    render(<SettingsPage />);
+    fill('PipeCD Server URL', '');
+    fill('API Key', '');
+    fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
+
+    expect(saveConfig).toHaveBeenCalledWith({ baseURL: '', apiKey: '' });
   });
 
   it('shows the error when the connection fails', async () => {

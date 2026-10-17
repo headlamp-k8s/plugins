@@ -55,9 +55,20 @@ function isSecureURL(value: string): boolean {
 /**
  * Console links are built as `${baseURL}/applications/...`, so surrounding
  * whitespace or a trailing slash would produce a broken path.
+ *
+ * A valid URL is stored in its parsed form. `http:localhost:8080` passes
+ * `new URL()`, but the browser resolves that raw string against Headlamp's own
+ * origin, which would send the API key to the Headlamp host instead.
  */
 function normalizeBaseURL(value: string): string {
-  return value.trim().replace(/\/+$/, '');
+  const trimmed = value.trim();
+  let url = trimmed;
+  try {
+    url = new URL(trimmed).href;
+  } catch {
+    // Left as typed; isSecureURL rejects it, so it is never saved or used.
+  }
+  return url.replace(/\/+$/, '');
 }
 
 export function SettingsPage(): JSX.Element {
@@ -106,7 +117,9 @@ export function SettingsPage(): JSX.Element {
     setTesting(true);
     setTestResult(null);
     try {
-      await listApplications(config);
+      // One application is enough to prove the key works. With no limit
+      // PipeCD returns every application in the project.
+      await listApplications(config, { pageSize: 1 });
       if (testedConfig.current !== tested) return;
       setTestResult({ ok: true });
     } catch (err) {
@@ -189,7 +202,9 @@ export function SettingsPage(): JSX.Element {
             <Button
               variant="contained"
               onClick={handleSave}
-              disabled={!isConfigured(config) || !urlValid || !hasChanges}
+              // Incomplete or empty fields can still be saved, so stored
+              // credentials can be cleared.
+              disabled={!urlValid || !hasChanges}
               color={saved_ ? 'success' : 'primary'}
             >
               {saved_ ? t('Saved!') : t('Save Settings')}
