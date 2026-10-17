@@ -32,6 +32,24 @@ spec:
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
+  name: order-created
+  namespace: knative-eventing-test
+spec:
+  broker: default
+  filters:
+    - exact:
+        type: dev.knative.demo.order.created
+    - prefix:
+        source: /shop
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: event-display
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
   name: dangling-subscriber
   namespace: knative-eventing-test
 spec:

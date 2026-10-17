@@ -50,6 +50,7 @@ apply_manifest "02-channel-and-subscriptions.yaml"
 wait_for_ready "broker.eventing.knative.dev/default"
 wait_for_ready "trigger.eventing.knative.dev/catch-all"
 wait_for_ready "trigger.eventing.knative.dev/uri-subscriber"
+wait_for_ready "trigger.eventing.knative.dev/order-created"
 wait_for_ready "channel.messaging.knative.dev/orders"
 wait_for_ready "subscription.messaging.knative.dev/orders-to-display"
 

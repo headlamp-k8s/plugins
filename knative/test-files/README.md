@@ -143,19 +143,20 @@ channel-based Broker, but not Knative Serving. Create them with:
 
 The script checks that the Eventing CRDs are installed, applies `00-namespace-and-sink.yaml`,
 `01-broker-and-triggers.yaml` and `02-channel-and-subscriptions.yaml` from `test-files/eventing/`,
-and waits for the Broker, the two working Triggers, the Channel and its working Subscription to
+and waits for the Broker, the three working Triggers, the Channel and its working Subscription to
 become Ready. Set `WAIT_TIMEOUT` to wait longer, as with `setup.sh`.
 
-| Resource                         | State it produces                                                                                            | What to verify in Headlamp                                                                                       |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Broker `default`                 | A Ready `MTChannelBasedBroker`                                                                               | The Brokers view shows its class, address, and Ready state                                                       |
-| Trigger `catch-all`              | A Ready Trigger delivering to the `event-display` Service                                                    | The Triggers view links the Broker and the `Service/event-display` subscriber                                    |
-| Trigger `uri-subscriber`         | A Ready Trigger delivering to an absolute URI                                                                | The subscriber is shown as the URI, without a link                                                               |
-| Trigger `dangling-subscriber`    | A Trigger whose subscriber Service does not exist                                                            | Ready is `False` and the reason explains that the subscriber URI could not be resolved                           |
-| Channel `orders`                 | A Ready Channel backed by an `InMemoryChannel`                                                               | The Channels view shows `InMemoryChannel`, its address, and one subscriber                                       |
-| Subscription `orders-to-display` | A Ready Subscription from `orders` to the `event-display` Service that sends replies to the `default` Broker | The Subscriptions view links the Channel, the `Service/event-display` subscriber, and the `Broker/default` reply |
-| Subscription `missing-channel`   | A Subscription whose Channel does not exist                                                                  | Ready is `Unknown` with the reason `ChannelReferenceFailed`                                                      |
-| Subscriptions `default-…`        | Subscriptions the Broker creates for each Trigger whose subscriber resolves                                  | The Owner column links the Trigger, and the Channel is the Broker's own `InMemoryChannel`                        |
+| Resource                         | State it produces                                                                                            | What to verify in Headlamp                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Broker `default`                 | A Ready `MTChannelBasedBroker`                                                                               | The Brokers view shows its class, address, and Ready state; its page links the `config-br-default-channel` ConfigMap              |
+| Trigger `catch-all`              | A Ready Trigger delivering to the `event-display` Service                                                    | The Triggers view links the Broker and the `Service/event-display` subscriber; its page shows `All events` and the subscriber URI |
+| Trigger `uri-subscriber`         | A Ready Trigger delivering to an absolute URI                                                                | The subscriber is shown as the URI, without a link                                                                                |
+| Trigger `order-created`          | A Ready Trigger with `exact` and `prefix` filters                                                            | Its page shows the filter `type = dev.knative.demo.order.created and source starts with /shop`                                    |
+| Trigger `dangling-subscriber`    | A Trigger whose subscriber Service does not exist                                                            | Ready is `False` and the reason explains that the subscriber URI could not be resolved                                            |
+| Channel `orders`                 | A Ready Channel backed by an `InMemoryChannel`                                                               | The Channels view shows `InMemoryChannel`, its address, and one subscriber                                                        |
+| Subscription `orders-to-display` | A Ready Subscription from `orders` to the `event-display` Service that sends replies to the `default` Broker | The Subscriptions view links the Channel, the `Service/event-display` subscriber, and the `Broker/default` reply                  |
+| Subscription `missing-channel`   | A Subscription whose Channel does not exist                                                                  | Ready is `Unknown` with the reason `ChannelReferenceFailed`                                                                       |
+| Subscriptions `default-…`        | Subscriptions the Broker creates for each Trigger whose subscriber resolves                                  | The Owner column links the Trigger, and the Channel is the Broker's own `InMemoryChannel`                                         |
 
 ## Remove the fixtures
 

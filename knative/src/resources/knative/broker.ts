@@ -15,6 +15,7 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KnativeListRouteName } from '../../navigation';
 import type { Addressable, AppliedEventPolicyRef, DeliverySpec, KReference } from './common';
 import { ConditionedKnativeCustomResource, type ConditionedStatus } from './conditionedResource';
 import { getBrokerClass } from './eventingData';
@@ -51,6 +52,24 @@ export class KnativeBroker extends ConditionedKnativeCustomResource<KnativeBroke
   static apiName = 'brokers';
   static apiVersion = 'eventing.knative.dev/v1';
   static isNamespaced = true;
+
+  /**
+   * The plugin route that shows one Broker.
+   *
+   * @returns The route name.
+   */
+  static get detailsRoute(): string {
+    return 'knativeBrokerDetails';
+  }
+
+  /**
+   * The plugin route that lists Brokers.
+   *
+   * @returns The route name.
+   */
+  static get listRoute(): KnativeListRouteName {
+    return 'knativeBrokers';
+  }
 
   /**
    * The Broker's class, from its `eventing.knative.dev/broker.class` annotation.
