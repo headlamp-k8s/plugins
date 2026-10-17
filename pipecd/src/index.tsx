@@ -1,7 +1,24 @@
+/*
+ * Copyright 2025 The Kubernetes Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import { addIcon } from '@iconify/react';
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { registerRoute, registerSidebarEntry, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, Typography } from '@mui/material';
 import React from 'react';
+import { SettingsPage } from './components/SettingsPage';
 
 const PIPECD_ICON_NAME = 'pipecd:logo';
 
@@ -11,15 +28,17 @@ const pipecdIcon = {
   height: 86.07,
 };
 
-function PipeCDPlaceholder(): JSX.Element {
+function ApplicationsPlaceholder(): JSX.Element {
+  const { t } = useTranslation();
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" fontWeight={700} gutterBottom>
-        PipeCD
+        {t('PipeCD Applications')}
       </Typography>
       <Typography color="text.secondary">
-        This plugin is being added in stages. Application and deployment views are not available
-        yet.
+        {t(
+          'The applications view is not available yet. Configure the connection under PipeCD → Settings.'
+        )}
       </Typography>
     </Box>
   );
@@ -45,11 +64,29 @@ registerSidebarEntry({
   sidebar: 'IN-CLUSTER',
 });
 
+registerSidebarEntry({
+  name: 'pipecd-settings',
+  url: '/pipecd/settings',
+  label: 'Settings',
+  icon: 'mdi:cog-outline',
+  parent: 'pipecd',
+  sidebar: 'IN-CLUSTER',
+});
+
 registerRoute({
   path: '/pipecd/applications',
   sidebar: 'pipecd-applications',
   name: 'PipeCDApplications',
-  component: () => <PipeCDPlaceholder />,
+  component: () => <ApplicationsPlaceholder />,
+  exact: true,
+  noAuthRequired: false,
+});
+
+registerRoute({
+  path: '/pipecd/settings',
+  sidebar: 'pipecd-settings',
+  name: 'PipeCDSettings',
+  component: () => <SettingsPage />,
   exact: true,
   noAuthRequired: false,
 });

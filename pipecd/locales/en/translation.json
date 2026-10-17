@@ -1,1 +1,24 @@
-{}
+{
+  "PipeCD Not Configured": "PipeCD Not Configured",
+  "Enter your PipeCD server URL and API key in the plugin settings to start viewing your deployments.": "Enter your PipeCD server URL and API key in the plugin settings to start viewing your deployments.",
+  "Configure PipeCD": "Configure PipeCD",
+  "Get API Key": "Get API Key",
+  "The API key requires at minimum the {{role}} role.": "The API key requires at minimum the {{role}} role.",
+  "Connection successful.": "Connection successful.",
+  "Unknown error": "Unknown error",
+  "Connection failed: {{error}}": "Connection failed: {{error}}",
+  "PipeCD Plugin Settings": "PipeCD Plugin Settings",
+  "Connect this Headlamp plugin to your PipeCD Control Plane. You need a PipeCD API key with at minimum the {{role}} role.": "Connect this Headlamp plugin to your PipeCD Control Plane. You need a PipeCD API key with at minimum the {{role}} role.",
+  "PipeCD Server URL": "PipeCD Server URL",
+  "Use an https:// URL. http:// is only allowed for localhost.": "Use an https:// URL. http:// is only allowed for localhost.",
+  "Base URL of your PipeCD Control Plane gateway.": "Base URL of your PipeCD Control Plane gateway.",
+  "API Key": "API Key",
+  "Enter PipeCD API key": "Enter PipeCD API key",
+  "Generate one in the PipeCD UI under Settings → API Keys.": "Generate one in the PipeCD UI under Settings → API Keys.",
+  "Saved!": "Saved!",
+  "Save Settings": "Save Settings",
+  "Testing…": "Testing…",
+  "Test Connection": "Test Connection",
+  "PipeCD Applications": "PipeCD Applications",
+  "The applications view is not available yet. Configure the connection under PipeCD → Settings.": "The applications view is not available yet. Configure the connection under PipeCD → Settings."
+}
