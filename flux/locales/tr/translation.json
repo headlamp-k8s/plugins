@@ -1,5 +1,6 @@
 {
   "View YAML": "",
+  "This resource is managed by Flux. Changes made here will be reverted on the next reconciliation.": "",
   "This resource is managed by Flux. Some actions are hidden because changes would be reverted by Flux.": "",
   "Flux managed": "",
   "Disable force reconciliation for {{name}}": "",
@@ -199,7 +200,10 @@
   "Scope": "",
   "Stored Versions": "",
   "Link HelmReleases to Kustomizations instead of HelmRepositories": "",
+  "Show edit, scale and delete actions on Flux-managed resources": "",
+  "Changes made in Headlamp will be reverted by Flux on the next reconciliation. Intended for testing in non-production clusters.": "",
   "Map settings": "",
+  "Resource actions": "",
   "Source Kind": "",
   "Source Name": "",
   "Ref": "",

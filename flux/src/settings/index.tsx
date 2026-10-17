@@ -56,12 +56,14 @@ export interface PluginConfig {
   linkHRelToKs: boolean;
   overviewShowFilter: 'configured' | 'all';
   overviewSortFilter: string;
+  allowFluxManagedActions: boolean;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
   linkHRelToKs: false,
   overviewShowFilter: 'configured',
   overviewSortFilter: 'failed',
+  allowFluxManagedActions: false,
 };
 
 export const store = new ConfigStore<PluginConfig>('@headlamp-k8s/flux');
@@ -69,6 +71,9 @@ export const store = new ConfigStore<PluginConfig>('@headlamp-k8s/flux');
 export function FluxSettings() {
   const { t } = useTranslation();
   const linkHRelLabel = t('Link HelmReleases to Kustomizations instead of HelmRepositories');
+  const allowManagedActionsLabel = t(
+    'Show edit, scale and delete actions on Flux-managed resources'
+  );
   const [currentConfig, setCurrentConfig] = useState<PluginConfig>(() => ({
     ...DEFAULT_CONFIG,
     ...store.get(),
@@ -94,10 +99,31 @@ export function FluxSettings() {
     },
   ];
 
+  const resourceActionsRows = [
+    {
+      name: allowManagedActionsLabel,
+      value: (
+        <AutoSaveSwitch
+          settingKey="allowFluxManagedActions"
+          label={allowManagedActionsLabel}
+          defaultValue={currentConfig?.allowFluxManagedActions}
+          onSave={handleSave}
+          helperText={t(
+            'Changes made in Headlamp will be reverted by Flux on the next reconciliation. Intended for testing in non-production clusters.'
+          )}
+        />
+      ),
+    },
+  ];
+
   return (
     <Box style={{ paddingTop: '8vh' }}>
       <Typography variant="h6">{t('Map settings')}</Typography>
       <NameValueTable rows={settingsRows} />
+      <Typography variant="h6" sx={{ mt: 4 }}>
+        {t('Resource actions')}
+      </Typography>
+      <NameValueTable rows={resourceActionsRows} />
     </Box>
   );
 }
