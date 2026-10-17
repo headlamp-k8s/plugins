@@ -22,8 +22,7 @@ import React from 'react';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeBroker, KnativeTrigger } from '../../resources/knative';
-import { formatDestination } from '../../resources/knative/eventingData';
-import { DestinationLink } from '../common/DestinationLink';
+import { destinationColumn } from '../common/DestinationLink';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { OwnerLink } from '../common/OwnerLink';
 import { getReadinessColumns } from '../common/ResourceListCells';
@@ -56,27 +55,6 @@ function BrokerCell({
 }
 
 /**
- * Shows where a Trigger sends its events.
- *
- * @param props - The Trigger whose subscriber is shown.
- * @returns A link to the subscriber, or its name or URI as text when it cannot be linked.
- */
-function SubscriberCell({
-  trigger,
-}: {
-  /** The Trigger to show. */
-  trigger: KnativeTrigger;
-}) {
-  return (
-    <DestinationLink
-      destination={trigger.subscriber}
-      namespace={trigger.metadata.namespace}
-      cluster={trigger.cluster}
-    />
-  );
-}
-
-/**
  * Lists the Knative Eventing Triggers in the selected clusters.
  *
  * @returns The Triggers list, or a banner when Knative Eventing is not installed.
@@ -98,12 +76,7 @@ export function TriggersList() {
         getValue: item => item.broker?.name || '',
         render: item => <BrokerCell trigger={item} />,
       },
-      {
-        id: 'subscriber',
-        label: 'Subscriber',
-        getValue: item => formatDestination(item.subscriber),
-        render: item => <SubscriberCell trigger={item} />,
-      },
+      destinationColumn('subscriber', 'Subscriber', item => item.subscriber),
       ...getReadinessColumns<KnativeTrigger>(),
       'age',
     ],

@@ -15,17 +15,13 @@
  */
 
 import { render } from '@testing-library/react';
+import type React from 'react';
 import { vi } from 'vitest';
+import type { OwnerLink } from './OwnerLink';
 
-const ownerLinks = vi.hoisted(
-  () =>
-    [] as Array<{
-      owner?: { apiVersion: string; kind: string; name: string };
-      namespace?: string;
-      cluster?: string;
-      label?: string;
-    }>
-);
+const ownerLinks = vi.hoisted(() => [] as React.ComponentProps<typeof OwnerLink>[]);
+
+vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({}));
 
 vi.mock('./OwnerLink', () => ({
   OwnerLink: (props: (typeof ownerLinks)[number]) => {

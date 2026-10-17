@@ -15,6 +15,7 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KnativeListRouteName } from '../../navigation';
 import type { AuthStatus, DeliverySpec, Destination, KReference } from './common';
 import { ConditionedKnativeCustomResource, type ConditionedStatus } from './conditionedResource';
 import { getFirstOwner } from './resourceData';
@@ -76,6 +77,24 @@ export class KnativeSubscription extends ConditionedKnativeCustomResource<Knativ
   static apiName = 'subscriptions';
   static apiVersion = 'messaging.knative.dev/v1';
   static isNamespaced = true;
+
+  /**
+   * The plugin route that shows one Subscription.
+   *
+   * @returns The route name.
+   */
+  static get detailsRoute(): string {
+    return 'knativeSubscriptionDetails';
+  }
+
+  /**
+   * The plugin route that lists Subscriptions.
+   *
+   * @returns The route name.
+   */
+  static get listRoute(): KnativeListRouteName {
+    return 'knativeSubscriptions';
+  }
 
   /**
    * The object that created this Subscription, for example the Trigger a Broker made it for.

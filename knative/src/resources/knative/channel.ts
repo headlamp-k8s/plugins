@@ -15,10 +15,12 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KnativeListRouteName } from '../../navigation';
 import type {
   Addressable,
   AppliedEventPolicyRef,
   AuthStatus,
+  ConditionStatus,
   DeliverySpec,
   KReference,
 } from './common';
@@ -30,8 +32,8 @@ interface KnativeChannelResource extends KubeObjectInterface {
   spec?: {
     /**
      * Which Channel CRD backs this Channel, and the spec to create it with. It cannot change after
-     * the Channel is created, and Knative's defaulting usually sets it rather than the user; Knative
-     * requires it, though the CRD schema does not mark it as required.
+     * the Channel is created, and Knative's defaulting usually sets it rather than the user;
+     * Knative requires it, though the CRD schema does not mark it as required.
      */
     channelTemplate?: {
       /** API version of the backing Channel kind. */
@@ -104,7 +106,7 @@ interface KnativeChannelResource extends KubeObjectInterface {
       /** Generation of the Subscription with the UID `uid`. */
       observedGeneration?: number;
       /** Whether the subscriber is ready: `True`, `False` or `Unknown`. */
-      ready?: string;
+      ready?: ConditionStatus;
       /** UID of the Subscription this status belongs to. */
       uid?: string;
     }[];
@@ -117,6 +119,24 @@ export class KnativeChannel extends ConditionedKnativeCustomResource<KnativeChan
   static apiName = 'channels';
   static apiVersion = 'messaging.knative.dev/v1';
   static isNamespaced = true;
+
+  /**
+   * The plugin route that shows one Channel.
+   *
+   * @returns The route name.
+   */
+  static get detailsRoute(): string {
+    return 'knativeChannelDetails';
+  }
+
+  /**
+   * The plugin route that lists Channels.
+   *
+   * @returns The route name.
+   */
+  static get listRoute(): KnativeListRouteName {
+    return 'knativeChannels';
+  }
 
   /**
    * The address that event producers send events to.
