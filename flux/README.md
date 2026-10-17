@@ -12,6 +12,12 @@ Please refer to the [official installation guide](https://fluxcd.io/flux/install
 
 Go to the Plugin Catalog, search for the Flux plugin, and click the Install button. Reload the UI (Navigation menu > Reload, or use the notification after installing the plugin) to see the new Flux item in the sidebar.
 
+## Flux-managed resources
+
+Resources created by Flux (labelled `kustomize.toolkit.fluxcd.io/name` or `helm.toolkit.fluxcd.io/name`) show a "Flux managed" chip in their details view. By default, the Edit, Scale, Delete and Rollback actions are hidden for these resources and replaced by a read-only "View YAML" button, since Flux reverts manual changes on its next reconciliation.
+
+To bring those actions back, e.g. to test changes in a non-production cluster, enable "Show edit, scale and delete actions on Flux-managed resources" in Settings > Plugins > flux. The chip stays visible as a reminder that your changes will be reverted.
+
 ## Installing the Flux Headlamp plugin in a Headlamp deployment
 
 If you are deploying Headlamp using Helm, you can use the following HelmRelease manifest to install the Flux Headlamp plugin with your Headlamp deployment:
