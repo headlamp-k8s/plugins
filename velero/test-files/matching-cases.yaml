@@ -67,7 +67,7 @@ spec:
         - name: nginx
           image: nginx:1.27
 ---
-# Case 2: Label mismatch — schedule wants app=api, this has app=web
+# Case 2: Covered by web-label-only (app=web); not matched by api-label-only
 apiVersion: apps/v1
 kind: Deployment
 metadata:

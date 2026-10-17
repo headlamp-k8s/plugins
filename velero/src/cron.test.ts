@@ -40,8 +40,6 @@ describe('getNextScheduledRun', () => {
   test('advances @every from last-backup anchor instead of now', () => {
     const now = new Date('2026-07-05T06:00:00Z');
     const lastBackup = new Date('2026-07-05T05:10:00Z');
-    // 24h from last backup is still in the future relative to now? No - last was 50m ago.
-    // Interval 1h from lastBackup 05:10 → next 06:10.
     expect(getNextScheduledRun('@every 1h', now, lastBackup)?.toISOString()).toBe(
       '2026-07-05T06:10:00.000Z'
     );
@@ -50,17 +48,18 @@ describe('getNextScheduledRun', () => {
   test('skips missed @every intervals until after now', () => {
     const now = new Date('2026-07-05T06:00:00Z');
     const lastBackup = new Date('2026-07-05T03:00:00Z');
-    // 1h from 03:00 → 04:00, 05:00 (past), 06:00 is not > now with <= check → 07:00
     expect(getNextScheduledRun('@every 1h', now, lastBackup)?.toISOString()).toBe(
       '2026-07-05T07:00:00.000Z'
     );
   });
 
-  test('computes @every next run in constant time for tiny intervals', () => {
+  test('rounds sub-second @every delays up to 1s and stays O(1)', () => {
     const now = new Date('2026-07-05T06:00:00.000Z');
     const anchor = new Date('2025-07-05T06:00:00.000Z');
-    const next = getNextScheduledRun('@every 1ms', now, anchor);
-    expect(next?.toISOString()).toBe('2026-07-05T06:00:00.001Z');
+    // Velero/robfig: @every 1ms → 1s interval; next is one second after now when on a boundary.
+    expect(getNextScheduledRun('@every 1ms', now, anchor)?.toISOString()).toBe(
+      '2026-07-05T06:00:01.000Z'
+    );
   });
 
   test('returns undefined for invalid @every durations', () => {

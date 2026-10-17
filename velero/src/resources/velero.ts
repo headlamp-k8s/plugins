@@ -1,4 +1,5 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { veleroRoutePaths } from '../utils/veleroRoutes';
 
 /** Kubernetes label selector requirement (Velero Schedule template). */
 export interface LabelSelectorRequirement {
@@ -34,17 +35,17 @@ export interface VeleroScheduleSpec {
   template?: VeleroBackupTemplate;
 }
 
+export interface VeleroScheduleInterface extends KubeObjectInterface {
+  spec?: VeleroScheduleSpec;
+  status?: VeleroScheduleStatus;
+}
+
 export interface VeleroScheduleStatus {
   phase?: string;
   validationErrors?: string[];
   lastBackup?: string;
-  /** Set when Velero skips a scheduled backup (e.g. skipImmediately). */
+  /** When Velero skipped a scheduled run (e.g. after skipImmediately). */
   lastSkipped?: string;
-}
-
-export interface VeleroScheduleInterface extends KubeObjectInterface {
-  spec?: VeleroScheduleSpec;
-  status?: VeleroScheduleStatus;
 }
 
 export interface VeleroBackupStatus {
@@ -53,7 +54,17 @@ export interface VeleroBackupStatus {
   completionTimestamp?: string;
 }
 
+export interface VeleroBackupSpec {
+  includedNamespaces?: string[];
+  excludedNamespaces?: string[];
+  includedResources?: string[];
+  excludedResources?: string[];
+  labelSelector?: LabelSelector;
+  orLabelSelectors?: LabelSelector[];
+}
+
 export interface VeleroBackupInterface extends KubeObjectInterface {
+  spec?: VeleroBackupSpec;
   status?: VeleroBackupStatus;
 }
 
@@ -63,6 +74,10 @@ export class VeleroSchedule extends KubeObject<VeleroScheduleInterface> {
   static apiName = 'schedules';
   static apiVersion = 'velero.io/v1';
   static isNamespaced = true;
+
+  static get detailsRoute() {
+    return veleroRoutePaths.scheduleDetail;
+  }
 
   get spec(): VeleroScheduleSpec | undefined {
     return this.jsonData.spec;
@@ -99,7 +114,10 @@ export class VeleroSchedule extends KubeObject<VeleroScheduleInterface> {
     return this.phase === 'FailedValidation';
   }
 
-  /** Operator-facing status: FailedValidation, Paused, or Active. */
+  /**
+   * Operator-facing status.
+   * Only Velero `Enabled` maps to Active; `New` / missing phase stay New/Unknown.
+   */
   get statusDisplay(): string {
     if (this.isFailedValidation) {
       return 'FailedValidation';
@@ -107,11 +125,31 @@ export class VeleroSchedule extends KubeObject<VeleroScheduleInterface> {
     if (this.paused) {
       return 'Paused';
     }
-    return 'Active';
+    if (this.phase === 'Enabled') {
+      return 'Active';
+    }
+    if (this.phase === 'New') {
+      return 'New';
+    }
+    return this.phase || 'Unknown';
+  }
+
+  /** True when Velero will schedule backups from this Schedule. */
+  get isActivelyScheduling(): boolean {
+    return this.phase === 'Enabled' && !this.paused && !this.isFailedValidation;
   }
 
   get template(): VeleroBackupTemplate {
     return this.spec?.template ?? {};
+  }
+
+  /** Namespaces included by this schedule's backup template. */
+  get includedNamespacesDisplay(): string {
+    const namespaces = this.template.includedNamespaces;
+    if (!namespaces || namespaces.length === 0) {
+      return '*';
+    }
+    return namespaces.join(', ');
   }
 }
 
@@ -122,8 +160,25 @@ export class VeleroBackup extends KubeObject<VeleroBackupInterface> {
   static apiVersion = 'velero.io/v1';
   static isNamespaced = true;
 
+  static get detailsRoute() {
+    return veleroRoutePaths.backupDetail;
+  }
+
+  get spec(): VeleroBackupSpec | undefined {
+    return this.jsonData.spec;
+  }
+
   get scheduleName(): string | undefined {
     return this.metadata.labels?.['velero.io/schedule-name'];
+  }
+
+  /** True when the backup was created by a Schedule rather than manually. */
+  get isScheduled(): boolean {
+    return !!this.scheduleName;
+  }
+
+  get triggeredByDisplay(): string {
+    return this.scheduleName ?? 'Manual';
   }
 
   get phase(): string {
@@ -136,5 +191,121 @@ export class VeleroBackup extends KubeObject<VeleroBackupInterface> {
 
   get completionTimestamp(): string | undefined {
     return this.jsonData.status?.completionTimestamp;
+  }
+
+  get includedNamespacesDisplay(): string {
+    const namespaces = this.spec?.includedNamespaces;
+    if (!namespaces || namespaces.length === 0) {
+      return '*';
+    }
+    return namespaces.join(', ');
+  }
+}
+
+/** Velero Restore CRD (velero.io/v1) — inspired by reasonerjt prototype field set. */
+export interface VeleroRestoreSpec {
+  backupName?: string;
+  scheduleName?: string;
+  includedNamespaces?: string[];
+  excludedNamespaces?: string[];
+  includedResources?: string[];
+  excludedResources?: string[];
+  restorePVs?: boolean;
+}
+
+export interface VeleroRestoreStatus {
+  phase?: string;
+  errors?: number;
+  warnings?: number;
+  startTimestamp?: string;
+  completionTimestamp?: string;
+  progress?: {
+    totalItems?: number;
+    itemsRestored?: number;
+  };
+}
+
+export interface VeleroRestoreInterface extends KubeObjectInterface {
+  spec?: VeleroRestoreSpec;
+  status?: VeleroRestoreStatus;
+}
+
+/** Headlamp KubeObject wrapper for Velero Restore resources. */
+export class VeleroRestore extends KubeObject<VeleroRestoreInterface> {
+  static kind = 'Restore';
+  static apiName = 'restores';
+  static apiVersion = 'velero.io/v1';
+  static isNamespaced = true;
+
+  static get detailsRoute() {
+    return veleroRoutePaths.restoreDetail;
+  }
+
+  get spec(): VeleroRestoreSpec | undefined {
+    return this.jsonData.spec;
+  }
+
+  get backupName(): string | undefined {
+    return this.spec?.backupName;
+  }
+
+  /** Schedule name when the Restore targets the latest Backup from a Schedule. */
+  get scheduleName(): string | undefined {
+    return this.spec?.scheduleName;
+  }
+
+  /**
+   * Display source for the Restore: Backup name when set, otherwise Schedule name.
+   * Velero accepts either `spec.backupName` or `spec.scheduleName`.
+   */
+  get sourceDisplay(): string {
+    return this.backupName ?? this.scheduleName ?? 'N/A';
+  }
+
+  get phase(): string {
+    return this.jsonData.status?.phase ?? 'Unknown';
+  }
+
+  get errors(): number {
+    return this.jsonData.status?.errors ?? 0;
+  }
+
+  get warnings(): number {
+    return this.jsonData.status?.warnings ?? 0;
+  }
+
+  get startTimestamp(): string | undefined {
+    return this.jsonData.status?.startTimestamp;
+  }
+
+  get completionTimestamp(): string | undefined {
+    return this.jsonData.status?.completionTimestamp;
+  }
+
+  /**
+   * Velero treats omitted `spec.restorePVs` as auto (nil pointer), not true.
+   * Preserve auto / true / false for operators.
+   */
+  get restorePVsDisplay(): string {
+    if (this.spec?.restorePVs === undefined) {
+      return 'auto';
+    }
+    return this.spec.restorePVs ? 'true' : 'false';
+  }
+
+  get includedNamespacesDisplay(): string {
+    const namespaces = this.spec?.includedNamespaces;
+    if (!namespaces || namespaces.length === 0) {
+      return '*';
+    }
+    return namespaces.join(', ');
+  }
+
+  get progressDisplay(): string {
+    const progress = this.jsonData.status?.progress;
+    if (!progress?.totalItems) {
+      return 'N/A';
+    }
+    return `${progress.itemsRestored ?? 0} / ${progress.totalItems}`;
   }
 }

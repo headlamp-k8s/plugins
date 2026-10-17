@@ -1,8 +1,10 @@
 # Velero plugin for Headlamp
 
-Contextual Velero backup coverage panels for Headlamp ([Phase 1](https://github.com/kubernetes-sigs/headlamp/issues/5198)).
+Contextual Velero backup coverage for Headlamp ([issue #5198](https://github.com/kubernetes-sigs/headlamp/issues/5198)).
 
 ## What it does
+
+### Phase 1 — Detail coverage panels
 
 Shows whether a workload is covered by a Velero backup schedule — directly on the resource detail page in Headlamp.
 
@@ -12,13 +14,23 @@ Shows whether a workload is covered by a Velero backup schedule — directly on 
 - **Read-only** — no backup or restore actions
 - **Velero not installed** — clear empty state
 
+### Phase 2 — Cluster-wide Velero views
+
+Sidebar entry **Velero** with:
+
+- **Schedules** — cron, status, next run, last backup
+- **Backups** — phase, triggered by schedule or manual, namespace scope
+- **Restores** — backup source, phase, errors/warnings, progress (list/detail inspired by [reasonerjt prototype](https://github.com/reasonerjt/velero-headlamp-plugin))
+
+Coverage panels and schedule views load schedule-owned Backups via a `velero.io/schedule-name` label selector, then keep the latest Backup per schedule client-side (long TTLs can still return large histories). The Backups sidebar list still shows the full Backup table. Create actions are deferred to a later phase.
+
 ## Plugin settings
 
 **Settings → Plugins → Velero**
 
-| Setting          | Default  | Purpose                                                 |
-| ---------------- | -------- | ------------------------------------------------------- |
-| Velero namespace | `velero` | Namespace where Velero `Schedule` and `Backup` CRs live |
+| Setting          | Default  | Purpose                                                     |
+| ---------------- | -------- | ----------------------------------------------------------- |
+| Velero namespace | `velero` | Namespace where Velero Schedule / Backup / Restore CRs live |
 
 ## RBAC
 
@@ -43,7 +55,10 @@ Copy the built plugin into Headlamp, or load from this folder per the [plugin de
 
 ## Manual testing
 
-Apply the fixtures under `test-files/` to a cluster with Velero installed, then open the listed resources in Headlamp.
+Apply the fixtures under `test-files/` to a cluster with Velero installed, then:
+
+1. Open a Deployment / StatefulSet / Namespace detail page for Phase 1 panels
+2. Open sidebar **Velero → Schedules / Backups / Restores** for Phase 2
 
 ## Screenshots
 
