@@ -1,0 +1,22 @@
+# A backup that is meant to fail: `pg-healthy` has no backup destination
+# configured, so the operator has nowhere to put this.
+#
+# Uses `barmanObjectStore` rather than `volumeSnapshot` deliberately. The
+# snapshot method is rejected at admission on clusters without the VolumeSnapshot
+# CRDs, which would leave no Backup object at all and so no failure to look at;
+# this one is admitted anywhere and fails where it should — at run time, with the
+# operator's own message.
+#
+# Kept in its own file because applying it leaves a permanent failure on the
+# cluster. Delete it when you are done:
+#
+#   kubectl delete -f backups/doomed.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: pg-healthy-doomed
+  namespace: cnpg-headlamp-test
+spec:
+  method: barmanObjectStore
+  cluster:
+    name: pg-healthy

@@ -1,0 +1,22 @@
+# Broken on purpose, so the unhealthy states are reachable without editing
+# status by hand — the operator owns status, and a cluster that is genuinely
+# stuck produces a more faithful shape than one that has been faked.
+#
+# This cluster never becomes ready: its instances stay short of the declared
+# count, no primary settles, and the phase stays off the healthy path.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-degraded
+  namespace: cnpg-headlamp-test
+spec:
+  instances: 3
+  # Parses as a version — the admission webhook rejects anything that does not —
+  # but no such image exists, so the pods never start.
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.99
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
