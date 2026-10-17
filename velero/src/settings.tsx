@@ -21,7 +21,7 @@ export function Settings(props: {
                 fullWidth
                 label="Velero namespace"
                 inputProps={{ 'aria-label': 'Velero namespace' }}
-                helperText="Namespace where Velero Schedule and Backup CRs are stored"
+                helperText="Namespace where Velero Schedule, Backup, and Restore CRs are stored"
                 defaultValue={data?.veleroNamespace ?? DEFAULT_VELERO_NAMESPACE}
                 onChange={event => onDataChange({ ...data, veleroNamespace: event.target.value })}
                 variant="standard"
