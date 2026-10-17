@@ -20,7 +20,6 @@ import {
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
-import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { Chip, Stack, Typography } from '@mui/material';
 
 const { HTTPRoute } = ResourceClasses;
@@ -246,15 +245,14 @@ export default function HttpRoutesSection({
   );
   const showClusterColumn = uniqueClusters.size > 1;
 
-  const columns: (ResourceTableColumn<KubeObject> | 'cluster' | 'age' | 'name')[] = [
+  const columns: (ResourceTableColumn<HttpRoute> | 'cluster' | 'age' | 'name')[] = [
     ...(showClusterColumn ? (['cluster'] as const) : []),
     'name',
     {
       id: 'role',
       label: 'Role',
       gridTemplate: 'min-content',
-      getValue: item => {
-        const r = item as HttpRoute;
+      getValue: r => {
         const { isMain, tags, rolloutInvalidJson } = getRoleInfo({
           r,
           serviceName,
@@ -272,8 +270,7 @@ export default function HttpRoutesSection({
         if (rolloutInvalidJson) parts.push('rollout:invalid');
         return parts.join(', ');
       },
-      render: item => {
-        const r = item as HttpRoute;
+      render: r => {
         const { isMain, tags, rolloutInvalidJson } = getRoleInfo({
           r,
           serviceName,
@@ -309,12 +306,10 @@ export default function HttpRoutesSection({
       id: 'origin',
       label: 'Origin',
       gridTemplate: 'min-content',
-      getValue: item => {
-        const r = item as HttpRoute;
+      getValue: r => {
         return getOriginLabels(r, serviceName).join(', ');
       },
-      render: item => {
-        const r = item as HttpRoute;
+      render: r => {
         const origins = getOriginLabels(r, serviceName);
         if (origins.length === 0) {
           return (
@@ -341,12 +336,10 @@ export default function HttpRoutesSection({
     {
       id: 'hostnames',
       label: 'Hostnames',
-      getValue: item => {
-        const r = item as HttpRoute;
+      getValue: r => {
         return (r.spec?.hostnames ?? []).join(', ') || '';
       },
-      render: item => {
-        const r = item as HttpRoute;
+      render: r => {
         const hostnames = (r.spec?.hostnames ?? []).join(', ');
         return hostnames ? (
           <Typography variant="caption" color="text.secondary">

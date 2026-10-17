@@ -15,6 +15,7 @@
  */
 
 import { ClusterDomainClaim, KnativeDomainMapping } from '../resources/knative';
+import { errorDetail, withDetail } from './error';
 
 export function getClusterDomainClaim(
   dm: KnativeDomainMapping,
@@ -145,13 +146,7 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
   try {
     await ensureClusterDomainClaim({ host, cluster: dm.cluster, namespace });
   } catch (e: unknown) {
-    const error = e as { message?: string } | undefined;
-    const detail = error?.message?.trim();
-    throw new Error(
-      detail
-        ? `Failed to create ClusterDomainClaim: ${detail}`
-        : 'Failed to create ClusterDomainClaim'
-    );
+    throw new Error(withDetail('Failed to create ClusterDomainClaim', errorDetail(e)));
   }
 
   // Add dummy annotation to trigger DomainMapping reconciliation
@@ -164,10 +159,6 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
       },
     });
   } catch (e: unknown) {
-    const error = e as { message?: string } | undefined;
-    const detail = error?.message?.trim();
-    throw new Error(
-      detail ? `Failed to annotate DomainMapping: ${detail}` : 'Failed to annotate DomainMapping'
-    );
+    throw new Error(withDetail('Failed to annotate DomainMapping', errorDetail(e)));
   }
 }

@@ -22,7 +22,6 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
-import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Chip, Stack, Typography } from '@mui/material';
 import React, { useMemo } from 'react';
 import {
@@ -34,11 +33,13 @@ import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeDomainMapping, KService } from '../../resources/knative';
+import { findReadyCondition } from '../../resources/knative/resourceData';
 import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
-import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
-import { ExternalUrl } from '../common/ResourceListCells';
+import { ExternalUrl, ReadyCell } from '../common/ResourceListCells';
+import { useCanRestartKService } from './detail/hooks/useCanRestartKService';
 import { useKServiceActions } from './detail/hooks/useKServiceActions';
+import { KServiceRestartProvider } from './detail/restart/KServiceRestartProvider';
 
 type IngressClassWithCluster = {
   cluster: string;
@@ -99,26 +100,6 @@ function getRevisionShort(svc: KService, revisionName: string | undefined): stri
   return revisionName;
 }
 
-function getReadyCondition(
-  svc: KService
-): { status: string; reason?: string; message?: string } | null {
-  const conditions = svc.status?.conditions;
-  if (!conditions) {
-    return null;
-  }
-
-  const readyCondition = conditions.find(c => c.type === 'Ready');
-  if (!readyCondition) {
-    return null;
-  }
-
-  return {
-    status: readyCondition.status || 'Unknown',
-    reason: readyCondition.reason,
-    message: readyCondition.message,
-  };
-}
-
 function getServiceUrls(svc: KService, domainByServiceKey: Record<string, string[]>): string[] {
   const ns = svc.metadata.namespace || 'default';
   const name = svc.metadata.name;
@@ -138,6 +119,13 @@ type KServiceRowActionsProps = {
   closeMenu?: () => void;
 };
 
+/**
+ * Shows the Redeploy Latest Revision and Restart items of a Knative Service's row menu, each only
+ * to users who are allowed to use it.
+ *
+ * @param props - The Knative Service, and `closeMenu`, which closes the row menu after an action.
+ * @returns The menu items.
+ */
 function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
   const { acting, handleRedeploy, handleRestart } = useKServiceActions(kservice, {
     onDone: () => {
@@ -158,12 +146,7 @@ function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
     cluster,
   });
 
-  const canDeletePods = useAuthorization({
-    item: Pod,
-    authVerb: 'delete',
-    namespace,
-    cluster,
-  });
+  const canRestart = useCanRestartKService(namespace, cluster);
 
   return (
     <>
@@ -176,7 +159,7 @@ function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
           iconButtonProps={{ disabled }}
         />
       )}
-      {canDeletePods.allowed === true && (
+      {canRestart.allowed === true && (
         <ActionButton
           description="Restart"
           buttonStyle="menu"
@@ -435,36 +418,16 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
           { label: 'False', value: 'False' },
           { label: 'Unknown', value: 'Unknown' },
         ],
-        getValue: svc => {
-          const readyCondition = getReadyCondition(svc);
-          return readyCondition?.status || 'Unknown';
-        },
-        render: svc => {
-          const readyCondition = getReadyCondition(svc);
-          let status: 'True' | 'False' | 'Unknown' = 'Unknown';
-          if (readyCondition?.status === 'True') status = 'True';
-          else if (readyCondition?.status === 'False') status = 'False';
-
-          return (
-            <ReadyStatusLabel
-              status={status}
-              reason={readyCondition?.reason}
-              message={readyCondition?.message}
-            />
-          );
-        },
+        getValue: svc => findReadyCondition(svc.status)?.status || 'Unknown',
+        render: svc => <ReadyCell condition={findReadyCondition(svc.status)} />,
       },
       {
         id: 'reason',
         label: 'Reason',
         gridTemplate: '2fr',
-        getValue: svc => {
-          const readyCondition = getReadyCondition(svc);
-          return readyCondition?.reason?.toLowerCase() || '';
-        },
+        getValue: svc => findReadyCondition(svc.status)?.reason?.toLowerCase() || '',
         render: svc => {
-          const readyCondition = getReadyCondition(svc);
-          const reason = readyCondition?.reason;
+          const reason = findReadyCondition(svc.status)?.reason;
 
           if (!reason) {
             return (
@@ -616,7 +579,9 @@ export function KServicesList() {
   const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
 
   return isKnativeInstalled ? (
-    <KServicesListContents clusters={clusters} />
+    <KServiceRestartProvider>
+      <KServicesListContents clusters={clusters} />
+    </KServiceRestartProvider>
   ) : (
     <NotInstalledBanner isLoading={isKnativeCheckLoading} />
   );

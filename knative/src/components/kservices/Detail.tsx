@@ -20,6 +20,7 @@ import { useParams } from 'react-router-dom';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KService } from '../../resources/knative';
+import { findReadyCondition } from '../../resources/knative/resourceData';
 import {
   ActivitiesProvider,
   ActivitiesRenderer,
@@ -33,6 +34,7 @@ import { KServiceLogsHeaderButton } from './detail/header/KServiceLogsHeaderButt
 import { KServiceViewYamlHeaderButton } from './detail/header/KServiceViewYamlHeaderButton';
 import { KServiceEditContextProvider } from './detail/hooks/useKServiceEditMode';
 import { KServicePermissionsProvider } from './detail/permissions/KServicePermissionsProvider';
+import { KServiceRestartProvider } from './detail/restart/KServiceRestartProvider';
 import { AutoscalingSection } from './detail/sections/autoscaling/AutoscalingSection';
 import { IngressClassValue } from './detail/sections/networking/NetworkingSection';
 import { NetworkingSection } from './detail/sections/networking/NetworkingSection';
@@ -40,7 +42,12 @@ import { OverviewSection } from './detail/sections/overview/OverviewSection';
 import { PodsSection } from './detail/sections/pods/PodsSection';
 import { TrafficSection } from './detail/sections/traffic/TrafficSection';
 
-export function KServiceDetail() {
+/**
+ * Shows the Knative Service named in the URL, or a banner when Knative Serving is not installed.
+ *
+ * @returns The detail page's content.
+ */
+function KServiceDetailContents() {
   const { name, namespace } = useParams<{ namespace: string; name: string }>();
   const clusters = useClusters();
   const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
@@ -127,7 +134,7 @@ export function KServiceDetail() {
                 extraInfo={svc => {
                   if (!svc) return null;
 
-                  const readyCond = svc.status?.conditions?.find(c => c.type === 'Ready');
+                  const readyCond = findReadyCondition(svc.status);
                   const readyStatus = readyCond?.status || 'Unknown';
 
                   const visibility =
@@ -263,5 +270,19 @@ export function KServiceDetail() {
         <NotInstalledBanner isLoading={isKnativeCheckLoading} />
       )}
     </KServiceEditContextProvider>
+  );
+}
+
+/**
+ * Shows a Knative Service. A restart started here keeps going, and shows its result, until the page
+ * is left.
+ *
+ * @returns The detail page of the Knative Service named in the URL.
+ */
+export function KServiceDetail() {
+  return (
+    <KServiceRestartProvider>
+      <KServiceDetailContents />
+    </KServiceRestartProvider>
   );
 }
