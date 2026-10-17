@@ -48,10 +48,7 @@ export interface BackupCoverageInput {
 }
 
 /** Map key for latest-Backup lookups: cluster + schedule name (cluster may be empty). */
-export function scheduleBackupLookupKey(
-  cluster: string | undefined,
-  scheduleName: string
-): string {
+export function scheduleBackupLookupKey(cluster: string | undefined, scheduleName: string): string {
   return `${cluster ?? ''}\0${scheduleName}`;
 }
 
@@ -352,9 +349,7 @@ export function getLatestBackupForSchedule(
   scheduleName: string,
   cluster?: string
 ): BackupCoverageInput | undefined {
-  return buildLatestBackupBySchedule(backups).get(
-    scheduleBackupLookupKey(cluster, scheduleName)
-  );
+  return buildLatestBackupBySchedule(backups).get(scheduleBackupLookupKey(cluster, scheduleName));
 }
 
 function scheduleStatusDisplay(schedule: ScheduleCoverageInput): string {

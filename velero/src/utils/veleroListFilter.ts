@@ -1,7 +1,7 @@
-import { filterResource } from '@kinvolk/headlamp-plugin/lib/Utils';
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { filterResource } from '@kinvolk/headlamp-plugin/lib/Utils';
 
-/** Empty set → filterResource ignores Headlamp's global namespace selection. */
+/** Empty set: filterResource ignores Headlamp's global namespace selection. */
 const NO_NAMESPACE_FILTER = new Set<string>();
 
 /**

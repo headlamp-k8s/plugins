@@ -3,9 +3,9 @@ import {
   buildLatestBackupBySchedule,
   getCoveringSchedules,
   getLatestBackupForSchedule,
-  scheduleBackupLookupKey,
   getSchedulesForNamespace,
   resolveEveryRunAnchor,
+  scheduleBackupLookupKey,
   scheduleCoversWorkload,
 } from './coverage';
 import { getNextScheduledRun } from './cron';
