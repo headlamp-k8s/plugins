@@ -1,7 +1,7 @@
 import { DetailsGrid, Link, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
-import { resolveEveryRunAnchor } from '../../coverage';
+import { resolveEveryRunAnchor, scheduleBackupLookupKey } from '../../coverage';
 import { formatNextScheduledRun } from '../../cron';
 import { useVeleroData } from '../../hooks/useVeleroData';
 import { VeleroSchedule } from '../../resources/velero';
@@ -12,6 +12,7 @@ import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 function ScheduleDetailContent() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
   // Use the route namespace so related Backups match the Schedule being viewed.
+  // useVeleroData also pins to the current cluster when a namespace override is set.
   const {
     latestBackupBySchedule,
     loading: backupsLoading,
@@ -30,7 +31,9 @@ function ScheduleDetailContent() {
           return [];
         }
 
-        const last = latestBackupBySchedule.get(schedule.getName());
+        const last = latestBackupBySchedule.get(
+          scheduleBackupLookupKey(schedule.cluster, schedule.getName())
+        );
         const nextRun = schedule.isActivelyScheduling
           ? formatNextScheduledRun(
               schedule.cronSchedule,
@@ -57,6 +60,7 @@ function ScheduleDetailContent() {
             <Link
               routeName={veleroRouteNames.backupDetail}
               params={{ namespace: schedule.getNamespace(), name: last.name }}
+              activeCluster={schedule.cluster}
             >
               {last.name}
             </Link>

@@ -1,10 +1,11 @@
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useVeleroNamespace } from '../../config';
-import { resolveEveryRunAnchor } from '../../coverage';
+import { resolveEveryRunAnchor, scheduleBackupLookupKey } from '../../coverage';
 import { formatNextScheduledRun } from '../../cron';
 import { useVeleroData } from '../../hooks/useVeleroData';
 import { VeleroSchedule } from '../../resources/velero';
 import { getBackupStatusColor, getScheduleStatusColor } from '../../utils/status';
+import { veleroListFilterFunction } from '../../utils/veleroListFilter';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
@@ -26,6 +27,7 @@ function ScheduleListContent() {
       errorMessage={errorMessage}
       enableRowActions={false}
       enableRowSelection={false}
+      filterFunction={veleroListFilterFunction}
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],
@@ -57,7 +59,9 @@ function ScheduleListContent() {
           id: 'next-run',
           label: 'Next run',
           getValue: (schedule: VeleroSchedule) => {
-            const last = latestBackupBySchedule.get(schedule.getName());
+            const last = latestBackupBySchedule.get(
+              scheduleBackupLookupKey(schedule.cluster, schedule.getName())
+            );
             return schedule.isActivelyScheduling
               ? formatNextScheduledRun(
                   schedule.cronSchedule,
@@ -76,9 +80,13 @@ function ScheduleListContent() {
           id: 'last-backup',
           label: 'Last backup',
           getValue: (schedule: VeleroSchedule) =>
-            latestBackupBySchedule.get(schedule.getName())?.name ?? 'None',
+            latestBackupBySchedule.get(
+              scheduleBackupLookupKey(schedule.cluster, schedule.getName())
+            )?.name ?? 'None',
           render: (schedule: VeleroSchedule) => {
-            const last = latestBackupBySchedule.get(schedule.getName());
+            const last = latestBackupBySchedule.get(
+              scheduleBackupLookupKey(schedule.cluster, schedule.getName())
+            );
             if (!last) {
               return 'None';
             }
@@ -86,6 +94,7 @@ function ScheduleListContent() {
               <Link
                 routeName={veleroRouteNames.backupDetail}
                 params={{ namespace: veleroNamespace, name: last.name }}
+                activeCluster={schedule.cluster}
               >
                 {last.name}
               </Link>
@@ -96,9 +105,13 @@ function ScheduleListContent() {
           id: 'last-status',
           label: 'Last status',
           getValue: (schedule: VeleroSchedule) =>
-            latestBackupBySchedule.get(schedule.getName())?.phase ?? 'N/A',
+            latestBackupBySchedule.get(
+              scheduleBackupLookupKey(schedule.cluster, schedule.getName())
+            )?.phase ?? 'N/A',
           render: (schedule: VeleroSchedule) => {
-            const phase = latestBackupBySchedule.get(schedule.getName())?.phase;
+            const phase = latestBackupBySchedule.get(
+              scheduleBackupLookupKey(schedule.cluster, schedule.getName())
+            )?.phase;
             if (!phase) {
               return 'N/A';
             }

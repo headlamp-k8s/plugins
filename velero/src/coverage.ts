@@ -18,6 +18,8 @@ export interface WorkloadTarget {
 /** Normalized Velero Schedule fields used for coverage matching. */
 export interface ScheduleCoverageInput {
   name: string;
+  /** Headlamp cluster id — required so multi-cluster lookups do not cross wires. */
+  cluster?: string;
   template: VeleroBackupTemplate;
   cronSchedule?: string;
   /** When true, the schedule does not create new backups. */
@@ -35,12 +37,22 @@ export interface ScheduleCoverageInput {
 /** Normalized Velero Backup fields joined onto schedule coverage results. */
 export interface BackupCoverageInput {
   name: string;
+  /** Headlamp cluster id — paired with scheduleName for multi-cluster lookups. */
+  cluster?: string;
   scheduleName?: string;
   phase?: string;
   startTimestamp?: string;
   completionTimestamp?: string;
   /** Fallback when status timestamps are unset (e.g. New / Queued / ReadyToStart). */
   creationTimestamp?: string;
+}
+
+/** Map key for latest-Backup lookups: cluster + schedule name (cluster may be empty). */
+export function scheduleBackupLookupKey(
+  cluster: string | undefined,
+  scheduleName: string
+): string {
+  return `${cluster ?? ''}\0${scheduleName}`;
 }
 
 /** Schedule coverage shown in the backup coverage panel. */
@@ -311,7 +323,11 @@ function backupTimestamp(backup: BackupCoverageInput): number {
   return value ? Date.parse(value) : 0;
 }
 
-/** One-pass map of schedule name → latest Backup (O(backups)). */
+/**
+ * One-pass map of (cluster, schedule name) → latest Backup (O(backups)).
+ * Keys use {@link scheduleBackupLookupKey} so same-named schedules on different
+ * clusters do not share a latest Backup.
+ */
 export function buildLatestBackupBySchedule(
   backups: BackupCoverageInput[]
 ): Map<string, BackupCoverageInput> {
@@ -321,20 +337,24 @@ export function buildLatestBackupBySchedule(
     if (!scheduleName) {
       continue;
     }
-    const prev = latest.get(scheduleName);
+    const key = scheduleBackupLookupKey(backup.cluster, scheduleName);
+    const prev = latest.get(key);
     if (!prev || backupTimestamp(backup) > backupTimestamp(prev)) {
-      latest.set(scheduleName, backup);
+      latest.set(key, backup);
     }
   }
   return latest;
 }
 
-/** Returns the most recent backup created by the given schedule, if any. */
+/** Returns the most recent backup created by the given schedule (and cluster), if any. */
 export function getLatestBackupForSchedule(
   backups: BackupCoverageInput[],
-  scheduleName: string
+  scheduleName: string,
+  cluster?: string
 ): BackupCoverageInput | undefined {
-  return buildLatestBackupBySchedule(backups).get(scheduleName);
+  return buildLatestBackupBySchedule(backups).get(
+    scheduleBackupLookupKey(cluster, scheduleName)
+  );
 }
 
 function scheduleStatusDisplay(schedule: ScheduleCoverageInput): string {
@@ -434,7 +454,12 @@ export function getCoveringSchedules(
   const latestBySchedule = buildLatestBackupBySchedule(backups);
   return schedules
     .filter(schedule => scheduleCoversWorkload(schedule, target))
-    .map(schedule => toScheduleCoverageResult(schedule, latestBySchedule.get(schedule.name)));
+    .map(schedule =>
+      toScheduleCoverageResult(
+        schedule,
+        latestBySchedule.get(scheduleBackupLookupKey(schedule.cluster, schedule.name))
+      )
+    );
 }
 
 /**
@@ -454,5 +479,10 @@ export function getSchedulesForNamespace(
         schedule.phase !== 'FailedValidation' &&
         namespaceIncluded(schedule.template ?? {}, namespace)
     )
-    .map(schedule => toScheduleCoverageResult(schedule, latestBySchedule.get(schedule.name)));
+    .map(schedule =>
+      toScheduleCoverageResult(
+        schedule,
+        latestBySchedule.get(scheduleBackupLookupKey(schedule.cluster, schedule.name))
+      )
+    );
 }

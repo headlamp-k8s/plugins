@@ -3,6 +3,7 @@ import {
   buildLatestBackupBySchedule,
   getCoveringSchedules,
   getLatestBackupForSchedule,
+  scheduleBackupLookupKey,
   getSchedulesForNamespace,
   resolveEveryRunAnchor,
   scheduleCoversWorkload,
@@ -560,7 +561,7 @@ describe('scheduleCoversWorkload', () => {
 });
 
 describe('buildLatestBackupBySchedule', () => {
-  test('builds latest map in one pass', () => {
+  test('builds latest map in one pass keyed by cluster and schedule', () => {
     const latest = buildLatestBackupBySchedule([
       {
         name: 'older',
@@ -579,8 +580,29 @@ describe('buildLatestBackupBySchedule', () => {
       },
     ]);
 
-    expect(latest.get('daily')?.name).toBe('newer');
-    expect(latest.get('weekly')?.name).toBe('other');
+    expect(latest.get(scheduleBackupLookupKey(undefined, 'daily'))?.name).toBe('newer');
+    expect(latest.get(scheduleBackupLookupKey(undefined, 'weekly'))?.name).toBe('other');
+    expect(latest.size).toBe(2);
+  });
+
+  test('keeps same-named schedules on different clusters separate', () => {
+    const latest = buildLatestBackupBySchedule([
+      {
+        name: 'a-daily',
+        cluster: 'cluster-a',
+        scheduleName: 'daily',
+        completionTimestamp: '2026-07-02T10:00:00Z',
+      },
+      {
+        name: 'b-daily',
+        cluster: 'cluster-b',
+        scheduleName: 'daily',
+        completionTimestamp: '2026-07-03T10:00:00Z',
+      },
+    ]);
+
+    expect(latest.get(scheduleBackupLookupKey('cluster-a', 'daily'))?.name).toBe('a-daily');
+    expect(latest.get(scheduleBackupLookupKey('cluster-b', 'daily'))?.name).toBe('b-daily');
     expect(latest.size).toBe(2);
   });
 });

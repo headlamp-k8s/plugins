@@ -2,6 +2,7 @@ import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/li
 import { useVeleroNamespace } from '../../config';
 import { VeleroBackup } from '../../resources/velero';
 import { getBackupStatusColor } from '../../utils/status';
+import { veleroListFilterFunction } from '../../utils/veleroListFilter';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
@@ -17,6 +18,7 @@ function BackupListContent() {
       errorMessage={error?.message}
       enableRowActions={false}
       enableRowSelection={false}
+      filterFunction={veleroListFilterFunction}
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],
@@ -44,6 +46,7 @@ function BackupListContent() {
               <Link
                 routeName={veleroRouteNames.scheduleDetail}
                 params={{ namespace: backup.getNamespace(), name: backup.scheduleName }}
+                activeCluster={backup.cluster}
               >
                 {backup.scheduleName}
               </Link>
