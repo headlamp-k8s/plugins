@@ -28,7 +28,7 @@ export interface ScheduleCoverageInput {
   creationTimestamp?: string;
   /** Schedule status.lastBackup timestamp — preferred `@every` next-run anchor. */
   lastBackupTime?: string;
-  /** Schedule status.lastSkipped — preferred over lastBackup when newer (e.g. skipImmediately). */
+  /** Schedule status.lastSkipped — Velero uses max(lastBackup, lastSkipped) as cron anchor. */
   lastSkippedTime?: string;
 }
 
@@ -39,6 +39,8 @@ export interface BackupCoverageInput {
   phase?: string;
   startTimestamp?: string;
   completionTimestamp?: string;
+  /** Fallback when status timestamps are unset (e.g. New / Queued / ReadyToStart). */
+  creationTimestamp?: string;
 }
 
 /** Schedule coverage shown in the backup coverage panel. */
@@ -49,14 +51,12 @@ export interface ScheduleCoverageResult {
   lastBackup?: BackupCoverageInput;
   /** True when the schedule is paused and will not create new backups. */
   paused?: boolean;
-  /** Operator-facing status: FailedValidation, Paused, or Active. */
+  /** Operator-facing status: FailedValidation, Paused, Active, New, or Unknown. */
   statusDisplay?: string;
 }
 
 // Include Velero/kubectl short names (ShortcutExpander) so includedResources like
 // "deploy", "sts", and "pvc" match the same kinds as the plural/group forms.
-// Include plural, singular, short names, and qualified forms Velero resolves via discovery
-// (e.g. deployment.apps — qualified singular is valid in includedResources).
 const DEPLOYMENT_ALIASES = new Set([
   'deployments',
   'deployment',
@@ -71,34 +71,9 @@ const STATEFULSET_ALIASES = new Set([
   'statefulsets.apps',
   'statefulset.apps',
 ]);
-// Only discovery names: persistentvolumeclaims / persistentvolumeclaim / pvc.
+// Only discovery short names: persistentvolumeclaims / persistentvolumeclaim / pvc.
 // Do not include "pvcs" — it is not a Kubernetes short name and Velero leaves it unresolved.
 const PVC_ALIASES = new Set(['persistentvolumeclaims', 'persistentvolumeclaim', 'pvc']);
-
-/** Known cluster-scoped resource names (not Deployments/STS/PVCs in a namespace). */
-const CLUSTER_SCOPED_RESOURCE_ALIASES = new Set([
-  'nodes',
-  'node',
-  'persistentvolumes',
-  'persistentvolume',
-  'pv',
-  'storageclasses',
-  'storageclass',
-  'sc',
-  'storageclasses.storage.k8s.io',
-  'storageclass.storage.k8s.io',
-  'namespaces',
-  'namespace',
-  'ns',
-  'clusterroles',
-  'clusterrole',
-  'clusterrolebindings',
-  'clusterrolebinding',
-  'customresourcedefinitions',
-  'customresourcedefinition',
-  'crd',
-  'crds',
-]);
 
 function resourceAliases(kind: WorkloadTarget['resourceKind']): Set<string> {
   switch (kind) {
@@ -329,20 +304,37 @@ export function scheduleCoversWorkload(
   );
 }
 
+function backupTimestamp(backup: BackupCoverageInput): number {
+  // Prefer start time so a newer in-progress backup outranks an older completed one.
+  // Fall back to creationTimestamp for pre-execution phases without status times.
+  const value = backup.startTimestamp ?? backup.completionTimestamp ?? backup.creationTimestamp;
+  return value ? Date.parse(value) : 0;
+}
+
+/** One-pass map of schedule name → latest Backup (O(backups)). */
+export function buildLatestBackupBySchedule(
+  backups: BackupCoverageInput[]
+): Map<string, BackupCoverageInput> {
+  const latest = new Map<string, BackupCoverageInput>();
+  for (const backup of backups) {
+    const scheduleName = backup.scheduleName;
+    if (!scheduleName) {
+      continue;
+    }
+    const prev = latest.get(scheduleName);
+    if (!prev || backupTimestamp(backup) > backupTimestamp(prev)) {
+      latest.set(scheduleName, backup);
+    }
+  }
+  return latest;
+}
+
 /** Returns the most recent backup created by the given schedule, if any. */
 export function getLatestBackupForSchedule(
   backups: BackupCoverageInput[],
   scheduleName: string
 ): BackupCoverageInput | undefined {
-  return backups
-    .filter(backup => backup.scheduleName === scheduleName)
-    .sort((a, b) => backupTimestamp(b) - backupTimestamp(a))[0];
-}
-
-function backupTimestamp(backup: BackupCoverageInput): number {
-  // Prefer start time so a newer in-progress backup outranks an older completed one.
-  const value = backup.startTimestamp ?? backup.completionTimestamp;
-  return value ? Date.parse(value) : 0;
+  return buildLatestBackupBySchedule(backups).get(scheduleName);
 }
 
 function scheduleStatusDisplay(schedule: ScheduleCoverageInput): string {
@@ -352,40 +344,21 @@ function scheduleStatusDisplay(schedule: ScheduleCoverageInput): string {
   if (schedule.paused) {
     return 'Paused';
   }
-  return 'Active';
+  if (schedule.phase === 'Enabled') {
+    return 'Active';
+  }
+  if (schedule.phase === 'New') {
+    return 'New';
+  }
+  return schedule.phase || 'Unknown';
 }
 
-/** Later of two ISO timestamps (invalid/missing ignored). */
-function laterTimestamp(a?: string, b?: string): string | undefined {
-  const aMs = a ? Date.parse(a) : Number.NaN;
-  const bMs = b ? Date.parse(b) : Number.NaN;
-  const aOk = !Number.isNaN(aMs);
-  const bOk = !Number.isNaN(bMs);
-  if (aOk && bOk) {
-    return aMs >= bMs ? a : b;
-  }
-  if (aOk) {
-    return a;
-  }
-  if (bOk) {
-    return b;
-  }
-  return undefined;
+/** True when Velero will create backups from this schedule (Enabled + not paused). */
+function isActivelyScheduling(schedule: ScheduleCoverageInput): boolean {
+  return schedule.phase === 'Enabled' && !schedule.paused;
 }
 
-/**
- * Anchor for `@every` next-run: later of status.lastBackup / status.lastSkipped,
- * else latest Backup timestamps, else schedule creation.
- */
-function everyRunAnchor(
-  schedule: ScheduleCoverageInput,
-  lastBackup: BackupCoverageInput | undefined
-): Date | undefined {
-  const raw =
-    laterTimestamp(schedule.lastBackupTime, schedule.lastSkippedTime) ??
-    lastBackup?.completionTimestamp ??
-    lastBackup?.startTimestamp ??
-    schedule.creationTimestamp;
+function parseValidDate(raw?: string): Date | undefined {
   if (!raw) {
     return undefined;
   }
@@ -394,51 +367,60 @@ function everyRunAnchor(
 }
 
 /**
- * True when the backup template can include namespaced objects.
- * Used by the namespace panel so schedules that only select cluster-scoped
- * kinds (or exclude all namespaced kinds) are not listed as targeting the namespace.
+ * Anchor for `@every` next-run: later of status.lastBackup / status.lastSkipped
+ * (Velero controller behavior), else latest Backup timestamps, else schedule
+ * creationTimestamp.
  */
-function mayCoverNamespacedObjects(template: VeleroBackupTemplate): boolean {
-  const nsExcluded = template.excludedNamespaceScopedResources ?? [];
-  if (nsExcluded.some(name => name === '*')) {
-    return false;
+export function resolveEveryRunAnchor(opts: {
+  lastBackupTime?: string;
+  lastSkippedTime?: string;
+  creationTimestamp?: string;
+  lastBackup?: BackupCoverageInput;
+}): Date | undefined {
+  const lastBackupStatus = parseValidDate(opts.lastBackupTime);
+  const lastSkipped = parseValidDate(opts.lastSkippedTime);
+  if (lastBackupStatus && lastSkipped) {
+    return lastBackupStatus.getTime() >= lastSkipped.getTime() ? lastBackupStatus : lastSkipped;
+  }
+  if (lastBackupStatus) {
+    return lastBackupStatus;
+  }
+  if (lastSkipped) {
+    return lastSkipped;
   }
 
-  // Explicit namespace-scoped include list means the schedule intends namespaced kinds.
-  const nsIncluded = template.includedNamespaceScopedResources ?? [];
-  if (nsIncluded.length > 0) {
-    return true;
-  }
-
-  const included = template.includedResources ?? [];
-  if (included.length === 0 || included.some(name => name === '*')) {
-    return true;
-  }
-
-  return included.some(name => !CLUSTER_SCOPED_RESOURCE_ALIASES.has(name.toLowerCase()));
+  return (
+    parseValidDate(opts.lastBackup?.completionTimestamp) ??
+    parseValidDate(opts.lastBackup?.startTimestamp) ??
+    parseValidDate(opts.lastBackup?.creationTimestamp) ??
+    parseValidDate(opts.creationTimestamp)
+  );
 }
 
 function toScheduleCoverageResult(
   schedule: ScheduleCoverageInput,
-  backups: BackupCoverageInput[]
+  lastBackup: BackupCoverageInput | undefined
 ): ScheduleCoverageResult {
   const paused = !!schedule.paused;
-  const failedValidation = schedule.phase === 'FailedValidation';
-  const lastBackup = getLatestBackupForSchedule(backups, schedule.name);
+  const activelyScheduling = isActivelyScheduling(schedule);
   return {
     scheduleName: schedule.name,
     cronSchedule: schedule.cronSchedule,
     paused,
     statusDisplay: scheduleStatusDisplay(schedule),
-    // Paused / invalid schedules do not create new backups; do not show a misleading next run.
-    nextScheduledRun:
-      paused || failedValidation
-        ? undefined
-        : formatNextScheduledRun(
-            schedule.cronSchedule,
-            new Date(),
-            everyRunAnchor(schedule, lastBackup)
-          ),
+    // Only Enabled schedules get a next-run; New/Unknown must not look Active.
+    nextScheduledRun: activelyScheduling
+      ? formatNextScheduledRun(
+          schedule.cronSchedule,
+          new Date(),
+          resolveEveryRunAnchor({
+            lastBackupTime: schedule.lastBackupTime,
+            lastSkippedTime: schedule.lastSkippedTime,
+            creationTimestamp: schedule.creationTimestamp,
+            lastBackup,
+          })
+        )
+      : undefined,
     lastBackup,
   };
 }
@@ -449,29 +431,28 @@ export function getCoveringSchedules(
   backups: BackupCoverageInput[],
   target: WorkloadTarget
 ): ScheduleCoverageResult[] {
+  const latestBySchedule = buildLatestBackupBySchedule(backups);
   return schedules
     .filter(schedule => scheduleCoversWorkload(schedule, target))
-    .map(schedule => toScheduleCoverageResult(schedule, backups));
+    .map(schedule => toScheduleCoverageResult(schedule, latestBySchedule.get(schedule.name)));
 }
 
 /**
- * Returns schedules whose backup template *targets* the namespace.
- * Checks namespace include/exclude and filters out templates that cannot cover any
- * namespaced objects (e.g. nodes-only or excludedNamespaceScopedResources: ['*']).
- * Does not evaluate label selectors against live objects in the namespace.
+ * Returns schedules whose backup template *targets* the namespace (include/exclude
+ * namespace filters only). This is not object-level coverage: resource includes and
+ * label selectors are not evaluated against objects in the namespace.
  */
 export function getSchedulesForNamespace(
   schedules: ScheduleCoverageInput[],
   backups: BackupCoverageInput[],
   namespace: string
 ): ScheduleCoverageResult[] {
+  const latestBySchedule = buildLatestBackupBySchedule(backups);
   return schedules
-    .filter(schedule => {
-      if (schedule.phase === 'FailedValidation') {
-        return false;
-      }
-      const template = schedule.template ?? {};
-      return namespaceIncluded(template, namespace) && mayCoverNamespacedObjects(template);
-    })
-    .map(schedule => toScheduleCoverageResult(schedule, backups));
+    .filter(
+      schedule =>
+        schedule.phase !== 'FailedValidation' &&
+        namespaceIncluded(schedule.template ?? {}, namespace)
+    )
+    .map(schedule => toScheduleCoverageResult(schedule, latestBySchedule.get(schedule.name)));
 }

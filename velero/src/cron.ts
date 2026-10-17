@@ -64,9 +64,21 @@ export function parseGoDurationMs(duration: string): number | undefined {
 }
 
 /**
+ * Normalize `@every` delay to robfig/cron (Velero) semantics:
+ * sub-second delays round up to 1s; fractional seconds are truncated.
+ */
+function normalizeEveryIntervalMs(ms: number): number | undefined {
+  if (!Number.isFinite(ms) || ms <= 0) {
+    return undefined;
+  }
+  const truncatedToSecond = Math.floor(ms / 1000) * 1000;
+  return Math.max(truncatedToSecond, 1000);
+}
+
+/**
  * Next run for `@every <duration>`.
- * Advances from `anchor` (last backup / lastSkipped / creation) by the interval until after `now`.
- * Uses arithmetic (not a loop) so tiny intervals with old anchors stay constant-time.
+ * Advances from `anchor` by the interval until after `now`, in O(1) arithmetic
+ * (no per-interval loop — tiny delays with old anchors must not freeze the UI).
  * When no anchor is provided, the next run is `now + interval`.
  */
 function getNextEveryRun(expression: string, now: Date, anchor?: Date): Date | undefined {
@@ -74,8 +86,12 @@ function getNextEveryRun(expression: string, now: Date, anchor?: Date): Date | u
   if (!match) {
     return undefined;
   }
-  const ms = parseGoDurationMs(match[1]);
-  if (ms === undefined || ms <= 0 || !Number.isFinite(ms)) {
+  const parsed = parseGoDurationMs(match[1]);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  const ms = normalizeEveryIntervalMs(parsed);
+  if (ms === undefined) {
     return undefined;
   }
 
@@ -85,10 +101,18 @@ function getNextEveryRun(expression: string, now: Date, anchor?: Date): Date | u
     return undefined;
   }
 
-  // next = start + (floor((now - start) / ms) + 1) * ms  — strictly after `now` when on a boundary
   const elapsed = nowMs - start;
   const periods = Math.floor(elapsed / ms) + 1;
   return new Date(start + periods * ms);
+}
+
+/** Parses an ISO timestamp; returns undefined when missing or invalid. */
+export function parseScheduleAnchor(raw: string | undefined): Date | undefined {
+  if (!raw) {
+    return undefined;
+  }
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 /**

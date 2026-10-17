@@ -51,6 +51,8 @@ function CoverageTable({
                 value:
                   entry.statusDisplay === 'FailedValidation'
                     ? 'N/A (FailedValidation)'
+                    : entry.statusDisplay === 'New' || entry.statusDisplay === 'Unknown'
+                    ? `N/A (${entry.statusDisplay})`
                     : entry.paused
                     ? 'N/A (paused)'
                     : entry.nextScheduledRun ?? 'N/A',
@@ -79,7 +81,7 @@ function CoverageTable({
 
 /** Presentational backup coverage panel (install check, loading, error, and schedule rows). */
 export interface BackupCoveragePanelPureProps {
-  /** False when Velero API group is missing (404); null while install check runs. */
+  /** False when Velero API is not reachable; null while install check runs. */
   installed: boolean | null;
   loading: boolean;
   error?: Error | null;
@@ -117,8 +119,8 @@ export function BackupCoveragePanelPure(props: BackupCoveragePanelPureProps) {
     content = (
       <Paper variant="outlined">
         <EmptyContent>
-          Failed to load Velero schedules or backups. Check RBAC for velero.io resources in the
-          Velero namespace ({error.message}).
+          Failed to load Velero data ({error.message}). Check cluster access and RBAC for velero.io
+          resources in the Velero namespace.
         </EmptyContent>
       </Paper>
     );

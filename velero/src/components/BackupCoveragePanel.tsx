@@ -11,7 +11,18 @@ export { BackupCoveragePanelPure } from './BackupCoveragePanelPure';
 export type { BackupCoveragePanelPureProps } from './BackupCoveragePanelPure';
 
 function VeleroInstalledGate(props: { children: React.ReactElement }) {
-  const { installed, loading: installLoading } = useVeleroInstalled();
+  const { installed, loading: installLoading, error: installError } = useVeleroInstalled();
+
+  if (installError) {
+    return (
+      <BackupCoveragePanelPure
+        installed={null}
+        loading={false}
+        error={installError}
+        coverage={[]}
+      />
+    );
+  }
 
   if (installed !== true) {
     return <BackupCoveragePanelPure installed={installed} loading={installLoading} coverage={[]} />;
