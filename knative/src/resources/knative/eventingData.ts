@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
+import { stringify } from 'yaml';
 import type { Destination, KReference } from './common';
+import type { KnativeTrigger } from './trigger';
 
 const BROKER_CLASS_ANNOTATION = 'eventing.knative.dev/broker.class';
 
@@ -74,4 +76,21 @@ export function formatDestination(destination?: Destination): string {
   }
 
   return destination.uri ? `${target} (${destination.uri})` : target;
+}
+
+/**
+ * Formats the active Trigger filter as YAML, preserving its configured structure and values.
+ *
+ * @param spec - The Trigger's spec, if it has one.
+ * @returns The active `filters` or legacy `filter` field as YAML, or undefined when neither
+ * contains conditions.
+ */
+export function formatTriggerFilter(spec?: KnativeTrigger['spec']): string | undefined {
+  const filter = spec?.filters?.length
+    ? { filters: spec.filters }
+    : Object.keys(spec?.filter?.attributes ?? {}).length
+    ? { filter: spec?.filter }
+    : undefined;
+
+  return filter ? stringify(filter, { indent: 2, lineWidth: 0 }) : undefined;
 }

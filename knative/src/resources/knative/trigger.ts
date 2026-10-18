@@ -15,12 +15,13 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KnativeListRouteName } from '../../navigation';
 import type { AuthStatus, DeliverySpec, Destination, KReference } from './common';
 import { ConditionedKnativeCustomResource, type ConditionedStatus } from './conditionedResource';
 import { getTriggerBroker } from './eventingData';
 
 /** One expression in a Trigger's `spec.filters`. */
-interface TriggerFilter {
+export interface TriggerFilter {
   /**
    * Attributes whose values must match exactly, case sensitive. Names and values must not be
    * empty.
@@ -103,6 +104,24 @@ export class KnativeTrigger extends ConditionedKnativeCustomResource<KnativeTrig
   static apiName = 'triggers';
   static apiVersion = 'eventing.knative.dev/v1';
   static isNamespaced = true;
+
+  /**
+   * The plugin route that shows one Trigger.
+   *
+   * @returns The route name.
+   */
+  static get detailsRoute(): string {
+    return 'knativeTriggerDetails';
+  }
+
+  /**
+   * The plugin route that lists Triggers.
+   *
+   * @returns The route name.
+   */
+  static get listRoute(): KnativeListRouteName {
+    return 'knativeTriggers';
+  }
 
   /**
    * The Broker the Trigger takes events from.

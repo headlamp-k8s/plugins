@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 
-import { formatDestination, getBrokerClass, getTriggerBroker } from './eventingData';
+import { parse } from 'yaml';
+import {
+  formatDestination,
+  formatTriggerFilter,
+  getBrokerClass,
+  getTriggerBroker,
+} from './eventingData';
+import type { KnativeTrigger } from './trigger';
 
 describe('Knative Eventing resource data', () => {
   it('reads the broker class annotation', () => {
@@ -54,5 +61,90 @@ describe('Knative Eventing resource data', () => {
     expect(formatDestination({ ref: {}, uri: 'https://example.com/events' })).toBe(
       'https://example.com/events'
     );
+  });
+});
+
+describe('formatTriggerFilter', () => {
+  it('leaves the All events presentation to the caller when no conditions are configured', () => {
+    for (const spec of [
+      undefined,
+      {},
+      { filter: {} },
+      { filter: { attributes: {} } },
+      { filters: [] },
+    ]) {
+      expect(formatTriggerFilter(spec)).toBeUndefined();
+    }
+  });
+
+  it('shows only the active filter when both forms are configured', () => {
+    const filters = [{ exact: { type: 'order.created' } }];
+    const filter = { attributes: { type: 'order.cancelled' } };
+
+    expect(parse(formatTriggerFilter({ filter, filters })!)).toEqual({ filters });
+    expect(parse(formatTriggerFilter({ filter, filters: [{}] })!)).toEqual({ filters: [{}] });
+    expect(parse(formatTriggerFilter({ filter, filters: [] })!)).toEqual({ filter });
+  });
+
+  it('preserves legacy attribute filters including empty values', () => {
+    const filter = { attributes: { type: 'order.created', subject: '' } };
+
+    expect(parse(formatTriggerFilter({ filter })!)).toEqual({ filter });
+  });
+
+  it('indents nested expressions and preserves their order and repeated conditions', () => {
+    const filters = [
+      {
+        all: [
+          { exact: { type: 'order.created' } },
+          { any: [{ prefix: { source: '/shop' } }, { suffix: { subject: '.json' } }] },
+          { not: { exact: { tenant: 'internal' } } },
+        ],
+      },
+      { exact: { type: 'order.created' } },
+      { exact: { type: 'order.created' } },
+    ];
+    const yaml = formatTriggerFilter({ filters })!;
+
+    expect(yaml).toContain('filters:\n  - all:\n      - exact:\n');
+    expect(parse(yaml)).toEqual({ filters });
+  });
+
+  it.each<NonNullable<KnativeTrigger['spec']>>([
+    { filters: [{}] },
+    { filters: [{ all: [] }, { any: [{}] }, { not: {} }] },
+    { filters: [{ any: [{ all: [{}] }, { exact: { type: 'a' } }] }] },
+    { filters: [{ not: { all: [{ any: [{}] }, { exact: { type: 'a' } }] } }] },
+    { filters: [{ exact: {} }, { cesql: '' }] },
+    { filters: [{ exact: { type: 'a', source: '' } }, { suffix: { '': '.json' } }] },
+    { filters: [{ exact: { type: 'a' }, prefix: { source: '/x' } }] },
+  ])('preserves empty or incomplete expressions without interpreting them: %j', spec => {
+    expect(parse(formatTriggerFilter(spec)!)).toEqual(spec);
+  });
+
+  it('preserves literal strings separately from conditions and CESQL expressions', () => {
+    const spec = {
+      filters: [
+        { exact: { type: 'a and source = b', subject: 'a "quote"\\path\nline' } },
+        { prefix: { source: '/shop' } },
+        { cesql: "type = 'a' OR type = 'b'" },
+      ],
+    };
+
+    expect(parse(formatTriggerFilter(spec)!)).toEqual(spec);
+  });
+
+  it('quotes strings that YAML would otherwise read as a different type', () => {
+    const spec = { filter: { attributes: { type: 'true', source: '123', subject: 'null' } } };
+
+    expect(parse(formatTriggerFilter(spec)!)).toEqual(spec);
+  });
+
+  it('omits unrelated Trigger configuration', () => {
+    const filters = [{ exact: { type: 'order.created' } }];
+
+    expect(
+      parse(formatTriggerFilter({ broker: 'default', subscriber: { uri: '/sink' }, filters })!)
+    ).toEqual({ filters });
   });
 });

@@ -27,14 +27,17 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import { BrokerDetail } from './components/brokers/Detail';
 import { KServiceDetail } from './components/kservices/Detail';
 import { RevisionDetail } from './components/revisions/Detail';
+import { TriggerDetail } from './components/triggers/Detail';
 import { isKnativeComponentInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
 import { getKnativeListRouteComponent } from './listRoutes';
 import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
+import { KnativeBroker, KnativeTrigger } from './resources/knative';
 import { createSidebarGate } from './sidebarGating';
 
 registerKnativeIcon();
@@ -101,6 +104,20 @@ registerRoute({
   sidebar: 'knative-revisions',
   name: 'revisionDetails',
   component: withQueryClient(RevisionDetail),
+});
+
+registerRoute({
+  path: '/knative/brokers/:namespace/:name',
+  sidebar: 'knative-brokers',
+  name: KnativeBroker.detailsRoute,
+  component: withQueryClient(BrokerDetail),
+});
+
+registerRoute({
+  path: '/knative/triggers/:namespace/:name',
+  sidebar: 'knative-triggers',
+  name: KnativeTrigger.detailsRoute,
+  component: withQueryClient(TriggerDetail),
 });
 
 knativeNavigationItems.forEach(item => {
