@@ -1,0 +1,21 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessRule
+metadata:
+  name: 05-pending-rule
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: pending-reconciliation
+spec:
+  enforcementMode: bootstrap-only
+  conditionPolicy: allOf
+  taint:
+    key: readiness.k8s.io/KernelModulesLoaded
+    value: pending
+    effect: NoSchedule
+  nodeSelector:
+    matchLabels:
+      test.readiness.k8s.io/instance-type: c5.xlarge
+  conditions:
+    - type: kernel.modules.kubernetes.io/WireGuardLoaded
+      requiredStatus: 'True'

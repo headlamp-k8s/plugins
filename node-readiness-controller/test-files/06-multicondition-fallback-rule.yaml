@@ -1,0 +1,59 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessRule
+metadata:
+  name: 06-multicondition-fallback-rule
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: multicondition-allof-fallback
+spec:
+  enforcementMode: continuous
+  conditionPolicy: allOf
+  taint:
+    key: readiness.k8s.io/Telemetry
+    value: warming
+    effect: PreferNoSchedule
+  nodeSelector:
+    matchExpressions:
+      - key: test.readiness.k8s.io/region
+        operator: In
+        values:
+          - us-east-1
+          - us-west-2
+  conditions:
+    - type: monitoring.coreos.com/NodeExporterReady
+      requiredStatus: 'True'
+      defaultStatus: 'False'
+    - type: logging.fluentbit.io/ForwarderHealthy
+      requiredStatus: 'True'
+      defaultStatus: 'False'
+status:
+  observedGeneration: 1
+  appliedNodes:
+    - telemetry-node-01
+    - telemetry-node-02
+  nodeEvaluations:
+    - nodeName: telemetry-node-01
+      taintStatus: Absent
+      lastEvaluationTime: '2026-10-14T10:00:00Z'
+      conditionResults:
+        - type: monitoring.coreos.com/NodeExporterReady
+          requiredStatus: 'True'
+          currentStatus: 'True'
+          defaultStatus: 'False'
+        - type: logging.fluentbit.io/ForwarderHealthy
+          requiredStatus: 'True'
+          currentStatus: 'True'
+          defaultStatus: 'False'
+    - nodeName: telemetry-node-02
+      taintStatus: Present
+      lastEvaluationTime: '2026-10-14T10:00:00Z'
+      conditionResults:
+        - type: monitoring.coreos.com/NodeExporterReady
+          requiredStatus: 'True'
+          currentStatus: 'False'
+          defaultStatus: 'False'
+        - type: logging.fluentbit.io/ForwarderHealthy
+          requiredStatus: 'True'
+          currentStatus: 'False'
+          defaultStatus: 'False'
