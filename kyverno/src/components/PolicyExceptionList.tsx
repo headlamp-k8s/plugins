@@ -19,6 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip, Link as MuiLink } from '@mui/material';
 import { PolicyException } from '../resources/policyException';
+import { tableRemountKey } from './common';
 import { ExceptionViewer } from './ExceptionViewer';
 
 function openExceptionActivity(item: PolicyException) {
@@ -37,9 +38,10 @@ function openExceptionActivity(item: PolicyException) {
 }
 
 export function PolicyExceptionList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Policy Exceptions')}
       resourceClass={PolicyException}
       columns={[

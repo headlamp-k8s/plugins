@@ -36,7 +36,7 @@ import {
   PolicyReportResult,
   PolicyResultStatus,
 } from '../resources/policyReport';
-import { ResultStatusChip, SeverityChip } from './common';
+import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
 
 type GroupBy = 'none' | 'policy' | 'namespace' | 'kind';
 
@@ -153,57 +153,93 @@ function StatusFilterChips({
 }
 
 export function ViolationsView() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
 
-  // Column definitions depend on t() so they're built inside the component.
+  // Each header string is computed once and reused for both `header` and the
+  // column id, rather than calling t() twice per column. The column array is
+  // memoized on those header strings specifically, not on `t` itself (whose
+  // reference doesn't change when the translation backend finishes loading,
+  // so depending on it directly would never actually refresh anything). The
+  // id itself stays a stable, semantic string though, see tableRemountKey in
+  // common.tsx for why: Headlamp memoizes header cells by id alone, so a
+  // blank pre-translation label would otherwise stick around even once the
+  // real translation arrives, fixed by remounting the table via key once
+  // translations are ready instead of changing the id. Body cells here
+  // render resource data, not translated labels, so they aren't affected.
+  const resourceHeader = t('Resource');
+  const kindHeader = t('Kind');
+  const namespaceHeader = t('Namespace');
+  const policyHeader = t('Policy');
+  const ruleHeader = t('Rule');
+  const severityHeader = t('Severity');
+  const resultHeader = t('Result');
+  const messageHeader = t('Message');
+
   const violationColumns = useMemo(
     () => [
       {
-        header: t('Resource'),
+        header: resourceHeader,
+        id: 'resource',
         accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
       },
       {
-        header: t('Kind'),
+        header: kindHeader,
+        id: 'kind',
         accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
       },
       {
-        header: t('Namespace'),
+        header: namespaceHeader,
+        id: 'namespace',
         accessorFn: (v: ViolationEntry) =>
           v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
       },
       {
-        header: t('Policy'),
+        header: policyHeader,
+        id: 'policy',
         accessorFn: (v: ViolationEntry) => v.policy,
       },
       {
-        header: t('Rule'),
+        header: ruleHeader,
+        id: 'rule',
         accessorFn: (v: ViolationEntry) => v.rule || '-',
       },
       {
-        header: t('Severity'),
+        header: severityHeader,
+        id: 'severity',
         accessorFn: (v: ViolationEntry) => v.severity || '',
         Cell: ({ row }: { row: { original: ViolationEntry } }) => (
           <SeverityChip severity={row.original.severity} />
         ),
       },
       {
-        header: t('Result'),
+        header: resultHeader,
+        id: 'result',
         accessorFn: (v: ViolationEntry) => v.result,
         Cell: ({ row }: { row: { original: ViolationEntry } }) => (
           <ResultStatusChip status={row.original.result} />
         ),
       },
       {
-        header: t('Message'),
+        header: messageHeader,
+        id: 'message',
         accessorFn: (v: ViolationEntry) => v.message || '-',
       },
     ],
-    [t]
+    [
+      resourceHeader,
+      kindHeader,
+      namespaceHeader,
+      policyHeader,
+      ruleHeader,
+      severityHeader,
+      resultHeader,
+      messageHeader,
+    ]
   );
 
   const allViolations = useMemo(
@@ -309,11 +345,21 @@ export function ViolationsView() {
                 <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                   {group} ({entries.length})
                 </Typography>
-                <Table columns={violationColumns} data={entries} rowsPerPage={[25, 50, 100]} />
+                <Table
+                  key={tableRemountKey(ready, i18n?.language)}
+                  columns={violationColumns}
+                  data={entries}
+                  rowsPerPage={[25, 50, 100]}
+                />
               </Box>
             ))
         ) : (
-          <Table columns={violationColumns} data={filteredViolations} rowsPerPage={[25, 50, 100]} />
+          <Table
+            key={tableRemountKey(ready, i18n?.language)}
+            columns={violationColumns}
+            data={filteredViolations}
+            rowsPerPage={[25, 50, 100]}
+          />
         )}
       </SectionBox>
     </Box>
