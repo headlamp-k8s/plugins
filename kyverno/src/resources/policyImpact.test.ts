@@ -637,6 +637,29 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).toContain('a label selector');
   });
 
+  test('describes two namespace-constrained match.all entries as an AND, not one flat list, found via Copilot review', () => {
+    // Flattening both entries' namespaces into one bracketed list used to read as
+    // "namespaces [team-*, *-prod]", which looks like either pattern qualifies. In reality
+    // match.all requires every entry to hold at once, so a resource's namespace has to satisfy
+    // both "team-*" and "*-prod" together, "team-dev" alone would not be enough.
+    const combinedNamespaceRules: PolicyRule[] = [
+      {
+        name: 'team-prod-pods',
+        match: {
+          all: [
+            { resources: { kinds: ['Pod'], namespaces: ['team-*'] } },
+            { resources: { kinds: ['Pod'], namespaces: ['*-prod'] } },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(combinedNamespaceRules, 'Pod');
+
+    expect(reasons[0]).toContain('namespaces matching all of [team-*] and [*-prod]');
+    expect(reasons[0]).not.toContain('namespaces [team-*, *-prod]');
+  });
+
   test('recognizes the deprecated direct match.resources form, not just any/all, found via Copilot review', () => {
     // Confirmed against api/kyverno/v1/match_resources_types.go: MatchResources
     // embeds ResourceDescription directly as `resources`, deprecated in favor
@@ -719,6 +742,50 @@ describe('describeMatchReasons', () => {
     const reasons = describeMatchReasons(subresourceRules, 'Pod');
 
     expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('recognizes a dot-separated subresource kind pattern as a match, found via Copilot review', () => {
+    // Confirmed against Kyverno's own ParseKindSelector (pkg/utils/kube/kind.go): a subresource
+    // is joined to the kind with "." ("Pod.status"), not "/". The normalizer used to return the
+    // literal "Pod.status" unchanged, so this bare-kind form never matched.
+    const dotSubresourceRules: PolicyRule[] = [
+      { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['Pod.status'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(dotSubresourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('recognizes a group+version-qualified dot-separated subresource kind pattern as a match, found via Copilot review', () => {
+    // Same ParseKindSelector contract as above, with a group and version in front too. The
+    // normalizer used to return "Deployment.scale" unchanged here, never matching "Deployment".
+    const qualifiedDotSubresourceRules: PolicyRule[] = [
+      {
+        name: 'check-deployment-scale',
+        match: { any: [{ resources: { kinds: ['apps/v1/Deployment.scale'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(qualifiedDotSubresourceRules, 'Deployment');
+
+    expect(reasons[0]).toContain('Rule "check-deployment-scale" matches kind "Deployment"');
+  });
+
+  test('recognizes a wildcard-kind subresource pattern ("*/status") as matching any kind, found via Copilot review', () => {
+    // Confirmed against ParseKindSelector's own special case: a lone "*/status" is wildcard kind
+    // + subresource, not version "*" paired with kind "status". The normalizer used to return
+    // "status" as the kind here, so this never matched a real kind like "Pod" or "Deployment".
+    const wildcardSubresourceRules: PolicyRule[] = [
+      { name: 'check-any-status', match: { any: [{ resources: { kinds: ['*/status'] } }] } },
+    ];
+
+    expect(describeMatchReasons(wildcardSubresourceRules, 'Pod')[0]).toContain(
+      'Rule "check-any-status" matches kind "Pod"'
+    );
+    expect(describeMatchReasons(wildcardSubresourceRules, 'Deployment')[0]).toContain(
+      'Rule "check-any-status" matches kind "Deployment"'
+    );
   });
 
   test('does not let a qualified pattern for a different kind falsely match, found via Copilot review', () => {

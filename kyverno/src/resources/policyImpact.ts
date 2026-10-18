@@ -199,18 +199,36 @@ const K8S_VERSION_SEGMENT = /^(v\d+((alpha|beta)\d*)?|\*)$/;
 
 // Kyverno kind patterns can be a bare kind ("Pod"), version-qualified ("v1/Pod"),
 // group+version-qualified ("apps/v1/Deployment"), and any of those forms can also
-// carry a trailing "/subresource" segment ("Pod/status", "apps/v1/Deployment/scale").
-// Report results only ever carry the bare kind, so this walks the pattern to the
-// segment right after whatever looks like a real API version, rather than assuming
-// the kind is always the last segment (which a subresource suffix would break) or
-// always the first (which group/version qualification would break).
+// carry a subresource, joined to the kind with a dot rather than a slash
+// ("Pod.status", "apps/v1/Deployment.scale"), confirmed against Kyverno's own
+// ParseKindSelector (pkg/utils/kube/kind.go): it splits on "/" first, then
+// re-splits only the last of those segments on ".". A lone "*/status" is a
+// further special case the same function carves out explicitly, a wildcard kind
+// qualified by subresource, not a version "*" paired with kind "status"; it has
+// to be caught before the generic version-segment lookup below gets a chance to
+// misread "status" as the kind. Report results only ever carry the bare kind, so
+// this walks the pattern to the segment right after whatever looks like a real
+// API version, rather than assuming the kind is always the last segment (which a
+// subresource would break) or always the first (which group/version qualification
+// would break).
 function normalizeKindPattern(pattern: string): string {
-  const segments = pattern.split('/');
+  const slashSegments = pattern.split('/');
+  const last = slashSegments[slashSegments.length - 1];
+  const dotIndex = last.indexOf('.');
+  const segments =
+    dotIndex === -1
+      ? slashSegments
+      : [...slashSegments.slice(0, -1), last.slice(0, dotIndex), last.slice(dotIndex + 1)];
+
+  if (segments.length === 2 && segments[0] === '*' && segments[1] === segments[1].toLowerCase()) {
+    return '*';
+  }
+
   const versionIndex = segments.findIndex(s => K8S_VERSION_SEGMENT.test(s));
   if (versionIndex !== -1 && versionIndex + 1 < segments.length) {
     return segments[versionIndex + 1];
   }
-  // No version segment found: either a bare kind, or "Kind/subresource".
+  // No version segment found: either a bare kind, or "Kind.subresource" already split above.
   return segments[0];
 }
 
@@ -244,9 +262,22 @@ function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boole
 
 function describeConstraints(selectors: MatchSelectorEntry[], kind: string): string {
   const parts = [`kind "${kind}"`];
-  const namespaces = selectors.flatMap(s => s.resources?.namespaces || []);
-  if (namespaces.length > 0) {
-    parts.push(`namespaces [${namespaces.join(', ')}]`);
+  // More than one selector here only ever means a match.all/exclude.all block (every entry
+  // already confirmed to hold at once by the caller), so each entry's own namespaces list is a
+  // separate AND-ed constraint, not an alternative. Flattening them into one bracketed list the
+  // way a single selector's namespaces are listed below would read as "any of these", losing
+  // exactly the "all must hold" guarantee match.all/exclude.all makes, e.g. namespaces
+  // ["team-*"] and ["*-prod"] from two different all[] entries both have to match, "team-dev"
+  // satisfies only the first and still would not qualify.
+  const namespaceGroups = selectors
+    .map(s => s.resources?.namespaces)
+    .filter((ns): ns is string[] => !!ns && ns.length > 0);
+  if (namespaceGroups.length === 1) {
+    parts.push(`namespaces [${namespaceGroups[0].join(', ')}]`);
+  } else if (namespaceGroups.length > 1) {
+    parts.push(
+      `namespaces matching all of ${namespaceGroups.map(ns => `[${ns.join(', ')}]`).join(' and ')}`
+    );
   }
   if (selectors.some(s => s.resources?.selector)) {
     parts.push('a label selector');
