@@ -1,0 +1,53 @@
+# Demo Backup CRs for Headlamp Velero → Backups UI (and last-backup on Schedules).
+# Safe to apply without a running Velero controller / BSL — objects are for UI verification.
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: default-deployments-daily-20261001070000
+  namespace: velero
+  labels:
+    velero.io/schedule-name: default-deployments-daily
+spec:
+  includedNamespaces:
+    - default
+  includedResources:
+    - deployments
+  labelSelector:
+    matchLabels:
+      backup: enabled
+  ttl: 720h
+status:
+  phase: Completed
+  startTimestamp: '2026-10-01T07:00:00Z'
+  completionTimestamp: '2026-10-01T07:02:15Z'
+---
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: apps-namespace-only-20261002090000
+  namespace: velero
+  labels:
+    velero.io/schedule-name: apps-namespace-only
+spec:
+  includedNamespaces:
+    - apps
+  includedResources:
+    - deployments
+  ttl: 720h
+status:
+  phase: Completed
+  startTimestamp: '2026-10-02T09:00:00Z'
+  completionTimestamp: '2026-10-02T09:01:40Z'
+---
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: manual-default-snapshot
+  namespace: velero
+spec:
+  includedNamespaces:
+    - default
+  ttl: 168h
+status:
+  phase: InProgress
+  startTimestamp: '2026-10-03T07:00:00Z'

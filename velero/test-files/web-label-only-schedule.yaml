@@ -1,0 +1,15 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: web-label-only
+  namespace: velero
+spec:
+  schedule: "0 12 * * *"
+  template:
+    includedNamespaces:
+      - default
+    includedResources:
+      - deployments
+    labelSelector:
+      matchLabels:
+        app: web

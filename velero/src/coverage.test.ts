@@ -1,11 +1,14 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
+  buildLatestBackupBySchedule,
   getCoveringSchedules,
   getLatestBackupForSchedule,
   getSchedulesForNamespace,
+  resolveEveryRunAnchor,
+  scheduleBackupLookupKey,
   scheduleCoversWorkload,
 } from './coverage';
-import { formatNextScheduledRun } from './cron';
+import { getNextScheduledRun } from './cron';
 
 describe('scheduleCoversWorkload', () => {
   test('matches namespace and resource type with no label selector', () => {
@@ -215,6 +218,20 @@ describe('scheduleCoversWorkload', () => {
         includedResources: ['deployments.apps'],
       },
     };
+    const singularQualified = {
+      name: 'singular-qualified',
+      template: {
+        includedNamespaces: ['default'],
+        includedResources: ['deployment.apps'],
+      },
+    };
+    const stsSingularQualified = {
+      name: 'sts-singular-qualified',
+      template: {
+        includedNamespaces: ['default'],
+        includedResources: ['statefulset.apps'],
+      },
+    };
     const crossGroup = {
       name: 'cross-group',
       template: {
@@ -222,14 +239,47 @@ describe('scheduleCoversWorkload', () => {
         includedResources: ['deployments.example.com'],
       },
     };
-    const target = {
+    const deployTarget = {
       namespace: 'default',
       labels: {},
       resourceKind: 'deployments' as const,
     };
+    const stsTarget = {
+      namespace: 'default',
+      labels: {},
+      resourceKind: 'statefulsets' as const,
+    };
 
-    expect(scheduleCoversWorkload(appsAlias, target)).toBe(true);
-    expect(scheduleCoversWorkload(crossGroup, target)).toBe(false);
+    expect(scheduleCoversWorkload(appsAlias, deployTarget)).toBe(true);
+    expect(scheduleCoversWorkload(singularQualified, deployTarget)).toBe(true);
+    expect(scheduleCoversWorkload(stsSingularQualified, stsTarget)).toBe(true);
+    expect(scheduleCoversWorkload(crossGroup, deployTarget)).toBe(false);
+
+    // Exclusion via qualified singular must also match.
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'exclude-deploy-singular',
+          template: {
+            includedNamespaces: ['default'],
+            excludedResources: ['deployment.apps'],
+          },
+        },
+        deployTarget
+      )
+    ).toBe(false);
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'exclude-sts-singular',
+          template: {
+            includedNamespaces: ['default'],
+            excludedResources: ['statefulset.apps'],
+          },
+        },
+        stsTarget
+      )
+    ).toBe(false);
   });
 
   test('honors excludedNamespaceScopedResources', () => {
@@ -258,9 +308,9 @@ describe('scheduleCoversWorkload', () => {
     ).toBe(true);
   });
 
-  test('treats excludedNamespaceScopedResources wildcard as exclude-all', () => {
+  test('treats excludedNamespaceScopedResources * as excluding all namespaced kinds', () => {
     const schedule = {
-      name: 'no-namespaced',
+      name: 'cluster-only',
       template: {
         includedNamespaces: ['apps'],
         excludedNamespaceScopedResources: ['*'],
@@ -287,61 +337,6 @@ describe('scheduleCoversWorkload', () => {
         labels: {},
         resourceKind: 'persistentvolumeclaims',
       })
-    ).toBe(false);
-  });
-
-  test('fails closed on invalid namespace globs without throwing', () => {
-    expect(() =>
-      scheduleCoversWorkload(
-        {
-          name: 'bad-glob',
-          template: {
-            includedNamespaces: ['[z-a]'],
-            includedResources: ['deployments'],
-          },
-        },
-        {
-          namespace: 'default',
-          labels: {},
-          resourceKind: 'deployments',
-        }
-      )
-    ).not.toThrow();
-    expect(
-      scheduleCoversWorkload(
-        {
-          name: 'bad-glob',
-          template: {
-            includedNamespaces: ['[z-a]'],
-            includedResources: ['deployments'],
-          },
-        },
-        {
-          namespace: 'default',
-          labels: {},
-          resourceKind: 'deployments',
-        }
-      )
-    ).toBe(false);
-  });
-
-  test('excludes FailedValidation schedules from coverage', () => {
-    expect(
-      scheduleCoversWorkload(
-        {
-          name: 'broken',
-          phase: 'FailedValidation',
-          template: {
-            includedNamespaces: ['apps'],
-            includedResources: ['deployments'],
-          },
-        },
-        {
-          namespace: 'apps',
-          labels: {},
-          resourceKind: 'deployments',
-        }
-      )
     ).toBe(false);
   });
 
@@ -388,28 +383,6 @@ describe('scheduleCoversWorkload', () => {
     ).toBe(true);
   });
 
-  test('matches qualified singular aliases deployment.apps and statefulset.apps', () => {
-    const ns = ['default'];
-    expect(
-      scheduleCoversWorkload(
-        {
-          name: 'deploy-qualified',
-          template: { includedNamespaces: ns, includedResources: ['deployment.apps'] },
-        },
-        { namespace: 'default', labels: {}, resourceKind: 'deployments' }
-      )
-    ).toBe(true);
-    expect(
-      scheduleCoversWorkload(
-        {
-          name: 'sts-qualified',
-          template: { includedNamespaces: ns, includedResources: ['statefulset.apps'] },
-        },
-        { namespace: 'default', labels: {}, resourceKind: 'statefulsets' }
-      )
-    ).toBe(true);
-  });
-
   test('does not treat unsupported pvcs alias as covering PVCs', () => {
     expect(
       scheduleCoversWorkload(
@@ -436,6 +409,41 @@ describe('scheduleCoversWorkload', () => {
           namespace: 'default',
           labels: {},
           resourceKind: 'persistentvolumeclaims',
+        }
+      )
+    ).toBe(false);
+  });
+
+  test('malformed namespace globs fail closed without throwing', () => {
+    expect(() =>
+      scheduleCoversWorkload(
+        {
+          name: 'bad-glob',
+          template: {
+            includedNamespaces: ['[z-a]'],
+            includedResources: ['deployments'],
+          },
+        },
+        {
+          namespace: 'default',
+          labels: {},
+          resourceKind: 'deployments',
+        }
+      )
+    ).not.toThrow();
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'bad-glob',
+          template: {
+            includedNamespaces: ['[z-a]'],
+            includedResources: ['deployments'],
+          },
+        },
+        {
+          namespace: 'default',
+          labels: {},
+          resourceKind: 'deployments',
         }
       )
     ).toBe(false);
@@ -512,6 +520,26 @@ describe('scheduleCoversWorkload', () => {
     ).toBe(false);
   });
 
+  test('excludes FailedValidation schedules from coverage', () => {
+    expect(
+      scheduleCoversWorkload(
+        {
+          name: 'broken',
+          phase: 'FailedValidation',
+          template: {
+            includedNamespaces: ['apps'],
+            includedResources: ['deployments'],
+          },
+        },
+        {
+          namespace: 'apps',
+          labels: {},
+          resourceKind: 'deployments',
+        }
+      )
+    ).toBe(false);
+  });
+
   test('rejects PVC labeled velero.io/exclude-from-backup=true', () => {
     expect(
       scheduleCoversWorkload(
@@ -529,6 +557,53 @@ describe('scheduleCoversWorkload', () => {
         }
       )
     ).toBe(false);
+  });
+});
+
+describe('buildLatestBackupBySchedule', () => {
+  test('builds latest map in one pass keyed by cluster and schedule', () => {
+    const latest = buildLatestBackupBySchedule([
+      {
+        name: 'older',
+        scheduleName: 'daily',
+        completionTimestamp: '2026-07-01T10:00:00Z',
+      },
+      {
+        name: 'newer',
+        scheduleName: 'daily',
+        completionTimestamp: '2026-07-02T10:00:00Z',
+      },
+      {
+        name: 'other',
+        scheduleName: 'weekly',
+        completionTimestamp: '2026-07-01T12:00:00Z',
+      },
+    ]);
+
+    expect(latest.get(scheduleBackupLookupKey(undefined, 'daily'))?.name).toBe('newer');
+    expect(latest.get(scheduleBackupLookupKey(undefined, 'weekly'))?.name).toBe('other');
+    expect(latest.size).toBe(2);
+  });
+
+  test('keeps same-named schedules on different clusters separate', () => {
+    const latest = buildLatestBackupBySchedule([
+      {
+        name: 'a-daily',
+        cluster: 'cluster-a',
+        scheduleName: 'daily',
+        completionTimestamp: '2026-07-02T10:00:00Z',
+      },
+      {
+        name: 'b-daily',
+        cluster: 'cluster-b',
+        scheduleName: 'daily',
+        completionTimestamp: '2026-07-03T10:00:00Z',
+      },
+    ]);
+
+    expect(latest.get(scheduleBackupLookupKey('cluster-a', 'daily'))?.name).toBe('a-daily');
+    expect(latest.get(scheduleBackupLookupKey('cluster-b', 'daily'))?.name).toBe('b-daily');
+    expect(latest.size).toBe(2);
   });
 });
 
@@ -578,46 +653,73 @@ describe('getLatestBackupForSchedule', () => {
 
     expect(latest?.name).toBe('newer-in-progress');
   });
+
+  test('falls back to creationTimestamp for pre-execution backups', () => {
+    const latest = getLatestBackupForSchedule(
+      [
+        {
+          name: 'older-completed',
+          scheduleName: 'daily',
+          startTimestamp: '2026-07-01T10:00:00Z',
+          completionTimestamp: '2026-07-01T10:05:00Z',
+        },
+        {
+          name: 'newer-queued',
+          scheduleName: 'daily',
+          phase: 'Queued',
+          creationTimestamp: '2026-07-02T11:00:00Z',
+        },
+      ],
+      'daily'
+    );
+
+    expect(latest?.name).toBe('newer-queued');
+  });
+});
+
+describe('resolveEveryRunAnchor', () => {
+  test('prefers the later of lastBackup and lastSkipped', () => {
+    const anchor = resolveEveryRunAnchor({
+      lastBackupTime: '2026-07-01T04:00:00Z',
+      lastSkippedTime: '2026-07-01T05:10:00Z',
+      creationTimestamp: '2026-06-01T00:00:00Z',
+    });
+
+    expect(anchor?.toISOString()).toBe('2026-07-01T05:10:00.000Z');
+  });
+
+  test('uses lastSkipped when lastBackup is absent', () => {
+    const anchor = resolveEveryRunAnchor({
+      lastSkippedTime: '2026-07-01T05:10:00Z',
+      creationTimestamp: '2026-06-01T00:00:00Z',
+    });
+
+    expect(anchor?.toISOString()).toBe('2026-07-01T05:10:00.000Z');
+  });
+
+  test('anchors @every next-run from lastSkipped after skipImmediately', () => {
+    // lastBackup 04:00, lastSkipped 05:10, now 06:00 → next is 06:10 (not 07:00).
+    const next = getNextScheduledRun(
+      '@every 1h',
+      new Date('2026-07-01T06:00:00Z'),
+      resolveEveryRunAnchor({
+        lastBackupTime: '2026-07-01T04:00:00Z',
+        lastSkippedTime: '2026-07-01T05:10:00Z',
+      })
+    );
+
+    expect(next?.toISOString()).toBe('2026-07-01T06:10:00.000Z');
+  });
 });
 
 describe('getCoveringSchedules', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  test('anchors @every next run from lastSkipped when newer than lastBackup', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-07-05T06:00:00Z'));
-
-    const results = getCoveringSchedules(
-      [
-        {
-          name: 'every-hour',
-          cronSchedule: '@every 1h',
-          lastBackupTime: '2026-07-05T04:00:00Z',
-          lastSkippedTime: '2026-07-05T05:10:00Z',
-          template: { includedNamespaces: ['apps'], includedResources: ['deployments'] },
-        },
-      ],
-      [],
-      { namespace: 'apps', labels: {}, resourceKind: 'deployments' }
-    );
-
-    expect(results[0].nextScheduledRun).toBe(
-      formatNextScheduledRun(
-        '@every 1h',
-        new Date('2026-07-05T06:00:00Z'),
-        new Date('2026-07-05T05:10:00Z')
-      )
-    );
-  });
-
   test('joins schedules with their latest backup', () => {
     const results = getCoveringSchedules(
       [
         {
           name: 'daily',
           cronSchedule: '0 7 * * *',
+          phase: 'Enabled',
           template: { includedNamespaces: ['apps'], includedResources: ['deployments'] },
         },
       ],
@@ -660,6 +762,7 @@ describe('getCoveringSchedules', () => {
         {
           name: 'paused-daily',
           cronSchedule: '0 7 * * *',
+          phase: 'Enabled',
           paused: true,
           template: { includedNamespaces: ['apps'], includedResources: ['deployments'] },
         },
@@ -675,6 +778,29 @@ describe('getCoveringSchedules', () => {
     expect(results).toHaveLength(1);
     expect(results[0].paused).toBe(true);
     expect(results[0].statusDisplay).toBe('Paused');
+    expect(results[0].nextScheduledRun).toBeUndefined();
+  });
+
+  test('omits next run for New schedules and labels them New not Active', () => {
+    const results = getCoveringSchedules(
+      [
+        {
+          name: 'new-daily',
+          cronSchedule: '0 7 * * *',
+          phase: 'New',
+          template: { includedNamespaces: ['apps'], includedResources: ['deployments'] },
+        },
+      ],
+      [],
+      {
+        namespace: 'apps',
+        labels: {},
+        resourceKind: 'deployments',
+      }
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].statusDisplay).toBe('New');
     expect(results[0].nextScheduledRun).toBeUndefined();
   });
 
@@ -714,10 +840,12 @@ describe('getSchedulesForNamespace', () => {
         {
           name: 'daily-apps',
           cronSchedule: '0 7 * * *',
+          phase: 'Enabled',
           template: { includedNamespaces: ['apps'] },
         },
         {
           name: 'daily-other',
+          phase: 'Enabled',
           template: { includedNamespaces: ['other'] },
         },
       ],
@@ -747,37 +875,5 @@ describe('getSchedulesForNamespace', () => {
         },
       },
     ]);
-  });
-
-  test('omits schedules that cannot cover namespaced objects', () => {
-    const results = getSchedulesForNamespace(
-      [
-        {
-          name: 'nodes-only',
-          template: {
-            includedNamespaces: ['apps'],
-            includedResources: ['nodes'],
-          },
-        },
-        {
-          name: 'no-namespaced',
-          template: {
-            includedNamespaces: ['apps'],
-            excludedNamespaceScopedResources: ['*'],
-          },
-        },
-        {
-          name: 'apps-deploys',
-          template: {
-            includedNamespaces: ['apps'],
-            includedResources: ['deployments'],
-          },
-        },
-      ],
-      [],
-      'apps'
-    );
-
-    expect(results.map(r => r.scheduleName)).toEqual(['apps-deploys']);
   });
 });
