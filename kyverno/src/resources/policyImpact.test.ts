@@ -513,6 +513,111 @@ describe('collectPolicyImpact', () => {
     expect(impact.resources[0]).toMatchObject({ name: 'reconciled', uid: 'uid-1', status: 'fail' });
   });
 
+  test('preserves the worst status across three references that differ in apiVersion and UID presence, in either input order, found via Copilot review', () => {
+    // An HPA reported three ways: autoscaling/v1 with a UID and `fail`, then autoscaling/v2
+    // without a UID and `pass`, then autoscaling/v2 with the same UID and `pass`. The third
+    // reference's apiVersion differs from the first, so it reaches the orphan-merge path with
+    // a UID-keyed slot that already holds the first reference's `fail` entry. Moving the orphan
+    // into that slot unconditionally used to overwrite the `fail` with `pass`, losing it; the
+    // merge has to keep whichever of the two actually ranks worse, in either input order, since
+    // real report data has no guaranteed arrival order.
+    const references = [
+      {
+        policy: 'p',
+        result: 'fail',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v1',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+            uid: 'hpa-uid',
+          },
+        ],
+      },
+      {
+        policy: 'p',
+        result: 'pass',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v2',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+          },
+        ],
+      },
+      {
+        policy: 'p',
+        result: 'pass',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v2',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+            uid: 'hpa-uid',
+          },
+        ],
+      },
+    ];
+
+    const forwardReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'hpa-forward',
+        namespace: 'team-checkout',
+        uid: 'r-hpa-forward',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: references,
+    } as any);
+
+    const forwardImpact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [forwardReport],
+      []
+    );
+    expect(forwardImpact.resources).toHaveLength(1);
+    expect(forwardImpact.resources[0]).toMatchObject({
+      name: 'hpa',
+      uid: 'hpa-uid',
+      status: 'fail',
+    });
+
+    const reversedReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'hpa-reversed',
+        namespace: 'team-checkout',
+        uid: 'r-hpa-reversed',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [...references].reverse(),
+    } as any);
+
+    const reversedImpact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [reversedReport],
+      []
+    );
+    expect(reversedImpact.resources).toHaveLength(1);
+    expect(reversedImpact.resources[0]).toMatchObject({
+      name: 'hpa',
+      uid: 'hpa-uid',
+      status: 'fail',
+    });
+  });
+
   test('does not borrow the report scope UID for resources[] entries that omit their own, found via Copilot review', () => {
     // Two distinct resources[] entries, neither with its own uid. Both used
     // to fall back to reportScope.uid, colliding into one entry and losing

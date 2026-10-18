@@ -61,7 +61,7 @@ export function PolicyImpactPanel({ policyName, policyNamespace, rules }: Policy
   // read as "no evaluated resources" or get counted as zero instead of
   // surfacing that this data could not actually be fetched.
   const loading = policyReportQuery.isLoading || clusterPolicyReportQuery.isLoading;
-  const queryError = policyReportQuery.error || clusterPolicyReportQuery.error;
+  const queryError = policyReportQuery.errors?.[0] || clusterPolicyReportQuery.errors?.[0];
 
   const impact = useMemo(
     () =>

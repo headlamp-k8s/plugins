@@ -121,7 +121,15 @@ function ingest(
           const orphan = byResource.get(nameKey);
           if (orphan) {
             byResource.delete(nameKey);
-            byResource.set(key, orphan);
+            const uidEntry = byResource.get(key);
+            // The UID-keyed slot can already hold an entry from an earlier reference to this
+            // same resource under a different apiVersion (see the three-reference regression
+            // test below). Overwriting it unconditionally would silently discard whichever of
+            // the two actually has the worse status, the exact guarantee this map exists to
+            // preserve. Keep whichever of the two ranks worse.
+            if (!uidEntry || STATUS_RANK[orphan.status] > STATUS_RANK[uidEntry.status]) {
+              byResource.set(key, orphan);
+            }
           }
         }
       } else {
