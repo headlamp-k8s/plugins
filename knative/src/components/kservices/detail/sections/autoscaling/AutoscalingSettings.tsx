@@ -29,6 +29,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { annNumOrClear, KService, specNumOrClear } from '../../../../../resources/knative';
+import { errorDetail, withDetail } from '../../../../../utils/error';
 import { useNotify } from '../../../../common/notifications/useNotify';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
@@ -185,9 +186,7 @@ export default function AutoscalingSettings({
 
       notifySuccess('Autoscaling updated');
     } catch (err: unknown) {
-      const error = err as { message?: string } | undefined;
-      const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to update settings: ${detail}` : 'Failed to update settings');
+      notifyError(withDetail('Failed to update settings', errorDetail(err)));
     } finally {
       setSaving(false);
     }
