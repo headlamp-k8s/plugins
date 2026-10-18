@@ -44,7 +44,7 @@ export function MetricCard({
   tooltip?: string;
 }) {
   const card = (
-    <Card variant="outlined">
+    <Card variant="outlined" tabIndex={tooltip ? 0 : undefined}>
       <CardContent sx={{ textAlign: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Typography variant="body2" color="text.secondary">
           {title}

@@ -185,7 +185,13 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     breakerTrips: hasBreakerMetrics ? instantValue(breakerTripsRes) : null,
     legacyPoliciesNotReady: instantValue(legacyPoliciesNotReadyRes),
     requeueCount: instantValue(requeueCountRes),
-    latency: hasAdmissionMetrics ? rangeSeries(latencyRes) : [],
+    // Not gated on hasAdmissionMetrics like requestRate/denyCount above: this is a *range* query
+    // over the last hour, so it can still hold genuine samples from before the admission
+    // controller stopped being scraped even while the instant canary reads empty right now.
+    // Gating it would hide real latency history during an outage and show "No data yet" instead.
+    // LatencyChart already tells a true empty/all-null result apart from this, so nothing here
+    // needs the canary's help.
+    latency: rangeSeries(latencyRes),
   };
 }
 
