@@ -31,17 +31,15 @@ import { SyncStatusLabel } from './SyncStatusLabel';
 const MAX_DESCRIPTION_LENGTH = 90;
 
 /**
- * When an application was last synced.
+ * When the last successful deployment ran.
  *
- * The sync state carries the reliable timestamp, and it is what the detail page
- * shows. PipeCD often omits completedAt on the deployment reference, so the
- * deployment timestamps are only a fallback.
+ * Not syncState.timestamp: that is when the status was last reported, and
+ * drift detection sets it even for OUT_OF_SYNC. PipeCD often omits completedAt
+ * on the deployment reference, so startedAt is the fallback.
  */
 function lastSyncedAt(app: Application): number | undefined {
   return (
-    app.syncState?.timestamp ||
-    app.mostRecentSuccessfulDeployment?.completedAt ||
-    app.mostRecentSuccessfulDeployment?.startedAt
+    app.mostRecentSuccessfulDeployment?.completedAt || app.mostRecentSuccessfulDeployment?.startedAt
   );
 }
 
@@ -157,8 +155,9 @@ export function ApplicationList(): JSX.Element {
       setLoading(false);
       return;
     }
-    const controller = refetch();
-    return () => controller.abort();
+    refetch();
+    // Refresh replaces the controller, so abort whichever request is current.
+    return () => inFlight.current?.abort();
   }, [refetch, config.baseURL, config.apiKey]);
 
   if (!isConfigured(config)) {
