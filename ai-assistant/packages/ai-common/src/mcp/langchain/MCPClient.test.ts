@@ -54,10 +54,12 @@ function privateCore(client: MCPClient): MCPClientTestHarness {
 // Individual tests that need specific MultiServerMCPClient behaviour use
 // vi.doMock() after vi.resetModules() to override this default.
 vi.mock('@langchain/mcp-adapters', () => ({
-  MultiServerMCPClient: vi.fn().mockImplementation(() => ({
-    getTools: vi.fn().mockResolvedValue([]),
-    close: vi.fn().mockResolvedValue(undefined),
-  })),
+  MultiServerMCPClient: vi.fn().mockImplementation(function () {
+    return {
+      getTools: vi.fn().mockResolvedValue([]),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+  }),
 }));
 
 // Side-effect import: loads MCPClient (and its TS transform) during file collection
@@ -176,7 +178,9 @@ describe('MCPClient', () => {
     const getTools = vi.fn().mockResolvedValue([]);
     const close = vi.fn().mockResolvedValue(undefined);
     vi.doMock('@langchain/mcp-adapters', () => ({
-      MultiServerMCPClient: vi.fn().mockImplementation(() => ({ getTools, close })),
+      MultiServerMCPClient: vi.fn().mockImplementation(function () {
+        return { getTools, close };
+      }),
     }));
 
     // No cluster-dependent servers, but enabled so initialization works
@@ -606,7 +610,9 @@ describe('MCPClient — error paths', () => {
     const close = vi.fn().mockRejectedValue(new Error('close failed'));
     const getTools = vi.fn().mockResolvedValue([]);
     vi.doMock('@langchain/mcp-adapters', () => ({
-      MultiServerMCPClient: vi.fn().mockImplementation(() => ({ getTools, close })),
+      MultiServerMCPClient: vi.fn().mockImplementation(function () {
+        return { getTools, close };
+      }),
     }));
 
     const { MCPClient: MCPClient } = await import('./MCPClient');
@@ -629,7 +635,9 @@ describe('MCPClient — error paths', () => {
     const getTools = vi
       .fn()
       .mockResolvedValue([{ name: 'srv__tool1', schema: {}, invoke: vi.fn() }]);
-    const MockMCP = vi.fn().mockImplementation(() => ({ getTools, close }));
+    const MockMCP = vi.fn().mockImplementation(function () {
+      return { getTools, close };
+    });
     vi.doMock('@langchain/mcp-adapters', () => ({ MultiServerMCPClient: MockMCP }));
 
     const { MCPClient: MCPClient } = await import('./MCPClient');
@@ -652,10 +660,12 @@ describe('MCPClient — error paths', () => {
 
   it('doInitializeClient error is re-thrown and state is reset', async () => {
     vi.doMock('@langchain/mcp-adapters', () => ({
-      MultiServerMCPClient: vi.fn().mockImplementation(() => ({
-        getTools: vi.fn().mockRejectedValue(new Error('getTools failed')),
-        close: vi.fn().mockResolvedValue(undefined),
-      })),
+      MultiServerMCPClient: vi.fn().mockImplementation(function () {
+        return {
+          getTools: vi.fn().mockRejectedValue(new Error('getTools failed')),
+          close: vi.fn().mockResolvedValue(undefined),
+        };
+      }),
     }));
 
     const { MCPClient: MCPClient } = await import('./MCPClient');
@@ -675,10 +685,12 @@ describe('MCPClient — error paths', () => {
   it('concurrent calls to initializeClient share the same promise', async () => {
     let resolveGetTools!: (tools: CoreToolDouble[]) => void;
     const getToolsPromise = new Promise<CoreToolDouble[]>(res => (resolveGetTools = res));
-    const MockMCP = vi.fn().mockImplementation(() => ({
-      getTools: vi.fn().mockReturnValue(getToolsPromise),
-      close: vi.fn().mockResolvedValue(undefined),
-    }));
+    const MockMCP = vi.fn().mockImplementation(function () {
+      return {
+        getTools: vi.fn().mockReturnValue(getToolsPromise),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    });
     vi.doMock('@langchain/mcp-adapters', () => ({ MultiServerMCPClient: MockMCP }));
 
     const { MCPClient: MCPClient } = await import('./MCPClient');
@@ -707,10 +719,12 @@ describe('MCPClient — error paths', () => {
     });
     const close = vi.fn().mockResolvedValue(undefined);
     vi.doMock('@langchain/mcp-adapters', () => ({
-      MultiServerMCPClient: vi.fn().mockImplementation(() => ({
-        getTools: vi.fn().mockReturnValue(getToolsPromise),
-        close,
-      })),
+      MultiServerMCPClient: vi.fn().mockImplementation(function () {
+        return {
+          getTools: vi.fn().mockReturnValue(getToolsPromise),
+          close,
+        };
+      }),
     }));
 
     const { MCPClient: MCPClient } = await import('./MCPClient');
@@ -769,7 +783,7 @@ describe('MCPClient — error paths', () => {
     vi.resetModules();
     let callCount = 0;
     vi.doMock('@langchain/mcp-adapters', () => ({
-      MultiServerMCPClient: vi.fn().mockImplementation(() => {
+      MultiServerMCPClient: vi.fn().mockImplementation(function () {
         callCount++;
         if (callCount > 1) throw new Error('re-init failed');
         return {
@@ -802,7 +816,7 @@ describe('MCPClient — error paths', () => {
   it('resetClient returns failure when initializeClient throws', async () => {
     let callCount = 0;
     vi.doMock('@langchain/mcp-adapters', () => ({
-      MultiServerMCPClient: vi.fn().mockImplementation(() => {
+      MultiServerMCPClient: vi.fn().mockImplementation(function () {
         callCount++;
         if (callCount > 1) throw new Error('restart failed');
         return {
@@ -888,10 +902,12 @@ describe('MCPClient — error paths', () => {
   it('clusterChange returns failure when handleClustersChange throws', async () => {
     vi.resetModules();
     vi.doMock('@langchain/mcp-adapters', () => ({
-      MultiServerMCPClient: vi.fn().mockImplementation(() => ({
-        getTools: vi.fn().mockResolvedValue([]),
-        close: vi.fn().mockResolvedValue(undefined),
-      })),
+      MultiServerMCPClient: vi.fn().mockImplementation(function () {
+        return {
+          getTools: vi.fn().mockResolvedValue([]),
+          close: vi.fn().mockResolvedValue(undefined),
+        };
+      }),
     }));
     const { MCPClient: MCPClient } = await import('./MCPClient');
     const provider = makeSettingsProvider({
