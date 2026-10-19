@@ -167,6 +167,33 @@ describe('ApplicationList', () => {
     expect(screen.queryByText('—')).toBeNull();
   });
 
+  // Drift detection refreshes syncState.timestamp even when out of sync, so it
+  // must not be shown as the last sync time.
+  it('shows the deployment time, not a newer out-of-sync report', async () => {
+    setupConfigured();
+    const now = Math.floor(Date.now() / 1000);
+    vi.mocked(pipecdApi.listApplications).mockResolvedValue({
+      applications: [
+        {
+          ...appKubernetesSynced,
+          syncState: { ...appKubernetesSynced.syncState!, status: 'OUT_OF_SYNC', timestamp: now },
+          mostRecentSuccessfulDeployment: {
+            ...appKubernetesSynced.mostRecentSuccessfulDeployment!,
+            startedAt: now - 2 * 86400 - 60,
+            completedAt: now - 2 * 86400,
+          },
+        },
+      ],
+      cursor: '',
+    });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    expect(screen.getByText('2d ago')).toBeTruthy();
+    expect(screen.queryByText('just now')).toBeNull();
+  });
+
   // There is no detail page yet, so the name must not look clickable. Use the
   // Open in PipeCD link to reach the application.
   it('shows the application name as text, not a link', async () => {
