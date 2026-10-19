@@ -57,6 +57,19 @@ const STATUS_RANK: Record<PolicyResultStatus, number> = {
   pass: 0,
 };
 
+// A resource's apiVersion is "group/version" (or just "version" for the unnamed core group,
+// e.g. "v1"), and the same live object can be reported under more than one served version of
+// the same group, e.g. an HPA as "autoscaling/v1" from one rule and "autoscaling/v2" from
+// another. Only the group actually identifies which API this resource belongs to; the version
+// is a serialization detail, not part of the resource's identity. Used below for the fallback
+// key so UID-less references to the same resource reconcile across versions instead of
+// splitting into separate rows, while still keeping genuinely different groups apart.
+function apiGroupOf(apiVersion: string | undefined): string {
+  if (!apiVersion) return '';
+  const slashIndex = apiVersion.indexOf('/');
+  return slashIndex === -1 ? '' : apiVersion.slice(0, slashIndex);
+}
+
 function ingest(
   policyName: string,
   policySource: PolicyReportSource,
@@ -103,8 +116,12 @@ function ingest(
       const apiVersion = res?.apiVersion;
       // The name-based key alone can collide for distinct objects that share
       // kind, namespace, and name, for example the same name used by two
-      // different API groups, so it also folds in apiVersion.
-      const nameKey = `${apiVersion || ''}/${kind}/${namespace || ''}/${name}`;
+      // different API groups, so it also folds in the API group. The group
+      // only, not the full apiVersion: two references to the identical
+      // resource can carry different served versions of the same group
+      // (see apiGroupOf above), and those have to reconcile to one entry,
+      // not split into two just because they named different versions.
+      const nameKey = `${apiGroupOf(apiVersion)}/${kind}/${namespace || ''}/${name}`;
 
       let key: string;
       if (uid) {

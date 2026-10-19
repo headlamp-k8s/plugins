@@ -618,6 +618,86 @@ describe('collectPolicyImpact', () => {
     });
   });
 
+  test('reconciles two UID-less references to the same resource across API versions, in either input order, found via Copilot review', () => {
+    // No UID anywhere this time, unlike the three-reference test above: an HPA reported as
+    // autoscaling/v1 (failing) and again as autoscaling/v2 (passing), the same live object
+    // under two different served versions of the same group. Folding the full apiVersion into
+    // the fallback key used to treat these as two unrelated resources, producing two rows and
+    // conflicting counts instead of reconciling them into one with the worse status.
+    const versionReferences = [
+      {
+        policy: 'p',
+        result: 'fail',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v1',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+          },
+        ],
+      },
+      {
+        policy: 'p',
+        result: 'pass',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v2',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+          },
+        ],
+      },
+    ];
+
+    const forwardReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'hpa-version-forward',
+        namespace: 'team-checkout',
+        uid: 'r-hpa-version-forward',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: versionReferences,
+    } as any);
+
+    const forwardImpact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [forwardReport],
+      []
+    );
+    expect(forwardImpact.resources).toHaveLength(1);
+    expect(forwardImpact.resources[0]).toMatchObject({ name: 'hpa', status: 'fail' });
+
+    const reversedReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'hpa-version-reversed',
+        namespace: 'team-checkout',
+        uid: 'r-hpa-version-reversed',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [...versionReferences].reverse(),
+    } as any);
+
+    const reversedImpact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [reversedReport],
+      []
+    );
+    expect(reversedImpact.resources).toHaveLength(1);
+    expect(reversedImpact.resources[0]).toMatchObject({ name: 'hpa', status: 'fail' });
+  });
+
   test('does not borrow the report scope UID for resources[] entries that omit their own, found via Copilot review', () => {
     // Two distinct resources[] entries, neither with its own uid. Both used
     // to fall back to reportScope.uid, colliding into one entry and losing
