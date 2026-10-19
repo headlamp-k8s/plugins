@@ -416,10 +416,12 @@ export function PluginList() {
       isOfficialSwitchChecked={conf?.displayOnlyOfficialPlugins ?? true}
       onOfficialSwitchChange={(isChecked: boolean) => {
         configStore.update({ displayOnlyOfficialPlugins: isChecked });
+        setPage(1);
       }}
       isVerifiedSwitchChecked={conf?.displayOnlyVerifiedPlugins ?? true}
       onVerifiedSwitchChange={(isChecked: boolean) => {
         configStore.update({ displayOnlyVerifiedPlugins: isChecked });
+        setPage(1);
       }}
     />
   );
